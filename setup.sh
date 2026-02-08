@@ -20,6 +20,7 @@ fi
 
 # Copy workspace files
 echo "Copying Tidybot workspace templates..."
+mkdir -p ~/.openclaw/workspace
 cp -r workspace/* ~/.openclaw/workspace/
 echo "  Copied to ~/.openclaw/workspace/"
 
