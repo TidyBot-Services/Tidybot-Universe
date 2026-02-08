@@ -42,4 +42,4 @@ openclaw gateway restart 2>/dev/null || openclaw gateway start
 
 echo
 echo "=== Setup Complete ==="
-echo "Open a chat or run: openclaw chat"
+echo "Open a chat or run: openclaw dashboard"
