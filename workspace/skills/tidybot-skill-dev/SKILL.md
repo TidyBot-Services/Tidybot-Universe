@@ -5,17 +5,18 @@ description: Build, create, or develop skills for Tidybot robot. Use when asked 
 
 # Tidybot Skill Development
 
-**FIRST read https://github.com/TidybotArmy/wishlist, specifically RULES.md.**
+**FIRST clone the wishlist repo and read RULES.md before writing any code.**
 
-Fetch and follow the rules before writing any code:
+```bash
+git clone https://github.com/TidyBotArmy/wishlist.git ./wishlist
 ```
-https://raw.githubusercontent.com/TidyBotArmy/wishlist/main/RULES.md
-```
 
-This defines:
-- Repo structure (README.md, main.py, deps.txt)
-- Catalog & wishlist workflow
-- Agent state tracking (memory/tidybot/)
-- Multi-agent coordination
+Clone into this skill's directory (`skills/tidybot-skill-dev/wishlist`). Then read `wishlist/RULES.md`.
 
-Do not start coding until you've read RULES.md.
+This repo contains:
+- `RULES.md` — Full workflow rules (repo structure, catalog, wishlist, multi-agent coordination)
+- `catalog.json` — Catalog of all available skills
+- `wishlist.json` — Skill requests and voting
+- `CONTRIBUTING.md` — How to add skills
+
+Do not start coding until you've cloned the repo and read RULES.md.

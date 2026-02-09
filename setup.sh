@@ -26,9 +26,9 @@ echo "  Copied to ~/.openclaw/workspace/"
 
 # Add skills.load.extraDirs to config if not present
 echo "Configuring skills directory..."
-openclaw config set skills.load.extraDirs '["~/.openclaw/workspace/skills"]' 2>/dev/null || {
+openclaw config set skills.load.extraDirs '["~/.openclaw/workspace/skills", "~/.openclaw/workspace/collaboration"]' 2>/dev/null || {
     echo "  Note: Could not auto-set config. Please add manually:"
-    echo '  "skills": { "load": { "extraDirs": ["~/.openclaw/workspace/skills"] } }'
+    echo '  "skills": { "load": { "extraDirs": ["~/.openclaw/workspace/skills", "~/.openclaw/workspace/collaboration"] } }'
 }
 
 # Clear existing sessions for fresh start

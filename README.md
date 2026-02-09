@@ -61,7 +61,9 @@ workspace/
 ├── HEARTBEAT.md    # Periodic task config
 ├── BOOTSTRAP.md    # First-run setup
 ├── BOOT.md         # Boot sequence
-└── skills/
-    └── tidybot-skill-dev/
-        └── SKILL.md   # Triggers RULES.md reading for skill development
+├── skills/
+│   └── tidybot-skill-dev/
+│       └── SKILL.md   # Skill development (clones TidyBotArmy/wishlist)
+└── collaboration/
+    └── SKILL.md       # Backend collaboration (clones TidyBotArmy-Backend/backend_wishlist)
 ```
