@@ -6,17 +6,17 @@ read_when:
 
 # HEARTBEAT.md
 
-## TidybotArmy Maintenance
+## Tidybot Skills Maintenance
 
 Check these periodically (not every heartbeat — rotate through them):
 
 ### Catalog Sync
-- Fetch `catalog.json` from TidyBotArmy/wishlist
-- Compare against completed skill repos in TidyBotArmy org
+- Fetch `catalog.json` from tidybot-skills/wishlist
+- Compare against completed skill repos in tidybot-skills org
 - If any skill repo exists but isn't in catalog → update catalog.json and push
 
 ### Wishlist Status
-- Fetch `wishlist.json` from TidyBotArmy/wishlist  
+- Fetch `wishlist.json` from tidybot-skills/wishlist  
 - Check for items with status "building" that have been idle >1 hour
 - Check for completed skills still marked "pending" or "building" → update to "done"
 

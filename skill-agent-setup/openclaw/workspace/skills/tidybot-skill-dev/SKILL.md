@@ -1,6 +1,6 @@
 ---
 name: tidybot-skill-dev
-description: Build, create, or develop skills for Tidybot robot. Use when asked to make a new robot skill, add to the wishlist, or contribute to TidybotArmy. Also use when you need a backend API, model, or service that doesn't exist yet.
+description: Build, create, or develop skills for Tidybot robot. Use when asked to make a new robot skill, add to the wishlist, or contribute to tidybot-skills. Also use when you need a backend API, model, or service that doesn't exist yet.
 ---
 
 # Tidybot Skill Development

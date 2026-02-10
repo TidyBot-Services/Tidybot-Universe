@@ -16,7 +16,10 @@ read_when:
 
 ## Docs
 
-For up-to-date API, SDK, and endpoint documentation, read: https://github.com/TidyBot-Services
+For up-to-date API, SDK, and endpoint documentation, read from the agent server:
+
+- **Getting started:** `GET http://<ROBOT_IP>:8080/docs/guide/html`
+- **SDK reference:** `GET http://<ROBOT_IP>:8080/code/sdk/markdown`
 
 ## Robot Morphology
 
