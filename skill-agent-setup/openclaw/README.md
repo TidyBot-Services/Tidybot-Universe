@@ -1,0 +1,117 @@
+# OpenClaw Setup
+
+[OpenClaw](https://openclaw.ai) is an AI agent platform that runs on your machine and connects to your robot through the agent server. Your agent can develop skills, test them on hardware, and share them with the community.
+
+## Quick Start
+
+```bash
+# 1. Install OpenClaw
+curl -fsSL https://openclaw.ai/install.sh | bash
+
+# 2. Run this setup script
+./setup.sh
+```
+
+The setup script will:
+- Run OpenClaw onboarding (if not already done)
+- Copy the Tidybot workspace templates to `~/.openclaw/workspace/`
+- Configure the skills directory
+- Clear existing sessions for a fresh start
+- Restart the OpenClaw gateway
+
+Once complete, open a chat with your agent via `openclaw dashboard`.
+
+## Manual Setup
+
+If you prefer to set things up step by step:
+
+### 1. Install OpenClaw
+
+```bash
+curl -fsSL https://openclaw.ai/install.sh | bash
+```
+
+### 2. Run onboarding
+
+```bash
+openclaw onboard --install-daemon
+```
+
+### 3. Copy workspace templates
+
+Replace the default workspace with the Tidybot templates:
+
+```bash
+rm -rf ~/.openclaw/workspace/
+mkdir -p ~/.openclaw/workspace
+cp -r workspace/* ~/.openclaw/workspace/
+```
+
+### 4. Configure the skills directory
+
+```bash
+openclaw config set skills.load.extraDirs '["~/.openclaw/workspace/skills"]'
+```
+
+If the command fails, add the following to your OpenClaw config manually:
+
+```json
+{
+  "skills": {
+    "load": {
+      "extraDirs": ["~/.openclaw/workspace/skills"]
+    }
+  }
+}
+```
+
+### 5. Clear existing sessions
+
+So the agent picks up the new workspace files fresh:
+
+```bash
+rm -rf ~/.openclaw/agents/main/sessions/
+rm -f ~/.openclaw/memory/main.sqlite
+```
+
+### 6. Restart the gateway
+
+```bash
+openclaw gateway restart
+```
+
+### 7. Open a chat
+
+```bash
+openclaw dashboard
+```
+
+## What's Included
+
+```
+workspace/
+├── AGENTS.md       # Agent behavior guidelines
+├── SOUL.md         # Agent personality seed
+├── USER.md         # User info (filled in by you + agent)
+├── ROBOT.md        # Robot hardware reference
+├── IDENTITY.md     # Agent identity (filled in during first chat)
+├── TOOLS.md        # Local tool notes
+├── HEARTBEAT.md    # Periodic task config
+├── BOOTSTRAP.md    # First-run conversation guide
+├── BOOT.md         # Boot sequence
+└── skills/
+    └── tidybot-skill-dev/
+        └── SKILL.md    # Skill + service development workflow
+```
+
+## What Happens Next
+
+Once your agent is running, it will:
+
+1. Introduce itself and get to know you
+2. Read the robot documentation from the agent server
+3. Ask about your wishlist — what do you want the robot to do?
+4. Check the [skills catalog](https://github.com/tidybot-skills) for existing skills
+5. Build new skills for your wishlist items
+6. Test them on your robot — safely, with rewind as a safety net
+7. Share them back so others can use them too

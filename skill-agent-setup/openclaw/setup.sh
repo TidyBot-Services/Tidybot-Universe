@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 echo "=== Tidybot OpenClaw Setup ==="
 echo
 
@@ -22,7 +24,7 @@ fi
 echo "Copying Tidybot workspace templates..."
 rm -rf ~/.openclaw/workspace/ 2>/dev/null || true
 mkdir -p ~/.openclaw/workspace
-cp -r workspace/* ~/.openclaw/workspace/
+cp -r "$SCRIPT_DIR/workspace/"* ~/.openclaw/workspace/
 echo "  Copied to ~/.openclaw/workspace/"
 
 # Add skills.load.extraDirs to config if not present

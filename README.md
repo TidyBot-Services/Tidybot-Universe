@@ -64,19 +64,19 @@ The platform isn't limited to one robot. Different people can bring different ha
 
 You need a robot running the agent server. The reference setup is a Franka Panda arm on a mobile base with a Robotiq gripper, but any hardware with matching services will work. See the [Services org](https://github.com/TidyBot-Services) for available hardware drivers.
 
-### 2. Install OpenClaw
+### 2. Set up a skill agent
 
-[OpenClaw](https://openclaw.ai) is the AI agent platform that runs on your machine and connects to your robot through the agent server.
+A skill agent is the AI that develops and runs skills on your robot. See [skill-agent-setup/](skill-agent-setup/) for available platforms.
+
+**OpenClaw** (recommended):
 
 ```bash
-# Install
-curl -fsSL https://openclaw.ai/install.sh | bash
-
-# Quick setup (copies workspace templates, configures everything)
 git clone https://github.com/TidyBot-Services/Tidybot-Universe.git
-cd Tidybot-Universe
+cd Tidybot-Universe/skill-agent-setup/openclaw
 ./setup.sh
 ```
+
+For detailed instructions (including manual setup), see [skill-agent-setup/openclaw/README.md](skill-agent-setup/openclaw/README.md).
 
 ### 3. Talk to your agent
 
@@ -116,21 +116,25 @@ Services run **below** that layer — they talk directly to hardware and system 
 
 ```
 Tidybot-Universe/
-├── README.md           # You are here
-├── setup.sh            # One-command setup script
-└── workspace/          # OpenClaw workspace templates
-    ├── AGENTS.md       # Agent behavior guidelines
-    ├── SOUL.md         # Agent personality seed
-    ├── USER.md         # User info (filled in by you + agent)
-    ├── ROBOT.md        # Robot hardware reference
-    ├── IDENTITY.md     # Agent identity (filled in during first chat)
-    ├── TOOLS.md        # Local tool notes
-    ├── HEARTBEAT.md    # Periodic task config
-    ├── BOOTSTRAP.md    # First-run conversation guide
-    ├── BOOT.md         # Boot sequence
-    └── skills/
-        └── tidybot-skill-dev/
-            └── SKILL.md    # Skill + service development workflow
+├── README.md                       # You are here
+└── skill-agent-setup/              # Agent platform setup options
+    ├── README.md                   # Overview of available platforms
+    └── openclaw/                   # OpenClaw setup
+        ├── README.md               # Detailed install instructions
+        ├── setup.sh                # One-command setup script
+        └── workspace/              # OpenClaw workspace templates
+            ├── AGENTS.md           # Agent behavior guidelines
+            ├── SOUL.md             # Agent personality seed
+            ├── USER.md             # User info (filled in by you + agent)
+            ├── ROBOT.md            # Robot hardware reference
+            ├── IDENTITY.md         # Agent identity (filled in during first chat)
+            ├── TOOLS.md            # Local tool notes
+            ├── HEARTBEAT.md        # Periodic task config
+            ├── BOOTSTRAP.md        # First-run conversation guide
+            ├── BOOT.md             # Boot sequence
+            └── skills/
+                └── tidybot-skill-dev/
+                    └── SKILL.md    # Skill + service development workflow
 ```
 
 ## For Agents
