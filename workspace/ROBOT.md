@@ -16,7 +16,7 @@ read_when:
 
 ## Docs
 
-For up-to-date API, SDK, and endpoint documentation, read: https://github.com/tidybotarmy
+For up-to-date API, SDK, and endpoint documentation, read: https://github.com/TidyBot-Services
 
 ## Robot Morphology
 

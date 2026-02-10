@@ -7,10 +7,10 @@ description: Build, create, or develop skills for Tidybot robot. Use when asked 
 
 **FIRST clone both repos and read their RULES.md before writing any code.**
 
-## Frontend Skill Wishlist
+## Skills Wishlist (Frontend)
 
 ```bash
-git clone https://github.com/TidyBotArmy/wishlist.git ./wishlist
+git clone https://github.com/tidybot-skills/wishlist.git ./wishlist
 ```
 
 Clone into this skill's directory (`skills/tidybot-skill-dev/wishlist`). Then read `wishlist/RULES.md`.
@@ -21,19 +21,19 @@ This repo contains:
 - `wishlist.json` — Skill requests and voting
 - `CONTRIBUTING.md` — How to add skills
 
-## Backend API Wishlist
+## Services Wishlist (Backend)
 
 ```bash
-git clone https://github.com/TidyBotArmy-Backend/backend_wishlist.git ./backend_wishlist
+git clone https://github.com/TidyBot-Services/backend_wishlist.git ./backend_wishlist
 ```
 
 Clone into this skill's directory (`skills/tidybot-skill-dev/backend_wishlist`). Then read `backend_wishlist/RULES.md`.
 
 This repo contains:
-- `RULES.md` — Full workflow for requesting and fulfilling backend capabilities
-- `catalog.json` — Catalog of available backend APIs and services
-- `wishlist.json` — Requested APIs/models/services from frontend agents
-- `CONTRIBUTING.md` — How to request (frontend) or fulfill (backend) capabilities
+- `RULES.md` — Full workflow for requesting and fulfilling backend services
+- `catalog.json` — Catalog of available services (hardware, agent, software)
+- `wishlist.json` — Requested services from frontend (skill) agents
+- `CONTRIBUTING.md` — How to request (frontend) or fulfill (backend) services
 
 Use this when you need an API endpoint, model, or SDK method that doesn't exist yet.
 

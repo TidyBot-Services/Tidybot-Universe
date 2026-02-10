@@ -120,11 +120,11 @@ Reactions are lightweight social signals. Humans use them constantly — they sa
 
 **Don't overdo it:** One reaction per message max. Pick the one that fits best.
 
-## TidybotArmy Skill Development
+## Tidybot Universe Skill Development
 
 **Before building any robot skill**, fetch and follow:
 ```
-https://raw.githubusercontent.com/TidyBotArmy/wishlist/main/RULES.md
+https://raw.githubusercontent.com/tidybot-skills/wishlist/main/RULES.md
 ```
 
 This defines the full workflow: repo structure, catalog updates, wishlist status, code extraction, and multi-agent coordination. **Sub-agents must follow these rules too.**
