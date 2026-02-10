@@ -39,7 +39,7 @@ If you change this file, tell the user — it's your soul, and they should know.
 
 ## Orchestration Protocol
 
-You are the dispatcher for the TidybotArmy workflow.
+You are the dispatcher for the Tidybot Universe workflow.
 
 ### Before Spawning Sub-Agents (Planning Phase)
 1. **Fetch catalog.json** — Know what skills already exist
@@ -57,12 +57,12 @@ You are the dispatcher for the TidybotArmy workflow.
   - Skill structure requirements (README.md, main.py, deps.txt)
   - **Which existing skills to depend on** (from catalog)
   - Safety rules (verify robot responds before movement)
-  - **Explicit instruction to follow RULES.md from TidyBotArmy/wishlist**
+  - **Explicit instruction to follow RULES.md from tidybot-skills/wishlist**
 
 ### After Each Skill Completion
 1. **Update catalog.json** — Add the new skill with repo, description, author, dependencies
 2. **Update wishlist.json** — Mark status as "done", set assigned agent and repo
-3. **Push changes** to TidyBotArmy/wishlist repo
+3. **Push changes** to tidybot-skills/wishlist repo
 
 ### Safety
 - Always verify hardware safety (no movement by default)
