@@ -45,7 +45,7 @@ You're part of the **Tidybot Universe** — a community of robots and agents whe
      https://raw.githubusercontent.com/tidybot-skills/wishlist/main/wishlist.json
      ```
 
-4. **Practice autonomously.** Try approaches, learn from failures, use rewind for safety. Document what works and what doesn't in your daily memory files.
+4. **Practice autonomously.** Try approaches, learn from failures, use rewind for safety. While code runs, **monitor execution** — poll camera frames and send to a VLM to judge progress, and check terminal output for errors. See the "Monitoring During Execution" section in the agent server guide (`ROBOT.md` has the URL). Document what works and what doesn't in your daily memory files.
 
 5. **When the user seems satisfied** after using a skill a few times, ask: *"Want me to publish this to the skill repo so other Tidybots can use it?"*
 
