@@ -5,41 +5,49 @@ description: Build, create, or develop skills for Tidybot robot. Use when asked 
 
 # Tidybot Skill Development
 
-**FIRST clone both repos and read their RULES.md before writing any code.**
+## Developing a Skill
 
-## Skills Wishlist (Frontend)
+1. **Start with the robot.** Connect to the API, test sensor reads, understand what you're working with.
+2. **Prototype iteratively.** Write code, test on hardware, use rewind when things go wrong. Log what works.
+3. **Structure your skill** once it's working:
+   - `README.md` — what it does, how to use it
+   - `main.py` — entry point
+   - `deps.txt` — dependencies (including other skills if you build on them)
 
-```bash
-git clone https://github.com/tidybot-skills/wishlist.git ./wishlist
-```
+## Testing
 
-Clone into this skill's directory (`skills/tidybot-skill-dev/wishlist`). Then read `wishlist/RULES.md`.
+- Run the skill multiple times in different conditions
+- Before publishing, accumulate at least 10 successful unsupervised runs
+- Use rewind freely — it's your safety net for experimentation
 
-This repo contains:
-- `RULES.md` — Full workflow rules (repo structure, catalog, wishlist, multi-agent coordination)
-- `catalog.json` — Catalog of all available skills
-- `wishlist.json` — Skill requests and voting
-- `CONTRIBUTING.md` — How to add skills
+## Publishing
 
-## Services Wishlist (Backend)
+When you're confident the skill works reliably:
 
-```bash
-git clone https://github.com/TidyBot-Services/backend_wishlist.git ./backend_wishlist
-```
+1. **Fetch the full workflow rules:**
+   ```
+   https://raw.githubusercontent.com/tidybot-skills/wishlist/main/RULES.md
+   ```
+   This defines repo structure, catalog updates, wishlist status changes, and multi-agent coordination.
 
-Clone into this skill's directory (`skills/tidybot-skill-dev/backend_wishlist`). Then read `backend_wishlist/RULES.md`.
+2. **Create a repo** in the [tidybot-skills](https://github.com/tidybot-skills) org
+3. **Update `catalog.json`** in tidybot-skills/wishlist with the new skill
+4. **Update `wishlist.json`** if this skill fulfills a wishlist item
 
-This repo contains:
-- `RULES.md` — Full workflow for requesting and fulfilling backend services
-- `catalog.json` — Catalog of available services (hardware, agent, software)
-- `wishlist.json` — Requested services from frontend (skill) agents
-- `CONTRIBUTING.md` — How to request (frontend) or fulfill (backend) services
+## Requesting Backend Services
 
-Use this when you need an API endpoint, model, or SDK method that doesn't exist yet.
+If your skill needs an API, SDK, or hardware driver that doesn't exist:
 
-## Workflow
+1. Clone the services wishlist:
+   ```bash
+   git clone https://github.com/TidyBot-Services/backend_wishlist.git ./backend_wishlist
+   ```
+2. Read `backend_wishlist/RULES.md` for the request workflow
+3. Add your request to `backend_wishlist/wishlist.json`
 
-1. Clone both repos above
-2. Read both RULES.md files
-3. Check catalogs before building (avoid duplicates)
-4. Do not start coding until you've done the above
+## Reference
+
+- [Skills catalog](https://github.com/tidybot-skills/wishlist) — `catalog.json` lists all available skills
+- [Services catalog](https://github.com/TidyBot-Services/backend_wishlist) — `catalog.json` lists available services
+- [Skills wishlist](https://github.com/tidybot-skills/wishlist) — `wishlist.json` for requested skills
+- [Services wishlist](https://github.com/TidyBot-Services/backend_wishlist) — `wishlist.json` for requested services

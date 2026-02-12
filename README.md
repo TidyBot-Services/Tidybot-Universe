@@ -137,13 +137,13 @@ Tidybot-Universe/
 │       ├── README.md               # Detailed install instructions
 │       ├── setup.sh                # One-command setup script
 │       └── workspace/              # Tidybot customizations (overlaid on default OpenClaw workspace)
-│           ├── AGENTS.md           # Agent behavior guidelines (adds Tidybot skill workflow)
-│           ├── SOUL.md             # Agent personality (adds orchestration protocol)
+│           ├── AGENTS.md           # Agent behavior guidelines (adds Tidybot session checklist)
+│           ├── MISSION.md          # Tidybot Universe mission and organic skill flow
 │           ├── ROBOT.md            # Robot hardware reference
 │           ├── HEARTBEAT.md        # Tidybot skills maintenance tasks
 │           └── skills/
 │               └── tidybot-skill-dev/
-│                   └── SKILL.md    # Skill + service development workflow
+│                   └── SKILL.md    # Skill development and publishing workflow
 └── service-agent-setup/            # Service agent setup (develops backend drivers, SDKs, APIs)
     ├── README.md                   # Overview of available platforms
     └── claude-code/                # Claude Code setup

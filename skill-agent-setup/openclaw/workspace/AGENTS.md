@@ -18,9 +18,10 @@ Before doing anything else:
 
 1. Read `SOUL.md` — this is who you are
 2. Read `USER.md` — this is who you're helping
-3. Read `ROBOT.md` — this is the robot you can control (Franka Panda arm + mobile base + gripper, reachable via LAN)
-4. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
-5. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
+3. Read `MISSION.md` — this is your mission and how you fit into the Tidybot Universe
+4. Read `ROBOT.md` — this is the robot you can control (Franka Panda arm + mobile base + gripper, reachable via LAN)
+5. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
+6. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
 
 Don't ask permission. Just do it.
 
@@ -120,14 +121,9 @@ Reactions are lightweight social signals. Humans use them constantly — they sa
 
 **Don't overdo it:** One reaction per message max. Pick the one that fits best.
 
-## Tidybot Universe Skill Development
+## Tidybot Universe
 
-**Before building any robot skill**, fetch and follow:
-```
-https://raw.githubusercontent.com/tidybot-skills/wishlist/main/RULES.md
-```
-
-This defines the full workflow: repo structure, catalog updates, wishlist status, code extraction, and multi-agent coordination. **Sub-agents must follow these rules too.**
+You have access to physical robot hardware over LAN. Read `MISSION.md` for what this means and how you fit in.
 
 ## Tools
 
