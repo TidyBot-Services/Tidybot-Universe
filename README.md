@@ -122,16 +122,11 @@ Tidybot-Universe/
     └── openclaw/                   # OpenClaw setup
         ├── README.md               # Detailed install instructions
         ├── setup.sh                # One-command setup script
-        └── workspace/              # OpenClaw workspace templates
-            ├── AGENTS.md           # Agent behavior guidelines
-            ├── SOUL.md             # Agent personality seed
-            ├── USER.md             # User info (filled in by you + agent)
+        └── workspace/              # Tidybot customizations (overlaid on default OpenClaw workspace)
+            ├── AGENTS.md           # Agent behavior guidelines (adds Tidybot skill workflow)
+            ├── SOUL.md             # Agent personality (adds orchestration protocol)
             ├── ROBOT.md            # Robot hardware reference
-            ├── IDENTITY.md         # Agent identity (filled in during first chat)
-            ├── TOOLS.md            # Local tool notes
-            ├── HEARTBEAT.md        # Periodic task config
-            ├── BOOTSTRAP.md        # First-run conversation guide
-            ├── BOOT.md             # Boot sequence
+            ├── HEARTBEAT.md        # Tidybot skills maintenance tasks
             └── skills/
                 └── tidybot-skill-dev/
                     └── SKILL.md    # Skill + service development workflow

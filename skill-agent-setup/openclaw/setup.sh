@@ -20,10 +20,9 @@ if [ ! -f ~/.openclaw/openclaw.json ]; then
     echo
 fi
 
-# Copy workspace files
-echo "Copying Tidybot workspace templates..."
-rm -rf ~/.openclaw/workspace/ 2>/dev/null || true
-mkdir -p ~/.openclaw/workspace
+# Copy custom workspace files (overlays on top of default onboarded templates)
+echo "Copying Tidybot workspace customizations..."
+mkdir -p ~/.openclaw/workspace/skills
 cp -r "$SCRIPT_DIR/workspace/"* ~/.openclaw/workspace/
 echo "  Copied to ~/.openclaw/workspace/"
 

@@ -14,7 +14,7 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 The setup script will:
 - Run OpenClaw onboarding (if not already done)
-- Copy the Tidybot workspace templates to `~/.openclaw/workspace/`
+- Copy the Tidybot workspace customizations to `~/.openclaw/workspace/`
 - Configure the skills directory
 - Clear existing sessions for a fresh start
 - Restart the OpenClaw gateway
@@ -37,13 +37,11 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 openclaw onboard --install-daemon
 ```
 
-### 3. Copy workspace templates
+### 3. Copy workspace customizations
 
-Replace the default workspace with the Tidybot templates:
+Copy the Tidybot-specific files into your workspace (the default templates from onboarding are kept):
 
 ```bash
-rm -rf ~/.openclaw/workspace/
-mkdir -p ~/.openclaw/workspace
 cp -r workspace/* ~/.openclaw/workspace/
 ```
 
@@ -88,20 +86,17 @@ openclaw dashboard
 
 ## What's Included
 
+These files customize or extend the default OpenClaw workspace with Tidybot-specific content. Files not listed here (BOOT.md, BOOTSTRAP.md, TOOLS.md, IDENTITY.md, USER.md) are standard OpenClaw templates created during onboarding.
+
 ```
 workspace/
-├── AGENTS.md       # Agent behavior guidelines
-├── SOUL.md         # Agent personality seed
-├── USER.md         # User info (filled in by you + agent)
-├── ROBOT.md        # Robot hardware reference
-├── IDENTITY.md     # Agent identity (filled in during first chat)
-├── TOOLS.md        # Local tool notes
-├── HEARTBEAT.md    # Periodic task config
-├── BOOTSTRAP.md    # First-run conversation guide
-├── BOOT.md         # Boot sequence
+├── AGENTS.md       # Agent behavior guidelines (adds Tidybot skill workflow)
+├── SOUL.md         # Agent personality (adds orchestration protocol)
+├── ROBOT.md        # Robot hardware reference (new)
+├── HEARTBEAT.md    # Tidybot skills maintenance tasks (new)
 └── skills/
     └── tidybot-skill-dev/
-        └── SKILL.md    # Skill + service development workflow
+        └── SKILL.md    # Skill + service development workflow (new)
 ```
 
 ## What Happens Next
