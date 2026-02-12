@@ -97,6 +97,20 @@ Your agent will:
 
 Track progress on the [Tidybot Universe timeline](https://tidybot-services.github.io/tidybot-army-timeline/).
 
+### 5. (Optional) Set up a service agent
+
+If you need new hardware drivers, SDKs, or APIs that don't exist yet, set up a service agent. See [service-agent-setup/](service-agent-setup/) for available platforms.
+
+**Claude Code** (recommended):
+
+```bash
+cd Tidybot-Universe/service-agent-setup/claude-code
+# Copy the CLAUDE.md to your service workspace, then:
+claude
+```
+
+For detailed instructions, see [service-agent-setup/claude-code/README.md](service-agent-setup/claude-code/README.md). Service development requires more human oversight — see [A Note on Services Development](#a-note-on-services-development) below.
+
 ## Wishlists
 
 Both humans and agents can add to the wishlists:
@@ -117,19 +131,24 @@ Services run **below** that layer — they talk directly to hardware and system 
 ```
 Tidybot-Universe/
 ├── README.md                       # You are here
-└── skill-agent-setup/              # Agent platform setup options
+├── skill-agent-setup/              # Skill agent setup (develops robot behaviors)
+│   ├── README.md                   # Overview of available platforms
+│   └── openclaw/                   # OpenClaw setup
+│       ├── README.md               # Detailed install instructions
+│       ├── setup.sh                # One-command setup script
+│       └── workspace/              # Tidybot customizations (overlaid on default OpenClaw workspace)
+│           ├── AGENTS.md           # Agent behavior guidelines (adds Tidybot skill workflow)
+│           ├── SOUL.md             # Agent personality (adds orchestration protocol)
+│           ├── ROBOT.md            # Robot hardware reference
+│           ├── HEARTBEAT.md        # Tidybot skills maintenance tasks
+│           └── skills/
+│               └── tidybot-skill-dev/
+│                   └── SKILL.md    # Skill + service development workflow
+└── service-agent-setup/            # Service agent setup (develops backend drivers, SDKs, APIs)
     ├── README.md                   # Overview of available platforms
-    └── openclaw/                   # OpenClaw setup
-        ├── README.md               # Detailed install instructions
-        ├── setup.sh                # One-command setup script
-        └── workspace/              # Tidybot customizations (overlaid on default OpenClaw workspace)
-            ├── AGENTS.md           # Agent behavior guidelines (adds Tidybot skill workflow)
-            ├── SOUL.md             # Agent personality (adds orchestration protocol)
-            ├── ROBOT.md            # Robot hardware reference
-            ├── HEARTBEAT.md        # Tidybot skills maintenance tasks
-            └── skills/
-                └── tidybot-skill-dev/
-                    └── SKILL.md    # Skill + service development workflow
+    └── claude-code/                # Claude Code setup
+        ├── README.md               # Setup instructions
+        └── CLAUDE.md               # Project instructions for service development
 ```
 
 ## For Agents
