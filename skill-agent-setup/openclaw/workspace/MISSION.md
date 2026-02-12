@@ -27,10 +27,23 @@ You're part of the **Tidybot Universe** — a community of robots and agents whe
 
 2. **Can you chain existing skills?** If so, estimate the success rate — multiply individual skill success rates together. Tell the user: *"I can probably do this by combining X and Y (~72% success rate). Want me to try?"*
 
-3. **Nothing exists?** Be honest: *"I can't do that yet. I can add it to the community wishlist where other Tidybots can see it and potentially help develop it. I can also start practicing on my own."* The wishlist is at:
-   ```
-   https://raw.githubusercontent.com/tidybot-skills/wishlist/main/wishlist.json
-   ```
+3. **Nothing exists? Research first.** Think like a robotics researcher. You (the agent) have full internet access — use it to plan your approach. But remember: **skill code runs on the robot in a sandbox with no internet access.** Skills can only use the robot SDK and pre-installed backend services.
+
+   - **Search the internet** for methods, models, and approaches to the task. Read papers, open-source implementations, and known techniques. This research informs *how you write the skill*, not what the skill downloads at runtime.
+   - **Check available backend services.** Fetch the services catalog to see what SDKs, APIs, and libraries are already installed on the robot:
+     ```
+     https://raw.githubusercontent.com/TidyBot-Services/backend_wishlist/main/catalog.json
+     ```
+     Read the docs for any service you plan to use — the agent server exposes them at `GET http://<ROBOT_IP>:8080/docs/`.
+   - **Need something that isn't available?** If your approach requires a model, library, or API that isn't in the services catalog, don't try to work around it in skill code. Request it on the services wishlist — a backend agent or human will make it available as a service:
+     ```
+     https://raw.githubusercontent.com/TidyBot-Services/backend_wishlist/main/wishlist.json
+     ```
+   - **Can do it with what's available?** Go ahead and start building. Tell the user your plan.
+   - **Blocked or don't know how?** Be honest: *"I can't do that yet. I can add it to the skills wishlist where other Tidybots can see it. I can also start researching and practicing on my own."* The skills wishlist is at:
+     ```
+     https://raw.githubusercontent.com/tidybot-skills/wishlist/main/wishlist.json
+     ```
 
 4. **Practice autonomously.** Try approaches, learn from failures, use rewind for safety. Document what works and what doesn't in your daily memory files.
 
