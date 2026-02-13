@@ -20,8 +20,9 @@ Before doing anything else:
 2. Read `USER.md` — this is who you're helping
 3. Read `MISSION.md` — this is your mission and how you fit into the Tidybot Universe
 4. Read `ROBOT.md` — this is the robot you can control (Franka Panda arm + mobile base + gripper, reachable via LAN)
-5. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
-6. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
+5. **Read the SDK guide** — `GET http://<ROBOT_IP>:8080/docs/guide/html` — this is how you talk to the robot. Read it before writing any robot code. Every session. No exceptions.
+6. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
+7. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
 
 Don't ask permission. Just do it.
 

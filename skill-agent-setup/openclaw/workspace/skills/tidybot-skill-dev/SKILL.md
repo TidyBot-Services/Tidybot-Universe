@@ -5,10 +5,16 @@ description: Build, create, or develop skills for Tidybot robot. Use when asked 
 
 # Tidybot Skill Development
 
+## Before You Start
+
+1. **Read the SDK guide first:** `GET http://<ROBOT_IP>:8080/docs/guide/html` — this documents the actual API, available methods, and correct usage patterns. Do not guess or improvise. Use what the guide provides.
+2. **Check existing skills:** Fetch the catalog at `https://raw.githubusercontent.com/tidybot-skills/wishlist/main/catalog.json`. If a skill already does what you need (or something close), use it or extend it. Do not rebuild from scratch what already works.
+3. **Check the SDK reference** for detailed method signatures: `GET http://<ROBOT_IP>:8080/code/sdk/markdown`
+
 ## Developing a Skill
 
-1. **Start with the robot.** Connect to the API, test sensor reads, understand what you're working with.
-2. **Prototype iteratively.** Write code, test on hardware, use rewind when things go wrong. Log what works.
+1. **Start with the robot.** Connect to the API using the patterns from the SDK guide, test sensor reads, understand what you're working with.
+2. **Prototype iteratively.** Write code using SDK methods (not invented ones), test on hardware, use rewind when things go wrong. Log what works.
 3. **Structure your skill** once it's working:
    - `README.md` — what it does, how to use it
    - `main.py` — entry point

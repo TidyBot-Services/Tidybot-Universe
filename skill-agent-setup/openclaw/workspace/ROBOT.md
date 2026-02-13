@@ -13,13 +13,17 @@ read_when:
 - **API:** `http://<ROBOT_IP>:8080`
 - **Robot IP:**
   *(fill in once known, e.g. 172.16.0.10)*
+- **API Key:**
+  *(fill in the API key provided by the robot operator)*
 
 ## Docs
 
-For up-to-date API, SDK, and endpoint documentation, read from the agent server:
+**IMPORTANT: Before writing ANY code that touches the robot, you MUST read the guide first.** Do not guess APIs, do not improvise endpoints, do not invent your own approach. The guide is your source of truth.
 
-- **Getting started:** `GET http://<ROBOT_IP>:8080/docs/guide/html`
+- **Getting started (READ THIS FIRST):** `GET http://<ROBOT_IP>:8080/docs/guide/html`
 - **SDK reference:** `GET http://<ROBOT_IP>:8080/code/sdk/markdown`
+
+Read the guide at the start of every session where you'll interact with the robot. It documents the actual API, available endpoints, SDK methods, and correct usage patterns. If the guide shows how to do something, do it that way.
 
 ## Robot Morphology
 
