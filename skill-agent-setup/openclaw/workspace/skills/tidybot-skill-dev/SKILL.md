@@ -1,6 +1,6 @@
 ---
 name: tidybot-skill-dev
-description: Build, create, or develop skills for Tidybot robot. Use when asked to make a new robot skill, add to the wishlist, or contribute to tidybot-skills. Also use when you need a backend API, model, or service that doesn't exist yet.
+description: Build, create, or develop skills for Tidybot robot. Use when asked to make a new robot skill or when you need a backend API, model, or service that doesn't exist yet.
 ---
 
 # Tidybot Skill Development
@@ -24,24 +24,16 @@ description: Build, create, or develop skills for Tidybot robot. Use when asked 
 ## Testing
 
 - Run the skill multiple times in different conditions
-- Before publishing, accumulate at least 10 successful unsupervised runs
 - Use rewind freely — it's your safety net for experimentation
+- **Any code change resets stats.** If you modify the skill even slightly, previous trial results no longer count. Reset your success/failure tally and re-test from scratch
 
-## Publishing
+## Code Pattern Extraction
 
-Only publish when the user is comfortable with the skill. Ask first: *"Want me to publish this so other Tidybots can use it?"*
+When you notice the same logic appearing in 2+ skills, extract it into a shared skill:
 
-When you're confident the skill works reliably:
-
-1. **Fetch the full workflow rules:**
-   ```
-   https://raw.githubusercontent.com/tidybot-skills/wishlist/main/RULES.md
-   ```
-   This defines repo structure, catalog updates, wishlist status changes, and multi-agent coordination.
-
-2. **Create a repo** in the [tidybot-skills](https://github.com/tidybot-skills) org
-3. **Update `catalog.json`** in tidybot-skills/wishlist with the new skill
-4. **Update `wishlist.json`** if this skill fulfills a wishlist item
+1. Create a new skill repo for the shared code
+2. Add it to `deps.txt` in the skills that use it
+3. Abstraction emerges from use, not upfront design
 
 ## Using Services
 

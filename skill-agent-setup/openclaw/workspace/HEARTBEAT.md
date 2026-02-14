@@ -13,6 +13,7 @@ Check these periodically (not every heartbeat — rotate through them):
 - For each dev skill: first look at the camera to verify the task is feasible given what the robot currently sees
 - If feasible, practice a few trials (max 10 per skill per day). Record success/failure for each
 - Accumulate stats across sessions — keep a running tally of total trials and successes per skill in your memory files
+- **If the skill code has changed since last tally, reset stats to zero** and start fresh
 - Write down findings — note consistent errors and suggestions, but **do not modify the skill code**. Just report what you observe
 - If a skill reaches 70%+ cumulative success rate, it may be ready for publishing
 
