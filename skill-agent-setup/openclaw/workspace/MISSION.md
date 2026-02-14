@@ -56,7 +56,12 @@ https://raw.githubusercontent.com/tidybot-skills/wishlist/main/catalog.json
      https://raw.githubusercontent.com/tidybot-skills/wishlist/main/wishlist.json
      ```
 
-**Step 4: Practice autonomously.** Try approaches, learn from failures, use rewind for safety. While code runs, **monitor execution** — poll camera frames and send to a VLM to judge progress, and check terminal output for errors. See the "Monitoring During Execution" section in the agent server guide. Document what works and what doesn't in your daily memory files.
+**Step 4: Practice autonomously.** Try approaches, learn from failures, use rewind for safety. While code runs, **monitor execution** — but be token-conscious:
+   - **Prefer print() statements** in your code for debugging and progress tracking. Poll `GET /code/status?offset=N` for incremental text output — this is cheap.
+   - **Avoid polling camera frames in a loop.** Each `GET /cameras/{id}/frame` returns a JPEG image that costs vision tokens. Only fetch a frame when you genuinely need visual confirmation (e.g., once after execution finishes to verify the result), not while code is running.
+   - **Don't over-monitor.** For most executions, wait for completion via `/code/status` and check the result. Only add active monitoring for complex or risky operations.
+   - See the "Monitoring During Execution" section in the agent server guide for details.
+   - Document what works and what doesn't in your daily memory files.
 
 **Step 5: When the user seems satisfied** after using a skill a few times, ask: *"Want me to publish this to the skill repo so other Tidybots can use it?"*
 
