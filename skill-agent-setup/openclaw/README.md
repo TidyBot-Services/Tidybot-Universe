@@ -14,7 +14,8 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 The setup script will:
 - Run OpenClaw onboarding (if not already done)
-- Copy the Tidybot workspace customizations to `~/.openclaw/workspace/`
+- Copy Tidybot-specific files (MISSION.md, ROBOT.md, HEARTBEAT.md, skills/) to `~/.openclaw/workspace/`
+- Patch the default AGENTS.md with Tidybot session checklist items
 - Configure the skills directory
 - Clear existing sessions for a fresh start
 - Restart the OpenClaw gateway
@@ -37,13 +38,18 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 openclaw onboard --install-daemon
 ```
 
-### 3. Copy workspace customizations
+### 3. Copy Tidybot workspace files and patch AGENTS.md
 
-Copy the Tidybot-specific files into your workspace (the default templates from onboarding are kept):
+Copy the Tidybot-specific files and patch the default AGENTS.md with Tidybot additions:
 
 ```bash
-cp -r workspace/* ~/.openclaw/workspace/
+cp workspace/MISSION.md workspace/ROBOT.md workspace/HEARTBEAT.md ~/.openclaw/workspace/
+cp -r workspace/skills/* ~/.openclaw/workspace/skills/
 ```
+
+Then run the patch section from `setup.sh` (or manually add to `~/.openclaw/workspace/AGENTS.md`):
+- In the "Every Session" checklist, after item 2, add items for reading MISSION.md, ROBOT.md, and the SDK guide
+- Before the "## Tools" section, add a "## Tidybot Universe" section
 
 ### 4. Configure the skills directory
 
@@ -86,17 +92,16 @@ openclaw dashboard
 
 ## What's Included
 
-These files customize or extend the default OpenClaw workspace with Tidybot-specific content. Files not listed here (BOOT.md, BOOTSTRAP.md, TOOLS.md, IDENTITY.md, USER.md) are standard OpenClaw templates created during onboarding.
+These files are Tidybot-specific additions to the OpenClaw workspace. The default OpenClaw files (AGENTS.md, BOOT.md, BOOTSTRAP.md, TOOLS.md, IDENTITY.md, USER.md) are created during onboarding — `setup.sh` patches AGENTS.md with Tidybot additions rather than replacing it.
 
 ```
 workspace/
-├── AGENTS.md       # Agent behavior guidelines (adds Tidybot session checklist)
-├── MISSION.md      # Tidybot Universe mission and organic skill flow (new)
-├── ROBOT.md        # Robot hardware reference (new)
-├── HEARTBEAT.md    # Tidybot skills maintenance tasks (new)
+├── MISSION.md      # Tidybot Universe mission and organic skill flow
+├── ROBOT.md        # Robot hardware reference
+├── HEARTBEAT.md    # Tidybot skills maintenance tasks
 └── skills/
     └── tidybot-skill-dev/
-        └── SKILL.md    # Skill development and publishing workflow (new)
+        └── SKILL.md    # Skill development and publishing workflow
 ```
 
 ## What Happens Next
