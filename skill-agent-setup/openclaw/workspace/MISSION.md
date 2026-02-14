@@ -28,17 +28,17 @@ If you find a skill in the catalog that isn't cloned locally, clone it into your
 
 **Step 2: Can you chain existing skills?** If existing skills can be combined to achieve the goal, do that. Use `tidybot-bundle <skill-name>` to bundle a skill and its dependencies into a single script for execution (see `docs/tidybot-bundle.md`). Estimate the success rate — multiply individual skill success rates together. Tell the user: *"I can probably do this by combining X and Y (~72% success rate). Want me to try?"* Chaining existing tested skills is ALWAYS preferable to writing new untested code.
 
-**Step 3: Nothing exists? Research first.** Only if no existing skill covers the task should you consider building something new. Think like a robotics researcher. You (the agent) have full internet access — use it to plan your approach. But remember: **skill code runs on the robot in a sandbox with no internet access.** Skills can only use the robot SDK and pre-installed backend services.
+**Step 3: Nothing exists? Research first.** Only if no existing skill covers the task should you consider building something new. Think like a robotics researcher. You (the agent) have full internet access — use it to plan your approach. But remember: **skill code runs on the robot in a sandbox.** Skills can use the robot SDK, and can make HTTP requests to online services listed in the services catalog.
 
    - **Search the internet** for methods, models, and approaches to the task. Read papers, open-source implementations, and known techniques. This research informs *how you write the skill*, not what the skill downloads at runtime.
-   - **Check available backend services.** Fetch the services catalog to see what SDKs, APIs, and libraries are already installed on the robot:
+   - **Check available services.** Fetch the services catalog to see what models, APIs, and SDKs are available:
      ```
-     https://raw.githubusercontent.com/TidyBot-Services/backend_wishlist/main/catalog.json
+     https://raw.githubusercontent.com/TidyBot-Services/services_wishlist/main/catalog.json
      ```
-     Read the docs for any service you plan to use — the agent server exposes them at `GET http://<ROBOT_IP>:8080/docs/`.
-   - **Need something that isn't available?** If your approach requires a model, library, or API that isn't in the services catalog, don't try to work around it in skill code. Request it on the services wishlist — a backend agent or human will make it available as a service:
+     Each service in the catalog has a `host` (HTTP endpoint), a `client_sdk` (Python client file you can download and use in skill code), and `api_docs`. To use a service: download its `client_sdk` file, include it in your skill code, and call its API via the `host` URL. The robot SDK docs are still at `GET http://<ROBOT_IP>:8080/docs/`.
+   - **Need something that isn't available?** If your approach requires a model, library, or API that isn't in the services catalog, request it on the services wishlist — a service agent or human will make it available:
      ```
-     https://raw.githubusercontent.com/TidyBot-Services/backend_wishlist/main/wishlist.json
+     https://raw.githubusercontent.com/TidyBot-Services/services_wishlist/main/wishlist.json
      ```
    - **Can do it with what's available?** Go ahead and start building. Tell the user your plan.
    - **Blocked or don't know how?** Be honest: *"I can't do that yet. I can add it to the skills wishlist where other Tidybots can see it. I can also start researching and practicing on my own."* The skills wishlist is at:
@@ -60,7 +60,7 @@ If you find a skill in the catalog that isn't cloned locally, clone it into your
 ## The Wishlists
 
 - **[Skills wishlist](https://github.com/tidybot-skills/wishlist)** — "I want the robot to do X" (behaviors, tasks). Humans add to this; you pick items up and develop them.
-- **[Services wishlist](https://github.com/TidyBot-Services/backend_wishlist)** — "I need Y to exist" (drivers, APIs, models). You or your human can add requests here.
+- **[Services wishlist](https://github.com/TidyBot-Services/services_wishlist)** — "I need Y to exist" (drivers, APIs, models). You or your human can add requests here.
 
 ## Rewind Is Your Safety Net
 

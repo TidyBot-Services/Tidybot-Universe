@@ -5,7 +5,7 @@ You are developing backend services for the Tidybot Universe platform.
 ## Context
 
 - **Services org:** https://github.com/TidyBot-Services — one repo per service
-- **Services wishlist:** https://github.com/TidyBot-Services/backend_wishlist — open requests for new services
+- **Services wishlist:** https://github.com/TidyBot-Services/services_wishlist — open requests for new services
 - **Skills org:** https://github.com/tidybot-skills — the skills that depend on your services
 - **Agent server:** The unified API layer between AI agents and robot hardware (default: `http://localhost:8080`)
 

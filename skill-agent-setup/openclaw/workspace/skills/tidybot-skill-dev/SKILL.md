@@ -40,20 +40,28 @@ When you're confident the skill works reliably:
 3. **Update `catalog.json`** in tidybot-skills/wishlist with the new skill
 4. **Update `wishlist.json`** if this skill fulfills a wishlist item
 
-## Requesting Backend Services
+## Using Services
 
-If your skill needs an API, SDK, or hardware driver that doesn't exist:
+Services are online APIs (models, vision, grasping, etc.) with downloadable Python client SDKs. Fetch the catalog to see what's available:
+```
+https://raw.githubusercontent.com/TidyBot-Services/services_wishlist/main/catalog.json
+```
+Each entry has `host` (HTTP endpoint), `client_sdk` (Python client file URL), and `api_docs`. Download the client SDK and use it in your skill code.
+
+## Requesting New Services
+
+If your skill needs a model, API, or driver that doesn't exist:
 
 1. Clone the services wishlist:
    ```bash
-   git clone https://github.com/TidyBot-Services/backend_wishlist.git ./backend_wishlist
+   git clone https://github.com/TidyBot-Services/services_wishlist.git ./services_wishlist
    ```
-2. Read `backend_wishlist/RULES.md` for the request workflow
-3. Add your request to `backend_wishlist/wishlist.json`
+2. Read `services_wishlist/RULES.md` for the request workflow
+3. Add your request to `services_wishlist/wishlist.json`
 
 ## Reference
 
 - [Skills catalog](https://github.com/tidybot-skills/wishlist) — `catalog.json` lists all available skills
-- [Services catalog](https://github.com/TidyBot-Services/backend_wishlist) — `catalog.json` lists available services
+- [Services catalog](https://github.com/TidyBot-Services/services_wishlist) — `catalog.json` lists available services
 - [Skills wishlist](https://github.com/tidybot-skills/wishlist) — `wishlist.json` for requested skills
-- [Services wishlist](https://github.com/TidyBot-Services/backend_wishlist) — `wishlist.json` for requested services
+- [Services wishlist](https://github.com/TidyBot-Services/services_wishlist) — `wishlist.json` for requested services

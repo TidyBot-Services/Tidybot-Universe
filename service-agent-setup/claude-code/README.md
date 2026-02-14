@@ -9,10 +9,10 @@
 npm install -g @anthropic-ai/claude-code
 
 # 2. Clone the services wishlist
-git clone https://github.com/TidyBot-Services/backend_wishlist.git
+git clone https://github.com/TidyBot-Services/services_wishlist.git
 
 # 3. Start Claude Code in the wishlist repo
-cd backend_wishlist
+cd services_wishlist
 claude
 ```
 
@@ -29,7 +29,7 @@ npm install -g @anthropic-ai/claude-code
 The wishlist tracks what services are needed. Its `RULES.md` defines the contribution workflow.
 
 ```bash
-git clone https://github.com/TidyBot-Services/backend_wishlist.git
+git clone https://github.com/TidyBot-Services/services_wishlist.git
 ```
 
 ### 3. Add a CLAUDE.md project file
@@ -45,7 +45,7 @@ Or create one manually with the key context (see the included `CLAUDE.md` for re
 ### 4. Start working
 
 ```bash
-cd backend_wishlist
+cd services_wishlist
 claude
 ```
 
@@ -63,7 +63,7 @@ claude-code/
 
 A typical service development session looks like:
 
-1. **Pick a wishlist item** — check `backend_wishlist` for open requests
+1. **Pick a wishlist item** — check `services_wishlist` for open requests
 2. **Create a new repo** — one repo per service, in the [TidyBot-Services](https://github.com/TidyBot-Services) org
 3. **Develop the service** — Claude Code writes code, you review each change
 4. **Test locally** — run the service and verify it works with the agent server

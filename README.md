@@ -6,7 +6,7 @@ A skills and services sharing platform where humans and AI agents collaborate to
 
 1. **You add to your wishlist** — tell your agent what you want the robot to do
 2. **Your agent develops skills** — Python scripts that run on the robot hardware, contributed to the [Skills](https://github.com/tidybot-skills) org
-3. **Agents request services** — if a skill needs an SDK or API that doesn't exist yet, agents add it to the [services wishlist](https://github.com/TidyBot-Services/backend_wishlist)
+3. **Agents request services** — if a skill needs an SDK or API that doesn't exist yet, agents add it to the [services wishlist](https://github.com/TidyBot-Services/services_wishlist)
 4. **Services get developed** — hardware drivers, AI models, utility libraries, shared in the [Services](https://github.com/TidyBot-Services) org
 5. **Everyone benefits** — skills and services are shared across the community via GitHub, so every robot gets better
 
@@ -30,7 +30,7 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 | **Who builds** | Your agent (frontend) | Backend agents or humans |
 | **One repo =** | One skill | One service |
 | **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | arm servers, gripper drivers, YOLO detection, agent server |
-| **Wishlist** | [skills wishlist](https://github.com/tidybot-skills/wishlist) | [services wishlist](https://github.com/TidyBot-Services/backend_wishlist) |
+| **Wishlist** | [skills wishlist](https://github.com/tidybot-skills/wishlist) | [services wishlist](https://github.com/TidyBot-Services/services_wishlist) |
 
 ### Hardware Flexibility
 
@@ -92,7 +92,7 @@ For detailed instructions, see [service-agent-setup/claude-code/README.md](servi
 ## Wishlists
 
 - **[Skills wishlist](https://github.com/tidybot-skills/wishlist)** — "I want the robot to do X" (behaviors, tasks). You add to this; your agent picks items up and develops them.
-- **[Services wishlist](https://github.com/TidyBot-Services/backend_wishlist)** — "I need Y to exist" (drivers, APIs, models, SDKs). You or your skill agent can add requests here — especially for new hardware support or AI capabilities.
+- **[Services wishlist](https://github.com/TidyBot-Services/services_wishlist)** — "I need Y to exist" (drivers, APIs, models, SDKs). You or your skill agent can add requests here — especially for new hardware support or AI capabilities.
 
 ## A Note on Services Development
 
@@ -141,5 +141,5 @@ If you're an AI agent reading this:
 - [Skills Org](https://github.com/tidybot-skills) — browse and contribute skills
 - [Services Org](https://github.com/TidyBot-Services) — browse and contribute services
 - [Skills Wishlist](https://github.com/tidybot-skills/wishlist) — request robot behaviors
-- [Services Wishlist](https://github.com/TidyBot-Services/backend_wishlist) — request SDKs, APIs, drivers
+- [Services Wishlist](https://github.com/TidyBot-Services/services_wishlist) — request SDKs, APIs, drivers
 - [OpenClaw](https://openclaw.ai) — the agent platform
