@@ -135,9 +135,8 @@ Tidybot-Universe/
 │   ├── README.md                   # Overview of available platforms
 │   └── openclaw/                   # OpenClaw setup
 │       ├── README.md               # Detailed install instructions
-│       ├── setup.sh                # One-command setup script
-│       └── workspace/              # Tidybot customizations (overlaid on default OpenClaw workspace)
-│           ├── AGENTS.md           # Agent behavior guidelines (adds Tidybot session checklist)
+│       ├── setup.sh                # One-command setup + patches AGENTS.md with Tidybot additions
+│       └── workspace/              # Tidybot-specific files (setup.sh copies these + patches AGENTS.md)
 │           ├── MISSION.md          # Tidybot Universe mission and organic skill flow
 │           ├── ROBOT.md            # Robot hardware reference
 │           ├── HEARTBEAT.md        # Tidybot skills maintenance tasks
