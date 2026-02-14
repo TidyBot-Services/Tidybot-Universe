@@ -14,7 +14,7 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 The setup script will:
 - Run OpenClaw onboarding (if not already done)
-- Copy Tidybot-specific files (MISSION.md, ROBOT.md, HEARTBEAT.md, skills/) to `~/.openclaw/workspace/`
+- Copy Tidybot-specific files (MISSION.md, ROBOT.md, HEARTBEAT.md, skills/, docs/) to `~/.openclaw/workspace/`
 - Patch the default AGENTS.md with Tidybot session checklist items
 - Configure the skills directory
 - Clear existing sessions for a fresh start
@@ -31,9 +31,12 @@ workspace/
 ├── MISSION.md      # Tidybot Universe mission and organic skill flow
 ├── ROBOT.md        # Robot hardware reference
 ├── HEARTBEAT.md    # Tidybot skills maintenance tasks
-└── skills/
-    └── tidybot-skill-dev/
-        └── SKILL.md    # Skill development and publishing workflow
+├── skills/
+│   ├── tidybot-skill-dev/
+│   │   └── SKILL.md        # Skill development and publishing workflow
+│   └── tidybot-bundle      # Bundles a skill + dependencies into one script
+└── docs/
+    └── tidybot-bundle.md   # tidybot-bundle documentation
 ```
 
 ## What Happens Next

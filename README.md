@@ -114,9 +114,12 @@ Tidybot-Universe/
 │           ├── MISSION.md          # Tidybot Universe mission and organic skill flow
 │           ├── ROBOT.md            # Robot hardware reference
 │           ├── HEARTBEAT.md        # Tidybot skills maintenance tasks
-│           └── skills/
-│               └── tidybot-skill-dev/
-│                   └── SKILL.md    # Skill development and publishing workflow
+│           ├── skills/
+│           │   ├── tidybot-skill-dev/
+│           │   │   └── SKILL.md    # Skill development and publishing workflow
+│           │   └── tidybot-bundle  # Bundles a skill + dependencies into one script
+│           └── docs/
+│               └── tidybot-bundle.md  # tidybot-bundle documentation
 └── service-agent-setup/            # Service agent setup (develops backend drivers, SDKs, APIs)
     ├── README.md                   # Overview of available platforms
     └── claude-code/                # Claude Code setup

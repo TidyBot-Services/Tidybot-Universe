@@ -22,12 +22,14 @@ fi
 
 # Copy Tidybot-specific workspace files (new files only, not modifying defaults)
 echo "Copying Tidybot workspace files..."
-mkdir -p ~/.openclaw/workspace/skills
+mkdir -p ~/.openclaw/workspace/skills ~/.openclaw/workspace/docs
 cp "$SCRIPT_DIR/workspace/MISSION.md" ~/.openclaw/workspace/
 cp "$SCRIPT_DIR/workspace/ROBOT.md" ~/.openclaw/workspace/
 cp "$SCRIPT_DIR/workspace/HEARTBEAT.md" ~/.openclaw/workspace/
 cp -r "$SCRIPT_DIR/workspace/skills/"* ~/.openclaw/workspace/skills/
-echo "  Copied MISSION.md, ROBOT.md, HEARTBEAT.md, skills/"
+cp -r "$SCRIPT_DIR/workspace/docs/"* ~/.openclaw/workspace/docs/
+chmod +x ~/.openclaw/workspace/skills/tidybot-bundle
+echo "  Copied MISSION.md, ROBOT.md, HEARTBEAT.md, skills/, docs/"
 
 # Patch AGENTS.md with Tidybot additions (instead of replacing the whole file)
 echo "Patching AGENTS.md with Tidybot additions..."
