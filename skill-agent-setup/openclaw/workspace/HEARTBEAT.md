@@ -9,24 +9,21 @@ read_when:
 Check these periodically (not every heartbeat — rotate through them):
 
 ### Practice In-Development Skills
-- If you have any skills in progress in your local workspace, run a practice session
-- Log results to your daily memory file
-- Focus on improving reliability and handling edge cases
+- Check your `dev/` folder for skills in progress
+- For each dev skill: first look at the camera to verify the task is feasible given what the robot currently sees
+- If feasible, practice a few trials (max 10 per skill per day). Record success/failure for each
+- Accumulate stats across sessions — keep a running tally of total trials and successes per skill in your memory files
+- Write down findings — note consistent errors and suggestions, but **do not modify the skill code**. Just report what you observe
+- If a skill reaches 70%+ cumulative success rate, it may be ready for publishing
 
 ### Publishing Readiness
-- Check locally-developed skills — have any accumulated enough successful test runs to suggest publishing?
-- If a skill has 10+ successful unsupervised tests, ask the user if they'd like to publish it
-
-### Catalog Sync
-- Fetch `catalog.json` from tidybot-skills/wishlist
-- Compare against completed skill repos in tidybot-skills org
-- If any skill repo exists but isn't in catalog → update catalog.json and push
+- Check dev skills that have reached 70%+ success rate
+- Ask the user if they'd like to publish: *"Skill X has a 70% success rate over N trials. Want me to publish it?"*
 
 ### Wishlist Check
 - Fetch `wishlist.json` from tidybot-skills/wishlist
-- Are there unclaimed items the agent could start exploring?
-- Check for items with status "building" that have been idle >1 hour
-- Check for completed skills still marked "pending" or "building" → update to "done"
+- Are there unclaimed items you could start exploring?
+- Check for items with status "building" that have been idle — update if needed
 
 ---
 
