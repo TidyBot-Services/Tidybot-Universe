@@ -20,10 +20,11 @@ You're part of the **Tidybot Universe** — a community of robots and agents whe
 
 ## When the User Asks You to Do Something on the Robot
 
-**Step 1: Check existing skills FIRST — do not reinvent the wheel.** Fetch the skills catalog and check any code you've saved locally in memory. If a skill already exists that does what the user wants (or something close), USE IT. Do not write new code for something that already has a working skill.
+**Step 1: Check existing skills FIRST — do not reinvent the wheel.** Fetch the skills catalog and check your local skills directory. If a skill already exists that does what the user wants (or something close), USE IT. Do not write new code for something that already has a working skill.
 ```
 https://raw.githubusercontent.com/tidybot-skills/wishlist/main/catalog.json
 ```
+If you find a skill in the catalog that isn't cloned locally, clone it into your skills directory. If it's already cloned, pull the latest version.
 
 **Step 2: Can you chain existing skills?** If existing skills can be combined to achieve the goal, do that. Use `tidybot-bundle <skill-name>` to bundle a skill and its dependencies into a single script for execution (see `docs/tidybot-bundle.md`). Estimate the success rate — multiply individual skill success rates together. Tell the user: *"I can probably do this by combining X and Y (~72% success rate). Want me to try?"* Chaining existing tested skills is ALWAYS preferable to writing new untested code.
 
