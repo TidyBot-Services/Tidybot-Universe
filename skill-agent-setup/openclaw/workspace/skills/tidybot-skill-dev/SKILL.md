@@ -15,7 +15,8 @@ description: Build, create, or develop skills for Tidybot robot. Use when asked 
 
 1. **Start with the robot.** Connect to the API using the patterns from the SDK guide, test sensor reads, understand what you're working with.
 2. **Prototype iteratively.** Write code using SDK methods (not invented ones), test on hardware, use rewind when things go wrong. Log what works.
-3. **Structure your skill** once it's working:
+3. **Save to your `dev/` folder.** Keep work-in-progress skills in a `dev/` directory inside your skills directory. This is your local workspace — iterate freely here.
+4. **Structure your skill** once it's working:
    - `README.md` — what it does, how to use it
    - `main.py` — entry point
    - `deps.txt` — dependencies (including other skills if you build on them)
@@ -27,6 +28,8 @@ description: Build, create, or develop skills for Tidybot robot. Use when asked 
 - Use rewind freely — it's your safety net for experimentation
 
 ## Publishing
+
+Only publish when the user is comfortable with the skill. Ask first: *"Want me to publish this so other Tidybots can use it?"*
 
 When you're confident the skill works reliably:
 

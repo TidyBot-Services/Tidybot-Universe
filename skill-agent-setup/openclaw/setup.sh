@@ -3,7 +3,22 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Parse flags
+FRESH=false
+for arg in "$@"; do
+    case "$arg" in
+        --fresh) FRESH=true ;;
+        --help|-h)
+            echo "Usage: setup.sh [--fresh]"
+            echo ""
+            echo "  (default)  Add Tidybot files to an existing OpenClaw workspace"
+            echo "  --fresh    Wipe workspace, sessions, and memory, then set up from scratch"
+            exit 0 ;;
+    esac
+done
+
 echo "=== Tidybot OpenClaw Setup ==="
+if $FRESH; then echo "Mode: fresh (clean slate)"; else echo "Mode: integrate (existing workspace)"; fi
 echo
 
 # Check if OpenClaw is installed
@@ -20,7 +35,32 @@ if [ ! -f ~/.openclaw/openclaw.json ]; then
     echo
 fi
 
-# Copy Tidybot-specific workspace files (new files only, not modifying defaults)
+if $FRESH; then
+    # Reset workspace and memory for a clean slate (keeps config + auth)
+    echo "Resetting workspace and memory..."
+    rm -rf ~/.openclaw/workspace/ 2>/dev/null || true
+    rm -rf ~/.openclaw/agents/main/sessions/ 2>/dev/null || true
+    rm -f ~/.openclaw/memory/main.sqlite 2>/dev/null || true
+
+    # Regenerate default workspace files from OpenClaw templates
+    echo "Regenerating default workspace files..."
+    TEMPLATE_DIR="$(npm root -g)/openclaw/docs/reference/templates"
+    if [ -d "$TEMPLATE_DIR" ]; then
+        mkdir -p ~/.openclaw/workspace
+        for f in AGENTS.md SOUL.md TOOLS.md IDENTITY.md USER.md BOOTSTRAP.md; do
+            if [ -f "$TEMPLATE_DIR/$f" ]; then
+                # Strip YAML front matter (--- ... ---) like OpenClaw's loadTemplate does
+                sed '1{/^---$/!b};1,/^---$/d' "$TEMPLATE_DIR/$f" | sed '/./,$!d' > ~/.openclaw/workspace/"$f"
+            fi
+        done
+        echo "  Copied default templates from OpenClaw package"
+    else
+        echo "  Warning: OpenClaw templates not found at $TEMPLATE_DIR"
+        echo "  AGENTS.md may need manual setup"
+    fi
+fi
+
+# Copy Tidybot-specific workspace files
 echo "Copying Tidybot workspace files..."
 mkdir -p ~/.openclaw/workspace/skills ~/.openclaw/workspace/docs
 cp "$SCRIPT_DIR/workspace/MISSION.md" ~/.openclaw/workspace/
@@ -51,7 +91,7 @@ if "Read `MISSION.md`" in content:
 
 # Patch 1: Insert Tidybot checklist items (3-5) after "2. Read `USER.md`", renumber 3→6, 4→7
 checklist_insert = (
-    '3. Read `MISSION.md` — this is your mission and how you fit into the Tidybot Universe\n'
+    '3. Read `MISSION.md` — this is your mission in the Tidybot Universe, an open-source platform where humans and AI agents build and share robot skills and services\n'
     '4. Read `ROBOT.md` — this is the robot you can control (Franka Panda arm + mobile base + gripper, reachable via LAN)\n'
     '5. **Read the SDK guide** — `GET http://<ROBOT_IP>:8080/docs/guide/html` — this is how you talk to the robot. Read it before writing any robot code. Every session. No exceptions.\n'
 )
@@ -65,22 +105,10 @@ content = content.replace(
     "7. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`"
 )
 
-# Patch 2: Insert "Tidybot Universe" section before "## Tools"
-tidybot_section = (
-    "## Tidybot Universe\n"
-    "\n"
-    "You have access to physical robot hardware over LAN. Read `MISSION.md` for what this means and how you fit in.\n"
-    "\n"
-)
-content = content.replace(
-    "## Tools\n",
-    tidybot_section + "## Tools\n"
-)
-
 with open(path, "w") as f:
     f.write(content)
 
-print("  Patched AGENTS.md (added session checklist items + Tidybot Universe section)")
+print("  Patched AGENTS.md (added Tidybot session checklist items)")
 PATCHEOF
 
 # Add skills.load.extraDirs to config if not present
@@ -90,13 +118,8 @@ openclaw config set skills.load.extraDirs '["~/.openclaw/workspace/skills"]' 2>/
     echo '  "skills": { "load": { "extraDirs": ["~/.openclaw/workspace/skills"] } }'
 }
 
-# Clear existing sessions for fresh start
-echo "Clearing existing sessions..."
-rm -rf ~/.openclaw/agents/main/sessions/ 2>/dev/null || true
-rm -f ~/.openclaw/memory/main.sqlite 2>/dev/null || true
-
-# Restart gateway
-echo "Restarting OpenClaw gateway..."
+# Restart gateway to pick up changes
+echo "Restarting gateway..."
 openclaw gateway restart 2>/dev/null || openclaw gateway start
 
 echo

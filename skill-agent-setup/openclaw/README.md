@@ -5,19 +5,22 @@
 ## Quick Start
 
 ```bash
-# 1. Install OpenClaw
-curl -fsSL https://openclaw.ai/install.sh | bash
-
-# 2. Run this setup script
+# Add Tidybot to an existing OpenClaw workspace
 ./setup.sh
+
+# Or start fresh (wipes workspace, sessions, memory — keeps auth)
+./setup.sh --fresh
 ```
 
-The setup script will:
-- Run OpenClaw onboarding (if not already done)
-- Copy Tidybot-specific files (MISSION.md, ROBOT.md, HEARTBEAT.md, skills/, docs/) to `~/.openclaw/workspace/`
+**Integrate mode** (default) adds Tidybot files and patches to your existing workspace without touching your sessions or memory.
+
+**Fresh mode** (`--fresh`) wipes the workspace, sessions, and memory, regenerates default OpenClaw files, then applies Tidybot additions. Auth and config are preserved.
+
+Both modes will:
+- Install OpenClaw and run onboarding if needed
+- Copy Tidybot files (MISSION.md, ROBOT.md, HEARTBEAT.md, skills/, docs/) to `~/.openclaw/workspace/`
 - Patch the default AGENTS.md with Tidybot session checklist items
 - Configure the skills directory
-- Clear existing sessions for a fresh start
 - Restart the OpenClaw gateway
 
 Once complete, open a chat with your agent via `openclaw dashboard`.
