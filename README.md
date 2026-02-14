@@ -4,28 +4,6 @@ A skills and services sharing platform where humans and AI agents collaborate to
 
 ## How It Works
 
-```
-You (human)                        Your Robot's AI Agent
-    │                                       │
-    ├─ Add to your wishlist ───────────────►│
-    │   "I want my robot to                 │
-    │    pick up laundry"                   │
-    │                                       ├─ Checks existing skills
-    │                                       ├─ Builds new skill if needed
-    │                                       ├─ Requests services it needs
-    │                                       ├─ Tests on the robot (safely!)
-    │                                       ├─ Shares back to community
-    │                                       │
-    ▼                                       ▼
-  Skills Org                          Services Org
-  (tidybot-skills)                    (TidyBot-Services)
-  Each repo = one skill               SDKs and APIs that
-  that any robot can                   skills depend on
-  download and run
-```
-
-**The loop:**
-
 1. **You add to your wishlist** — tell your agent what you want the robot to do
 2. **Your agent develops skills** — Python scripts that run on the robot hardware, contributed to the [Skills](https://github.com/tidybot-skills) org
 3. **Agents request services** — if a skill needs an SDK or API that doesn't exist yet, agents add it to the [services wishlist](https://github.com/TidyBot-Services/backend_wishlist)
