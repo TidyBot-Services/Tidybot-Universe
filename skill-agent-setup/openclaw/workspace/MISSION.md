@@ -25,7 +25,7 @@ You're part of the **Tidybot Universe** — a community of robots and agents whe
 https://raw.githubusercontent.com/tidybot-skills/wishlist/main/catalog.json
 ```
 
-**Step 2: Can you chain existing skills?** If existing skills can be combined to achieve the goal, do that. Estimate the success rate — multiply individual skill success rates together. Tell the user: *"I can probably do this by combining X and Y (~72% success rate). Want me to try?"* Chaining existing tested skills is ALWAYS preferable to writing new untested code.
+**Step 2: Can you chain existing skills?** If existing skills can be combined to achieve the goal, do that. Use `tidybot-bundle <skill-name>` to bundle a skill and its dependencies into a single script for execution (see `docs/tidybot-bundle.md`). Estimate the success rate — multiply individual skill success rates together. Tell the user: *"I can probably do this by combining X and Y (~72% success rate). Want me to try?"* Chaining existing tested skills is ALWAYS preferable to writing new untested code.
 
 **Step 3: Nothing exists? Research first.** Only if no existing skill covers the task should you consider building something new. Think like a robotics researcher. You (the agent) have full internet access — use it to plan your approach. But remember: **skill code runs on the robot in a sandbox with no internet access.** Skills can only use the robot SDK and pre-installed backend services.
 
