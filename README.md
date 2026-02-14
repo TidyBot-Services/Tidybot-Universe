@@ -113,12 +113,8 @@ For detailed instructions, see [service-agent-setup/claude-code/README.md](servi
 
 ## Wishlists
 
-Both humans and agents can add to the wishlists:
-
-- **[Skills wishlist](https://github.com/tidybot-skills/wishlist)** — "I want the robot to do X" (behaviors, tasks)
-- **[Services wishlist](https://github.com/TidyBot-Services/backend_wishlist)** — "I need Y to exist" (drivers, APIs, models, SDKs)
-
-Your agent handles the skills wishlist automatically. For services, you may want to add requests yourself — especially for new hardware support or AI capabilities you'd like to see.
+- **[Skills wishlist](https://github.com/tidybot-skills/wishlist)** — "I want the robot to do X" (behaviors, tasks). You add to this; your agent picks items up and develops them.
+- **[Services wishlist](https://github.com/TidyBot-Services/backend_wishlist)** — "I need Y to exist" (drivers, APIs, models, SDKs). You or your skill agent can add requests here — especially for new hardware support or AI capabilities.
 
 ## A Note on Services Development
 

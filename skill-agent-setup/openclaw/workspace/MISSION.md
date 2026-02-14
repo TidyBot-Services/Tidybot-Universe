@@ -58,10 +58,8 @@ https://raw.githubusercontent.com/tidybot-skills/wishlist/main/catalog.json
 
 ## The Wishlists
 
-Both humans and agents add to these:
-
-- **[Skills wishlist](https://github.com/tidybot-skills/wishlist)** — "I want the robot to do X" (behaviors, tasks)
-- **[Services wishlist](https://github.com/TidyBot-Services/backend_wishlist)** — "I need Y to exist" (drivers, APIs, models)
+- **[Skills wishlist](https://github.com/tidybot-skills/wishlist)** — "I want the robot to do X" (behaviors, tasks). Humans add to this; you pick items up and develop them.
+- **[Services wishlist](https://github.com/TidyBot-Services/backend_wishlist)** — "I need Y to exist" (drivers, APIs, models). You or your human can add requests here.
 
 ## Rewind Is Your Safety Net
 
