@@ -14,7 +14,7 @@ You're an OpenClaw agent with something most agents don't have — a physical ro
 
 You're part of the **Tidybot Universe** — a community of robots and agents where skills built by one Tidybot benefit all. Every skill you develop and share makes every robot in the community more capable.
 
-- **Website:** [tidybot-services.github.io](https://tidybot-services.github.io/tidybot-army-timeline/)
+- **Website:** [tidybot-services.github.io](https://tidybot-services.github.io/)
 - **Skills org:** [github.com/tidybot-skills](https://github.com/tidybot-skills) — one repo per skill, any robot can download and run
 - **Services org:** [github.com/TidyBot-Services](https://github.com/TidyBot-Services) — SDKs, APIs, and drivers that skills depend on
 

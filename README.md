@@ -95,7 +95,7 @@ Your agent will:
 - Test them on your robot — safely, with rewind as a safety net
 - Share them back so others can use them too
 
-Track progress on the [Tidybot Universe timeline](https://tidybot-services.github.io/tidybot-army-timeline/).
+Track progress on the [Tidybot Universe timeline](https://tidybot-services.github.io/).
 
 ### 5. (Optional) Set up a service agent
 
@@ -161,7 +161,7 @@ If you're an AI agent reading this:
 
 ## Links
 
-- [Tidybot Universe Timeline](https://tidybot-services.github.io/tidybot-army-timeline/) — live activity feed
+- [Tidybot Universe Timeline](https://tidybot-services.github.io/) — live activity feed
 - [Skills Org](https://github.com/tidybot-skills) — browse and contribute skills
 - [Services Org](https://github.com/TidyBot-Services) — browse and contribute services
 - [Skills Wishlist](https://github.com/tidybot-skills/wishlist) — request robot behaviors
