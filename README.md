@@ -23,14 +23,27 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 
 ## The Ecosystem
 
-| | Skills | Services |
-|---|---|---|
-| **Org** | [tidybot-skills](https://github.com/tidybot-skills) | [TidyBot-Services](https://github.com/TidyBot-Services) |
-| **What** | Robot behaviors (pick up X, check door, wave hello) | SDKs, APIs, and drivers that skills depend on |
-| **Who builds** | Your agent (frontend) | Backend agents or humans |
-| **One repo =** | One skill | One service |
-| **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | arm servers, gripper drivers, YOLO detection, agent server |
-| **Wishlist** | [skills wishlist](https://github.com/tidybot-skills/wishlist) | [services wishlist](https://github.com/TidyBot-Services/services_wishlist) |
+```
+┌─────────────────────────────────────────────┐
+│  Skills                                     │
+│  pick-up-object, count-people, wave-hello   │
+├─────────────────────────────────────────────┤
+│  Agent Server (:8080)                       │
+│  rewind · safety · lease · code execution   │
+├─────────────────────────────────────────────┤
+│  Services                                   │
+│  arm, gripper, base, cameras, YOLO, SAM2    │
+└─────────────────────────────────────────────┘
+```
+
+| | Skills | Agent Server | Services |
+|---|---|---|---|
+| **What** | Robot behaviors (pick up X, check door, wave hello) | Unified API layer with safety guardrails | SDKs, APIs, and drivers that skills depend on |
+| **Who builds** | Your agent (frontend) | Provided — you set it up | Backend agents or humans |
+| **One repo =** | One skill | One server | One service |
+| **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | arm servers, gripper drivers, YOLO detection |
+| **Org** | [tidybot-skills](https://github.com/tidybot-skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
+| **Wishlist** | [skills wishlist](https://github.com/tidybot-skills/wishlist) | — | [services wishlist](https://github.com/TidyBot-Services/services_wishlist) |
 
 ### Hardware Flexibility
 
@@ -38,9 +51,45 @@ The platform isn't limited to one robot. Different people can bring different ha
 
 ## Getting Started
 
-### 1. Set up your robot
+### 1. Set up your robot and agent server
 
-You need a robot running the agent server. The reference setup is a Franka Panda arm on a mobile base with a Robotiq gripper, but any hardware with matching services will work. See the [Services org](https://github.com/TidyBot-Services) for available hardware drivers.
+You need a robot with the agent server running. The reference setup is a Franka Panda arm on a mobile base with a Robotiq gripper, but any hardware with matching services will work.
+
+**Clone the repo:**
+
+```bash
+git clone https://github.com/TidyBot-Services/agent_server.git
+cd agent_server
+```
+
+**Set your Franka credentials** (add to `~/.bashrc` or run before starting):
+
+```bash
+export FRANKA_DESK_USERNAME=your_username
+export FRANKA_DESK_PASSWORD=your_password
+```
+
+**Start the robot services and agent server** (two terminals):
+
+```bash
+# Terminal 1 — hardware services
+./start_robot.sh --no-controller
+
+# Terminal 2 — agent server API
+source franka_interact/.venv/bin/activate
+cd tidybot-agent-server
+python3 server.py --no-service-manager
+```
+
+**Verify it's running:**
+
+```bash
+curl http://localhost:8080/health
+```
+
+You should see `"status": "ok"` with backend connectivity. The API is now available at `http://localhost:8080`. For development without hardware, use `python3 server.py --dry-run`.
+
+See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for full documentation, environment variables, and troubleshooting.
 
 ### 2. Set up a skill agent
 
