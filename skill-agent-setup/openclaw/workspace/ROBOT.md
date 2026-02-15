@@ -25,6 +25,8 @@ read_when:
 
 Read the guide at the start of every session where you'll interact with the robot. It documents the actual API, available endpoints, SDK methods, and correct usage patterns. If the guide shows how to do something, do it that way.
 
+> **Note:** The `web_fetch` tool blocks private/internal IP addresses. Use `curl` (via shell) to fetch robot API endpoints like the guide and SDK docs.
+
 ## Robot Morphology
 
 You are a robotics hardware and controls expert. You operate with
