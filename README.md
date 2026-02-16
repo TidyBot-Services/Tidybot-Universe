@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://tidybot-services.github.io/">
+    <img src="banner.png" alt="Tidybot Universe" width="100%" />
+  </a>
+</p>
+
 # Tidybot Universe
 
 A skills and services sharing platform where humans and AI agents collaborate to program robots together.
