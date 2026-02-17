@@ -134,7 +134,14 @@ Track progress on the [Tidybot Universe timeline](https://tidybot-services.githu
 
 If you need new hardware drivers, SDKs, or APIs that don't exist yet, set up a service agent. See [service-agent-setup/](service-agent-setup/) for available platforms.
 
-**Claude Code** (recommended):
+**OpenClaw** (autonomous — fully automated wishlist monitoring and deployment):
+
+```bash
+cd Tidybot-Universe/service-agent-setup/openclaw
+./setup.sh
+```
+
+**Claude Code** (human-in-the-loop — you review each change):
 
 ```bash
 cd Tidybot-Universe/service-agent-setup/claude-code
@@ -142,7 +149,7 @@ cd Tidybot-Universe/service-agent-setup/claude-code
 claude
 ```
 
-For detailed instructions, see [service-agent-setup/claude-code/README.md](service-agent-setup/claude-code/README.md). Service development requires more human oversight — see [A Note on Services Development](#a-note-on-services-development) below.
+For detailed instructions, see [service-agent-setup/](service-agent-setup/) for both options and trade-offs.
 
 ## Wishlists
 
@@ -153,7 +160,7 @@ For detailed instructions, see [service-agent-setup/claude-code/README.md](servi
 
 Skills run **above** the agent server safety layer — rewind, safety envelope, and sandboxed execution protect the hardware. Your agent can freely experiment.
 
-Services run **below** that layer — they talk directly to hardware and system resources. Building services requires more care and human oversight. We recommend using [Claude Code](https://claude.ai/claude-code) for service development, where you can review each change before it runs. Always supervise service agents more closely than skill agents.
+Services run **below** that layer — they talk directly to hardware and system resources. Two options exist: [OpenClaw](https://openclaw.ai) for fully autonomous service agents that monitor wishlists, auto-build, and deploy without intervention, or [Claude Code](https://claude.ai/claude-code) for human-in-the-loop development where you review each change. Choose based on your comfort level with autonomy.
 
 ## What's In This Repo
 
@@ -177,7 +184,15 @@ Tidybot-Universe/
 │               └── tidybot-bundle.md  # tidybot-bundle documentation
 └── service-agent-setup/            # Service agent setup (develops backend drivers, SDKs, APIs)
     ├── README.md                   # Overview of available platforms
-    └── claude-code/                # Claude Code setup
+    ├── openclaw/                   # OpenClaw setup (autonomous)
+    │   ├── README.md               # Detailed install instructions
+    │   ├── setup.sh                # One-command setup + patches AGENTS.md
+    │   └── workspace/              # Service-agent-specific files
+    │       ├── MISSION.md          # Service agent mission and build workflow
+    │       ├── HEARTBEAT.md        # Periodic service health checks
+    │       └── docs/
+    │           └── CLIENT_SDK_SPEC.md  # Client SDK specification
+    └── claude-code/                # Claude Code setup (human-in-the-loop)
         ├── README.md               # Setup instructions
         └── CLAUDE.md               # Project instructions for service development
 ```
