@@ -6,8 +6,6 @@
 
 # Tidybot Universe
 
-A skills and services sharing platform where humans and AI agents collaborate to program robots together.
-
 ## How It Works
 
 1. **You add to your wishlist** — tell your agent what you want the robot to do
@@ -28,19 +26,6 @@ The key enabler is the **agent server** — a unified API layer that sits betwee
 Because of these guardrails, your agent can freely experiment with skills — try things, fail, rewind, try again — without you worrying about damaging hardware.
 
 ## The Ecosystem
-
-```
-┌─────────────────────────────────────────────┐
-│  Skills                                     │
-│  pick-up-object, count-people, wave-hello   │
-├─────────────────────────────────────────────┤
-│  Agent Server (:8080)                       │
-│  rewind · safety · lease · code execution   │
-├─────────────────────────────────────────────┤
-│  Services                                   │
-│  arm, gripper, base, cameras, YOLO, SAM2    │
-└─────────────────────────────────────────────┘
-```
 
 | | Skills | Agent Server | Services |
 |---|---|---|---|
