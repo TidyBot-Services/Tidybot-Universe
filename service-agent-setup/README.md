@@ -1,6 +1,6 @@
 # Service Agent Setup
 
-Your service agent develops the backend components that skills depend on — ML models, APIs, and utility libraries. This directory contains setup options for different agent platforms.
+Your service agent develops the components that skills depend on — ML models, APIs, and utility libraries. This directory contains setup options for different agent platforms.
 
 **Important:** Services can talk directly to hardware and system resources, so they require care. Review the setup instructions for your chosen platform to understand the level of autonomy and oversight involved.
 

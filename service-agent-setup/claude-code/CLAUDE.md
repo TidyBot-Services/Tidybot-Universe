@@ -1,6 +1,6 @@
 # Tidybot Service Development
 
-You are developing backend services for the Tidybot Universe platform.
+You are developing services for the Tidybot Universe platform.
 
 ## Context
 

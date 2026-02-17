@@ -45,7 +45,7 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 | | Skills | Agent Server | Services |
 |---|---|---|---|
 | **What** | Robot behaviors (pick up X, check door, wave hello) | Unified API layer with safety guardrails | SDKs, APIs, and drivers that skills depend on |
-| **Who builds** | Your agent (frontend) | Provided — you set it up | Backend agents or humans |
+| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Service agents or humans |
 | **One repo =** | One skill | One server | One service |
 | **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | arm servers, gripper drivers, YOLO detection |
 | **Org** | [tidybot-skills](https://github.com/tidybot-skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
@@ -75,16 +75,20 @@ export FRANKA_DESK_USERNAME=your_username
 export FRANKA_DESK_PASSWORD=your_password
 ```
 
-**Start the robot services and agent server** (two terminals):
+**Start the agent server:**
 
 ```bash
-# Terminal 1 — hardware services
-./start_robot.sh --no-controller
-
-# Terminal 2 — agent server API
 source franka_interact/.venv/bin/activate
 cd tidybot-agent-server
-python3 server.py --no-service-manager
+python3 server.py
+```
+
+This starts the API server with the built-in service manager. Start and stop individual services (arm, gripper, cameras, etc.) from the web dashboard at `http://localhost:8080/services/dashboard` or via API:
+
+```bash
+curl -X POST localhost:8080/services/unlock/start
+curl -X POST localhost:8080/services/franka_server/start
+curl -X POST localhost:8080/services/gripper_server/start
 ```
 
 **Verify it's running:**
@@ -93,11 +97,22 @@ python3 server.py --no-service-manager
 curl http://localhost:8080/health
 ```
 
-You should see `"status": "ok"` with backend connectivity. The API is now available at `http://localhost:8080`. For development without hardware, use `python3 server.py --dry-run`.
+You should see `"status": "ok"` with service connectivity. The API is now available at `http://localhost:8080`. For development without hardware, use `python3 server.py --dry-run`.
 
 See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for full documentation, environment variables, and troubleshooting.
 
-### 2. Set up a skill agent
+### 2. Connect to the services ecosystem
+
+Set up the service catalog sync so your agent server automatically receives new service client SDKs (YOLO, SAM2, grasp generation, etc.) as they become available.
+
+```bash
+cd Tidybot-Universe/agent-server-setup
+./setup.sh
+```
+
+This clones the [services wishlist](https://github.com/TidyBot-Services/services_wishlist), installs a cron job to sync the catalog every 2 minutes, and downloads any existing service clients. See [agent-server-setup/README.md](agent-server-setup/README.md) for options and manual setup.
+
+### 3. Set up a skill agent
 
 A skill agent is the AI that develops and runs skills on your robot. See [skill-agent-setup/](skill-agent-setup/) for available platforms.
 
@@ -111,7 +126,7 @@ cd Tidybot-Universe/skill-agent-setup/openclaw
 
 For detailed instructions (including manual setup), see [skill-agent-setup/openclaw/README.md](skill-agent-setup/openclaw/README.md).
 
-### 3. Talk to your agent
+### 4. Talk to your agent
 
 Once setup is complete, open a chat with your agent. It will:
 
@@ -119,7 +134,7 @@ Once setup is complete, open a chat with your agent. It will:
 - Read the robot documentation from the agent server
 - Ask about your wishlist — what do you want the robot to do?
 
-### 4. Watch it work
+### 5. Watch it work
 
 Your agent will:
 
@@ -130,9 +145,9 @@ Your agent will:
 
 Track progress on the [Tidybot Universe timeline](https://tidybot-services.github.io/).
 
-### 5. (Optional) Set up a service agent
+### 6. Set up a service agent
 
-If you need new hardware drivers, SDKs, or APIs that don't exist yet, set up a service agent. See [service-agent-setup/](service-agent-setup/) for available platforms.
+Your service agent develops the components that skills depend on — hardware drivers, AI models, SDKs, and APIs. See [service-agent-setup/](service-agent-setup/) for available platforms.
 
 **OpenClaw** (autonomous — fully automated wishlist monitoring and deployment):
 
@@ -161,47 +176,6 @@ For detailed instructions, see [service-agent-setup/](service-agent-setup/) for 
 Skills run **above** the agent server safety layer — rewind, safety envelope, and sandboxed execution protect the hardware. Your agent can freely experiment.
 
 Services run **below** that layer — they talk directly to hardware and system resources. Two options exist: [OpenClaw](https://openclaw.ai) for fully autonomous service agents that monitor wishlists, auto-build, and deploy without intervention, or [Claude Code](https://claude.ai/claude-code) for human-in-the-loop development where you review each change. Choose based on your comfort level with autonomy.
-
-## What's In This Repo
-
-```
-Tidybot-Universe/
-├── README.md                       # You are here
-├── skill-agent-setup/              # Skill agent setup (develops robot behaviors)
-│   ├── README.md                   # Overview of available platforms
-│   └── openclaw/                   # OpenClaw setup
-│       ├── README.md               # Detailed install instructions
-│       ├── setup.sh                # One-command setup + patches AGENTS.md with Tidybot additions
-│       └── workspace/              # Tidybot-specific files (setup.sh copies these + patches AGENTS.md)
-│           ├── MISSION.md          # Tidybot Universe mission and organic skill flow
-│           ├── ROBOT.md            # Robot hardware reference
-│           ├── HEARTBEAT.md        # Tidybot skills maintenance tasks
-│           ├── skills/
-│           │   ├── tidybot-skill-dev/
-│           │   │   └── SKILL.md    # Skill development and publishing workflow
-│           │   └── tidybot-bundle  # Bundles a skill + dependencies into one script
-│           └── docs/
-│               └── tidybot-bundle.md  # tidybot-bundle documentation
-└── service-agent-setup/            # Service agent setup (develops backend drivers, SDKs, APIs)
-    ├── README.md                   # Overview of available platforms
-    ├── openclaw/                   # OpenClaw setup (autonomous)
-    │   ├── README.md               # Detailed install instructions
-    │   ├── setup.sh                # One-command setup + patches AGENTS.md + creates cron job
-    │   └── workspace/              # Service-agent-specific files
-    │       ├── MISSION.md          # Service agent mission and build workflow
-    │       ├── HEARTBEAT.md        # Periodic service health checks
-    │       ├── BOOTSTRAP.md        # First-run instructions (agent deletes after setup)
-    │       ├── SOUL.md             # Service agent personality
-    │       ├── TOOLS.md            # Systemd, ports, GPU, GitHub patterns
-    │       ├── skills/
-    │       │   └── tidybot-service-dev/
-    │       │       └── SKILL.md    # Step-by-step service build guide
-    │       └── docs/
-    │           └── CLIENT_SDK_SPEC.md  # Client SDK specification
-    └── claude-code/                # Claude Code setup (human-in-the-loop)
-        ├── README.md               # Setup instructions
-        └── CLAUDE.md               # Project instructions for service development
-```
 
 ## For Agents
 
