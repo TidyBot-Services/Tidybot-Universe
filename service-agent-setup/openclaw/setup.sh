@@ -65,8 +65,9 @@ echo "Copying service agent workspace files..."
 mkdir -p ~/.openclaw/workspace/docs
 cp "$SCRIPT_DIR/workspace/MISSION.md" ~/.openclaw/workspace/
 cp "$SCRIPT_DIR/workspace/HEARTBEAT.md" ~/.openclaw/workspace/
+cp "$SCRIPT_DIR/workspace/BOOTSTRAP.md" ~/.openclaw/workspace/
 cp -r "$SCRIPT_DIR/workspace/docs/"* ~/.openclaw/workspace/docs/
-echo "  Copied MISSION.md, HEARTBEAT.md, docs/"
+echo "  Copied MISSION.md, HEARTBEAT.md, BOOTSTRAP.md, docs/"
 
 # Patch AGENTS.md with service agent additions
 echo "Patching AGENTS.md with service agent additions..."
@@ -137,8 +138,37 @@ PATCHEOF
 
 # Create the wishlist-monitor cron job
 echo "Setting up wishlist-monitor cron job..."
-echo "  The agent will create the cron job on first session (requires OpenClaw gateway running)"
-echo "  To create manually: openclaw cron add --name wishlist-monitor ..."
+
+CRON_MESSAGE='Check TidyBot-Services/services_wishlist for new service requests.
+
+STEP 1 — FETCH: Use `gh api` (NOT web_fetch) to get wishlist.json:
+  gh api repos/TidyBot-Services/services_wishlist/contents/wishlist.json --jq '"'"'.content'"'"' | base64 -d
+
+STEP 2 — COMPARE: Read MEMORY.md for known completed/in-progress services. Compare against wishlist.
+
+STEP 3 — AUTO-BUILD: For ANY new wishlist item with status "pending":
+1. Update wishlist.json: set status to "building", assigned to your agent name
+2. Use sessions_spawn to kick off a sub-agent build task for EACH new item
+3. The sub-agent should: create repo, build FastAPI service + client SDK (following CLIENT_SDK_SPEC.md) + README, install deps, test, push to GitHub, deploy as systemd unit, update catalog.json
+4. Use numpy<2 for torch compatibility
+5. Assign the next available port (check catalog.json for used ports)
+
+STEP 4 — REPORT: Summarize findings. Only report NEW items or status changes. If nothing changed, say so briefly.'
+
+# Try to create the cron job via CLI (requires gateway running)
+if openclaw cron add \
+    --name "wishlist-monitor" \
+    --every "1h" \
+    --session "isolated" \
+    --message "$CRON_MESSAGE" \
+    --announce \
+    --timeout-seconds 300 2>/dev/null; then
+    echo "  Created wishlist-monitor cron job (polls every hour)"
+else
+    echo "  Note: Could not create cron job (gateway may not be running)"
+    echo "  The agent will create it on first session, or create manually:"
+    echo "  openclaw cron add --name wishlist-monitor --every 1h --session isolated --announce --message '...'"
+fi
 
 # Restart gateway to pick up changes
 echo "Restarting gateway..."
@@ -147,8 +177,3 @@ openclaw gateway restart 2>/dev/null || openclaw gateway start 2>/dev/null || ec
 echo
 echo "=== Setup Complete ==="
 echo "Open a chat or run: openclaw dashboard"
-echo
-echo "The agent will:"
-echo "  1. Introduce itself and set up identity"
-echo "  2. Create the wishlist-monitor cron job (polls hourly)"
-echo "  3. Automatically build services when new wishlist items appear"

@@ -33,6 +33,7 @@ These files are service-agent-specific additions to the OpenClaw workspace. The 
 workspace/
 ├── MISSION.md          # Service agent mission and build workflow
 ├── HEARTBEAT.md        # Periodic service health checks
+├── BOOTSTRAP.md        # First-run instructions (agent deletes after setup)
 └── docs/
     └── CLIENT_SDK_SPEC.md  # Client SDK specification for all services
 ```
