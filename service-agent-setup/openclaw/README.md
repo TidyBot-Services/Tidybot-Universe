@@ -34,6 +34,11 @@ workspace/
 ├── MISSION.md          # Service agent mission and build workflow
 ├── HEARTBEAT.md        # Periodic service health checks
 ├── BOOTSTRAP.md        # First-run instructions (agent deletes after setup)
+├── SOUL.md             # Service agent personality (replaces default)
+├── TOOLS.md            # Systemd patterns, port allocation, GPU monitoring, gh api patterns
+├── skills/
+│   └── tidybot-service-dev/
+│       └── SKILL.md    # Step-by-step guide for building a new service
 └── docs/
     └── CLIENT_SDK_SPEC.md  # Client SDK specification for all services
 ```

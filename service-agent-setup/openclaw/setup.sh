@@ -62,12 +62,15 @@ fi
 
 # Copy service-agent-specific workspace files
 echo "Copying service agent workspace files..."
-mkdir -p ~/.openclaw/workspace/docs
+mkdir -p ~/.openclaw/workspace/docs ~/.openclaw/workspace/skills
 cp "$SCRIPT_DIR/workspace/MISSION.md" ~/.openclaw/workspace/
 cp "$SCRIPT_DIR/workspace/HEARTBEAT.md" ~/.openclaw/workspace/
 cp "$SCRIPT_DIR/workspace/BOOTSTRAP.md" ~/.openclaw/workspace/
+cp "$SCRIPT_DIR/workspace/SOUL.md" ~/.openclaw/workspace/
+cp "$SCRIPT_DIR/workspace/TOOLS.md" ~/.openclaw/workspace/
 cp -r "$SCRIPT_DIR/workspace/docs/"* ~/.openclaw/workspace/docs/
-echo "  Copied MISSION.md, HEARTBEAT.md, BOOTSTRAP.md, docs/"
+cp -r "$SCRIPT_DIR/workspace/skills/"* ~/.openclaw/workspace/skills/
+echo "  Copied MISSION.md, HEARTBEAT.md, BOOTSTRAP.md, SOUL.md, TOOLS.md, docs/, skills/"
 
 # Patch AGENTS.md with service agent additions
 echo "Patching AGENTS.md with service agent additions..."
@@ -108,33 +111,12 @@ with open(path, "w") as f:
 print("  Patched AGENTS.md (added service agent session checklist items)")
 PATCHEOF
 
-# Patch SOUL.md vibe for service agent personality
-echo "Patching SOUL.md..."
-python3 << 'PATCHEOF'
-import os, sys
-
-path = os.path.expanduser("~/.openclaw/workspace/SOUL.md")
-if not os.path.exists(path):
-    print("  Warning: SOUL.md not found, skipping patch")
-    sys.exit(0)
-
-with open(path, "r") as f:
-    content = f.read()
-
-if "backend service agent" in content:
-    print("  SOUL.md already patched, skipping")
-    sys.exit(0)
-
-old_vibe = "Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just... good."
-new_vibe = "You're a backend service agent. Concise, efficient, and focused on execution. No fluff. Just results. Build services, deploy them, keep them running."
-
-content = content.replace(old_vibe, new_vibe)
-
-with open(path, "w") as f:
-    f.write(content)
-
-print("  Patched SOUL.md (service agent vibe)")
-PATCHEOF
+# Configure skills directory
+echo "Configuring skills directory..."
+openclaw config set skills.load.extraDirs '["~/.openclaw/workspace/skills"]' 2>/dev/null || {
+    echo "  Note: Could not auto-set config. Please add manually:"
+    echo '  "skills": { "load": { "extraDirs": ["~/.openclaw/workspace/skills"] } }'
+}
 
 # Create the wishlist-monitor cron job
 echo "Setting up wishlist-monitor cron job..."

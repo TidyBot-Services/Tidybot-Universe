@@ -186,10 +186,16 @@ Tidybot-Universe/
     ├── README.md                   # Overview of available platforms
     ├── openclaw/                   # OpenClaw setup (autonomous)
     │   ├── README.md               # Detailed install instructions
-    │   ├── setup.sh                # One-command setup + patches AGENTS.md
+    │   ├── setup.sh                # One-command setup + patches AGENTS.md + creates cron job
     │   └── workspace/              # Service-agent-specific files
     │       ├── MISSION.md          # Service agent mission and build workflow
     │       ├── HEARTBEAT.md        # Periodic service health checks
+    │       ├── BOOTSTRAP.md        # First-run instructions (agent deletes after setup)
+    │       ├── SOUL.md             # Service agent personality
+    │       ├── TOOLS.md            # Systemd, ports, GPU, GitHub patterns
+    │       ├── skills/
+    │       │   └── tidybot-service-dev/
+    │       │       └── SKILL.md    # Step-by-step service build guide
     │       └── docs/
     │           └── CLIENT_SDK_SPEC.md  # Client SDK specification
     └── claude-code/                # Claude Code setup (human-in-the-loop)
