@@ -43,37 +43,6 @@ agent-server-setup/
 └── sync_catalog.sh     # Service catalog sync script (installed by setup.sh)
 ```
 
-## Manual Setup
-
-If you prefer to set things up manually:
-
-### 1. Clone the services wishlist
-
-```bash
-git clone https://github.com/TidyBot-Services/services_wishlist.git ~/tidybot_army/backend_wishlist
-```
-
-### 2. Create the service clients directory
-
-```bash
-mkdir -p ~/tidybot_army/tidybot-agent-server/service_clients
-```
-
-### 3. Install the sync script
-
-```bash
-cp sync_catalog.sh ~/tidybot_army/tidybot-agent-server/sync_catalog.sh
-chmod +x ~/tidybot_army/tidybot-agent-server/sync_catalog.sh
-```
-
-### 4. Add a cron job
-
-```bash
-crontab -e
-# Add this line:
-*/2 * * * * WISHLIST_DIR=$HOME/tidybot_army/backend_wishlist SERVICES_DIR=$HOME/tidybot_army/tidybot-agent-server/service_clients $HOME/tidybot_army/tidybot-agent-server/sync_catalog.sh
-```
-
 ## Troubleshooting
 
 **Check sync logs:**
