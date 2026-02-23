@@ -8,15 +8,25 @@ description: Build, test, and iterate robot skills for Tidybot. Use when (1) ask
 ## Before You Start
 
 1. **Read the SDK guide first:** `GET http://<ROBOT_IP>:8080/docs/guide/html` — do not guess or improvise. See `robot-sdk-ref` skill.
-2. **Check existing skills:** Fetch `https://raw.githubusercontent.com/tidybot-skills/wishlist/main/catalog.json`. Use or extend what exists.
+2. **Check existing skills:** Fetch `https://raw.githubusercontent.com/tidybot-skills/wishlist/main/catalog.json`. Use or extend what exists. Local skills use `tb-` prefix.
 3. **Chain if possible.** Use `tidybot-bundle <skill-name>` to combine skills. Estimate success = product of individual rates. Chaining tested skills is always preferable to untested new code.
 4. **Build new only as last resort.** Research first (internet, papers), then check services (see `active-services` skill).
+
+## Skill Structure (OpenClaw format)
+
+```
+tb-skill-name/
+├── SKILL.md          # Frontmatter (name, description) + instructions
+└── scripts/
+    ├── main.py       # Skill code (submitted to robot)
+    └── deps.txt      # Dependencies (one tb-skill-name per line)
+```
 
 ## Developing
 
 1. Connect to the robot API using SDK guide patterns. Test sensor reads first.
 2. Prototype iteratively — use SDK methods (not invented ones), test on hardware, use rewind on failure.
-3. Save to `dev/` folder. Structure: `README.md`, `main.py`, `deps.txt`.
+3. Save to `dev/` folder with `tb-` prefix and OpenClaw skill structure.
 
 ## Testing & Trials
 
@@ -28,11 +38,11 @@ description: Build, test, and iterate robot skills for Tidybot. Use when (1) ask
 
 ## Publishing Readiness
 
-A skill is ready when it has 70%+ success rate over 10+ unsupervised trials on the final code version. For the actual publishing steps, see the `tidybot-skill-publish` skill.
+A skill is ready when it has 70%+ success rate over 10+ unsupervised trials on the final code version. For publishing steps, see the `tidybot-skill-publish` skill.
 
 ## Code Pattern Extraction
 
-When the same logic appears in 2+ skills, extract into a shared skill. Add it to `deps.txt` in dependent skills. Abstraction emerges from use, not upfront design.
+When the same logic appears in 2+ skills, extract into a shared skill. Add it to `scripts/deps.txt` in dependent skills. Abstraction emerges from use, not upfront design.
 
 ## Reference
 

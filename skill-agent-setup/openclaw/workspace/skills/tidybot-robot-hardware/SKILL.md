@@ -1,5 +1,5 @@
 ---
-name: robot-hardware
+name: tidybot-robot-hardware
 description: Robot physical specs, coordinate frames, camera setup, and morphology — Franka Panda arm, mobile base, Robotiq gripper, camera positions and IDs. Use when (1) writing arm or base control code, (2) referencing world-frame coordinates or axis conventions, (3) computing end-effector targets or grasp positions, (4) using camera IDs or understanding camera placement, (5) reasoning about spatial layout, reach, or workspace boundaries.
 ---
 
@@ -30,7 +30,7 @@ Origin: mobile base pose at server start (0, 0, 0).
 2. **Wrist camera** — inner wrist of Franka arm
    - At rest: faces -Z with slight tilt toward gripper
    - Offset from gripper: -0.09m in X
-   - Camera ID: *(fill in from robot, e.g. `309622300814`)*
+   - Camera ID: *(check via SDK or ROBOT.md)*
 
 ## End Effector
 

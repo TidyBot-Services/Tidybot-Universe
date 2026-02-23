@@ -1,5 +1,5 @@
 ---
-name: active-services
+name: tidybot-active-services
 description: External services catalog — model endpoints, vision APIs, grasping backends, and Python client SDKs available to robot skills. Use when (1) a skill needs an external model or API, (2) checking what backend services are available, (3) debugging service timeouts or connection failures, (4) requesting a new service that doesn't exist yet, (5) downloading or using a service's Python client SDK.
 ---
 
@@ -33,4 +33,4 @@ Wishlist: `https://raw.githubusercontent.com/TidyBot-Services/services_wishlist/
 
 ## Known Services
 
-*(Update this section as you discover and use services on your network)*
+- **Visuomotor keypoint joint policy:** `10.100.129.103:8500` — diffusion policy for arm control (intermittent — verify availability first)

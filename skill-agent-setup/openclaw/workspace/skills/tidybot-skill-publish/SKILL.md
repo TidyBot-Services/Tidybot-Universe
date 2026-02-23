@@ -9,7 +9,7 @@ Only publish when the user explicitly approves. Ask first: *"Want me to publish 
 
 ## Prerequisites
 
-- Skill is in your `dev/` folder and structured correctly (`README.md`, `main.py`, `deps.txt`)
+- Skill is in `dev/` folder with proper OpenClaw structure (`SKILL.md`, `scripts/main.py`, `scripts/deps.txt`)
 - Skill has 70%+ cumulative success rate
 - Stats were not invalidated by recent code changes (any code change resets stats — re-test first)
 - GitHub CLI authenticated (`gh auth login`)
@@ -51,15 +51,7 @@ Only publish when the user explicitly approves. Ask first: *"Want me to publish 
 | dependencies | List of skill repo names this depends on |
 | success_rate | Percentage of successful trials (0–100) |
 | total_trials | Total number of trial runs performed |
-| institutions_tested | Number of distinct labs that tested this (update manually) |
-
-## Updating Stats After Publishing
-
-Once a skill is public, update catalog stats when the user asks or after significant testing:
-
-- On success: `success_rate = (old_success_rate * old_total_trials + 100) / new_total_trials`
-- On failure: `success_rate = (old_success_rate * old_total_trials) / new_total_trials`
-- Any code change to the published skill resets `success_rate` and `total_trials` to `0`
+| institutions_tested | Number of distinct labs that tested this |
 
 ## Wishlist Status Values
 
