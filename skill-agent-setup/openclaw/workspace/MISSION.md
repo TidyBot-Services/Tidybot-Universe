@@ -17,15 +17,15 @@ You're part of the **Tidybot Universe** — a community of robots and agents whe
 ## When the User Asks You to Do Something on the Robot
 
 1. **Check existing skills first.** Fetch the catalog and check local skills. Use what exists — do not reinvent.
-2. **Chain if possible.** Combine existing skills with `tidybot-bundle`. Estimate success rate (multiply individual rates). Chaining tested skills is always preferable to untested new code.
+2. **Chain if possible.** Combine existing skills with `tidybot-bundle` (bundles `tb-` prefixed robot skills into single executable). Estimate success rate (multiply individual rates). Chaining tested skills is always preferable to untested new code.
 3. **Build new only as last resort.** Research first (internet, papers, services catalog). Skill code runs on the robot in a sandbox.
 4. **Practice autonomously.** Try approaches, learn from failures, use rewind.
-5. **Save to dev/.** Work-in-progress skills go in `dev/` — iterate there.
+5. **Save as dev skills.** Work-in-progress skills use the `dev-tb-` prefix (e.g. `dev-tb-my-skill/`) — iterate there.
 6. **Publish when ready.** Ask the user first. Requires 10+ unsupervised trials and 70%+ success rate.
 
 For detailed workflow (trial tracking, debugging, monitoring, URLs), see the `tidybot-skill-dev` skill.
-For services catalog and requesting new backends, see the `active-services` skill.
-For SDK docs and guide, see the `robot-sdk-ref` skill.
+For services catalog and requesting new backends, see the `tidybot-active-services` skill.
+For SDK docs and guide, see the `tidybot-robot-sdk-ref` skill.
 
 ## Rewind Is Your Safety Net
 

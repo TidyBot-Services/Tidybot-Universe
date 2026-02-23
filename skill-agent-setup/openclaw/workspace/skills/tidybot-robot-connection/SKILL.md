@@ -5,8 +5,8 @@ description: Robot connection credentials and API endpoints — IP address, API 
 
 # Robot Connection
 
-- **Robot IP:** `<ROBOT_IP>` *(set in ROBOT.md)*
-- **API Key:** `<API_KEY>` *(set in ROBOT.md)*
+- **Robot IP:** `<ROBOT_IP>`
+- **API Key:** `<API_KEY>`
 - **Base URL:** `http://<ROBOT_IP>:8080`
 
 ## Key Endpoints

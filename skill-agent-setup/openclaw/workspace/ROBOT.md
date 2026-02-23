@@ -25,9 +25,9 @@ read_when:
 
 ## Details
 
-For detailed hardware specs, coordinate frames, camera IDs, and morphology, see the `robot-hardware` skill.
-For full endpoint reference, see the `robot-connection` skill.
-For SDK method signatures, see the `robot-sdk-ref` skill.
+For detailed hardware specs, coordinate frames, camera IDs, and morphology, see the `tidybot-robot-hardware` skill.
+For full endpoint reference, see the `tidybot-robot-connection` skill.
+For SDK method signatures, see the `tidybot-robot-sdk-ref` skill.
 
 ## Notes
 

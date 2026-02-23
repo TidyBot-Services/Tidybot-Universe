@@ -26,7 +26,7 @@ tb-skill-name/
 
 1. Connect to the robot API using SDK guide patterns. Test sensor reads first.
 2. Prototype iteratively — use SDK methods (not invented ones), test on hardware, use rewind on failure.
-3. Save to `dev/` folder with `tb-` prefix and OpenClaw skill structure.
+3. Save with `dev-tb-` prefix (e.g. `dev-tb-my-skill/`) and OpenClaw skill structure.
 
 ## Testing & Trials
 

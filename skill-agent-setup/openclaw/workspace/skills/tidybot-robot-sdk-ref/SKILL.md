@@ -11,7 +11,6 @@ Fetch these via shell (`web_fetch` blocks private IPs):
    ```bash
    curl -s -L http://<ROBOT_IP>:8080/docs/guide/html
    ```
-   *(Replace `<ROBOT_IP>` with the IP from ROBOT.md)*
 
 2. **SDK reference** (method signatures, available classes):
    ```bash

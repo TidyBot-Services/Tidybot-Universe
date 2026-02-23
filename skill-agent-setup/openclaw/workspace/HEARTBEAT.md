@@ -9,7 +9,7 @@ read_when:
 Check these periodically (not every heartbeat — rotate through them):
 
 ### Practice In-Development Skills
-- Check your `dev/` folder for skills in progress
+- Check for `dev-tb-*` skills in progress
 - For each dev skill: first look at the camera to verify the task is feasible given what the robot currently sees
 - If feasible, practice a few trials (max 10 per skill per day). Record success/failure for each
 - Accumulate stats across sessions — keep a running tally of total trials and successes per skill in your memory files

@@ -9,7 +9,7 @@ Only publish when the user explicitly approves. Ask first: *"Want me to publish 
 
 ## Prerequisites
 
-- Skill is in `dev/` folder with proper OpenClaw structure (`SKILL.md`, `scripts/main.py`, `scripts/deps.txt`)
+- Skill has `dev-tb-` prefix with proper OpenClaw structure (`SKILL.md`, `scripts/main.py`, `scripts/deps.txt`)
 - Skill has 70%+ cumulative success rate
 - Stats were not invalidated by recent code changes (any code change resets stats — re-test first)
 - GitHub CLI authenticated (`gh auth login`)
