@@ -12,14 +12,22 @@ description: Build, test, and iterate robot skills for Tidybot. Use when (1) ask
 3. **Chain if possible.** Use `tidybot-bundle <skill-name>` to combine skills. Estimate success = product of individual rates. Chaining tested skills is always preferable to untested new code.
 4. **Build new only as last resort.** Research first (internet, papers), then check services (see `active-services` skill).
 
+## Naming Convention
+
+- **Robot skills** use the `tb-` prefix: `tb-pick-up-object`, `tb-center-object`
+- **In-development skills** use the `dev-tb-` prefix: `dev-tb-my-skill`
+- **Management/reference skills** use the `tidybot-` prefix (you won't create these)
+
+All new robot skills **must** start with `tb-` (or `dev-tb-` while in development).
+
 ## Skill Structure (OpenClaw format)
 
 ```
-tb-skill-name/
-├── SKILL.md          # Frontmatter (name, description) + instructions
+dev-tb-my-skill/          # dev-tb- prefix while developing
+├── SKILL.md              # Frontmatter (name, description) + instructions
 └── scripts/
-    ├── main.py       # Skill code (submitted to robot)
-    └── deps.txt      # Dependencies (one tb-skill-name per line)
+    ├── main.py           # Skill code (submitted to robot)
+    └── deps.txt          # Dependencies (one tb-skill-name per line)
 ```
 
 ## Developing

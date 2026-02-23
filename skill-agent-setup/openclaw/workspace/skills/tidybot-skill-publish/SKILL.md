@@ -16,14 +16,16 @@ Only publish when the user explicitly approves. Ask first: *"Want me to publish 
 
 ## Publishing Steps
 
-1. **Create a repo** in the [tidybot-skills](https://github.com/tidybot-skills) org:
+1. **Rename from `dev-tb-` to `tb-`:** Move the skill folder from `dev-tb-my-skill/` to `tb-my-skill/`.
+
+2. **Create a repo** in the [tidybot-skills](https://github.com/tidybot-skills) org. The repo name drops the `tb-` prefix (e.g. local `tb-pick-up-object` → remote `tidybot-skills/pick-up-object`):
    ```bash
-   gh repo create tidybot-skills/<skill-name> --public
+   gh repo create tidybot-skills/<skill-name-without-tb-prefix> --public
    ```
 
-2. **Push skill code** to the new repo
+3. **Push skill code** to the new repo
 
-3. **Update `catalog.json`** in `tidybot-skills/wishlist`:
+4. **Update `catalog.json`** in `tidybot-skills/wishlist`:
    ```json
    {
      "<skill-name>": {
@@ -39,7 +41,7 @@ Only publish when the user explicitly approves. Ask first: *"Want me to publish 
    ```
    Set `success_rate` and `total_trials` to `0` — public stats start fresh.
 
-4. **Update `wishlist.json`** if this skill fulfills a wishlist item — set status to `"done"` and add the repo path
+5. **Update `wishlist.json`** if this skill fulfills a wishlist item — set status to `"done"` and add the repo path
 
 ## Catalog Fields
 
