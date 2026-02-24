@@ -46,35 +46,23 @@ The platform isn't limited to one robot. Different people can bring different ha
 
 You need a robot with the agent server running. The reference setup is a Franka Panda arm on a mobile base with a Robotiq gripper, but any hardware with matching services will work.
 
-**Clone the repo:**
+**Clone the repo and install:**
 
 ```bash
 git clone https://github.com/TidyBot-Services/agent_server.git
 cd agent_server
+pip install -r requirements.txt
 ```
 
-**Set your Franka credentials** (add to `~/.bashrc` or run before starting):
+**Try it without hardware (dry-run mode):**
 
 ```bash
-export FRANKA_DESK_USERNAME=your_username
-export FRANKA_DESK_PASSWORD=your_password
+python3 server.py --dry-run
 ```
 
-**Start the agent server:**
+This starts the API server with simulated backends — leases, code execution, the dashboard all work, but no hardware moves. The API is available at `http://localhost:8080`.
 
-```bash
-source franka_interact/.venv/bin/activate
-cd tidybot-agent-server
-python3 server.py
-```
-
-This starts the API server with the built-in service manager. Start and stop individual services (arm, gripper, cameras, etc.) from the web dashboard at `http://localhost:8080/services/dashboard` or via API:
-
-```bash
-curl -X POST localhost:8080/services/unlock/start
-curl -X POST localhost:8080/services/franka_server/start
-curl -X POST localhost:8080/services/gripper_server/start
-```
+**With hardware** — the agent server expects to live inside a `tidybot_army/` workspace alongside sibling repos for the arm, base, gripper, and camera servers. See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for the full layout, hardware setup, and environment variables.
 
 **Verify it's running:**
 
@@ -82,9 +70,7 @@ curl -X POST localhost:8080/services/gripper_server/start
 curl http://localhost:8080/health
 ```
 
-You should see `"status": "ok"` with service connectivity. The API is now available at `http://localhost:8080`. For development without hardware, use `python3 server.py --dry-run`.
-
-See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for full documentation, environment variables, and troubleshooting.
+You should see `"status": "ok"` with backend connectivity. The web dashboard is at `http://localhost:8080/services/dashboard`.
 
 ### 2. Connect to the services ecosystem
 
