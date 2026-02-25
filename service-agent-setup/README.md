@@ -1,27 +1,72 @@
-# Service Agent Setup
+# Service & Compute Node Setup
 
-Your service agent develops the components that skills depend on — ML models, APIs, and utility libraries. This directory contains setup options for different agent platforms.
+Services are Docker containers that run on GPU compute nodes. The **deploy-agent** daemon manages their lifecycle — deploying, monitoring, and stopping containers via a simple HTTP API.
 
-**Important:** Services can talk directly to hardware and system resources, so they require care. Review the setup instructions for your chosen platform to understand the level of autonomy and oversight involved.
+## Architecture
 
-## Options
+```
+Skill Agent                    Compute Node (deploy-agent :9000)
+    |                                |
+    |-- GET /services ------------->|  what's running?
+    |<-- [{name, host, gpu, ...}] --|
+    |                                |
+    |-- POST /deploy -------------->|  start grasp-service
+    |   {from service.yaml}        |  -> find image locally
+    |                                |  -> assign GPU + port
+    |                                |  -> start container
+    |<-- {host: "http://...:8006"} -|  -> wait for /health
+    |                                |
+    |-- POST /stop ---------------->|  stop grasp-service
+    |<-- {ok: true} ----------------|
+```
 
-| Platform | Description | Setup |
-|----------|-------------|-------|
-| [OpenClaw](openclaw/) | Autonomous AI agent with wishlist monitoring, auto-build, systemd deployment, and community sharing | [openclaw/README.md](openclaw/README.md) |
-| [Claude Code](claude-code/) | CLI-based AI coding agent with human-in-the-loop review for each change | [claude-code/README.md](claude-code/README.md) |
+## Setup
 
-**Which should I use?**
-- **OpenClaw** — fully autonomous: monitors the wishlist, builds services, deploys them, and keeps them running without human intervention. Best for dedicated GPU servers.
-- **Claude Code** — human-in-the-loop: you review and approve each change. Best when you want more control over what gets deployed.
+### 1. Deploy-agent (one-time per compute node)
 
-## Prerequisites
+SSH into your GPU server and start the deploy-agent:
 
-Before setting up a service agent, you need:
+```bash
+pip install fastapi uvicorn docker
+python deploy-agent/server.py --port 9000
+```
 
-1. **A GPU server** — for running ML models (recommended: NVIDIA GPU with ≥16 GB VRAM, ≥64 GB RAM)
-2. **GitHub access** — a GitHub account with push access to the `TidyBot-Services` org
-3. **System packages** — Python 3.10+, pip, git, CUDA toolkit (matching your GPU driver)
-4. **Familiarity with the services org** — read the [TidyBot-Services](https://github.com/TidyBot-Services) org profile
+The user running deploy-agent needs Docker access (`sudo usermod -aG docker $USER`).
 
-See the [main README](../README.md) for full setup instructions.
+### 2. Build service images (one-time per service)
+
+SSH into the compute node, clone the service repo, and build:
+
+```bash
+git clone https://github.com/TidyBot-Services/<service-name>.git
+cd <service-name>
+docker build -t tidybot/<service-name>:0.1.0 .
+```
+
+This is where you debug CUDA compatibility, missing dependencies, model weights, etc. Once the image builds and runs, skill agents can deploy it anytime.
+
+### 3. Skill agents deploy via HTTP
+
+No SSH needed — skill agents call the deploy-agent API:
+
+```bash
+curl -X POST http://<compute-node>:9000/deploy \
+  -H "Content-Type: application/json" \
+  -d '{"name": "grasp-service", "image": "tidybot/grasp-service:0.1.0", "port": 8006, "gpu": true, "vram_gb": 2}'
+```
+
+## Specs
+
+- [Deploy Agent Spec](openclaw/workspace/docs/DEPLOY_AGENT_SPEC.md) — API reference
+- [Service Manifest Spec](openclaw/workspace/docs/SERVICE_MANIFEST_SPEC.md) — `service.yaml` format
+- [Client SDK Spec](openclaw/workspace/docs/CLIENT_SDK_SPEC.md) — client.py standards
+
+## Hardware Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| GPU VRAM | 16 GB | 24+ GB |
+| RAM | 64 GB | 128+ GB |
+| Disk | 500 GB | 1+ TB |
+| CUDA | 12.0+ | 12.8+ |
+| Docker | 24+ | 29+ |

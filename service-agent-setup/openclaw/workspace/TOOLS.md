@@ -1,78 +1,50 @@
 # TOOLS.md - Service Agent Reference
 
-## Systemd Service Management
+## Deploy-Agent API
 
-All services run as systemd units. **Never use nohup, setsid, screen, or tmux for production services.**
-
-### Creating a new service unit
+The deploy-agent runs on each compute node at port 9000. All service lifecycle management goes through it.
 
 ```bash
-# Write the unit file
-sudo tee /etc/systemd/system/tidybot-<name>.service << 'EOF'
-[Unit]
-Description=TidyBot <Name> Service
-After=network.target
+# Check node health
+curl -s http://<compute-node>:9000/health
 
-[Service]
-Type=simple
-User=<your-user>
-WorkingDirectory=/home/<your-user>/<service-name>
-ExecStart=/home/<your-user>/<service-name>/venv/bin/python main.py
-Restart=on-failure
-RestartSec=10
-Environment=CUDA_VISIBLE_DEVICES=0
+# List running services
+curl -s http://<compute-node>:9000/services
 
-[Install]
-WantedBy=multi-user.target
-EOF
+# Get single service status
+curl -s http://<compute-node>:9000/services/<name>
 
-# Enable and start (separate commands — do NOT use --now)
-sudo systemctl daemon-reload
-sudo systemctl enable tidybot-<name>.service
-sudo systemctl start tidybot-<name>.service
+# Deploy a service
+curl -s -X POST http://<compute-node>:9000/deploy \
+  -H "Content-Type: application/json" \
+  -d '{"name": "grasp-service", "image": "tidybot/grasp-service:0.1.0", "port": 8006, "gpu": true, "vram_gb": 4}'
+
+# Stop a service
+curl -s -X POST http://<compute-node>:9000/stop \
+  -H "Content-Type: application/json" \
+  -d '{"name": "grasp-service"}'
+
+# Check GPU status
+curl -s http://<compute-node>:9000/gpus
 ```
 
-### Sudoers setup (required for the agent)
-
-The agent needs passwordless sudo for systemd operations:
+## Docker (for building images via SSH)
 
 ```bash
-# Add to /etc/sudoers.d/tidybot-services
-<your-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl daemon-reload
-<your-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable tidybot-*
-<your-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl start tidybot-*
-<your-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop tidybot-*
-<your-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart tidybot-*
-<your-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl status tidybot-*
-<your-user> ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/systemd/system/tidybot-*
-```
+# Build a service image
+docker build -t tidybot/<service-name>:0.1.0 .
 
-### Common commands
+# Run locally for testing
+docker run --gpus all -p 8006:8006 tidybot/<service-name>:0.1.0
 
-```bash
-# Check all tidybot services
-systemctl list-units 'tidybot-*' --all
+# Check running containers
+docker ps --filter name=tidybot-
 
-# View logs
-journalctl -u tidybot-<name> -f
+# View container logs
+docker logs tidybot-<service-name>
 
-# Restart a service
-sudo systemctl restart tidybot-<name>
-```
-
-## Port Allocation
-
-Services are assigned sequential ports starting at 8000. **Always check catalog.json for used ports before assigning a new one.**
-
-```bash
-# Check what's in use
-gh api repos/TidyBot-Services/services_wishlist/contents/catalog.json \
-  --jq '.content' | base64 -d | python3 -c "
-import sys, json
-cat = json.load(sys.stdin)
-for name, svc in cat.get('capabilities', {}).items():
-    print(f\"{svc.get('host', 'unknown'):40s} {name}\")
-"
+# Remove old images
+docker image prune
 ```
 
 ## GitHub API Patterns
@@ -81,8 +53,7 @@ for name, svc in cat.get('capabilities', {}).items():
 
 ```bash
 # Fetch a file from a repo
-gh api repos/TidyBot-Services/services_wishlist/contents/wishlist.json \
-  --jq '.content' | base64 -d
+gh api repos/TidyBot-Services/<repo>/contents/<file> --jq '.content' | base64 -d
 
 # Update a file (requires current SHA)
 SHA=$(gh api repos/<org>/<repo>/contents/<file> --jq '.sha')
@@ -93,15 +64,15 @@ echo '{"message":"update","content":"'$(base64 -w0 < file.json)'","sha":"'$SHA'"
 gh repo create TidyBot-Services/<name> --public --clone
 ```
 
-## Python Environment
+## Python Environment (for local development)
 
 ```bash
 # Always create a venv per service
 python3 -m venv venv
 source venv/bin/activate
 
-# CRITICAL: pin numpy<2 for torch compatibility
-pip install 'numpy<2' torch torchvision
+# Install dependencies
+pip install fastapi uvicorn torch torchvision
 
 # After installing, freeze
 pip freeze > requirements.txt
@@ -126,13 +97,10 @@ nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
 # Quick health check for a single service
 curl -s http://localhost:<port>/health | python3 -m json.tool
 
-# Check all services
-for port in 8000 8001 8002 8003 8004 8005 8006 8007; do
-  echo -n "Port $port: "
-  curl -sf http://localhost:$port/health && echo " OK" || echo " DOWN"
-done
+# Check all services via deploy-agent
+curl -s http://localhost:9000/services | python3 -m json.tool
 ```
 
 ---
 
-_Update this file with your server-specific details: IP address, GPU model, username, port assignments._
+_Update this file with your server-specific details: compute node IP, GPU model, port assignments._

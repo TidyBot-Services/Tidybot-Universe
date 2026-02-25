@@ -5,56 +5,55 @@ You are developing services for the Tidybot Universe platform.
 ## Context
 
 - **Services org:** https://github.com/TidyBot-Services — one repo per service
-- **Services wishlist:** https://github.com/TidyBot-Services/services_wishlist — open requests for new services
 - **Skills org:** https://github.com/tidybot-skills — the skills that depend on your services
 - **Agent server:** The unified API layer between AI agents and robot hardware (default: `http://localhost:8080`)
+- **Deploy-agent:** HTTP daemon on compute nodes that manages service lifecycle (default: `http://<compute-node>:9000`)
 
 ## Service Types
 
 Services fall into these categories:
 
 - **Hardware drivers** — arm servers, gripper servers, sensor interfaces
-- **AI/ML models** — object detection, pose estimation, segmentation
+- **AI/ML models** — object detection, pose estimation, segmentation, grasp detection
 - **Utility libraries** — coordinate transforms, trajectory planning, common helpers
 - **Platform services** — agent server extensions, monitoring, logging
 
-## Service Catalog Workflow
+## How Services Work
 
-Services are managed via a shared git repo (`backend_wishlist/`) and a backend compute server.
+Services are Docker containers running on GPU compute nodes, managed by the deploy-agent.
 
-1. **Request:** Add service to `backend_wishlist/wishlist.json`
-2. **Setup:** Backend agent ("steve") on the compute server (158.130.109.188) sets up the service
-3. **Publish:** Backend agent updates `backend_wishlist/catalog.json` with host, endpoints, and client SDK URL
-4. **Sync:** `sync_catalog.sh` (cron, every 30 min) pulls `catalog.json` and downloads client SDKs into `tidybot-agent-server/service_clients/<name>/`
-5. **Use:** Agent server imports service clients for code execution
+1. **Build:** Developer creates a service repo with `main.py`, `client.py`, `service.yaml`, `Dockerfile`
+2. **Image:** Build and test the Docker image on the compute node (SSH in, iterate until it works)
+3. **Deploy:** Skill agents call `POST /deploy` on the deploy-agent with the `service.yaml` fields
+4. **Use:** Deploy-agent returns a host URL; skill agents use `client.py` with that URL
 
-### Current Services in Catalog
+### Key Specs
 
-- `yolo-detection` — YOLO object detection
-- `grounded-sam2` — Grounded SAM2 segmentation
-- `graspgen` — Grasp pose generation
-- `foundation-stereo` — Foundation Stereo depth estimation
-- `nav-mapping` — Navigation mapping
-- `realsense-slam` — RealSense SLAM
-- `local-obstacle-avoidance` — Local obstacle avoidance
-- `lightweight-grasp-net` — Lightweight grasp network
-
-### Key Files
-
-| File | Description |
+| Spec | Description |
 |------|-------------|
-| `backend_wishlist/wishlist.json` | Service requests for the backend agent |
-| `backend_wishlist/catalog.json` | Published service catalog (host, endpoints, client SDK) |
-| `sync_catalog.sh` | Cron script to pull catalog and download client SDKs |
-| `tidybot-agent-server/service_clients/<name>/client.py` | Downloaded client SDK for each service |
+| `SERVICE_MANIFEST_SPEC.md` | How to write `service.yaml` |
+| `CLIENT_SDK_SPEC.md` | How to write `client.py` (urllib only, no external deps) |
+| `DEPLOY_AGENT_SPEC.md` | Deploy-agent HTTP API reference |
+
+### Service Repo Structure
+
+```
+<service-name>/
+├── service.yaml        # Deploy manifest (image, port, GPU requirements)
+├── client.py           # Client SDK (urllib only, per CLIENT_SDK_SPEC)
+├── main.py             # FastAPI server
+├── Dockerfile          # Container build
+├── requirements.txt    # Pinned dependencies
+└── README.md           # API docs, usage, hardware requirements
+```
 
 ## Development Workflow
 
-1. Read the wishlist `RULES.md` for contribution guidelines
+1. Read the service specs for contribution guidelines
 2. Each service gets its own repo in the TidyBot-Services org
-3. Services must include a README with setup instructions and API documentation
-4. Test locally against the agent server before pushing
-5. Update the wishlist item when the service is ready
+3. Build and test the Docker image locally or on the compute node
+4. Test against the agent server before pushing
+5. Push to GitHub so skill agents can discover and deploy it
 
 ## Safety
 

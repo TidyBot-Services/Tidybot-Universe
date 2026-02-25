@@ -10,8 +10,8 @@
 
 1. **You add to your wishlist** — tell your agent what you want the robot to do
 2. **Your agent develops skills** — Python scripts that run on the robot hardware, contributed to the [Skills](https://github.com/tidybot-skills) org
-3. **Agents request services** — if a skill needs an SDK or API that doesn't exist yet, agents add it to the [services wishlist](https://github.com/TidyBot-Services/services_wishlist)
-4. **Services get developed** — hardware drivers, AI models, utility libraries, shared in the [Services](https://github.com/TidyBot-Services) org
+3. **Skills deploy services** — if a skill needs a GPU model (YOLO, grasp detection, etc.), the skill agent deploys it on a compute node via the [deploy-agent](service-agent-setup/)
+4. **Services are shared** — each service is a Docker image with a `service.yaml` manifest and `client.py` SDK, shared in the [Services](https://github.com/TidyBot-Services) org
 5. **Everyone benefits** — skills and services are shared across the community via GitHub, so every robot gets better
 
 ## Why This Works: The Agent Server
@@ -29,12 +29,11 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 
 | | Skills | Agent Server | Services |
 |---|---|---|---|
-| **What** | Robot behaviors (pick up X, check door, wave hello) | Unified API layer with safety guardrails | SDKs, APIs, and drivers that skills depend on |
-| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Service agents or humans |
-| **One repo =** | One skill | One server | One service |
-| **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | arm servers, gripper drivers, YOLO detection |
+| **What** | Robot behaviors (pick up X, check door, wave hello) | Unified API layer with safety guardrails | GPU models, APIs, and drivers that skills depend on |
+| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Humans develop, deploy-agent manages lifecycle |
+| **One repo =** | One skill | One server | One service (with `service.yaml` + `client.py` + `Dockerfile`) |
+| **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | grasp detection, YOLO, SAM2, depth estimation |
 | **Org** | [tidybot-skills](https://github.com/tidybot-skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
-| **Wishlist** | [skills wishlist](https://github.com/tidybot-skills/wishlist) | — | [services wishlist](https://github.com/TidyBot-Services/services_wishlist) |
 
 ### Hardware Flexibility
 
@@ -72,16 +71,24 @@ curl http://localhost:8080/health
 
 You should see `"status": "ok"` with backend connectivity. The web dashboard is at `http://localhost:8080/services/dashboard`.
 
-### 2. Connect to the services ecosystem
+### 2. Set up a compute node (deploy-agent)
 
-Set up the service catalog sync so your agent server automatically receives new service client SDKs (YOLO, SAM2, grasp generation, etc.) as they become available.
+The **deploy-agent** is a lightweight daemon that runs on each GPU server. Skill agents call it over HTTP to deploy, query, and stop services — no SSH needed after initial setup.
 
 ```bash
-cd Tidybot-Universe/agent-server-setup
-./setup.sh
+# SSH into your compute node once to set up
+pip install fastapi uvicorn docker
+python deploy-agent/server.py --port 9000
 ```
 
-This clones the [services wishlist](https://github.com/TidyBot-Services/services_wishlist), installs a cron job to sync the catalog every 2 minutes, and downloads any existing service clients. See [agent-server-setup/README.md](agent-server-setup/README.md) for options and manual setup.
+The deploy-agent exposes:
+- `GET /health` — node status and GPU count
+- `GET /services` — list running services
+- `POST /deploy` — deploy a service (idempotent)
+- `POST /stop` — stop a service
+- `GET /gpus` — GPU status with VRAM and service assignments
+
+See [service-agent-setup/](service-agent-setup/) for detailed setup and the [deploy-agent spec](service-agent-setup/openclaw/workspace/docs/DEPLOY_AGENT_SPEC.md).
 
 ### 3. Set up a skill agent
 
@@ -111,50 +118,47 @@ Your agent will:
 
 - Check the [skills catalog](https://github.com/tidybot-skills) for existing skills
 - Build new skills for your wishlist items
+- Deploy needed services to compute nodes via the deploy-agent
 - Test them on your robot — safely, with rewind as a safety net
 - Share them back so others can use them too
 
 Track progress on the [Tidybot Universe timeline](https://tidybot-services.github.io/).
 
-### 6. Set up a service agent
+## Service Development
 
-Your service agent develops the components that skills depend on — hardware drivers, AI models, SDKs, and APIs. See [service-agent-setup/](service-agent-setup/) for available platforms.
+Services are Docker containers that run on GPU compute nodes, managed by the deploy-agent. Each service repo contains:
 
-**OpenClaw** (autonomous — fully automated wishlist monitoring and deployment):
-
-```bash
-cd Tidybot-Universe/service-agent-setup/openclaw
-./setup.sh
+```
+<service-name>/
+├── service.yaml    # Deploy manifest (image, port, GPU requirements)
+├── client.py       # Client SDK (urllib only, no external deps)
+├── main.py         # FastAPI server
+├── Dockerfile      # Container build
+├── requirements.txt
+└── README.md
 ```
 
-**Claude Code** (human-in-the-loop — you review each change):
+**To add a new service:**
 
-```bash
-cd Tidybot-Universe/service-agent-setup/claude-code
-# Copy the CLAUDE.md to your service workspace, then:
-claude
-```
+1. Create a repo under [TidyBot-Services](https://github.com/TidyBot-Services)
+2. Build and test the Docker image on a compute node (SSH in, iterate until it works)
+3. Once working, skill agents can deploy it anytime via `POST /deploy`
 
-For detailed instructions, see [service-agent-setup/](service-agent-setup/) for both options and trade-offs.
-
-## Wishlists
-
-- **[Skills wishlist](https://github.com/tidybot-skills/wishlist)** — "I want the robot to do X" (behaviors, tasks). You add to this; your agent picks items up and develops them.
-- **[Services wishlist](https://github.com/TidyBot-Services/services_wishlist)** — "I need Y to exist" (drivers, APIs, models, SDKs). You or your skill agent can add requests here — especially for new hardware support or AI capabilities.
+See the [service manifest spec](service-agent-setup/openclaw/workspace/docs/SERVICE_MANIFEST_SPEC.md) and [client SDK spec](service-agent-setup/openclaw/workspace/docs/CLIENT_SDK_SPEC.md) for standards.
 
 ## A Note on Services Development
 
 Skills run **above** the agent server safety layer — rewind, safety envelope, and sandboxed execution protect the hardware. Your agent can freely experiment.
 
-Services run **below** that layer — they talk directly to hardware and system resources. Two options exist: [OpenClaw](https://openclaw.ai) for fully autonomous service agents that monitor wishlists, auto-build, and deploy without intervention, or [Claude Code](https://claude.ai/claude-code) for human-in-the-loop development where you review each change. Choose based on your comfort level with autonomy.
+Services run **below** that layer — they talk directly to hardware and system resources. Service development (building Docker images, debugging GPU/CUDA issues) is best done by humans via SSH. Once a service works, the deploy-agent handles the lifecycle automatically.
 
 ## For Agents
 
 If you're an AI agent reading this:
 
-- **Building skills?** Read the [skills org profile](https://github.com/tidybot-skills) for workflow rules, catalog, and wishlist
-- **Building services?** Read the [services org profile](https://github.com/TidyBot-Services) for service types, catalog, and contribution guide
-- Start by cloning the wishlist repos and reading their `RULES.md`
+- **Building skills?** Read the [skills org profile](https://github.com/tidybot-skills) for workflow rules and wishlist
+- **Need a service?** Check `GET /services` on the compute node's deploy-agent. If it's not running, read the service repo's `service.yaml` and `POST /deploy`
+- **Building services?** Read the [services org profile](https://github.com/TidyBot-Services) for service types and contribution guide
 
 ## Links
 
@@ -162,5 +166,4 @@ If you're an AI agent reading this:
 - [Skills Org](https://github.com/tidybot-skills) — browse and contribute skills
 - [Services Org](https://github.com/TidyBot-Services) — browse and contribute services
 - [Skills Wishlist](https://github.com/tidybot-skills/wishlist) — request robot behaviors
-- [Services Wishlist](https://github.com/TidyBot-Services/services_wishlist) — request SDKs, APIs, drivers
 - [OpenClaw](https://openclaw.ai) — the agent platform

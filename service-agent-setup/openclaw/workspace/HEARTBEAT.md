@@ -3,18 +3,18 @@
 Check these periodically (not every heartbeat — rotate through them):
 
 ### Service Health
-- Check systemd status of all `tidybot-*` services
-- Hit each service's `/health` endpoint
-- If any service is down, attempt restart and log the issue
+- Query the deploy-agent: `GET http://<compute-node>:9000/services`
+- Check that all expected services show `"status": "healthy"`
+- If a service is unhealthy, check container logs or attempt redeploy
 
-### Wishlist Monitor
-- Fetch `wishlist.json` from `TidyBot-Services/services_wishlist` via `gh api`
-- Are there new items with status `pending`? Claim and build them
-- Are there items stuck in `building`? Check if a sub-agent is working on them
+### GPU Status
+- Query GPU info: `GET http://<compute-node>:9000/gpus`
+- Check VRAM usage — are any GPUs running out of memory?
+- Check that services are assigned to the correct GPUs
 
-### Catalog Accuracy
-- Verify `catalog.json` entries match actually running services
-- Remove or flag entries for services that are no longer deployed
+### Deploy-Agent Health
+- Check the deploy-agent itself: `GET http://<compute-node>:9000/health`
+- If it's unreachable, the compute node may need attention (SSH in to investigate)
 
 ---
 
