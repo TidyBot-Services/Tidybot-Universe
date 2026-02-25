@@ -77,8 +77,8 @@ The **deploy-agent** is a lightweight daemon that runs on each GPU server. Skill
 
 ```bash
 # SSH into your compute node once to set up
-pip install fastapi uvicorn docker
-python deploy-agent/server.py --port 9000
+pip install -r service-agent-setup/deploy-agent/requirements.txt
+python service-agent-setup/deploy-agent/server.py --port 9000
 ```
 
 The deploy-agent exposes:

@@ -27,7 +27,7 @@ Skill Agent                    Compute Node (deploy-agent :9000)
 SSH into your GPU server and start the deploy-agent:
 
 ```bash
-pip install fastapi uvicorn docker
+pip install -r deploy-agent/requirements.txt
 python deploy-agent/server.py --port 9000
 ```
 
