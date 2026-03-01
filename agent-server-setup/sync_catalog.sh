@@ -10,10 +10,10 @@
 set -euo pipefail
 
 # --- Configuration (override via environment) ---
-WISHLIST_DIR="${WISHLIST_DIR:-$HOME/tidybot_army/backend_wishlist}"
+WISHLIST_DIR="${WISHLIST_DIR:-$HOME/tidybot_uni/backend_wishlist}"
 CATALOG="$WISHLIST_DIR/catalog.json"
-SERVICES_DIR="${SERVICES_DIR:-$HOME/tidybot_army/tidybot-agent-server/service_clients}"
-LOG="${SYNC_CATALOG_LOG:-$HOME/tidybot_army/sync_catalog.log}"
+SERVICES_DIR="${SERVICES_DIR:-$HOME/tidybot_uni/agent_server/service_clients}"
+LOG="${SYNC_CATALOG_LOG:-$HOME/tidybot_uni/sync_catalog.log}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
 

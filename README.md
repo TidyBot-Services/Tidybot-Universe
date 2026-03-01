@@ -61,7 +61,7 @@ python3 server.py --dry-run
 
 This starts the API server with simulated backends — leases, code execution, the dashboard all work, but no hardware moves. The API is available at `http://localhost:8080`.
 
-**With hardware** — the agent server expects to live inside a `tidybot_army/` workspace alongside sibling repos for the arm, base, gripper, and camera servers. See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for the full layout, hardware setup, and environment variables.
+**With hardware** — the agent server lives inside a `tidybot_uni/` workspace. Hardware services (arm, base, gripper, camera) go under `hardware/` with standard symlinks (`arm_server`, `gripper_server`, etc.) so you can swap hardware by repointing a symlink. See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for the full layout, hardware setup, and environment variables.
 
 **Verify it's running:**
 

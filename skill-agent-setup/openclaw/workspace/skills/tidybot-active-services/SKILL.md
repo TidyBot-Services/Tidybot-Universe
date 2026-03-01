@@ -1,56 +1,32 @@
 ---
 name: tidybot-active-services
-description: External services — GPU model endpoints, vision APIs, grasping backends, and Python client SDKs available to robot skills. Use when (1) a skill needs an external model or API, (2) checking what backend services are available, (3) deploying a service that isn't running yet, (4) debugging service timeouts or connection failures.
+description: External services catalog — model endpoints, vision APIs, grasping backends, and Python client SDKs available to robot skills. Use when (1) a skill needs an external model or API, (2) checking what backend services are available, (3) debugging service timeouts or connection failures, (4) requesting a new service that doesn't exist yet, (5) downloading or using a service's Python client SDK.
 ---
 
 # Active Services
 
-## Discovering Services
+## Catalog
 
-Query the deploy-agent on compute nodes to see what's running:
-
-```bash
-curl http://<compute-node>:9000/services
+Fetch the live catalog:
+```
+https://raw.githubusercontent.com/TidyBot-Services/services_wishlist/main/catalog.json
 ```
 
-Returns a list of running services with name, host URL, port, GPU assignment, and health status.
+Each entry contains:
+- `host` — HTTP endpoint
+- `client_sdk` — Python client file URL (download and include in skill code)
+- `api_docs` — API documentation
 
 ## Using a Service
 
-1. Check if the service is running: `GET http://<compute-node>:9000/services/<name>`
-2. If not running, read the service repo's `service.yaml` for deploy config
-3. Deploy it: `POST http://<compute-node>:9000/deploy` with the service.yaml fields
-4. Use the returned host URL with the service's `client.py`
+1. Download `client_sdk` from the catalog entry.
+2. Include it in skill code.
+3. Call the service via `host` URL from robot sandbox.
 
-## Deploying a Service
+## Requesting New Services
 
-```bash
-curl -X POST http://<compute-node>:9000/deploy \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "<service-name>",
-    "image": "tidybot/<service-name>:0.1.0",
-    "port": 8006,
-    "gpu": true,
-    "vram_gb": 4,
-    "health": "/health"
-  }'
-```
+1. Clone: `git clone https://github.com/TidyBot-Services/services_wishlist.git ./services_wishlist`
+2. Read `services_wishlist/RULES.md`.
+3. Add request to `services_wishlist/wishlist.json`.
 
-The deploy-agent assigns a GPU, starts the container, waits for health check, and returns the endpoint URL.
-
-## Checking GPU Status
-
-```bash
-curl http://<compute-node>:9000/gpus
-```
-
-Returns GPU IDs, VRAM total/used, and which services are assigned to each GPU.
-
-## Service Repos
-
-Each service is a repo under [TidyBot-Services](https://github.com/TidyBot-Services) containing:
-- `service.yaml` — deploy manifest (image, port, GPU requirements)
-- `client.py` — Python client SDK (urllib only, no external deps)
-- `main.py` — FastAPI server
-- `Dockerfile` — container build
+Wishlist: `https://raw.githubusercontent.com/TidyBot-Services/services_wishlist/main/wishlist.json`

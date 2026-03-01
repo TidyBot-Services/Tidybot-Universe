@@ -17,8 +17,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- Defaults ---
-AGENT_SERVER_DIR="$HOME/tidybot_army/tidybot-agent-server"
-WISHLIST_DIR="$HOME/tidybot_army/backend_wishlist"
+AGENT_SERVER_DIR="$HOME/tidybot_uni/agent_server"
+WISHLIST_DIR="$HOME/tidybot_uni/backend_wishlist"
 INTERVAL=2  # minutes
 
 # --- Parse args ---
@@ -31,8 +31,8 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: ./setup.sh [--agent-server DIR] [--wishlist-dir DIR] [--interval MINUTES]"
             echo ""
             echo "Options:"
-            echo "  --agent-server DIR    Path to agent server (default: ~/tidybot_army/tidybot-agent-server)"
-            echo "  --wishlist-dir DIR    Path to wishlist repo (default: ~/tidybot_army/backend_wishlist)"
+            echo "  --agent-server DIR    Path to agent server (default: ~/tidybot_uni/agent_server)"
+            echo "  --wishlist-dir DIR    Path to wishlist repo (default: ~/tidybot_uni/backend_wishlist)"
             echo "  --interval MINUTES    Cron interval in minutes (default: 2)"
             exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
@@ -92,7 +92,7 @@ WISHLIST_DIR="$WISHLIST_DIR" SERVICES_DIR="$SERVICES_DIR" "$SYNC_SCRIPT"
 echo ""
 echo "=== Done ==="
 echo "Service catalog will sync every $INTERVAL minutes."
-echo "Logs: $HOME/tidybot_army/sync_catalog.log"
+echo "Logs: $HOME/tidybot_uni/sync_catalog.log"
 echo ""
 echo "To verify: crontab -l"
-echo "To check logs: tail -f ~/tidybot_army/sync_catalog.log"
+echo "To check logs: tail -f ~/tidybot_uni/sync_catalog.log"
