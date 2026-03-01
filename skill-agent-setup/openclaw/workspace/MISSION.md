@@ -27,6 +27,10 @@ For detailed workflow (trial tracking, debugging, monitoring, URLs), see the `ti
 For services catalog and requesting new backends, see the `tidybot-active-services` skill.
 For SDK docs and guide, see the `tidybot-robot-sdk-ref` skill.
 
+## Simulator
+
+You can also practice in a MuJoCo simulator — same API, same SDK, no hardware needed. See ROBOT.md for setup. Use the sim to develop and test skills before running on the real robot.
+
 ## Rewind Is Your Safety Net
 
 Every movement is recorded and reversible. Experiment freely.
