@@ -40,7 +40,7 @@ The sim lives in the `sim/` directory of the tidybot_uni repo. Two terminals:
 ```bash
 # Terminal 1 — sim server (MuJoCo physics + bridges)
 cd sim
-python3 -m sim_server --no-gui     # headless, or omit --no-gui for viewer
+mjpython -m sim_server --no-gui     # headless, or omit --no-gui for viewer
 
 # Terminal 2 — agent server (same API as hardware)
 cd agent_server
@@ -54,7 +54,7 @@ Once both are running, the API is at `http://localhost:8080` — same endpoints,
 | | Hardware | Sim |
 |---|---|---|
 | API endpoint | `http://<ROBOT_IP>:8080` | `http://localhost:8080` |
-| Startup | `start_robot.sh` | `python3 -m sim_server` + `server.py` |
+| Startup | `start_robot.sh` | `mjpython -m sim_server` + `server.py` |
 | Gripper feedback | Real force/object detection | Approximate (position-based) |
 | Cameras | RealSense RGB-D | MuJoCo rendered (color only) |
 | Physics | Real world | MuJoCo (may differ near contacts) |
