@@ -10,7 +10,7 @@
 
 1. **You add to your wishlist** — tell your agent what you want the robot to do
 2. **Your agent develops skills** — Python scripts that run on the robot hardware, contributed to the [Skills](https://github.com/tidybot-skills) org
-3. **Skills deploy services** — if a skill needs a GPU model (YOLO, grasp detection, etc.), the skill agent deploys it on a compute node via the [deploy-agent](service-agent-setup/)
+3. **Skills deploy services** — if a skill needs a GPU model (YOLO, grasp detection, etc.), the skill agent deploys it on a compute node via the [deploy-agent](https://github.com/TidyBot-Services/deploy-agent)
 4. **Services are shared** — each service is a Docker image with a `service.yaml` manifest and `client.py` SDK, shared in the [Services](https://github.com/TidyBot-Services) org
 5. **Everyone benefits** — skills and services are shared across the community via GitHub, so every robot gets better
 
@@ -30,7 +30,7 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 | | Skills | Agent Server | Services |
 |---|---|---|---|
 | **What** | Robot behaviors (pick up X, check door, wave hello) | Unified API layer with safety guardrails | GPU models, APIs, and drivers that skills depend on |
-| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Humans develop, deploy-agent manages lifecycle |
+| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Humans develop, [deploy-agent](https://github.com/TidyBot-Services/deploy-agent) manages lifecycle |
 | **One repo =** | One skill | One server | One service (with `service.yaml` + `client.py` + `Dockerfile`) |
 | **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | grasp detection, YOLO, SAM2, depth estimation |
 | **Org** | [tidybot-skills](https://github.com/tidybot-skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
@@ -73,12 +73,14 @@ You should see `"status": "ok"` with backend connectivity. The web dashboard is 
 
 ### 2. Set up a compute node (deploy-agent)
 
-The **deploy-agent** is a lightweight daemon that runs on each GPU server. Skill agents call it over HTTP to deploy, query, and stop services — no SSH needed after initial setup.
+The **[deploy-agent](https://github.com/TidyBot-Services/deploy-agent)** is a lightweight daemon that runs on each GPU server. Skill agents call it over HTTP to deploy, query, and stop services — no SSH needed after initial setup.
 
 ```bash
 # SSH into your compute node once to set up
-pip install -r service-agent-setup/deploy-agent/requirements.txt
-python service-agent-setup/deploy-agent/server.py --port 9000
+git clone https://github.com/TidyBot-Services/deploy-agent.git
+cd deploy-agent
+pip install -r requirements.txt
+python server.py --port 9000
 ```
 
 The deploy-agent exposes:
@@ -88,7 +90,7 @@ The deploy-agent exposes:
 - `POST /stop` — stop a service
 - `GET /gpus` — GPU status with VRAM and service assignments
 
-See [service-agent-setup/](service-agent-setup/) for detailed setup and the [deploy-agent spec](service-agent-setup/openclaw/workspace/docs/DEPLOY_AGENT_SPEC.md).
+See the [deploy-agent repo](https://github.com/TidyBot-Services/deploy-agent) for detailed setup and the [deploy-agent spec](service-agent-setup/openclaw/workspace/docs/DEPLOY_AGENT_SPEC.md).
 
 ### 3. Set up a skill agent
 
@@ -150,14 +152,14 @@ See the [service manifest spec](service-agent-setup/openclaw/workspace/docs/SERV
 
 Skills run **above** the agent server safety layer — rewind, safety envelope, and sandboxed execution protect the hardware. Your agent can freely experiment.
 
-Services run **below** that layer — they talk directly to hardware and system resources. Service development (building Docker images, debugging GPU/CUDA issues) is best done by humans via SSH. Once a service works, the deploy-agent handles the lifecycle automatically.
+Services run **below** that layer — they talk directly to hardware and system resources. Service development (building Docker images, debugging GPU/CUDA issues) is best done by humans via SSH. Once a service works, the [deploy-agent](https://github.com/TidyBot-Services/deploy-agent) handles the lifecycle automatically.
 
 ## For Agents
 
 If you're an AI agent reading this:
 
 - **Building skills?** Read the [skills org profile](https://github.com/tidybot-skills) for workflow rules and wishlist
-- **Need a service?** Check `GET /services` on the compute node's deploy-agent. If it's not running, read the service repo's `service.yaml` and `POST /deploy`
+- **Need a service?** Check `GET /services` on the compute node's [deploy-agent](https://github.com/TidyBot-Services/deploy-agent). If it's not running, read the service repo's `service.yaml` and `POST /deploy`
 - **Building services?** Read the [services org profile](https://github.com/TidyBot-Services) for service types and contribution guide
 
 ## Links
