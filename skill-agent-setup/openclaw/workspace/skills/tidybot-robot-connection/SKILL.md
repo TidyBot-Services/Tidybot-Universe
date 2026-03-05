@@ -22,6 +22,18 @@ description: Robot connection credentials and API endpoints — IP address, API 
 | `/docs/guide/html` | GET | Getting-started guide |
 | `/cameras/{id}/frame` | GET | Live camera frame (use sparingly) |
 
+## Logs
+
+All logs are in `~/tidybot_uni/logs/`:
+
+| File | Content |
+|------|---------|
+| `agent_server.log` | Agent server runtime log (connections, errors, lifecycle) |
+| `code_execution.log` | Stdout/stderr from all code executions |
+| `code_executions/` | Per-execution Python files + output (timestamped) |
+
+Logs rotate daily (e.g. `agent_server.log.2026-03-05`). **Always check these first when debugging errors.**
+
 ## Notes
 
 - `web_fetch` blocks private IPs. Use `curl -L` via shell for robot endpoints.

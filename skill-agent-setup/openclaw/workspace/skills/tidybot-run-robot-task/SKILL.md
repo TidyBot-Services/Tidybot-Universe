@@ -36,6 +36,16 @@ Before running any code on the robot:
 - [ ] Check recorded frames after execution to verify results
 - [ ] Release lease or let it expire when done
 
+## Debugging Failures
+
+When execution fails or hangs:
+1. **Check `/code/status`** — includes stderr with tracebacks
+2. **Check `~/tidybot_uni/logs/`** — persistent logs for everything:
+   - `agent_server.log` — server runtime (connections, bridge errors, lifecycle)
+   - `code_execution.log` — stdout/stderr from all executions
+   - `code_executions/` — per-execution saved scripts + output
+3. Do NOT redirect server output to `/tmp/` — the built-in logs already capture everything
+
 ## Key References
 
 - Robot connection: see `robot-connection` skill
