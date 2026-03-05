@@ -41,9 +41,33 @@ The platform isn't limited to one robot. Different people can bring different ha
 
 ## Getting Started
 
-### 1. Set up your robot and agent server
+### Quick Start: Try it without hardware (simulator)
 
-You need a robot with the agent server running. The reference setup is a Franka Panda arm on a mobile base with a Robotiq gripper, but any hardware with matching services will work.
+No robot? No problem. The [MuJoCo simulator](https://github.com/TidyBot-Services/sim) runs the full stack — same API, same skills, same agent — with a simulated Tidybot in a kitchen environment. Everything you build in sim works on real hardware with zero code changes.
+
+```bash
+# 1. Clone and set up the sim (handles all dependencies)
+git clone https://github.com/TidyBot-Services/sim.git
+cd sim
+conda create -n tidybot python=3.11
+conda activate tidybot
+./setup.sh
+
+# 2. Start the sim server (Terminal 1)
+mjpython -m sim_server
+
+# 3. Start the agent server (Terminal 2)
+cd agent_server && python3 server.py
+
+# 4. Verify it's running
+curl http://localhost:8080/health
+```
+
+The API is now live at `http://localhost:8080` — connect a skill agent and start developing. The sim provides full physics, rendered camera feeds, and gripper interaction. Skills developed here transfer directly to hardware.
+
+### 1. Set up your robot and agent server (with hardware)
+
+The reference setup is a Franka Panda arm on a mobile base with a Robotiq gripper, but any hardware with matching services will work.
 
 **Clone the repo and install:**
 
@@ -52,14 +76,6 @@ git clone https://github.com/TidyBot-Services/agent_server.git
 cd agent_server
 pip install -r requirements.txt
 ```
-
-**Try it without hardware (dry-run mode):**
-
-```bash
-python3 server.py --dry-run
-```
-
-This starts the API server with simulated backends — leases, code execution, the dashboard all work, but no hardware moves. The API is available at `http://localhost:8080`.
 
 **With hardware** — the agent server lives inside a `tidybot_uni/` workspace. Hardware services (arm, base, gripper, camera) go under `hardware/` with standard symlinks (`arm_server`, `gripper_server`, etc.) so you can swap hardware by repointing a symlink. See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for the full layout, hardware setup, and environment variables.
 
