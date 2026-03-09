@@ -61,17 +61,31 @@ Once both are running, the API is at `http://localhost:8080` — same endpoints,
 
 ### Sim CLI options
 
+```bash
+python3 -m sim_server \
+    --task BananaTestKitchen \   # scene/environment
+    --robot TidyVerse \          # robot model
+    --layout 1 --style 1 \      # kitchen layout/style
+    --no-gui                     # headless mode
 ```
---task NAME          Scene/env (default: BananaTestKitchen)
---robot NAME         Robot model (default: TidyVerse)
---layout N           Kitchen layout ID (default: 1)
---style N            Kitchen style ID (default: 1)
---no-gui             Headless (no MuJoCo viewer)
---no-base-bridge     Disable individual bridges
---no-franka-bridge
---no-gripper-bridge
---no-camera-bridge
-```
+
+| Flag | Description |
+|---|---|
+| `--task NAME` | Scene/env (default: BananaTestKitchen) |
+| `--robot NAME` | Robot model (default: TidyVerse) |
+| `--layout N` | Kitchen layout ID (default: 1) |
+| `--style N` | Kitchen style ID (default: 1) |
+| `--no-gui` | Headless (no MuJoCo viewer) |
+| `--no-base-bridge` | Disable individual bridges |
+| `--no-franka-bridge` | |
+| `--no-gripper-bridge` | |
+| `--no-camera-bridge` | |
+
+### Env vars for sim
+
+- `PYTHONUNBUFFERED=1` — see logs in real time
+- `PYTHONPATH="$HOME/.local/lib/python3.10/site-packages:$PYTHONPATH"` — if system python lacks packages
+- `MUJOCO_GL=egl` — for headless GPU rendering (optional)
 
 ## Details
 

@@ -32,7 +32,7 @@ All logs are in `~/tidybot_uni/logs/`:
 | `code_execution.log` | Stdout/stderr from all code executions |
 | `code_executions/` | Per-execution Python files + output (timestamped) |
 
-Logs rotate daily (e.g. `agent_server.log.2026-03-05`). **Always check these first when debugging errors.**
+Logs rotate daily (e.g. `agent_server.log.2026-03-05`). **Always check these first when debugging errors** — don't redirect server output to `/tmp/`.
 
 ## Notes
 
