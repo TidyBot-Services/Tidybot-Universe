@@ -6,182 +6,62 @@
 
 # Tidybot Universe
 
-## How It Works
+## The Bet
 
-1. **You add to your wishlist** — tell your agent what you want the robot to do
-2. **Your agent develops skills** — Python scripts that run on the robot hardware, contributed to the [Skills](https://github.com/Tidybot-Skills) org
-3. **Skills deploy services** — if a skill needs a GPU model (YOLO, grasp detection, etc.), the skill agent deploys it on a compute node via the [deploy-agent](https://github.com/TidyBot-Services/deploy-agent)
-4. **Services are shared** — each service is a Docker image with a `service.yaml` manifest and `client.py` SDK, shared in the [Services](https://github.com/TidyBot-Services) org
-5. **Everyone benefits** — skills and services are shared across the community via GitHub, so every robot gets better
+AI agents have already changed software engineering. They write code, debug it, ship it. The same revolution is coming for robotics — but robotics has constraints that software doesn't. We're building the framework that bridges that gap.
 
-## Why This Works: The Agent Server
+## Robotics Is Composable
 
-The key enabler is the **agent server** — a unified API layer that sits between AI agents and the robot hardware. It provides:
+Software became powerful when we stopped building monoliths and started composing small, reusable pieces. Robotics should work the same way. A "pick up object" skill is a building block. A "place on surface" skill is another. Chain them together and you get "clean the table." Chain that with navigation and you get "tidy the apartment."
 
-- **Rewind** — every movement is recorded and can be reversed. If a skill crashes the arm into something, the agent (or you) can rewind to undo it. This makes hardware testing for agents as safe as software testing.
-- **Safety envelope** — workspace bounds, collision detection, and automatic error recovery
-- **Lease system** — one agent at a time, clean handoffs
-- **Code execution sandbox** — skills submit Python code that runs on the hardware. Broken or harmful code gets caught by the safety layer, not by your robot.
+An agent with access to the internet, trial-and-error, and a library of shared skills can do far more than any hand-coded robot program. Skills built by one robot benefit every robot in the community. That's the Tidybot Universe.
 
-Because of these guardrails, your agent can freely experiment with skills — try things, fail, rewind, try again — without you worrying about damaging hardware.
+## What Makes Robotics Agents Different
 
-## The Ecosystem
+Software agents operate in a sandbox. Robotics agents operate in the real world. Three things change:
 
-| | Skills | Agent Server | Services |
-|---|---|---|---|
-| **What** | Robot behaviors (pick up X, check door, wave hello) | Unified API layer with safety guardrails | GPU models, APIs, and drivers that skills depend on |
-| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Humans develop, [deploy-agent](https://github.com/TidyBot-Services/deploy-agent) manages lifecycle |
-| **One repo =** | One skill | One server | One service (with `service.yaml` + `client.py` + `Dockerfile`) |
-| **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | grasp detection, YOLO, SAM2, depth estimation |
-| **Org** | [tidybot-skills](https://github.com/Tidybot-Skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
+### 1. Safety
 
-### Hardware Flexibility
+A software bug crashes a process. A robotics bug crashes into a wall. Every action must be reversible, bounded, and supervised. You can't just retry — you have to undo. And when something goes wrong, the robot must fail safe, not fail dangerous.
 
-The platform isn't limited to one robot. Different people can bring different hardware — different arms, grippers, bases, sensors. That's the point of the services org: each hardware component has its own service, and skills talk to them through a common API. Swap out a Franka arm for a UR5? Write a new arm service, same skill code works.
+This also shapes how the agent interacts with the robot. The agent doesn't control the robot in a tight loop — that would be too slow. Instead, it submits a complete skill (Python code) that runs locally on the robot with the servers. But the agent isn't blind: it monitors execution in real time and holds an e-stop. If something goes wrong, it can kill the execution immediately. Write the plan, send it off, watch with your finger on the button.
 
-## Getting Started
+### 2. Speed
 
-### Quick Start: Try it without hardware (simulator)
+Software is instant. The physical world is slow. Arms take seconds to move. Cameras need time to capture. Networks have latency. And the robot is a single physical body — you can't spin up ten copies to run in parallel. An agent framework for robotics must be designed around the reality that every action takes wall-clock time, the hardware is scarce, and multiple agents need to share it efficiently.
 
-No robot? No problem. The [MuJoCo simulator](https://github.com/TidyBot-Services/sim) runs the full stack — same API, same skills, same agent — with a simulated Tidybot in a kitchen environment. Everything you build in sim works on real hardware with zero code changes.
+### 3. Resources
 
-```bash
-# 1. Clone and set up the sim (handles all dependencies)
-git clone https://github.com/TidyBot-Services/sim.git
-cd sim
-conda create -n tidybot python=3.11
-conda activate tidybot
-./setup.sh
+A software agent has the entire workstation. A robot has a small onboard computer strapped to a moving platform — not enough to run vision models, grasp planners, or language models. The intelligence has to live elsewhere, but the actions happen locally.
 
-# 2. Start the sim server (Terminal 1)
-mjpython -m sim_server
+## How We Solve It
 
-# 3. Start the agent server (Terminal 2)
-cd agent_server && python3 server.py
+### The Agent
 
-# 4. Verify it's running
-curl http://localhost:8080/health
-```
+The agent is the brain. It reads sensors, reasons about the world, and decides what to do. Crucially, **the agent doesn't have to live on the robot.** The robot exposes a network API — any machine on the network can control it. Five people can each bring a laptop, each running a different agent, and develop skills on the same robot without conflict. The lease system handles turn-taking; the agent just needs an HTTP connection.
 
-The API is now live at `http://localhost:8080` — connect a skill agent and start developing. The sim provides full physics, rendered camera feeds, and gripper interaction. Skills developed here transfer directly to hardware.
+Our framework gives it:
 
-### 1. Set up your robot and agent server (with hardware)
+- **Composable skills.** Skills are small, tested, shareable Python scripts. An agent chains existing skills before writing new code. The community grows the skill library over time.
+- **A synchronous SDK over HTTP.** The agent submits Python code to the robot, which executes it locally. No ROS, no shared memory, no tight coupling. The agent can run anywhere — a laptop, a cloud server, a Raspberry Pi.
 
-The reference setup is a Franka Panda arm on a mobile base with a Robotiq gripper, but any hardware with matching services will work.
+### The Robot
 
-**Clone the repo and install:**
+The robot is the body. Our framework wraps it in safety and structure:
 
-```bash
-git clone https://github.com/TidyBot-Services/agent_server.git
-cd agent_server
-pip install -r requirements.txt
-```
+- **Trajectory recording and rewind.** Every motion is recorded. Rewind provides undo for the physical world — replay the trajectory backwards to escape a bad state.
+- **Workspace boundaries.** A convex hull defines where the robot is allowed to operate. Cross the boundary and the safety monitor intervenes automatically.
+- **Auto-hold.** On any failure — code crash, timeout, exception — the robot holds its current position. It never goes limp.
+- **Lease system.** One agent controls the robot at a time. Others queue. When a lease ends, the robot rewinds and returns to a known home state. This makes it safe for multiple agents to share scarce hardware without stepping on each other.
+- **Simulator with identical API.** The sim exposes the exact same interface as the real robot. Agents can iterate in sim at full speed — no waiting for hardware, no risk of damage — then transfer to the real thing without changing a line of code. This is how you make development fast when the hardware is slow.
 
-**With hardware** — the agent server lives inside a `tidybot_uni/` workspace. Hardware services (arm, base, gripper, camera) go under `hardware/` with standard symlinks (`arm_server`, `gripper_server`, etc.) so you can swap hardware by repointing a symlink. See the [agent_server repo](https://github.com/TidyBot-Services/agent_server) for the full layout, hardware setup, and environment variables.
+### The Services
 
-**Verify it's running:**
+The services are the muscles and senses that don't fit on the robot's little computer:
 
-```bash
-curl http://localhost:8080/health
-```
+- **GPU services on demand.** Vision models, grasp planners, segmentation — they run on powerful remote servers and expose simple HTTP APIs.
+- **Agent-driven deployment.** The agent discovers what services exist, deploys what it needs, and calls them. The robot's onboard computer just orchestrates.
 
-You should see `"status": "ok"` with backend connectivity. The web dashboard is at `http://localhost:8080/services/dashboard`.
+## Get Started
 
-### 2. Set up a compute node (deploy-agent)
-
-The **[deploy-agent](https://github.com/TidyBot-Services/deploy-agent)** is a lightweight daemon that runs on each GPU server. Skill agents call it over HTTP to deploy, query, and stop services — no SSH needed after initial setup.
-
-```bash
-# SSH into your compute node once to set up
-git clone https://github.com/TidyBot-Services/deploy-agent.git
-cd deploy-agent
-pip install -r requirements.txt
-python server.py --port 9000
-```
-
-The deploy-agent exposes:
-- `GET /health` — node status and GPU count
-- `GET /services` — list running services
-- `POST /deploy` — deploy a service (idempotent)
-- `POST /stop` — stop a service
-- `GET /gpus` — GPU status with VRAM and service assignments
-
-See the [deploy-agent repo](https://github.com/TidyBot-Services/deploy-agent) for detailed setup and the [deploy-agent spec](service-agent-setup/openclaw/workspace/docs/DEPLOY_AGENT_SPEC.md).
-
-### 3. Set up a skill agent
-
-A skill agent is the AI that develops and runs skills on your robot. See [skill-agent-setup/](skill-agent-setup/) for available platforms.
-
-**OpenClaw** (recommended):
-
-```bash
-git clone https://github.com/TidyBot-Services/Tidybot-Universe.git
-cd Tidybot-Universe/skill-agent-setup/openclaw
-./setup.sh
-```
-
-For detailed instructions (including manual setup), see [skill-agent-setup/openclaw/README.md](skill-agent-setup/openclaw/README.md).
-
-### 4. Talk to your agent
-
-Once setup is complete, open a chat with your agent. It will:
-
-- Introduce itself and get to know you
-- Read the robot documentation from the agent server
-- Ask about your wishlist — what do you want the robot to do?
-
-### 5. Watch it work
-
-Your agent will:
-
-- Check the [skills catalog](https://github.com/Tidybot-Skills) for existing skills
-- Build new skills for your wishlist items
-- Deploy needed services to compute nodes via the deploy-agent
-- Test them on your robot — safely, with rewind as a safety net
-- Share them back so others can use them too
-
-Track progress on the [Tidybot Universe timeline](https://tidybot-services.github.io/).
-
-## Service Development
-
-Services are Docker containers that run on GPU compute nodes, managed by the deploy-agent. Each service repo contains:
-
-```
-<service-name>/
-├── service.yaml    # Deploy manifest (image, port, GPU requirements)
-├── client.py       # Client SDK (urllib only, no external deps)
-├── main.py         # FastAPI server
-├── Dockerfile      # Container build
-├── requirements.txt
-└── README.md
-```
-
-**To add a new service:**
-
-1. Create a repo under [TidyBot-Services](https://github.com/TidyBot-Services)
-2. Build and test the Docker image on a compute node (SSH in, iterate until it works)
-3. Once working, skill agents can deploy it anytime via `POST /deploy`
-
-See the [service manifest spec](service-agent-setup/openclaw/workspace/docs/SERVICE_MANIFEST_SPEC.md) and [client SDK spec](service-agent-setup/openclaw/workspace/docs/CLIENT_SDK_SPEC.md) for standards.
-
-## A Note on Services Development
-
-Skills run **above** the agent server safety layer — rewind, safety envelope, and sandboxed execution protect the hardware. Your agent can freely experiment.
-
-Services run **below** that layer — they talk directly to hardware and system resources. Service development (building Docker images, debugging GPU/CUDA issues) is best done by humans via SSH. Once a service works, the [deploy-agent](https://github.com/TidyBot-Services/deploy-agent) handles the lifecycle automatically.
-
-## For Agents
-
-If you're an AI agent reading this:
-
-- **Building skills?** Read the [skills org profile](https://github.com/Tidybot-Skills) for workflow rules and wishlist
-- **Need a service?** Check `GET /services` on the compute node's [deploy-agent](https://github.com/TidyBot-Services/deploy-agent). If it's not running, read the service repo's `service.yaml` and `POST /deploy`
-- **Building services?** Read the [services org profile](https://github.com/TidyBot-Services) for service types and contribution guide
-
-## Links
-
-- [Tidybot Universe Timeline](https://tidybot-services.github.io/) — live activity feed
-- [Skills Org](https://github.com/Tidybot-Skills) — browse and contribute skills
-- [Services Org](https://github.com/TidyBot-Services) — browse and contribute services
-- [Skills Wishlist](https://github.com/Tidybot-Skills/wishlist) — request robot behaviors
-- [OpenClaw](https://openclaw.ai) — the agent platform
+Ready to try it? See **[Getting Started](GETTING_STARTED.md)** for setup instructions, ecosystem overview, and links.
