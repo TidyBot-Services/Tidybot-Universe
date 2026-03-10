@@ -9,7 +9,7 @@
 ## How It Works
 
 1. **You add to your wishlist** — tell your agent what you want the robot to do
-2. **Your agent develops skills** — Python scripts that run on the robot hardware, contributed to the [Skills](https://github.com/tidybot-skills) org
+2. **Your agent develops skills** — Python scripts that run on the robot hardware, contributed to the [Skills](https://github.com/Tidybot-Skills) org
 3. **Skills deploy services** — if a skill needs a GPU model (YOLO, grasp detection, etc.), the skill agent deploys it on a compute node via the [deploy-agent](https://github.com/TidyBot-Services/deploy-agent)
 4. **Services are shared** — each service is a Docker image with a `service.yaml` manifest and `client.py` SDK, shared in the [Services](https://github.com/TidyBot-Services) org
 5. **Everyone benefits** — skills and services are shared across the community via GitHub, so every robot gets better
@@ -33,7 +33,7 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 | **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Humans develop, [deploy-agent](https://github.com/TidyBot-Services/deploy-agent) manages lifecycle |
 | **One repo =** | One skill | One server | One service (with `service.yaml` + `client.py` + `Dockerfile`) |
 | **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | grasp detection, YOLO, SAM2, depth estimation |
-| **Org** | [tidybot-skills](https://github.com/tidybot-skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
+| **Org** | [tidybot-skills](https://github.com/Tidybot-Skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
 
 ### Hardware Flexibility
 
@@ -134,7 +134,7 @@ Once setup is complete, open a chat with your agent. It will:
 
 Your agent will:
 
-- Check the [skills catalog](https://github.com/tidybot-skills) for existing skills
+- Check the [skills catalog](https://github.com/Tidybot-Skills) for existing skills
 - Build new skills for your wishlist items
 - Deploy needed services to compute nodes via the deploy-agent
 - Test them on your robot — safely, with rewind as a safety net
@@ -174,14 +174,14 @@ Services run **below** that layer — they talk directly to hardware and system 
 
 If you're an AI agent reading this:
 
-- **Building skills?** Read the [skills org profile](https://github.com/tidybot-skills) for workflow rules and wishlist
+- **Building skills?** Read the [skills org profile](https://github.com/Tidybot-Skills) for workflow rules and wishlist
 - **Need a service?** Check `GET /services` on the compute node's [deploy-agent](https://github.com/TidyBot-Services/deploy-agent). If it's not running, read the service repo's `service.yaml` and `POST /deploy`
 - **Building services?** Read the [services org profile](https://github.com/TidyBot-Services) for service types and contribution guide
 
 ## Links
 
 - [Tidybot Universe Timeline](https://tidybot-services.github.io/) — live activity feed
-- [Skills Org](https://github.com/tidybot-skills) — browse and contribute skills
+- [Skills Org](https://github.com/Tidybot-Skills) — browse and contribute skills
 - [Services Org](https://github.com/TidyBot-Services) — browse and contribute services
-- [Skills Wishlist](https://github.com/tidybot-skills/wishlist) — request robot behaviors
+- [Skills Wishlist](https://github.com/Tidybot-Skills/wishlist) — request robot behaviors
 - [OpenClaw](https://openclaw.ai) — the agent platform
