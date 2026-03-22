@@ -1,6 +1,6 @@
 # Deploy Agent Specification
 
-A lightweight daemon that runs on each compute node. Skill agents call it to deploy, query, and stop services. Replaces manual systemd management and the service agent wishlist workflow.
+A lightweight daemon that runs on each compute node. Skill agents call it to deploy, query, and stop services.
 
 ## Overview
 

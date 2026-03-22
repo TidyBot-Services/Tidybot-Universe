@@ -26,7 +26,7 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 | | Skills | Agent Server | Services |
 |---|---|---|---|
 | **What** | Robot behaviors (pick up X, check door, wave hello) | Unified API layer with safety guardrails | GPU models, APIs, and drivers that skills depend on |
-| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Humans develop, [deploy-agent](https://github.com/TidyBot-Services/deploy-agent) manages lifecycle |
+| **Who builds** | Your skill agent | Provided — [you set it up](agent-server-setup/) | Humans develop, skill agents deploy via [deploy-agent](https://github.com/TidyBot-Services/deploy-agent) |
 | **One repo =** | One skill | One server | One service (with `service.yaml` + `client.py` + `Dockerfile`) |
 | **Examples** | `pick-up-banana`, `count-people-in-room`, `wave-hello` | [agent_server](https://github.com/TidyBot-Services/agent_server) | grasp detection, YOLO, SAM2, depth estimation |
 | **Org** | [tidybot-skills](https://github.com/Tidybot-Skills) | [TidyBot-Services](https://github.com/TidyBot-Services) | [TidyBot-Services](https://github.com/TidyBot-Services) |
@@ -102,7 +102,7 @@ The deploy-agent exposes:
 - `POST /stop` — stop a service
 - `GET /gpus` — GPU status with VRAM and service assignments
 
-See the [deploy-agent repo](https://github.com/TidyBot-Services/deploy-agent) for detailed setup and the [deploy-agent spec](service-agent-setup/openclaw/workspace/docs/DEPLOY_AGENT_SPEC.md).
+See the [deploy-agent repo](https://github.com/TidyBot-Services/deploy-agent) for detailed setup and the [deploy-agent spec](service-agent-setup/docs/DEPLOY_AGENT_SPEC.md).
 
 ### 3. Set up a skill agent
 
@@ -158,7 +158,7 @@ Services are Docker containers that run on GPU compute nodes, managed by the dep
 2. Build and test the Docker image on a compute node (SSH in, iterate until it works)
 3. Once working, skill agents can deploy it anytime via `POST /deploy`
 
-See the [service manifest spec](service-agent-setup/openclaw/workspace/docs/SERVICE_MANIFEST_SPEC.md) and [client SDK spec](service-agent-setup/openclaw/workspace/docs/CLIENT_SDK_SPEC.md) for standards.
+See the [service manifest spec](service-agent-setup/docs/SERVICE_MANIFEST_SPEC.md) and [client SDK spec](service-agent-setup/docs/CLIENT_SDK_SPEC.md) for standards.
 
 ## A Note on Services Development
 

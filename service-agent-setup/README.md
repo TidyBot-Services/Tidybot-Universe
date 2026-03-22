@@ -1,6 +1,6 @@
-# Service & Compute Node Setup
+# Compute Node & Service Development Setup
 
-Services are Docker containers that run on GPU compute nodes. The **deploy-agent** daemon manages their lifecycle — deploying, monitoring, and stopping containers via a simple HTTP API.
+Services are Docker containers that run on GPU compute nodes. The **deploy-agent** daemon manages their lifecycle — deploying, monitoring, and stopping containers via a simple HTTP API. **Skill agents** deploy and use services directly; there is no separate "service agent."
 
 ## Architecture
 
@@ -19,6 +19,31 @@ Skill Agent                    Compute Node (deploy-agent :9000)
     |-- POST /stop ---------------->|  stop grasp-service
     |<-- {ok: true} ----------------|
 ```
+
+## What's In This Directory
+
+```
+service-agent-setup/
+├── README.md               # You are here
+├── deploy-agent/           # Deploy-agent daemon (runs on compute nodes)
+│   ├── server.py
+│   └── requirements.txt
+├── claude-code/            # CLAUDE.md for human developers building services
+│   ├── README.md
+│   └── CLAUDE.md
+└── docs/                   # Specs referenced by skill agents and humans
+    ├── DEPLOY_AGENT_SPEC.md
+    ├── SERVICE_MANIFEST_SPEC.md
+    └── CLIENT_SDK_SPEC.md
+```
+
+## Who Does What
+
+| Role | Responsibility |
+|------|---------------|
+| **Humans** | Build new services (main.py, client.py, Dockerfile), debug CUDA/GPU issues, push to GitHub |
+| **Skill agents** | Deploy services via deploy-agent API, use them via client.py |
+| **Deploy-agent** | Manages Docker containers, GPU assignment, health monitoring |
 
 ## Setup
 
@@ -57,9 +82,9 @@ curl -X POST http://<compute-node>:9000/deploy \
 
 ## Specs
 
-- [Deploy Agent Spec](openclaw/workspace/docs/DEPLOY_AGENT_SPEC.md) — API reference
-- [Service Manifest Spec](openclaw/workspace/docs/SERVICE_MANIFEST_SPEC.md) — `service.yaml` format
-- [Client SDK Spec](openclaw/workspace/docs/CLIENT_SDK_SPEC.md) — client.py standards
+- [Deploy Agent Spec](docs/DEPLOY_AGENT_SPEC.md) — API reference
+- [Service Manifest Spec](docs/SERVICE_MANIFEST_SPEC.md) — `service.yaml` format
+- [Client SDK Spec](docs/CLIENT_SDK_SPEC.md) — client.py standards
 
 ## Hardware Requirements
 

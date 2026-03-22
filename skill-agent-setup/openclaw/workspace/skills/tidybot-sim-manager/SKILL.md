@@ -40,7 +40,7 @@ sleep 2
 ### Step 2: Start sim server
 
 ```bash
-cd ~/tidybot_uni/sim && DISPLAY=:1 /home/yifei/miniconda3/envs/tidybot-sim/bin/python -u -m sim_server 2>&1
+cd ~/tidybot_uni/robocasa_sim && DISPLAY=:1 /home/yifei/miniconda3/envs/tidybot-sim/bin/python -u -m sim_server 2>&1
 ```
 
 - Use `pty: true` for unbuffered output
