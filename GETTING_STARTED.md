@@ -35,28 +35,85 @@ Because of these guardrails, your agent can freely experiment with skills — tr
 
 The platform isn't limited to one robot. Different people can bring different hardware — different arms, grippers, bases, sensors. That's the point of the services org: each hardware component has its own service, and skills talk to them through a common API. Swap out a Franka arm for a UR5? Write a new arm service, same skill code works.
 
+## Repository Map
+
+All repos live under two GitHub orgs: [TidyBot-Services](https://github.com/TidyBot-Services) (infrastructure) and [Tidybot-Skills](https://github.com/Tidybot-Skills) (behaviors). Locally they're organized into a single workspace:
+
+```
+tidybot_uni/
+├── agent_server/                         # Unified API for AI agents (FastAPI, lease, safety, SDK)
+│
+├── sims/                                 # Simulators — same API as hardware
+│   ├── maniskill/                        # ManiSkill3 / SAPIEN physics server
+│   ├── robocasa/                         # RoboCasa / MuJoCo physics server
+│   └── bridges/                          # Protocol bridges (ZMQ, RPC, WebSocket)
+│       ├── maniskill/                    # Bridges for ManiSkill sim
+│       │   ├── arm_franka/
+│       │   ├── base_tidybot/
+│       │   ├── gripper_robotiq/
+│       │   └── camera_realsense/
+│       └── robocasa/                     # Bridges for RoboCasa sim
+│           ├── arm_franka/
+│           ├── base_tidybot/
+│           ├── gripper_robotiq/
+│           └── camera_realsense/
+│
+├── hardware/                             # Real hardware drivers
+│   ├── arm_franka_service/               # Franka Panda arm (ZMQ, 1 kHz)
+│   ├── base_tidybot_service/             # Tidybot mobile base (RPC)
+│   ├── gripper_robotiq_service/          # Robotiq 2F-85 gripper (ZMQ)
+│   └── camera_realsense_service/         # Intel RealSense cameras (WebSocket)
+│
+├── services/                             # GPU / cloud services
+│   ├── tidyverse_agent/                  # TidyVerse robot URDF + ManiSkill registration
+│   ├── yolo-service/
+│   ├── grounded-sam2-service/
+│   ├── graspgen-service/
+│   ├── foundation-stereo-service/
+│   └── ...
+│
+├── skills/                               # Robot skill scripts (Tidybot-Skills org)
+│   ├── pick-up-object/
+│   ├── pick-and-place/
+│   └── ...
+│
+├── system_logger/                        # Trajectory recording and rewind orchestration
+├── forks/                                # Upstream forks (robocasa, robosuite)
+├── common/                               # Shared utilities, logging, catalog sync
+├── deploy-agent/                         # Lightweight service deployment daemon
+└── marketing/                            # Org profiles, website, docs
+```
+
+The sim bridges expose identical ZMQ/RPC/WebSocket protocols on the same ports as real hardware drivers. The agent server doesn't know the difference — skills and agents work unchanged across sim and hardware.
+
 ## Getting Started
 
 ### Quick Start: Try it without hardware (simulator)
 
-No robot? No problem. The [MuJoCo simulator](https://github.com/TidyBot-Services/sim) runs the full stack — same API, same skills, same agent — with a simulated Tidybot in a kitchen environment. Everything you build in sim works on real hardware with zero code changes.
+No robot? No problem. The simulators run the full stack — same API, same skills, same agent — with a simulated Tidybot. Everything you build in sim works on real hardware with zero code changes.
 
+**RoboCasa** (MuJoCo, kitchen environments):
 ```bash
-# 1. Clone and set up the sim (handles all dependencies)
-git clone https://github.com/TidyBot-Services/sim.git
-cd sim
-conda create -n tidybot python=3.11
-conda activate tidybot
+# 1. Clone and set up
+git clone https://github.com/TidyBot-Services/robocasa_sim.git
+cd robocasa_sim
 ./setup.sh
 
 # 2. Start the sim server (Terminal 1)
-mjpython -m sim_server
+python3 -m sim_server
 
 # 3. Start the agent server (Terminal 2)
-cd agent_server && python3 server.py
+cd agent_server && python3 server.py --no-service-manager
 
 # 4. Verify it's running
 curl http://localhost:8080/health
+```
+
+**ManiSkill** (SAPIEN, task environments):
+```bash
+git clone https://github.com/TidyBot-Services/maniskill_sim.git
+cd maniskill_sim
+python3 -m maniskill_server --gui
 ```
 
 The API is now live at `http://localhost:8080` — connect a skill agent and start developing. The sim provides full physics, rendered camera feeds, and gripper interaction. Skills developed here transfer directly to hardware.
