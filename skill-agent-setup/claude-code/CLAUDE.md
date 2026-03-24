@@ -9,7 +9,7 @@ Before planning, make sure these are running (check with curl, launch if not):
 ```bash
 # 1. ManiSkill sim (provides physics + bridge ports 5555-5580)
 cd ~/tidybot_uni/sims/maniskill && \
-  conda run -n maniskill --no-banner \
+  conda run -n maniskill \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
   python3 -m maniskill_server --task RoboCasaKitchen-v1 &
 # Wait for port 5555 to be ready before proceeding
@@ -20,11 +20,11 @@ cd ~/tidybot_uni/agent_server && \
 # Verify: curl -s http://localhost:8080/state should return JSON
 
 # 3. Orchestrator (manages skill tree + dev agents) — port 8765 (WS) + 8766 (HTTP)
-#    --graph is required: point it at an existing JSON file in graphs/
+#    --graph is required: point it at a graph folder (or graph.json file)
 cd ~/tidybot_uni/marketing/Tidybot-Universe/skill-agent-setup/claude-code && \
   env -u ANTHROPIC_API_KEY PYTHONPATH="$HOME/.local/lib/python3.10/site-packages:$PYTHONPATH" \
   PYTHONUNBUFFERED=1 python3 agent_orchestrator.py \
-  --graph graphs/open-fixtures.json &
+  --graph graphs/cook-all-food &
 
 # 4. Website (dashboard to see the tree) — port 8070
 cd ~/tidybot_uni/marketing/TidyBot-Services.github.io && python3 -m http.server 8070 &
@@ -37,9 +37,24 @@ cd ~/tidybot_uni/marketing/TidyBot-Services.github.io && python3 -m http.server 
 cd ~/tidybot_uni/sims/maniskill && conda run -n maniskill python tests/test_sim_e2e.py
 ```
 
-Available graphs in `graphs/`:
-- `open-fixtures.json` — kitchen fixture manipulation (drawers, cabinets)
-- `open-all-drawers.json` — open all kitchen drawers
+Available graphs in `graphs/` (each is a folder with `graph.json`, optional `scene.json`, and `skills/`):
+- `single-stage-tasks/` — RoboCasa single-stage task pipeline (start here)
+- `cook-all-food/` — open drawers, collect food into pot, turn on stove
+- `open-fixtures/` — kitchen fixture manipulation (drawers, cabinets)
+- `open-all-drawers/` — open all kitchen drawers
+
+**New graph format** — `graph.json` can be an object with metadata:
+```json
+{
+  "task_env": "RoboCasa-Pn-P-Counter-To-Cab-v0",
+  "task_source": "~/tidybot_uni/sims/maniskill_tidyverse/robocasa_tasks/single_stage/kitchen_pnp.py",
+  "entries": []
+}
+```
+
+When `task_env` is set, the root skill (skill no other skill depends on) gets its test
+automatically from the sim's `_check_success()` via `GET http://localhost:5500/task/success`.
+Sub-skills still need tests written by the test_writer agent.
 
 Verify: `curl -s http://localhost:8766/entries` should return JSON. Dashboard at `http://localhost:8070/local/`.
 
@@ -116,15 +131,45 @@ Changes appear on the dashboard immediately (http://localhost:8070/local/).
 
 The hex gallery at `http://localhost:8070/local/` shows the skill tree. Each hex is a skill, edges show dependencies. The tree updates live when you add/remove entries.
 
-## Starting the Dev Pipeline
+## Starting Development
 
-After planning the tree, you can kick off development per skill:
+When you're done planning the tree, kick off development for all ready skills:
 
 ```bash
-# Spawn dev pipeline for a specific skill (test_writer → dev → mechanical test)
+# Start all skills whose dependencies are satisfied (the main command)
+curl -X POST http://localhost:8766/xbot-start
+```
+
+This auto-spawns dev pipelines (test_writer → dev → mechanical_test) for every skill
+whose dependencies are all confirmed "done" and whose status is still "planned".
+Leaf skills (no dependencies) start immediately.
+
+## Review Gate
+
+After a skill's mechanical test passes, it enters **"review"** status — it does NOT
+auto-promote to "done". A human must confirm via the dashboard (click confirm on the
+skill hex). Only after confirmation does the skill count as "done", which unblocks
+downstream skills that depend on it. Those downstream skills are then auto-spawned.
+
+```
+dev agent → mechanical test → status="review" (waiting for human)
+  → user confirms on dashboard → status="done"
+    → downstream skills with all deps "done" auto-spawn
+```
+
+You can also spawn a single skill manually:
+
+```bash
 curl -X POST http://localhost:8766/spawn \
   -H "Content-Type: application/json" \
   -d '{"skill": "skill-name", "prompt": "Implement this skill", "agent_type": "dev"}'
 ```
 
-Or let the user do it from the dashboard by clicking on hexes.
+## Tests
+
+Run orchestrator pipeline tests (no sim/agent server needed):
+
+```bash
+cd ~/tidybot_uni/marketing/Tidybot-Universe/skill-agent-setup/claude-code
+python3 tests/test_orchestrator_pipeline.py
+```

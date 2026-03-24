@@ -1,0 +1,30 @@
+{
+  "task": "ConfigurableKitchen",
+  "obs_mode": "rgb+depth+segmentation",
+  "objects": [
+    {
+      "name": "food1",
+      "obj_groups": "vegetable",
+      "graspable": true,
+      "placement": {"fixture_type": "drawer", "fixture_id": 0}
+    },
+    {
+      "name": "food2",
+      "obj_groups": "fruit",
+      "graspable": true,
+      "placement": {"fixture_type": "drawer", "fixture_id": 1}
+    },
+    {
+      "name": "food3",
+      "obj_groups": "dairy",
+      "graspable": true,
+      "placement": {"fixture_type": "drawer", "fixture_id": 2}
+    },
+    {
+      "name": "pot",
+      "obj_groups": "pot",
+      "graspable": false,
+      "placement": {"fixture_type": "stove"}
+    }
+  ]
+}

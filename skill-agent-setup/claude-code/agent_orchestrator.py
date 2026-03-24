@@ -28,25 +28,16 @@ try:
 except ImportError:
     raise ImportError("pip install websockets")
 
-try:
-    from claude_agent_sdk import (
-        ClaudeSDKClient,
-        ClaudeAgentOptions,
-        AssistantMessage,
-        ResultMessage,
-        TextBlock,
-        ToolUseBlock,
-    )
-    HAS_SDK = True
-except ImportError:
-    HAS_SDK = False
-    ClaudeSDKClient = None
-    ClaudeAgentOptions = None
-    AssistantMessage = None
-    ResultMessage = None
-    TextBlock = None
-    ToolUseBlock = None
-    print("[ORCH] WARNING: claude-agent-sdk not found, falling back to CLI subprocess mode")
+from claude_agent_sdk import (
+    ClaudeSDKClient,
+    ClaudeAgentOptions,
+    AssistantMessage,
+    SystemMessage,
+    ResultMessage,
+    TextBlock,
+    ToolUseBlock,
+)
+HAS_SDK = True
 
 # ---------------------------------------------------------------------------
 # Config
@@ -61,17 +52,26 @@ AGENT_SERVER = "http://localhost:8080"
 import argparse
 _parser = argparse.ArgumentParser(description="Claude Agent Orchestrator")
 _parser.add_argument("--graph", required=True, type=Path,
-                     help="Path to an existing JSON file with skill entries")
+                     help="Path to a graph folder (containing graph.json) or a JSON file")
 _args = _parser.parse_args()
-if not _args.graph.exists():
-    _parser.error(f"graph file does not exist: {_args.graph}")
-LOCAL_REPOS = _args.graph
+_graph_path = _args.graph
+if _graph_path.is_dir():
+    GRAPH_DIR = _graph_path
+    _graph_file = _graph_path / "graph.json"
+    if not _graph_file.exists():
+        _parser.error(f"graph.json not found in: {_graph_path}")
+else:
+    GRAPH_DIR = _graph_path.parent
+    _graph_file = _graph_path
+    if not _graph_file.exists():
+        _parser.error(f"graph file does not exist: {_graph_file}")
+LOCAL_REPOS = _graph_file
 
 # ---------------------------------------------------------------------------
 # Agent type system prompts
 # ---------------------------------------------------------------------------
 
-SKILLS_DIR = PROJECT_DIR / "skills"
+SKILLS_DIR = GRAPH_DIR / "skills"
 
 SYSTEM_PROMPT_PLANNER = """\
 You are a robotics skill planner for the TidyBot Universe project.
@@ -84,6 +84,9 @@ You DO NOT write skill code — you design the skill tree structure.
 - Franka Panda 7-DOF arm + mobile base + Robotiq gripper + cameras
 - Runs in RoboCasa (MuJoCo kitchen sim) or on real hardware
 - Skills use robot_sdk (arm, base, gripper, sensors, rewind)
+
+## Task Context
+{task_context}
 
 ## Existing Skills on Disk
 Skills in ~/tidybot_uni/skills/:
@@ -115,6 +118,34 @@ To list all entries:
 curl http://localhost:{http_port}/entries
 ```
 
+## Starting Development
+When the user approves the plan, run:
+```bash
+curl -X POST http://localhost:{http_port}/xbot-start
+```
+This auto-spawns dev pipelines for all skills whose dependencies are satisfied.
+Leaf skills (no deps) start immediately. As skills pass tests, downstream skills auto-start.
+
+## Skill Tree Design
+
+Your tree should have ONE root skill at the top — this is the full task. It depends on
+sub-skills that each do one thing. Sub-skills can share dependencies.
+
+**Testing rules:**
+- The **root skill** (the one no other skill depends on) gets its test automatically
+  from the sim's `_check_success()` — you do NOT need to define success criteria for it.
+- All **sub-skills** (leaf and intermediate) need custom tests written by the test_writer
+  agent. The test_writer will define what "success" means for each sub-skill (e.g. "gripper
+  is closed and holding an object" for a grasp skill).
+
+Example tree for "pick from counter, place in cabinet":
+```
+pnp-counter-to-cab          (root — sim tests this)
+├── grasp-from-surface       (sub — test_writer defines: object grasped?)
+├── navigate-to-fixture      (sub — test_writer defines: within reach?)
+└── place-in-container       (sub — test_writer defines: object released inside?)
+```
+
 ## Rules
 1. Read existing skills on disk first — reuse what's already built
 2. Skills should be small and composable — one behavior per skill
@@ -124,6 +155,7 @@ curl http://localhost:{http_port}/entries
 6. Every skill needs a clear description of what it does
 7. Use curl to call the API — changes appear on the dashboard immediately
 8. After building the tree, summarize what you created and why
+9. When the user approves the plan, run `curl -X POST http://localhost:{http_port}/xbot-start` to kick off development
 """
 
 
@@ -131,6 +163,162 @@ def _has_test(skill: str) -> bool:
     """Check if a skill has a test file."""
     test_file = SKILLS_DIR / skill / "tests" / "run_trials.py"
     return test_file.exists()
+
+
+def _is_task_root(skill: str) -> bool:
+    """Check if a skill is the root of a task graph (sim provides its test).
+
+    A skill is the task root if:
+    - The graph has task_env metadata, AND
+    - No other skill in the tree depends on this skill
+    """
+    if not graph_meta.get("task_env"):
+        return False
+    for entry in skill_entries:
+        if skill in entry.get("dependencies", []):
+            return False
+    return True
+
+
+def _auto_generate_task_root_test(skill: str):
+    """Auto-generate a test for the task root skill using sim's /task/success endpoint."""
+    test_dir = SKILLS_DIR / skill / "tests"
+    test_file = test_dir / "run_trials.py"
+    if test_file.exists():
+        return  # already has a test
+
+    task_env = graph_meta.get("task_env", "unknown")
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    # Also ensure scripts/ dir exists
+    (SKILLS_DIR / skill / "scripts").mkdir(parents=True, exist_ok=True)
+
+    test_code = f'''\
+#!/usr/bin/env python3
+"""Auto-generated test for task root skill: {skill}
+Task: {task_env}
+
+Runs the skill's main.py via the agent server, then checks success
+via the sim's /task/success endpoint (port 5500).
+"""
+import json
+import time
+import urllib.request
+import urllib.error
+
+AGENT_SERVER = "http://localhost:8080"
+SIM_API = "http://localhost:5500"
+NUM_TRIALS = 3
+
+
+def submit_code(code: str) -> str:
+    """Submit code to agent server, return job_id."""
+    data = json.dumps({{"code": code}}).encode()
+    req = urllib.request.Request(
+        f"{{AGENT_SERVER}}/code/submit",
+        data=data,
+        headers={{"Content-Type": "application/json"}},
+    )
+    resp = json.loads(urllib.request.urlopen(req).read())
+    return resp["job_id"]
+
+
+def wait_for_job(job_id: str, timeout: int = 300) -> dict:
+    """Poll until job completes."""
+    url = f"{{AGENT_SERVER}}/code/jobs/{{job_id}}"
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            job = json.loads(urllib.request.urlopen(url).read())
+            if job["status"] in ("completed", "failed"):
+                return job
+        except urllib.error.URLError:
+            pass
+        time.sleep(2)
+    return {{"status": "timeout"}}
+
+
+def check_success() -> bool:
+    """Check task success via sim endpoint."""
+    try:
+        resp = json.loads(urllib.request.urlopen(f"{{SIM_API}}/task/success").read())
+        return resp.get("success", False)
+    except Exception as e:
+        print(f"Could not check sim success: {{e}}")
+        return False
+
+
+def run_trial(trial_num: int) -> bool:
+    """Run one trial of the skill and check success."""
+    # Read the skill's main.py
+    import os
+    skill_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    main_py = os.path.join(skill_dir, "scripts", "main.py")
+    if not os.path.exists(main_py):
+        print(f"Trial {{trial_num}}: SKIP - no scripts/main.py")
+        return False
+
+    with open(main_py) as f:
+        code = f.read()
+
+    print(f"Trial {{trial_num}}: submitting skill code...")
+    job_id = submit_code(code)
+    job = wait_for_job(job_id)
+
+    result = job.get("result", {{}})
+    status = job.get("status", "unknown")
+    stdout = result.get("stdout", "")
+    stderr = result.get("stderr", "")
+
+    if status == "failed":
+        error = result.get("error", stderr[:200])
+        print(f"Trial {{trial_num}}: FAIL - execution error: {{error}}")
+        return False
+
+    # Check task success via sim
+    success = check_success()
+    print(f"Trial {{trial_num}}: {{"PASS" if success else "FAIL"}} (sim _check_success={{success}})")
+    return success
+
+
+def main():
+    passed = 0
+    failed = 0
+    failures = []
+
+    for i in range(1, NUM_TRIALS + 1):
+        try:
+            if run_trial(i):
+                passed += 1
+            else:
+                failed += 1
+                failures.append(f"trial_{{i}}")
+        except Exception as e:
+            failed += 1
+            failures.append(f"trial_{{i}}: {{e}}")
+            print(f"Trial {{i}}: ERROR - {{e}}")
+
+    total = passed + failed
+    rate = (passed / total * 100) if total > 0 else 0
+
+    result = {{
+        "skill": "{skill}",
+        "task_env": "{task_env}",
+        "success_rate": rate,
+        "total_trials": total,
+        "passed": passed,
+        "failed": failed,
+        "failure_modes": failures,
+    }}
+    print(json.dumps(result))
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+    test_file.write_text(test_code)
+    print(f"[ORCH] Auto-generated test for task root: {test_file}")
 
 
 SYSTEM_PROMPT_TEST_WRITER = """\
@@ -300,18 +488,31 @@ ws_clients: set = set()
 
 # In-memory skill entries (seeded from local_repos.json, updated dynamically)
 skill_entries: list[dict] = []
+graph_meta: dict = {}  # top-level metadata (task_env, task_source, etc.)
 
 
 def _load_entries():
     """Load entries from graph file into memory."""
-    global skill_entries
-    skill_entries = json.loads(LOCAL_REPOS.read_text())
+    global skill_entries, graph_meta
+    data = json.loads(LOCAL_REPOS.read_text())
+    if isinstance(data, dict):
+        # New format: {"task_env": "...", "entries": [...], ...}
+        skill_entries = data.get("entries", [])
+        graph_meta = {k: v for k, v in data.items() if k != "entries"}
+    else:
+        # Legacy format: flat list of entries
+        skill_entries = data
+        graph_meta = {}
 
 
 def _save_entries():
     """Persist entries back to local_repos.json."""
     LOCAL_REPOS.parent.mkdir(parents=True, exist_ok=True)
-    LOCAL_REPOS.write_text(json.dumps(skill_entries, indent=2))
+    if graph_meta:
+        data = {**graph_meta, "entries": skill_entries}
+    else:
+        data = skill_entries
+    LOCAL_REPOS.write_text(json.dumps(data, indent=2))
 
 
 def _find_entry(name: str) -> dict | None:
@@ -345,7 +546,7 @@ def _add_entry(name: str, description: str = "", dependencies: list[str] | None 
         "dependencies": dependencies or [],
         "service_dependencies": [],
         "sdk_functions": [],
-        "status": "done",
+        "status": "planned",
         "agent_id": None,
         "agent_status_text": None,
         "agent_log": [],
@@ -558,6 +759,8 @@ async def ws_handler(websocket):
                     if state:
                         state.status = "confirmed_done"
                     asyncio.create_task(ws_broadcast_status(skill, agent_id, "confirmed_done", "Done"))
+                    # Confirm in graph and auto-spawn downstream skills
+                    asyncio.create_task(_confirm_skill_done(skill))
 
                 elif t == "plan":
                     prompt = msg.get("prompt", "")
@@ -615,17 +818,19 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev") -> str:
     labels = {"test": "Testing...", "test_writer": "Writing tests...", "dev": "Developing..."}
     await ws_broadcast_status(skill, agent_id, "starting", labels.get(agent_type, "Spawning..."))
 
-    if HAS_SDK:
-        state.task = asyncio.create_task(_run_agent_sdk(state, prompt))
-    else:
-        state.task = asyncio.create_task(_run_agent_cli(state, prompt))
+    state.task = asyncio.create_task(_run_agent_sdk(state, prompt))
 
     return agent_id
 
 
 async def spawn_skill_pipeline(skill: str, user_prompt: str):
     """Orchestrate the skill development pipeline: test_writer → dev → mechanical test."""
-    if _has_test(skill):
+    if _is_task_root(skill):
+        # Task root — sim provides the test via /task/success, skip test_writer
+        print(f"[ORCH] {skill}: task root (eval from sim), skipping test_writer")
+        _auto_generate_task_root_test(skill)
+        await spawn_agent(skill, user_prompt, agent_type="dev")
+    elif _has_test(skill):
         # Test exists — go straight to dev
         print(f"[ORCH] {skill}: test exists, spawning dev agent")
         await spawn_agent(skill, user_prompt, agent_type="dev")
@@ -641,46 +846,123 @@ async def spawn_skill_pipeline(skill: str, user_prompt: str):
 
 
 async def run_mechanical_test(skill: str):
-    """Run the skill's test mechanically (no LLM). Broadcasts results to dashboard."""
+    """Run the skill's test via /code/submit and fetch recording images for dashboard."""
     test_file = SKILLS_DIR / skill / "tests" / "run_trials.py"
     if not test_file.exists():
         await ws_broadcast_agent_msg(skill, "No test file found — skipping mechanical test", "test")
         return
 
-    # Read test code
     test_code = test_file.read_text()
+    await ws_broadcast_agent_msg(skill, "Submitting test to agent server...", "test")
 
-    await ws_broadcast_agent_msg(skill, "Running mechanical test...", "test")
-
-    # TODO: When agent server is running, execute via POST /code/execute
-    # For now, just report that tests would run
-    import subprocess as sp
     try:
-        # Try running directly (won't work without agent server, but shows the flow)
-        result = await asyncio.create_subprocess_exec(
-            "python3", str(test_file),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=str(SKILLS_DIR / skill),
-        )
-        stdout, stderr = await asyncio.wait_for(result.communicate(), timeout=300)
-        output = stdout.decode().strip()
-        errors = stderr.decode().strip()
+        # 1. Submit test code via fire-and-forget endpoint
+        import urllib.request
+        import urllib.error
 
-        if result.returncode == 0:
-            await ws_broadcast_agent_msg(skill, f"Test passed:\n{output}", "test")
-            # Try to parse JSON results
+        submit_data = json.dumps({
+            "code": test_code,
+            "holder": f"test:{skill}",
+        }).encode()
+        req = urllib.request.Request(
+            f"{AGENT_SERVER}/code/submit",
+            data=submit_data,
+            headers={"Content-Type": "application/json"},
+        )
+        resp = json.loads(urllib.request.urlopen(req).read())
+        job_id = resp["job_id"]
+        print(f"[TEST] {skill}: submitted job {job_id}")
+        await ws_broadcast_agent_msg(skill, f"Test submitted (job {job_id})", "test")
+
+        # 2. Poll until job completes
+        poll_url = f"{AGENT_SERVER}/code/jobs/{job_id}"
+        start_time = time.time()
+        job = None
+        while True:
+            await asyncio.sleep(2)
+            elapsed = int(time.time() - start_time)
             try:
-                results = json.loads(output.split('\n')[-1])
-                await ws_broadcast({"type": "test_results", "skill": skill, "results": results})
-            except (json.JSONDecodeError, IndexError):
-                pass
-        else:
-            await ws_broadcast_agent_msg(skill, f"Test failed (exit {result.returncode}):\n{errors or output}", "test")
-    except asyncio.TimeoutError:
-        await ws_broadcast_agent_msg(skill, "Test timed out (5 min limit)", "test")
+                job = json.loads(urllib.request.urlopen(poll_url).read())
+            except urllib.error.URLError:
+                await ws_broadcast_agent_msg(skill, "Agent server unreachable — retrying...", "test")
+                continue
+
+            status = job.get("status", "unknown")
+            if status in ("completed", "failed"):
+                break
+            if elapsed > 600:
+                await ws_broadcast_agent_msg(skill, "Test timed out (10 min limit)", "test")
+                return
+            # Broadcast progress
+            await ws_broadcast_status(skill, "", "running", f"Testing... {elapsed}s")
+
+        # 3. Process results
+        execution_id = job.get("execution_id")
+        result = job.get("result") or {}
+        exit_code = result.get("exit_code", job.get("exit_code"))
+        stdout = result.get("stdout", "")
+        stderr = result.get("stderr", "")
+
+        if job["status"] == "failed":
+            error = job.get("error", stderr or "unknown error")
+            await ws_broadcast_agent_msg(skill, f"Test failed: {error}", "test")
+            print(f"[TEST] {skill}: failed — {error}")
+            return
+
+        await ws_broadcast_agent_msg(skill, f"Test completed (exit {exit_code})", "test")
+
+        # 4. Parse JSON results from last line of stdout
+        sr = None
+        total_trials = 0
+        try:
+            results = json.loads(stdout.strip().split('\n')[-1])
+            sr = results.get("success_rate",
+                             results.get("passed", 0) / max(results.get("total_trials", 1), 1) * 100)
+            total_trials = results.get("total_trials", 0)
+        except (json.JSONDecodeError, IndexError, ValueError):
+            # No structured results — use exit code as pass/fail
+            sr = 100.0 if exit_code == 0 else 0.0
+            total_trials = 1
+
+        # 5. Fetch recording frames for dashboard images
+        trial_images = []
+        if execution_id:
+            try:
+                rec_url = f"{AGENT_SERVER}/code/recordings/{execution_id}"
+                recording = json.loads(urllib.request.urlopen(rec_url).read())
+                frames = [t["frame"] for t in recording.get("timeline", []) if t.get("frame")]
+                # Pick up to 10 evenly spaced frames
+                if len(frames) > 10:
+                    step = len(frames) / 10
+                    frames = [frames[int(i * step)] for i in range(10)]
+                trial_images = [
+                    f"{AGENT_SERVER}/code/recordings/{execution_id}/frames/{f}"
+                    for f in frames
+                ]
+                print(f"[TEST] {skill}: {len(trial_images)} trial images from recording {execution_id}")
+            except Exception as e:
+                print(f"[TEST] {skill}: could not fetch recording: {e}")
+
+        # 6. Update entry and broadcast
+        _update_entry(skill, {
+            "success_rate": sr,
+            "total_trials": total_trials,
+            "trial_images": trial_images,
+            "status": "review",
+        })
+        await ws_broadcast_agent_msg(
+            skill,
+            f"Tests complete (success_rate={sr:.0f}%). Waiting for review — confirm to unlock downstream skills.",
+            "test",
+        )
+        await broadcast_full_sync()
+        print(f"[TEST] {skill}: review (sr={sr}%, trials={total_trials}, images={len(trial_images)})")
+
+    except urllib.error.URLError as e:
+        await ws_broadcast_agent_msg(skill, f"Agent server unreachable: {e}", "test")
     except Exception as e:
         await ws_broadcast_agent_msg(skill, f"Test error: {e}", "test")
+        import traceback; traceback.print_exc()
 
 
 def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
@@ -696,7 +978,7 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
     else:
         skills_list = "  (no skills directory found)"
 
-    # For planner: also include current tree
+    # For planner: also include current tree and task context
     if agent_type == "planner":
         tree_lines = []
         for e in skill_entries:
@@ -705,9 +987,29 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
             tree_lines.append(f"  - {e['name']}: {e.get('description', '(no description)')}{dep_str}")
         current_tree = "\n".join(tree_lines) if tree_lines else "  (empty — no skills in tree yet)"
 
+        # Build task context from graph metadata
+        task_env = graph_meta.get("task_env")
+        task_source = graph_meta.get("task_source")
+        if task_env:
+            task_context = f"**Target task:** `{task_env}`\n"
+            if task_source:
+                task_context += (
+                    f"Read the task source at `{task_source}` to understand:\n"
+                    f"- `_get_obj_cfgs()` — what objects start where\n"
+                    f"- `_check_success()` — what the success condition is\n"
+                    f"- `_setup_kitchen_references()` — which fixtures are involved\n"
+                )
+            task_context += (
+                "\nThe root skill (top of the tree) will be tested automatically by the sim's "
+                "`_check_success()`. Sub-skills need custom tests written by the test_writer agent."
+            )
+        else:
+            task_context = "(no specific task — design skills for the goal described by the user)"
+
         return SYSTEM_PROMPT_PLANNER.format(
             existing_skills=skills_list,
             current_tree=current_tree,
+            task_context=task_context,
             http_port=WS_PORT + 1,
         )
 
@@ -730,19 +1032,25 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
         cwd=str(PROJECT_DIR),
         permission_mode="bypassPermissions",
         system_prompt=_get_system_prompt(state.agent_type, state.skill),
+        model="claude-sonnet-4-6",
     )
 
     try:
+        print(f"[SDK] {state.skill}: creating ClaudeSDKClient...")
         client = ClaudeSDKClient(options=options)
         state.client = client
 
+        print(f"[SDK] {state.skill}: entering client context...")
         async with client:
             state.status = "running"
+            print(f"[SDK] {state.skill}: client ready, sending query...")
             await ws_broadcast_status(state.skill, state.agent_id, "running", "Working...")
 
             # First query
             await client.query(prompt)
+            print(f"[SDK] {state.skill}: query sent, consuming response...")
             await _consume_sdk_response(state, client)
+            print(f"[SDK] {state.skill}: response consumed")
 
     except asyncio.CancelledError:
         state.status = "stopped"
@@ -750,6 +1058,8 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
     except Exception as e:
         state.status = "error"
         err = str(e)[:200]
+        print(f"[SDK] {state.skill}: ERROR: {err}")
+        import traceback; traceback.print_exc()
         state.log.append(f"ERROR: {err}")
         await ws_broadcast_status(state.skill, state.agent_id, "error", err)
         await ws_broadcast_agent_msg(state.skill, f"Error: {err}", state.agent_type)
@@ -764,17 +1074,68 @@ async def _handle_agent_done(state: AgentState):
     if state.agent_type == "test_writer":
         # Test writer done → spawn dev agent
         await ws_broadcast_agent_msg(state.skill, "Tests written — launching dev agent...", state.agent_type)
-        # The original user prompt was embedded in the test_writer prompt; extract a dev-friendly version
         await spawn_agent(state.skill, f"Develop the '{state.skill}' skill. Read tests/run_trials.py to understand what success looks like, then implement scripts/main.py.", agent_type="dev")
     elif state.agent_type == "dev":
         # Dev done → run mechanical test
         await ws_broadcast_status(state.skill, state.agent_id, "done", "Dev done, running tests...")
         await ws_broadcast_agent_msg(state.skill, "Dev complete — running tests...", state.agent_type)
         asyncio.create_task(run_mechanical_test(state.skill))
-        # After mechanical test, go to review
-        await ws_broadcast_status(state.skill, state.agent_id, "done", "Finished")
+    elif state.agent_type == "planner":
+        # Planner done — user must run /xbot-start to kick off development
+        await ws_broadcast_status(state.skill, state.agent_id, "done", "Planning complete — run /xbot-start to begin development")
     else:
         await ws_broadcast_status(state.skill, state.agent_id, "done", "Finished")
+
+
+async def _confirm_skill_done(skill: str):
+    """Confirm a skill as done (after review) and auto-spawn downstream skills."""
+    entry = _find_entry(skill)
+    if not entry:
+        return
+    _update_entry(skill, {"status": "done"})
+    print(f"[ORCH] Skill '{skill}' confirmed done — checking downstream skills")
+    await broadcast_full_sync()
+    await _auto_spawn_ready_skills()
+
+
+async def _auto_spawn_ready_skills() -> list[str]:
+    """Find skills whose dependencies are all 'done' and spawn dev pipelines.
+    Returns list of skill names that were spawned."""
+    done_skills = {e["name"] for e in skill_entries if e.get("status") == "done"}
+    # Skills already being worked on
+    active_skills = {a.skill for a in agents.values() if a.status in ("starting", "running")}
+
+    spawned = []
+    for entry in skill_entries:
+        name = entry["name"]
+        status = entry.get("status", "planned")
+        deps = entry.get("dependencies", [])
+
+        # Only auto-spawn skills that are "planned" (not already in progress)
+        if status != "planned":
+            continue
+        # Skip if already has an active agent
+        if name in active_skills:
+            continue
+        # Check all dependencies are done
+        if deps and not all(d in done_skills for d in deps):
+            continue
+
+        # All preconditions met — spawn pipeline
+        desc = entry.get("description", name)
+        print(f"[ORCH] Auto-spawning pipeline for '{name}' (deps satisfied: {deps})")
+        _update_entry(name, {"status": "writing"})
+        await spawn_skill_pipeline(name, f"Implement the '{name}' skill: {desc}")
+        spawned.append(name)
+
+    if spawned:
+        await ws_broadcast({
+            "type": "auto_spawn",
+            "skills": spawned,
+            "message": f"Auto-started {len(spawned)} skill(s): {', '.join(spawned)}",
+        })
+
+    return spawned
 
 
 async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
@@ -783,7 +1144,39 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
         if state.status == "stopped":
             break
 
-        if isinstance(message, AssistantMessage):
+        if isinstance(message, SystemMessage):
+            subtype = message.subtype
+            data = message.data
+
+            # Only surface important system messages, skip noisy ones
+            if subtype == "init":
+                # Just log model confirmation, don't broadcast
+                model = data.get("model", "?")
+                print(f"[SDK] {state.skill}: init (model={model})")
+            elif subtype == "task_started":
+                desc = data.get("description", "")
+                print(f"[SDK] {state.skill}: agent started: {desc}")
+                await ws_broadcast_status(state.skill, state.agent_id, "running", desc)
+            elif subtype == "task_progress":
+                desc = data.get("description", "")
+                tool = data.get("last_tool_name", "")
+                usage = data.get("usage", {})
+                turns = usage.get("tool_uses", 0)
+                # Update status line but don't spam the log
+                await ws_broadcast_status(state.skill, state.agent_id, "running", f"{desc}")
+            elif subtype in ("error", "api_error", "auth_error"):
+                text = data.get("message") or data.get("text") or str(data)
+                print(f"[SDK] {state.skill}: ERROR: {text}")
+                state.log.append(f"ERROR: {text}")
+                await ws_broadcast_agent_msg(state.skill, f"ERROR: {text}", state.agent_type)
+                state.status = "error"
+                await ws_broadcast_status(state.skill, state.agent_id, "error", text[:200])
+            else:
+                # Log unknown subtypes briefly for debugging
+                text = data.get("message") or data.get("description") or subtype
+                print(f"[SDK] {state.skill}: {subtype}: {text}")
+
+        elif isinstance(message, AssistantMessage):
             for block in message.content:
                 if isinstance(block, TextBlock) and block.text.strip():
                     # Truncate long text for the chat log
@@ -802,9 +1195,17 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
         elif isinstance(message, ResultMessage):
             state.session_id = message.session_id
             cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
-            done_msg = f"Done — {message.num_turns} turns, {cost}"
-            state.log.append(done_msg)
-            await ws_broadcast_agent_msg(state.skill, done_msg, state.agent_type)
+            # Detect zero-cost / zero-turn completions as errors (e.g. credit/auth failures)
+            if not message.total_cost_usd and message.num_turns == 0:
+                err_text = " | ".join(state.log) if state.log else "Agent produced no output"
+                print(f"[SDK] {state.skill}: ERROR (zero-cost completion): {err_text}")
+                state.status = "error"
+                await ws_broadcast_status(state.skill, state.agent_id, "error", err_text[:200])
+                await ws_broadcast_agent_msg(state.skill, f"ERROR: {err_text}", state.agent_type)
+            else:
+                done_msg = f"Done — {message.num_turns} turns, {cost}"
+                state.log.append(done_msg)
+                await ws_broadcast_agent_msg(state.skill, done_msg, state.agent_type)
 
 
 async def inject_hint(agent_id: str, text: str):
@@ -1037,10 +1438,11 @@ async def _run_agent_cli_resume(state: AgentState, text: str):
 async def handle_http(reader, writer):
     """Minimal HTTP endpoint for spawning/controlling agents from scripts.
 
-    POST /spawn   {"skill": "...", "prompt": "..."}
-    POST /stop    {"agent_id": "..."}
-    POST /inject  {"agent_id": "...", "text": "..."}
-    GET  /status  -> all agents
+    POST /spawn       {"skill": "...", "prompt": "..."}
+    POST /stop        {"agent_id": "..."}
+    POST /inject      {"agent_id": "...", "text": "..."}
+    POST /xbot-start  Trigger auto-spawn of all skills with satisfied dependencies
+    GET  /status      -> all agents
     """
     data = await reader.read(8192)
     request = data.decode()
@@ -1060,6 +1462,14 @@ async def handle_http(reader, writer):
             params = json.loads(body)
             aid = await spawn_agent("_planner", params["prompt"], agent_type="planner")
             response_body = json.dumps({"agent_id": aid})
+
+        elif method == "POST" and path == "/xbot-start":
+            spawned = await _auto_spawn_ready_skills()
+            response_body = json.dumps({
+                "ok": True,
+                "spawned": spawned if spawned else [],
+                "message": f"Started {len(spawned)} skill(s)" if spawned else "No skills ready (all deps not met or already in progress)",
+            })
 
         elif method == "POST" and path == "/spawn":
             params = json.loads(body)
@@ -1107,6 +1517,9 @@ async def handle_http(reader, writer):
             params = json.loads(body)
             entry = _update_entry(name, params)
             await broadcast_full_sync()
+            # If status was set to "done", check for newly unblocked skills
+            if params.get("status") == "done":
+                await _auto_spawn_ready_skills()
             response_body = json.dumps(entry or {"error": "not found"})
 
         else:
