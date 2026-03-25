@@ -30,7 +30,7 @@ Usage
 import math
 import sys
 
-from robot_sdk import arm, gripper, sensors, rewind
+from robot_sdk import arm, gripper, sensors, rewind, wb
 
 # ---------------------------------------------------------------------------
 # Default configuration (matches SKILL.md and test constants)
@@ -48,13 +48,13 @@ STRAIGHT_DOWN_ROLL = math.pi
 # ---------------------------------------------------------------------------
 
 def _move(x: float, y: float, z: float, label: str, timeout: float = MOVE_TIMEOUT) -> None:
-    """Move arm EE to (x, y, z) with straight-down orientation (blocking)."""
-    print(f"  move_to_pose → {label} ({x:.3f}, {y:.3f}, {z:.3f})", flush=True)
-    arm.move_to_pose(
-        x=x, y=y, z=z,
-        roll=STRAIGHT_DOWN_ROLL, pitch=0.0, yaw=0.0,
-        timeout=timeout,
-    )
+    """
+    Move EE to world-frame (x, y, z) with top-down orientation (blocking).
+    Uses wb.move_to_pose (whole-body planner) so the base moves if needed.
+    Falls back to arm.move_to_pose for small arm-only adjustments.
+    """
+    print(f"  wb.move_to_pose → {label} ({x:.3f}, {y:.3f}, {z:.3f})", flush=True)
+    wb.move_to_pose(x=x, y=y, z=z)
 
 
 def _gripper_width_m() -> float:
@@ -152,8 +152,10 @@ def place_in_cabinet(
         print("Step 1: detecting cabinet with sensors.find_objects()", flush=True)
         try:
             detections = sensors.find_objects()
-            # Targeted pass to boost cabinet recall
-            targeted = sensors.find_objects(target_names=["cabinet"])
+            # Targeted pass to boost cabinet recall using multiple possible names
+            targeted = sensors.find_objects(
+                target_names=["cabinet", "inner_box", "cab", "shelf", "shelves"]
+            )
             seen = {d.get("name") for d in detections}
             for d in targeted:
                 if d.get("name") not in seen:
@@ -168,18 +170,30 @@ def place_in_cabinet(
             print(f"Result: FAILED – crash: find_objects() raised: {e}", flush=True)
             return False
 
-        # ── Step 2: locate cabinet in detections ──────────────────────────────
+        # ── Step 2: locate cabinet interior in detections ─────────────────────
+        # Priority order for cabinet interior candidates:
+        #   1. "inner_box"    – explicit interior marker used by some sim scenes
+        #   2. "cabinet"      – canonical cabinet name
+        #   3. "cab_"         – prefix used by RoboCasa cabinet fixture groups
+        #   4. "shelf"/"shelves" – open-shelf fixtures
+
+        CABINET_KEYWORDS = ["inner_box", "cabinet", "cab_", "shelf", "shelves"]
+
         cabinet = None
-        for d in detections:
-            if "cabinet" in d.get("name", "").lower():
-                cabinet = d
+        for kw in CABINET_KEYWORDS:
+            for d in detections:
+                name_lower = d.get("name", "").lower()
+                if kw in name_lower:
+                    cabinet = d
+                    break
+            if cabinet is not None:
                 break
 
         if cabinet is None:
             names = [d.get("name", "?") for d in detections]
             print(
                 f"Result: FAILED – cabinet_not_found: "
-                f"no detection named 'cabinet' in {names}",
+                f"no cabinet-like detection in {names}",
                 flush=True,
             )
             return False

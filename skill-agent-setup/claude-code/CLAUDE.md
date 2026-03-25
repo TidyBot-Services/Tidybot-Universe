@@ -147,6 +147,11 @@ The hex gallery at `http://localhost:8070/local/` shows the skill tree. Each hex
 
 ## Starting Development
 
+When resuming a graph from a previous session, move any partially-done skill folders
+that are no longer in the orchestrator into `skills/deprecated/` to keep the workspace
+clean. The deprecated folder preserves old code for reference without polluting the
+active skill set.
+
 When loading an existing graph, any skills not in "done" status are stale from a
 previous session. Reset them to "failed" before starting development so the pipeline
 can re-attempt them cleanly:
