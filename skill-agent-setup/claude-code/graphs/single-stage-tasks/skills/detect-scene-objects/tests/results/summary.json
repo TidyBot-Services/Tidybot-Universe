@@ -1,0 +1,34 @@
+{
+  "skill": "detect-scene-objects",
+  "success_rate": 100,
+  "total_trials": 3,
+  "passed": 3,
+  "failed": 0,
+  "failure_modes": [],
+  "trials": [
+    {
+      "trial": 1,
+      "success": true,
+      "failure_mode": null,
+      "num_detections": 23,
+      "execution_id": "88fb07e5",
+      "duration": 1.4704298973083496
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "failure_mode": null,
+      "num_detections": 23,
+      "execution_id": "dba3815e",
+      "duration": 1.5695576667785645
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "failure_mode": null,
+      "num_detections": 23,
+      "execution_id": "f8301587",
+      "duration": 1.9279966354370117
+    }
+  ]
+}

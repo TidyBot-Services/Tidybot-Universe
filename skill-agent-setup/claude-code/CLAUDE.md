@@ -4,18 +4,32 @@ You are a skill planner for the TidyBot Universe robotics project.
 
 ## Prerequisites
 
-Before planning, make sure these are running (check with curl, launch if not):
+Before planning, make sure these are running (check with curl, launch if not).
+
+**IMPORTANT:**
+- Before launching any service, kill existing processes on its ports first.
+  Stale processes cause "Address already in use" errors that look like a successful launch but silently fail.
+- Each service should be ready within **15 seconds**. If it takes longer, something is wrong — check logs and fix rather than keep waiting.
 
 ```bash
+# 0. Clear ports — kill anything already bound to service ports
+#    Do this BEFORE launching services to avoid "Address already in use" errors
+fuser -k 5555/tcp 5556/tcp 5557/tcp 5570/tcp 5571/tcp 5580/tcp 5500/tcp 2>/dev/null  # sim + bridges
+fuser -k 8080/tcp 2>/dev/null   # agent server
+fuser -k 8765/tcp 8766/tcp 2>/dev/null  # orchestrator
+fuser -k 8070/tcp 2>/dev/null   # dashboard
+
 # 1. ManiSkill sim (provides physics + bridge ports 5555-5580)
 cd ~/tidybot_uni/sims/maniskill && \
   conda run -n maniskill \
+  env LD_PRELOAD=$HOME/miniconda3/envs/maniskill/lib/libstdc++.so.6 \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
   python3 -m maniskill_server --task RoboCasaKitchen-v1 &
 # Wait for port 5555 to be ready before proceeding
 
 # 2. Agent server (HTTP API for code execution) — port 8080
 cd ~/tidybot_uni/agent_server && \
+  PYTHONPATH="$HOME/.local/lib/python3.10/site-packages:$PYTHONPATH" \
   PYTHONUNBUFFERED=1 python3 server.py --no-service-manager &
 # Verify: curl -s http://localhost:8080/state should return JSON
 
@@ -71,7 +85,7 @@ Break down high-level goals into a dependency tree of robot skills. You design t
 
 ## Skill Structure
 
-Skills live in `~/tidybot_uni/skills/<skill-name>/`:
+Skills live under the graph folder at `graphs/<graph-name>/skills/<skill-name>/`:
 
 ```
 <skill-name>/
@@ -86,7 +100,7 @@ Skills live in `~/tidybot_uni/skills/<skill-name>/`:
 
 ## Before Planning
 
-1. Check existing skills: `ls ~/tidybot_uni/skills/`
+1. Check existing skills: `ls graphs/<graph-name>/skills/`
 2. Read SKILL.md of relevant skills to understand what's built
 3. Check the current tree: `curl http://localhost:8766/entries`
 4. Read the robot SDK docs: `curl http://localhost:8080/code/sdk/markdown`
@@ -133,7 +147,25 @@ The hex gallery at `http://localhost:8070/local/` shows the skill tree. Each hex
 
 ## Starting Development
 
-When you're done planning the tree, kick off development for all ready skills:
+When loading an existing graph, any skills not in "done" status are stale from a
+previous session. Reset them to "failed" before starting development so the pipeline
+can re-attempt them cleanly:
+
+```bash
+# Reset all non-done skills to "failed" (stale from previous session)
+for skill in $(curl -s http://localhost:8766/entries | python3 -c "
+import sys, json
+for e in json.load(sys.stdin):
+    if e['status'] not in ('done', 'planned'):
+        print(e['name'])
+"); do
+  curl -s -X PATCH "http://localhost:8766/entries/$skill" \
+    -H "Content-Type: application/json" \
+    -d '{"status": "failed"}'
+done
+```
+
+Then kick off development for all ready skills:
 
 ```bash
 # Start all skills whose dependencies are satisfied (the main command)
@@ -141,7 +173,7 @@ curl -X POST http://localhost:8766/xbot-start
 ```
 
 This auto-spawns dev pipelines (test_writer → dev → mechanical_test) for every skill
-whose dependencies are all confirmed "done" and whose status is still "planned".
+whose dependencies are all confirmed "done" and whose status is still "planned" or "failed".
 Leaf skills (no dependencies) start immediately.
 
 ## Review Gate

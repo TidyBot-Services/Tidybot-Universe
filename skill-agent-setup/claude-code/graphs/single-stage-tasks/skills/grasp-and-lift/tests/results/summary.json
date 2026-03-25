@@ -1,0 +1,50 @@
+{
+  "skill": "grasp-and-lift",
+  "success_rate": 0,
+  "total_trials": 3,
+  "passed": 0,
+  "failed": 3,
+  "failure_modes": [
+    "approach_failed",
+    "approach_failed",
+    "approach_failed"
+  ],
+  "trials": [
+    {
+      "trial": 1,
+      "target": {
+        "x": 0.4,
+        "y": 0.0,
+        "z": -0.42
+      },
+      "success": false,
+      "failure_mode": "approach_failed",
+      "execution_id": "8e8bd323",
+      "duration": 11.363879203796387
+    },
+    {
+      "trial": 2,
+      "target": {
+        "x": 0.45,
+        "y": 0.1,
+        "z": -0.42
+      },
+      "success": false,
+      "failure_mode": "approach_failed",
+      "execution_id": "47d54018",
+      "duration": 11.358167886734009
+    },
+    {
+      "trial": 3,
+      "target": {
+        "x": 0.35,
+        "y": -0.1,
+        "z": -0.42
+      },
+      "success": false,
+      "failure_mode": "approach_failed",
+      "execution_id": "a5942e48",
+      "duration": 11.255019903182983
+    }
+  ]
+}

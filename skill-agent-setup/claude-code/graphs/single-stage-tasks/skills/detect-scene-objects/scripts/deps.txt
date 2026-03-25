@@ -1,0 +1,2 @@
+# detect-scene-objects has no dependencies on other skills.
+# It is a standalone perception primitive.

@@ -311,32 +311,23 @@ async def test_handle_planner_done(orch):
         orch.spawn_skill_pipeline = mock_pipeline
 
 
-async def test_handle_dev_done_runs_test(orch):
-    """Dev agent finishing should trigger mechanical test, not auto-spawn."""
+async def test_handle_dev_done_goes_to_review(orch):
+    """Dev agent finishing should set status to review (interactive mode)."""
     orch.skill_entries = [
         make_entry("my-skill", status="writing"),
         make_entry("downstream", deps=["my-skill"]),
     ]
     orch.agents.clear()
+    orch.autonomous_mode = False
 
-    test_ran = []
+    state = orch.AgentState(agent_id="dev-1", skill="my-skill", agent_type="dev")
+    await orch._handle_agent_done(state)
 
-    async def mock_mechanical_test(skill):
-        test_ran.append(skill)
-
-    original_test = orch.run_mechanical_test
-    orch.run_mechanical_test = mock_mechanical_test
-    try:
-        state = orch.AgentState(agent_id="dev-1", skill="my-skill", agent_type="dev")
-        await orch._handle_agent_done(state)
-        # _handle_agent_done uses asyncio.create_task — give it a chance to run
-        await asyncio.sleep(0)
-        check("mechanical test triggered", "my-skill" in test_ran)
-        # downstream should NOT be spawned (no confirm yet)
-        downstream = orch._find_entry("downstream")
-        check("downstream still planned", downstream["status"] == "planned")
-    finally:
-        orch.run_mechanical_test = original_test
+    entry = orch._find_entry("my-skill")
+    check("skill in review", entry["status"] == "review")
+    # downstream should NOT be spawned (no confirm yet)
+    downstream = orch._find_entry("downstream")
+    check("downstream still planned", downstream["status"] == "planned")
 
 
 async def test_xbot_start_endpoint(orch):
@@ -772,7 +763,7 @@ def main():
             ("Confirm triggers cascade", test_confirm_triggers_cascade),
             ("Multi-level cascade (one level at a time)", test_multi_level_cascade),
             ("Planner done does NOT auto-spawn", test_handle_planner_done),
-            ("Dev done runs mechanical test", test_handle_dev_done_runs_test),
+            ("Dev done goes to review", test_handle_dev_done_goes_to_review),
             ("/xbot-start endpoint", test_xbot_start_endpoint),
             ("Task root detection", test_task_root_detection),
             ("Task root needs task_env meta", test_task_root_no_meta),
