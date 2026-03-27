@@ -6,10 +6,19 @@ You are a skill planner for the TidyBot Universe robotics project.
 
 Before planning, make sure these are running (check with curl, launch if not).
 
+**IMPORTANT: You must ask the user which conda env to use before launching anything.**
+The user created their env during setup — do not guess or hardcode the name.
+Ask: "Which conda env should I use? (the one you created with setup.sh)"
+
 **IMPORTANT:**
 - Before launching any service, kill existing processes on its ports first.
   Stale processes cause "Address already in use" errors that look like a successful launch but silently fail.
 - Each service should be ready within **15 seconds**. If it takes longer, something is wrong — check logs and fix rather than keep waiting.
+
+In the commands below, replace `$CONDA_ENV` with the user's env name,
+and `$WORKSPACE` with the workspace root (parent of `agent_server/`, `sims/`, etc.).
+Determine `$WORKSPACE` by walking up from the current directory — this CLAUDE.md
+lives at `$WORKSPACE/Tidybot-Universe/skill-agent-setup/claude-code/CLAUDE.md`.
 
 ```bash
 # 0. Clear ports — kill anything already bound to service ports
@@ -22,36 +31,38 @@ fuser -k 8070/tcp 2>/dev/null   # dashboard
 # 1. ManiSkill sim (provides physics + bridge ports 5555-5580)
 #    --task must match the graph's task_env (check graph.json)
 #    Runtime task switching is NOT supported — to change tasks, kill the sim and restart.
-#    Available tasks are registered in ~/tidybot_uni/sims/robocasa_tasks/ (single_stage/, multi_stage/)
-cd ~/tidybot_uni/sims/maniskill && \
-  conda run -n maniskill \
-  env LD_PRELOAD=$HOME/miniconda3/envs/maniskill/lib/libstdc++.so.6 \
+#    Available tasks are registered in $WORKSPACE/sims/robocasa_tasks/ (single_stage/, multi_stage/)
+cd $WORKSPACE/sims/maniskill && \
+  conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
   python3 -m maniskill_server --task RoboCasaKitchen-v1 &
 # Wait for port 5555 to be ready before proceeding
 
 # 2. Agent server (HTTP API for code execution) — port 8080
-cd ~/tidybot_uni/agent_server && \
-  PYTHONPATH="$HOME/.local/lib/python3.10/site-packages:$PYTHONPATH" \
+cd $WORKSPACE/agent_server && \
+  conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   PYTHONUNBUFFERED=1 python3 server.py --no-service-manager &
 # Verify: curl -s http://localhost:8080/state should return JSON
 
 # 3. Orchestrator (manages skill tree + dev agents) — port 8765 (WS) + 8766 (HTTP)
 #    --graph is required: point it at a graph folder (or graph.json file)
-cd ~/tidybot_uni/marketing/Tidybot-Universe/skill-agent-setup/claude-code && \
-  env -u ANTHROPIC_API_KEY PYTHONPATH="$HOME/.local/lib/python3.10/site-packages:$PYTHONPATH" \
+cd $WORKSPACE/Tidybot-Universe/skill-agent-setup/claude-code && \
+  conda run -n $CONDA_ENV \
+  env -u ANTHROPIC_API_KEY LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   PYTHONUNBUFFERED=1 python3 agent_orchestrator.py \
   --graph graphs/cook-all-food &
 
 # 4. Website (dashboard to see the tree) — port 8070
-cd ~/tidybot_uni/marketing/TidyBot-Services.github.io && python3 -m http.server 8070 &
+cd $WORKSPACE/Tidybot-Universe && python3 -m http.server 8070 &
 ```
 
 **IMPORTANT:** Dev and test agents submit code via `POST localhost:8080/code/execute`. This requires the sim (#1) and agent server (#2) to be running. Without them, agents can write code to disk but cannot run or test anything.
 
 **Quick e2e check** (launches sim + agent server temporarily, runs tests, shuts down):
 ```bash
-cd ~/tidybot_uni/sims/maniskill && conda run -n maniskill python tests/test_sim_e2e.py
+cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV python tests/test_sim_e2e.py
 ```
 
 Available graphs in `graphs/` (each is a folder with `graph.json`, optional `scene.json`, and `skills/`):
@@ -107,7 +118,7 @@ Skills live under the graph folder at `graphs/<graph-name>/skills/<skill-name>/`
 2. Read SKILL.md of relevant skills to understand what's built
 3. Check the current tree: `curl http://localhost:8766/entries`
 4. Read the robot SDK docs: `curl http://localhost:8080/code/sdk/markdown`
-5. If targeting RoboCasa sim, read `~/tidybot_uni/sims/robocasa/` for available environments
+5. If targeting RoboCasa sim, read `$WORKSPACE/sims/robocasa/` for available environments
 
 ## Managing the Skill Tree
 
@@ -232,6 +243,6 @@ curl -X POST http://localhost:8766/spawn \
 Run orchestrator pipeline tests (no sim/agent server needed):
 
 ```bash
-cd ~/tidybot_uni/marketing/Tidybot-Universe/skill-agent-setup/claude-code
+cd $WORKSPACE/Tidybot-Universe/skill-agent-setup/claude-code
 python3 tests/test_orchestrator_pipeline.py
 ```
