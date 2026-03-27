@@ -20,6 +20,9 @@ fuser -k 8765/tcp 8766/tcp 2>/dev/null  # orchestrator
 fuser -k 8070/tcp 2>/dev/null   # dashboard
 
 # 1. ManiSkill sim (provides physics + bridge ports 5555-5580)
+#    --task must match the graph's task_env (check graph.json)
+#    Runtime task switching is NOT supported — to change tasks, kill the sim and restart.
+#    Available tasks are registered in ~/tidybot_uni/sims/robocasa_tasks/ (single_stage/, multi_stage/)
 cd ~/tidybot_uni/sims/maniskill && \
   conda run -n maniskill \
   env LD_PRELOAD=$HOME/miniconda3/envs/maniskill/lib/libstdc++.so.6 \
