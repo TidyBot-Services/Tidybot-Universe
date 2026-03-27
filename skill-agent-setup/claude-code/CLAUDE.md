@@ -177,22 +177,44 @@ Then kick off development for all ready skills:
 curl -X POST http://localhost:8766/xbot-start
 ```
 
-This auto-spawns dev pipelines (test_writer → dev → mechanical_test) for every skill
-whose dependencies are all confirmed "done" and whose status is still "planned" or "failed".
-Leaf skills (no dependencies) start immediately.
+This auto-spawns dev agents for every skill whose dependencies are all "done"
+and whose status is still "planned" or "failed". Leaf skills (no deps) start immediately.
+
+## Skill Statuses
+
+| Status | Meaning |
+|--------|---------|
+| `planned` | Waiting for dependencies to be done |
+| `writing` | Dev agent is working on the skill |
+| `testing` | Ground-truth test running (root skill only) |
+| `review` | Dev complete — waiting for human confirmation |
+| `failed` | Agent exhausted attempts |
+| `done` | Human confirmed — unblocks downstream skills |
+
+## Pipeline
+
+**Sub-skills** (not the root):
+```
+planned → writing (dev agent) → review → human confirms → done
+```
+
+**Root skill** (has `task_env` in graph.json):
+```
+planned → writing (dev agent) → testing (ground-truth via sim _check_success)
+  → pass → review → human confirms → done
+  → fail → re-spawn dev (up to 3 attempts) → review
+```
+
+The root skill gets an auto-generated test that submits the code and checks
+`GET /task/success` on the sim (port 5500). Sub-skills have no mechanical test —
+they go straight from dev to review.
 
 ## Review Gate
 
-After a skill's mechanical test passes, it enters **"review"** status — it does NOT
-auto-promote to "done". A human must confirm via the dashboard (click confirm on the
-skill hex). Only after confirmation does the skill count as "done", which unblocks
-downstream skills that depend on it. Those downstream skills are then auto-spawned.
-
-```
-dev agent → mechanical test → status="review" (waiting for human)
-  → user confirms on dashboard → status="done"
-    → downstream skills with all deps "done" auto-spawn
-```
+After a dev agent finishes (or the root skill's test completes), the skill enters
+**"review"** status. A human must confirm via the dashboard (click Done on the
+skill hex). Only after confirmation does the skill become "done", which unblocks
+downstream skills. Those downstream skills are then auto-spawned.
 
 You can also spawn a single skill manually:
 
