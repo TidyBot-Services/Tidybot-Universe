@@ -289,7 +289,8 @@ def run_trial(trial_num: int) -> bool:
 
     # Check task success via sim
     success = check_success()
-    print(f"Trial {{trial_num}}: {{"PASS" if success else "FAIL"}} (sim _check_success={{success}})")
+    label = "PASS" if success else "FAIL"
+    print(f"Trial {{trial_num}}: {{label}} (sim _check_success={{success}})")
     return success
 
 
@@ -875,18 +876,23 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev") -> str:
 
 async def spawn_skill_pipeline(skill: str, user_prompt: str):
     """Spawn a dev agent for the skill. The dev agent writes, tests, and debugs the code."""
+    # Auto-generate ground-truth test for root skill (task_env)
+    if _is_task_root(skill):
+        _auto_generate_task_root_test(skill)
     print(f"[ORCH] {skill}: spawning dev agent")
     await spawn_agent(skill, user_prompt, agent_type="dev")
 
 
-async def run_mechanical_test(skill: str):
-    """Run the skill's test as a subprocess and parse results."""
+async def run_mechanical_test(skill: str) -> dict:
+    """Run the skill's test as a subprocess and parse results.
+    Returns {"passed": bool, "success_rate": float, "total_trials": int, "stdout": str, "stderr": str}.
+    Also updates the entry status and broadcasts."""
     test_file = SKILLS_DIR / skill / "tests" / "run_trials.py"
     if not test_file.exists():
         await ws_broadcast_agent_msg(skill, "No test file found", "test")
         _update_entry(skill, {"status": "failed"})
         await broadcast_full_sync()
-        return
+        return {"passed": False, "success_rate": 0, "total_trials": 0, "stdout": "", "stderr": "No test file"}
 
     await ws_broadcast_agent_msg(skill, "Running test subprocess...", "test")
 
@@ -921,7 +927,8 @@ async def run_mechanical_test(skill: str):
                     await ws_broadcast_agent_msg(skill, "Test timed out (10 min limit)", "test")
                     _update_entry(skill, {"status": "failed"})
                     await broadcast_full_sync()
-                    return
+                    return {"passed": False, "success_rate": 0, "total_trials": 0, "stdout": "", "stderr": "Timed out"}
+
                 await ws_broadcast_status(skill, "", "running", f"Testing... {elapsed}s")
 
         stdout_bytes, stderr_bytes = await proc.communicate()
@@ -989,11 +996,81 @@ async def run_mechanical_test(skill: str):
         if status_label == "done":
             await _auto_spawn_ready_skills()
 
+        return {"passed": passed, "success_rate": sr, "total_trials": total_trials, "stdout": stdout, "stderr": stderr}
+
     except Exception as e:
         await ws_broadcast_agent_msg(skill, f"Test error: {e}", "test")
         import traceback; traceback.print_exc()
         _update_entry(skill, {"status": "failed"})
         await broadcast_full_sync()
+        return {"passed": False, "success_rate": 0, "total_trials": 0, "stdout": "", "stderr": str(e)}
+
+
+MAX_ROOT_TEST_ATTEMPTS = 3
+_skills_in_test_loop: set[str] = set()
+
+async def _root_skill_test_loop(skill: str):
+    """Run ground-truth test for root skill. On failure, re-spawn dev up to MAX_ROOT_TEST_ATTEMPTS times.
+    After passing or exhausting attempts, go to review."""
+    _skills_in_test_loop.add(skill)
+    try:
+        await _root_skill_test_loop_inner(skill)
+    finally:
+        _skills_in_test_loop.discard(skill)
+
+
+async def _root_skill_test_loop_inner(skill: str):
+    entry = _find_entry(skill)
+    attempt = entry.get("test_attempts", 0) if entry else 0
+
+    while attempt < MAX_ROOT_TEST_ATTEMPTS:
+        attempt += 1
+        _update_entry(skill, {"test_attempts": attempt, "status": "testing"})
+        await broadcast_full_sync()
+
+        await ws_broadcast_agent_msg(skill, f"Ground-truth test attempt {attempt}/{MAX_ROOT_TEST_ATTEMPTS}", "test")
+        result = await run_mechanical_test(skill)
+
+        if result["passed"]:
+            # Test passed — go to review
+            await ws_broadcast_agent_msg(skill, f"Ground-truth test PASSED (attempt {attempt}). Waiting for review.", "test")
+            _update_entry(skill, {"status": "review"})
+            await broadcast_full_sync()
+            return
+
+        if attempt >= MAX_ROOT_TEST_ATTEMPTS:
+            break
+
+        # Test failed — re-spawn dev with feedback
+        stdout_tail = result["stdout"][-500:] if result["stdout"] else ""
+        stderr_tail = result["stderr"][-500:] if result["stderr"] else ""
+        feedback = f"Ground-truth test failed (attempt {attempt}/{MAX_ROOT_TEST_ATTEMPTS}). " \
+                   f"Success rate: {result['success_rate']:.0f}%.\n" \
+                   f"Test stdout:\n{stdout_tail}\nTest stderr:\n{stderr_tail}\n\n" \
+                   f"Fix the skill code and try again."
+
+        await ws_broadcast_agent_msg(skill, f"Test failed (attempt {attempt}) — re-spawning dev agent.", "test")
+        _update_entry(skill, {"status": "writing"})
+        await broadcast_full_sync()
+
+        desc = entry.get("description", skill) if entry else skill
+        prompt = f"Implement the '{skill}' skill: {desc}\n\n## Previous test failure\n{feedback}"
+        await spawn_agent(skill, prompt, agent_type="dev")
+
+        # Wait for the dev agent to finish before testing again
+        # Find the agent we just spawned
+        dev_state = None
+        for a in agents.values():
+            if a.skill == skill and a.status in ("starting", "running"):
+                dev_state = a
+                break
+        if dev_state and dev_state.task:
+            await dev_state.task
+
+    # Exhausted all attempts — go to review anyway so user can inspect
+    await ws_broadcast_agent_msg(skill, f"Ground-truth test failed after {attempt} attempts. Sending to review.", "test")
+    _update_entry(skill, {"status": "review"})
+    await broadcast_full_sync()
 
 
 def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
@@ -1157,6 +1234,17 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
 async def _handle_agent_done(state: AgentState):
     """Handle agent completion — chain to next step in pipeline."""
     if state.agent_type == "dev":
+        # Skip if this dev agent was re-spawned inside the test loop (loop manages flow)
+        if state.skill in _skills_in_test_loop:
+            return
+
+        # Root skill with task_env: run ground-truth mechanical test
+        if _is_task_root(state.skill):
+            await ws_broadcast_status(state.skill, state.agent_id, "done", "Dev complete — running ground-truth test")
+            await ws_broadcast_agent_msg(state.skill, "Dev complete — running mechanical test.", state.agent_type)
+            asyncio.create_task(_root_skill_test_loop(state.skill))
+            return
+
         if autonomous_mode:
             # Autonomous: skip review, auto-promote to done and spawn downstream
             await ws_broadcast_status(state.skill, state.agent_id, "done", "Dev complete — auto-promoted (autonomous)")
@@ -1200,8 +1288,8 @@ async def _auto_spawn_ready_skills() -> list[str]:
             status = entry.get("status", "planned")
             deps = entry.get("dependencies", [])
 
-            # Only auto-spawn skills that are "planned" (not already in progress)
-            if status != "planned":
+            # Only auto-spawn skills that are "planned" or "failed" (retriable)
+            if status not in ("planned", "failed"):
                 continue
             # Skip if already has an active agent
             if name in active_skills:
