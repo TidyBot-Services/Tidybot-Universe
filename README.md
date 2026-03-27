@@ -16,10 +16,6 @@ Software became powerful when we stopped building monoliths and started composin
 
 An agent with access to the internet, trial-and-error, and a library of shared skills can do far more than any hand-coded robot program. Skills built by one robot benefit every robot in the community. That's the Tidybot Universe.
 
-## Demo
-
-https://github.com/user-attachments/assets/demo
-
 ## Install (Sim + Claude Code)
 
 Requires [conda](https://docs.conda.io/en/latest/miniconda.html) and [Claude Code](https://claude.ai/code). No hardware needed — runs entirely in simulation.
