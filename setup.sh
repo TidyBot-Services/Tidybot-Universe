@@ -50,6 +50,7 @@ clone() {
 echo "==> Cloning repos into $WORKSPACE ..."
 
 clone Tidybot-Universe                     "$WORKSPACE/Tidybot-Universe"
+clone TidyBot-Services.github.io           "$WORKSPACE/Tidybot-Universe/_site"
 clone agent_server                         "$WORKSPACE/agent_server"
 clone system_logger                        "$WORKSPACE/system_logger"
 clone common                               "$WORKSPACE/common"
