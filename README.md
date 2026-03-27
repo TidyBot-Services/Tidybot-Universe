@@ -20,7 +20,7 @@ An agent with access to the internet, trial-and-error, and a library of shared s
 
 https://github.com/user-attachments/assets/demo
 
-## Install
+## Install (Sim + Claude Code)
 
 Requires [conda](https://docs.conda.io/en/latest/miniconda.html) and [Claude Code](https://claude.ai/code). No hardware needed — runs entirely in simulation.
 
@@ -28,14 +28,7 @@ Requires [conda](https://docs.conda.io/en/latest/miniconda.html) and [Claude Cod
 curl -fsSL https://raw.githubusercontent.com/TidyBot-Services/Tidybot-Universe/master/setup.sh | bash -s -- YOUR_ENV_NAME
 ```
 
-This clones all repos, creates a conda env, and installs everything. Then:
-
-```bash
-cd tidybot_uni/Tidybot-Universe/skill-agent-setup/claude-code
-claude --dangerously-skip-permissions
-```
-
-Type `/xbot-plan` — the agent launches the sim and servers, then starts building skills.
+Follow the instructions printed at the end — start Claude Code in the skill agent directory and type `/xbot-plan`.
 
 ## What Makes Robotics Agents Different
 
