@@ -691,15 +691,15 @@ def _map_status(internal: str, agent_type: str = "dev") -> str:
             "starting": "testing",
             "running": "testing",
             "stopped": "failed",
-            "done": "agent_done",
+            "done": "review",
             "confirmed_done": "done",
             "error": "failed",
         }.get(internal, internal)
     if agent_type == "planner":
         # Planner doesn't map to a specific skill hex — uses _planner pseudo-skill
         return {
-            "starting": "studying",
-            "running": "studying",
+            "starting": "writing",
+            "running": "writing",
             "stopped": "failed",
             "done": "done",
             "error": "failed",
@@ -708,7 +708,7 @@ def _map_status(internal: str, agent_type: str = "dev") -> str:
         "starting": "writing",
         "running": "writing",
         "stopped": "failed",
-        "done": "agent_done",
+        "done": "review",
         "confirmed_done": "done",
         "error": "failed",
     }.get(internal, internal)
@@ -798,7 +798,7 @@ async def ws_handler(websocket):
                     skill = msg.get("skill", "")
                     agent_id = msg.get("agent_id", "")
                     print(f"[WS] confirm_done -> {skill}")
-                    # Mark as confirmed done (bypasses agent_done mapping)
+                    # Mark as confirmed done (bypasses review mapping)
                     state = agents.get(agent_id)
                     if state:
                         state.status = "confirmed_done"
