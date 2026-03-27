@@ -16,6 +16,27 @@ Software became powerful when we stopped building monoliths and started composin
 
 An agent with access to the internet, trial-and-error, and a library of shared skills can do far more than any hand-coded robot program. Skills built by one robot benefit every robot in the community. That's the Tidybot Universe.
 
+## Demo
+
+https://github.com/user-attachments/assets/demo
+
+## Install
+
+Requires [conda](https://docs.conda.io/en/latest/miniconda.html) and [Claude Code](https://claude.ai/code). No hardware needed — runs entirely in simulation.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TidyBot-Services/Tidybot-Universe/master/setup.sh | bash -s -- YOUR_ENV_NAME
+```
+
+This clones all repos, creates a conda env, and installs everything. Then:
+
+```bash
+cd tidybot_uni/Tidybot-Universe/skill-agent-setup/claude-code
+claude --dangerously-skip-permissions
+```
+
+Type `/xbot-plan` — the agent launches the sim and servers, then starts building skills.
+
 ## What Makes Robotics Agents Different
 
 Software agents operate in a sandbox. Robotics agents operate in the real world. Three things change:
@@ -62,6 +83,6 @@ The services are the muscles and senses that don't fit on the robot's little com
 - **GPU services on demand.** Vision models, grasp planners, segmentation — they run on powerful remote servers and expose simple HTTP APIs.
 - **Agent-driven deployment.** The agent discovers what services exist, deploys what it needs, and calls them. The robot's onboard computer just orchestrates.
 
-## Get Started
+## More
 
-Ready to try it? See **[Getting Started](GETTING_STARTED.md)** for setup instructions, ecosystem overview, and links.
+See **[Getting Started](GETTING_STARTED.md)** for the full ecosystem overview, hardware setup, and service development.
