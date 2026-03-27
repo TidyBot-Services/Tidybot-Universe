@@ -75,18 +75,6 @@ clone camera-protocol                      "$WORKSPACE/protocols/camera_protocol
 echo "==> Setting up symlinks ..."
 [ -f "$WORKSPACE/common/setup.sh" ] && (cd "$WORKSPACE" && bash common/setup.sh)
 
-# ManiSkill tidyverse URDF mesh symlinks (relative paths in tidyverse.urdf)
-echo "==> Setting up URDF mesh symlinks ..."
-MANI_SKILL_ASSETS="$(conda run -n "$ENV_NAME" python3 -c "import mani_skill; print(mani_skill.__path__[0])" 2>/dev/null)/assets/robots/panda"
-if [ -d "$MANI_SKILL_ASSETS" ]; then
-  ln -sfn "$MANI_SKILL_ASSETS/franka_description"     "$WORKSPACE/sims/maniskill_tidyverse/franka_description"
-  ln -sfn "$MANI_SKILL_ASSETS/realsense2_description"  "$WORKSPACE/sims/maniskill_tidyverse/realsense2_description"
-fi
-# Robotiq gripper meshes (downloaded by mani_skill asset manager)
-if [ -d "$HOME/.maniskill/data/robots/robotiq_2f/meshes" ]; then
-  ln -sfn "$HOME/.maniskill/data/robots/robotiq_2f/meshes" "$WORKSPACE/sims/maniskill_tidyverse/robotiq_meshes"
-fi
-
 # ── Conda env ─────────────────────────────────────────────────────────────────
 
 echo "==> Creating conda env '$ENV_NAME' (Python 3.11) ..."
@@ -175,6 +163,18 @@ conda run -n "$ENV_NAME" pip install -q --no-deps \
   -e "$WORKSPACE/sims/bridges/maniskill/gripper_robotiq" \
   -e "$WORKSPACE/sims/bridges/maniskill/camera_realsense" \
   -e "$WORKSPACE/system_logger"
+
+# ── URDF mesh symlinks (needs mani_skill installed) ──────────────────────────
+
+echo "==> Setting up URDF mesh symlinks ..."
+MANI_SKILL_ASSETS="$(conda run -n "$ENV_NAME" python3 -c "import mani_skill; print(mani_skill.__path__[0])" 2>/dev/null)/assets/robots/panda"
+if [ -d "$MANI_SKILL_ASSETS" ]; then
+  ln -sfn "$MANI_SKILL_ASSETS/franka_description"     "$WORKSPACE/sims/maniskill_tidyverse/franka_description"
+  ln -sfn "$MANI_SKILL_ASSETS/realsense2_description"  "$WORKSPACE/sims/maniskill_tidyverse/realsense2_description"
+fi
+if [ -d "$HOME/.maniskill/data/robots/robotiq_2f/meshes" ]; then
+  ln -sfn "$HOME/.maniskill/data/robots/robotiq_2f/meshes" "$WORKSPACE/sims/maniskill_tidyverse/robotiq_meshes"
+fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 
