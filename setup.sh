@@ -63,10 +63,28 @@ clone base_tidybot_maniskill_service       "$WORKSPACE/sims/bridges/maniskill/ba
 clone gripper_robotiq_maniskill_service    "$WORKSPACE/sims/bridges/maniskill/gripper_robotiq"
 clone camera_realsense_maniskill_service   "$WORKSPACE/sims/bridges/maniskill/camera_realsense"
 
+# Protocol packages (shared client + message definitions for all backends)
+mkdir -p "$WORKSPACE/protocols"
+clone franka-protocol                      "$WORKSPACE/protocols/franka_protocol"
+clone gripper-protocol                     "$WORKSPACE/protocols/gripper_protocol"
+clone camera-protocol                      "$WORKSPACE/protocols/camera_protocol"
+
 # ── Symlinks (from common/) ──────────────────────────────────────────────────
 
 echo "==> Setting up symlinks ..."
 [ -f "$WORKSPACE/common/setup.sh" ] && (cd "$WORKSPACE" && bash common/setup.sh)
+
+# ManiSkill tidyverse URDF mesh symlinks (relative paths in tidyverse.urdf)
+echo "==> Setting up URDF mesh symlinks ..."
+MANI_SKILL_ASSETS="$(conda run -n "$ENV_NAME" python3 -c "import mani_skill; print(mani_skill.__path__[0])" 2>/dev/null)/assets/robots/panda"
+if [ -d "$MANI_SKILL_ASSETS" ]; then
+  ln -sfn "$MANI_SKILL_ASSETS/franka_description"     "$WORKSPACE/sims/maniskill_tidyverse/franka_description"
+  ln -sfn "$MANI_SKILL_ASSETS/realsense2_description"  "$WORKSPACE/sims/maniskill_tidyverse/realsense2_description"
+fi
+# Robotiq gripper meshes (downloaded by mani_skill asset manager)
+if [ -d "$HOME/.maniskill/data/robots/robotiq_2f/meshes" ]; then
+  ln -sfn "$HOME/.maniskill/data/robots/robotiq_2f/meshes" "$WORKSPACE/sims/maniskill_tidyverse/robotiq_meshes"
+fi
 
 # ── Conda env ─────────────────────────────────────────────────────────────────
 
@@ -145,6 +163,9 @@ conda run -n "$ENV_NAME" pip install -q --no-deps mani_skill==3.0.0b22
 
 echo "==> Installing local packages (editable) ..."
 conda run -n "$ENV_NAME" pip install -q --no-deps \
+  -e "$WORKSPACE/protocols/franka_protocol" \
+  -e "$WORKSPACE/protocols/gripper_protocol" \
+  -e "$WORKSPACE/protocols/camera_protocol" \
   -e "$WORKSPACE/sims/maniskill" \
   -e "$WORKSPACE/sims/maniskill_tidyverse" \
   -e "$WORKSPACE/sims/robocasa_tasks" \
