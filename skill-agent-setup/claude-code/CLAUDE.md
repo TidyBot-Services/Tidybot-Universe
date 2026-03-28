@@ -60,7 +60,7 @@ cd $WORKSPACE/Tidybot-Universe/skill-agent-setup/claude-code && \
   --graph graphs/cook-all-food &
 
 # 4. Website (dashboard to see the tree) — port 8070
-cd $WORKSPACE/Tidybot-Universe/_site && python3 -m http.server 8070 &
+cd $WORKSPACE/TidyBot-Services.github.io && python3 -m http.server 8070 &
 ```
 
 **IMPORTANT:** Dev and test agents submit code via `POST localhost:8080/code/execute`. This requires the sim (#1) and agent server (#2) to be running. Without them, agents can write code to disk but cannot run or test anything.

@@ -50,7 +50,7 @@ clone() {
 echo "==> Cloning repos into $WORKSPACE ..."
 
 clone Tidybot-Universe                     "$WORKSPACE/Tidybot-Universe"
-clone TidyBot-Services.github.io           "$WORKSPACE/Tidybot-Universe/_site"
+clone TidyBot-Services.github.io           "$WORKSPACE/TidyBot-Services.github.io"
 clone agent_server                         "$WORKSPACE/agent_server"
 clone system_logger                        "$WORKSPACE/system_logger"
 clone common                               "$WORKSPACE/common"
@@ -142,7 +142,8 @@ conda run -n "$ENV_NAME" pip install -q \
   "PyJWT>=2.12" \
   "cryptography>=46.0" \
   "ipython>=9.10" \
-  "setuptools<81"
+  "setuptools<81" \
+  claude-agent-sdk
 
 # mani_skill pins mplib==0.1.1 but we need 0.2.1
 echo "==> Installing mani_skill (--no-deps) ..."
