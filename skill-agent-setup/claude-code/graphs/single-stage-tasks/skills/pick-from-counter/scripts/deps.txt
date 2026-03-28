@@ -1,0 +1,2 @@
+detect-scene-objects
+grasp-and-lift

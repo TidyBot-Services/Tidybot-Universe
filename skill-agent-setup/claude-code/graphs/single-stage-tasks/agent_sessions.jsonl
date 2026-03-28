@@ -1,0 +1,4 @@
+{"session_id": "0807ab30-7c7f-4b5c-a876-67914ede6997", "skill": "detect-scene-objects", "agent_type": "dev", "agent_id": "agent-9eaa69f4", "cost_usd": 0.4449481, "num_turns": 27, "timestamp": "2026-03-28T02:45:35.998924+00:00"}
+{"session_id": "3160cbce-054a-47d8-9cb8-b31999eeb1db", "skill": "grasp-and-lift", "agent_type": "dev", "agent_id": "agent-4721d812", "cost_usd": 1.30609355, "num_turns": 32, "timestamp": "2026-03-28T02:53:42.506408+00:00"}
+{"session_id": "aa55c02e-aab2-4527-a8f7-f4c76c815e1d", "skill": "pick-from-counter", "agent_type": "dev", "agent_id": "agent-92d83c96", "cost_usd": 0.9544745, "num_turns": 45, "timestamp": "2026-03-28T03:00:50.791548+00:00"}
+{"session_id": "00bbb205-c029-4592-a5a3-556bfec26060", "skill": "pick-from-counter", "agent_type": "dev", "agent_id": "agent-4d069a11", "cost_usd": 1.7624767999999997, "num_turns": 59, "timestamp": "2026-03-28T03:16:58.701990+00:00"}

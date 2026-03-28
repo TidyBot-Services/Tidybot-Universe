@@ -220,7 +220,7 @@ import urllib.error
 
 AGENT_SERVER = "http://localhost:8080"
 SIM_API = "http://localhost:5500"
-NUM_TRIALS = 3
+NUM_TRIALS = 1
 
 
 def submit_code(code: str) -> str:
