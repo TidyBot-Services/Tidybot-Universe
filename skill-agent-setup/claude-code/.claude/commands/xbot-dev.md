@@ -19,7 +19,7 @@ curl -sf http://localhost:8080/state    # agent server
 
 If the sim is needed (RoboCasa tasks), also check:
 ```bash
-curl -sf http://localhost:5500/state    # sim
+nc -z localhost 5500                    # sim
 ```
 
 If any service is down, tell the user what to start and stop.

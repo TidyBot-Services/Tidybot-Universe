@@ -30,7 +30,7 @@ cd ~/tidybot_uni/marketing/Tidybot-Universe/skill-agent-setup/claude-code && \
 Also check the sim and agent server:
 ```bash
 curl -sf http://localhost:8080/state   # agent server
-curl -sf http://localhost:5500/state   # sim (optional, for RoboCasa tasks)
+nc -z localhost 5500                   # sim (optional, for RoboCasa tasks)
 ```
 
 2. **Show the current tree** (if any entries exist). Print the tree as a dependency list so the user sees what's already planned/done.

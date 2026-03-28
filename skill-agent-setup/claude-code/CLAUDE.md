@@ -15,6 +15,11 @@ Ask: "Which conda env should I use? (the one you created with setup.sh)"
   Stale processes cause "Address already in use" errors that look like a successful launch but silently fail.
 - Each service should be ready within **15 seconds**. If it takes longer, something is wrong — check logs and fix rather than keep waiting.
 
+**Python dependency:** The orchestrator requires `claude-agent-sdk`. Install it if missing:
+```bash
+conda run -n $CONDA_ENV pip install claude-agent-sdk
+```
+
 In the commands below, replace `$CONDA_ENV` with the user's env name,
 and `$WORKSPACE` with the workspace root (parent of `agent_server/`, `sims/`, etc.).
 Determine `$WORKSPACE` by walking up from the current directory — this CLAUDE.md
