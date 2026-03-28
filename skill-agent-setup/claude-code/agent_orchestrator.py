@@ -262,16 +262,26 @@ def check_success() -> bool:
 
 def run_trial(trial_num: int) -> bool:
     """Run one trial of the skill and check success."""
-    # Read the skill's main.py
     import os
+    import subprocess
     skill_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    main_py = os.path.join(skill_dir, "scripts", "main.py")
-    if not os.path.exists(main_py):
-        print(f"Trial {{trial_num}}: SKIP - no scripts/main.py")
+    skills_dir = os.path.dirname(skill_dir)
+    skill_name = os.path.basename(skill_dir)
+    bundler = os.path.join(os.path.dirname(skills_dir), "..", "tidybot-bundle", "scripts", "tidybot-bundle.py")
+
+    if not os.path.exists(bundler):
+        print(f"Trial {{trial_num}}: FAIL - bundler not found at {{bundler}}")
         return False
 
-    with open(main_py) as f:
-        code = f.read()
+    print(f"Trial {{trial_num}}: bundling skill with dependencies...")
+    result = subprocess.run(
+        ["python3", bundler, skill_name, "--skills-dir", skills_dir],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"Trial {{trial_num}}: FAIL - bundler error: {{result.stderr[:200]}}")
+        return False
+    code = result.stdout
 
     print(f"Trial {{trial_num}}: submitting skill code...")
     job_id = submit_code(code)
@@ -1086,32 +1096,25 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
     else:
         skills_list = "  (no skills directory found)"
 
-    # For dev agents: include dependency skill code inline so the agent knows interfaces
+    # For dev agents: tell them about dependencies and how to bundle
     dep_context = ""
     if agent_type == "dev" and skill_name:
         entry = next((e for e in skill_entries if e["name"] == skill_name), None)
         if entry and entry.get("dependencies"):
-            dep_sections = []
+            dep_lines = []
             for dep_name in entry["dependencies"]:
                 dep_dir = SKILLS_DIR / dep_name
-                # Read SKILL.md
-                skill_md = dep_dir / "SKILL.md"
-                skill_md_text = ""
-                if skill_md.exists():
-                    skill_md_text = skill_md.read_text()[:2000]
-                # Read main.py
-                main_py = dep_dir / "scripts" / "main.py"
-                main_py_text = ""
-                if main_py.exists():
-                    main_py_text = main_py.read_text()[:3000]
-                dep_sections.append(
-                    f"### {dep_name}\n"
-                    + (f"**SKILL.md:**\n```\n{skill_md_text}\n```\n\n" if skill_md_text else "")
-                    + (f"**scripts/main.py:**\n```python\n{main_py_text}\n```\n" if main_py_text else "(no code yet)\n")
-                )
+                dep_lines.append(f"- `{dep_name}` — located at `{dep_dir}/`")
+            bundler_path = Path(__file__).resolve().parent / "tidybot-bundle" / "scripts" / "tidybot-bundle.py"
             dep_context = (
-                "\n\n## Dependency Skills (your skill depends on these — reuse them)\n\n"
-                + "\n".join(dep_sections)
+                "\n\n## Dependency Skills\n\n"
+                "Your skill depends on these (read their SKILL.md for the interface):\n"
+                + "\n".join(dep_lines)
+                + "\n\nList them in `scripts/deps.txt` (one per line). "
+                + "When submitting code for execution, use the bundler to produce a single script:\n"
+                + f"```bash\npython {bundler_path} {skill_name} --skills-dir {SKILLS_DIR} -o bundled.py\n```\n"
+                + "The bundler resolves deps.txt, topologically sorts, deduplicates imports, "
+                + "and inlines everything into one file ready for `/code/execute`.\n"
             )
 
     # For planner: also include current tree and task context
