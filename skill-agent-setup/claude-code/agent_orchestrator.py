@@ -721,6 +721,7 @@ class AgentState:
     proc: Optional[object] = None     # subprocess (CLI fallback)
     task: Optional[asyncio.Task] = None
     log: list = field(default_factory=list)
+    exit_event: asyncio.Event = field(default_factory=asyncio.Event)  # set to tear down client context
 
 
 agents: dict[str, AgentState] = {}    # agent_id -> AgentState
@@ -807,8 +808,12 @@ def build_full_sync() -> list[dict]:
     import copy
     repos = copy.deepcopy(skill_entries)
 
-    # Overlay live agent state onto matching entries
-    agent_by_skill = {a.skill: a for a in agents.values()}
+    # Overlay live agent state onto matching entries (prefer active agents)
+    agent_by_skill: dict[str, AgentState] = {}
+    for a in agents.values():
+        prev = agent_by_skill.get(a.skill)
+        if prev is None or a.status in ("starting", "running") or prev.status in ("stopped", "error"):
+            agent_by_skill[a.skill] = a
     for repo in repos:
         a = agent_by_skill.get(repo["name"])
         if a:
@@ -950,10 +955,13 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev") -> str:
         await ws_broadcast({"type": "error", "message": msg})
         return ""
 
-    # If there's already an active agent for this skill, stop it first
+    # Stop any active agent and clean up stale agents for this skill
     for aid, a in list(agents.items()):
-        if a.skill == skill and a.status in ("starting", "running"):
-            await stop_agent(aid)
+        if a.skill == skill:
+            if a.status in ("starting", "running"):
+                await stop_agent(aid)
+            a.exit_event.set()  # unblock pause-wait so client context closes
+            agents.pop(aid, None)
 
     agent_id = f"agent-{uuid.uuid4().hex[:8]}"
     state = AgentState(agent_id=agent_id, skill=skill, agent_type=agent_type)
@@ -1300,6 +1308,13 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
             await _consume_sdk_response(state, client)
             print(f"[SDK] {state.skill}: response consumed")
 
+            await _resolve_completion(state)
+
+            if state.status in ("paused", "done", "confirmed_done"):
+                print(f"[SDK] {state.skill}: keeping client alive (status={state.status}), waiting for exit...")
+                await state.exit_event.wait()
+                print(f"[SDK] {state.skill}: exit_event received, closing client")
+
     except asyncio.CancelledError:
         state.status = "stopped"
         await ws_broadcast_status(state.skill, state.agent_id, "stopped", "Cancelled")
@@ -1311,20 +1326,21 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
         state.log.append(f"ERROR: {err}")
         await ws_broadcast_status(state.skill, state.agent_id, "error", err)
         await ws_broadcast_agent_msg(state.skill, f"Error: {err}", state.agent_type)
-    finally:
-        if state.status == "running":
-            # Check if skill is already confirmed done — don't re-trigger pipeline
-            entry = _find_entry(state.skill)
-            already_done = entry and entry.get("status") == "done"
-            if already_done:
-                state.status = "confirmed_done"
-                await ws_broadcast_agent_msg(state.skill, "Hint applied — skill still confirmed done.", state.agent_type)
-            else:
-                state.status = "done"
-                await _handle_agent_done(state)
-                # Keep agent alive in review — wait for hints or confirmation
-                if not _is_task_root(state.skill) and not autonomous_mode:
-                    state.status = "paused"
+
+
+async def _resolve_completion(state: AgentState) -> None:
+    """Transition state after consuming a response: broadcast outcome, optionally pause."""
+    if state.status != "running":
+        return
+    entry = _find_entry(state.skill)
+    if entry and entry.get("status") == "done":
+        state.status = "confirmed_done"
+        await ws_broadcast_agent_msg(state.skill, "Hint applied — skill still confirmed done.", state.agent_type)
+    else:
+        state.status = "done"
+        await _handle_agent_done(state)
+        if not _is_task_root(state.skill) and not autonomous_mode:
+            state.status = "paused"
 
 
 async def _handle_agent_done(state: AgentState):
@@ -1338,6 +1354,7 @@ async def _handle_agent_done(state: AgentState):
         if _is_task_root(state.skill):
             await ws_broadcast_status(state.skill, state.agent_id, "done", "Dev complete — running ground-truth test")
             await ws_broadcast_agent_msg(state.skill, "Dev complete — running mechanical test.", state.agent_type)
+            state.exit_event.set()  # release old dev agent's client context
             asyncio.create_task(_root_skill_test_loop(state.skill))
             return
 
@@ -1365,6 +1382,10 @@ async def _confirm_skill_done(skill: str):
     if not entry:
         return
     _update_entry(skill, {"status": "done"})
+    # Release any paused agent for this skill
+    for aid, a in list(agents.items()):
+        if a.skill == skill:
+            a.exit_event.set()
     print(f"[ORCH] Skill '{skill}' confirmed done — checking downstream skills")
     await broadcast_full_sync()
     await _auto_spawn_ready_skills()
@@ -1503,8 +1524,12 @@ async def inject_hint(agent_id: str, text: str):
                 await asyncio.sleep(0.5)
             state.status = "running"
             await state.client.query(text)
-            # Consume the new response in a background task
-            state.task = asyncio.create_task(_consume_sdk_response(state, state.client))
+
+            async def _hint_response():
+                await _consume_sdk_response(state, state.client)
+                await _resolve_completion(state)
+
+            state.task = asyncio.create_task(_hint_response())
             await ws_broadcast_status(state.skill, state.agent_id, "writing", "Resumed")
         except Exception as e:
             print(f"[ORCH] inject SDK error: {e}")
@@ -1527,18 +1552,10 @@ async def stop_agent(agent_id: str):
     # (which checks state.status == "running" to decide whether to trigger tests)
     state.status = "paused"
 
-    # SDK mode: gentle interrupt — tell agent to pause, keep session alive
+    # SDK mode: interrupt current work, keep session alive for later hints
     if HAS_SDK and state.client:
         try:
             await state.client.interrupt()
-            await asyncio.sleep(0.5)
-            await state.client.query(
-                "The user has paused your work. Stop what you are doing and wait. "
-                "Do not make any tool calls. When the user sends a follow-up message, "
-                "resume from where you left off."
-            )
-            # Consume the pause acknowledgement in background
-            state.task = asyncio.create_task(_consume_sdk_response(state, state.client))
         except Exception as e:
             print(f"[ORCH] stop/pause SDK error: {e}")
     state.log.append("Paused by user")
@@ -1558,6 +1575,7 @@ async def kill_agent(agent_id: str):
         return
 
     state.status = "stopped"
+    state.exit_event.set()
 
     if HAS_SDK and state.client:
         try:
@@ -1579,10 +1597,10 @@ async def kill_agent(agent_id: str):
         state.proc.send_signal(signal.SIGINT)
 
     state.log.append("Killed by user")
-    # Clear agent_id — skill status stays as-is
     _update_entry(state.skill, {"agent_id": None})
     await ws_broadcast_status(state.skill, state.agent_id, "stopped", "Stopped")
     await ws_broadcast_agent_msg(state.skill, "Agent killed", state.agent_type)
+    agents.pop(agent_id, None)
     await broadcast_full_sync()
 
 
