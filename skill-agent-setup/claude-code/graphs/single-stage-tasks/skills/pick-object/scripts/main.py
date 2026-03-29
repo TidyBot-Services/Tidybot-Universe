@@ -93,15 +93,17 @@ def _close_and_check(retreat_x: float, retreat_y: float, retreat_z: float, quat)
     return False
 
 
-def _lift(x: float, y: float, from_z: float, quat) -> bool:
+def _lift_and_succeed(name: str, x: float, y: float, from_z: float, quat) -> bool:
+    """Lift grasped object and report success. Returns True on success, False if lift fails."""
     lift_z = from_z + LIFT_HEIGHT
     print(f"Lifting to z={lift_z:.3f}", flush=True)
     try:
         _wb_move(x, y, lift_z, quat, "lift")
-        return True
     except Exception as e:
         print(f"Result: FAILED – lift_failed: {e}", flush=True)
         return False
+    print(f"Result: SUCCESS – picked {name}", flush=True)
+    return True
 
 
 def _find_graspable() -> list:
@@ -127,7 +129,7 @@ def _find_graspable() -> list:
 
     candidates.sort(key=lambda o: o.get("distance_m", 9999))
     ctx_counter  = [o for o in candidates if "counter" in o.get("fixture_context", "").lower()]
-    height_match = [o for o in candidates if COUNTER_Z_MIN <= float(o["z"]) <= COUNTER_Z_MAX]
+    height_match = [o for o in candidates if COUNTER_Z_MIN <= o["z"] <= COUNTER_Z_MAX]
     return ctx_counter or height_match or candidates
 
 
@@ -200,31 +202,26 @@ def pick_object(target_name: str | None = None) -> bool:
     print(f"Target '{target['name']}' at ({tx:.3f}, {ty:.3f}, {tz:.3f})", flush=True)
 
     try:
-        base_pose = sensors.get_base_pose()
-        bx, by = float(base_pose["x"]), float(base_pose["y"])
+        bx, by, _ = sensors.get_base_pose()
     except Exception:
         bx, by = 0.0, 0.0
     approach_yaw = math.atan2(ty - by, tx - bx)
 
     gripper.open()
 
+    name = target["name"]
+
     for z_off in _TOPDOWN_Z_OFFSETS:
         print(f"\n[TopDown] z_offset={z_off:+.2f}", flush=True)
         if _topdown_attempt(tx, ty, tz, z_offset=z_off):
-            if not _lift(tx, ty, tz + z_off, TOP_DOWN_QUAT):
-                return False
-            print(f"Result: SUCCESS – picked {target['name']}", flush=True)
-            return True
+            return _lift_and_succeed(name, tx, ty, tz + z_off, TOP_DOWN_QUAT)
 
     for yaw_off in _YAW_OFFSETS:
         yaw = approach_yaw + yaw_off
         print(f"\n[Angled45] yaw={math.degrees(yaw):.1f}°", flush=True)
         grasped, px, py, pz, quat = _angled45_attempt(tx, ty, tz, yaw=yaw)
         if grasped:
-            if not _lift(px, py, pz, quat):
-                return False
-            print(f"Result: SUCCESS – picked {target['name']}", flush=True)
-            return True
+            return _lift_and_succeed(name, px, py, pz, quat)
 
     print(
         f"Result: FAILED – all_attempts_failed: "

@@ -10,3 +10,4 @@
 {"session_id": "5f858deb-1b33-4ab8-bd8e-cf17ff161cde", "skill": "place-in-cabinet", "agent_type": "dev", "agent_id": "agent-8abf9ecb", "cost_usd": 0.17519610000000002, "num_turns": 13, "timestamp": "2026-03-29T20:30:20.761880+00:00"}
 {"session_id": "c900a211-ce17-47ae-8008-bf128cf071a2", "skill": "place-in-cabinet", "agent_type": "dev", "agent_id": "agent-601495e1", "cost_usd": 0.3915732, "num_turns": 15, "timestamp": "2026-03-29T20:33:49.078668+00:00"}
 {"session_id": "e88981fc-23c0-499a-85ab-de3a6428a1fe", "skill": "pick-object", "agent_type": "dev", "agent_id": "agent-80e17f57", "cost_usd": 0.1558286, "num_turns": 6, "timestamp": "2026-03-29T20:38:52.487234+00:00"}
+{"session_id": "04a8e77e-e6e4-48a5-a112-ceafbadeb2b7", "skill": "pick-object", "agent_type": "dev", "agent_id": "agent-2ab37eec", "cost_usd": 0.7667618999999999, "num_turns": 22, "timestamp": "2026-03-29T20:51:31.058222+00:00"}
