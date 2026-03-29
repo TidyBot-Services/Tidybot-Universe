@@ -1,2 +1,2 @@
-detect-scene-objects
-grasp-and-lift
+# pick-object has no external skill dependencies
+# Uses robot_sdk directly: gripper, sensors, wb

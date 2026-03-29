@@ -38,7 +38,6 @@ GRIPPER_MAX_M   = 0.083   # above this → gripper still open, grasp missed
 GRASP_Z_OFFSETS  = [0.02, 0.03, 0.01, 0.04, 0.0, 0.05, -0.01]
 GRIPPER_SETTLE_S = 0.8    # sim gripper sensor has ~0.5–1 s reporting lag
 
-# Name substrings that mark scene fixtures (not graspable objects)
 _FIXTURE_KEYWORDS = (
     "floor", "wall", "ceiling",
     "counter", "cab_corner", "cabinet",
@@ -92,34 +91,15 @@ def _find_graspable_objects(raw: list = None) -> list:
     return ctx_counter or height_match or candidates
 
 
-def _wb_move(x: float, y: float, z: float, label: str) -> None:
+def _pfc_wb_move(x: float, y: float, z: float, label: str) -> None:
     print(f"  → {label}: ({x:.3f}, {y:.3f}, {z:.3f})", flush=True)
     wb.move_to_pose(x=x, y=y, z=z, quat=TOP_DOWN_QUAT, mask=WB_MASK, timeout=MOVE_TIMEOUT)
-
-
-def _gripper_width_m() -> float:
-    """Return current gripper opening in metres."""
-    try:
-        w = sensors.get_gripper_width()
-        if w is not None:
-            return float(w)
-    except Exception:
-        pass
-    try:
-        state = gripper.get_state()
-        mm = state.get("position_mm")
-        if mm is not None:
-            return mm / 1000.0
-        pos = state.get("position", 255)
-        return (255 - pos) / 255.0 * 0.085
-    except Exception:
-        return 0.0
 
 
 def _gripper_has_object() -> tuple:
     """Return (object_in_hand: bool, width_m: float).
     object_detected flag is not reliable in sim — width is the ground truth."""
-    width = _gripper_width_m()
+    width = _get_gripper_width_m()  # from grasp-and-lift dep
     return GRIPPER_MIN_M < width < GRIPPER_MAX_M, width
 
 
@@ -129,8 +109,8 @@ def _attempt_grasp(tx: float, ty: float, grasp_z: float, attempt: int) -> bool:
     """
     print(f"  Grasp attempt {attempt}: z={grasp_z:.3f}", flush=True)
     gripper.open()
-    _wb_move(tx, ty, grasp_z + APPROACH_CLEARANCE, f"approach[{attempt}]")
-    _wb_move(tx, ty, grasp_z, f"grasp[{attempt}]")
+    _pfc_wb_move(tx, ty, grasp_z + APPROACH_CLEARANCE, f"approach[{attempt}]")
+    _pfc_wb_move(tx, ty, grasp_z, f"grasp[{attempt}]")
     gripper.close()
     time.sleep(GRIPPER_SETTLE_S)
     has_obj, width = _gripper_has_object()
@@ -195,7 +175,7 @@ def pick_from_counter(target_name: str = None) -> bool:
             return False
 
         print(f"Step 6: lifting object (from z={final_grasp_z:.3f})", flush=True)
-        _wb_move(tx, ty, final_grasp_z + LIFT_HEIGHT, "lift")
+        _pfc_wb_move(tx, ty, final_grasp_z + LIFT_HEIGHT, "lift")
 
         print(f"Result: SUCCESS – picked {target['name']}", flush=True)
         return True

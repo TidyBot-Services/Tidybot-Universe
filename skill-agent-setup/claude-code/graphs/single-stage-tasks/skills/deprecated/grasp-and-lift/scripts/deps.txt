@@ -1,3 +1,0 @@
-# grasp-and-lift has no skill-level dependencies.
-# It uses only the built-in robot_sdk modules:
-#   arm, gripper, sensors, rewind

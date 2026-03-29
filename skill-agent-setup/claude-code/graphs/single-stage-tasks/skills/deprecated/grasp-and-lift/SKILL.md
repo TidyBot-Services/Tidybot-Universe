@@ -10,10 +10,11 @@ Pure pose-based grasp primitive. Executes a top-down grasp at a supplied 3-D pos
 ## Pipeline
 
 1. Open gripper (pre-grasp clearance)
-2. Move to **approach pose**: target XY, Z = grasp_z + approach_clearance, roll=π, pitch=0, yaw=0 (straight-down)
+2. Move to **approach pose**: target XY, Z = grasp_z + approach_clearance, top-down orientation (quat=[0,1,0,0])
 3. Lower to **grasp pose**: target XYZ at grasp height
 4. Close gripper — detect contact via gripper width threshold
 5. **Lift**: raise end-effector by lift_height metres while maintaining grip
+6. Verify end-effector reached lift height
 
 ## Usage
 
@@ -24,12 +25,12 @@ success = grasp_and_lift(target_x=0.4, target_y=0.0, target_z=-0.42)
 
 ## Parameters
 
-| Parameter          | Default  | Description                              |
-|--------------------|----------|------------------------------------------|
-| `approach_clearance` | 0.15 m  | Height above grasp point for approach    |
-| `lift_height`        | 0.20 m  | Vertical rise after successful grasp     |
-| `grasp_width_threshold` | 0.01 m | Min gripper width to confirm contact  |
-| `move_timeout`       | 10 s    | Per-move_to_pose timeout                 |
+| Parameter               | Default | Description                                   |
+|-------------------------|---------|-----------------------------------------------|
+| `approach_clearance`    | 0.15 m  | Height above grasp point for approach         |
+| `lift_height`           | 0.20 m  | Vertical rise after successful grasp          |
+| `grasp_width_threshold` | 0.01 m  | Min gripper width to confirm object contact   |
+| `move_timeout`          | 15 s    | Per-move_to_pose timeout                      |
 
 ## Success Signal
 

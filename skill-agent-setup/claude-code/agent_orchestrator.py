@@ -445,6 +445,77 @@ Every run is recorded (camera + state) — use execution_id to review.
 - Print results to stdout — that's how you verify success
 - If the arm enters error state, use rewind: the SDK has `from robot_sdk import rewind`
 
+## Perception & Grasping Guide
+
+When writing skills that detect and manipulate objects, follow these patterns:
+
+### Perception pipeline
+1. **Use `sensors.find_objects()`** — this calls the sim's depth + segmentation perception
+   (NOT a neural network). It returns world-frame 3D positions, sizes, and fixture context.
+2. **Multi-camera merge** — `find_objects()` runs on all available cameras (base + wrist)
+   and merges results, deduplicating by name (keeping the detection with more pixels).
+3. **Fixture context** — each detection includes `fixture_context` (e.g. "counter",
+   "cabinet_interior", "drawer_interior", "stove") which tells you WHERE the object is.
+
+### Grasp strategy selection
+Choose grasp approach based on object context and shape:
+- **Counter/open surfaces**: prefer TopDown, then Angled45
+- **Inside cabinets/drawers/microwave**: prefer Angled45 (tilted), then TopDown
+- **Stove**: prefer TopDown to avoid knobs
+- **Try multiple yaw angles**: for each strategy, try the direct yaw (arm→object),
+  then +30° and -30° offsets. This gives 6 candidates (2 strategies × 3 yaws).
+
+### Setting grasp poses
+`wb.move_to_pose(x, y, z, quat=[w, x, y, z])` takes a world-frame position and
+orientation quaternion (wxyz convention). The quaternion controls the gripper
+orientation — which direction the fingers point and the approach direction.
+
+**Key orientations** (all quaternions in [w, x, y, z] order):
+- **TopDown** (gripper points straight down): `quat=[0, 1, 0, 0]`
+  This is a 180° rotation about X, so the EE Z-axis points down.
+  Good for objects on flat open surfaces.
+- **Angled45** (gripper tilted 45° toward object): use `euler2quat(0, 3π/4, yaw)`
+  from `transforms3d.euler`. The pitch (3π/4 ≈ 135°) tilts the gripper partway
+  between horizontal and vertical. Add a small XY offset (~2cm) back along the
+  approach direction so the fingertips meet the object center.
+- **Front-facing** (gripper horizontal, approaching from the side): use
+  `Rotation.from_euler('yz', [π/2, yaw])` from `scipy.spatial.transform`.
+  This points the gripper forward along the approach direction.
+  Convert to wxyz: `q_scipy[[3,0,1,2]]`.
+
+**Computing yaw** (approach direction):
+```python
+import numpy as np
+# yaw = angle from arm base to object in the XY plane
+yaw = np.arctan2(obj_y - arm_base_y, obj_x - arm_base_x)
+# Try yaw offsets: [0, +30°, -30°] for robustness
+for yaw_offset in [0, np.radians(30), np.radians(-30)]:
+    grasp_yaw = yaw + yaw_offset
+```
+
+**Pre-grasp offset** (approach from above or behind):
+- TopDown: pre-grasp is directly above the object (same XY, +0.15m Z)
+- Angled45: offset ~2cm in XY away from approach direction, +2cm Z
+  `pos = obj_pos + [-0.02*cos(yaw), -0.02*sin(yaw), 0.02]`
+- Front: offset ~6cm back along approach, +8cm Z
+  `pos = obj_pos + [-0.06*cos(yaw), -0.06*sin(yaw), 0.08]`
+
+### Grasp execution pattern
+1. Open gripper
+2. Move to pre-grasp (approach from above, ~0.15m clearance)
+3. Lower to grasp height
+4. Close gripper
+5. Check gripper width to confirm object in hand (not fully closed = object present)
+6. If miss: open, retreat, try next strategy/yaw
+7. On success: lift object ~0.15–0.20m
+
+### Handle grasps (for doors, drawers, cabinets)
+Handles require a front-facing approach rather than top-down:
+- Compute approach yaw from arm base to handle position
+- Offset ~6cm back along approach direction, ~8cm up
+- Use horizontal gripper orientation (Ry 90° + Rz yaw)
+- For horizontal bar handles, rotate fingers 90° around approach axis
+
 ## Rules
 1. Check existing skills first — reuse and chain, don't reinvent
 2. Read the SDK docs before writing robot code — don't guess APIs
@@ -455,7 +526,12 @@ Every run is recorded (camera + state) — use execution_id to review.
 7. The sim (RoboCasa/ManiSkill) uses the same API — you are testing against the sim
 
 ## Before finishing
-Once the skill works, run `/simplify` to clean up the code (invoke it via the Skill tool).
+Once the skill works:
+1. Run `/simplify` to clean up the code (invoke it via the Skill tool).
+2. Print a brief summary (5-10 lines) of how the skill works — the pipeline steps,
+   key decisions (grasp strategy, perception approach, retry logic), and any gotchas
+   you discovered during testing. This helps the reviewer and downstream skill agents
+   understand your implementation without reading all the code.
 Then stop.
 """
 
@@ -772,6 +848,11 @@ async def ws_handler(websocket):
                     print(f"[WS] stop -> {agent_id}")
                     asyncio.create_task(stop_agent(agent_id))
 
+                elif t == "kill":
+                    agent_id = msg.get("agent_id", "")
+                    print(f"[WS] kill -> {agent_id}")
+                    asyncio.create_task(kill_agent(agent_id))
+
                 elif t == "retry":
                     skill = msg.get("skill", "")
                     print(f"[WS] retry -> {skill}")
@@ -808,7 +889,7 @@ async def ws_handler(websocket):
                     skill = msg.get("skill", "")
                     agent_id = msg.get("agent_id", "")
                     print(f"[WS] confirm_done -> {skill}")
-                    # Mark as confirmed done (bypasses review mapping)
+                    # Keep agent alive (paused) — can still receive hints
                     state = agents.get(agent_id)
                     if state:
                         state.status = "confirmed_done"
@@ -1088,7 +1169,7 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
     # List existing skills on disk
     skills_list = ""
     if SKILLS_DIR.exists():
-        skill_dirs = sorted(d.name for d in SKILLS_DIR.iterdir() if d.is_dir() and not d.name.startswith('.'))
+        skill_dirs = sorted(d.name for d in SKILLS_DIR.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name != 'deprecated')
         has_target = skill_name in skill_dirs
         skills_list = "\n".join(f"  - {s}{'  ← (your target)' if s == skill_name else ''}" for s in skill_dirs)
         if skill_name and not has_target:
@@ -1230,8 +1311,18 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
         await ws_broadcast_agent_msg(state.skill, f"Error: {err}", state.agent_type)
     finally:
         if state.status == "running":
-            state.status = "done"
-            await _handle_agent_done(state)
+            # Check if skill is already confirmed done — don't re-trigger pipeline
+            entry = _find_entry(state.skill)
+            already_done = entry and entry.get("status") == "done"
+            if already_done:
+                state.status = "confirmed_done"
+                await ws_broadcast_agent_msg(state.skill, "Hint applied — skill still confirmed done.", state.agent_type)
+            else:
+                state.status = "done"
+                await _handle_agent_done(state)
+                # Keep agent alive in review — wait for hints or confirmation
+                if not _is_task_root(state.skill) and not autonomous_mode:
+                    state.status = "paused"
 
 
 async def _handle_agent_done(state: AgentState):
@@ -1392,36 +1483,74 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
 
 
 async def inject_hint(agent_id: str, text: str):
-    """Send a follow-up message to a running agent."""
+    """Send a follow-up message to a running or paused agent."""
     state = agents.get(agent_id)
     if not state:
         print(f"[ORCH] inject: unknown agent {agent_id}")
         return
 
-    if HAS_SDK and state.client and state.status == "running":
+    if HAS_SDK and state.client and state.status in ("running", "paused"):
         # SDK mode: interrupt current work, send follow-up in same session
         try:
-            await state.client.interrupt()
-            # Small delay to let the interrupt settle
-            await asyncio.sleep(0.5)
+            if state.status == "running":
+                await state.client.interrupt()
+                await asyncio.sleep(0.5)
+            state.status = "running"
             await state.client.query(text)
             # Consume the new response in a background task
             state.task = asyncio.create_task(_consume_sdk_response(state, state.client))
+            await ws_broadcast_status(state.skill, state.agent_id, "writing", "Resumed")
         except Exception as e:
             print(f"[ORCH] inject SDK error: {e}")
     else:
-        print(f"[ORCH] inject: agent {agent_id} not running or no SDK client")
+        print(f"[ORCH] inject: agent {agent_id} not running/paused or no SDK client")
 
 
 async def stop_agent(agent_id: str):
-    """Stop a running agent."""
+    """Pause a running agent — interrupt current work but keep session alive.
+
+    The agent stays in memory with full conversation history. It can be
+    resumed later via inject_hint() or re-kicked by xbot-start.
+    Only fully killed when the skill is confirmed "done" on the dashboard.
+    """
+    state = agents.get(agent_id)
+    if not state:
+        return
+
+    # SDK mode: gentle interrupt — tell agent to pause, keep session alive
+    if HAS_SDK and state.client and state.status == "running":
+        try:
+            await state.client.interrupt()
+            await asyncio.sleep(0.5)
+            await state.client.query(
+                "The user has paused your work. Stop what you are doing and wait. "
+                "Do not make any tool calls. When the user sends a follow-up message, "
+                "resume from where you left off."
+            )
+            # Consume the pause acknowledgement in background
+            state.task = asyncio.create_task(_consume_sdk_response(state, state.client))
+        except Exception as e:
+            print(f"[ORCH] stop/pause SDK error: {e}")
+
+    state.status = "paused"
+    state.log.append("Paused by user")
+
+    if state.agent_type == "test":
+        await ws_broadcast_status(state.skill, state.agent_id, "done", "Test paused")
+        await ws_broadcast_agent_msg(state.skill, "Test paused by user", state.agent_type)
+    else:
+        await ws_broadcast_status(state.skill, state.agent_id, "paused", "Paused by user")
+        await ws_broadcast_agent_msg(state.skill, "Paused by user — send a hint to resume", state.agent_type)
+
+
+async def kill_agent(agent_id: str):
+    """Fully terminate a running agent — session is destroyed."""
     state = agents.get(agent_id)
     if not state:
         return
 
     state.status = "stopped"
 
-    # SDK mode: interrupt
     if HAS_SDK and state.client:
         try:
             await state.client.interrupt()
@@ -1441,14 +1570,12 @@ async def stop_agent(agent_id: str):
         import signal
         state.proc.send_signal(signal.SIGINT)
 
-    state.log.append("Stopped by user")
-    if state.agent_type == "test":
-        # Stopping a test agent goes back to review, not failed
-        await ws_broadcast_status(state.skill, state.agent_id, "done", "Test stopped")
-        await ws_broadcast_agent_msg(state.skill, "Test stopped by user", state.agent_type)
-    else:
-        await ws_broadcast_status(state.skill, state.agent_id, "stopped", "Stopped by user")
-        await ws_broadcast_agent_msg(state.skill, "Stopped by user", state.agent_type)
+    state.log.append("Killed by user")
+    # Clear agent_id — skill status stays as-is
+    _update_entry(state.skill, {"agent_id": None})
+    await ws_broadcast_status(state.skill, state.agent_id, "stopped", "Stopped")
+    await ws_broadcast_agent_msg(state.skill, "Agent killed", state.agent_type)
+    await broadcast_full_sync()
 
 
 # ---------------------------------------------------------------------------
@@ -1507,6 +1634,11 @@ async def handle_http(reader, writer):
         elif method == "POST" and path == "/stop":
             params = json.loads(body)
             await stop_agent(params["agent_id"])
+            response_body = json.dumps({"ok": True})
+
+        elif method == "POST" and path == "/kill":
+            params = json.loads(body)
+            await kill_agent(params["agent_id"])
             response_body = json.dumps({"ok": True})
 
         elif method == "POST" and path == "/inject":

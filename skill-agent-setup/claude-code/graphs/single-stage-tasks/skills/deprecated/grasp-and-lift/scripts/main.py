@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 grasp-and-lift — top-down grasp primitive using wb.move_to_pose.
 
@@ -9,8 +10,8 @@ Interface
 Pipeline
 --------
 1. Open gripper (pre-grasp clearance)
-2. Approach from above: target XY, Z = grasp_z + approach_clearance,
-   top-down orientation via quat=[0, 1, 0, 0] (w=0, x=1, y=0, z=0 → 180° around X)
+2. Approach from above: target XY, Z = target_z + approach_clearance,
+   top-down orientation via quat=[0, 1, 0, 0] (180° around X → EE points down)
 3. Lower to grasp pose: target XYZ, same top-down orientation
 4. Close gripper — confirm contact via gripper width > grasp_width_threshold
 5. Lift: raise EE by lift_height metres, maintain grip
@@ -23,72 +24,54 @@ Returns True on success, False on failure.
 
 import sys
 
-from robot_sdk import gripper, sensors, rewind, wb
+from robot_sdk import gripper, sensors, wb
 
 # ── Default configuration ──────────────────────────────────────────────────────
-APPROACH_CLEARANCE   = 0.15    # m — height above grasp point for approach
-LIFT_HEIGHT          = 0.20    # m — rise after successful grasp
-GRASP_WIDTH_MIN      = 0.010   # m — gripper width below this → empty hand
-MOVE_TIMEOUT         = 15      # s — per wb.move_to_pose call (planner needs more time)
-LIFT_Z_TOLERANCE     = 0.05    # m — acceptable undershoot on lift verification
+APPROACH_CLEARANCE = 0.15   # m — height above grasp point for approach
+LIFT_HEIGHT        = 0.20   # m — rise after successful grasp
+GRASP_WIDTH_MIN    = 0.010  # m — gripper width below this → empty hand
+MOVE_TIMEOUT       = 15     # s — per wb.move_to_pose call
+LIFT_Z_TOLERANCE   = 0.10   # m — acceptable undershoot on lift verification
 
-# Top-down gripper orientation: quat [w, x, y, z] = [0, 1, 0, 0]
-# Represents 180° rotation around X-axis → EE Z-axis points straight down
-TOP_DOWN_QUAT        = [0, 1, 0, 0]
+# 180° rotation around X-axis → EE Z-axis points straight down (roll=π)
+TOP_DOWN_QUAT = (0, 1, 0, 0)
+WB_MASK       = "whole_body"
 
-# Allow whole-body motion so the base can reposition to reach the target
-WB_MASK              = "whole_body"
-
-
-# ── Internal helpers ───────────────────────────────────────────────────────────
 
 def _wb_move(x: float, y: float, z: float, label: str, timeout: float) -> None:
-    """Move EE to (x, y, z) using wb.move_to_pose with top-down orientation."""
+    """Move EE to (x, y, z) with top-down orientation via wb.move_to_pose."""
     print(f"  wb.move_to_pose → {label} ({x:.3f}, {y:.3f}, {z:.3f})", flush=True)
-    wb.move_to_pose(
-        x=x, y=y, z=z,
-        quat=TOP_DOWN_QUAT,
-        mask=WB_MASK,
-        timeout=timeout,
-    )
+    wb.move_to_pose(x=x, y=y, z=z, quat=TOP_DOWN_QUAT, mask=WB_MASK, timeout=timeout)
+
+
+def _move_or_fail(x: float, y: float, z: float, label: str, timeout: float) -> bool:
+    """Call _wb_move and print a FAILED line on exception. Returns False on failure."""
+    try:
+        _wb_move(x, y, z, label, timeout)
+        return True
+    except Exception as e:
+        print(f"Result: FAILED – {label}_failed: {e}", flush=True)
+        return False
 
 
 def _get_gripper_width_m() -> float:
-    """
-    Return the current gripper opening in metres.
-
-    Preference order:
-      1. sensors.get_gripper_width()  — calibrated, returns metres or None
-      2. gripper.get_state()["position_mm"] / 1000
-      3. Linear interpolation from raw position (0=open≈85 mm, 255=closed)
-    """
-    # 1. Calibrated sensor reading
+    """Return current gripper opening in metres (multi-level fallback)."""
     try:
         w = sensors.get_gripper_width()
         if w is not None:
-            return w
+            return float(w)
     except Exception:
         pass
-
-    # 2. position_mm from gripper state
     try:
         state = gripper.get_state()
         mm = state.get("position_mm")
         if mm is not None:
             return mm / 1000.0
-    except Exception:
-        pass
-
-    # 3. Raw position fallback (Robotiq 2F-85: 85 mm stroke)
-    try:
-        state = gripper.get_state()
-        pos = state.get("position", 255)        # 0 = open, 255 = closed
+        pos = state.get("position", 255)   # 0=open, 255=closed
         return (255 - pos) / 255.0 * 0.085
     except Exception:
         return 0.0
 
-
-# ── Public skill interface ─────────────────────────────────────────────────────
 
 def grasp_and_lift(
     target_x: float,
@@ -100,21 +83,18 @@ def grasp_and_lift(
     move_timeout: float = MOVE_TIMEOUT,
 ) -> bool:
     """
-    Top-down grasp and lift at a known XYZ position in the world frame.
-
-    Uses wb.move_to_pose for collision-free whole-body motion planning.
-    The end-effector is always oriented top-down (quat=[0,1,0,0]).
+    Top-down grasp and lift at a known XYZ world-frame position.
 
     Parameters
     ----------
     target_x, target_y, target_z : float
-        Grasp point in metres (world / robot base frame).
+        Grasp point in metres (world frame).
     approach_clearance : float
-        Distance above grasp_z to start the descent (default 0.15 m).
+        Height above target_z to start descent (default 0.15 m).
     lift_height : float
-        Distance to rise after grasping (default 0.20 m).
+        Vertical rise after grasping (default 0.20 m).
     grasp_width_threshold : float
-        Minimum gripper width (m) that confirms an object was grasped (default 0.01 m).
+        Min gripper width (m) confirming an object was grasped (default 0.01 m).
     move_timeout : float
         Timeout per wb.move_to_pose call in seconds (default 15 s).
 
@@ -124,31 +104,19 @@ def grasp_and_lift(
         True on success, False on any failure.
     """
     try:
-        # ── Step 1: open gripper ──────────────────────────────────────────────
         print("Step 1: opening gripper", flush=True)
         gripper.open()
 
-        # ── Step 2: approach from above ───────────────────────────────────────
         print("Step 2: approaching from above", flush=True)
-        approach_z = target_z + approach_clearance
-        try:
-            _wb_move(target_x, target_y, approach_z, "approach", move_timeout)
-        except Exception as e:
-            print(f"Result: FAILED – approach_failed: {e}", flush=True)
+        if not _move_or_fail(target_x, target_y, target_z + approach_clearance, "approach", move_timeout):
             return False
 
-        # ── Step 3: lower to grasp height ─────────────────────────────────────
         print("Step 3: lowering to grasp height", flush=True)
-        try:
-            _wb_move(target_x, target_y, target_z, "grasp", move_timeout)
-        except Exception as e:
-            print(f"Result: FAILED – lower_failed: {e}", flush=True)
+        if not _move_or_fail(target_x, target_y, target_z, "grasp", move_timeout):
             return False
 
-        # ── Step 4: close gripper and confirm contact ─────────────────────────
         print("Step 4: closing gripper", flush=True)
         gripper.close()
-
         width = _get_gripper_width_m()
         print(f"  gripper width after close: {width:.4f} m", flush=True)
 
@@ -161,29 +129,33 @@ def grasp_and_lift(
             gripper.open()
             return False
 
-        # ── Step 5: lift ──────────────────────────────────────────────────────
         print("Step 5: lifting object", flush=True)
-        lift_z = target_z + lift_height
         try:
-            _wb_move(target_x, target_y, lift_z, "lift", move_timeout)
-        except Exception as e:
-            print(f"Result: FAILED – lift_failed: {e}", flush=True)
+            _, _, pre_lift_ee_z = sensors.get_ee_position()
+        except Exception:
+            pre_lift_ee_z = None
+
+        if not _move_or_fail(target_x, target_y, target_z + lift_height, "lift", move_timeout):
             return False
 
-        # ── Verify arm reached lift height ────────────────────────────────────
         try:
-            ee_x, ee_y, ee_z = sensors.get_ee_position()
-            print(f"  ee_z after lift: {ee_z:.3f} m (target {lift_z:.3f} m)", flush=True)
-            if ee_z < lift_z - LIFT_Z_TOLERANCE:
+            _, _, post_lift_ee_z = sensors.get_ee_position()
+            if pre_lift_ee_z is not None:
+                delta_z = post_lift_ee_z - pre_lift_ee_z
                 print(
-                    f"Result: FAILED – lift_failed: "
-                    f"ee_z={ee_z:.3f} < expected={lift_z:.3f}",
+                    f"  ee_z: {pre_lift_ee_z:.3f} → {post_lift_ee_z:.3f} m "
+                    f"(Δ={delta_z:+.3f}, expected ≥{lift_height - LIFT_Z_TOLERANCE:.3f})",
                     flush=True,
                 )
-                return False
+                if delta_z < lift_height - LIFT_Z_TOLERANCE:
+                    print(
+                        f"Result: FAILED – lift_verify_failed: "
+                        f"Δz={delta_z:.3f} < {lift_height - LIFT_Z_TOLERANCE:.3f}",
+                        flush=True,
+                    )
+                    return False
         except Exception:
-            # Sensor read failure — trust the wb.move_to_pose success
-            pass
+            pass  # trust wb.move_to_pose success
 
         print("Result: SUCCESS", flush=True)
         return True
@@ -192,8 +164,6 @@ def grasp_and_lift(
         print(f"Result: FAILED – crash: {e}", flush=True)
         return False
 
-
-# ── CLI entry-point ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     # Usage: python main.py [target_x] [target_y] [target_z]

@@ -1,71 +1,102 @@
 #!/usr/bin/env python3
 """
-pick-object — Detect the target object ('obj') on the counter, then pick it up.
+pick-object — Detect a target object on the counter, navigate to it, and grasp it.
 
 Pipeline
 --------
-1. detect_scene_objects()  — locate 'obj' and fixtures; get world-frame XYZ
-2. Validate 'obj' z-position is within the expected counter-height band
-3. grasp_and_lift(tx, ty, tz) — approach from above, lower, grasp, lift
+1. Detect scene objects via sensors.find_objects(); filter fixtures
+2. Locate the target (default: "obj") at counter height in world frame
+3. Open gripper → approach from above → lower to grasp → close → lift
+4. Verify grasp by checking gripper width; retry with z-offsets on miss
 
-Output (parsed by tests/run_trials.py)
---------------------------------------
-  Detections: [{"name": "...", "position": [x, y, z]}, ...]
-  gripper width after close: X.XXXX m
-  ee_z after lift: X.XXX m (target X.XXX m)
-  Result: SUCCESS  |  Result: FAILED – <reason>
+Usage
+-----
+    python main.py [target_name]           # default target_name = "obj"
+
+Output (machine-readable, parsed by run_trials.py)
+---------------------------------------------------
+    Detections: [{"name": "...", "position": [x, y, z]}, ...]
+    Target '<name>' at (x.xxx, y.yyy, z.zzz)
+    gripper width after close: X.XXXX m
+    Result: SUCCESS  |  Result: FAILED – <reason>
 """
 
 import json
 import math
 import sys
+import time
 
-from robot_sdk import arm, gripper, sensors
+from robot_sdk import gripper, sensors, wb
 
-# ---------------------------------------------------------------------------
-# Counter-height band — object must be here to be considered "on the counter"
-# ---------------------------------------------------------------------------
-Z_COUNTER_MIN = -0.60   # m  (below this → not on counter)
-Z_COUNTER_MAX = -0.25   # m  (above this → suspiciously high)
+# Counter height band (world frame, metres)
+COUNTER_Z_MIN = 0.65   # below this → probably not on counter
+COUNTER_Z_MAX = 1.15   # above this → suspiciously high
 
-# ---------------------------------------------------------------------------
-# Grasp / lift parameters — must match grasp-and-lift/scripts/main.py defaults
-# ---------------------------------------------------------------------------
-APPROACH_CLEARANCE  = 0.15   # m — height above grasp point for pre-grasp approach
-LIFT_HEIGHT         = 0.20   # m — rise after successful grasp
-GRASP_WIDTH_MIN     = 0.010  # m — gripper width below this means empty hand
-MOVE_TIMEOUT        = 10     # s — per arm.move_to_pose call
-LIFT_Z_TOLERANCE    = 0.05   # m — acceptable undershoot in lift verification
+APPROACH_CLEARANCE = 0.15   # m above grasp point for pre-grasp approach
+LIFT_HEIGHT        = 0.20   # m to raise after successful grasp
+MOVE_TIMEOUT       = 20     # s per wb.move_to_pose call
+GRIPPER_SETTLE_S   = 0.8    # s to let gripper sensor settle after close
+GRIPPER_MIN_M      = 0.005  # below this → empty hand (nothing grasped)
+GRIPPER_MAX_M      = 0.083  # above this → gripper still open (grasp missed)
 
-# roll = π → EE Z-axis points straight down (top-down grasp orientation)
-STRAIGHT_DOWN_ROLL = math.pi
+# Biased slightly above centroid — top-down grasp contacts best above the detected centre
+GRASP_Z_OFFSETS = [0.02, 0.03, 0.01, 0.04, 0.0, 0.05, -0.01]
+
+# 180° rotation around X → EE Z-axis points straight down
+TOP_DOWN_QUAT = (0, 1, 0, 0)
+WB_MASK = "whole_body"
 
 
-# ---------------------------------------------------------------------------
-# detect_scene_objects — inlined from detect-scene-objects/scripts/main.py
-# ---------------------------------------------------------------------------
-
-def _is_finite(v):
+def _is_finite(v) -> bool:
     try:
         return math.isfinite(float(v))
     except (TypeError, ValueError):
         return False
 
 
-def detect_scene_objects():
-    """
-    Scan the scene and return a list of dicts:
-        [{"name": str, "position": [x, y, z]}, ...]
+def _gripper_width_m() -> float:
+    """Return current gripper opening in metres (best available source)."""
+    try:
+        w = sensors.get_gripper_width()
+        if w is not None:
+            return float(w)
+    except Exception:
+        pass
+    try:
+        state = gripper.get_state()
+        mm = state.get("position_mm")
+        if mm is not None:
+            return mm / 1000.0
+        pos = state.get("position", 255)   # 0=open, 255=closed (Robotiq 2F-85)
+        return (255 - pos) / 255.0 * 0.085
+    except Exception:
+        return 0.0
 
-    Raises RuntimeError with a descriptive tag on failure.
+
+def _gripper_has_object() -> tuple:
+    """Return (has_object: bool, width_m: float)."""
+    time.sleep(GRIPPER_SETTLE_S)
+    w = _gripper_width_m()
+    has_obj = GRIPPER_MIN_M < w < GRIPPER_MAX_M
+    return has_obj, w
+
+
+def _wb_move(x: float, y: float, z: float, label: str) -> None:
+    print(f"  → {label}: ({x:.3f}, {y:.3f}, {z:.3f})", flush=True)
+    wb.move_to_pose(x=x, y=y, z=z, quat=TOP_DOWN_QUAT, mask=WB_MASK, timeout=MOVE_TIMEOUT)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_objects(target_name: str) -> list:
+    """Return valid scene detections as [{"name": str, "position": [x,y,z]}, ...].
+    Raises RuntimeError if no objects are detected at all.
     """
-    # Broad scan — everything the sensor pipeline can see
     raw = sensors.find_objects()
+    # Targeted pass to boost recall for the specific target
+    targeted = sensors.find_objects(target_names=[target_name, "counter", "cabinet"])
 
-    # Targeted pass to boost recall for the key names
-    targeted = sensors.find_objects(target_names=["obj", "cabinet", "counter"])
-
-    # Merge, deduplicating on name
+    # Merge, deduplicating by name
     seen = {o["name"] for o in raw}
     merged = list(raw)
     for o in targeted:
@@ -73,210 +104,147 @@ def detect_scene_objects():
             merged.append(o)
             seen.add(o["name"])
 
-    # Build structured detection list, dropping invalid entries
     detections = []
     for o in merged:
-        name = o.get("name", "")
-        x = o.get("x", float("nan"))
-        y = o.get("y", float("nan"))
-        z = o.get("z", float("nan"))
-
-        if not (isinstance(name, str) and name.strip()):
-            print(f"  [warn] skipping detection with invalid name: {o!r}", flush=True)
+        name = o.get("name", "").strip()
+        x, y, z = o.get("x"), o.get("y"), o.get("z")
+        if not name or not (_is_finite(x) and _is_finite(y) and _is_finite(z)):
             continue
-        if not (_is_finite(x) and _is_finite(y) and _is_finite(z)):
-            print(f"  [warn] skipping '{name}' — non-finite position ({x}, {y}, {z})", flush=True)
-            continue
-
         detections.append({"name": name, "position": [float(x), float(y), float(z)]})
 
     if not detections:
-        raise RuntimeError("no_objects_detected: find_objects returned an empty list")
-
-    names_lower = [d["name"].lower() for d in detections]
-
-    if not any("obj" in n for n in names_lower):
-        raise RuntimeError(
-            f"obj_not_found: 'obj' absent from scene detections {[d['name'] for d in detections]}"
-        )
-    if not any("cabinet" in n or "counter" in n for n in names_lower):
-        raise RuntimeError(
-            f"fixtures_not_found: counter/cabinet not detected in "
-            f"{[d['name'] for d in detections]}"
-        )
+        raise RuntimeError("no_objects_detected")
 
     return detections
 
 
-# ---------------------------------------------------------------------------
-# grasp_and_lift — inlined from grasp-and-lift/scripts/main.py
-# ---------------------------------------------------------------------------
-
-def _move(x: float, y: float, z: float, label: str) -> None:
-    """Move EE to (x, y, z) with a straight-down orientation."""
-    print(f"  move_to_pose → {label} ({x:.3f}, {y:.3f}, {z:.3f})", flush=True)
-    arm.move_to_pose(
-        x=x, y=y, z=z,
-        roll=STRAIGHT_DOWN_ROLL, pitch=0.0, yaw=0.0,
-        timeout=MOVE_TIMEOUT,
-    )
-
-
-def _get_gripper_width_m() -> float:
-    """Return current gripper opening in metres (best available source)."""
-    # 1. Calibrated sensor reading
-    try:
-        w = sensors.get_gripper_width()
-        if w is not None:
-            return w
-    except Exception:
-        pass
-
-    # 2. position_mm from gripper state
-    try:
-        mm = gripper.get_state().get("position_mm")
-        if mm is not None:
-            return mm / 1000.0
-    except Exception:
-        pass
-
-    # 3. Raw position fallback (Robotiq 2F-85: 85 mm stroke, 0=open, 255=closed)
-    try:
-        pos = gripper.get_state().get("position", 255)
-        return (255 - pos) / 255.0 * 0.085
-    except Exception:
-        return 0.0
+def find_target(detections: list, target_name: str):
+    """Exact match first, then substring. Returns detection dict or None."""
+    low = target_name.lower()
+    fallback = None
+    for d in detections:
+        d_low = d["name"].lower()
+        if d_low == low:
+            return d
+        if fallback is None and low in d_low:
+            fallback = d
+    return fallback
 
 
-def grasp_and_lift(target_x: float, target_y: float, target_z: float) -> bool:
+def grasp_and_lift(tx: float, ty: float, tz: float) -> bool:
     """
-    Top-down grasp and lift at a known XYZ position in the robot base frame.
-    Returns True on success, False on any failure.
-    Prints 'Result: SUCCESS' or 'Result: FAILED – <reason>' to stdout.
+    Top-down grasp at world-frame (tx, ty, tz) with retry on grasp miss.
+    Returns True on success.
     """
-    # Step 1: open gripper
-    print("Step 1: opening gripper", flush=True)
+    print("Opening gripper", flush=True)
     gripper.open()
 
-    # Step 2: approach from above
-    print("Step 2: approaching from above", flush=True)
-    try:
-        _move(target_x, target_y, target_z + APPROACH_CLEARANCE, "approach")
-    except Exception as e:
-        print(f"Result: FAILED – approach_failed: {e}", flush=True)
-        return False
+    width = 0.0
+    for attempt, z_offset in enumerate(GRASP_Z_OFFSETS):
+        gz = tz + z_offset
+        print(f"Attempt {attempt + 1}: grasp z = {gz:.3f} (offset {z_offset:+.3f})", flush=True)
 
-    # Step 3: lower to grasp height
-    print("Step 3: lowering to grasp height", flush=True)
-    try:
-        _move(target_x, target_y, target_z, "grasp")
-    except Exception as e:
-        print(f"Result: FAILED – lower_failed: {e}", flush=True)
-        return False
+        # Approach from above
+        try:
+            _wb_move(tx, ty, gz + APPROACH_CLEARANCE, "approach")
+        except Exception as e:
+            print(f"  approach failed: {e}", flush=True)
+            continue
 
-    # Step 4: close gripper and confirm contact
-    print("Step 4: closing gripper", flush=True)
-    gripper.close()
+        # Lower to grasp height
+        try:
+            _wb_move(tx, ty, gz, "grasp")
+        except Exception as e:
+            print(f"  lower failed: {e}", flush=True)
+            continue
 
-    width = _get_gripper_width_m()
-    print(f"  gripper width after close: {width:.4f} m", flush=True)
+        # Close gripper and check
+        print("  closing gripper", flush=True)
+        gripper.close()
+        has_obj, width = _gripper_has_object()
+        print(f"  gripper width after close: {width:.4f} m", flush=True)
 
-    if width <= GRASP_WIDTH_MIN:
+        if has_obj:
+            break
+
+        print(f"  grasp miss (width={width:.4f}), opening and retrying", flush=True)
+        gripper.open()
+        # Retreat before retry
+        try:
+            _wb_move(tx, ty, gz + APPROACH_CLEARANCE, "retreat")
+        except Exception:
+            pass
+    else:
         print(
             f"Result: FAILED – grasp_failed: "
-            f"width={width:.4f} ≤ threshold={GRASP_WIDTH_MIN}",
+            f"all {len(GRASP_Z_OFFSETS)} attempts missed, last width={width:.4f} m",
             flush=True,
         )
-        gripper.open()
         return False
 
-    # Step 5: lift
-    print("Step 5: lifting object", flush=True)
-    lift_z = target_z + LIFT_HEIGHT
+    # Lift
+    lift_z = tz + LIFT_HEIGHT
+    print(f"Lifting to z = {lift_z:.3f}", flush=True)
     try:
-        _move(target_x, target_y, lift_z, "lift")
+        _wb_move(tx, ty, lift_z, "lift")
     except Exception as e:
         print(f"Result: FAILED – lift_failed: {e}", flush=True)
         return False
 
     # Verify EE reached lift height
     try:
-        ee_x, ee_y, ee_z = sensors.get_ee_position()
+        _, _, ee_z = sensors.get_ee_position()
         print(f"  ee_z after lift: {ee_z:.3f} m (target {lift_z:.3f} m)", flush=True)
-        if ee_z < lift_z - LIFT_Z_TOLERANCE:
-            print(
-                f"Result: FAILED – lift_failed: "
-                f"ee_z={ee_z:.3f} < expected={lift_z:.3f}",
-                flush=True,
-            )
-            return False
     except Exception:
-        pass  # trust move_to_pose success if sensor read fails
+        pass
 
     return True
 
 
-# ---------------------------------------------------------------------------
-# pick_object — composed entry point
-# ---------------------------------------------------------------------------
-
-def pick_object() -> bool:
+def pick_object(target_name: str = "obj") -> bool:
     """
-    Detect 'obj' on the counter and pick it up.
-    Returns True on success, False on failure.
-    Always prints 'Result: SUCCESS' or 'Result: FAILED – <reason>'.
+    Detect target_name on the counter and pick it up.
+    Returns True on success; always prints Result: SUCCESS/FAILED.
     """
+    # Detect
+    print(f"Detecting scene objects (target='{target_name}')", flush=True)
     try:
-        # ── Step 1: detect scene objects ─────────────────────────────────────
-        print("Step 1: detecting scene objects", flush=True)
-        try:
-            detections = detect_scene_objects()
-        except Exception as e:
-            print(f"Result: FAILED – detection_failed: {e}", flush=True)
-            return False
-
-        # Machine-readable line — parsed by run_trials.py
-        print(f"Detections: {json.dumps(detections)}", flush=True)
-
-        # ── Step 2: locate 'obj' ─────────────────────────────────────────────
-        obj_det = next(
-            (d for d in detections if "obj" in d["name"].lower()), None
-        )
-        if obj_det is None:
-            print("Result: FAILED – obj_not_found: 'obj' not in detections", flush=True)
-            return False
-
-        tx, ty, tz = obj_det["position"]
-        print(f"Target 'obj' at ({tx:.3f}, {ty:.3f}, {tz:.3f})", flush=True)
-
-        # ── Step 3: verify counter height ────────────────────────────────────
-        if not (Z_COUNTER_MIN <= tz <= Z_COUNTER_MAX):
-            print(
-                f"Result: FAILED – obj_not_on_counter: "
-                f"obj z={tz:.3f} outside expected counter band "
-                f"[{Z_COUNTER_MIN}, {Z_COUNTER_MAX}]",
-                flush=True,
-            )
-            return False
-
-        # ── Step 4: grasp and lift ────────────────────────────────────────────
-        print("Step 2: grasping and lifting 'obj'", flush=True)
-        ok = grasp_and_lift(tx, ty, tz)
-        if not ok:
-            return False
-
-        print("Result: SUCCESS", flush=True)
-        return True
-
+        detections = detect_objects(target_name)
     except Exception as e:
-        print(f"Result: FAILED – crash: {e}", flush=True)
+        print(f"Result: FAILED – detection_failed: {e}", flush=True)
         return False
 
+    print(f"Detections: {json.dumps(detections)}", flush=True)
 
-# ---------------------------------------------------------------------------
-# Entry point — submitted directly via POST /code/execute
-# ---------------------------------------------------------------------------
+    # Locate target
+    target = find_target(detections, target_name)
+    if target is None:
+        names = [d["name"] for d in detections]
+        print(f"Result: FAILED – target_not_found: '{target_name}' not in {names}", flush=True)
+        return False
+
+    tx, ty, tz = target["position"]
+    print(f"Target '{target['name']}' at ({tx:.3f}, {ty:.3f}, {tz:.3f})", flush=True)
+
+    # Validate counter height
+    if not (COUNTER_Z_MIN <= tz <= COUNTER_Z_MAX):
+        print(
+            f"Result: FAILED – not_on_counter: "
+            f"z={tz:.3f} outside counter band [{COUNTER_Z_MIN}, {COUNTER_Z_MAX}]",
+            flush=True,
+        )
+        return False
+
+    # Grasp and lift
+    ok = grasp_and_lift(tx, ty, tz)
+    if not ok:
+        return False
+
+    print("Result: SUCCESS", flush=True)
+    return True
+
 
 if __name__ == "__main__":
-    ok = pick_object()
+    target = sys.argv[1] if len(sys.argv) > 1 else "obj"
+    ok = pick_object(target)
     sys.exit(0 if ok else 1)

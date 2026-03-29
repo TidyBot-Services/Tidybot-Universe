@@ -1,29 +1,36 @@
 ---
 name: detect-scene-objects
-description: Use sensors.find_objects() to detect all objects in the scene and return their names and world-frame (x, y, z) positions. Identify the target object (obj) and key fixtures (cabinet, counter).
+description: Detect all objects in the scene using sensors.find_objects(). Returns names and world-frame (x, y, z) positions for every graspable object, sorted nearest-first.
 ---
 
 # Detect Scene Objects
 
-Perception primitive that sweeps the sensor pipeline and returns a structured inventory of every recognised object in the workspace, tagged with world-frame coordinates.
+Perception primitive that calls `sensors.find_objects()` and returns a structured inventory of every recognised object in the workspace with world-frame coordinates.
 
 ## Pipeline
 
-1. Call `sensors.find_objects()` to get raw detections
-2. Extract `name` and world-frame `position` (x, y, z) for every detection
-3. Flag the **target object** (`obj`) and known fixtures (`cabinet`, `counter`)
-4. Return / print the inventory; raise a clear error if the scene is empty
+1. Call `sensors.find_objects()` — ground-truth segmentation, no neural network needed
+2. Filter out any detections with invalid name or non-finite position
+3. Return structured list sorted by distance from the arm base (nearest first)
 
 ## Usage
 
 ```python
 from main import detect_scene_objects
 detections = detect_scene_objects()
-# detections = [{"name": "mug", "position": [x, y, z]}, ...]
+# detections = [{"name": "mug_0", "position": [x, y, z], "distance_m": 0.5, "fixture_context": "counter"}, ...]
 ```
+
+## Output Fields
+
+| Field            | Type   | Description                                      |
+|------------------|--------|--------------------------------------------------|
+| `name`           | str    | Object name (e.g. `"banana_0"`)                  |
+| `position`       | list   | `[x, y, z]` world-frame meters                  |
+| `distance_m`     | float  | Distance from arm base in meters                 |
+| `fixture_context`| str    | Location context (`"counter"`, `"drawer_interior"`, etc.) |
 
 ## Success Signal
 
-Prints `Result: SUCCESS` followed by a JSON list of detections when at least the
-target object and one fixture are found.
+Prints `Result: SUCCESS` and a `Detections: [...]` JSON line on success.
 Prints `Result: FAILED – <reason>` on any failure.
