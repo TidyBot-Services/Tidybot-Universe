@@ -776,6 +776,7 @@ def _map_status(internal: str, agent_type: str = "dev") -> str:
         return {
             "starting": "testing",
             "running": "testing",
+            "paused": "testing",
             "stopped": "failed",
             "done": "review",
             "confirmed_done": "done",
@@ -793,6 +794,7 @@ def _map_status(internal: str, agent_type: str = "dev") -> str:
     return {
         "starting": "writing",
         "running": "writing",
+        "paused": "writing",
         "stopped": "failed",
         "done": "review",
         "confirmed_done": "done",
@@ -1489,6 +1491,10 @@ async def inject_hint(agent_id: str, text: str):
         print(f"[ORCH] inject: unknown agent {agent_id}")
         return
 
+    # Broadcast user message to dashboard chat log
+    await ws_broadcast_agent_msg(state.skill, text, "user")
+    state.log.append(f"[user] {text}")
+
     if HAS_SDK and state.client and state.status in ("running", "paused"):
         # SDK mode: interrupt current work, send follow-up in same session
         try:
@@ -1517,8 +1523,12 @@ async def stop_agent(agent_id: str):
     if not state:
         return
 
+    # Mark paused BEFORE interrupt to prevent race with _run_sdk_agent finally block
+    # (which checks state.status == "running" to decide whether to trigger tests)
+    state.status = "paused"
+
     # SDK mode: gentle interrupt — tell agent to pause, keep session alive
-    if HAS_SDK and state.client and state.status == "running":
+    if HAS_SDK and state.client:
         try:
             await state.client.interrupt()
             await asyncio.sleep(0.5)
@@ -1531,8 +1541,6 @@ async def stop_agent(agent_id: str):
             state.task = asyncio.create_task(_consume_sdk_response(state, state.client))
         except Exception as e:
             print(f"[ORCH] stop/pause SDK error: {e}")
-
-    state.status = "paused"
     state.log.append("Paused by user")
 
     if state.agent_type == "test":
