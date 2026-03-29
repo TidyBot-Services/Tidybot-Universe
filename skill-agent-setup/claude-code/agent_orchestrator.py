@@ -437,7 +437,7 @@ Every run is recorded (camera + state) — use execution_id to review.
 - Run: `python {submit_script} scripts/main.py --holder dev:{{skill_name}}`
 - If it fails: read stderr in the output, fix the code, resubmit
 - If it succeeds: verify stdout makes sense (e.g. objects detected, arm moved correctly)
-- Run at least 2-3 successful executions before declaring done
+- Run at least 2 successful executions before declaring done
 
 ### Important
 - The code sandbox allows robot_sdk imports but NOT `requests` or network libraries
