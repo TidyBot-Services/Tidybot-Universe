@@ -22,11 +22,9 @@ Pick the target object from the counter (using the pick-object skill) and place 
 
 ## Dependencies
 - `pick-object`: Provides the grasp-and-lift behavior (object held in gripper, lifted above counter)
+- `place-object`: Provides the navigate-to-cabinet-and-place behavior (object placed inside cabinet, arm retracted)
 
 ## Notes
-- After pick-object completes, the object is held ~15cm above the counter
-- Need to detect the cabinet location (use `sensors.find_objects()` or `yolo.segment_camera_3d()` to find the cabinet)
-- Navigate to the cabinet using `wb.move_to_pose()`, position arm inside cabinet, then `gripper.open()` to release
-- May need to open the cabinet door/drawer first if it's closed — check scene state
-- After placing, retract the arm to avoid collisions with cabinet
+- This skill composes pick-object followed by place-object
+- pick-object postcondition (object grasped, lifted) matches place-object precondition
 - This is the root skill — tested automatically via sim `_check_success()`

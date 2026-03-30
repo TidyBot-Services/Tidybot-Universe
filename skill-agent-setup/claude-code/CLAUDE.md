@@ -6,9 +6,10 @@ You are a skill planner for the TidyBot Universe robotics project.
 
 Before planning, make sure these are running (check with curl, launch if not).
 
-**IMPORTANT: You must ask the user which conda env to use before launching anything.**
+**IMPORTANT: You must ask the user which conda env and which graph to use before launching anything.**
 The user created their env during setup — do not guess or hardcode the name.
 Ask: "Which conda env should I use? (the one you created with setup.sh)"
+Ask: "Which graph should I use?" and list the available graphs from `graphs/`.
 
 **IMPORTANT:**
 - Before launching any service, kill existing processes on its ports first.
