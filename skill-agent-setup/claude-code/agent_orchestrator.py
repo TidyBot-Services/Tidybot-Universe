@@ -304,49 +304,54 @@ You must write code AND test it. Do not stop until you have a working skill.
 4. **Debug and iterate**: if it fails, read the error, fix the code, resubmit
 
 ### How to submit and test code
+
+**Exploration / debugging** (quick tests, checking objects, probing the scene):
 ```bash
-# Submit code, wait for result, get JSON output (stdout, stderr, exit_code, execution_id)
+python {submit_script} /tmp/test.py --no-eval --holder dev:{{skill_name}}
+```
+Returns raw stdout/stderr. No evaluator. Use this for quick probes.
+
+**Full skill test** (runs evaluator on execution recording):
+```bash
 python {submit_script} scripts/main.py --holder dev:{{skill_name}}
 ```
-This submits to the agent server, waits for completion, and prints results.
-Every run is recorded (camera + state) — use execution_id to review.
+Submits code, resets sim, waits for completion, then an evaluator agent reviews
+the camera recordings and robot behavior. Returns JSON with `passed` (bool)
+and `feedback` (detailed evaluation).
 
 ### Testing loop
-- Write/edit scripts/main.py
-- Run: `python {submit_script} scripts/main.py --holder dev:{{skill_name}}`
-- If it fails: read stderr in the output, fix the code, resubmit
-- If it succeeds: verify stdout makes sense (e.g. objects detected, arm moved correctly)
-- **After every execution, review the recording** (see below)
-- Run at least 2 successful executions before declaring done
-
-### Reviewing execution recordings
-Every code submission is recorded with camera images and robot state logs.
-After each run, you MUST review the recording to verify the robot did the right thing.
-
-The submit output includes an `execution_id`. Recordings are at:
-`{project_dir}/logs/code_executions/<execution_id>/`
-
-Each recording contains:
-- **Camera images** (`*.jpg`) — chronological snapshots of the robot during execution.
-  READ THESE to see what actually happened (did the gripper reach the object? did it grasp?)
-- **metadata.json** — execution summary, stdout, stderr, timing
-- **state_log.jsonl** — robot state trajectory (arm joints, base pose, gripper width over time)
-
-**After each submission:**
-1. Find the latest execution dir: `ls -t {project_dir}/logs/code_executions/ | head -1`
-2. Read the camera images to visually verify the robot's behavior
-3. Read metadata.json for stdout/stderr if not already in submit output
-4. If something looks wrong (missed grasp, wrong object, collision), fix and resubmit
+- First, explore the scene with `--no-eval` to understand object positions, etc.
+- Then write/edit scripts/main.py and run the full test (without --no-eval)
+- The output includes `passed` (true/false) and `feedback` from an automated evaluator
+- If `passed` is false: read the `feedback`, fix the code, resubmit
+- If `passed` is true: continue to the next iteration or finish
+- Run at least 2 passed evaluations before declaring done
 
 ### Important
 - The code sandbox allows robot_sdk imports but NOT `requests` or network libraries
 - Your submitted code runs inside the agent server with full robot_sdk access
-- Print results to stdout — that's how you verify success
 - If the arm enters error state, use rewind: the SDK has `from robot_sdk import rewind`
+
+### Stdout guidelines
+Your stdout is read by an evaluator agent (not you) to assess the execution.
+Print useful context at each major step so the evaluator can follow what happened:
+- Object detections: name, position, fixture_context
+- Grasp attempts: strategy, target position, result (success/fail), gripper width after
+- Navigation: target pose, whether it converged
+- Final outcome: clear SUCCESS or FAILURE with a one-line reason
+
+Do NOT print raw data dumps, full joint arrays, or per-timestep logs — the evaluator
+also has camera images and state logs. Keep stdout to ~20-40 lines of high-level trace.
 
 ## Perception & Grasping Guide
 
 When writing skills that detect and manipulate objects, follow these patterns:
+
+### RoboCasa object naming
+In RoboCasa tasks, the target object is always named `"obj"` (or starts with `"obj"`).
+Distractors are named `"distr_counter"`, `"distr_cab"`, `"distr_sink"`, etc.
+When filtering `sensors.find_objects()` results, select the object whose name starts
+with `"obj"` and ignore anything starting with `"distr"`.
 
 ### Perception pipeline
 1. **Use `sensors.find_objects()`** — this calls the sim's depth + segmentation perception
@@ -358,9 +363,7 @@ When writing skills that detect and manipulate objects, follow these patterns:
 
 ### Grasp strategy selection
 Choose grasp approach based on object context and shape:
-- **Counter/open surfaces**: prefer TopDown, then Angled45
-- **Inside cabinets/drawers/microwave**: prefer Angled45 (tilted), then TopDown
-- **Stove**: prefer TopDown to avoid knobs
+- **Always prefer Angled45 first**, then TopDown as fallback
 - **Try multiple yaw angles**: for each strategy, try the direct yaw (arm→object),
   then +30° and -30° offsets. This gives 6 candidates (2 strategies × 3 yaws).
 
@@ -445,7 +448,7 @@ graph_meta: dict = {}  # top-level metadata (task_env, task_source, etc.)
 
 
 def _load_entries():
-    """Load entries from graph file into memory."""
+    """Load entries from graph file into memory. Resets stale non-done statuses."""
     global skill_entries, graph_meta
     data = json.loads(LOCAL_REPOS.read_text())
     if isinstance(data, dict):
@@ -456,6 +459,18 @@ def _load_entries():
         # Legacy format: flat list of entries
         skill_entries = data
         graph_meta = {}
+
+    # Reset stale statuses from previous sessions — anything not "done" or "planned"
+    # is leftover state (writing, testing, review, failed) with no live agent behind it.
+    reset_count = 0
+    for entry in skill_entries:
+        status = entry.get("status", "planned")
+        if status not in ("done", "planned"):
+            entry["status"] = "failed"
+            reset_count += 1
+    if reset_count:
+        print(f"[ORCH] Reset {reset_count} stale skill(s) to 'failed'")
+        _save_entries()
 
 
 def _save_entries():
@@ -549,6 +564,20 @@ class AgentState:
 
 agents: dict[str, AgentState] = {}    # agent_id -> AgentState
 _spawn_lock = asyncio.Lock()          # prevents double-spawning in _auto_spawn_ready_skills
+
+# Per-submission eval results: skill -> {"future": asyncio.Future, "execution_id": str}
+_submission_evals: dict[str, dict] = {}
+
+
+async def _run_submission_eval(skill: str, execution_id: str):
+    """Run evaluator for a specific submission, store result in _submission_evals."""
+    try:
+        result = await run_evaluator(skill, execution_id=execution_id)
+    except Exception as e:
+        result = {"passed": True, "feedback": f"Evaluator error: {e}"}
+    entry = _submission_evals.get(skill)
+    if entry and not entry["future"].done():
+        entry["future"].set_result(result)
 
 
 # ---------------------------------------------------------------------------
@@ -644,7 +673,7 @@ def _invalidate_session_log_cache():
     _session_log_cache = None
 
 
-def build_full_sync() -> list[dict]:
+def build_full_sync() -> dict:
     """Build a full_sync payload from in-memory entries with live agent state overlay."""
     import copy
     repos = copy.deepcopy(skill_entries)
@@ -670,7 +699,17 @@ def build_full_sync() -> list[dict]:
             # No live agent — use persisted session log
             repo["agent_log"] = session_logs.get(name, [])
 
-    return repos
+    # Build agents list
+    agents_list = []
+    for a in agents.values():
+        agents_list.append({
+            "agent_id": a.agent_id,
+            "skill": a.skill,
+            "agent_type": a.agent_type,
+            "status": a.status,
+        })
+
+    return {"entries": repos, "agents": agents_list}
 
 
 async def broadcast_full_sync():
@@ -1164,38 +1203,60 @@ Start by reading the images and metadata. If you need more detail, read the stat
 - Does the trajectory make sense for the skill's goal?
 
 ## Output
-Write a detailed evaluation explaining what you observed:
-1. What the camera images show (scene, robot poses, object interactions)
-2. Whether the robot achieved the skill's goal
-3. Any issues or concerns
+Your evaluation will be sent directly to the dev agent as their ONLY feedback.
+They cannot see stdout, stderr, camera images, or logs — only what you write here.
+Be thorough and actionable.
 
-End your evaluation with exactly one line of JSON:
+Write your evaluation in this format:
+
+### What happened
+Describe what the camera images show: robot poses, object interactions, scene state.
+Include relevant stdout/stderr excerpts (errors, printed values, object detections).
+
+### Result
+State clearly whether the skill achieved its goal and why/why not.
+
+### Issues (if failed)
+For each issue, describe:
+- What went wrong (be specific: which object, which step, what values)
+- What the likely cause is
+- What the dev agent should try to fix it
+
+End with exactly one line of JSON:
 ```
-EVAL_RESULT: {{"passed": true/false, "feedback": "one-line summary"}}
+EVAL_RESULT: {{"passed": true/false, "feedback": "detailed paragraph summarizing the above"}}
 ```
+The `feedback` field should be a full paragraph (not one line) covering what happened,
+what went wrong, and what to fix. This is the dev agent's primary debugging input.
+
 Only fail if something clearly went wrong (wrong object, missed grasp,
 collision, error in output, robot didn't move, etc.). Minor imperfections are OK.
 """
 
 
-async def run_evaluator(skill: str) -> dict:
+async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     """Run a short-lived evaluator agent (ClaudeSDKClient) that reviews execution recordings.
 
     Returns {"passed": bool, "feedback": str}.
     """
-    # Find latest execution recording
+    # Find execution recording
     exec_dir = PROJECT_DIR / "logs" / "code_executions"
     if not exec_dir.exists():
         print(f"[EVAL] {skill}: no execution logs dir")
         return {"passed": True, "feedback": "No execution logs to review."}
 
-    # Get most recent execution folder
-    all_dirs = [d for d in exec_dir.iterdir() if d.is_dir()]
-    if not all_dirs:
-        print(f"[EVAL] {skill}: no execution recordings found")
-        return {"passed": True, "feedback": "No recordings found."}
-
-    latest = max(all_dirs, key=lambda d: d.stat().st_mtime)
+    # Get specific or most recent execution folder
+    latest = None
+    if execution_id:
+        target = exec_dir / execution_id
+        if target.exists() and target.is_dir():
+            latest = target
+    if latest is None:
+        all_dirs = [d for d in exec_dir.iterdir() if d.is_dir()]
+        if not all_dirs:
+            print(f"[EVAL] {skill}: no execution recordings found")
+            return {"passed": True, "feedback": "No recordings found."}
+        latest = max(all_dirs, key=lambda d: d.stat().st_mtime)
     print(f"[EVAL] {skill}: reviewing execution {latest.name}")
     await ws_broadcast_agent_msg(skill, f"Evaluating execution {latest.name}...", "evaluator")
 
@@ -1711,6 +1772,34 @@ async def handle_http(reader, writer):
             if params.get("status") == "done":
                 await _auto_spawn_ready_skills()
             response_body = json.dumps(entry or {"error": "not found"})
+
+        elif method == "POST" and path == "/job-done":
+            params = json.loads(body)
+            skill = params["skill"]
+            execution_id = params.get("execution_id", "")
+            loop = asyncio.get_running_loop()
+            fut = loop.create_future()
+            _submission_evals[skill] = {"future": fut, "execution_id": execution_id}
+            asyncio.create_task(_run_submission_eval(skill, execution_id))
+            response_body = json.dumps({"ok": True, "message": f"Evaluator spawned for {skill}"})
+
+        elif method == "GET" and path.startswith("/eval-result/"):
+            skill = path.split("/eval-result/", 1)[1]
+            entry = _submission_evals.get(skill)
+            if not entry:
+                response_body = json.dumps({"status": "not_found"})
+            elif not entry["future"].done():
+                response_body = json.dumps({"status": "pending"})
+            else:
+                result = entry["future"].result()
+                _submission_evals.pop(skill, None)
+                # Return full evaluator text as feedback — this is the dev agent's only input
+                feedback = result.get("full_text") or result.get("feedback", "")
+                response_body = json.dumps({
+                    "status": "complete",
+                    "passed": result.get("passed", True),
+                    "feedback": feedback,
+                })
 
         else:
             status = "404 Not Found"

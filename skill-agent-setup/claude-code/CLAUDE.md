@@ -34,14 +34,17 @@ fuser -k 8765/tcp 8766/tcp 2>/dev/null  # orchestrator
 fuser -k 8070/tcp 2>/dev/null   # dashboard
 
 # 1. ManiSkill sim (provides physics + bridge ports 5555-5580)
-#    --task must match the graph's task_env (check graph.json)
+#    --task MUST match the graph's task_env field. Read it from graph.json:
+#      python3 -c "import json; g=json.load(open('$GRAPH_PATH'));
+#        print(g['task_env'] if isinstance(g,dict) else 'RoboCasaKitchen-v1')"
+#    If graph.json is a bare array (no task_env), the graph is incomplete — ask the user.
 #    Runtime task switching is NOT supported — to change tasks, kill the sim and restart.
 #    Available tasks are registered in $WORKSPACE/sims/robocasa_tasks/ (single_stage/, multi_stage/)
 cd $WORKSPACE/sims/maniskill && \
   conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
-  python3 -m maniskill_server --task RoboCasaKitchen-v1 --gui &
+  python3 -m maniskill_server --task $TASK_ENV --gui &
 # Wait for port 5555 to be ready before proceeding
 
 # 2. Agent server (HTTP API for code execution) — port 8080
@@ -180,23 +183,8 @@ that are no longer in the orchestrator into `skills/deprecated/` to keep the wor
 clean. The deprecated folder preserves old code for reference without polluting the
 active skill set.
 
-When loading an existing graph, any skills not in "done" status are stale from a
-previous session. Reset them to "failed" before starting development so the pipeline
-can re-attempt them cleanly:
-
-```bash
-# Reset all non-done skills to "failed" (stale from previous session)
-for skill in $(curl -s http://localhost:8766/entries | python3 -c "
-import sys, json
-for e in json.load(sys.stdin):
-    if e['status'] not in ('done', 'planned'):
-        print(e['name'])
-"); do
-  curl -s -X PATCH "http://localhost:8766/entries/$skill" \
-    -H "Content-Type: application/json" \
-    -d '{"status": "failed"}'
-done
-```
+The orchestrator automatically resets stale skills (anything not "done" or "planned")
+to "failed" on startup, so no manual reset is needed.
 
 Then kick off development for all ready skills:
 
