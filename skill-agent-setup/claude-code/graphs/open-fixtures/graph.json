@@ -23,7 +23,6 @@
     "status": "done",
     "agent_id": null,
     "agent_status_text": null,
-    "agent_log": [],
     "progress_history": []
   },
   {
@@ -52,7 +51,6 @@
     "status": "done",
     "agent_id": null,
     "agent_status_text": null,
-    "agent_log": [],
     "progress_history": []
   },
   {
@@ -83,7 +81,6 @@
     "status": "done",
     "agent_id": null,
     "agent_status_text": null,
-    "agent_log": [],
     "progress_history": []
   },
   {
@@ -114,13 +111,6 @@
     "status": "done",
     "agent_id": "solver_0",
     "agent_status_text": "Experiment 5/10: arc trajectory with 45deg swing angle",
-    "agent_log": [
-      "Studying swing-cabinet-open task. Handle requires front grasp + arc pull.",
-      "Wrote solve() v1: navigate to cabinet, grasp handle, arc trajectory 30deg.",
-      "Ran 10 seeds: 2/10 pass. Main failure: arc radius too small, gripper collides with cabinet frame.",
-      "Wrote solve() v2: increased arc radius 0.15 -> 0.22m, added 45deg swing angle.",
-      "Running 10 seeds..."
-    ],
     "progress_history": [
       2,
       3,
@@ -160,11 +150,6 @@
     "status": "done",
     "agent_id": "solver_2",
     "agent_status_text": "Reading framework docs + existing skills before writing solve()",
-    "agent_log": [
-      "Starting open-all-fixtures. This composes pull-drawer-open + swing-cabinet-open.",
-      "Reading pull-drawer-open SKILL.md to understand interface.",
-      "Reading swing-cabinet-open SKILL.md. Note: swing skill still under development."
-    ],
     "progress_history": [
       1,
       2,

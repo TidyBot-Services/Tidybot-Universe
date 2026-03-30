@@ -1,1 +1,0 @@
-/tmp/tidybot_uni/Tidybot-Universe/skill-agent-setup/claude-code/graphs/single-stage-tasks/skills/pick-object/tests/run_trials.py

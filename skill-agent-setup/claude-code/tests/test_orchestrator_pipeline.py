@@ -86,7 +86,6 @@ def make_entry(name, deps=None, status="planned", success_rate=None):
         "status": status,
         "agent_id": None,
         "agent_status_text": None,
-        "agent_log": [],
         "progress_history": [],
     }
 

@@ -1,2 +1,0 @@
-# place-in-cabinet depends on no other skill scripts directly.
-# It uses robot_sdk built-ins: arm, gripper, sensors, rewind

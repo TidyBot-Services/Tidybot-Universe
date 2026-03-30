@@ -1,237 +1,290 @@
-#!/usr/bin/env python3
 """
-pick-object — Detect target object on counter, navigate to it, and grasp it.
+pick-object skill: Detect target object on counter, navigate to it, grasp and lift.
 
 Pipeline:
-1. sensors.find_objects() → filter fixtures → prefer counter context
-2. Select target by name (exact then substring) or nearest graspable object
-3. TopDown (3 z-offsets) then Angled45 (3 yaw offsets) grasp strategies
-4. On success: lift 0.20 m. On all misses: FAILED.
-
-Usage:
-    python main.py [target_name]   # default: pick nearest counter object
+1. Coarse detection with sensors.find_objects() to get world-frame position
+2. Whole-body move to position EE ~15cm above object (top-down orientation)
+3. Fine perception from close range for precise position
+4. Use wb.move_to_pose to descend to grasp height, then grasp
+5. Verify grasp and lift ~15cm
+6. Retry with different strategies if grasp fails
 """
 
-import math
-import sys
-import time
+import numpy as np
+from robot_sdk import arm, gripper, sensors, wb, rewind
 
-from transforms3d.euler import euler2quat
+# ─── Configuration ───────────────────────────────────────────────────────────
+PRE_GRASP_HEIGHT = 0.15      # hover height above object (m)
+GRASP_FORCE = 100            # moderate grasp force
+MAX_GRASP_ATTEMPTS = 6       # total attempts across strategies
+TOPDOWN_QUAT = [0, 1, 0, 0] # wxyz: gripper pointing straight down
 
-from robot_sdk import gripper, sensors, wb
-
-APPROACH_CLEARANCE  = 0.15
-LIFT_HEIGHT         = 0.20
-COUNTER_Z_MIN       = 0.65
-COUNTER_Z_MAX       = 1.15
-MOVE_TIMEOUT        = 20
-GRIPPER_SETTLE_S    = 0.6
-GRIPPER_MIN_M       = 0.005
-GRIPPER_MAX_M       = 0.083
-GRASP_Z_OFFSET      = 0.02   # bias above centroid; top-down grasp contacts best slightly above centre
-
-TOP_DOWN_QUAT      = (0, 1, 0, 0)   # 180° around X → EE Z-axis points straight down
-WB_MASK            = "whole_body"
-
-_TOPDOWN_Z_OFFSETS = [0.02, 0.03, 0.01]
-_YAW_OFFSETS       = [0.0, math.radians(30), math.radians(-30)]
-
-_FIXTURE_KEYWORDS = (
-    "floor", "wall", "ceiling", "counter", "cab_corner", "cabinet",
-    "hinge", "door", "shelf", "shelves", "rack", "dishwasher",
-    "paper_towel", "spout", "stack_", "utensil", "fridge", "stove",
-    "oven", "microwave", "window", "light",
-)
+# Fixture names to ignore — these are NOT graspable objects
+FIXTURE_KEYWORDS = [
+    'counter', 'stool', 'wall', 'floor', 'door', 'hinge', 'cabinet',
+    'shelf', 'shelves', 'window', 'outlet', 'fridge', 'dishwasher',
+    'stack_', 'plant', 'paper_towel', 'utensil_rack', 'utensil_holder',
+    'cab_corner', 'knob', 'spout', 'knife_block', 'coffee_machine',
+    'distr_', 'inner_box', 'group_0', 'group_base',
+]
 
 
-def _is_fixture(name: str) -> bool:
-    low = name.lower()
-    return any(kw in low for kw in _FIXTURE_KEYWORDS)
-
-
-def _gripper_width_m() -> float:
-    try:
-        w = sensors.get_gripper_width()
-        if w is not None:
-            return float(w)
-    except Exception:
-        pass
-    try:
-        state = gripper.get_state()
-        mm = state.get("position_mm")
-        if mm is not None:
-            return mm / 1000.0
-        pos = state.get("position", 255)
-        return (255 - pos) / 255.0 * 0.085
-    except Exception:
-        return 0.0
-
-
-def _has_object() -> tuple:
-    time.sleep(GRIPPER_SETTLE_S)
-    w = _gripper_width_m()
-    return GRIPPER_MIN_M < w < GRIPPER_MAX_M, w
-
-
-def _wb_move(x: float, y: float, z: float, quat, label: str) -> None:
-    print(f"  → {label}: ({x:.3f}, {y:.3f}, {z:.3f})", flush=True)
-    wb.move_to_pose(x=x, y=y, z=z, quat=quat, mask=WB_MASK, timeout=MOVE_TIMEOUT)
-
-
-def _close_and_check(retreat_x: float, retreat_y: float, retreat_z: float, quat) -> bool:
-    """Close gripper; if miss, open and retreat to pre-grasp pose. Returns True if grasped."""
-    gripper.close()
-    grasped, width = _has_object()
-    print(f"  gripper width: {width:.4f} m  grasped={grasped}", flush=True)
-    if grasped:
-        return True
-    gripper.open()
-    try:
-        _wb_move(retreat_x, retreat_y, retreat_z, quat, "retreat")
-    except Exception:
-        pass
+def is_fixture(name):
+    """Check if object name looks like a fixture (not a graspable object)."""
+    name_lower = name.lower()
+    for kw in FIXTURE_KEYWORDS:
+        if kw in name_lower:
+            return True
     return False
 
 
-def _lift_and_succeed(name: str, x: float, y: float, from_z: float, quat) -> bool:
-    """Lift grasped object and report success. Returns True on success, False if lift fails."""
-    lift_z = from_z + LIFT_HEIGHT
-    print(f"Lifting to z={lift_z:.3f}", flush=True)
-    try:
-        _wb_move(x, y, lift_z, quat, "lift")
-    except Exception as e:
-        print(f"Result: FAILED – lift_failed: {e}", flush=True)
-        return False
-    print(f"Result: SUCCESS – picked {name}", flush=True)
-    return True
+def find_target_object():
+    """Find the nearest graspable object (not a fixture)."""
+    objects = sensors.find_objects()
+    print(f"[perception] Found {len(objects)} objects total")
 
+    for obj in objects:
+        fixture_flag = " [FIXTURE]" if is_fixture(obj['name']) else " [CANDIDATE]"
+        print(f"  - {obj['name']} at ({obj['x']:.3f}, {obj['y']:.3f}, {obj['z']:.3f}), "
+              f"dist={obj['distance_m']:.2f}m, ctx={obj.get('fixture_context', '?')}, "
+              f"size=({obj.get('size_x', 0):.3f}, {obj.get('size_y', 0):.3f}, {obj.get('size_z', 0):.3f})"
+              f"{fixture_flag}")
 
-def _find_graspable() -> list:
-    raw = sensors.find_objects()
-    if not raw:
-        return []
+    # Filter out fixtures
+    graspable = [o for o in objects if not is_fixture(o['name'])]
+    print(f"[perception] Graspable candidates: {len(graspable)}")
+    for obj in graspable:
+        print(f"  >> {obj['name']} at ({obj['x']:.3f}, {obj['y']:.3f}, {obj['z']:.3f}), "
+              f"dist={obj['distance_m']:.2f}m, ctx={obj.get('fixture_context', '?')}")
 
-    candidates = []
-    for o in raw:
-        name = o.get("name", "").strip()
-        try:
-            x, y, z = float(o["x"]), float(o["y"]), float(o["z"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        if not (math.isfinite(x) and math.isfinite(y) and math.isfinite(z)):
-            continue
-        if not name or _is_fixture(name):
-            continue
-        candidates.append(o)
+    if graspable:
+        target = graspable[0]
+        print(f"[perception] Selected target: {target['name']}")
+        return target
 
-    if not candidates:
-        return []
-
-    candidates.sort(key=lambda o: o.get("distance_m", 9999))
-    ctx_counter  = [o for o in candidates if "counter" in o.get("fixture_context", "").lower()]
-    height_match = [o for o in candidates if COUNTER_Z_MIN <= o["z"] <= COUNTER_Z_MAX]
-    return ctx_counter or height_match or candidates
-
-
-def _select_target(objects: list, target_name: str | None):
-    if target_name is None:
-        return objects[0] if objects else None
-    low = target_name.lower()
+    # Fallback: look for 'obj_' or 'object' patterns
     for o in objects:
-        if o["name"].lower() == low:
+        if o['name'].startswith('obj_') or o['name'] == 'object':
+            print(f"[perception] Fallback target: {o['name']}")
             return o
-    for o in objects:
-        if low in o["name"].lower():
-            return o
+
+    if objects:
+        print(f"[perception] Last resort target: {objects[0]['name']}")
+        return objects[0]
+
     return None
 
 
-def _topdown_attempt(tx: float, ty: float, tz: float, z_offset: float) -> bool:
-    gz = tz + z_offset
-    try:
-        _wb_move(tx, ty, gz + APPROACH_CLEARANCE, TOP_DOWN_QUAT, "topdown-approach")
-        _wb_move(tx, ty, gz, TOP_DOWN_QUAT, "topdown-grasp")
-    except Exception as e:
-        print(f"  topdown move failed: {e}", flush=True)
-        return False
-    return _close_and_check(tx, ty, gz + APPROACH_CLEARANCE, TOP_DOWN_QUAT)
+def compute_grasp_yaw(obj_x, obj_y):
+    """Compute yaw from arm base to object."""
+    bx, by, _ = sensors.get_base_pose()
+    return np.arctan2(obj_y - by, obj_x - bx)
 
 
-def _angled45_attempt(tx: float, ty: float, tz: float, yaw: float) -> tuple:
-    """Returns (grasped, px, py, pz, quat) so caller can lift from the correct grasp pose."""
-    quat = euler2quat(0, 3 * math.pi / 4, yaw, axes="sxyz")
-    px = tx - 0.02 * math.cos(yaw)
-    py = ty - 0.02 * math.sin(yaw)
-    pz = tz + GRASP_Z_OFFSET
-    try:
-        _wb_move(px, py, pz + APPROACH_CLEARANCE, quat, "angled-approach")
-        _wb_move(px, py, pz, quat, "angled-grasp")
-    except Exception as e:
-        print(f"  angled move failed: {e}", flush=True)
-        return False, px, py, pz, quat
-    grasped = _close_and_check(px, py, pz + APPROACH_CLEARANCE, quat)
-    return grasped, px, py, pz, quat
+def make_angled45_quat(yaw):
+    """Create a 45-degree tilted grasp quaternion (wxyz)."""
+    from transforms3d.euler import euler2quat
+    return list(euler2quat(0, 3 * np.pi / 4, yaw))
 
 
-def pick_object(target_name: str | None = None) -> bool:
+def print_ee_position(label=""):
+    """Print current EE position for debugging."""
+    pos = sensors.get_ee_position()
+    print(f"[debug] EE pos{' (' + label + ')' if label else ''}: ({pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f})")
+    return pos
+
+
+def attempt_grasp(obj_x, obj_y, obj_z, strategy, yaw_offset=0.0):
     """
-    Detect and pick an object from the counter.
-    target_name: object name to pick; None = nearest graspable counter object.
+    Attempt a single grasp at the object position with the given strategy.
+    Returns True if object is grasped.
     """
-    print(f"Scanning scene (target={target_name!r})…", flush=True)
-    objects = _find_graspable()
-    if not objects:
-        print("Result: FAILED – no_objects_detected", flush=True)
-        return False
+    yaw = compute_grasp_yaw(obj_x, obj_y) + yaw_offset
+    strategy_name = f"{strategy}(yaw_off={np.degrees(yaw_offset):.0f})"
+    print(f"[grasp] Trying {strategy_name}...")
 
-    print(f"  {len(objects)} candidate(s):", flush=True)
-    for o in objects[:6]:
-        print(
-            f"    {o['name']:40s}  ctx={o.get('fixture_context',''):20s}"
-            f"  z={o.get('z', 0):.3f}",
-            flush=True,
-        )
+    if strategy == "TopDown":
+        quat = TOPDOWN_QUAT
+        grasp_x, grasp_y = obj_x, obj_y
+        grasp_z = obj_z  # go right to object height
+    elif strategy == "Angled45":
+        quat = make_angled45_quat(yaw)
+        # Offset slightly back along approach direction so fingertips meet object
+        grasp_x = obj_x - 0.02 * np.cos(yaw)
+        grasp_y = obj_y - 0.02 * np.sin(yaw)
+        grasp_z = obj_z + 0.02
+    else:
+        raise ValueError(f"Unknown strategy: {strategy}")
 
-    target = _select_target(objects, target_name)
-    if target is None:
-        names = [o["name"] for o in objects]
-        print(f"Result: FAILED – target_not_found: '{target_name}' not in {names}", flush=True)
-        return False
-
-    tx, ty, tz = float(target["x"]), float(target["y"]), float(target["z"])
-    print(f"Target '{target['name']}' at ({tx:.3f}, {ty:.3f}, {tz:.3f})", flush=True)
+    pre_x, pre_y = grasp_x, grasp_y
+    pre_z = obj_z + PRE_GRASP_HEIGHT
 
     try:
-        bx, by, _ = sensors.get_base_pose()
-    except Exception:
-        bx, by = 0.0, 0.0
-    approach_yaw = math.atan2(ty - by, tx - bx)
+        # Open gripper
+        gripper.open()
 
+        # Move to pre-grasp position using whole-body planner
+        print(f"[grasp] Pre-grasp: ({pre_x:.3f}, {pre_y:.3f}, {pre_z:.3f})")
+        wb.move_to_pose(x=pre_x, y=pre_y, z=pre_z, quat=quat, mask="whole_body")
+        print_ee_position("after pre-grasp")
+
+        # Descend to grasp height using whole-body planner (arm_only since base is positioned)
+        print(f"[grasp] Descending to grasp: ({grasp_x:.3f}, {grasp_y:.3f}, {grasp_z:.3f})")
+        wb.move_to_pose(x=grasp_x, y=grasp_y, z=grasp_z, quat=quat, mask="arm_only")
+        print_ee_position("at grasp height")
+
+        # Grasp: close with full force, then check
+        gripper.close(speed=255, force=255)
+        gs = gripper.get_state()
+        print(f"[grasp] Gripper after close: pos={gs.get('position')}, obj_detected={gs.get('object_detected')}, width_mm={gs.get('position_mm')}")
+
+        # Check if we're actually holding something
+        holding = sensors.is_gripper_holding()
+        print(f"[grasp] is_gripper_holding: {holding}")
+
+        if holding:
+            # Lift the object using whole-body planner
+            lift_z = grasp_z + PRE_GRASP_HEIGHT + 0.05
+            print(f"[grasp] Lifting to z={lift_z:.3f}")
+            wb.move_to_pose(x=grasp_x, y=grasp_y, z=lift_z, quat=quat, mask="arm_only")
+            print_ee_position("after lift")
+
+            still_holding = sensors.is_gripper_holding()
+            print(f"[grasp] Still holding after lift: {still_holding}")
+            return still_holding
+        else:
+            # Failed - open gripper, retreat upward
+            print("[grasp] Missed. Retreating...")
+            gripper.open()
+            wb.move_to_pose(x=pre_x, y=pre_y, z=pre_z, quat=quat, mask="arm_only")
+            return False
+
+    except Exception as e:
+        print(f"[grasp] Error during {strategy_name}: {e}")
+        # Try to recover
+        try:
+            gripper.open()
+        except Exception:
+            pass
+        try:
+            wb.move_to_pose(x=pre_x, y=pre_y, z=pre_z + 0.05, quat=TOPDOWN_QUAT, mask="arm_only")
+        except Exception:
+            pass
+        return False
+
+
+def main():
+    print("=" * 60)
+    print("PICK-OBJECT SKILL")
+    print("=" * 60)
+
+    # Initialize gripper
+    print("[init] Activating gripper...")
+    gripper.activate()
     gripper.open()
+    print("[init] Gripper activated and opened")
 
-    name = target["name"]
+    # Print initial state
+    print_ee_position("initial")
+    bx, by, btheta = sensors.get_base_pose()
+    print(f"[debug] Base pose: ({bx:.3f}, {by:.3f}, theta={btheta:.3f})")
+    gs = gripper.get_state()
+    print(f"[debug] Gripper state: pos={gs.get('position')}, activated={gs.get('is_activated')}, obj_detected={gs.get('object_detected')}")
 
-    for z_off in _TOPDOWN_Z_OFFSETS:
-        print(f"\n[TopDown] z_offset={z_off:+.2f}", flush=True)
-        if _topdown_attempt(tx, ty, tz, z_offset=z_off):
-            return _lift_and_succeed(name, tx, ty, tz + z_off, TOP_DOWN_QUAT)
+    # ── Step 1: Coarse detection ──────────────────────────────────────────
+    print("\n[step 1] Coarse detection...")
+    target = find_target_object()
+    if target is None:
+        print("[ERROR] No objects detected!")
+        return
 
-    for yaw_off in _YAW_OFFSETS:
-        yaw = approach_yaw + yaw_off
-        print(f"\n[Angled45] yaw={math.degrees(yaw):.1f}°", flush=True)
-        grasped, px, py, pz, quat = _angled45_attempt(tx, ty, tz, yaw=yaw)
-        if grasped:
-            return _lift_and_succeed(name, px, py, pz, quat)
+    obj_name = target['name']
+    obj_x, obj_y, obj_z = target['x'], target['y'], target['z']
+    print(f"\n[step 1] TARGET: {obj_name} at ({obj_x:.3f}, {obj_y:.3f}, {obj_z:.3f})")
 
-    print(
-        f"Result: FAILED – all_attempts_failed: "
-        f"{len(_TOPDOWN_Z_OFFSETS)} TopDown + {len(_YAW_OFFSETS)} Angled45",
-        flush=True,
-    )
-    return False
+    # ── Step 2: Approach — move EE above object ───────────────────────────
+    print("\n[step 2] Approaching target (pre-grasp hover)...")
+    hover_z = obj_z + PRE_GRASP_HEIGHT
+    try:
+        wb.move_to_pose(x=obj_x, y=obj_y, z=hover_z, quat=TOPDOWN_QUAT, mask="whole_body")
+        print_ee_position("after approach")
+    except Exception as e:
+        print(f"[step 2] Approach failed: {e}")
+        # Try with just arm
+        try:
+            wb.move_to_pose(x=obj_x, y=obj_y, z=hover_z, quat=TOPDOWN_QUAT, mask="arm_only")
+            print_ee_position("after arm_only approach")
+        except Exception as e2:
+            print(f"[step 2] arm_only also failed: {e2}")
+
+    # ── Step 3: Fine perception ───────────────────────────────────────────
+    print("\n[step 3] Fine perception from close range...")
+    fine_objects = sensors.find_objects()
+    target_fine = None
+    for o in fine_objects:
+        if o['name'] == obj_name:
+            target_fine = o
+            break
+
+    if target_fine is not None:
+        obj_x, obj_y, obj_z = target_fine['x'], target_fine['y'], target_fine['z']
+        print(f"[step 3] Refined: {obj_name} at ({obj_x:.3f}, {obj_y:.3f}, {obj_z:.3f})")
+    else:
+        graspable_fine = [o for o in fine_objects if not is_fixture(o['name'])]
+        if graspable_fine:
+            target_fine = graspable_fine[0]
+            obj_x, obj_y, obj_z = target_fine['x'], target_fine['y'], target_fine['z']
+            obj_name = target_fine['name']
+            print(f"[step 3] Switched to: {obj_name} at ({obj_x:.3f}, {obj_y:.3f}, {obj_z:.3f})")
+        else:
+            print("[step 3] No refined match — using coarse position")
+
+    # ── Step 4 & 5: Grasp attempts ────────────────────────────────────────
+    print("\n[step 4] Starting grasp attempts...")
+
+    strategies = [
+        ("TopDown", 0.0),
+        ("TopDown", np.radians(30)),
+        ("TopDown", np.radians(-30)),
+        ("Angled45", 0.0),
+        ("Angled45", np.radians(30)),
+        ("Angled45", np.radians(-30)),
+    ]
+
+    for attempt_idx, (strategy, yaw_off) in enumerate(strategies):
+        if attempt_idx >= MAX_GRASP_ATTEMPTS:
+            break
+        print(f"\n--- Attempt {attempt_idx + 1}/{MAX_GRASP_ATTEMPTS} ---")
+
+        # Re-perceive before retries
+        if attempt_idx > 0:
+            print("[retry] Re-perceiving target...")
+            retry_objects = sensors.find_objects()
+            for o in retry_objects:
+                if o['name'] == obj_name:
+                    obj_x, obj_y, obj_z = o['x'], o['y'], o['z']
+                    print(f"[retry] Re-found {obj_name} at ({obj_x:.3f}, {obj_y:.3f}, {obj_z:.3f})")
+                    break
+
+        success = attempt_grasp(obj_x, obj_y, obj_z, strategy, yaw_off)
+        if success:
+            ee_pos = sensors.get_ee_position()
+            print(f"\n{'=' * 60}")
+            print(f"[SUCCESS] Object '{obj_name}' grasped and lifted!")
+            print(f"  EE position: ({ee_pos[0]:.3f}, {ee_pos[1]:.3f}, {ee_pos[2]:.3f})")
+            print(f"  Gripper holding: {sensors.is_gripper_holding()}")
+            print(f"  Strategy: {strategy}, yaw_offset: {np.degrees(yaw_off):.0f}")
+            print(f"{'=' * 60}")
+            return
+
+    # All attempts failed
+    print(f"\n[FAILED] All grasp attempts failed for '{obj_name}'.")
+    print("Returning to home position...")
+    try:
+        wb.go_home()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
-    tname = sys.argv[1] if len(sys.argv) > 1 else None
-    ok = pick_object(target_name=tname)
-    sys.exit(0 if ok else 1)
+    main()

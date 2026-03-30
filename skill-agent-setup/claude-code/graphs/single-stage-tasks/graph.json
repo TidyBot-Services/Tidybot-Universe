@@ -5,16 +5,16 @@
     {
       "id": "sc-001",
       "name": "pick-object",
-      "description": "Detect target object on counter, navigate to it, and grasp it",
-      "created_at": "2026-03-29T18:58:07Z",
-      "updated_at": "2026-03-29T20:51:31Z",
+      "description": "Detect target object on counter using YOLO, navigate base to it, and grasp it with the gripper",
+      "created_at": "2026-03-30T06:44:24Z",
+      "updated_at": "2026-03-30T08:08:09Z",
       "html_url": "",
       "language": "Python",
       "stars": 0,
       "is_private": false,
       "default_branch": "main",
-      "success_rate": 0.0,
-      "total_trials": 1,
+      "success_rate": null,
+      "total_trials": 0,
       "institutions_tested": 0,
       "trial_images": [],
       "dependencies": [],
@@ -23,9 +23,32 @@
       "status": "writing",
       "agent_id": null,
       "agent_status_text": null,
-      "agent_log": [],
-      "progress_history": [],
-      "test_attempts": 1
+      "progress_history": []
+    },
+    {
+      "id": "sc-002",
+      "name": "pick-and-place",
+      "description": "Pick the target object from the counter and place it into the cabinet",
+      "created_at": "2026-03-30T06:44:25Z",
+      "updated_at": "2026-03-30T08:03:01Z",
+      "html_url": "",
+      "language": "Python",
+      "stars": 0,
+      "is_private": false,
+      "default_branch": "main",
+      "success_rate": null,
+      "total_trials": 0,
+      "institutions_tested": 0,
+      "trial_images": [],
+      "dependencies": [
+        "pick-object"
+      ],
+      "service_dependencies": [],
+      "sdk_functions": [],
+      "status": "planned",
+      "agent_id": null,
+      "agent_status_text": null,
+      "progress_history": []
     }
   ]
 }

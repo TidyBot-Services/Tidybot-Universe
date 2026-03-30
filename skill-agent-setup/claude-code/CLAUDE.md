@@ -41,7 +41,7 @@ cd $WORKSPACE/sims/maniskill && \
   conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
-  python3 -m maniskill_server --task RoboCasaKitchen-v1 &
+  python3 -m maniskill_server --task RoboCasaKitchen-v1 --gui &
 # Wait for port 5555 to be ready before proceeding
 
 # 2. Agent server (HTTP API for code execution) — port 8080
@@ -63,7 +63,16 @@ cd $WORKSPACE/Tidybot-Universe/skill-agent-setup/claude-code && \
 cd $WORKSPACE/TidyBot-Services.github.io && python3 -m http.server 8070 &
 ```
 
-**IMPORTANT:** Dev and test agents submit code via `POST localhost:8080/code/execute`. This requires the sim (#1) and agent server (#2) to be running. Without them, agents can write code to disk but cannot run or test anything.
+**IMPORTANT:** Dev and test agents submit code via `POST localhost:8080/code/submit`. This requires the sim (#1) and agent server (#2) to be running. Without them, agents can write code to disk but cannot run or test anything.
+
+**Code execution APIs:**
+- **`POST /code/submit`** (preferred) — Fire-and-forget. Server acquires/releases the lease automatically. Poll `GET /code/jobs/{job_id}` for results. Use `submit_and_wait.py` as a CLI wrapper.
+- **`POST /code/execute`** — Low-level. Requires manual lease management (`X-Lease-Id` header). You must acquire and release the lease yourself. Poll `GET /code/status` for results. Avoid unless you need direct lease control.
+
+**To test code manually**, write it to a file and use `submit_and_wait.py`:
+```bash
+python3 submit_and_wait.py /tmp/test_code.py --holder claude-code
+```
 
 **Quick e2e check** (launches sim + agent server temporarily, runs tests, shuts down):
 ```bash

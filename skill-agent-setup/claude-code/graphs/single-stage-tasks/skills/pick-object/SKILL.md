@@ -1,43 +1,36 @@
----
-name: pick-object
-description: Detect the target object on the counter (or nearest surface), navigate to it with whole-body motion, and grasp it. Tries TopDown then Angled45 grasp strategies with yaw offsets for robustness. Returns SUCCESS when object is securely lifted.
----
+# pick-object
 
-# Pick Object
+## Description
+Detect the target object on the kitchen counter using YOLO vision, navigate the mobile base to bring the arm within reach, position the end-effector above the object, re-perceive to get a precise position, then descend, grasp, and lift.
 
-High-level pick primitive: detect → navigate → grasp → lift.
+## Preconditions (Input State)
+- Robot arm is at or near home position
+- Gripper is open and activated
+- Target object is resting on the kitchen counter and visible to the camera
+- Robot is in the kitchen environment (RoboCasa-Pn-P-Counter-To-Cab-v0)
+
+## Postconditions (Output State)
+- Object is grasped by the gripper and lifted ~15cm above the counter surface
+- Gripper is holding the object (object_detected = True)
+- Robot arm is in a stable pose with the object held clear of obstacles
+
+## Success Criteria
+- `sensors.is_gripper_holding()` returns True after grasp
+- End-effector Z position is at least 15cm above the counter surface
+- Object was detected by YOLO with confidence > 0.3 before grasp attempt
+
+## Dependencies
+- None (leaf skill)
 
 ## Pipeline
+1. **Coarse detection**: Use `sensors.find_objects()` to locate the target object in world coordinates
+2. **Approach**: Use `wb.move_to_pose()` to move the end-effector above the object (~15cm overhead), gripper open and pointing down
+3. **Fine perception**: Pause and re-perceive with `sensors.find_objects()` to get a precise, close-range position estimate
+4. **Descend & grasp**: Lower the arm to the object with `arm.move_delta(dz=...)`, then `gripper.grasp()` with moderate force (~100)
+5. **Lift**: `arm.move_delta(dz=0.15)` to clear the surface
 
-1. Call `sensors.find_objects()` — filter graspable objects, prefer counter context
-2. Select target by name or pick nearest graspable object
-3. For each grasp strategy (TopDown × 3 z-offsets, Angled45 × 3 yaw offsets):
-   a. Open gripper
-   b. `wb.move_to_pose` to pre-grasp approach (whole_body)
-   c. `wb.move_to_pose` to grasp pose
-   d. Close gripper — verify contact via gripper width threshold
-   e. On success: lift object 0.20 m and return
-4. If all attempts fail, return FAILED
-
-## Usage
-
-```python
-from main import pick_object
-
-# Pick nearest counter object
-success = pick_object()
-
-# Pick specific named object
-success = pick_object(target_name="mug_0")
-```
-
-## Parameters
-
-| Parameter     | Default | Description                                      |
-|---------------|---------|--------------------------------------------------|
-| `target_name` | None    | Object name to pick; None = nearest graspable    |
-
-## Success Signal
-
-Prints `Result: SUCCESS – picked <name>` on success.
-Prints `Result: FAILED – <reason>` on any failure.
+## Notes
+- The two-stage perception (coarse then fine from above) is critical — the close-range view gives much better depth/position accuracy
+- Use `sensors.find_objects()` for all perception (not YOLO) — it returns world-frame positions directly
+- Use `wb.move_to_pose()` for whole-body motion to reach the object (handles base + arm coordination)
+- If grasp fails, retry from step 3 (re-perceive and re-attempt)

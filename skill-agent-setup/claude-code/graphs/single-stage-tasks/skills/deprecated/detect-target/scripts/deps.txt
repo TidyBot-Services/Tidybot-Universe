@@ -1,1 +1,0 @@
-# detect-target has no skill dependencies — it only uses robot_sdk.sensors
