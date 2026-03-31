@@ -1,36 +1,34 @@
 # pick-object
 
 ## Description
-Detect the target object on the kitchen counter using YOLO vision, navigate the mobile base to bring the arm within reach, position the end-effector above the object, re-perceive to get a precise position, then descend, grasp, and lift.
+Detect the target object on the counter using `sensors.find_objects()`, navigate the base within arm reach using `wb.move_to_pose()`, then grasp the object with the gripper. The skill should handle approach, close-range re-detection, descent, and grasp verification.
 
 ## Preconditions (Input State)
 - Robot arm is at or near home position
-- Gripper is open and activated
-- Target object is resting on the kitchen counter and visible to the camera
-- Robot is in the kitchen environment (RoboCasa-Pn-P-Counter-To-Cab-v0)
+- Gripper is open
+- Target object is resting on the counter and visible to cameras
+- Sim is running with `RoboCasa-Pn-P-Counter-To-Cab-v0` task
 
 ## Postconditions (Output State)
-- Object is grasped by the gripper and lifted ~15cm above the counter surface
-- Gripper is holding the object (object_detected = True)
-- Robot arm is in a stable pose with the object held clear of obstacles
+- Object is grasped by the gripper (gripper closed around object, `object_detected=True` or gripper width between ~5-70mm)
+- Object is lifted ~10-15cm above the counter surface
+- Robot is stationary and holding the object
 
 ## Success Criteria
-- `sensors.is_gripper_holding()` returns True after grasp
-- End-effector Z position is at least 15cm above the counter surface
-- Object was detected by YOLO with confidence > 0.3 before grasp attempt
+- Gripper width > 5mm and < 75mm (object held, not empty close)
+- Object is no longer resting on the counter (lifted)
+- No collisions or reflex errors during execution
 
 ## Dependencies
 - None (leaf skill)
 
-## Pipeline
-1. **Coarse detection**: Use `sensors.find_objects()` to locate the target object in world coordinates
-2. **Approach**: Use `wb.move_to_pose()` to move the end-effector above the object (~15cm overhead), gripper open and pointing down
-3. **Fine perception**: Pause and re-perceive with `sensors.find_objects()` to get a precise, close-range position estimate
-4. **Descend & grasp**: Lower the arm to the object with `arm.move_delta(dz=...)`, then `gripper.grasp()` with moderate force (~100)
-5. **Lift**: `arm.move_delta(dz=0.15)` to clear the surface
-
 ## Notes
-- The two-stage perception (coarse then fine from above) is critical — the close-range view gives much better depth/position accuracy
-- Use `sensors.find_objects()` for all perception (not YOLO) — it returns world-frame positions directly
-- Use `wb.move_to_pose()` for whole-body motion to reach the object (handles base + arm coordination)
-- If grasp fails, retry from step 3 (re-perceive and re-attempt)
+- Use `sensors.find_objects()` to get world-frame object positions
+- In RoboCasa, the target object name starts with `"obj"` but NOT `"object"` — filter carefully (e.g. match `obj_` or exact `obj`)
+- Use `wb.move_to_pose()` for coordinated base+arm movement to reach the object
+- **Two-phase perception**: detect from afar for rough position, navigate closer, re-detect for precise position before grasping
+- Account for EE-to-fingertip offset when computing grasp height (EE frame is at wrist, not fingertips — may need to lower ~3-5cm below object center)
+- Use `gripper.grasp(force=100)` and verify with `sensors.get_gripper_position()` or `sensors.is_gripper_holding()`
+- Gripper commands now block until settled — close/grasp will wait for physics to finish
+- Try multiple grasp orientations if the first attempt fails (angled, top-down)
+- Lift after grasping to confirm object is held

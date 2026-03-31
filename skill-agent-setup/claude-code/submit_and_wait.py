@@ -21,7 +21,7 @@ AGENT_SERVER = "http://localhost:8080"
 ORCHESTRATOR = "http://localhost:8766"
 POLL_INTERVAL = 2.0
 DEFAULT_TIMEOUT = 300  # 5 minutes
-EVAL_TIMEOUT = 180     # 3 minutes for evaluator
+EVAL_TIMEOUT = 600     # 10 minutes for evaluator
 
 
 def submit(code: str, holder: str, reset_env: bool) -> str:

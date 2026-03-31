@@ -133,7 +133,12 @@ planned → dev agent implements skill
 
 ## Monitoring
 
-After starting, the user can monitor progress on the dashboard at `http://localhost:8070/local/` or by polling:
+After starting, remind the user of these URLs:
+
+- **Dashboard:** http://localhost:8070/local/ — visual skill tree, agent chat logs, inject hints, confirm skills
+- **Agent Server:** http://localhost:8080 — robot API, execution logs, camera feeds, `/services/dashboard` for service status
+
+Or poll via CLI:
 
 ```bash
 curl -s http://localhost:8766/status   # agent statuses

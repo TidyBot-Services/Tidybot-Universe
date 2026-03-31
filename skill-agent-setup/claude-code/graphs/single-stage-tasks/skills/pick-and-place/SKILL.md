@@ -1,30 +1,35 @@
 # pick-and-place
 
 ## Description
-Pick the target object from the counter (using the pick-object skill) and place it into the open cabinet. This is the root skill for the RoboCasa-Pn-P-Counter-To-Cab-v0 task — success is determined by the sim's `_check_success()`.
+Pick the target object from the counter and place it into the cabinet. Composes the `pick-object` skill for grasping, then navigates to the cabinet and places the object inside. This is the root skill for the `RoboCasa-Pn-P-Counter-To-Cab-v0` task.
 
 ## Preconditions (Input State)
 - Robot arm is at or near home position
-- Gripper is open and activated
-- Target object is on the kitchen counter
-- Cabinet is accessible (may need to be opened or is already open)
-- Robot is in the kitchen environment (RoboCasa-Pn-P-Counter-To-Cab-v0)
+- Gripper is open
+- Target object is on the counter
+- Cabinet is accessible (may need to be opened)
+- Sim is running with `RoboCasa-Pn-P-Counter-To-Cab-v0` task
 
 ## Postconditions (Output State)
-- Target object has been placed inside the cabinet
-- Gripper is open (object released)
-- Robot arm is retracted to a safe pose away from the cabinet
+- Object has been placed inside the cabinet
+- Gripper is open (released the object)
+- Robot arm retracted from the cabinet
+- Task success condition met (`GET /task/success` returns true)
 
 ## Success Criteria
-- Sim task success: `GET http://localhost:5500/task/success` returns success
-- Object is no longer on the counter
-- Object is inside the cabinet
+- `GET http://localhost:5500/task/success` returns success (ground-truth sim check)
+- Object is inside the cabinet (not on counter, not on floor)
+- Gripper is open after placement
+- No collisions or reflex errors
 
 ## Dependencies
-- `pick-object`: Provides the grasp-and-lift behavior (object held in gripper, lifted above counter)
-- `place-object`: Provides the navigate-to-cabinet-and-place behavior (object placed inside cabinet, arm retracted)
+- `pick-object` — provides: object grasped and lifted above counter
 
 ## Notes
-- This skill composes pick-object followed by place-object
-- pick-object postcondition (object grasped, lifted) matches place-object precondition
-- This is the root skill — tested automatically via sim `_check_success()`
+- After pick-object completes, the robot should be holding the object above the counter
+- Use `sensors.find_objects()` or scene knowledge to locate the cabinet
+- May need to open the cabinet door first if it's closed
+- Use `wb.move_to_pose()` to navigate to the cabinet interior
+- Lower the object into the cabinet, then `gripper.open()` to release
+- Retract arm after placing to avoid collisions with cabinet
+- The sim's `_check_success()` is the definitive success test
