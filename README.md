@@ -72,6 +72,10 @@ The services are the muscles and senses that don't fit on the robot's little com
 - **GPU services on demand.** Vision models, grasp planners, segmentation — they run on powerful remote servers and expose simple HTTP APIs.
 - **Agent-driven deployment.** The agent discovers what services exist, deploys what it needs, and calls them. The robot's onboard computer just orchestrates.
 
+## Known Issues
+
+- **Kill button doesn't stop evaluator mid-run.** The evaluator runs as an inline coroutine inside the dev agent's task (not a separate `AgentState`), so killing the dev agent during evaluation cancels the task but the SDK client may still flush buffered messages to the dashboard logs. The evaluator needs its own cancellation token or the broadcast should check agent liveness before writing.
+
 ## More
 
 See **[Getting Started](GETTING_STARTED.md)** for the full ecosystem overview, hardware setup, and service development.

@@ -465,7 +465,7 @@ def _load_entries():
     reset_count = 0
     for entry in skill_entries:
         status = entry.get("status", "planned")
-        if status not in ("done", "planned"):
+        if status not in ("done", "confirmed_done", "planned"):
             entry["status"] = "failed"
             reset_count += 1
     if reset_count:
@@ -1189,11 +1189,25 @@ You do NOT write or fix code — you only evaluate and report.
 1. Read the skill documentation: {{skill_dir}}/SKILL.md (if it exists)
 2. Read the skill code: {{skill_code_path}}
 3. Review the execution recording at: {{exec_dir}}/
-   - Read the camera images (*.jpg) — they show the robot during execution, in chronological order
-   - Read metadata.json for execution summary, stdout, stderr
-   - Read state_log.jsonl for robot state trajectory (arm joints, base pose, gripper width)
 
-Start by reading the images and metadata. If you need more detail, read the state log.
+**IMPORTANT: Read logs first, images selectively. Do NOT read every image.**
+
+**Step 1 — Logs first:**
+- Read metadata.json for execution summary, stdout, stderr, duration
+- Read state_log.jsonl for robot state trajectory (arm joints, base pose, gripper width, object_detected)
+- From the logs, identify the KEY MOMENTS: when gripper opened/closed, when base stopped moving,
+  when EE reached grasp height, the final state. Note the frame numbers for these moments.
+
+**Step 2 — Selective images (max 10-15):**
+Only read images at the key moments you identified from the logs:
+- First frame (starting state)
+- Frame when robot reaches the object area
+- Frame right before grasp (gripper about to close)
+- Frame right after grasp (gripper closed)
+- Frame after lift (if applicable)
+- Last frame (final state)
+Use both base_camera and wrist_camera for the most critical moment (grasp attempt).
+Skip all other frames — the logs already tell you what happened.
 
 ## Evaluation Criteria
 - Did the robot move to the expected positions?
@@ -1667,7 +1681,17 @@ async def kill_agent(agent_id: str):
         state.proc.send_signal(signal.SIGINT)
 
     state.log.append({"text": "Killed by user", "role": "agent"})
-    _update_entry(state.skill, {"agent_id": None})
+
+    # Clean up skill state
+    _eval_attempt_count.pop(state.skill, None)
+    _skills_in_test_loop.discard(state.skill)
+
+    entry = _find_entry(state.skill)
+    if entry and entry.get("status") not in ("done", "confirmed_done"):
+        _update_entry(state.skill, {"status": "failed", "agent_id": None})
+    else:
+        _update_entry(state.skill, {"agent_id": None})
+
     await ws_broadcast_status(state.skill, state.agent_id, "stopped", "Stopped")
     await ws_broadcast_agent_msg(state.skill, "Agent killed", state.agent_type)
     agents.pop(agent_id, None)
