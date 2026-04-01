@@ -348,10 +348,21 @@ also has camera images and state logs. Keep stdout to ~20-40 lines of high-level
 When writing skills that detect and manipulate objects, follow these patterns:
 
 ### RoboCasa object naming
-In RoboCasa tasks, the target object is always named `"obj"` (or starts with `"obj"`).
-Distractors are named `"distr_counter"`, `"distr_cab"`, `"distr_sink"`, etc.
-When filtering `sensors.find_objects()` results, select the object whose name starts
-with `"obj"` and ignore anything starting with `"distr"`.
+In RoboCasa tasks, `sensors.find_objects()` returns objects with **semantic category
+names** (e.g. `"mug"`, `"banana"`, `"canned_food"`, `"pan"`). If multiple objects
+share the same category, they get suffixed: `"mug_0"`, `"mug_1"`.
+Distractors also have real category names — use the task prompt (from
+`GET http://localhost:5500/task/info`) to understand which object is the target.
+
+### Task prompt
+Your skill code should fetch the task description at runtime to know what to do:
+```python
+from robot_sdk import sensors
+info = sensors.get_task_info()
+print(info)  # {"task": "RoboCasa-Pn-P-Counter-To-Cab-v0", "lang": "pick the mug from the counter and place it in the cabinet"}
+```
+The `"lang"` field describes the task in natural language with the actual object names.
+Use this to determine which object to target rather than hardcoding object names.
 
 ### Perception pipeline
 1. **Use `sensors.find_objects()`** — this calls the sim's depth + segmentation perception
