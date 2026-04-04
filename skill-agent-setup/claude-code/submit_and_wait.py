@@ -17,8 +17,9 @@ import time
 import urllib.request
 import urllib.error
 
-AGENT_SERVER = "http://localhost:8080"
-ORCHESTRATOR = "http://localhost:8766"
+import os
+AGENT_SERVER = os.getenv("AGENT_SERVER", "http://localhost:8080")
+ORCHESTRATOR = os.getenv("ORCHESTRATOR", "http://localhost:8766")
 POLL_INTERVAL = 2.0
 DEFAULT_TIMEOUT = 300  # 5 minutes
 EVAL_TIMEOUT = 600     # 10 minutes for evaluator
@@ -99,7 +100,12 @@ def main():
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT, help="Timeout in seconds")
     parser.add_argument("--no-reset", action="store_true", help="Skip sim reset before running")
     parser.add_argument("--no-eval", action="store_true", help="Skip evaluator — return raw stdout/stderr")
+    parser.add_argument("--agent-server", default=None, help="Agent server URL (overrides AGENT_SERVER env var)")
     args = parser.parse_args()
+
+    global AGENT_SERVER
+    if args.agent_server:
+        AGENT_SERVER = args.agent_server
 
     code = open(args.code_file).read()
     job_id = submit(code, args.holder, reset_env=not args.no_reset)

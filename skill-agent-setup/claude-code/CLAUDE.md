@@ -104,6 +104,60 @@ Sub-skills still need tests written by the test_writer agent.
 
 Verify: `curl -s http://localhost:8766/entries` should return JSON. Dashboard at `http://localhost:8070/local/`.
 
+## Multi-Target Testing (Optional)
+
+Run multiple sim instances with different kitchen layouts to validate skill robustness.
+Each instance is a sim+agent_server pair on offset ports.
+
+**Launch 3 targets:**
+```bash
+# Target 0 (primary, default ports)
+cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
+  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
+  python3 -m maniskill_server --task $TASK_ENV --port-offset 0 &
+cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
+  PYTHONUNBUFFERED=1 python3 server.py --port-offset 0 --no-service-manager &
+
+# Target 1 (offset=100 → sim:5600, agent:8180)
+cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
+  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
+  python3 -m maniskill_server --task $TASK_ENV --port-offset 100 &
+cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
+  PYTHONUNBUFFERED=1 python3 server.py --port-offset 100 --no-service-manager &
+
+# Target 2 (offset=200 → sim:5700, agent:8280)
+cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
+  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
+  python3 -m maniskill_server --task $TASK_ENV --port-offset 200 &
+cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
+  env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
+  PYTHONUNBUFFERED=1 python3 server.py --port-offset 200 --no-service-manager &
+```
+
+**Configure targets in graph.json:**
+```json
+{
+  "task_env": "RoboCasa-Pn-P-Counter-To-Cab-v0",
+  "targets": [
+    {"name": "kitchen-layout-1", "agent_server": "http://localhost:8080", "sim_api": "http://localhost:5500", "primary": true},
+    {"name": "kitchen-layout-3", "agent_server": "http://localhost:8180", "sim_api": "http://localhost:5600"},
+    {"name": "kitchen-layout-5", "agent_server": "http://localhost:8280", "sim_api": "http://localhost:5700"}
+  ],
+  "entries": [...]
+}
+```
+
+The dev agent develops against the primary target. After the ground-truth test passes on primary,
+the orchestrator automatically validates the same code on all targets. The dashboard shows
+per-target pass/fail dots on each skill hex.
+
+When `targets` is omitted, everything works as before (single target on default ports).
+
 ## Your Job
 
 Break down high-level goals into a dependency tree of robot skills. You design the skill tree — you do NOT write skill code.

@@ -50,7 +50,11 @@ HAS_SDK = True
 WS_PORT = 8765
 PROJECT_DIR = Path(__file__).resolve().parents[3]  # three levels up: claude-code -> skill-agent-setup -> Tidybot-Universe -> workspace root
 
-AGENT_SERVER = "http://localhost:8080"
+AGENT_SERVER = "http://localhost:8080"  # default, overridden by graph targets
+
+# Multi-target support (populated in _load_entries from graph.json "targets" field)
+targets: list[dict] = []
+primary_target: dict = {"name": "default", "agent_server": AGENT_SERVER, "sim_api": "http://localhost:5500", "primary": True}
 
 # Mode flags (set by CLI args or /xbot-start endpoint)
 dev_mode: bool = False  # True after /xbot-start; blocks agent spawning during planning
@@ -124,21 +128,24 @@ def _auto_generate_task_root_test(skill: str):
     # Also ensure scripts/ dir exists
     (SKILLS_DIR / skill / "scripts").mkdir(parents=True, exist_ok=True)
 
+    agent_server_url = primary_target["agent_server"]
+    sim_api_url = primary_target.get("sim_api", "http://localhost:5500")
+
     test_code = f'''\
 #!/usr/bin/env python3
 """Auto-generated test for task root skill: {skill}
 Task: {task_env}
 
 Runs the skill's main.py via the agent server, then checks success
-via the sim's /task/success endpoint (port 5500).
+via the sim's /task/success endpoint.
 """
 import json
 import time
 import urllib.request
 import urllib.error
 
-AGENT_SERVER = "http://localhost:8080"
-SIM_API = "http://localhost:5500"
+AGENT_SERVER = "{agent_server_url}"
+SIM_API = "{sim_api_url}"
 NUM_TRIALS = 1
 
 
@@ -460,7 +467,7 @@ graph_meta: dict = {}  # top-level metadata (task_env, task_source, etc.)
 
 def _load_entries():
     """Load entries from graph file into memory. Resets stale non-done statuses."""
-    global skill_entries, graph_meta
+    global skill_entries, graph_meta, targets, primary_target, AGENT_SERVER
     data = json.loads(LOCAL_REPOS.read_text())
     if isinstance(data, dict):
         # New format: {"task_env": "...", "entries": [...], ...}
@@ -470,6 +477,16 @@ def _load_entries():
         # Legacy format: flat list of entries
         skill_entries = data
         graph_meta = {}
+
+    # Load multi-target config
+    targets = graph_meta.get("targets", [])
+    if targets:
+        primary_target = next((t for t in targets if t.get("primary")), targets[0])
+        AGENT_SERVER = primary_target["agent_server"]
+        print(f"[ORCH] Loaded {len(targets)} targets, primary: {primary_target['name']} ({AGENT_SERVER})")
+    else:
+        primary_target = {"name": "default", "agent_server": AGENT_SERVER, "sim_api": "http://localhost:5500", "primary": True}
+        targets = [primary_target]
 
     # Reset stale statuses from previous sessions — anything not "done" or "planned"
     # is leftover state (writing, testing, review, failed) with no live agent behind it.
@@ -720,7 +737,7 @@ def build_full_sync() -> dict:
             "status": a.status,
         })
 
-    return {"entries": repos, "agents": agents_list}
+    return {"entries": repos, "agents": agents_list, "targets": targets}
 
 
 async def broadcast_full_sync():
@@ -987,6 +1004,112 @@ async def run_mechanical_test(skill: str) -> dict:
         return {"passed": False, "success_rate": 0, "total_trials": 0, "stdout": "", "stderr": str(e)}
 
 
+async def run_multi_target_test(skill: str) -> dict:
+    """Run skill code on all targets in parallel, collect per-target results.
+
+    Returns {"target_results": {name: {passed, execution_id}}, "aggregate_pass": bool, "success_rate": float}.
+    """
+    import urllib.request, urllib.error
+
+    # 1. Bundle the skill
+    bundler = str(Path(__file__).parent / ".." / "tidybot-bundle" / "scripts" / "tidybot-bundle.py")
+    bundler = str(Path(bundler).resolve())
+    skills_dir = str(SKILLS_DIR)
+
+    bundle_out = SKILLS_DIR / skill / "scripts" / "_bundled.py"
+    proc = await asyncio.create_subprocess_exec(
+        sys.executable, bundler, skill, "--skills-dir", skills_dir, "-o", str(bundle_out),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        err = stderr.decode(errors="replace")[-300:]
+        await ws_broadcast_agent_msg(skill, f"Bundle failed: {err}", "test")
+        return {"target_results": {}, "aggregate_pass": False, "success_rate": 0}
+
+    if not bundle_out.exists():
+        # Fallback: use main.py directly
+        bundle_out = SKILLS_DIR / skill / "scripts" / "main.py"
+    code = bundle_out.read_text()
+
+    # 2. Submit to all targets in parallel
+    async def _test_one_target(target: dict) -> tuple[str, dict]:
+        name = target["name"]
+        server = target["agent_server"]
+        sim_api = target.get("sim_api", "")
+
+        await ws_broadcast_agent_msg(skill, f"Testing on {name}...", "test")
+        try:
+            # Reset sim
+            if sim_api:
+                try:
+                    req = urllib.request.Request(f"{sim_api}/reset", data=b'{}',
+                        headers={"Content-Type": "application/json"}, method="POST")
+                    urllib.request.urlopen(req, timeout=10)
+                except Exception:
+                    pass
+
+            # Submit code
+            data = json.dumps({"code": code, "holder": f"test:{skill}", "reset_env": True}).encode()
+            req = urllib.request.Request(f"{server}/code/submit", data=data,
+                headers={"Content-Type": "application/json"})
+            resp = json.loads(urllib.request.urlopen(req, timeout=10).read())
+            job_id = resp["job_id"]
+
+            # Poll until done (up to 5 min)
+            for _ in range(150):
+                await asyncio.sleep(2)
+                try:
+                    job = json.loads(urllib.request.urlopen(f"{server}/code/jobs/{job_id}", timeout=5).read())
+                    if job.get("status") in ("completed", "failed"):
+                        break
+                except Exception:
+                    continue
+            else:
+                return name, {"passed": False, "error": "timeout", "execution_id": ""}
+
+            execution_id = job.get("execution_id", "")
+
+            # Check sim success
+            passed = False
+            if sim_api:
+                try:
+                    result = json.loads(urllib.request.urlopen(f"{sim_api}/task/success", timeout=5).read())
+                    passed = result.get("success", False)
+                except Exception:
+                    pass
+
+            return name, {"passed": passed, "execution_id": execution_id}
+
+        except Exception as e:
+            return name, {"passed": False, "error": str(e)[:200], "execution_id": ""}
+
+    # Run all targets concurrently
+    results_list = await asyncio.gather(*[_test_one_target(t) for t in targets])
+    target_results = dict(results_list)
+
+    # Compute aggregate
+    passed_count = sum(1 for r in target_results.values() if r.get("passed"))
+    total = len(target_results)
+    aggregate_pass = passed_count == total
+    success_rate = (passed_count / total * 100) if total > 0 else 0
+
+    # Update entry
+    _update_entry(skill, {
+        "target_results": target_results,
+        "success_rate": success_rate,
+        "total_trials": total,
+    })
+
+    # Broadcast per-target results
+    summary_parts = [f"{n}: {'PASS' if r.get('passed') else 'FAIL'}" for n, r in target_results.items()]
+    msg = f"Multi-target test: {passed_count}/{total} passed — " + ", ".join(summary_parts)
+    await ws_broadcast_agent_msg(skill, msg, "test")
+    await broadcast_full_sync()
+
+    return {"target_results": target_results, "aggregate_pass": aggregate_pass, "success_rate": success_rate}
+
+
 MAX_ROOT_TEST_ATTEMPTS = 3
 _skills_in_test_loop: set[str] = set()
 
@@ -1013,11 +1136,28 @@ async def _root_skill_test_loop_inner(skill: str):
         result = await run_mechanical_test(skill)
 
         if result["passed"]:
-            # Test passed — go to review
-            await ws_broadcast_agent_msg(skill, f"Ground-truth test PASSED (attempt {attempt}). Waiting for review.", "test")
-            _update_entry(skill, {"status": "review"})
-            await broadcast_full_sync()
-            return
+            # Primary target passed — run multi-target validation if multiple targets
+            if len(targets) > 1:
+                await ws_broadcast_agent_msg(skill, f"Primary test passed — validating on all {len(targets)} targets...", "test")
+                mt_result = await run_multi_target_test(skill)
+                if not mt_result["aggregate_pass"]:
+                    # Some targets failed — treat as test failure for retry
+                    result["passed"] = False
+                    result["success_rate"] = mt_result["success_rate"]
+                    result["stdout"] = json.dumps(mt_result["target_results"], indent=2)
+                    result["stderr"] = ""
+                    # Fall through to failure handling below
+                else:
+                    await ws_broadcast_agent_msg(skill, f"All {len(targets)} targets PASSED (attempt {attempt}). Waiting for review.", "test")
+                    _update_entry(skill, {"status": "review"})
+                    await broadcast_full_sync()
+                    return
+            else:
+                # Single target — go straight to review
+                await ws_broadcast_agent_msg(skill, f"Ground-truth test PASSED (attempt {attempt}). Waiting for review.", "test")
+                _update_entry(skill, {"status": "review"})
+                await broadcast_full_sync()
+                return
 
         if attempt >= MAX_ROOT_TEST_ATTEMPTS:
             break
