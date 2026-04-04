@@ -115,7 +115,7 @@ Each instance is a sim+agent_server pair on offset ports.
 cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
-  python3 -m maniskill_server --task $TASK_ENV --port-offset 0 &
+  python3 -m maniskill_server --task $TASK_ENV --port-offset 0 --seed 0 &
 cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   PYTHONUNBUFFERED=1 python3 server.py --port-offset 0 --no-service-manager &
@@ -124,7 +124,7 @@ cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
 cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
-  python3 -m maniskill_server --task $TASK_ENV --port-offset 100 &
+  python3 -m maniskill_server --task $TASK_ENV --port-offset 100 --seed 42 &
 cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   PYTHONUNBUFFERED=1 python3 server.py --port-offset 100 --no-service-manager &
@@ -133,7 +133,7 @@ cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
 cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
-  python3 -m maniskill_server --task $TASK_ENV --port-offset 200 &
+  python3 -m maniskill_server --task $TASK_ENV --port-offset 200 --seed 100 &
 cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   PYTHONUNBUFFERED=1 python3 server.py --port-offset 200 --no-service-manager &
