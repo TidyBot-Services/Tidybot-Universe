@@ -48,7 +48,14 @@ HAS_SDK = True
 # ---------------------------------------------------------------------------
 
 WS_PORT = 8765
-PROJECT_DIR = Path(__file__).resolve().parents[3]  # three levels up: claude-code -> skill-agent-setup -> Tidybot-Universe -> workspace root
+_script_dir = Path(__file__).resolve()
+# Walk up to find the workspace root (directory containing agent_server/)
+PROJECT_DIR = _script_dir.parents[3]  # default: claude-code -> skill-agent-setup -> Tidybot-Universe -> workspace
+for i in range(2, 5):
+    candidate = _script_dir.parents[i]
+    if (candidate / "agent_server").is_dir():
+        PROJECT_DIR = candidate
+        break
 
 AGENT_SERVER = "http://localhost:8080"  # default, overridden by graph targets
 
@@ -366,7 +373,7 @@ Your skill code should fetch the task description at runtime to know what to do:
 ```python
 from robot_sdk import sensors
 info = sensors.get_task_info()
-print(info)  # {"task": "RoboCasa-Pn-P-Counter-To-Cab-v0", "lang": "pick the mug from the counter and place it in the cabinet"}
+print(info)  # {{"task": "RoboCasa-Pn-P-Counter-To-Cab-v0", "lang": "pick the mug from the counter and place it in the cabinet"}}
 ```
 The `"lang"` field describes the task in natural language with the actual object names.
 Use this to determine which object to target rather than hardcoding object names.
@@ -436,6 +443,88 @@ Handles require a front-facing approach rather than top-down:
 - Use horizontal gripper orientation (Ry 90° + Rz yaw)
 - For horizontal bar handles, rotate fingers 90° around approach axis
 
+## CRITICAL: Known Bugs & Lessons (from previous agent sessions)
+
+### 0. World frame vs arm frame coordinate conversion (CRITICAL)
+- The robot heading is ~π/2 — the robot faces the **world Y+** direction.
+- `arm.move_to_pose(x, y, z)` takes **arm frame** coordinates, NOT world coordinates.
+- In arm frame: x = forward (toward cabinet/wall), y = left, z = up.
+- **NEVER** do `arm_pos = world_pos - arm_base_pos` — this ignores heading rotation.
+- The correct conversion (heading ≈ π/2):
+  ```
+  arm_x = world_target_y - arm_base_y   # world Y diff → arm forward
+  arm_y = -(world_target_x - arm_base_x) # neg world X diff → arm left/right
+  arm_z = world_target_z - arm_base_z   # Z unchanged
+  ```
+- Use this helper:
+  ```python
+  def world_to_arm(world_pos, arm_base):
+      return [world_pos[1] - arm_base[1],
+              -(world_pos[0] - arm_base[0]),
+              world_pos[2] - arm_base[2]]
+  ```
+- Example: cabinet at world (3.48, -0.14, 1.45), arm base at (3.49, -0.85, 0.47)
+  → CORRECT arm frame: (0.71, 0.01, 0.98) — reaches 0.71m forward
+  → WRONG (without rotation): (-0.01, 0.71, 0.98) — swings 0.71m LEFT
+- Getting this wrong makes the arm swing sideways instead of reaching forward.
+  This is the #1 cause of placement failures.
+
+### 1. Gripper position interpretation
+- `gripper.get_state()["position"]` = 0 means **FULLY CLOSED ON NOTHING** (empty grasp)
+- `position` = 20–150 means **object is in hand** (closed on something)
+- `position` = 250–255 means **fully open**
+- ALWAYS check `object_detected` field as well
+- Do NOT treat pos=0 as success — it means you missed the object
+
+### 2. ee_pose is a 4x4 matrix (16 elements, column-major)
+- `ee_pose[12]` = x, `ee_pose[13]` = y, `ee_pose[14]` = z (in ARM frame)
+- `ee_pose[0:12]` = rotation matrix elements — NOT position!
+- **World z = ee_pose[14] + 0.472** (arm base height offset)
+- Do NOT use ee_pose[0], ee_pose[1], ee_pose[2] as position — those are rotation
+
+### 3. Stale coordinates after base movement
+- After ANY `base.forward()`, `base.backward()`, or wb movement, sensor coordinates are STALE
+- You MUST call `sensors.find_objects()` again AFTER base movement to get updated positions
+- `wb.move_to_pose()` also has stale base coordinates after base movement — use `arm.move_to_pose()` in arm frame as a workaround if needed
+
+### 4. Verify with camera, not just numbers
+- After each major movement, visually verify by checking what happened
+- The robot may report plausible-looking numbers that are actually wrong
+- A "successful grasp" with pos=0 is actually a miss
+
+### 5. Placement at high Z (upper cabinets)
+- Top-down IK fails above world z ≈ 1.20m (arm frame z ≈ 0.73m)
+- For z > 1.25m world, use pitch=120° orientation (not vertical)
+- The arm can reach world z ≈ 1.53m with pitch=120° if arm_x is small (0.15–0.20m)
+- Larger arm_x reduces max reachable Z
+
+### 6. RoboCasa kitchen layout: cabinets are recessed into the wall
+- Upper cabinets are **recessed openings (cubbies) in the wall** above the counter
+- They are NOT flat shelves — the cabinet is a box-shaped cavity with depth
+- To place an object inside: the arm must reach the correct Z height AND extend
+  forward in Y (toward the wall) to get INSIDE the cabinet opening
+- Just reaching the right Z height is NOT enough — the object will fall on the
+  counter if the arm doesn't penetrate into the cabinet cavity
+- The cabinet opening is ~0.2–0.3m deep (Y direction, toward the wall)
+- `distr_cab_0` coordinates show the CENTER of the cabinet interior, not the front edge
+- After picking, you likely need to move the base forward to get closer to the cabinet
+
+### 7. Success checking: translate RoboCasa _check_success(), NEVER guess
+- **IRON RULE**: Your success criteria MUST be translated from the RoboCasa task's
+  `_check_success()` method in the task source code. NEVER guess from the task description.
+- The task source is in `~/tidybot_uni/sims/robocasa_tasks/` (single_stage/, multi_stage/).
+  Read the actual `_check_success()` code to understand what "success" means.
+- Example: `PnPCounterToCab._check_success()` checks:
+  1. `OU.obj_inside_of(self, "obj", self.cab)` — object physically inside cabinet 3D volume
+  2. `OU.gripper_obj_far(self)` — gripper is away from object (released)
+  This is a 3D bounding box check, NOT a height check.
+- Your code MUST call `GET http://localhost:5500/task/success` to verify — this runs
+  the actual `_check_success()` from the RoboCasa environment.
+- Do NOT invent your own success criteria (e.g. `wz >= 1.20`) — always use `/task/success`.
+- If `/task/success` returns false, the placement failed even if z looks correct.
+- Common failure: arm reaches correct height but object is in front of the cabinet,
+  not inside it — always check `/task/success` after releasing.
+
 ## Rules
 1. Check existing skills first — reuse and chain, don't reinvent
 2. Read the SDK docs before writing robot code — don't guess APIs
@@ -444,6 +533,16 @@ Handles require a front-facing approach rather than top-down:
 5. Debug failures — don't just write code and leave
 6. Be concise in your reasoning
 7. The sim (RoboCasa/ManiSkill) uses the same API — you are testing against the sim
+8. **IRON RULE — BEFORE writing ANY code, you MUST:**
+   a. Read the task's `_check_success()` source code from the task source file
+      (in `~/tidybot_uni/sims/robocasa_tasks/single_stage/` or `multi_stage/`)
+   b. Understand EXACTLY what conditions make the task succeed
+   c. Your code's success check must be derived FROM that source code, NOT from
+      the task description. The task description is vague — only the source code
+      is ground truth.
+   d. Use `GET http://localhost:5500/task/success` to call `_check_success()` at runtime.
+   e. NEVER invent your own success criteria (e.g. height checks, distance checks).
+   This is non-negotiable. Skipping this step wastes hours of debugging.
 
 ## Before finishing
 Once the skill works:
@@ -597,8 +696,34 @@ _spawn_lock = asyncio.Lock()          # prevents double-spawning in _auto_spawn_
 _submission_evals: dict[str, dict] = {}
 
 
+def _update_trial_images(skill: str, execution_id: str):
+    """Update entry's trial_images with frames from the latest execution recording."""
+    exec_dir = PROJECT_DIR / "logs" / "code_executions" / execution_id
+    if not exec_dir.exists():
+        return
+    frames = sorted(f.name for f in exec_dir.iterdir() if f.suffix == ".jpg")
+    if not frames:
+        return
+    # Build URLs that the dashboard can fetch via agent server
+    agent_server = f"http://localhost:{WS_PORT + 1 - 686}"  # 8080
+    image_urls = [
+        f"http://localhost:8080/code/recordings/{execution_id}/frames/{f}"
+        for f in frames
+    ]
+    # Keep at most 20 evenly spaced frames for the dashboard
+    if len(image_urls) > 20:
+        step = len(image_urls) / 20
+        image_urls = [image_urls[int(i * step)] for i in range(20)]
+    _update_entry(skill, {"trial_images": image_urls})
+    print(f"[ORCH] {skill}: updated trial_images ({len(image_urls)} frames from {execution_id})")
+
+
 async def _run_submission_eval(skill: str, execution_id: str):
     """Run evaluator for a specific submission, store result in _submission_evals."""
+    # Update dashboard images from this execution
+    _update_trial_images(skill, execution_id)
+    await broadcast_full_sync()
+
     try:
         result = await run_evaluator(skill, execution_id=execution_id)
     except Exception as e:
@@ -617,8 +742,8 @@ async def ws_broadcast(msg: dict):
     gone = set()
     for c in ws_clients:
         try:
-            await c.send(data)
-        except websockets.ConnectionClosed:
+            await asyncio.wait_for(c.send(data), timeout=5.0)
+        except (websockets.ConnectionClosed, asyncio.TimeoutError):
             gone.add(c)
     ws_clients.difference_update(gone)
 
@@ -853,21 +978,50 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev") -> str:
         await ws_broadcast({"type": "error", "message": msg})
         return ""
 
-    # Stop any active agent and clean up stale agents for this skill
+    # Stop any active agent and preserve session_id for resume
+    prev_session_id = None
     for aid, a in list(agents.items()):
         if a.skill == skill:
+            if a.session_id:
+                prev_session_id = a.session_id
             if a.status in ("starting", "running"):
                 await stop_agent(aid)
             a.exit_event.set()  # unblock pause-wait so client context closes
             agents.pop(aid, None)
 
+    # Also check graph.json entry for persisted session_id (survives orchestrator restarts)
+    if not prev_session_id:
+        entry = _find_entry(skill)
+        if entry and entry.get("session_id"):
+            prev_session_id = entry["session_id"]
+
+    if prev_session_id:
+        print(f"[ORCH] {skill}: will resume session {prev_session_id}")
+    else:
+        print(f"[ORCH] {skill}: no previous session, starting fresh")
+
     agent_id = f"agent-{uuid.uuid4().hex[:8]}"
     state = AgentState(agent_id=agent_id, skill=skill, agent_type=agent_type)
+    state.session_id = prev_session_id  # carry over for resume
     agents[agent_id] = state
 
     await ws_broadcast_status(skill, agent_id, "starting", "Developing...")
 
-    state.task = asyncio.create_task(_run_agent_sdk(state, prompt))
+    DEV_AGENT_TIMEOUT = 14400  # 4 hours max for dev agent
+    async def _wrapped():
+        try:
+            await asyncio.wait_for(_run_agent_sdk(state, prompt), timeout=DEV_AGENT_TIMEOUT)
+        except asyncio.TimeoutError:
+            print(f"[SDK] {skill}: TIMEOUT after {DEV_AGENT_TIMEOUT}s")
+            state.status = "failed"
+            _update_entry(skill, {"status": "failed"})
+            await broadcast_full_sync()
+            await ws_broadcast_agent_msg(skill, f"Dev agent timed out after {DEV_AGENT_TIMEOUT // 60} minutes.", state.agent_type)
+        except Exception as e:
+            print(f"[SDK] {skill}: UNHANDLED EXCEPTION: {e}")
+            import traceback; traceback.print_exc()
+    state.task = asyncio.create_task(_wrapped())
+    print(f"[ORCH] {skill}: task created, id={agent_id}")
 
     return agent_id
 
@@ -903,10 +1057,10 @@ async def run_mechanical_test(skill: str) -> dict:
             env["PYTHONPATH"] = f"{extra_py}:{env.get('PYTHONPATH', '')}"
 
         proc = await asyncio.create_subprocess_exec(
-            sys.executable, str(test_file),
+            sys.executable, str(test_file.resolve()),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=str(SKILLS_DIR / skill),
+            cwd=str((SKILLS_DIR / skill).resolve()),
             env=env,
         )
 
@@ -1174,6 +1328,9 @@ async def _root_skill_test_loop_inner(skill: str):
 
         desc = entry.get("description", skill) if entry else skill
         prompt = f"Implement the '{skill}' skill: {desc}\n\n## Previous test failure\n{feedback}"
+        lessons_file = SKILLS_DIR / skill / "LESSONS.md"
+        if lessons_file.exists():
+            prompt += f"\n\n## Previous Debugging Lessons (READ CAREFULLY)\n{lessons_file.read_text().strip()}"
         await spawn_agent(skill, prompt, agent_type="dev")
         # spawn_agent cleans up old agent state and broadcasts "starting"/"writing"
 
@@ -1238,6 +1395,18 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
     # Append dependency context for dev agents
     if dep_context:
         result += dep_context
+
+    # Tell the agent the current task_env so it doesn't need to guess or restart sim
+    task_env = graph_meta.get("task_env")
+    if task_env:
+        result += (
+            f"\n\n## Current Task Environment\n\n"
+            f"The sim is already running `{task_env}`. "
+            f"**Do NOT kill or restart the sim or agent server.** "
+            f"They are managed externally. If you see a different task in `/task/info`, "
+            f"it means the sim is still loading — wait and retry, do not restart.\n"
+        )
+
     return result
 
 
@@ -1263,15 +1432,21 @@ def _save_session_mapping(state: AgentState, message):
 
 async def _run_agent_sdk(state: AgentState, prompt: str):
     """Run an agent using the Claude Agent SDK (ClaudeSDKClient)."""
+    # Resume previous session if available, otherwise start fresh
+    resume_id = state.session_id
     options = ClaudeAgentOptions(
         cwd=str(PROJECT_DIR),
         permission_mode="bypassPermissions",
         system_prompt=_get_system_prompt(state.agent_type, state.skill),
         model="claude-opus-4-6",
+        resume=resume_id if resume_id else None,
     )
 
     try:
-        print(f"[SDK] {state.skill}: creating ClaudeSDKClient...")
+        if resume_id:
+            print(f"[SDK] {state.skill}: RESUMING session {resume_id}")
+        else:
+            print(f"[SDK] {state.skill}: creating new session")
         client = ClaudeSDKClient(options=options)
         state.client = client
 
@@ -1279,10 +1454,14 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
         async with client:
             state.status = "running"
             print(f"[SDK] {state.skill}: client ready, sending query...")
-            await ws_broadcast_status(state.skill, state.agent_id, "running", "Working...")
+            await ws_broadcast_status(state.skill, state.agent_id, "running",
+                                      "Resuming..." if resume_id else "Working...")
 
-            # First query
-            await client.query(prompt)
+            # First query (or resume prompt)
+            if resume_id:
+                await client.query(f"Continue working on this skill. Your previous session is being resumed.\n\n{prompt}")
+            else:
+                await client.query(prompt)
             print(f"[SDK] {state.skill}: query sent, consuming response...")
             await _consume_sdk_response(state, client)
             print(f"[SDK] {state.skill}: response consumed")
@@ -1459,38 +1638,41 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     )
 
     collected_text: list[str] = []
+    EVAL_TIMEOUT = 900  # 15 minutes max for evaluator
 
     try:
-        client = ClaudeSDKClient(options=options)
-        async with client:
-            await client.query(prompt)
-            async for message in client.receive_response():
-                if isinstance(message, AssistantMessage):
-                    for block in message.content:
-                        if isinstance(block, TextBlock) and block.text.strip():
-                            text = block.text.strip()
-                            collected_text.append(text)
-                            # Broadcast to dashboard as evaluator role
-                            await ws_broadcast_agent_msg(skill, text, "evaluator")
-                elif isinstance(message, ResultMessage):
-                    cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
-                    await ws_broadcast_agent_msg(skill, f"Eval done — {message.num_turns} turns, {cost}", "evaluator")
-                    # Log evaluator session
-                    if message.session_id:
-                        import datetime
-                        eval_entry = {
-                            "session_id": message.session_id,
-                            "skill": skill,
-                            "agent_type": "evaluator",
-                            "agent_id": f"eval-{skill}",
-                            "cost_usd": message.total_cost_usd,
-                            "num_turns": message.num_turns,
-                            "log": collected_text[-10:],
-                            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                        }
-                        with open(SESSION_LOG, "a") as f:
-                            f.write(json.dumps(eval_entry) + "\n")
-                        _invalidate_session_log_cache()
+        async def _run_eval_client():
+            nonlocal collected_text
+            client = ClaudeSDKClient(options=options)
+            async with client:
+                await client.query(prompt)
+                async for message in client.receive_response():
+                    if isinstance(message, AssistantMessage):
+                        for block in message.content:
+                            if isinstance(block, TextBlock) and block.text.strip():
+                                text = block.text.strip()
+                                collected_text.append(text)
+                                await ws_broadcast_agent_msg(skill, text, "evaluator")
+                    elif isinstance(message, ResultMessage):
+                        cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
+                        await ws_broadcast_agent_msg(skill, f"Eval done — {message.num_turns} turns, {cost}", "evaluator")
+                        if message.session_id:
+                            import datetime
+                            eval_entry = {
+                                "session_id": message.session_id,
+                                "skill": skill,
+                                "agent_type": "evaluator",
+                                "agent_id": f"eval-{skill}",
+                                "cost_usd": message.total_cost_usd,
+                                "num_turns": message.num_turns,
+                                "log": collected_text[-10:],
+                                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                            }
+                            with open(SESSION_LOG, "a") as f:
+                                f.write(json.dumps(eval_entry) + "\n")
+                            _invalidate_session_log_cache()
+
+        await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
 
         # Parse EVAL_RESULT from collected text
         full_text = "\n".join(collected_text)
@@ -1515,6 +1697,10 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
         print(f"[EVAL] {skill}: could not parse evaluator output, assuming pass")
         return {"passed": True, "feedback": full_text[-200:] if full_text else "No output", "full_text": full_text}
 
+    except asyncio.TimeoutError:
+        print(f"[EVAL] {skill}: evaluator timed out after {EVAL_TIMEOUT}s")
+        await ws_broadcast_agent_msg(skill, f"Evaluator timed out after {EVAL_TIMEOUT // 60} minutes.", "evaluator")
+        return {"passed": False, "feedback": "Evaluator timed out — CLI process may have died."}
     except Exception as e:
         print(f"[EVAL] {skill}: evaluator error: {e}")
         traceback.print_exc()
@@ -1655,7 +1841,15 @@ async def _auto_spawn_ready_skills() -> list[str]:
             desc = entry.get("description", name)
             print(f"[ORCH] Auto-spawning pipeline for '{name}' (deps satisfied: {deps})")
             _update_entry(name, {"status": "writing"})
-            await spawn_skill_pipeline(name, f"Implement the '{name}' skill: {desc}")
+
+            # Build dev prompt with lessons if available
+            prompt = f"Implement the '{name}' skill: {desc}"
+            lessons_file = SKILLS_DIR / name / "LESSONS.md"
+            if lessons_file.exists():
+                lessons = lessons_file.read_text().strip()
+                prompt += f"\n\n## Previous Debugging Lessons (READ CAREFULLY)\n{lessons}"
+                print(f"[ORCH] {name}: attached LESSONS.md ({len(lessons)} chars)")
+            await spawn_skill_pipeline(name, prompt)
             spawned.append(name)
 
         if spawned:
@@ -1707,6 +1901,11 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
                 print(f"[SDK] {state.skill}: {subtype}: {text}")
 
         elif isinstance(message, AssistantMessage):
+            # Persist session_id early (don't wait for ResultMessage)
+            if hasattr(message, 'session_id') and message.session_id and not state.session_id:
+                state.session_id = message.session_id
+                _update_entry(state.skill, {"session_id": message.session_id})
+                print(f"[SDK] {state.skill}: session_id captured early: {message.session_id}")
             for block in message.content:
                 if isinstance(block, TextBlock) and block.text.strip():
                     text = block.text.strip()
@@ -1723,8 +1922,9 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
 
         elif isinstance(message, ResultMessage):
             state.session_id = message.session_id
-            # Save session→skill mapping for later lookup
+            # Persist session_id to graph.json so it survives orchestrator restarts
             if message.session_id:
+                _update_entry(state.skill, {"session_id": message.session_id})
                 _save_session_mapping(state, message)
             cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
             # Detect zero-cost / zero-turn completions as errors (e.g. credit/auth failures)
@@ -1743,8 +1943,16 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
 async def inject_hint(agent_id: str, text: str):
     """Send a follow-up message to a running or paused agent."""
     state = agents.get(agent_id)
+    # If agent_id is empty or not found, find the first running/paused agent
     if not state:
-        print(f"[ORCH] inject: unknown agent {agent_id}")
+        for aid, a in agents.items():
+            if a.status in ("running", "paused", "starting"):
+                state = a
+                agent_id = aid
+                print(f"[ORCH] inject: resolved empty agent_id to {aid} (skill={a.skill})")
+                break
+    if not state:
+        print(f"[ORCH] inject: no running agent found (tried id='{agent_id}')")
         return
 
     # Broadcast user message to dashboard chat log
