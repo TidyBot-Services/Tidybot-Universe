@@ -1,0 +1,36 @@
+{
+  "task_env": "RoboCasa-Pn-P-Counter-To-Sink-v0",
+  "task_source": "~/tidybot_uni/sims/robocasa_tasks/single_stage/kitchen_pnp.py",
+  "entries": [
+    {
+      "name": "pnp-counter-to-sink",
+      "description": "Pick an object from the kitchen counter and place it in the sink",
+      "dependencies": [],
+      "status": "done",
+      "updated_at": "2026-04-06T18:43:32Z",
+      "session_id": "4dcda674-7128-42d1-8a47-e6da11ff1e90",
+      "trial_images": [
+        "http://localhost:8080/code/recordings/39bb930e/frames/0000_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0007_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0015_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0023_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0031_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0039_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0047_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0055_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0063_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0071_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0079_wrist_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0087_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0095_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0103_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0111_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0119_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0127_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0135_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0143_base_camera.jpg",
+        "http://localhost:8080/code/recordings/39bb930e/frames/0151_base_camera.jpg"
+      ]
+    }
+  ]
+}
