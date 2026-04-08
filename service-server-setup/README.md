@@ -27,8 +27,8 @@ cd ~/tidybot_uni/Tidybot-Universe/service-server-setup
 pip install -r requirements.txt
 
 # Run interactive setup (tests SSH, writes config.json)
-bash setup.sh --server-ip 10.102.245.84 --username exx \
-              --service-dir /home/exx/Projects/vlmanip_server
+bash setup.sh --server-ip YOUR_SERVER_IP --username YOUR_USER \
+              --service-dir /path/to/services
 ```
 
 ## Usage
@@ -68,9 +68,9 @@ Or open http://localhost:8090/docs/html in a browser.
 
 ```json
 {
-    "server_ip": "10.102.245.84",
-    "username": "exx",
-    "service_dir": "/home/exx/Projects/vlmanip_server",
+    "server_ip": "YOUR_SERVER_IP",
+    "username": "YOUR_USER",
+    "service_dir": "/path/to/services",
     "local_port": 8090,
     "poll_interval_seconds": 30
 }

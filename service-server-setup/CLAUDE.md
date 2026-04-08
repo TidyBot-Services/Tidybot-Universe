@@ -32,10 +32,10 @@ Once you find a service, construct its URL from the server IP and port:
 
 ```python
 # From the catalog response:
-# {"name": "graspgen_server", "port": 8006, "server_ip": "10.102.245.84"}
+# {"name": "graspgen_server", "port": 8006, "server_ip": "{server_ip}"}
 
 # Use the service:
-url = "http://10.102.245.84:8006"
+url = "http://{server_ip}:8006"
 response = http.post_json(f"{url}/generate_grasps", {"point_cloud": points})
 ```
 
@@ -68,5 +68,5 @@ python3 service_scanner.py
 First-time setup:
 
 ```bash
-bash setup.sh --server-ip 10.102.245.84 --username exx --service-dir /home/exx/Projects/vlmanip_server
+bash setup.sh --server-ip SERVER_IP --username USER --service-dir /path/to/services
 ```
