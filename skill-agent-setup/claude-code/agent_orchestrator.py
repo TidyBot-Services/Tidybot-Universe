@@ -49,7 +49,12 @@ HAS_SDK = True
 
 WS_PORT = 8765
 _script_dir = Path(__file__).resolve()
-# Walk up to find the workspace root (directory containing agent_server/)
+# WORKSPACE_DIR = directory containing agent_orchestrator.py = claude-code/
+# This is the cwd we want SDK agents to run from, so relative paths like
+# `graphs/<name>/skills/<skill>/scripts/main.py` resolve correctly.
+WORKSPACE_DIR = _script_dir.parent
+# PROJECT_DIR = workspace root (contains agent_server/, sims/, etc.)
+# Used for execution recordings, system prompts, etc.
 PROJECT_DIR = _script_dir.parents[3]  # default: claude-code -> skill-agent-setup -> Tidybot-Universe -> workspace
 for i in range(2, 5):
     candidate = _script_dir.parents[i]
@@ -1435,7 +1440,7 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
     # Resume previous session if available, otherwise start fresh
     resume_id = state.session_id
     options = ClaudeAgentOptions(
-        cwd=str(PROJECT_DIR),
+        cwd=str(WORKSPACE_DIR),  # claude-code/, so `graphs/<name>/...` paths land in the right place
         permission_mode="bypassPermissions",
         system_prompt=_get_system_prompt(state.agent_type, state.skill),
         model="claude-opus-4-6",
@@ -1631,7 +1636,7 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
 
     # Run a short-lived SDK agent
     options = ClaudeAgentOptions(
-        cwd=str(PROJECT_DIR),
+        cwd=str(WORKSPACE_DIR),  # claude-code/, same reason as dev agent
         permission_mode="bypassPermissions",
         system_prompt=system_prompt,
         model="claude-opus-4-6",
@@ -1862,9 +1867,30 @@ async def _auto_spawn_ready_skills() -> list[str]:
         return spawned
 
 
+SDK_IDLE_TIMEOUT_S = 300  # max wait between messages from a Claude SDK client (5 min)
+
+
 async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
-    """Consume the async iterator from a ClaudeSDKClient and broadcast to dashboard."""
-    async for message in client.receive_response():
+    """Consume the async iterator from a ClaudeSDKClient and broadcast to dashboard.
+
+    Wraps each message wait with SDK_IDLE_TIMEOUT_S to detect SSE long-poll deadlocks.
+    On timeout, marks the agent as errored and breaks out, instead of hanging forever.
+    """
+    response_iter = client.receive_response().__aiter__()
+    while True:
+        try:
+            message = await asyncio.wait_for(response_iter.__anext__(), timeout=SDK_IDLE_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            err = f"SDK idle timeout ({SDK_IDLE_TIMEOUT_S}s) — no message from Claude SDK"
+            print(f"[SDK] {state.skill}: {err}")
+            state.status = "error"
+            state.log.append({"text": err, "role": "agent"})
+            await ws_broadcast_status(state.skill, state.agent_id, "error", err)
+            await ws_broadcast_agent_msg(state.skill, err, state.agent_type)
+            return
+        except StopAsyncIteration:
+            return
+
         if state.status == "stopped":
             break
 
