@@ -525,15 +525,17 @@ def trigger_rescan():
 def docs_page():
     with _lock:
         rows = ""
+        import html as _html
         for s in sorted(_services.values(), key=lambda x: x.name):
             status_color = {"running": "#2ecc71", "stopped": "#e74c3c",
                             "unknown": "#95a5a6", "server_down": "#e74c3c"}.get(s.status, "#95a5a6")
             eps = ", ".join(f"{e.method} {e.path}" for e in s.endpoints[:5])
             url = f"http://{_config['server_ip']}:{s.port}" if s.port else "N/A"
+            desc = _html.escape(s.description[:80])
             rows += f"""
             <tr>
-                <td><strong>{s.name}</strong></td>
-                <td>{s.description[:80]}</td>
+                <td><strong>{_html.escape(s.name)}</strong></td>
+                <td>{desc}</td>
                 <td>{s.port or 'N/A'}</td>
                 <td><span style="color:{status_color}; font-weight:bold">{s.status}</span></td>
                 <td><code>{eps or 'none detected'}</code></td>
