@@ -22,7 +22,24 @@ If the sim is needed (RoboCasa tasks), also check:
 nc -z localhost 5500                    # sim
 ```
 
-If any service is down, tell the user what to start and stop.
+Also check the service catalog and remote server health:
+```bash
+curl -sf http://localhost:8090/health   # service catalog
+```
+
+If the service catalog is running, check:
+- `server_reachable` — is the remote GPU server accessible?
+- `alert` — any active alerts (server unreachable)?
+- List any services with `status: "server_down"` or `status: "stopped"` that skills may depend on
+
+If the catalog is not running, warn the user and suggest:
+```
+Run /xbot-server to set up the service catalog first.
+```
+
+If the remote server is unreachable, warn the user that GPU services (GraspGen, GroundedSAM, etc.) will not be available and skills depending on them will fail.
+
+If any local service is down, tell the user what to start and stop.
 
 2. **Show the current tree.** Fetch `GET /entries` and display it with statuses:
 
