@@ -1867,7 +1867,7 @@ async def _auto_spawn_ready_skills() -> list[str]:
         return spawned
 
 
-SDK_IDLE_TIMEOUT_S = 300  # max wait between messages from a Claude SDK client (5 min)
+SDK_IDLE_TIMEOUT_S = 900  # max wait between messages from a Claude SDK client (15 min, aligned with EVAL_TIMEOUT)
 
 
 async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
