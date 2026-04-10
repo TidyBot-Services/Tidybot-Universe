@@ -6,10 +6,10 @@ You are a skill planner for the TidyBot Universe robotics project.
 
 Before planning, make sure these are running (check with curl, launch if not).
 
-**IMPORTANT: You must ask the user which conda env and which graph to use before launching anything.**
-The user created their env during setup — do not guess or hardcode the name.
-Ask: "Which conda env should I use? (the one you created with setup.sh)"
-Ask: "Which graph should I use?" and list the available graphs from `graphs/`.
+**IMPORTANT: You must ask the user these before launching anything:**
+1. "Which conda env should I use?" (the one created during setup — do not guess or hardcode)
+2. "Which graph should I use?" (list available graphs from `graphs/`)
+3. "Sim or hardware?" — If hardware, ask for the robot's IP. Set `AGENT_SERVER=http://<ROBOT_IP>:8080`. Skip sim launch (steps 1). If sim, launch everything locally.
 
 **IMPORTANT:**
 - Before launching any service, kill existing processes on its ports first.
@@ -73,7 +73,28 @@ cd $WORKSPACE/TidyBot-Services.github.io && python3 -m http.server 8070 &
 - **`POST /code/submit`** (preferred) — Fire-and-forget. Server acquires/releases the lease automatically. Poll `GET /code/jobs/{job_id}` for results. Use `submit_and_wait.py` as a CLI wrapper.
 - **`POST /code/execute`** — Low-level. Requires manual lease management (`X-Lease-Id` header). You must acquire and release the lease yourself. Poll `GET /code/status` for results. Avoid unless you need direct lease control.
 
-**To test code manually**, write it to a file and use `submit_and_wait.py`:
+**To submit test code from this agent** (e.g. quick hardware checks), write a temp file
+and JSON-encode it to avoid quoting issues with f-strings and nested quotes:
+```bash
+# 1. Write code to a temp file (use heredoc — no quoting headaches)
+cat > /tmp/test_code.py << 'PYEOF'
+from robot_sdk import arm, gripper
+state = arm.get_state()
+print("Joints:", [round(q, 3) for q in state["q"]])
+PYEOF
+
+# 2. Submit via JSON-encoded file content
+AGENT_SERVER=http://<ROBOT_IP>:8080   # or localhost:8080 for sim
+CODE=$(python3 -c "import json; print(json.dumps(open('/tmp/test_code.py').read()))")
+curl -s -X POST $AGENT_SERVER/code/submit \
+  -H "Content-Type: application/json" \
+  -d "{\"code\": $CODE, \"holder\": \"claude-code\"}"
+
+# 3. Poll for results (returns immediately if done)
+curl -s $AGENT_SERVER/code/jobs/<job_id> | python3 -m json.tool
+```
+
+**Or use `submit_and_wait.py`** (blocks until done):
 ```bash
 python3 submit_and_wait.py /tmp/test_code.py --holder claude-code
 ```
@@ -168,6 +189,28 @@ Break down high-level goals into a dependency tree of robot skills. You design t
 - Runs in RoboCasa (MuJoCo kitchen sim) or on real hardware
 - Agent server API at `http://localhost:8080` (read docs at `/docs/guide/html`)
 - Skills use `robot_sdk` (arm, base, gripper, sensors, rewind, yolo, display)
+
+**IMPORTANT — Read the docs first:** Before writing any skill code, fetch both references
+from the agent server. Do NOT guess method names or API endpoints.
+- `curl <agent_server>/code/sdk/markdown` — SDK API reference (every module, method, arg, return type for `robot_sdk`)
+- `curl <agent_server>/docs/guide/html` — Server guide (authentication, leases, code submission, monitoring, state endpoints)
+
+## Hardware vs Sim
+
+When targeting **real hardware** (remote agent server, no sim):
+
+| Feature | Sim | Hardware | Notes |
+|---------|-----|----------|-------|
+| `sensors.find_objects()` | Yes | **No** | Requires perception server on port 5500 (sim only) |
+| `GET /task/success` | Yes | **No** | Sim's `_check_success()` — no equivalent on hardware |
+| `POST /reset` (sim reset) | Yes | **No** | Orchestrator wraps in try/except, fails silently |
+| `arm`, `gripper`, `base` | Yes | Yes | Core robot control works in both |
+| `yolo.segment_camera()` | Yes | Yes | Uses onboard cameras |
+| `rewind` | Yes | Yes | Retraces arm path |
+
+**For hardware targets**, set `"sim_api": null` in the graph.json targets config.
+The orchestrator already handles missing sim gracefully (skips reset, skips ground-truth test).
+Root skill testing on hardware requires manual verification instead of `_check_success()`.
 
 ## Skill Structure
 

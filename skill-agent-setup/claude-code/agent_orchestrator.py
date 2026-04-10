@@ -344,7 +344,7 @@ and `feedback` (detailed evaluation).
 - The output includes `passed` (true/false) and `feedback` from an automated evaluator
 - If `passed` is false: read the `feedback`, fix the code, resubmit
 - If `passed` is true: continue to the next iteration or finish
-- Run at least 2 passed evaluations before declaring done
+- Run at least 1 passed evaluation before declaring done
 
 ### Important
 - The code sandbox allows robot_sdk imports but NOT `requests` or network libraries
@@ -558,6 +558,174 @@ Once the skill works:
 Then stop.
 """
 
+SYSTEM_PROMPT_DEV_HARDWARE = """\
+You are a robotics skill developer for the TidyBot Universe project.
+You are developing against **real hardware** (no simulator).
+
+## Your Robot
+- Franka Panda 7-DOF arm + mobile base + Robotiq gripper + RealSense cameras
+- API at {agent_server} — read the guide at {agent_server}/docs/guide/html before writing code
+- SDK reference at {agent_server}/code/sdk/markdown
+- Skills run via POST /code/submit (fire-and-forget) with access to robot_sdk
+
+## Hardware vs Sim — Key Differences
+- **No sim reset** — there is no `POST /reset`. The scene is real, not resettable.
+- **No `sensors.find_objects()`** — this requires a sim perception server. Use YOLO instead.
+- **No `/task/success`** — there is no ground-truth success check. You verify success by
+  checking gripper state, arm position, and YOLO detections after execution.
+- **Evaluator works on hardware** — it reviews camera recordings from the agent server.
+  Use `--no-eval` ONLY for quick exploration/debugging. For real tests, omit `--no-eval`.
+- **Be cautious with movements** — real hardware can collide with real objects. Start slow,
+  use small deltas, and verify positions before large moves.
+- **Arm frame** — `arm.move_to_pose(x, y, z)` is in the arm's base frame.
+  x = forward, y = left, z = up. Check `arm.get_state()` to understand current pose
+  before moving. Do NOT assume a fixed heading — read the actual pose.
+
+## Existing Skills
+Skills live in {skills_dir}/. First check what's already there:
+{existing_skills}
+
+Read SKILL.md of relevant existing skills to understand patterns and avoid reinventing.
+IMPORTANT: Ignore the `deprecated/` folder — it contains old skills from previous sessions that are no longer active.
+
+## Skill Structure
+Each skill is a directory under {skills_dir}/<skill-name>/ with:
+```
+<skill-name>/
+├── SKILL.md              # Skill description, pipeline, usage, config
+├── scripts/
+│   ├── main.py           # Main skill code (uses robot_sdk)
+│   └── deps.txt          # Skill dependencies (other skills needed)
+```
+
+## Your Job
+You are working on the skill: **{{skill_name}}**
+If {skills_dir}/{{skill_name}}/ does not exist, create it with the structure above.
+If it exists, read it and modify as requested.
+
+## Development & Testing Workflow
+You must write code AND test it. Do not stop until you have a working skill.
+
+1. **Read SDK docs first**: `curl {agent_server}/code/sdk/markdown` — understand available APIs
+2. **Write scripts/main.py**: implement the skill using robot_sdk
+3. **Test by submitting**: `python {submit_script} scripts/main.py --holder dev:{{skill_name}}`
+4. **Debug and iterate**: if it fails, read the evaluator feedback, fix the code, resubmit
+
+### How to submit and test code
+
+**Exploration / debugging** (quick sanity checks only — checking arm state, running a single YOLO detection, verifying objects exist):
+```bash
+python {submit_script} /tmp/test.py --no-eval --holder dev:{{skill_name}}
+```
+Returns raw stdout/stderr. No evaluator. Use ONLY for short probes, NOT for testing the full skill.
+
+**Full skill test** (ALWAYS use this for testing your skill):
+```bash
+python {submit_script} scripts/main.py --holder dev:{{skill_name}}
+```
+Submits code, waits for completion, then an evaluator agent reviews
+the camera recordings and robot behavior. Returns JSON with `passed` (bool)
+and `feedback` (detailed evaluation).
+
+Note: on hardware there is no sim reset before each test — the scene is real.
+The evaluator reviews camera recordings fetched from the agent server.
+
+**IMPORTANT: Do NOT use `--no-eval` when testing your skill. Always let the evaluator
+review the execution. The evaluator sees camera recordings and robot state logs that
+you cannot see — it is your only source of visual feedback on hardware.**
+
+### Testing loop
+- First, explore the scene with `--no-eval`: check arm state, run YOLO to see what's visible
+- Then write/edit scripts/main.py and run the full test (WITHOUT --no-eval)
+- The output includes `passed` (true/false) and `feedback` from an automated evaluator
+- If `passed` is false: read the `feedback`, fix the code, resubmit
+- If `passed` is true: continue to the next iteration or finish
+- Run at least 1 passed evaluation before declaring done
+- Do NOT look at recordings yourself — that is the evaluator's job
+
+### Important
+- The code sandbox allows robot_sdk imports but NOT `requests` or network libraries
+- Your submitted code runs inside the agent server with full robot_sdk access
+- If the arm enters error state, use rewind: the SDK has `from robot_sdk import rewind`
+- **REAL HARDWARE** — movements are irreversible. Double-check positions before large moves.
+
+### Stdout guidelines
+Print useful context at each major step:
+- Object detections: name, confidence, bbox, position
+- Arm movements: target pose, current pose before/after
+- Grasp attempts: gripper state before/after close (position, object_detected)
+- Final outcome: clear SUCCESS or FAILURE with a one-line reason
+
+Do NOT print raw data dumps, full joint arrays, or per-timestep logs.
+Keep stdout to ~20-40 lines of high-level trace.
+
+## Perception on Hardware
+
+**Use YOLO for all object detection.** `sensors.find_objects()` is NOT available on hardware.
+
+### YOLO 2D detection
+```python
+from robot_sdk import yolo
+result = yolo.segment_camera("orange block, cup, bottle")
+for det in result.detections:
+    print(f"{{det.class_name}}: conf={{det.confidence:.2f}}, bbox={{det.bbox}}")
+```
+
+### YOLO with segmentation masks
+```python
+result = yolo.segment_camera("orange block", mask_format="npz")
+for det in result.detections:
+    if det.mask is not None:
+        pixels = (det.mask > 0.5).sum()
+        print(f"{{det.class_name}}: {{pixels}} mask pixels")
+```
+
+### YOLO 3D detection (if depth camera is available)
+```python
+result = yolo.segment_camera_3d("orange block")
+for det in result.detections:
+    print(f"{{det.class_name}} at {{det.position_3d}} ({{det.depth_meters:.2f}}m)")
+```
+Note: 3D detection requires camera intrinsics service. If it fails, fall back to 2D
+detection and use visual servoing (IBVS) for positioning instead of 3D coordinates.
+
+### Visual servoing (IBVS) pattern
+When 3D positions are unreliable, use image-based visual servoing:
+1. Detect object in camera image → get bbox centroid
+2. Move arm to center object in frame (small delta moves)
+3. Descend incrementally while keeping object centered
+4. Grasp when at target height
+
+## Gripper interpretation
+- `gripper.get_state()["position"]` = 0 means **FULLY CLOSED ON NOTHING** (missed)
+- `position` = 20–150 means **object is in hand** (closed on something)
+- `position` = 250–255 means **fully open**
+- ALWAYS check `object_detected` field as well
+- Do NOT treat pos=0 as success — it means you missed
+
+## ee_pose format
+- `ee_pose` is a 4x4 matrix (16 elements, column-major)
+- `ee_pose[12]` = x, `ee_pose[13]` = y, `ee_pose[14]` = z (in ARM frame)
+- `ee_pose[0:12]` = rotation matrix elements — NOT position!
+
+## Rules
+1. Check existing skills first — reuse and chain, don't reinvent
+2. Read the SDK docs before writing robot code — don't guess APIs
+3. Use rewind as your safety net — every movement is reversible
+4. **You MUST test your code before finishing** — submit via /code/submit and verify it works
+5. Debug failures — don't just write code and leave
+6. Be concise in your reasoning
+7. This is REAL HARDWARE — be careful, start with small movements, verify before committing to large moves
+
+## Before finishing
+Once the skill works:
+1. Print a brief summary (5-10 lines) of how the skill works — the pipeline steps,
+   key decisions (grasp strategy, perception approach, retry logic), and any gotchas
+   you discovered during testing. This helps the reviewer and downstream skill agents
+   understand your implementation without reading all the code.
+Then stop.
+"""
+
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
@@ -703,16 +871,26 @@ _submission_evals: dict[str, dict] = {}
 
 def _update_trial_images(skill: str, execution_id: str):
     """Update entry's trial_images with frames from the latest execution recording."""
+    # Try local first, fall back to remote agent server
     exec_dir = PROJECT_DIR / "logs" / "code_executions" / execution_id
-    if not exec_dir.exists():
-        return
-    frames = sorted(f.name for f in exec_dir.iterdir() if f.suffix == ".jpg")
+    frames: list[str] = []
+    if exec_dir.exists():
+        frames = sorted(f.name for f in exec_dir.iterdir() if f.suffix == ".jpg")
+    if not frames:
+        # Fetch frame list from remote agent server
+        try:
+            import urllib.request
+            url = f"{AGENT_SERVER}/code/recordings/{execution_id}"
+            data = json.loads(urllib.request.urlopen(url, timeout=10).read())
+            frames = [f for f in data.get("frames", []) if f.endswith(".jpg")]
+        except Exception as e:
+            print(f"[ORCH] {skill}: could not fetch remote frames for {execution_id}: {e}")
+            return
     if not frames:
         return
     # Build URLs that the dashboard can fetch via agent server
-    agent_server = f"http://localhost:{WS_PORT + 1 - 686}"  # 8080
     image_urls = [
-        f"http://localhost:8080/code/recordings/{execution_id}/frames/{f}"
+        f"{AGENT_SERVER}/code/recordings/{execution_id}/frames/{f}"
         for f in frames
     ]
     # Keep at most 20 evenly spaced frames for the dashboard
@@ -1389,7 +1567,11 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
                 + "and inlines everything into one file ready for `/code/execute`.\n"
             )
 
-    result = SYSTEM_PROMPT_DEV.format(
+    # Choose prompt based on whether we're targeting hardware or sim
+    is_hardware = primary_target.get("sim_api") is None
+    base_prompt = SYSTEM_PROMPT_DEV_HARDWARE if is_hardware else SYSTEM_PROMPT_DEV
+
+    result = base_prompt.format(
         agent_server=AGENT_SERVER,
         existing_skills=skills_list,
         skill_name=skill_name,
@@ -1401,16 +1583,17 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
     if dep_context:
         result += dep_context
 
-    # Tell the agent the current task_env so it doesn't need to guess or restart sim
-    task_env = graph_meta.get("task_env")
-    if task_env:
-        result += (
-            f"\n\n## Current Task Environment\n\n"
-            f"The sim is already running `{task_env}`. "
-            f"**Do NOT kill or restart the sim or agent server.** "
-            f"They are managed externally. If you see a different task in `/task/info`, "
-            f"it means the sim is still loading — wait and retry, do not restart.\n"
-        )
+    if not is_hardware:
+        # Tell the agent the current task_env so it doesn't need to guess or restart sim
+        task_env = graph_meta.get("task_env")
+        if task_env:
+            result += (
+                f"\n\n## Current Task Environment\n\n"
+                f"The sim is already running `{task_env}`. "
+                f"**Do NOT kill or restart the sim or agent server.** "
+                f"They are managed externally. If you see a different task in `/task/info`, "
+                f"it means the sim is still loading — wait and retry, do not restart.\n"
+            )
 
     return result
 
@@ -1583,29 +1766,156 @@ collision, error in output, robot didn't move, etc.). Minor imperfections are OK
 """
 
 
+async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
+    """Download a recording from the remote agent server to a local cache.
+
+    Fetches metadata, stdout/stderr (from job), state timeline, and camera frames.
+    Returns the local cache directory path, or None on failure.
+    """
+    import urllib.request, urllib.error
+
+    cache_dir = PROJECT_DIR / "logs" / "code_executions" / execution_id
+    metadata_path = cache_dir / "metadata.json"
+
+    # Already cached?
+    if metadata_path.exists():
+        return cache_dir
+
+    print(f"[EVAL] {skill}: fetching recording {execution_id} from {AGENT_SERVER}")
+
+    try:
+        # 1. Fetch recording metadata (has timeline, frames list, cameras, duration)
+        rec_url = f"{AGENT_SERVER}/code/recordings/{execution_id}"
+        rec_data = json.loads(await asyncio.to_thread(
+            lambda: urllib.request.urlopen(rec_url, timeout=15).read()
+        ))
+    except Exception as e:
+        print(f"[EVAL] {skill}: failed to fetch recording {execution_id}: {e}")
+        return None
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # 2. Fetch job info for stdout/stderr
+    stdout, stderr = "", ""
+    try:
+        # Find the job that produced this execution
+        jobs_url = f"{AGENT_SERVER}/code/jobs"
+        jobs_data = json.loads(await asyncio.to_thread(
+            lambda: urllib.request.urlopen(jobs_url, timeout=10).read()
+        ))
+        job_list = jobs_data.get("jobs", jobs_data) if isinstance(jobs_data, dict) else jobs_data
+        for job in job_list:
+            if job.get("execution_id") == execution_id:
+                result = job.get("result", {})
+                if isinstance(result, dict):
+                    stdout = result.get("stdout", "")
+                    stderr = result.get("stderr", "")
+                break
+    except Exception as e:
+        print(f"[EVAL] {skill}: could not fetch job stdout for {execution_id}: {e}")
+
+    # 3. Write metadata.json (what the evaluator agent expects)
+    metadata = {
+        "execution_id": execution_id,
+        "started_at": rec_data.get("started_at"),
+        "stopped_at": rec_data.get("stopped_at"),
+        "duration": rec_data.get("duration"),
+        "cameras": rec_data.get("cameras", []),
+        "frame_count": rec_data.get("frame_count", 0),
+        "stdout": stdout,
+        "stderr": stderr,
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2))
+
+    # 4. Write state_log.jsonl from timeline
+    timeline = rec_data.get("timeline", [])
+    if timeline:
+        with open(cache_dir / "state_log.jsonl", "w") as f:
+            for entry in timeline:
+                state = entry.get("state")
+                if state:
+                    f.write(json.dumps({
+                        "timestamp": entry.get("timestamp"),
+                        "frame": entry.get("frame"),
+                        **state,
+                    }) + "\n")
+
+    # 5. Download frames — sample evenly, max 30 frames to keep it fast
+    all_frames = rec_data.get("frames", [])
+    if all_frames:
+        if len(all_frames) > 30:
+            step = len(all_frames) / 30
+            sampled = [all_frames[int(i * step)] for i in range(30)]
+        else:
+            sampled = all_frames
+
+        async def _download_frame(fname: str):
+            url = f"{AGENT_SERVER}/code/recordings/{execution_id}/frames/{fname}"
+            try:
+                data = await asyncio.to_thread(
+                    lambda u=url: urllib.request.urlopen(u, timeout=10).read()
+                )
+                (cache_dir / fname).write_bytes(data)
+            except Exception:
+                pass  # non-fatal, evaluator can work with fewer frames
+
+        # Download frames concurrently (bounded)
+        sem = asyncio.Semaphore(5)
+        async def _bounded_download(fname: str):
+            async with sem:
+                await _download_frame(fname)
+
+        await asyncio.gather(*[_bounded_download(f) for f in sampled])
+
+    frame_count = len([f for f in cache_dir.iterdir() if f.suffix == ".jpg"])
+    print(f"[EVAL] {skill}: cached recording {execution_id} ({frame_count} frames, {len(timeline)} state samples)")
+    return cache_dir
+
+
 async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     """Run a short-lived evaluator agent (ClaudeSDKClient) that reviews execution recordings.
 
     Returns {"passed": bool, "feedback": str}.
     """
-    # Find execution recording
+    # Find execution recording — try local first, then fetch from remote agent server
     exec_dir = PROJECT_DIR / "logs" / "code_executions"
-    if not exec_dir.exists():
-        print(f"[EVAL] {skill}: no execution logs dir")
-        return {"passed": True, "feedback": "No execution logs to review."}
 
-    # Get specific or most recent execution folder
     latest = None
-    if execution_id:
-        target = exec_dir / execution_id
-        if target.exists() and target.is_dir():
-            latest = target
+
+    # Try local recordings
+    if exec_dir.exists():
+        if execution_id:
+            target = exec_dir / execution_id
+            if target.exists() and target.is_dir():
+                latest = target
+        if latest is None:
+            all_dirs = [d for d in exec_dir.iterdir() if d.is_dir()]
+            if all_dirs:
+                latest = max(all_dirs, key=lambda d: d.stat().st_mtime)
+
+    # Fall back to fetching from agent server (works for both local and remote)
     if latest is None:
-        all_dirs = [d for d in exec_dir.iterdir() if d.is_dir()]
-        if not all_dirs:
-            print(f"[EVAL] {skill}: no execution recordings found")
-            return {"passed": True, "feedback": "No recordings found."}
-        latest = max(all_dirs, key=lambda d: d.stat().st_mtime)
+        try:
+            if execution_id:
+                # Fetch specific execution
+                latest = await _fetch_remote_recording(execution_id, skill)
+            else:
+                # Find the most recent execution from the remote server
+                import urllib.request
+                rec_url = f"{AGENT_SERVER}/code/recordings"
+                rec_data = json.loads(await asyncio.to_thread(
+                    lambda: urllib.request.urlopen(rec_url, timeout=10).read()
+                ))
+                recordings = rec_data.get("recordings", rec_data) if isinstance(rec_data, dict) else rec_data
+                if recordings:
+                    latest = await _fetch_remote_recording(recordings[0], skill)
+        except Exception as e:
+            print(f"[EVAL] {skill}: failed to fetch remote recordings: {e}")
+
+    if latest is None:
+        print(f"[EVAL] {skill}: no execution recordings found (local or remote)")
+        return {"passed": False, "feedback": "No execution recordings found — cannot evaluate."}
+
     print(f"[EVAL] {skill}: reviewing execution {latest.name}")
     await ws_broadcast_agent_msg(skill, f"Evaluating execution {latest.name}...", "evaluator")
 
@@ -2245,7 +2555,7 @@ async def main():
     print(f"[ORCH] HTTP API:  http://0.0.0.0:{WS_PORT + 1}")
     print()
     print(f"[ORCH] Spawn agents via:")
-    print(f"  Browser:  open http://localhost:8080/local/ and click 'Edit Skill'")
+    print(f"  Browser:  open {AGENT_SERVER}/local/ and click 'Edit Skill'")
     print(f"  curl:     curl -X POST localhost:{WS_PORT + 1}/spawn \\")
     print(f"              -d '{{\"skill\":\"my-skill\",\"prompt\":\"Implement ...\"}}'")
     print()
