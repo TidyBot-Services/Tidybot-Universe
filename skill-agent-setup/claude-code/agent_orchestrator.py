@@ -319,20 +319,20 @@ You must write code AND test it. Do not stop until you have a working skill.
 
 1. **Read SDK docs first**: `curl {agent_server}/code/sdk/markdown` — understand available APIs
 2. **Write scripts/main.py**: implement the skill using robot_sdk
-3. **Test by submitting**: `python {submit_script} scripts/main.py --holder dev:{{skill_name}}`
+3. **Test by submitting**: `python {submit_script} scripts/main.py --holder dev:{{skill_name}} --agent-server {agent_server}`
 4. **Debug and iterate**: if it fails, read the error, fix the code, resubmit
 
 ### How to submit and test code
 
 **Exploration / debugging** (quick tests, checking objects, probing the scene):
 ```bash
-python {submit_script} /tmp/test.py --no-eval --holder dev:{{skill_name}}
+python {submit_script} /tmp/test.py --no-eval --holder dev:{{skill_name}} --agent-server {agent_server}
 ```
 Returns raw stdout/stderr. No evaluator. Use this for quick probes.
 
 **Full skill test** (runs evaluator on execution recording):
 ```bash
-python {submit_script} scripts/main.py --holder dev:{{skill_name}}
+python {submit_script} scripts/main.py --holder dev:{{skill_name}} --agent-server {agent_server}
 ```
 Submits code, resets sim, waits for completion, then an evaluator agent reviews
 the camera recordings and robot behavior. Returns JSON with `passed` (bool)
@@ -608,20 +608,20 @@ You must write code AND test it. Do not stop until you have a working skill.
 
 1. **Read SDK docs first**: `curl {agent_server}/code/sdk/markdown` — understand available APIs
 2. **Write scripts/main.py**: implement the skill using robot_sdk
-3. **Test by submitting**: `python {submit_script} scripts/main.py --holder dev:{{skill_name}}`
+3. **Test by submitting**: `python {submit_script} scripts/main.py --holder dev:{{skill_name}} --agent-server {agent_server}`
 4. **Debug and iterate**: if it fails, read the evaluator feedback, fix the code, resubmit
 
 ### How to submit and test code
 
 **Exploration / debugging** (quick sanity checks only — checking arm state, running a single YOLO detection, verifying objects exist):
 ```bash
-python {submit_script} /tmp/test.py --no-eval --holder dev:{{skill_name}}
+python {submit_script} /tmp/test.py --no-eval --holder dev:{{skill_name}} --agent-server {agent_server}
 ```
 Returns raw stdout/stderr. No evaluator. Use ONLY for short probes, NOT for testing the full skill.
 
 **Full skill test** (ALWAYS use this for testing your skill):
 ```bash
-python {submit_script} scripts/main.py --holder dev:{{skill_name}}
+python {submit_script} scripts/main.py --holder dev:{{skill_name}} --agent-server {agent_server}
 ```
 Submits code, waits for completion, then an evaluator agent reviews
 the camera recordings and robot behavior. Returns JSON with `passed` (bool)
@@ -860,6 +860,8 @@ class AgentState:
     task: Optional[asyncio.Task] = None
     log: list = field(default_factory=list)
     exit_event: asyncio.Event = field(default_factory=asyncio.Event)  # set to tear down client context
+    target_name: str = ""             # which target this agent is bound to (for parallel multi-target dev)
+    _agent_server_url: str = ""       # agent_server URL for this target (empty = use global AGENT_SERVER)
 
 
 agents: dict[str, AgentState] = {}    # agent_id -> AgentState
@@ -869,18 +871,31 @@ _spawn_lock = asyncio.Lock()          # prevents double-spawning in _auto_spawn_
 _submission_evals: dict[str, dict] = {}
 
 
-def _update_trial_images(skill: str, execution_id: str):
-    """Update entry's trial_images with frames from the latest execution recording."""
+def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = ""):
+    """Update entry's trial_images with frames from the latest execution recording.
+
+    When agent_server_url is provided (from /job-done), uses it to build image URLs
+    and stores per-target trial_images.
+    """
+    if not agent_server_url:
+        agent_server_url = AGENT_SERVER
+
+    # Find which target this agent_server belongs to
+    target_name = ""
+    for t in targets:
+        if t.get("agent_server") == agent_server_url:
+            target_name = t["name"]
+            break
+
     # Try local first, fall back to remote agent server
     exec_dir = PROJECT_DIR / "logs" / "code_executions" / execution_id
     frames: list[str] = []
     if exec_dir.exists():
         frames = sorted(f.name for f in exec_dir.iterdir() if f.suffix == ".jpg")
     if not frames:
-        # Fetch frame list from remote agent server
         try:
             import urllib.request
-            url = f"{AGENT_SERVER}/code/recordings/{execution_id}"
+            url = f"{agent_server_url}/code/recordings/{execution_id}"
             data = json.loads(urllib.request.urlopen(url, timeout=10).read())
             frames = [f for f in data.get("frames", []) if f.endswith(".jpg")]
         except Exception as e:
@@ -888,23 +903,33 @@ def _update_trial_images(skill: str, execution_id: str):
             return
     if not frames:
         return
-    # Build URLs that the dashboard can fetch via agent server
     image_urls = [
-        f"{AGENT_SERVER}/code/recordings/{execution_id}/frames/{f}"
+        f"{agent_server_url}/code/recordings/{execution_id}/frames/{f}"
         for f in frames
     ]
-    # Keep at most 20 evenly spaced frames for the dashboard
     if len(image_urls) > 20:
         step = len(image_urls) / 20
         image_urls = [image_urls[int(i * step)] for i in range(20)]
-    _update_entry(skill, {"trial_images": image_urls})
-    print(f"[ORCH] {skill}: updated trial_images ({len(image_urls)} frames from {execution_id})")
+
+    # Always update main trial_images (backward compat)
+    update = {"trial_images": image_urls}
+
+    # Also store per-target trial_images
+    if target_name:
+        entry = _find_entry(skill)
+        tti = dict(entry.get("target_trial_images", {})) if entry else {}
+        tti[target_name] = image_urls
+        update["target_trial_images"] = tti
+
+    _update_entry(skill, update)
+    label = f"{skill}@{target_name}" if target_name else skill
+    print(f"[ORCH] {label}: updated trial_images ({len(image_urls)} frames from {execution_id})")
 
 
-async def _run_submission_eval(skill: str, execution_id: str):
+async def _run_submission_eval(skill: str, execution_id: str, job_agent_server: str = ""):
     """Run evaluator for a specific submission, store result in _submission_evals."""
     # Update dashboard images from this execution
-    _update_trial_images(skill, execution_id)
+    _update_trial_images(skill, execution_id, agent_server_url=job_agent_server)
     await broadcast_full_sync()
 
     try:
@@ -1016,21 +1041,37 @@ def build_full_sync() -> dict:
 
     session_logs = _load_session_logs()
 
-    # Overlay live agent state onto matching entries (prefer active agents)
-    agent_by_skill: dict[str, AgentState] = {}
+    # Overlay live agent state onto matching entries
+    # Collect ALL agents per skill (for multi-target parallel dev)
+    agents_by_skill: dict[str, list[AgentState]] = {}
     for a in agents.values():
-        prev = agent_by_skill.get(a.skill)
-        if prev is None or a.status in ("starting", "running") or prev.status in ("stopped", "error"):
-            agent_by_skill[a.skill] = a
+        agents_by_skill.setdefault(a.skill, []).append(a)
     for repo in repos:
         name = repo["name"]
-        a = agent_by_skill.get(name)
-        if a:
-            repo["status"] = _map_status(a.status, a.agent_type)
-            repo["agent_id"] = a.agent_id
-            repo["agent_status_text"] = f"{a.status}"
-            repo["agent_type"] = a.agent_type
-            repo["agent_log"] = list(a.log[-50:])
+        skill_agents = agents_by_skill.get(name, [])
+        if skill_agents:
+            # Pick best agent for top-level status (prefer running)
+            best = next((a for a in skill_agents if a.status in ("starting", "running")), skill_agents[0])
+            repo["status"] = _map_status(best.status, best.agent_type)
+            repo["agent_id"] = best.agent_id
+            repo["agent_status_text"] = f"{best.status}"
+            repo["agent_type"] = best.agent_type
+            repo["agent_log"] = list(best.log[-50:])
+            # Per-target agent status + logs (for dashboard multi-target display)
+            repo["target_agents"] = {}
+            for a in skill_agents:
+                tname = a.target_name or "default"
+                ta_entry = {
+                    "agent_id": a.agent_id,
+                    "status": a.status,
+                    "agent_type": a.agent_type,
+                    "agent_log": list(a.log[-50:]),
+                }
+                # Include per-target agent_server URL so frontend can build recording URLs
+                target_dict = next((t for t in targets if t["name"] == tname), None)
+                if target_dict:
+                    ta_entry["agent_server"] = target_dict["agent_server"]
+                repo["target_agents"][tname] = ta_entry
         else:
             # No live agent — use persisted session log
             repo["agent_log"] = session_logs.get(name, [])
@@ -1043,6 +1084,7 @@ def build_full_sync() -> dict:
             "skill": a.skill,
             "agent_type": a.agent_type,
             "status": a.status,
+            "target": a.target_name,
         })
 
     return {"entries": repos, "agents": agents_list, "targets": targets}
@@ -1152,8 +1194,15 @@ async def ws_handler(websocket):
 # Agent lifecycle — SDK mode
 # ---------------------------------------------------------------------------
 
-async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev") -> str:
-    """Spawn a new Claude Code agent for a skill/task."""
+async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev",
+                      target: dict | None = None) -> str:
+    """Spawn a new Claude Code agent for a skill/task.
+
+    Args:
+        target: optional target dict with 'name', 'agent_server', 'sim_api'.
+                If provided, the agent uses this target's agent_server instead of
+                the global primary. Used for parallel multi-target development.
+    """
     global dev_mode
     if not dev_mode:
         msg = f"[ORCH] Blocked spawn of {agent_type} agent for '{skill}' — still in planning mode. Run /xbot-start first."
@@ -1161,10 +1210,12 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev") -> str:
         await ws_broadcast({"type": "error", "message": msg})
         return ""
 
-    # Stop any active agent and preserve session_id for resume
+    target_name = target["name"] if target else ""
+
+    # Stop any active agent FOR THIS TARGET and preserve session_id for resume
     prev_session_id = None
     for aid, a in list(agents.items()):
-        if a.skill == skill:
+        if a.skill == skill and a.target_name == target_name:
             if a.session_id:
                 prev_session_id = a.session_id
             if a.status in ("starting", "running"):
@@ -1173,22 +1224,26 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev") -> str:
             agents.pop(aid, None)
 
     # Also check graph.json entry for persisted session_id (survives orchestrator restarts)
-    if not prev_session_id:
+    if not prev_session_id and not target_name:
         entry = _find_entry(skill)
         if entry and entry.get("session_id"):
             prev_session_id = entry["session_id"]
 
+    label = f"{skill}@{target_name}" if target_name else skill
     if prev_session_id:
-        print(f"[ORCH] {skill}: will resume session {prev_session_id}")
+        print(f"[ORCH] {label}: will resume session {prev_session_id}")
     else:
-        print(f"[ORCH] {skill}: no previous session, starting fresh")
+        print(f"[ORCH] {label}: no previous session, starting fresh")
 
     agent_id = f"agent-{uuid.uuid4().hex[:8]}"
     state = AgentState(agent_id=agent_id, skill=skill, agent_type=agent_type)
     state.session_id = prev_session_id  # carry over for resume
+    state.target_name = target_name
+    state._agent_server_url = target["agent_server"] if target else ""
     agents[agent_id] = state
 
-    await ws_broadcast_status(skill, agent_id, "starting", "Developing...")
+    status_label = f"Developing on {target_name}..." if target_name else "Developing..."
+    await ws_broadcast_status(skill, agent_id, "starting", status_label)
 
     DEV_AGENT_TIMEOUT = 14400  # 4 hours max for dev agent
     async def _wrapped():
@@ -1533,7 +1588,8 @@ async def _root_skill_test_loop_inner(skill: str):
     await broadcast_full_sync()
 
 
-def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
+def _get_system_prompt(agent_type: str, skill_name: str = "",
+                       agent_server_url: str = "") -> str:
     """Get system prompt for agent type, populated with live skills list and dependency code."""
     # List existing skills on disk
     skills_list = ""
@@ -1571,8 +1627,9 @@ def _get_system_prompt(agent_type: str, skill_name: str = "") -> str:
     is_hardware = primary_target.get("sim_api") is None
     base_prompt = SYSTEM_PROMPT_DEV_HARDWARE if is_hardware else SYSTEM_PROMPT_DEV
 
+    effective_server = agent_server_url or AGENT_SERVER
     result = base_prompt.format(
-        agent_server=AGENT_SERVER,
+        agent_server=effective_server,
         existing_skills=skills_list,
         skill_name=skill_name,
         skills_dir=SKILLS_DIR,
@@ -1625,7 +1682,8 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
     options = ClaudeAgentOptions(
         cwd=str(WORKSPACE_DIR),  # claude-code/, so `graphs/<name>/...` paths land in the right place
         permission_mode="bypassPermissions",
-        system_prompt=_get_system_prompt(state.agent_type, state.skill),
+        system_prompt=_get_system_prompt(state.agent_type, state.skill,
+                                        agent_server_url=state._agent_server_url),
         model="claude-opus-4-6",
         resume=resume_id if resume_id else None,
     )
@@ -2130,11 +2188,15 @@ async def _confirm_skill_done(skill: str):
 
 async def _auto_spawn_ready_skills() -> list[str]:
     """Find skills whose dependencies are all 'done' and spawn dev pipelines.
+
+    When multiple targets are configured, spawns one dev agent per target for
+    each ready skill (parallel multi-target development).
     Returns list of skill names that were spawned."""
     async with _spawn_lock:
         done_skills = {e["name"] for e in skill_entries if e.get("status") == "done"}
-        # Skills already being worked on
-        active_skills = {a.skill for a in agents.values() if a.status in ("starting", "running")}
+        # Skills already being worked on — track per (skill, target_name) pair
+        active_pairs = {(a.skill, a.target_name) for a in agents.values()
+                        if a.status in ("starting", "running")}
 
         spawned = []
         for entry in skill_entries:
@@ -2145,33 +2207,38 @@ async def _auto_spawn_ready_skills() -> list[str]:
             # Only auto-spawn skills that are "planned" or "failed" (retriable)
             if status not in ("planned", "failed"):
                 continue
-            # Skip if already has an active agent
-            if name in active_skills:
-                continue
             # Check all dependencies are done
             if deps and not all(d in done_skills for d in deps):
                 continue
 
-            # All preconditions met — spawn pipeline
-            desc = entry.get("description", name)
-            print(f"[ORCH] Auto-spawning pipeline for '{name}' (deps satisfied: {deps})")
-            _update_entry(name, {"status": "writing"})
-
             # Build dev prompt with lessons if available
+            desc = entry.get("description", name)
             prompt = f"Implement the '{name}' skill: {desc}"
             lessons_file = SKILLS_DIR / name / "LESSONS.md"
             if lessons_file.exists():
                 lessons = lessons_file.read_text().strip()
                 prompt += f"\n\n## Previous Debugging Lessons (READ CAREFULLY)\n{lessons}"
                 print(f"[ORCH] {name}: attached LESSONS.md ({len(lessons)} chars)")
-            await spawn_skill_pipeline(name, prompt)
-            spawned.append(name)
+
+            # Spawn one agent per target (parallel multi-target development)
+            spawned_any = False
+            for t in targets:
+                if (name, t["name"]) in active_pairs:
+                    continue  # already has an agent on this target
+
+                print(f"[ORCH] Auto-spawning dev for '{name}' on target '{t['name']}' ({t['agent_server']})")
+                await spawn_agent(name, prompt, agent_type="dev", target=t)
+                spawned_any = True
+
+            if spawned_any:
+                _update_entry(name, {"status": "writing"})
+                spawned.append(name)
 
         if spawned:
             await ws_broadcast({
                 "type": "auto_spawn",
                 "skills": spawned,
-                "message": f"Auto-started {len(spawned)} skill(s): {', '.join(spawned)}",
+                "message": f"Auto-started {len(spawned)} skill(s) on {len(targets)} target(s): {', '.join(spawned)}",
             })
 
         return spawned
@@ -2460,6 +2527,7 @@ async def handle_http(reader, writer):
             response_body = json.dumps({
                 aid: {
                     "skill": a.skill,
+                    "target": a.target_name,
                     "status": a.status,
                     "session_id": a.session_id,
                     "log_tail": a.log[-10:],
@@ -2496,10 +2564,11 @@ async def handle_http(reader, writer):
             params = json.loads(body)
             skill = params["skill"]
             execution_id = params.get("execution_id", "")
+            job_agent_server = params.get("agent_server", "")
             loop = asyncio.get_running_loop()
             fut = loop.create_future()
             _submission_evals[skill] = {"future": fut, "execution_id": execution_id}
-            asyncio.create_task(_run_submission_eval(skill, execution_id))
+            asyncio.create_task(_run_submission_eval(skill, execution_id, job_agent_server=job_agent_server))
             response_body = json.dumps({"ok": True, "message": f"Evaluator spawned for {skill}"})
 
         elif method == "GET" and path.startswith("/eval-result/"):

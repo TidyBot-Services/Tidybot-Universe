@@ -62,7 +62,7 @@ def poll(job_id: str, timeout: float) -> dict:
 
 def notify_job_done(skill: str, execution_id: str) -> bool:
     """Notify orchestrator that a job finished, triggering evaluator. Returns True if accepted."""
-    data = json.dumps({"skill": skill, "execution_id": execution_id}).encode()
+    data = json.dumps({"skill": skill, "execution_id": execution_id, "agent_server": AGENT_SERVER}).encode()
     req = urllib.request.Request(
         f"{ORCHESTRATOR}/job-done",
         data=data,
