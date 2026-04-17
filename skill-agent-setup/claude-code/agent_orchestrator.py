@@ -94,6 +94,16 @@ else:
 LOCAL_REPOS = _graph_file
 SESSION_LOG = GRAPH_DIR / "agent_sessions.jsonl"
 
+# Unique ID for this orchestrator run — written to every session so the UI can
+# filter "current run only" vs "all history".
+import time as _time
+RUN_ID = f"run-{int(_time.time())}"
+
+# In-memory snapshot of in-progress agent sessions (cleared on orchestrator restart).
+# Keyed by (session_id, agent_id). Sent in full_sync so refreshed clients see
+# all currently-active dev/eval sessions even before they finish a turn.
+_live_sessions: dict[tuple, dict] = {}
+
 if _args.autonomous:
     autonomous_mode = True
     dev_mode = True  # autonomous implies dev mode (no planning gate either)
@@ -928,14 +938,32 @@ def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = 
 
 async def _run_submission_eval(skill: str, execution_id: str, job_agent_server: str = ""):
     """Run evaluator for a specific submission, store result in _submission_evals."""
+    # Find target_name from the job's agent_server
+    target_name = ""
+    for t in targets:
+        if t.get("agent_server") == job_agent_server:
+            target_name = t["name"]
+            break
+
     # Update dashboard images from this execution
     _update_trial_images(skill, execution_id, agent_server_url=job_agent_server)
     await broadcast_full_sync()
 
     try:
-        result = await run_evaluator(skill, execution_id=execution_id)
+        result = await run_evaluator(skill, execution_id=execution_id, target_name=target_name)
     except Exception as e:
         result = {"passed": True, "feedback": f"Evaluator error: {e}"}
+
+    # Persist final PASSED/FAILED summary to the matching target's dev agent log
+    feedback = result.get("feedback", "")
+    passed = result.get("passed", False)
+    msg = f"{'PASSED' if passed else 'FAILED'}: {feedback}"
+    for a in agents.values():
+        if a.skill == skill and a.target_name == target_name:
+            a.log.append({"text": msg, "role": "evaluator"})
+            break
+    await broadcast_full_sync()
+
     entry = _submission_evals.get(skill)
     if entry and not entry["future"].done():
         entry["future"].set_result(result)
@@ -974,13 +1002,20 @@ async def ws_broadcast_status(skill: str, agent_id: str, status: str, text: str,
     await ws_broadcast({"type": "status_update", "payload": payload})
 
 
-async def ws_broadcast_agent_msg(entry_id: str, text: str, agent_type: str = "dev"):
-    """Send a chat bubble to the agent's chat log in the browser."""
+async def ws_broadcast_agent_msg(entry_id: str, text: str, agent_type: str = "dev",
+                                 target_name: str = ""):
+    """Send a chat bubble to the agent's chat log in the browser.
+
+    target_name: if set, the frontend only renders this message when the user
+    is viewing that target's tab (for multi-target parallel development).
+    """
     await ws_broadcast({
         "type": "agent_message",
         "entry_id": entry_id,
         "text": text,
         "agent_type": agent_type,
+        "target": target_name,
+        "graph": GRAPH_DIR.name,  # for live session hex grouping
     })
 
 
@@ -1046,11 +1081,15 @@ def build_full_sync() -> dict:
     agents_by_skill: dict[str, list[AgentState]] = {}
     for a in agents.values():
         agents_by_skill.setdefault(a.skill, []).append(a)
+    # Sort each skill's agents by target_name so "best" selection is stable
+    # across full_sync calls (avoids agent_id flipping in the dashboard header)
+    for skill_agents in agents_by_skill.values():
+        skill_agents.sort(key=lambda a: a.target_name or "")
     for repo in repos:
         name = repo["name"]
         skill_agents = agents_by_skill.get(name, [])
         if skill_agents:
-            # Pick best agent for top-level status (prefer running)
+            # Pick best agent for top-level status (prefer running, deterministic order)
             best = next((a for a in skill_agents if a.status in ("starting", "running")), skill_agents[0])
             repo["status"] = _map_status(best.status, best.agent_type)
             repo["agent_id"] = best.agent_id
@@ -1087,7 +1126,47 @@ def build_full_sync() -> dict:
             "target": a.target_name,
         })
 
-    return {"entries": repos, "agents": agents_list, "targets": targets}
+    # Count UNIQUE sessions for current run (by session_id), grouped per env.
+    # Includes both file-persisted sessions AND in-memory live (in-progress) ones
+    # so the hex shows "1 session per env" as soon as each dev agent spawns.
+    unique_sessions_by_env: dict[str, set] = {}
+    if SESSION_LOG.exists():
+        try:
+            with open(SESSION_LOG) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                        if rec.get("run_id") != RUN_ID:
+                            continue
+                        tname = rec.get("target", "") or "default"
+                        sid = rec.get("session_id")
+                        if not sid:
+                            continue
+                        unique_sessions_by_env.setdefault(tname, set()).add(sid)
+                    except json.JSONDecodeError:
+                        continue
+        except Exception:
+            pass
+    for live_entry in _live_sessions.values():
+        tname = live_entry.get("target", "") or "default"
+        sid = live_entry.get("session_id")
+        if sid:
+            unique_sessions_by_env.setdefault(tname, set()).add(sid)
+    per_env_session_count = {k: len(v) for k, v in unique_sessions_by_env.items()}
+    current_run_session_count = sum(per_env_session_count.values())
+    return {
+        "entries": repos,
+        "agents": agents_list,
+        "targets": targets,
+        "graph": GRAPH_DIR.name,
+        "run_id": RUN_ID,
+        "session_count": current_run_session_count,
+        "per_env_session_count": per_env_session_count,
+        "live_sessions": list(_live_sessions.values()),
+    }
 
 
 async def broadcast_full_sync():
@@ -1657,11 +1736,17 @@ def _get_system_prompt(agent_type: str, skill_name: str = "",
 
 
 def _save_session_mapping(state: AgentState, message):
-    """Append a line to agent_sessions.jsonl mapping session_id → skill + agent type + log."""
+    """Append a line to agent_sessions.jsonl mapping session_id → skill + agent type + log.
+
+    Returns the entry dict so callers can broadcast it over WS.
+    """
     import datetime
     entry = {
         "session_id": message.session_id,
         "skill": state.skill,
+        "graph": GRAPH_DIR.name,  # graph folder name (e.g. "counter-to-sink-backup")
+        "run_id": RUN_ID,
+        "target": state.target_name or "",  # which env (env-0/env-1/...) for multi-target dev
         "agent_type": state.agent_type,
         "agent_id": state.agent_id,
         "cost_usd": message.total_cost_usd,
@@ -1673,6 +1758,7 @@ def _save_session_mapping(state: AgentState, message):
         f.write(json.dumps(entry) + "\n")
     _invalidate_session_log_cache()
     print(f"[SDK] {state.skill}: session {message.session_id} logged to {SESSION_LOG.name}")
+    return entry
 
 
 async def _run_agent_sdk(state: AgentState, prompt: str):
@@ -1930,11 +2016,23 @@ async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
     return cache_dir
 
 
-async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
+async def run_evaluator(skill: str, execution_id: str | None = None,
+                        target_name: str = "") -> dict:
     """Run a short-lived evaluator agent (ClaudeSDKClient) that reviews execution recordings.
+
+    target_name: if set, evaluator messages are routed to this target's tab
+    and persisted in the matching dev agent's log.
 
     Returns {"passed": bool, "feedback": str}.
     """
+    # Helper to append evaluator msg to the matching dev agent's persistent log
+    def _persist_to_dev_log(msg_text: str):
+        if not target_name:
+            return
+        for a in agents.values():
+            if a.skill == skill and a.target_name == target_name and a.agent_type == "dev":
+                a.log.append({"text": msg_text, "role": "evaluator"})
+                return
     # Find execution recording — try local first, then fetch from remote agent server
     exec_dir = PROJECT_DIR / "logs" / "code_executions"
 
@@ -1974,8 +2072,10 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
         print(f"[EVAL] {skill}: no execution recordings found (local or remote)")
         return {"passed": False, "feedback": "No execution recordings found — cannot evaluate."}
 
-    print(f"[EVAL] {skill}: reviewing execution {latest.name}")
-    await ws_broadcast_agent_msg(skill, f"Evaluating execution {latest.name}...", "evaluator")
+    print(f"[EVAL] {skill}@{target_name or 'default'}: reviewing execution {latest.name}")
+    _text = f"Evaluating execution {latest.name}..."
+    _persist_to_dev_log(_text)
+    await ws_broadcast_agent_msg(skill, _text, "evaluator", target_name=target_name)
 
     # Build evaluator prompt
     entry = _find_entry(skill)
@@ -2025,15 +2125,21 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
                             if isinstance(block, TextBlock) and block.text.strip():
                                 text = block.text.strip()
                                 collected_text.append(text)
-                                await ws_broadcast_agent_msg(skill, text, "evaluator")
+                                _persist_to_dev_log(text)
+                                await ws_broadcast_agent_msg(skill, text, "evaluator", target_name=target_name)
                     elif isinstance(message, ResultMessage):
                         cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
-                        await ws_broadcast_agent_msg(skill, f"Eval done — {message.num_turns} turns, {cost}", "evaluator")
+                        _result_msg = f"Eval done — {message.num_turns} turns, {cost}"
+                        _persist_to_dev_log(_result_msg)
+                        await ws_broadcast_agent_msg(skill, _result_msg, "evaluator", target_name=target_name)
                         if message.session_id:
                             import datetime
                             eval_entry = {
                                 "session_id": message.session_id,
                                 "skill": skill,
+                                "graph": GRAPH_DIR.name,
+                                "run_id": RUN_ID,
+                                "target": target_name or "",
                                 "agent_type": "evaluator",
                                 "agent_id": f"eval-{skill}",
                                 "cost_usd": message.total_cost_usd,
@@ -2044,6 +2150,8 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
                             with open(SESSION_LOG, "a") as f:
                                 f.write(json.dumps(eval_entry) + "\n")
                             _invalidate_session_log_cache()
+                            # Broadcast for live sessions UI
+                            await ws_broadcast({"type": "session_added", "session": eval_entry})
 
         await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
 
@@ -2072,7 +2180,9 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
 
     except asyncio.TimeoutError:
         print(f"[EVAL] {skill}: evaluator timed out after {EVAL_TIMEOUT}s")
-        await ws_broadcast_agent_msg(skill, f"Evaluator timed out after {EVAL_TIMEOUT // 60} minutes.", "evaluator")
+        _timeout_msg = f"Evaluator timed out after {EVAL_TIMEOUT // 60} minutes."
+        _persist_to_dev_log(_timeout_msg)
+        await ws_broadcast_agent_msg(skill, _timeout_msg, "evaluator", target_name=target_name)
         return {"passed": False, "feedback": "Evaluator timed out — CLI process may have died."}
     except Exception as e:
         print(f"[EVAL] {skill}: evaluator error: {e}")
@@ -2315,7 +2425,27 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
                     state.log.append({"text": text, "role": "agent"})
                     if len(state.log) > 200:
                         state.log[:] = state.log[-200:]
-                    await ws_broadcast_agent_msg(state.skill, text, state.agent_type)
+                    await ws_broadcast_agent_msg(state.skill, text, state.agent_type,
+                                                 target_name=state.target_name)
+                    # Track in-progress session snapshot in memory + broadcast
+                    if state.session_id:
+                        import datetime as _dt
+                        progress_entry = {
+                            "session_id": state.session_id,
+                            "skill": state.skill,
+                            "graph": GRAPH_DIR.name,
+                            "run_id": RUN_ID,
+                            "target": state.target_name or "",
+                            "agent_type": state.agent_type,
+                            "agent_id": state.agent_id,
+                            "cost_usd": 0,
+                            "num_turns": len(state.log),
+                            "log": list(state.log[-50:]),
+                            "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+                            "in_progress": True,
+                        }
+                        _live_sessions[(state.session_id, state.agent_id)] = progress_entry
+                        await ws_broadcast({"type": "session_added", "session": progress_entry})
 
                 elif isinstance(block, ToolUseBlock):
                     tool_msg = f"Using {block.name}..."
@@ -2328,7 +2458,11 @@ async def _consume_sdk_response(state: AgentState, client: ClaudeSDKClient):
             # Persist session_id to graph.json so it survives orchestrator restarts
             if message.session_id:
                 _update_entry(state.skill, {"session_id": message.session_id})
-                _save_session_mapping(state, message)
+                _session_entry = _save_session_mapping(state, message)
+                # Broadcast new session for live sessions.html grid updates
+                await ws_broadcast({"type": "session_added", "session": _session_entry})
+                # Session completed → drop from in-memory live snapshot
+                _live_sessions.pop((state.session_id, state.agent_id), None)
             cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
             # Detect zero-cost / zero-turn completions as errors (e.g. credit/auth failures)
             if not message.total_cost_usd and message.num_turns == 0:
@@ -2537,6 +2671,24 @@ async def handle_http(reader, writer):
 
         elif method == "GET" and path == "/entries":
             response_body = json.dumps(skill_entries)
+
+        elif method == "GET" and path.startswith("/sessions/"):
+            # Serve agent_sessions.jsonl for a given graph as JSON array
+            graph_name = path.split("/sessions/", 1)[1]
+            graph_dir = GRAPH_DIR.parent / graph_name
+            session_file = graph_dir / "agent_sessions.jsonl"
+            sessions_arr = []
+            if session_file.exists():
+                with open(session_file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            sessions_arr.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+            response_body = json.dumps({"graph": graph_name, "sessions": sessions_arr})
 
         elif method == "POST" and path == "/entries":
             params = json.loads(body)

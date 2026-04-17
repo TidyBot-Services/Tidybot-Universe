@@ -134,7 +134,7 @@ def handle_event(evt: dict, session_id: str):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--provider", default="ollama", choices=["ollama"])
+    ap.add_argument("--provider", default="ollama", choices=["ollama", "google"])
     ap.add_argument("--model", default="qwen2.5-coder:7b")
     ap.add_argument("--part", default="A", choices=["A", "B"],
                     help="A=harness smoke test, B=real robot task")

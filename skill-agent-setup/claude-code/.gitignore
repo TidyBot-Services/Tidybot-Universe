@@ -1,0 +1,7 @@
+# Langfuse tracing (local only, not pushed to repo)
+langfuse_tracing.py
+.env
+
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Sessions — [X]Bot Universe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+
+<style>
+  /* Override hex-card absolute positioning so we can grid-lay them */
+  .sessions-grid .hex-card {
+    position: relative;
+    width: 200px;
+    height: 220px;
+    opacity: 1;
+    transform: none;
+  }
+  .sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 200px);
+    gap: 1.5rem 1rem;
+    justify-content: center;
+    padding: 2rem var(--container-padding) 4rem;
+  }
+
+  /* Toolbar */
+  .sessions-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 1.25rem var(--container-padding) 0.5rem;
+  }
+  .sessions-toolbar .toolbar-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--color-gray);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-right: 0.4rem;
+  }
+  .filter-btn {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.04);
+    color: var(--color-text-soft);
+    border: 1px solid var(--color-border);
+    padding: 0.45rem 0.8rem;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-smooth);
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  }
+  .filter-btn:hover { color: var(--color-warning); border-color: var(--color-warning); }
+  .filter-btn.active {
+    color: var(--color-bg);
+    background: var(--color-warning);
+    border-color: var(--color-warning);
+    box-shadow: 0 0 16px rgba(255,107,0,0.4);
+  }
+  .sessions-count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-purple-bright);
+    letter-spacing: 0.1em;
+  }
+
+  /* Type colors per agent_type */
+  .hex-card[data-type="dev"] { --type-color: var(--color-test); }
+  .hex-card[data-type="evaluator"] { --type-color: var(--color-purple-bright); }
+  .hex-card[data-has-hint="true"] .hex-border { background: var(--color-warning-bright); }
+  .hex-card[data-has-hint="true"] .hex-type { background: rgba(255,107,0,0.2); color: var(--color-warning-bright); }
+
+  .hex-num {
+    font-family: var(--font-mono);
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--type-color);
+    margin-bottom: 0.3rem;
+    letter-spacing: 0.05em;
+  }
+  .hex-skill {
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    color: var(--color-gray);
+    letter-spacing: 0.05em;
+    margin-top: 0.2rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hex-meta {
+    font-family: var(--font-mono);
+    font-size: 0.45rem;
+    color: var(--color-text-soft);
+    margin-top: 0.25rem;
+    letter-spacing: 0.04em;
+  }
+  .hex-hint-badge {
+    position: absolute;
+    top: 18%;
+    right: 18%;
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    color: var(--color-warning-bright);
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--color-warning);
+    padding: 0.1rem 0.3rem;
+    z-index: 4;
+    letter-spacing: 0.08em;
+  }
+
+  /* Popup overrides for wide content */
+  .sessions-popup .popup-card {
+    max-width: min(960px, 95vw);
+    width: 95%;
+    max-height: 88vh;
+  }
+  .conv-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-right: 2.5rem;
+  }
+  .conv-num { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; color: var(--color-warning); }
+  .conv-type {
+    font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    color: var(--type-color, var(--color-test));
+    padding: 0.3rem 0.6rem;
+    background: color-mix(in srgb, var(--type-color, var(--color-test)) 15%, transparent);
+    border: 1px solid var(--type-color, var(--color-test));
+  }
+  .conv-skill { font-family: var(--font-mono); font-size: 0.7rem; color: var(--color-text-soft); }
+  .conv-cost {
+    margin-left: auto;
+    font-family: var(--font-mono); font-size: 0.65rem;
+    color: var(--color-green);
+    padding: 0.25rem 0.6rem;
+    background: rgba(57,255,20,0.08);
+    border: 1px solid var(--color-green-dim);
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  }
+  .conv-body {
+    display: flex; flex-direction: column; gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .msg {
+    border-left: 3px solid var(--color-border);
+    padding: 0.75rem 1rem;
+    background: var(--color-bg-secondary);
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--color-text-soft);
+  }
+  .msg.role-agent { border-left-color: var(--type-color, var(--color-test)); }
+  .msg.role-user {
+    border-left-color: var(--color-warning);
+    background: linear-gradient(90deg, rgba(255,107,0,0.08), var(--color-bg-secondary) 30%);
+  }
+  .msg-role {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-gray);
+    margin-bottom: 0.4rem;
+    display: block;
+  }
+  .msg.role-user .msg-role { color: var(--color-warning-bright); }
+  .msg-content { color: var(--color-text); }
+  .msg-content p { margin: 0.4rem 0; }
+  .msg-content pre {
+    background: #0c0c14;
+    border: 1px solid var(--color-border);
+    padding: 0.75rem;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    margin: 0.5rem 0;
+  }
+  .msg-content code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    background: rgba(255,255,255,0.05);
+    padding: 0.05rem 0.3rem;
+    color: var(--color-warning-bright);
+  }
+  .msg-content pre code { background: none; padding: 0; color: inherit; }
+  .msg-content h1, .msg-content h2, .msg-content h3 {
+    font-family: var(--font-display);
+    color: var(--color-warning-bright);
+    margin: 0.6rem 0 0.3rem;
+  }
+  .msg-content h1 { font-size: 1.05rem; }
+  .msg-content h2 { font-size: 0.95rem; }
+  .msg-content h3 { font-size: 0.85rem; }
+  .msg-content ul, .msg-content ol { margin: 0.4rem 0 0.4rem 1.4rem; }
+  .msg-content blockquote {
+    border-left: 2px solid var(--color-purple-bright);
+    padding-left: 0.75rem;
+    color: var(--color-text-soft);
+    margin: 0.5rem 0;
+  }
+  .msg-content a { color: var(--color-test); }
+  .msg-content table {
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    font-size: 0.75rem;
+  }
+  .msg-content th, .msg-content td {
+    border: 1px solid var(--color-border);
+    padding: 0.3rem 0.5rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem;
+    font-family: var(--font-mono);
+    color: var(--color-gray);
+  }
+
+  .page-header {
+    padding: 2rem var(--container-padding) 0.5rem;
+    position: relative;
+    z-index: 2;
+    margin-top: 8rem; /* clears fixed .site-nav (top:4.5rem) */
+  }
+  .page-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: 0.02em;
+  }
+  .page-header .graph-name {
+    color: var(--color-warning);
+    font-family: var(--font-mono);
+  }
+  .page-header p {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-gray);
+    margin-top: 0.4rem;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+<div class="honeycomb-bg"></div>
+
+<!-- Site nav (matches dashboard) -->
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="http://localhost:8070/" class="site-nav-tab">Home</a>
+    <a href="http://localhost:8070/local/" class="site-nav-tab">Local Demo</a>
+    <a href="sessions.html" class="site-nav-tab active">Sessions</a>
+    <a href="http://localhost:8070/updates/" class="site-nav-tab">Updates</a>
+  </div>
+</nav>
+
+<!-- Marquee -->
+<div class="marquee-banner">
+  <div class="marquee-track">
+    <span class="warning-text">⚠ AGENT SESSIONS</span>
+    <span class="separator">◈</span>
+    <span>CHAT HISTORY VIEWER</span>
+    <span class="separator">◈</span>
+    <span>[X]BOT UNIVERSE-LOCAL</span>
+    <span class="separator">◈</span>
+    <span class="warning-text">⚠ AGENT SESSIONS</span>
+    <span class="separator">◈</span>
+    <span>DEV + EVALUATOR LOGS</span>
+    <span class="separator">◈</span>
+    <span>READ-ONLY</span>
+    <span class="separator">◈</span>
+    <span class="warning-text">⚠ AGENT SESSIONS</span>
+    <span class="separator">◈</span>
+    <span>CHAT HISTORY VIEWER</span>
+    <span class="separator">◈</span>
+    <span>[X]BOT UNIVERSE-LOCAL</span>
+    <span class="separator">◈</span>
+  </div>
+</div>
+
+<div class="page-header">
+  <h1>Agent Sessions <span class="graph-name" id="graph-name">—</span></h1>
+  <p id="page-sub">Loading sessions…</p>
+</div>
+
+<div class="sessions-toolbar">
+  <span class="toolbar-label">Filter</span>
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="dev">Dev</button>
+  <button class="filter-btn" data-filter="evaluator">Evaluator</button>
+  <button class="filter-btn" data-filter="hint">Has Hint</button>
+  <span class="sessions-count" id="sessions-count"></span>
+</div>
+
+<div class="sessions-grid" id="grid"></div>
+
+<!-- Popup -->
+<div class="popup-overlay sessions-popup" id="popup">
+  <div class="popup-backdrop" id="popup-bd"></div>
+  <div class="popup-card">
+    <button class="popup-close" id="popup-close">✕</button>
+    <div class="popup-inner" id="popup-inner"></div>
+  </div>
+</div>
+
+<!-- Rounded hex clip path (matches dashboard) -->
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <clipPath id="hex-clip-rounded" clipPathUnits="objectBoundingBox">
+      <path d="M 0.425 0.0375 Q 0.5 0, 0.575 0.0375 L 0.925 0.2125 Q 1 0.25, 1 0.325 L 1 0.675 Q 1 0.75, 0.925 0.7875 L 0.575 0.9625 Q 0.5 1, 0.425 0.9625 L 0.075 0.7875 Q 0 0.75, 0 0.675 L 0 0.325 Q 0 0.25, 0.075 0.2125 Z"/>
+    </clipPath>
+  </defs>
+</svg>
+
+<script>
+const params = new URLSearchParams(location.search);
+const graph = params.get('graph') || 'pnp-counter-to-sink';
+document.getElementById('graph-name').textContent = graph;
+
+let sessions = [];
+let currentFilter = 'all';
+
+marked.setOptions({
+  highlight: (code, lang) => {
+    try {
+      if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, {language: lang}).value;
+      return hljs.highlightAuto(code).value;
+    } catch(e) { return code; }
+  },
+  breaks: true,
+  gfm: true,
+});
+
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+
+function hasHint(s) {
+  return (s.log || []).some(e => typeof e === 'object' && e && e.role === 'user');
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const filtered = sessions.filter(s => {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'hint') return hasHint(s);
+    return s.agent_type === currentFilter;
+  });
+  document.getElementById('sessions-count').textContent =
+    `${filtered.length} / ${sessions.length} sessions`;
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state">No sessions match this filter.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(s => {
+    const realIdx = sessions.indexOf(s);
+    const hint = hasHint(s);
+    const pat = realIdx % 4;
+    const turns = s.num_turns || 0;
+    const cost = (s.cost_usd || 0).toFixed(3);
+    return `
+      <div class="hex-card visible" data-type="${s.agent_type}" data-has-hint="${hint}" data-idx="${realIdx}">
+        <div class="hex-border">
+          <div class="hex-inner">
+            <div class="hex-bg pattern-${pat}"></div>
+            ${hint ? '<div class="hex-hint-badge">HINT</div>' : ''}
+            <div class="hex-content">
+              <div class="hex-type">${s.agent_type}</div>
+              <div class="hex-num">#${String(realIdx + 1).padStart(2,'0')}</div>
+              <div class="hex-skill">${s.skill || '—'}</div>
+              <div class="hex-meta">${turns} turns · $${cost}</div>
+              <div class="hex-meta">${fmtTime(s.timestamp)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.hex-card').forEach(el => {
+    el.addEventListener('click', () => openSession(parseInt(el.dataset.idx)));
+  });
+}
+
+function renderMessageBody(text) {
+  if (!text) return '';
+  try {
+    const html = marked.parse(text);
+    return DOMPurify.sanitize(html);
+  } catch(e) {
+    return DOMPurify.sanitize(`<pre>${text}</pre>`);
+  }
+}
+
+function openSession(idx) {
+  const s = sessions[idx];
+  const inner = document.getElementById('popup-inner');
+  const hint = hasHint(s);
+  const turns = s.num_turns || 0;
+  const cost = (s.cost_usd || 0).toFixed(4);
+  const typeColor = s.agent_type === 'dev' ? 'var(--color-test)' : 'var(--color-purple-bright)';
+
+  const msgs = (s.log || []).map(e => {
+    if (typeof e === 'string') return {role: 'agent', text: e};
+    return {role: e.role || 'agent', text: e.text || ''};
+  });
+
+  const msgHtml = msgs.map(m => `
+    <div class="msg role-${m.role}">
+      <span class="msg-role">${m.role === 'user' ? '★ Human Hint' : 'Agent'}</span>
+      <div class="msg-content">${renderMessageBody(m.text)}</div>
+    </div>
+  `).join('');
+
+  inner.innerHTML = `
+    <div class="conv-header" style="--type-color: ${typeColor}">
+      <span class="conv-num">#${String(idx + 1).padStart(2,'0')}</span>
+      <span class="conv-type">${s.agent_type}${hint ? ' · hint' : ''}</span>
+      <span class="conv-skill">${s.skill || ''}</span>
+      <span class="conv-cost">${turns} turns · $${cost}</span>
+    </div>
+    <div style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-gray); letter-spacing: 0.05em;">
+      ${fmtTime(s.timestamp)} · session_id: ${s.session_id || '—'}
+    </div>
+    <div class="conv-body" style="--type-color: ${typeColor}">
+      ${msgHtml || '<div class="empty-state">No messages.</div>'}
+    </div>
+  `;
+  document.getElementById('popup').classList.add('open');
+}
+
+function closePopup() {
+  document.getElementById('popup').classList.remove('open');
+}
+document.getElementById('popup-close').addEventListener('click', closePopup);
+document.getElementById('popup-bd').addEventListener('click', closePopup);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderGrid();
+  });
+});
+
+async function load() {
+  // Try sample_sessions/ first, fall back to graphs/<name>/agent_sessions.jsonl
+  const candidates = [
+    `sample_sessions/${graph}.jsonl`,
+    `graphs/${graph}/agent_sessions.jsonl`,
+  ];
+  let dataPath = candidates[0];
+  let r = null;
+  try {
+    for (const p of candidates) {
+      const resp = await fetch(p);
+      if (resp.ok) { r = resp; dataPath = p; break; }
+    }
+    if (!r) throw new Error('HTTP 404 (no data file found)');
+    const text = await r.text();
+    sessions = text.trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+    document.getElementById('page-sub').textContent =
+      `${sessions.length} agent session${sessions.length === 1 ? '' : 's'} from graphs/${graph}/agent_sessions.jsonl`;
+    renderGrid();
+  } catch(e) {
+    document.getElementById('page-sub').textContent = `Error loading: ${e.message}`;
+    document.getElementById('grid').innerHTML =
+      `<div class="empty-state">Could not load <code>graphs/${graph}/agent_sessions.jsonl</code>.<br>Try <code>?graph=&lt;graph-name&gt;</code> in the URL.</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>
