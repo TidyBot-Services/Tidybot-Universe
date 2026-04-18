@@ -1771,7 +1771,7 @@ async def _resolve_completion(state: AgentState) -> None:
             state.status = "paused"
 
 
-MAX_EVAL_RETRIES = 2  # max times evaluator can send feedback before giving up
+MAX_EVAL_RETRIES = int(os.environ.get("MAX_EVAL_RETRIES", "2"))  # max times evaluator can send feedback before giving up; 0 disables retries entirely
 _eval_attempt_count: dict[str, int] = {}  # skill -> attempt count
 
 SYSTEM_PROMPT_EVALUATOR = """\
