@@ -44,6 +44,21 @@ from claude_agent_sdk import (
 HAS_SDK = True
 
 # ---------------------------------------------------------------------------
+# Harness backend — claude-sdk (default) or openclaw
+#
+# HARNESS=openclaw     → dev agents run via `openclaw agent --local --json`
+#                         subprocess (see agent_orchestrator_openclaw.py)
+# HARNESS=claude-sdk   → default, uses ClaudeSDKClient
+#
+# Currently only dev/test agents + inject_hint + stop are routed. The evaluator
+# path (`run_evaluator`) still uses Claude SDK; migration to openclaw pending.
+# ---------------------------------------------------------------------------
+HARNESS = os.environ.get("HARNESS", "claude-sdk").lower()
+_openclaw_backend = None
+if HARNESS == "openclaw":
+    import agent_orchestrator_openclaw as _openclaw_backend
+
+# ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
@@ -1246,17 +1261,25 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev",
     await ws_broadcast_status(skill, agent_id, "starting", status_label)
 
     DEV_AGENT_TIMEOUT = 14400  # 4 hours max for dev agent
+    # Harness dispatch: openclaw subprocess vs Claude SDK client
+    if HARNESS == "openclaw" and _openclaw_backend is not None:
+        _runner = _openclaw_backend._run_agent_openclaw
+        _tag = "OC"
+    else:
+        _runner = _run_agent_sdk
+        _tag = "SDK"
+
     async def _wrapped():
         try:
-            await asyncio.wait_for(_run_agent_sdk(state, prompt), timeout=DEV_AGENT_TIMEOUT)
+            await asyncio.wait_for(_runner(state, prompt), timeout=DEV_AGENT_TIMEOUT)
         except asyncio.TimeoutError:
-            print(f"[SDK] {skill}: TIMEOUT after {DEV_AGENT_TIMEOUT}s")
+            print(f"[{_tag}] {skill}: TIMEOUT after {DEV_AGENT_TIMEOUT}s")
             state.status = "failed"
             _update_entry(skill, {"status": "failed"})
             await broadcast_full_sync()
             await ws_broadcast_agent_msg(skill, f"Dev agent timed out after {DEV_AGENT_TIMEOUT // 60} minutes.", state.agent_type)
         except Exception as e:
-            print(f"[SDK] {skill}: UNHANDLED EXCEPTION: {e}")
+            print(f"[{_tag}] {skill}: UNHANDLED EXCEPTION: {e}")
             import traceback; traceback.print_exc()
     state.task = asyncio.create_task(_wrapped())
     print(f"[ORCH] {skill}: task created, id={agent_id}")
@@ -2362,7 +2385,16 @@ async def inject_hint(agent_id: str, text: str):
     await ws_broadcast_agent_msg(state.skill, text, "user")
     state.log.append({"text": text, "role": "user"})
 
-    if HAS_SDK and state.client and state.status in ("running", "paused"):
+    if HARNESS == "openclaw" and _openclaw_backend is not None:
+        # OpenClaw mode: SIGINT subprocess, spawn new one with hint + --session-id
+        if state.status in ("running", "paused", "starting"):
+            try:
+                await _openclaw_backend._inject_hint_openclaw(state, text)
+            except Exception as e:
+                print(f"[ORCH] inject OpenClaw error: {e}")
+        else:
+            print(f"[ORCH] inject: agent {agent_id} not running/paused (openclaw)")
+    elif HAS_SDK and state.client and state.status in ("running", "paused"):
         # SDK mode: interrupt current work, send follow-up in same session
         try:
             if state.status == "running":
@@ -2398,8 +2430,14 @@ async def stop_agent(agent_id: str):
     # (which checks state.status == "running" to decide whether to trigger tests)
     state.status = "paused"
 
-    # SDK mode: interrupt current work, keep session alive for later hints
-    if HAS_SDK and state.client:
+    if HARNESS == "openclaw" and _openclaw_backend is not None:
+        # OpenClaw mode: SIGINT subprocess, session file survives for resume
+        try:
+            await _openclaw_backend._stop_agent_openclaw(state)
+        except Exception as e:
+            print(f"[ORCH] stop/pause OpenClaw error: {e}")
+    elif HAS_SDK and state.client:
+        # SDK mode: interrupt current work, keep session alive for later hints
         try:
             await state.client.interrupt()
         except Exception as e:
@@ -2618,6 +2656,11 @@ async def main():
     _load_entries()
     print(f"[ORCH] Claude Agent Orchestrator")
     print(f"[ORCH] SDK mode: {HAS_SDK}")
+    print(f"[ORCH] Harness backend: {HARNESS}" + (
+        f"  (openclaw dev-agent id: {_openclaw_backend.AGENT_TYPE_MAP['dev']}, "
+        f"eval-agent id: {_openclaw_backend.AGENT_TYPE_MAP['evaluator']})"
+        if _openclaw_backend else "  (ClaudeSDKClient)"
+    ))
     print(f"[ORCH] Project dir: {PROJECT_DIR}")
     print(f"[ORCH] Entries loaded: {len(skill_entries)}")
     print(f"[ORCH] WebSocket: ws://0.0.0.0:{WS_PORT}")

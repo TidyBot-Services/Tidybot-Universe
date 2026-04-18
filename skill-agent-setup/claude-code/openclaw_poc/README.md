@@ -191,18 +191,144 @@ On a paid-tier key without rate limits, expect $0.10-0.15 per full dev-agent run
 - Performance under the real orchestrator load (many parallel dev agents
   sharing Gemini rate-limit budget).
 
+## Part D — Gateway WebSocket probe (2026-04-18)
+
+Question: can a Python orchestrator talk to the OpenClaw Gateway directly
+(Path B), to get streaming events + `sessions.steer` inject semantics that
+Path A CLI subprocess can't provide?
+
+### What we confirmed
+
+Via `openclaw` npm package's `.d.ts` files + internal JS:
+- **Gateway handshake**: server sends `connect.challenge` event with a nonce
+  immediately on TCP upgrade; client MUST reply with a `connect` req whose
+  `device` field contains an Ed25519 signature over the v3 payload:
+  `v3|deviceId|clientId|clientMode|role|scopes_comma|signedAtMs|token|nonce|platform|family`
+- **Method schemas** (from `.d.ts`):
+  - `sessions.send`: `{key, message, thinking?, attachments?, timeoutMs?, idempotencyKey?}`
+  - `sessions.messages.subscribe`: `{key}`
+  - `sessions.abort`: `{key, runId?}`
+  - `sessions.patch`: `{key, thinkingLevel?, fastMode?, verbose/trace/reasoningLevel?, ...}`
+  - `sessions.steer` confirmed in method registry (`method-scopes-*.js`)
+- **Event types**: `session.message` (with `{sessionKey, message: {role, content[{type, text|toolCall, ...}]}, messageId, messageSeq}`) and `session.tool` — both require `READ_SCOPE` (`operator.read`)
+- **Gateway is healthy**: `openclaw sessions --all-agents` from CLI works — returns 3 active sessions, so the handshake and all session methods succeed for the official client
+
+### What we couldn't finish
+
+Python `ws_probe.py` reaches `connect.challenge` and sends a device-signed
+connect frame, but the gateway closes with `1008 "invalid request frame"` before
+returning a `res`. Root cause is a subtle byte-mismatch between our v3 payload
+and what `buildDeviceAuthPayloadV3` produces (likely scope ordering, token
+field value, or `normalizeDeviceMetadataForAuth` handling of an empty
+`deviceFamily`). Debuggable via `openclaw proxy run -- openclaw sessions` but
+not in the time budget.
+
+### Path B verdict: **feasible, but costlier than first-order estimate**
+
+| Cost item | Initial estimate | Revised (post-probe) |
+|---|---|---|
+| WS client + event mapping | ~200 LOC | ~200 LOC |
+| **Device-signed handshake** | ~50 LOC | ~100-150 LOC + days of debug |
+| Schema version coupling (Ed25519 payload format can change between OpenClaw versions) | not considered | real risk, requires CI tests |
+| Total | ~300 LOC | ~400-500 LOC |
+
+**Why this is higher than first estimate:** OpenClaw's gateway requires device
+pairing; there's no documented public third-party WS client protocol. The
+auth flow (`connect.challenge` → Ed25519-signed v3 payload → `hello-ok`) has
+to be reproduced byte-exactly, and our probe hit a rejection we haven't traced.
+The official CLI bundles the full client library (`client-DkWAat_P.js`),
+so CLI-as-subprocess is **orders of magnitude cheaper** than porting the auth
+flow to Python.
+
+### Recommended migration pattern (updated)
+
+**Path A + Node.js sidecar** — cleaner than pure Path B:
+1. **Dev agent invocation**: spawn `openclaw agent --local --session-id <id>`
+   subprocess per dev agent (Path A, already proven end-to-end by Part C2).
+2. **Live streaming/inject (if needed)**: spawn a **tiny Node.js sidecar** that
+   imports OpenClaw's own `GatewayClient` from the npm package and proxies
+   `session.message`/`session.tool` events to Python via stdout NDJSON.
+   Avoids re-implementing device auth in Python.
+3. **Concurrency**: Path A scales linearly by spawning N subprocesses; Gateway
+   multiplexing is an optimization for later.
+
+This sidesteps the entire auth-replication problem while keeping all the
+features Path B would have given us.
+
+## Part E — Orchestrator shim (Path A, implemented 2026-04-19)
+
+`agent_orchestrator_openclaw.py` is the new backend module. `agent_orchestrator.py`
+gains a `HARNESS` env flag that routes dev/inject/stop calls to either backend.
+
+### Switching backends
+
+```bash
+# Default — unchanged behavior, uses ClaudeSDKClient
+python3 agent_orchestrator.py --graph graphs/counter-to-sink-demo
+
+# New — uses `openclaw agent --local --json` subprocess
+HARNESS=openclaw python3 agent_orchestrator.py --graph graphs/counter-to-sink-demo
+```
+
+### One-time setup (before first `HARNESS=openclaw` run)
+
+```bash
+cd openclaw_poc
+./setup_agents.sh                                  # Ollama for both (free)
+# or
+DEV_MODEL=google/gemini-2.5-flash ./setup_agents.sh   # Gemini for dev
+```
+
+Creates `tidybot-dev` + `tidybot-evaluator` OpenClaw agents, drops minimal
+`AGENTS.md` files under `~/.openclaw/agents/<id>/`.
+
+### What the shim covers
+
+| orchestrator call site | Claude SDK path | OpenClaw path (new) |
+|---|---|---|
+| `spawn_agent` → dev runner | `_run_agent_sdk` | `_run_agent_openclaw` |
+| Live dashboard streaming | `_consume_sdk_response` (SDK iter) | `_tail_session_jsonl` (file tail, 500ms poll) |
+| `inject_hint` | `client.interrupt()` + `client.query()` | SIGINT subprocess + new `openclaw agent --session-id <same>` |
+| `stop_agent` | `client.interrupt()` | SIGINT subprocess |
+| `kill_agent` | cancels task + `interrupt()` | existing `proc` handling covers it |
+| `run_evaluator` | `_run_eval_client` (SDK) | **unchanged** — evaluator still on Claude SDK (future work) |
+
+### agent_type → OpenClaw agent id
+
+```python
+AGENT_TYPE_MAP = {
+    "dev":       "tidybot-dev",
+    "evaluator": "tidybot-evaluator",
+    "test":      "tidybot-dev",  # piggybacks on dev
+}
+```
+
+Override via env: `OPENCLAW_DEV_AGENT`, `OPENCLAW_EVAL_AGENT`, `OPENCLAW_TEST_AGENT`.
+
+### Known limitations of the shim
+
+- **Evaluator still uses Claude SDK** — `run_evaluator` at line ~1933 is a separate
+  code path with its own embedded `ClaudeSDKClient`; porting it is Stage 2.
+  If you need 100% non-Anthropic, this is the remaining hold-out.
+- **System prompt is prepended on first turn only** — OpenClaw agents have their own
+  `AGENTS.md` (minimal per setup script); orchestrator's `_get_system_prompt()` is
+  injected as context in the first user message. On resume, only the delta is sent.
+- **Dashboard stream is ~500ms delayed** — file-tail poll interval. Functionally
+  equivalent to SDK streaming for all broadcast purposes; just not real-time.
+- **Gateway mode not used** — pure CLI subprocess. If concurrent-session load
+  becomes an issue, consider adding a Node.js sidecar that proxies Gateway events
+  (see Part D verdict).
+
 ## Next steps (in order)
 
-1. **Orchestrator shim** — add `_run_agent_openclaw(state, prompt)` in
-   `agent_orchestrator.py` that subprocess-drives `openclaw agent` instead of
-   `ClaudeSDKClient`, guarded by an env flag (`HARNESS=openclaw|claude-sdk`). No
-   big-bang rewrite.
+1. ✅ **Orchestrator shim (Path A)** — done (this commit).
+   Test end-to-end by running `HARNESS=openclaw` with a graph.
 2. **Evaluator integration** — port `SYSTEM_PROMPT_EVALUATOR` logic so dev agents
-   get semantic feedback ("spout is not sink; re-check `find_objects` results for
-   a `sink_*` entry or use the debug's `sink` bounding box"). Without this, a
-   single-shot dev agent can't self-correct.
-3. **Gateway mode** — replace subprocess driver with WebSocket to
-   `ws://localhost:18789` once we need interrupt / inject / concurrent sessions.
+   get semantic feedback ("spout is not sink; re-check `find_objects` results").
+   Without this, a single-shot dev agent can't self-correct.
+3. **(Optional) Node.js sidecar** — only if live dashboard streaming or mid-run
+   inject is blocking. For most use cases, Path A's one-shot subprocess output
+   is enough and much simpler to ship.
 4. **Rate-limit handling** — for paid Gemini tier or cloud Claude, the built-in
    OpenClaw retry is fine; for free tier, cap retries to avoid token burn.
 
