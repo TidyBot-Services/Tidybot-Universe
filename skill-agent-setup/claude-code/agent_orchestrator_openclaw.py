@@ -81,35 +81,101 @@ def _estimate_cost(provider: str, model: str, usage: dict) -> float:
 def _parse_final_envelope(stderr_raw: str) -> Optional[dict]:
     """`openclaw agent --local --json` emits one JSON doc on stderr at end.
 
-    Logs may precede it, so try parsing whole output first, then scan for brace.
+    Logs may precede/surround it. Strategy: find a '{\\n  "payloads"' or
+    '{\\n  "meta"' marker, then parse balanced braces forward.
     """
     if not stderr_raw:
         return None
+    # Try the whole output first (common case — no interleaved logs)
     try:
-        data = json.loads(stderr_raw)
-        return data
+        return json.loads(stderr_raw)
     except json.JSONDecodeError:
-        start = stderr_raw.find('{\n')
-        if start < 0:
-            start = stderr_raw.find('{')
-        if start < 0:
-            return None
+        pass
+    # Find likely start of envelope. OpenClaw always emits `{` at column 0.
+    for marker in ('{\n  "payloads"', '{\n  "meta"', '{\n  "result"', '{\n'):
+        idx = stderr_raw.find(marker)
+        if idx < 0:
+            continue
+        # Try parsing from idx to end
         try:
-            return json.loads(stderr_raw[start:])
-        except Exception:
-            return None
+            return json.loads(stderr_raw[idx:])
+        except json.JSONDecodeError:
+            # Balanced-brace scan
+            depth = 0
+            in_str = False
+            esc = False
+            for i in range(idx, len(stderr_raw)):
+                ch = stderr_raw[i]
+                if esc:
+                    esc = False; continue
+                if ch == '\\':
+                    esc = True; continue
+                if ch == '"':
+                    in_str = not in_str; continue
+                if in_str: continue
+                if ch == '{': depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            return json.loads(stderr_raw[idx:i+1])
+                        except Exception:
+                            break
+    return None
+
+
+def _count_session_tools_from_offset(session_file: Path, start_offset: int) -> tuple[int, int, list[str]]:
+    """Count tool calls in the JSONL file from a given offset to end.
+
+    Returns (calls, failures, unique_tools).
+    """
+    calls = 0
+    failures = 0
+    tools: set[str] = set()
+    try:
+        with open(session_file, "r", encoding="utf-8", errors="replace") as f:
+            f.seek(start_offset)
+            for line in f:
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                if entry.get("type") != "message":
+                    continue
+                m = entry.get("message", {})
+                role = m.get("role")
+                if role == "assistant":
+                    for c in m.get("content", []) or []:
+                        if c.get("type") == "toolCall":
+                            calls += 1
+                            if c.get("name"):
+                                tools.add(c["name"])
+                elif role == "toolResult":
+                    if m.get("isError"):
+                        failures += 1
+    except Exception:
+        pass
+    return calls, failures, sorted(tools)
 
 
 async def _wait_for_session_file(agent_id: str, known_session_id: Optional[str],
                                   before_snapshot: set[Path],
                                   timeout_s: float = 20.0) -> Optional[Path]:
-    """Wait for the session JSONL file to appear.
+    """Wait for the session JSONL file to appear / be touched.
 
-    If known_session_id is given, wait for that specific file.
-    Otherwise wait for a NEW file (not in before_snapshot) to show up.
+    Lookup order:
+      1. known_session_id is given → wait for that specific file
+      2. A NEW file (not in before_snapshot) appears → pick it
+      3. Fallback: an existing file gets its mtime bumped past our spawn timestamp
+         (OpenClaw reuses a single session per agent in local mode, so the
+         "single existing file keeps growing" case is normal — just tail it)
     """
     sdir = _sessions_dir(agent_id)
     deadline = time.time() + timeout_s
+    spawn_ts = time.time()
+    # Record mtimes at snapshot time so we can detect bumps
+    before_mtimes = {p: p.stat().st_mtime for p in before_snapshot if p.exists()}
+
     while time.time() < deadline:
         if known_session_id:
             f = _session_file(agent_id, known_session_id)
@@ -117,10 +183,18 @@ async def _wait_for_session_file(agent_id: str, known_session_id: Optional[str],
                 return f
         elif sdir.exists():
             now_files = set(sdir.glob("*.jsonl"))
+            # (2) new file
             new = now_files - before_snapshot
             if new:
-                # Pick the most recently modified new file
                 return max(new, key=lambda p: p.stat().st_mtime)
+            # (3) existing file got touched after we spawned
+            for p in now_files & before_snapshot:
+                try:
+                    cur_mt = p.stat().st_mtime
+                except FileNotFoundError:
+                    continue
+                if cur_mt > before_mtimes.get(p, 0) and cur_mt > spawn_ts - 5:
+                    return p
         await asyncio.sleep(0.5)
     return None
 
@@ -199,11 +273,14 @@ async def _run_agent_openclaw(state, prompt: str):
 
     # On first turn, prepend _get_system_prompt() content so the agent has
     # full dev/evaluator context. On resume, session transcript already has it.
+    # _get_system_prompt() already substitutes skill_name / agent_server internally,
+    # so the returned string is final — do NOT run .format() on it again (JSON
+    # braces inside it would break Python's format parser).
     if not resume_id:
         sys_ctx = _get_system_prompt(
             state.agent_type, state.skill,
             agent_server_url=getattr(state, "_agent_server_url", "") or "",
-        ).format(skill_name=state.skill)
+        )
         full_prompt = f"{sys_ctx}\n\n--- USER TASK ---\n{prompt}"
     else:
         full_prompt = prompt
@@ -222,9 +299,12 @@ async def _run_agent_openclaw(state, prompt: str):
     else:
         print(f"[OC] {state.skill}: NEW {agent_id} session")
 
-    # Snapshot pre-existing session files so we can detect a new one
+    # Snapshot pre-existing session files + sizes so we can detect new / tail
+    # from the right offset (OpenClaw reuses a single file per agent — the
+    # file may already exist with prior history we don't want to re-broadcast).
     sdir = _sessions_dir(agent_id)
     before_snapshot = set(sdir.glob("*.jsonl")) if sdir.exists() else set()
+    existing_sizes = {p: p.stat().st_size for p in before_snapshot if p.exists()}
 
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -239,15 +319,18 @@ async def _run_agent_openclaw(state, prompt: str):
         "Resuming..." if resume_id else "Working...",
     )
 
-    # Launch file-tail task (may take a moment to find the session file)
+    # Shared state between tail_wrapper and envelope-parsing at end
+    tail_info = {"file": None, "start_offset": 0}
+
     async def _tail_wrapper():
         sf = await _wait_for_session_file(agent_id, resume_id, before_snapshot)
         if sf is None:
             print(f"[OC] {state.skill}: session file never appeared — dashboard tail disabled")
             return
-        # Seek to end on new sessions; for resume, start from current EOF too
-        # (we want NEW deltas, not re-broadcasting old history)
-        start = sf.stat().st_size
+        # Start offset = existing size if we're appending to an old file; 0 if new.
+        start = existing_sizes.get(sf, 0)
+        tail_info["file"] = sf
+        tail_info["start_offset"] = start
         await _tail_session_jsonl(state, agent_id, sf, start_offset=start)
 
     tail_task = asyncio.create_task(_tail_wrapper())
@@ -285,7 +368,13 @@ async def _run_agent_openclaw(state, prompt: str):
     agent_meta = meta.get("agentMeta", {}) or {}
     tool_sum = meta.get("toolSummary", {}) or {}
     usage = agent_meta.get("usage", {}) or {}
-    stop_reason = meta.get("stopReason") or meta.get("completion", {}).get("stopReason")
+    # stopReason: 3-level fallback (some runs have it only in completion)
+    stop_reason = (
+        meta.get("stopReason")
+        or meta.get("completion", {}).get("stopReason")
+        or meta.get("completion", {}).get("finishReason")
+        or "unknown"
+    )
     provider = agent_meta.get("provider") or ""
     model = agent_meta.get("model") or ""
 
@@ -295,12 +384,27 @@ async def _run_agent_openclaw(state, prompt: str):
         state.session_id = sess_id
         _update_entry(state.skill, {"session_id": sess_id})
 
+    # toolSummary from envelope is the FINAL TURN's tally, not cumulative. For
+    # multi-turn runs where the last turn is text-only, envelope says 0 even
+    # though the session had many tool calls. Count cumulatively from the JSONL.
+    env_calls = tool_sum.get("calls", 0)
+    env_fails = tool_sum.get("failures", 0)
+    env_tools = tool_sum.get("tools", []) or []
+    jsonl_calls, jsonl_fails, jsonl_tools = (0, 0, [])
+    if tail_info["file"] is not None:
+        jsonl_calls, jsonl_fails, jsonl_tools = _count_session_tools_from_offset(
+            tail_info["file"], tail_info["start_offset"]
+        )
+    total_calls = max(env_calls, jsonl_calls)
+    total_fails = max(env_fails, jsonl_fails)
+    total_tools = env_tools or jsonl_tools
+
     # Final summary message (mirrors Claude SDK's "Done — N turns, $X" message)
     cost = _estimate_cost(provider, model, usage)
     cost_str = f"${cost:.4f}" if cost > 0 else "free"
     done_msg = (
-        f"Done — {tool_sum.get('calls', 0)} tool calls "
-        f"({tool_sum.get('failures', 0)} failures), "
+        f"Done — {total_calls} tool calls "
+        f"({total_fails} failures) tools={total_tools}, "
         f"tokens in={usage.get('input', 0)} out={usage.get('output', 0)}, "
         f"cost ≈ {cost_str}, stop={stop_reason}, model={provider}/{model}"
     )
