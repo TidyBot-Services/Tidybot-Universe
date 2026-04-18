@@ -22,21 +22,31 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import signal
+import subprocess
 import time
+import uuid
 from pathlib import Path
 from typing import Optional
 
 OPENCLAW_HOME = Path(os.environ.get("OPENCLAW_HOME", str(Path.home() / ".openclaw")))
 
-# agent_type → OpenClaw agent id. Both agents must exist in openclaw.json:
-#   openclaw agents add tidybot-dev       --workspace <WS> --model <model>
-#   openclaw agents add tidybot-evaluator --workspace <WS> --model <model>
+# agent_type → base OpenClaw agent id. For multi-target runs, a per-target
+# derived agent (e.g. tidybot-dev-env-1) is auto-created by _ensure_agent_exists.
+#
+# Why: OpenClaw local mode (`openclaw agent --local`) forces every invocation
+# to use the single `agent:<id>:main` session key. Parallel subprocesses on
+# the same agent all write to the same JSONL file, corrupting the transcript.
+# Per-target agents give each dev its own agentDir + session files.
 AGENT_TYPE_MAP = {
     "dev":       os.environ.get("OPENCLAW_DEV_AGENT",  "tidybot-dev"),
     "evaluator": os.environ.get("OPENCLAW_EVAL_AGENT", "tidybot-evaluator"),
     "test":      os.environ.get("OPENCLAW_TEST_AGENT", "tidybot-dev"),  # tests piggyback on dev
 }
+
+# Module-level cache: agent ids already known to exist (skip `agents list` check)
+_known_agents: set[str] = set()
 
 # Provider pricing ($/M tokens) for rough cost estimation.
 # input, output, cacheRead. Extend as needed.
@@ -51,11 +61,113 @@ PROVIDER_PRICING: dict[tuple[str, Optional[str]], tuple[float, float, float]] = 
 DEFAULT_TURN_TIMEOUT_S = 900  # mirrors SDK_IDLE_TIMEOUT_S
 
 
-def resolve_agent_id(agent_type: str) -> str:
-    aid = AGENT_TYPE_MAP.get(agent_type)
-    if not aid:
+def resolve_agent_id(agent_type: str, target_name: str = "") -> str:
+    """Resolve agent_type (+ optional target) → concrete OpenClaw agent id.
+
+    Single-target / empty target_name → base id (e.g. `tidybot-dev`).
+    Multi-target (env-0, env-1, ...) → derived id (e.g. `tidybot-dev-env-0`).
+    """
+    base = AGENT_TYPE_MAP.get(agent_type)
+    if not base:
         raise ValueError(f"no OpenClaw agent mapped for agent_type={agent_type!r}")
-    return aid
+    if not target_name:
+        return base
+    safe_target = target_name.replace("_", "-").replace(".", "-").replace("/", "-").replace(":", "-")
+    return f"{base}-{safe_target}"
+
+
+def _agents_list_json() -> list[dict]:
+    """Return openclaw agents list (best-effort; empty list on failure)."""
+    try:
+        p = subprocess.run(
+            ["openclaw", "agents", "list", "--json"],
+            capture_output=True, text=True, timeout=10,
+        )
+        # `openclaw agents list --json` may or may not be supported; fall back
+        # to parsing the human format (lines starting with "- <id>")
+        if p.returncode == 0:
+            try:
+                return json.loads(p.stdout)
+            except json.JSONDecodeError:
+                pass
+        out = p.stdout
+        agents = []
+        for line in out.splitlines():
+            s = line.strip()
+            if s.startswith("- ") and " " not in s[2:].split("(")[0].strip():
+                agents.append({"id": s[2:].split()[0]})
+        return agents
+    except Exception:
+        return []
+
+
+def _agent_exists(agent_id: str) -> bool:
+    if agent_id in _known_agents:
+        return True
+    for a in _agents_list_json():
+        if a.get("id") == agent_id:
+            _known_agents.add(agent_id)
+            return True
+    # Fallback: check directory existence
+    if (OPENCLAW_HOME / "agents" / agent_id / "agent").is_dir():
+        _known_agents.add(agent_id)
+        return True
+    return False
+
+
+def _ensure_agent_exists(target_agent_id: str, base_agent_id: str,
+                          workspace: str) -> None:
+    """Create target_agent_id if missing, cloning model + auth from base.
+
+    This is idempotent and cached; only pays the CLI cost on first call per
+    orchestrator run.
+    """
+    if _agent_exists(target_agent_id):
+        return
+
+    # Look up base agent's configured model
+    base_cfg_path = OPENCLAW_HOME / "openclaw.json"
+    model = "ollama/llama3.1:8b-ctx32k"  # last-resort default
+    try:
+        cfg = json.loads(base_cfg_path.read_text())
+        for a in cfg.get("agents", {}).get("list", []):
+            if a.get("id") == base_agent_id:
+                model = a.get("model", model)
+                break
+    except Exception as e:
+        print(f"[OC] warn: could not read base config {base_cfg_path}: {e}")
+
+    print(f"[OC] creating per-target agent {target_agent_id} (cloned from {base_agent_id}, model={model})")
+    try:
+        subprocess.run(
+            ["openclaw", "agents", "add", target_agent_id,
+             "--workspace", workspace,
+             "--model", model,
+             "--non-interactive", "--json"],
+            capture_output=True, text=True, timeout=30, check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"[OC] warn: agents add failed: {e.stderr[-300:] if e.stderr else e}")
+        return
+    except Exception as e:
+        print(f"[OC] warn: agents add raised: {e}")
+        return
+
+    # Clone auth-profiles.json from base (so target inherits google/anthropic keys)
+    src = OPENCLAW_HOME / "agents" / base_agent_id / "agent" / "auth-profiles.json"
+    dst = OPENCLAW_HOME / "agents" / target_agent_id / "agent" / "auth-profiles.json"
+    if src.exists():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(src, dst)
+            os.chmod(dst, 0o600)
+            print(f"[OC] cloned auth from {base_agent_id} → {target_agent_id}")
+        except Exception as e:
+            print(f"[OC] warn: auth copy failed: {e}")
+    else:
+        print(f"[OC] warn: {src} missing — {target_agent_id} has no auth profile, will fail on provider call")
+
+    _known_agents.add(target_agent_id)
 
 
 def _sessions_dir(agent_id: str) -> Path:
@@ -268,7 +380,15 @@ async def _run_agent_openclaw(state, prompt: str):
         _get_system_prompt, WORKSPACE_DIR,
     )
 
-    agent_id = resolve_agent_id(state.agent_type)
+    # Per-target agent id (isolation from other targets' runs)
+    target_name = getattr(state, "target_name", "") or ""
+    base_agent_id = resolve_agent_id(state.agent_type)
+    agent_id = resolve_agent_id(state.agent_type, target_name)
+
+    # Auto-create target-specific agent if missing (clones model + auth from base)
+    if agent_id != base_agent_id:
+        _ensure_agent_exists(agent_id, base_agent_id, workspace=str(WORKSPACE_DIR))
+
     resume_id = state.session_id
 
     # On first turn, prepend _get_system_prompt() content so the agent has
@@ -295,9 +415,9 @@ async def _run_agent_openclaw(state, prompt: str):
     ]
     if resume_id:
         cmd[-2:-2] = ["--session-id", resume_id]
-        print(f"[OC] {state.skill}: RESUME {agent_id} session {resume_id}")
-    else:
-        print(f"[OC] {state.skill}: NEW {agent_id} session")
+
+    tag = target_name or "primary"
+    print(f"[OC] {state.skill}@{tag}: agent={agent_id} resume={resume_id[:12] + '...' if resume_id else '(new)'}")
 
     # Snapshot pre-existing session files + sizes so we can detect new / tail
     # from the right offset (OpenClaw reuses a single file per agent — the

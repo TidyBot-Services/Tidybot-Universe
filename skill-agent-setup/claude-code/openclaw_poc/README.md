@@ -293,7 +293,9 @@ Creates `tidybot-dev` + `tidybot-evaluator` OpenClaw agents, drops minimal
 | `kill_agent` | cancels task + `interrupt()` | existing `proc` handling covers it |
 | `run_evaluator` | `_run_eval_client` (SDK) | **unchanged** — evaluator still on Claude SDK (future work) |
 
-### agent_type → OpenClaw agent id
+### agent_type (+ target) → OpenClaw agent id
+
+Single-target (graph has 1 target):
 
 ```python
 AGENT_TYPE_MAP = {
@@ -303,7 +305,37 @@ AGENT_TYPE_MAP = {
 }
 ```
 
-Override via env: `OPENCLAW_DEV_AGENT`, `OPENCLAW_EVAL_AGENT`, `OPENCLAW_TEST_AGENT`.
+**Multi-target** (graph has N targets): `resolve_agent_id(agent_type, target_name)`
+derives per-target agent ids and auto-creates them on first use:
+
+| agent_type | target  | resolved id             |
+|------------|---------|-------------------------|
+| dev        | ""      | `tidybot-dev`           |
+| dev        | env-0   | `tidybot-dev-env-0`     |
+| dev        | env-1   | `tidybot-dev-env-1`     |
+| dev        | env-2   | `tidybot-dev-env-2`     |
+
+**Why per-target agents are necessary:** OpenClaw `--local` mode forces every
+invocation on a given agent to use the single `agent:<id>:main` session key —
+passing `--session-id <uuid>` or `--to +xxx` is ignored, and parallel
+subprocesses all write to the same JSONL file. Verified empirically (3-env
+test, 2026-04-19): 3 subprocess calls on `tidybot-dev` all routed to
+`agent:tidybot-dev:main` regardless of args. Per-target agents (each with its
+own `agentDir`, `sessions/` directory, and session files) give clean isolation.
+
+Override via env: `OPENCLAW_DEV_AGENT`, `OPENCLAW_EVAL_AGENT`, `OPENCLAW_TEST_AGENT`
+(these set the BASE id; per-target derivation appends `-<target>`).
+
+### Auto-creation of per-target agents
+
+`_ensure_agent_exists(target_id, base_id, workspace)` is called lazily on
+first spawn:
+1. Check if `target_id` already exists (cached + `openclaw agents list`)
+2. If not: `openclaw agents add <target_id> --workspace <ws> --model <from-base> --non-interactive --json`
+3. Clone `auth-profiles.json` from `<base_id>/agent/` to inherit provider keys
+   (e.g. google, anthropic)
+
+No user action needed — agents materialize on first multi-target run.
 
 ### Known limitations of the shim
 
