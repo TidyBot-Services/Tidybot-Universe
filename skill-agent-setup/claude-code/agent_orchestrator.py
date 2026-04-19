@@ -1157,7 +1157,50 @@ def build_full_sync() -> dict:
             "target": a.target_name,
         })
 
-    return {"entries": repos, "agents": agents_list, "targets": targets}
+    # Session-demo aggregates for dashboard's live session-demo hex (index.html)
+    # Reads persisted session log (dev + evaluator runs across time) + currently
+    # live agents. `graph` lets the frontend key hexes per-graph; the counts
+    # let it render env bars with session totals.
+    session_count = 0
+    per_env_session_count: dict[str, int] = {}
+    if SESSION_LOG.exists():
+        try:
+            for line in SESSION_LOG.read_text().splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                if rec.get("agent_type") != "dev":
+                    continue  # only count dev sessions, not evaluator noise
+                session_count += 1
+                env = rec.get("target") or "default"
+                per_env_session_count[env] = per_env_session_count.get(env, 0) + 1
+        except Exception as e:
+            print(f"[ORCH] warn: failed to aggregate session counts: {e}")
+
+    live_sessions = []
+    for a in agents.values():
+        if a.session_id:
+            live_sessions.append({
+                "agent_id": a.agent_id,
+                "session_id": a.session_id,
+                "skill": a.skill,
+                "agent_type": a.agent_type,
+                "target": a.target_name or "default",
+                "status": a.status,
+            })
+
+    return {
+        "entries": repos,
+        "agents": agents_list,
+        "targets": targets,
+        "graph": GRAPH_DIR.name,
+        "session_count": session_count,
+        "per_env_session_count": per_env_session_count,
+        "live_sessions": live_sessions,
+    }
 
 
 async def broadcast_full_sync():
