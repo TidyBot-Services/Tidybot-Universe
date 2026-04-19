@@ -448,6 +448,61 @@ Handles require a front-facing approach rather than top-down:
 - Use horizontal gripper orientation (Ry 90° + Rz yaw)
 - For horizontal bar handles, rotate fingers 90° around approach axis
 
+## External Vision & Grasp Services (sim + hardware)
+
+Three remote services are wrapped by `robot_sdk.yolo` and `robot_sdk.graspgen`.
+Unlike `sensors.find_objects()` (sim-only, uses sim perception), **these work
+in both sim and hardware** — prefer them when building skills meant to transfer
+to HW. URLs come from env vars set in agent_server's env: `YOLO_SERVER_URL`,
+`GROUNDEDSAM_SERVER_URL`, `GRASPGEN_SERVER_URL`. If a function raises about a
+missing URL, tell the user to set those env vars and restart agent_server.
+
+### Health check before first real call
+```python
+from robot_sdk import yolo, graspgen
+assert yolo.health_check(),     "YOLO unreachable — check YOLO_SERVER_URL"
+assert graspgen.health_check(), "GraspGen unreachable — check GRASPGEN_SERVER_URL"
+```
+
+### YOLO-E — open-vocab detection + segmentation
+```python
+r = yolo.segment_camera("yogurt cup, milk carton")     # 2D bbox + mask
+r = yolo.segment_camera_3d("yogurt cup")               # 3D world-frame position
+for d in r.detections:
+    print(d.class_name, d.confidence, d.position_3d)
+```
+
+### GraspGen — end-to-end 6-DOF grasp (Robotiq 2F-140 tuned)
+```python
+from robot_sdk import graspgen, wb, gripper
+g = graspgen.get_grasp_poses("yogurt cup")   # segment → point cloud → grasp
+best = g.poses[0]                             # sorted by score, descending
+wb.move_to_pose(best.position[0], best.position[1], best.position[2],
+                quat=best.quaternion)
+gripper.close(force=255)
+```
+
+**Prefer `graspgen` over hardcoded quaternions.** It's trained for the actual
+Robotiq 2F-140 gripper and handles approach direction, yaw optimization, and
+collision-aware pose ranking. Hand-tuned quats tend to miss objects; GraspGen
+gives ranked candidates you can iterate through if the first fails.
+
+### First-call latency
+- `yolo.segment_camera`: ~1 s
+- `graspgen.get_grasp_poses`: 1–3 s per call
+- Grounded-SAM (used internally by graspgen when YOLO lacks the class): **first
+  call 30 s to load ~5 GB models**, <1 s thereafter. If you see a 30 s hang on
+  the first grasp call, it's just the initial model load — wait for it.
+
+### Which to choose
+
+| Situation | Use |
+|---|---|
+| Sim, want exact sim-truth positions, no HW transfer | `sensors.find_objects()` |
+| Sim, code must also work on HW | `yolo.segment_camera_3d()` + `graspgen.get_grasp_poses()` |
+| HW | `yolo.*` / `graspgen.*` — `find_objects()` does not exist on HW |
+| Don't know gripper orientation | Always `graspgen` — never hardcode a quat |
+
 ## CRITICAL: Known Bugs & Lessons (from previous agent sessions)
 
 ### 0. World frame vs arm frame coordinate conversion (CRITICAL)
@@ -695,6 +750,21 @@ When 3D positions are unreliable, use image-based visual servoing:
 2. Move arm to center object in frame (small delta moves)
 3. Descend incrementally while keeping object centered
 4. Grasp when at target height
+
+### GraspGen — end-to-end 6-DOF grasp (Robotiq 2F-140 tuned)
+```python
+from robot_sdk import graspgen, wb, gripper
+assert graspgen.health_check(), "GraspGen unreachable — check GRASPGEN_SERVER_URL"
+g = graspgen.get_grasp_poses("orange block")   # one call: segment → point cloud → grasp
+best = g.poses[0]                               # sorted by score, descending
+wb.move_to_pose(best.position[0], best.position[1], best.position[2],
+                quat=best.quaternion)
+gripper.close(force=255)
+```
+**Prefer `graspgen` over hardcoded quaternions** — it's trained for this gripper
+and returns ranked candidates you can iterate through if the first fails. Internally
+uses Grounded-SAM when YOLO lacks the class; first call may take 30 s to load
+SAM models (~5 GB), subsequent calls <3 s.
 
 ## Gripper interpretation
 - `gripper.get_state()["position"]` = 0 means **FULLY CLOSED ON NOTHING** (missed)
