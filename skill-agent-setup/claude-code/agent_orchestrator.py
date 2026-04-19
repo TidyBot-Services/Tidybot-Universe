@@ -2604,6 +2604,7 @@ async def handle_http(reader, writer):
 
     response_body = ""
     status = "200 OK"
+    content_type = "application/json"
 
     try:
         if method == "POST" and path == "/xbot-start":
@@ -2684,6 +2685,20 @@ async def handle_http(reader, writer):
             asyncio.create_task(_run_submission_eval(skill, execution_id, job_agent_server=job_agent_server))
             response_body = json.dumps({"ok": True, "message": f"Evaluator spawned for {skill}"})
 
+        elif method == "GET" and path.startswith("/sessions/"):
+            # Raw JSONL of a graph's persisted session log — used by
+            # sessions.html dashboard page to render full agent history.
+            # Returns 404 if graph doesn't exist; 200 with empty body if
+            # agent_sessions.jsonl doesn't exist yet (graph created but no runs).
+            graph_name = path.split("/sessions/", 1)[1].split("?")[0].strip("/")
+            log_path = WORKSPACE_DIR / "graphs" / graph_name / "agent_sessions.jsonl"
+            if not (WORKSPACE_DIR / "graphs" / graph_name).is_dir():
+                status = "404 Not Found"
+                response_body = json.dumps({"error": f"graph {graph_name!r} not found"})
+            else:
+                content_type = "application/x-ndjson; charset=utf-8"
+                response_body = log_path.read_text() if log_path.exists() else ""
+
         elif method == "GET" and path.startswith("/eval-result/"):
             skill = path.split("/eval-result/", 1)[1]
             entry = _submission_evals.get(skill)
@@ -2710,15 +2725,17 @@ async def handle_http(reader, writer):
         status = "500 Internal Server Error"
         response_body = json.dumps({"error": str(e)})
 
+    # Use UTF-8 byte length (not char length) so multi-byte content
+    # (e.g. Chinese text in session logs) doesn't get truncated.
+    body_bytes = response_body.encode("utf-8")
     http_response = (
         f"HTTP/1.1 {status}\r\n"
-        f"Content-Type: application/json\r\n"
+        f"Content-Type: {content_type}\r\n"
         f"Access-Control-Allow-Origin: *\r\n"
-        f"Content-Length: {len(response_body)}\r\n"
+        f"Content-Length: {len(body_bytes)}\r\n"
         f"\r\n"
-        f"{response_body}"
-    )
-    writer.write(http_response.encode())
+    ).encode("utf-8") + body_bytes
+    writer.write(http_response)
     await writer.drain()
     writer.close()
 
