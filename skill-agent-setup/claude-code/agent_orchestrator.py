@@ -1135,6 +1135,14 @@ def build_full_sync() -> dict:
                 "agent_type": a.agent_type,
                 "target": a.target_name or "default",
                 "status": a.status,
+                # Include current log snapshot so sessions.html renders live
+                # agent messages (not just "No messages" placeholder). Truncated
+                # to last 50 lines to keep payload small.
+                "log": list(a.log[-50:]),
+                "num_turns": len(a.log),  # approximate — one entry per reply
+                "cost_usd": 0,             # unknown until ResultMessage arrives
+                "in_progress": a.status in ("starting", "running", "paused", "writing"),
+                "timestamp": time.time(),
             })
 
     return {
