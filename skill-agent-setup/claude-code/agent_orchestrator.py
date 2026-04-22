@@ -317,7 +317,13 @@ If it exists, read it and modify as requested.
 ## Development & Testing Workflow
 You must write code AND test it. Do not stop until you have a working skill.
 
-1. **Read SDK docs first**: `curl {agent_server}/code/sdk/markdown` — understand available APIs
+1. **MANDATORY — read the SDK reference BEFORE writing ANY code**:
+   `curl {agent_server}/code/sdk/markdown`. This system prompt covers only
+   common grasp/perception patterns; for `arm.*`, `base.*`, `gripper.*`,
+   `rewind.*`, `display.*`, `http.*` and exact method signatures you **must**
+   consult the SDK markdown. Do NOT skip this step even if you think you
+   already know the APIs — the prompt is deliberately incomplete so that you
+   discover the full surface yourself.
 2. **Write scripts/main.py**: implement the skill using robot_sdk
 3. **Test by submitting**: `python {submit_script} scripts/main.py --holder dev:{{skill_name}} --agent-server {agent_server}`
 4. **Debug and iterate**: if it fails, read the error, fix the code, resubmit
@@ -450,58 +456,35 @@ Handles require a front-facing approach rather than top-down:
 
 ## External Vision & Grasp Services (sim + hardware)
 
-Three remote services are wrapped by `robot_sdk.yolo` and `robot_sdk.graspgen`.
+Three remote services are wrapped under `robot_sdk.yolo` and `robot_sdk.graspgen`.
 Unlike `sensors.find_objects()` (sim-only, uses sim perception), **these work
-in both sim and hardware** — prefer them when building skills meant to transfer
-to HW. URLs come from env vars set in agent_server's env: `YOLO_SERVER_URL`,
+in both sim and hardware** — prefer them for skills meant to transfer to HW.
+URLs come from env vars on agent_server: `YOLO_SERVER_URL`,
 `GROUNDEDSAM_SERVER_URL`, `GRASPGEN_SERVER_URL`. If a function raises about a
 missing URL, tell the user to set those env vars and restart agent_server.
 
-### Health check before first real call
-```python
-from robot_sdk import yolo, graspgen
-assert yolo.health_check(),     "YOLO unreachable — check YOLO_SERVER_URL"
-assert graspgen.health_check(), "GraspGen unreachable — check GRASPGEN_SERVER_URL"
-```
+- `yolo.*` — open-vocab 2D / 3D object detection + segmentation; latency ~1 s.
+- `graspgen.*` — end-to-end 6-DOF grasp planning, tuned for Robotiq 2F-140.
+  Returns ranked grasp candidates. First call may take ~30 s to load
+  Grounded-SAM (~5 GB); subsequent calls <3 s.
 
-### YOLO-E — open-vocab detection + segmentation
-```python
-r = yolo.segment_camera("yogurt cup, milk carton")     # 2D bbox + mask
-r = yolo.segment_camera_3d("yogurt cup")               # 3D world-frame position
-for d in r.detections:
-    print(d.class_name, d.confidence, d.position_3d)
-```
+**Prefer `graspgen` over hardcoded quaternions.** It handles approach direction,
+yaw optimization, and collision-aware ranking — hand-tuned quats miss objects
+often. GraspGen returns ranked candidates so you can iterate through them on
+failure.
 
-### GraspGen — end-to-end 6-DOF grasp (Robotiq 2F-140 tuned)
-```python
-from robot_sdk import graspgen, wb, gripper
-g = graspgen.get_grasp_poses("yogurt cup")   # segment → point cloud → grasp
-best = g.poses[0]                             # sorted by score, descending
-wb.move_to_pose(best.position[0], best.position[1], best.position[2],
-                quat=best.quaternion)
-gripper.close(force=255)
-```
-
-**Prefer `graspgen` over hardcoded quaternions.** It's trained for the actual
-Robotiq 2F-140 gripper and handles approach direction, yaw optimization, and
-collision-aware pose ranking. Hand-tuned quats tend to miss objects; GraspGen
-gives ranked candidates you can iterate through if the first fails.
-
-### First-call latency
-- `yolo.segment_camera`: ~1 s
-- `graspgen.get_grasp_poses`: 1–3 s per call
-- Grounded-SAM (used internally by graspgen when YOLO lacks the class): **first
-  call 30 s to load ~5 GB models**, <1 s thereafter. If you see a 30 s hang on
-  the first grasp call, it's just the initial model load — wait for it.
+Exact method names, parameters, return schemas, and the `health_check()` helpers
+are **only** in `curl {agent_server}/code/sdk/markdown`. The examples here are
+intentionally absent — look them up.
 
 ### Which to choose
 
 | Situation | Use |
 |---|---|
 | Sim, want exact sim-truth positions, no HW transfer | `sensors.find_objects()` |
-| Sim, code must also work on HW | `yolo.segment_camera_3d()` + `graspgen.get_grasp_poses()` |
-| HW | `yolo.*` / `graspgen.*` — `find_objects()` does not exist on HW |
-| Don't know gripper orientation | Always `graspgen` — never hardcode a quat |
+| Sim, code must also work on HW | `yolo.*` + `graspgen.*` |
+| HW | `yolo.*` / `graspgen.*` — `find_objects()` not available on HW |
+| Don't know gripper orientation | `graspgen` — never hardcode a quat |
 
 ## CRITICAL: Known Bugs & Lessons (from previous agent sessions)
 
@@ -661,7 +644,13 @@ If it exists, read it and modify as requested.
 ## Development & Testing Workflow
 You must write code AND test it. Do not stop until you have a working skill.
 
-1. **Read SDK docs first**: `curl {agent_server}/code/sdk/markdown` — understand available APIs
+1. **MANDATORY — read the SDK reference BEFORE writing ANY code**:
+   `curl {agent_server}/code/sdk/markdown`. This system prompt covers only
+   common grasp/perception patterns; for `arm.*`, `base.*`, `gripper.*`,
+   `rewind.*`, `display.*`, `http.*` and exact method signatures you **must**
+   consult the SDK markdown. Do NOT skip this step even if you think you
+   already know the APIs — the prompt is deliberately incomplete so that you
+   discover the full surface yourself.
 2. **Write scripts/main.py**: implement the skill using robot_sdk
 3. **Test by submitting**: `python {submit_script} scripts/main.py --holder dev:{{skill_name}} --agent-server {agent_server}`
 4. **Debug and iterate**: if it fails, read the evaluator feedback, fix the code, resubmit
@@ -718,53 +707,30 @@ Keep stdout to ~20-40 lines of high-level trace.
 
 **Use YOLO for all object detection.** `sensors.find_objects()` is NOT available on hardware.
 
-### YOLO 2D detection
-```python
-from robot_sdk import yolo
-result = yolo.segment_camera("orange block, cup, bottle")
-for det in result.detections:
-    print(f"{{det.class_name}}: conf={{det.confidence:.2f}}, bbox={{det.bbox}}")
-```
+### YOLO detection (2D, segmentation, 3D) and visual servoing
 
-### YOLO with segmentation masks
-```python
-result = yolo.segment_camera("orange block", mask_format="npz")
-for det in result.detections:
-    if det.mask is not None:
-        pixels = (det.mask > 0.5).sum()
-        print(f"{{det.class_name}}: {{pixels}} mask pixels")
-```
+`robot_sdk.yolo` wraps open-vocab detection with optional mask output and
+optional 3D position (needs depth + intrinsics). Exact method names, mask
+format arguments, and return schemas are in
+`curl {agent_server}/code/sdk/markdown`.
 
-### YOLO 3D detection (if depth camera is available)
-```python
-result = yolo.segment_camera_3d("orange block")
-for det in result.detections:
-    print(f"{{det.class_name}} at {{det.position_3d}} ({{det.depth_meters:.2f}}m)")
-```
-Note: 3D detection requires camera intrinsics service. If it fails, fall back to 2D
-detection and use visual servoing (IBVS) for positioning instead of 3D coordinates.
-
-### Visual servoing (IBVS) pattern
-When 3D positions are unreliable, use image-based visual servoing:
-1. Detect object in camera image → get bbox centroid
-2. Move arm to center object in frame (small delta moves)
-3. Descend incrementally while keeping object centered
-4. Grasp when at target height
+If 3D detection fails (no intrinsics or unreliable depth), fall back to 2D +
+image-based visual servoing (IBVS):
+1. Detect object → bbox centroid.
+2. Small delta arm moves to center the object in the frame.
+3. Descend incrementally while keeping it centered.
+4. Grasp when at target height.
 
 ### GraspGen — end-to-end 6-DOF grasp (Robotiq 2F-140 tuned)
-```python
-from robot_sdk import graspgen, wb, gripper
-assert graspgen.health_check(), "GraspGen unreachable — check GRASPGEN_SERVER_URL"
-g = graspgen.get_grasp_poses("orange block")   # one call: segment → point cloud → grasp
-best = g.poses[0]                               # sorted by score, descending
-wb.move_to_pose(best.position[0], best.position[1], best.position[2],
-                quat=best.quaternion)
-gripper.close(force=255)
-```
-**Prefer `graspgen` over hardcoded quaternions** — it's trained for this gripper
-and returns ranked candidates you can iterate through if the first fails. Internally
-uses Grounded-SAM when YOLO lacks the class; first call may take 30 s to load
-SAM models (~5 GB), subsequent calls <3 s.
+
+`robot_sdk.graspgen` wraps the remote grasp-planning service. Internally it
+uses Grounded-SAM when YOLO lacks the class — first call may take ~30 s to
+load ~5 GB of SAM weights; subsequent calls <3 s. It returns ranked candidates.
+
+**Prefer `graspgen` over hardcoded quaternions** — it's trained for this
+gripper and its ranked candidates can be iterated on failure, whereas
+hand-tuned quats miss often. Look up exact signatures and how `wb.move_to_pose`
+consumes a grasp candidate in the SDK markdown.
 
 ## Gripper interpretation
 - `gripper.get_state()["position"]` = 0 means **FULLY CLOSED ON NOTHING** (missed)
@@ -1079,21 +1045,53 @@ def _map_status(internal: str, agent_type: str = "dev") -> str:
 _session_log_cache: dict[str, list] | None = None
 
 
+def _normalize_log_entry(m, default_role: str) -> dict:
+    """Flatten a log entry to {role, text} with a string text.
+
+    Tolerates entries that are bare strings, {text, role} dicts, or doubly
+    wrapped {text: {text, role}} dicts (legacy shape). Returns a dict with
+    a plain-string `text`, so the UI never has to render [object Object].
+    """
+    role = default_role
+    text = m
+    for _ in range(5):
+        if isinstance(text, dict) and "text" in text:
+            role = text.get("role") or role
+            text = text["text"]
+        else:
+            break
+    if not isinstance(text, str):
+        text = str(text)
+    return {"role": role, "text": text}
+
+
 def _load_session_logs() -> dict[str, list]:
-    """Return cached session logs, loading from disk on first call."""
+    """Return cached logs of the LAST completed session per skill.
+
+    Used by the skill hex popup as a placeholder when no live agent is
+    running. For the full multi-session history (every dev + evaluator run),
+    the dashboard uses the separate sessions.html page which reads the
+    jsonl directly. Returns {skill: [{role, text}, ...]} — one session only.
+    """
     global _session_log_cache
     if _session_log_cache is not None:
         return _session_log_cache
-    logs_by_skill: dict[str, list] = {}
+    last_rec_by_skill: dict[str, dict] = {}
     if SESSION_LOG.exists():
         for line in SESSION_LOG.read_text().splitlines():
             if not line.strip():
                 continue
             try:
                 rec = json.loads(line)
-                logs_by_skill[rec["skill"]] = rec.get("log", [])[-50:]
+                last_rec_by_skill[rec["skill"]] = rec  # overwrite → keeps last
             except (json.JSONDecodeError, KeyError):
                 continue
+    logs_by_skill: dict[str, list] = {}
+    for skill, rec in last_rec_by_skill.items():
+        role = rec.get("agent_type", "agent")
+        logs_by_skill[skill] = [
+            _normalize_log_entry(msg, role) for msg in rec.get("log", [])
+        ]
     _session_log_cache = logs_by_skill
     return _session_log_cache
 
@@ -1116,6 +1114,9 @@ def build_full_sync() -> dict:
     agents_by_skill: dict[str, list[AgentState]] = {}
     for a in agents.values():
         agents_by_skill.setdefault(a.skill, []).append(a)
+    def _normalize_log(entries, default_role):
+        return [_normalize_log_entry(m, default_role) for m in entries]
+
     for repo in repos:
         name = repo["name"]
         skill_agents = agents_by_skill.get(name, [])
@@ -1126,7 +1127,9 @@ def build_full_sync() -> dict:
             repo["agent_id"] = best.agent_id
             repo["agent_status_text"] = f"{best.status}"
             repo["agent_type"] = best.agent_type
-            repo["agent_log"] = list(best.log[-50:])
+            # Show ONLY the currently-running agent's messages in the hex popup.
+            # Past sessions (dev + evaluator history) are browsable at sessions.html.
+            repo["agent_log"] = _normalize_log(list(best.log[-200:]), best.agent_type)
             # Per-target agent status + logs (for dashboard multi-target display)
             repo["target_agents"] = {}
             for a in skill_agents:
@@ -1135,7 +1138,7 @@ def build_full_sync() -> dict:
                     "agent_id": a.agent_id,
                     "status": a.status,
                     "agent_type": a.agent_type,
-                    "agent_log": list(a.log[-50:]),
+                    "agent_log": _normalize_log(list(a.log[-200:]), a.agent_type),
                 }
                 # Include per-target agent_server URL so frontend can build recording URLs
                 target_dict = next((t for t in targets if t["name"] == tname), None)
@@ -1143,7 +1146,8 @@ def build_full_sync() -> dict:
                     ta_entry["agent_server"] = target_dict["agent_server"]
                 repo["target_agents"][tname] = ta_entry
         else:
-            # No live agent — use persisted session log
+            # No live agent — show only the last completed session's log as
+            # a placeholder. Full history lives at sessions.html.
             repo["agent_log"] = session_logs.get(name, [])
 
     # Build agents list
@@ -1796,6 +1800,35 @@ def _save_session_mapping(state: AgentState, message):
     print(f"[SDK] {state.skill}: session {message.session_id} logged to {SESSION_LOG.name}")
 
 
+def _save_state_log(state: AgentState, reason: str = "interrupted"):
+    """Append an interrupted agent's in-memory log to agent_sessions.jsonl.
+
+    Used when the agent doesn't reach a ResultMessage — e.g. user pressed
+    Kill, or the orchestrator is being shut down. Mirrors the schema of
+    _save_session_mapping so sessions.html renders it as a normal hex.
+    Sets cost_usd=0 / num_turns=len(log) as placeholders since those
+    fields only come from the SDK's ResultMessage.
+    """
+    import datetime
+    if not state.log:
+        return
+    entry = {
+        "session_id": state.session_id or f"killed-{state.agent_id}",
+        "skill": state.skill,
+        "agent_type": state.agent_type,
+        "agent_id": state.agent_id,
+        "cost_usd": 0,
+        "num_turns": len(state.log),
+        "log": list(state.log),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "end_reason": reason,
+    }
+    with open(SESSION_LOG, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+    _invalidate_session_log_cache()
+    print(f"[ORCH] {state.skill}: session {entry['session_id'][:12]} saved ({reason}, {len(state.log)} entries)")
+
+
 async def _run_agent_sdk(state: AgentState, prompt: str):
     """Run an agent using the Claude Agent SDK (ClaudeSDKClient)."""
     # Resume previous session if available, otherwise start fresh
@@ -1805,7 +1838,7 @@ async def _run_agent_sdk(state: AgentState, prompt: str):
         permission_mode="bypassPermissions",
         system_prompt=_get_system_prompt(state.agent_type, state.skill,
                                         agent_server_url=state._agent_server_url),
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         resume=resume_id if resume_id else None,
     )
 
@@ -2128,7 +2161,7 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
         cwd=str(WORKSPACE_DIR),  # claude-code/, same reason as dev agent
         permission_mode="bypassPermissions",
         system_prompt=system_prompt,
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
     )
 
     collected_text: list[str] = []
@@ -2565,15 +2598,19 @@ async def kill_agent(agent_id: str):
 
     state.log.append({"text": "Killed by user", "role": "agent"})
 
+    # Persist the interrupted log so it shows up in sessions.html, then
+    # clear session_id so the next spawn starts a fresh session.
+    _save_state_log(state, reason="killed")
+
     # Clean up skill state
     _eval_attempt_count.pop(state.skill, None)
     _skills_in_test_loop.discard(state.skill)
 
     entry = _find_entry(state.skill)
     if entry and entry.get("status") not in ("done", "confirmed_done"):
-        _update_entry(state.skill, {"status": "failed", "agent_id": None})
+        _update_entry(state.skill, {"status": "failed", "agent_id": None, "session_id": ""})
     else:
-        _update_entry(state.skill, {"agent_id": None})
+        _update_entry(state.skill, {"agent_id": None, "session_id": ""})
 
     await ws_broadcast_status(state.skill, state.agent_id, "stopped", "Stopped")
     await ws_broadcast_agent_msg(state.skill, "Agent killed", state.agent_type)
@@ -2773,7 +2810,40 @@ async def main():
     # Start HTTP API server
     http_server = await asyncio.start_server(handle_http, "0.0.0.0", WS_PORT + 1)
 
-    await asyncio.Future()  # run forever
+    # Persist any in-flight agent logs when the process is asked to stop,
+    # so sessions.html still shows their work.
+    import signal as _signal
+
+    def _shutdown():
+        # Snapshot current agents (kill_agent mutates the dict)
+        for state in list(agents.values()):
+            try:
+                # Append a marker so even an otherwise-empty log gets saved
+                state.log.append({"text": "Orchestrator shutting down", "role": "agent"})
+                _save_state_log(state, reason="orchestrator_shutdown")
+            except Exception as e:
+                print(f"[ORCH] shutdown save failed for {state.agent_id}: {e}")
+            # Clear session_id so next spawn is fresh
+            if state.skill:
+                try:
+                    _update_entry(state.skill, {"session_id": ""})
+                except Exception:
+                    pass
+
+    main_task = asyncio.current_task()
+    loop = asyncio.get_running_loop()
+    for sig in (_signal.SIGINT, _signal.SIGTERM):
+        try:
+            loop.add_signal_handler(sig, main_task.cancel)
+        except (NotImplementedError, RuntimeError):
+            pass  # Windows / non-main thread
+
+    try:
+        await asyncio.Future()  # run forever
+    except asyncio.CancelledError:
+        print("[ORCH] shutdown signal received — persisting agent logs")
+        _shutdown()
+        # Let asyncio tear down cleanly (no re-raise; Future never resolves anyway)
 
 
 if __name__ == "__main__":
