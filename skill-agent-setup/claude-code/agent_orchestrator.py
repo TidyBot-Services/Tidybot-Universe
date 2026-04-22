@@ -473,9 +473,17 @@ yaw optimization, and collision-aware ranking — hand-tuned quats miss objects
 often. GraspGen returns ranked candidates so you can iterate through them on
 failure.
 
+Minimal pattern (look up exact signature / fields in SDK markdown):
+```python
+from robot_sdk import graspgen, wb, gripper
+g = graspgen.get_grasp_poses("<object name>")      # ranked candidates
+wb.move_to_pose(*g.poses[0].position, quat=g.poses[0].quaternion)
+gripper.close(force=255)
+```
+If `poses[0]` fails (arm-only unreachable, collision), retry with `poses[1]`…
+
 Exact method names, parameters, return schemas, and the `health_check()` helpers
-are **only** in `curl {agent_server}/code/sdk/markdown`. The examples here are
-intentionally absent — look them up.
+are **only** in `curl {agent_server}/code/sdk/markdown` — read it first.
 
 ### Which to choose
 
@@ -729,8 +737,15 @@ load ~5 GB of SAM weights; subsequent calls <3 s. It returns ranked candidates.
 
 **Prefer `graspgen` over hardcoded quaternions** — it's trained for this
 gripper and its ranked candidates can be iterated on failure, whereas
-hand-tuned quats miss often. Look up exact signatures and how `wb.move_to_pose`
-consumes a grasp candidate in the SDK markdown.
+hand-tuned quats miss often.
+
+Minimal pattern (look up exact signature / fields in SDK markdown):
+```python
+from robot_sdk import graspgen, wb, gripper
+g = graspgen.get_grasp_poses("<object name>")
+wb.move_to_pose(*g.poses[0].position, quat=g.poses[0].quaternion)
+gripper.close(force=255)
+```
 
 ## Gripper interpretation
 - `gripper.get_state()["position"]` = 0 means **FULLY CLOSED ON NOTHING** (missed)
