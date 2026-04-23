@@ -397,107 +397,124 @@ Use this to determine which object to target rather than hardcoding object names
 3. **Fixture context** — each detection includes `fixture_context` (e.g. "counter",
    "cabinet_interior", "drawer_interior", "stove") which tells you WHERE the object is.
 
-### Grasp strategy selection
-Choose grasp approach based on object context and shape:
-- **First try `graspgen.get_grasp_poses(<object name>)`** (see "External Vision
-  & Grasp Services" below) — it's trained for this gripper and returns ranked
-  6-DOF candidates; iterate through `g.poses[0]`, `g.poses[1]`, … on failure.
-- **Only if graspgen is unavailable or all its candidates fail**, fall back to
-  hand-computed orientations (Angled45 then TopDown) described below.
-- **Try multiple yaw angles** (fallback mode): for each hand-computed strategy,
-  try the direct yaw (arm→object), then +30° and -30° offsets. This gives 6
-  candidates (2 strategies × 3 yaws).
+### Primary grasp strategy: `graspgen` (6-DOF learned grasps)
 
-### Setting grasp poses
-`wb.move_to_pose(x, y, z, quat=[w, x, y, z])` takes a world-frame position and
-orientation quaternion (wxyz convention). The quaternion controls the gripper
-orientation — which direction the fingers point and the approach direction.
+**Always start here.** `graspgen.get_grasp_poses(<object name>)` is a remote
+service trained for the Robotiq 2F-140; it returns a list of ranked
+collision-aware 6-DOF grasp candidates. Each pose bundles position +
+quaternion, so you do NOT need to hand-compute a quaternion at all.
 
-**Key orientations** (all quaternions in [w, x, y, z] order):
-- **TopDown** (gripper points straight down): `quat=[0, 1, 0, 0]`
-  This is a 180° rotation about X, so the EE Z-axis points down.
-  Good for objects on flat open surfaces.
-- **Angled45** (gripper tilted 45° toward object): use `euler2quat(0, 3π/4, yaw)`
-  from `transforms3d.euler`. The pitch (3π/4 ≈ 135°) tilts the gripper partway
-  between horizontal and vertical. Add a small XY offset (~2cm) back along the
-  approach direction so the fingertips meet the object center.
-- **Front-facing** (gripper horizontal, approaching from the side): use
-  `Rotation.from_euler('yz', [π/2, yaw])` from `scipy.spatial.transform`.
-  This points the gripper forward along the approach direction.
-  Convert to wxyz: `q_scipy[[3,0,1,2]]`.
+Iterate through candidates on failure — they're sorted by score descending:
 
-**Computing yaw** (approach direction):
 ```python
-import numpy as np
-# yaw = angle from arm base to object in the XY plane
+from robot_sdk import graspgen, wb, gripper
+
+g = graspgen.get_grasp_poses("<object name>")   # first call ~30s, subsequent <3s
+
+for i, pose in enumerate(g.poses):
+    # Pre-grasp (~10cm above the grasp) — use whole_body to allow base motion
+    try:
+        wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.10,
+                        quat=pose.quaternion, mask="whole_body")
+    except Exception as e:
+        print(f"pose {i} pre-grasp failed: {e}"); continue
+
+    # Descend to grasp pose, arm-only so the base stays locked
+    try:
+        wb.move_to_pose(*pose.position, quat=pose.quaternion, mask="arm_only")
+    except Exception:
+        continue
+
+    gripper.close(force=255)
+    gs = gripper.get_state()
+    held = 10 < gs.get("position_mm", 0) < 65   # partially closed = object present
+    if held:
+        print(f"grasped via graspgen candidate {i}")
+        # Lift 15-20cm
+        wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.18,
+                        quat=pose.quaternion, mask="arm_only")
+        break
+    # Miss — open, retreat, try next candidate
+    gripper.open()
+    wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.10,
+                    quat=pose.quaternion, mask="arm_only")
+```
+
+Typical `g.poses` length: 5–20. If all fail and none produce `held=True`, fall
+through to the hand-computed fallback below.
+
+### Fallback: hand-computed quaternions (only if graspgen is unavailable OR every candidate failed)
+
+Enter this path only after the graspgen loop above exhausts its candidates or
+raises (service unreachable, object not segmentable). **Never start with
+hand-computed grasps when graspgen is available.**
+
+**Hand-computed orientations** (all quaternions in [w, x, y, z] order):
+- **TopDown** (gripper points straight down): `quat=[0, 1, 0, 0]` — 180° around
+  X, EE Z-axis points down. Works for flat counters.
+- **Angled45** (gripper tilted 45° toward object):
+  `euler2quat(0, 3π/4, yaw)` from `transforms3d.euler`. Pitch 3π/4 ≈ 135°.
+- **Front-facing** (gripper horizontal, approaching from the side):
+  `Rotation.from_euler('yz', [π/2, yaw])` then convert to wxyz: `q_scipy[[3,0,1,2]]`.
+
+**Computing yaw** (only matters for hand-computed, graspgen gives you the yaw):
+```python
 yaw = np.arctan2(obj_y - arm_base_y, obj_x - arm_base_x)
-# Try yaw offsets: [0, +30°, -30°] for robustness
 for yaw_offset in [0, np.radians(30), np.radians(-30)]:
     grasp_yaw = yaw + yaw_offset
 ```
 
-**Pre-grasp offset** (approach from above or behind):
-- TopDown: pre-grasp is directly above the object (same XY, +0.15m Z)
-- Angled45: offset ~2cm in XY away from approach direction, +2cm Z
-  `pos = obj_pos + [-0.02*cos(yaw), -0.02*sin(yaw), 0.02]`
-- Front: offset ~6cm back along approach, +8cm Z
-  `pos = obj_pos + [-0.06*cos(yaw), -0.06*sin(yaw), 0.08]`
+**Pre-grasp XY offset for hand-computed**:
+- TopDown: same XY as object, +0.15m Z
+- Angled45: `pos = obj_pos + [-0.02*cos(yaw), -0.02*sin(yaw), 0.02]`
+- Front: `pos = obj_pos + [-0.06*cos(yaw), -0.06*sin(yaw), 0.08]`
 
-### Grasp execution pattern
-1. Open gripper
-2. Move to pre-grasp (approach from above, ~0.15m clearance)
-3. Lower to grasp height
-4. Close gripper
-5. Check gripper width to confirm object in hand (not fully closed = object present)
-6. If miss: open, retreat, try next strategy/yaw
-7. On success: lift object ~0.15–0.20m
-
-### Handle grasps (for doors, drawers, cabinets)
-Handles require a front-facing approach rather than top-down:
-- Compute approach yaw from arm base to handle position
-- Offset ~6cm back along approach direction, ~8cm up
-- Use horizontal gripper orientation (Ry 90° + Rz yaw)
-- For horizontal bar handles, rotate fingers 90° around approach axis
-
-## External Vision & Grasp Services (sim + hardware)
-
-Three remote services are wrapped under `robot_sdk.yolo` and `robot_sdk.graspgen`.
-Unlike `sensors.find_objects()` (sim-only, uses sim perception), **these work
-in both sim and hardware** — prefer them for skills meant to transfer to HW.
-URLs come from env vars on agent_server: `YOLO_SERVER_URL`,
-`GROUNDEDSAM_SERVER_URL`, `GRASPGEN_SERVER_URL`. If a function raises about a
-missing URL, tell the user to set those env vars and restart agent_server.
-
-- `yolo.*` — open-vocab 2D / 3D object detection + segmentation; latency ~1 s.
-- `graspgen.*` — end-to-end 6-DOF grasp planning, tuned for Robotiq 2F-140.
-  Returns ranked grasp candidates. First call may take ~30 s to load
-  Grounded-SAM (~5 GB); subsequent calls <3 s.
-
-**Prefer `graspgen` over hardcoded quaternions.** It handles approach direction,
-yaw optimization, and collision-aware ranking — hand-tuned quats miss objects
-often. GraspGen returns ranked candidates so you can iterate through them on
-failure.
-
-Minimal pattern (look up exact signature / fields in SDK markdown):
-```python
-from robot_sdk import graspgen, wb, gripper
-g = graspgen.get_grasp_poses("<object name>")      # ranked candidates
-wb.move_to_pose(*g.poses[0].position, quat=g.poses[0].quaternion)
-gripper.close(force=255)
+**Fallback execution loop**:
 ```
-If `poses[0]` fails (arm-only unreachable, collision), retry with `poses[1]`…
+for strategy in [Angled45, TopDown]:          # 2 × 3 = 6 candidates
+    for yaw_offset in [0, +30°, -30°]:
+        build quat from (strategy, yaw + yaw_offset)
+        pre-grasp → descend → close → check width
+        if held: lift and break
+        else: open, retreat, next
+```
 
-Exact method names, parameters, return schemas, and the `health_check()` helpers
-are **only** in `curl {agent_server}/code/sdk/markdown` — read it first.
+### Handle grasps (for doors, drawers, cabinets — NOT free-floating objects)
 
-### Which to choose
+Articulated fixture handles use a front-facing approach (not top-down or
+graspgen): compute approach yaw from arm base to handle, offset ~6cm back
+along approach + ~8cm up, horizontal gripper orientation (`Ry 90° + Rz yaw`).
+For horizontal bar handles, rotate fingers 90° around the approach axis.
+
+## External Vision & Grasp Services (sim + hardware infrastructure)
+
+The Primary grasp strategy section above already details `graspgen` usage.
+This section covers the OTHER remote service, `yolo`, and service hygiene.
+
+Three remote services live on the lab GPU server, wrapped under
+`robot_sdk.yolo` / `robot_sdk.graspgen`. URLs come from env vars on
+agent_server (`YOLO_SERVER_URL`, `GROUNDEDSAM_SERVER_URL`, `GRASPGEN_SERVER_URL`).
+If a function raises about a missing URL, tell the user to set those and
+restart agent_server.
+
+- `yolo.*` — open-vocab 2D / 3D detection + segmentation, ~1 s latency. Use
+  when `sensors.find_objects()` isn't sufficient (HW, unusual vocabulary)
+  or as a second-opinion perception channel before grasp planning.
+- `graspgen.*` — covered in Primary grasp strategy above. Never hand-compute
+  quaternions when graspgen is available.
+
+Exact method names, parameters, return schemas, `health_check()` helpers:
+`curl {agent_server}/code/sdk/markdown` (you've already read this per the
+MANDATORY step 1 of the workflow).
+
+### Which perception channel to choose
 
 | Situation | Use |
 |---|---|
 | Sim, want exact sim-truth positions, no HW transfer | `sensors.find_objects()` |
-| Sim, code must also work on HW | `yolo.*` + `graspgen.*` |
-| HW | `yolo.*` / `graspgen.*` — `find_objects()` not available on HW |
-| Don't know gripper orientation | `graspgen` — never hardcode a quat |
+| Sim, code must also work on HW | `yolo.*` |
+| HW | `yolo.*` — `find_objects()` does not exist on HW |
+| Grasping anything (any sim / HW) | `graspgen.*` — never hardcode a quat |
 
 ## CRITICAL: Known Bugs & Lessons (from previous agent sessions)
 
