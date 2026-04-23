@@ -399,9 +399,14 @@ Use this to determine which object to target rather than hardcoding object names
 
 ### Grasp strategy selection
 Choose grasp approach based on object context and shape:
-- **Always prefer Angled45 first**, then TopDown as fallback
-- **Try multiple yaw angles**: for each strategy, try the direct yaw (arm→object),
-  then +30° and -30° offsets. This gives 6 candidates (2 strategies × 3 yaws).
+- **First try `graspgen.get_grasp_poses(<object name>)`** (see "External Vision
+  & Grasp Services" below) — it's trained for this gripper and returns ranked
+  6-DOF candidates; iterate through `g.poses[0]`, `g.poses[1]`, … on failure.
+- **Only if graspgen is unavailable or all its candidates fail**, fall back to
+  hand-computed orientations (Angled45 then TopDown) described below.
+- **Try multiple yaw angles** (fallback mode): for each hand-computed strategy,
+  try the direct yaw (arm→object), then +30° and -30° offsets. This gives 6
+  candidates (2 strategies × 3 yaws).
 
 ### Setting grasp poses
 `wb.move_to_pose(x, y, z, quat=[w, x, y, z])` takes a world-frame position and
