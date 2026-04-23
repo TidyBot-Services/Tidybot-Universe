@@ -417,7 +417,7 @@ for i, pose in enumerate(g.poses):
         wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.10,
                         quat=pose.quaternion, mask="whole_body")
     except Exception as e:
-        print(f"pose {i} pre-grasp failed: {e}"); continue
+        print(f"pose {{i}} pre-grasp failed: {{e}}"); continue
 
     # Descend to grasp pose, arm-only so the base stays locked
     try:
@@ -429,7 +429,7 @@ for i, pose in enumerate(g.poses):
     gs = gripper.get_state()
     held = 10 < gs.get("position_mm", 0) < 65   # partially closed = object present
     if held:
-        print(f"grasped via graspgen candidate {i}")
+        print(f"grasped via graspgen candidate {{i}}")
         # Lift 15-20cm
         wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.18,
                         quat=pose.quaternion, mask="arm_only")
