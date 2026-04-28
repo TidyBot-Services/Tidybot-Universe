@@ -719,28 +719,22 @@ async def _run_eval_openclaw(
                         rec = json.loads(raw.decode("utf-8", errors="replace"))
                     except Exception:
                         continue
-                    # Extract assistant text from common JSONL shapes
-                    role = rec.get("role") or rec.get("speaker")
-                    if role and role != "assistant":
+                    # OpenClaw shape: {"type":"message","message":{"role":..,
+                    # "content":[{"type":"text","text":...}, {"type":"toolCall",...}]}}
+                    # The dev tail uses the same access pattern (~L342-363).
+                    if rec.get("type") != "message":
                         continue
-                    # Try several content shapes
-                    content = rec.get("content")
-                    if isinstance(content, str):
-                        text_parts.append(content)
-                        if on_text:
-                            try: await on_text(content)
-                            except Exception: pass
-                    elif isinstance(content, list):
-                        for blk in content:
-                            if isinstance(blk, dict) and blk.get("type") == "text":
-                                t = blk.get("text") or ""
-                                if t:
-                                    text_parts.append(t)
-                                    if on_text:
-                                        try: await on_text(t)
-                                        except Exception: pass
-                    elif rec.get("text"):
-                        t = rec["text"]
+                    msg = rec.get("message", {}) or {}
+                    if msg.get("role") != "assistant":
+                        continue
+                    for blk in msg.get("content", []) or []:
+                        if not isinstance(blk, dict):
+                            continue
+                        if blk.get("type") != "text":
+                            continue
+                        t = (blk.get("text") or "").strip()
+                        if not t:
+                            continue
                         text_parts.append(t)
                         if on_text:
                             try: await on_text(t)
