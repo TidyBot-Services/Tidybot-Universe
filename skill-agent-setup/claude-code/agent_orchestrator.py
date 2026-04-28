@@ -44,22 +44,6 @@ from claude_agent_sdk import (
 HAS_SDK = True
 
 # ---------------------------------------------------------------------------
-# Harness backend — claude-sdk (default) or openclaw
-#
-# HARNESS=openclaw     → dev agents run via `openclaw agent --local --json`
-#                         subprocess (see agent_orchestrator_openclaw.py)
-# HARNESS=claude-sdk   → default, uses ClaudeSDKClient
-#
-# Both the dev/test agents and the evaluator path (`run_evaluator`) are routed
-# when HARNESS=openclaw. inject_hint and stop also go through the shim.
-# ---------------------------------------------------------------------------
-# --harness CLI flag wins; otherwise fall back to $HARNESS env var; otherwise claude-sdk
-HARNESS = (_args.harness or os.environ.get("HARNESS", "claude-sdk")).lower()
-_openclaw_backend = None
-if HARNESS == "openclaw":
-    import agent_orchestrator_openclaw as _openclaw_backend
-
-# ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
@@ -99,6 +83,14 @@ _parser.add_argument("--graph", required=True, type=Path,
 _parser.add_argument("--autonomous", action="store_true",
                      help="Autonomous mode: skip review gate, auto-promote skills to done")
 _args = _parser.parse_args()
+
+# Harness backend — claude-sdk (default) or openclaw.
+# --harness CLI flag wins; otherwise fall back to $HARNESS env var; otherwise claude-sdk.
+HARNESS = (_args.harness or os.environ.get("HARNESS", "claude-sdk")).lower()
+_openclaw_backend = None
+if HARNESS == "openclaw":
+    import agent_orchestrator_openclaw as _openclaw_backend
+
 _graph_path = _args.graph
 if _graph_path.is_dir():
     GRAPH_DIR = _graph_path
