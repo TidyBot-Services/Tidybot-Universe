@@ -53,7 +53,8 @@ HAS_SDK = True
 # Both the dev/test agents and the evaluator path (`run_evaluator`) are routed
 # when HARNESS=openclaw. inject_hint and stop also go through the shim.
 # ---------------------------------------------------------------------------
-HARNESS = os.environ.get("HARNESS", "claude-sdk").lower()
+# --harness CLI flag wins; otherwise fall back to $HARNESS env var; otherwise claude-sdk
+HARNESS = (_args.harness or os.environ.get("HARNESS", "claude-sdk")).lower()
 _openclaw_backend = None
 if HARNESS == "openclaw":
     import agent_orchestrator_openclaw as _openclaw_backend
@@ -90,6 +91,9 @@ autonomous_mode: bool = False  # True = skip review gate, auto-promote done skil
 # Parse required --graph argument
 import argparse
 _parser = argparse.ArgumentParser(description="Claude Agent Orchestrator")
+_parser.add_argument("--harness", choices=["claude-sdk", "openclaw"], default=None,
+                     help="Harness backend for dev/eval agents. Overrides $HARNESS env var. "
+                          "Default falls back to env (which itself defaults to claude-sdk).")
 _parser.add_argument("--graph", required=True, type=Path,
                      help="Path to a graph folder (containing graph.json) or a JSON file")
 _parser.add_argument("--autonomous", action="store_true",
