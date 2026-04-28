@@ -75,11 +75,22 @@ autonomous_mode: bool = False  # True = skip review gate, auto-promote done skil
 # Parse required --graph argument
 import argparse
 _parser = argparse.ArgumentParser(description="Claude Agent Orchestrator")
+_parser.add_argument("--harness", choices=["claude-sdk", "openclaw"], default=None,
+                     help="Harness backend for dev/eval agents. Overrides $HARNESS env var. "
+                          "Default falls back to env (which itself defaults to claude-sdk).")
 _parser.add_argument("--graph", required=True, type=Path,
                      help="Path to a graph folder (containing graph.json) or a JSON file")
 _parser.add_argument("--autonomous", action="store_true",
                      help="Autonomous mode: skip review gate, auto-promote skills to done")
 _args = _parser.parse_args()
+
+# Harness backend — claude-sdk (default) or openclaw.
+# --harness CLI flag wins; otherwise fall back to $HARNESS env var; otherwise claude-sdk.
+HARNESS = (_args.harness or os.environ.get("HARNESS", "claude-sdk")).lower()
+_openclaw_backend = None
+if HARNESS == "openclaw":
+    import agent_orchestrator_openclaw as _openclaw_backend
+
 _graph_path = _args.graph
 if _graph_path.is_dir():
     GRAPH_DIR = _graph_path
@@ -1408,17 +1419,25 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev",
     await ws_broadcast_status(skill, agent_id, "starting", status_label)
 
     DEV_AGENT_TIMEOUT = 14400  # 4 hours max for dev agent
+    # Harness dispatch: openclaw subprocess vs Claude SDK client
+    if HARNESS == "openclaw" and _openclaw_backend is not None:
+        _runner = _openclaw_backend._run_agent_openclaw
+        _tag = "OC"
+    else:
+        _runner = _run_agent_sdk
+        _tag = "SDK"
+
     async def _wrapped():
         try:
-            await asyncio.wait_for(_run_agent_sdk(state, prompt), timeout=DEV_AGENT_TIMEOUT)
+            await asyncio.wait_for(_runner(state, prompt), timeout=DEV_AGENT_TIMEOUT)
         except asyncio.TimeoutError:
-            print(f"[SDK] {skill}: TIMEOUT after {DEV_AGENT_TIMEOUT}s")
+            print(f"[{_tag}] {skill}: TIMEOUT after {DEV_AGENT_TIMEOUT}s")
             state.status = "failed"
             _update_entry(skill, {"status": "failed"})
             await broadcast_full_sync()
             await ws_broadcast_agent_msg(skill, f"Dev agent timed out after {DEV_AGENT_TIMEOUT // 60} minutes.", state.agent_type)
         except Exception as e:
-            print(f"[SDK] {skill}: UNHANDLED EXCEPTION: {e}")
+            print(f"[{_tag}] {skill}: UNHANDLED EXCEPTION: {e}")
             import traceback; traceback.print_exc()
     state.task = asyncio.create_task(_wrapped())
     print(f"[ORCH] {skill}: task created, id={agent_id}")
@@ -1939,7 +1958,7 @@ async def _resolve_completion(state: AgentState) -> None:
             state.status = "paused"
 
 
-MAX_EVAL_RETRIES = 2  # max times evaluator can send feedback before giving up
+MAX_EVAL_RETRIES = int(os.environ.get("MAX_EVAL_RETRIES", "2"))  # max times evaluator can send feedback before giving up; 0 disables retries entirely
 _eval_attempt_count: dict[str, int] = {}  # skill -> attempt count
 
 SYSTEM_PROMPT_EVALUATOR = """\
@@ -2205,38 +2224,81 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     EVAL_TIMEOUT = 900  # 15 minutes max for evaluator
 
     try:
-        async def _run_eval_client():
-            nonlocal collected_text
-            client = ClaudeSDKClient(options=options)
-            async with client:
-                await client.query(prompt)
-                async for message in client.receive_response():
-                    if isinstance(message, AssistantMessage):
-                        for block in message.content:
-                            if isinstance(block, TextBlock) and block.text.strip():
-                                text = block.text.strip()
-                                collected_text.append(text)
-                                await ws_broadcast_agent_msg(skill, text, "evaluator")
-                    elif isinstance(message, ResultMessage):
-                        cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
-                        await ws_broadcast_agent_msg(skill, f"Eval done — {message.num_turns} turns, {cost}", "evaluator")
-                        if message.session_id:
-                            import datetime
-                            eval_entry = {
-                                "session_id": message.session_id,
-                                "skill": skill,
-                                "agent_type": "evaluator",
-                                "agent_id": f"eval-{skill}",
-                                "cost_usd": message.total_cost_usd,
-                                "num_turns": message.num_turns,
-                                "log": collected_text[-10:],
-                                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                            }
-                            with open(SESSION_LOG, "a") as f:
-                                f.write(json.dumps(eval_entry) + "\n")
-                            _invalidate_session_log_cache()
+        if HARNESS == "openclaw" and _openclaw_backend is not None:
+            # OpenClaw eval path: spawn `openclaw agent --local --agent tidybot-evaluator`
+            # subprocess. Reads collected text from session JSONL.
+            async def _on_text(t: str):
+                collected_text.append(t)
+                await ws_broadcast_agent_msg(skill, t, "evaluator")
 
-        await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
+            res = await _openclaw_backend._run_eval_openclaw(
+                skill=skill,
+                system_prompt=system_prompt,
+                user_prompt=prompt,
+                on_text=_on_text,
+                timeout_s=EVAL_TIMEOUT,
+            )
+            if not res.get("ok"):
+                err = res.get("error", "unknown")
+                print(f"[EVAL/OC] {skill}: failed — {err}")
+                await ws_broadcast_agent_msg(skill, f"Evaluator failed: {err}", "evaluator")
+                return {"passed": False, "feedback": f"Evaluator (openclaw) failed: {err}"}
+
+            cost = f"${res['cost_usd']:.4f}" if res.get('cost_usd') else "free"
+            await ws_broadcast_agent_msg(
+                skill, f"Eval done — {res.get('num_turns', 0)} turns, {cost}", "evaluator"
+            )
+
+            sess_id = res.get("session_id")
+            if sess_id:
+                import datetime
+                eval_entry = {
+                    "session_id": sess_id,
+                    "skill": skill,
+                    "agent_type": "evaluator",
+                    "agent_id": f"eval-{skill}",
+                    "cost_usd": res.get("cost_usd", 0),
+                    "num_turns": res.get("num_turns", 0),
+                    "log": collected_text[-10:],
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                }
+                with open(SESSION_LOG, "a") as f:
+                    f.write(json.dumps(eval_entry) + "\n")
+                _invalidate_session_log_cache()
+        else:
+            # Default: ClaudeSDKClient path
+            async def _run_eval_client():
+                nonlocal collected_text
+                client = ClaudeSDKClient(options=options)
+                async with client:
+                    await client.query(prompt)
+                    async for message in client.receive_response():
+                        if isinstance(message, AssistantMessage):
+                            for block in message.content:
+                                if isinstance(block, TextBlock) and block.text.strip():
+                                    text = block.text.strip()
+                                    collected_text.append(text)
+                                    await ws_broadcast_agent_msg(skill, text, "evaluator")
+                        elif isinstance(message, ResultMessage):
+                            cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
+                            await ws_broadcast_agent_msg(skill, f"Eval done — {message.num_turns} turns, {cost}", "evaluator")
+                            if message.session_id:
+                                import datetime
+                                eval_entry = {
+                                    "session_id": message.session_id,
+                                    "skill": skill,
+                                    "agent_type": "evaluator",
+                                    "agent_id": f"eval-{skill}",
+                                    "cost_usd": message.total_cost_usd,
+                                    "num_turns": message.num_turns,
+                                    "log": collected_text[-10:],
+                                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                                }
+                                with open(SESSION_LOG, "a") as f:
+                                    f.write(json.dumps(eval_entry) + "\n")
+                                _invalidate_session_log_cache()
+
+            await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
 
         # Parse EVAL_RESULT from collected text
         full_text = "\n".join(collected_text)
@@ -2553,7 +2615,16 @@ async def inject_hint(agent_id: str, text: str):
     await ws_broadcast_agent_msg(state.skill, text, "user")
     state.log.append({"text": text, "role": "user"})
 
-    if HAS_SDK and state.client and state.status in ("running", "paused"):
+    if HARNESS == "openclaw" and _openclaw_backend is not None:
+        # OpenClaw mode: SIGINT subprocess, spawn new one with hint + --session-id
+        if state.status in ("running", "paused", "starting"):
+            try:
+                await _openclaw_backend._inject_hint_openclaw(state, text)
+            except Exception as e:
+                print(f"[ORCH] inject OpenClaw error: {e}")
+        else:
+            print(f"[ORCH] inject: agent {agent_id} not running/paused (openclaw)")
+    elif HAS_SDK and state.client and state.status in ("running", "paused"):
         # SDK mode: interrupt current work, send follow-up in same session
         try:
             if state.status == "running":
@@ -2589,8 +2660,14 @@ async def stop_agent(agent_id: str):
     # (which checks state.status == "running" to decide whether to trigger tests)
     state.status = "paused"
 
-    # SDK mode: interrupt current work, keep session alive for later hints
-    if HAS_SDK and state.client:
+    if HARNESS == "openclaw" and _openclaw_backend is not None:
+        # OpenClaw mode: SIGINT subprocess, session file survives for resume
+        try:
+            await _openclaw_backend._stop_agent_openclaw(state)
+        except Exception as e:
+            print(f"[ORCH] stop/pause OpenClaw error: {e}")
+    elif HAS_SDK and state.client:
+        # SDK mode: interrupt current work, keep session alive for later hints
         try:
             await state.client.interrupt()
         except Exception as e:
@@ -2830,6 +2907,11 @@ async def main():
     _load_entries()
     print(f"[ORCH] Claude Agent Orchestrator")
     print(f"[ORCH] SDK mode: {HAS_SDK}")
+    print(f"[ORCH] Harness backend: {HARNESS}" + (
+        f"  (openclaw dev-agent id: {_openclaw_backend.AGENT_TYPE_MAP['dev']}, "
+        f"eval-agent id: {_openclaw_backend.AGENT_TYPE_MAP['evaluator']})"
+        if _openclaw_backend else "  (ClaudeSDKClient)"
+    ))
     print(f"[ORCH] Project dir: {PROJECT_DIR}")
     print(f"[ORCH] Entries loaded: {len(skill_entries)}")
     print(f"[ORCH] WebSocket: ws://0.0.0.0:{WS_PORT}")

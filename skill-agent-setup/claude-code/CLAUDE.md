@@ -10,6 +10,7 @@ Before planning, make sure these are running (check with curl, launch if not).
 1. "Which conda env should I use?" (the one created during setup — do not guess or hardcode)
 2. "Which graph should I use?" (list available graphs from `graphs/`)
 3. "Sim or hardware?" — If hardware, ask for the robot's IP. Set `AGENT_SERVER=http://<ROBOT_IP>:8080`. Skip sim launch (steps 1). If sim, launch everything locally.
+4. "Which harness — `claude-sdk` or `openclaw`?" — claude-sdk uses ClaudeSDKClient in-process (default; needs Anthropic API key). openclaw spawns `openclaw agent --local` as a subprocess (uses whatever model the `tidybot-dev` / `tidybot-evaluator` agents are configured with in `~/.openclaw/openclaw.json`; supports DeepSeek via Penn LiteLLM, Ollama, etc). Pass to orchestrator as `--harness <choice>`. If choosing openclaw, also wrap launch in `~/bin/with-litellm.sh` to inject `LITELLM_KEY`.
 
 **IMPORTANT:**
 - Before launching any service, kill existing processes on its ports first.
@@ -57,11 +58,19 @@ cd $WORKSPACE/agent_server && \
 
 # 3. Orchestrator (manages skill tree + dev agents) — port 8765 (WS) + 8766 (HTTP)
 #    --graph is required: point it at a graph folder (or graph.json file)
+#    --harness is the user's pick (claude-sdk or openclaw — see prereq question 4)
+#
+# Default (claude-sdk): vanilla launch
 cd $WORKSPACE/Tidybot-Universe/skill-agent-setup/claude-code && \
   conda run -n $CONDA_ENV \
   env -u ANTHROPIC_API_KEY LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
   PYTHONUNBUFFERED=1 python3 agent_orchestrator.py \
-  --graph graphs/cook-all-food &
+  --graph graphs/$GRAPH_NAME --harness claude-sdk &
+#
+# OpenClaw mode: wrap in ~/bin/with-litellm.sh so LITELLM_KEY is injected from
+# ~/.litellm-key (chmod 600). Don't print or echo $LITELLM_KEY at any point.
+#   ~/bin/with-litellm.sh python3 agent_orchestrator.py \
+#     --graph graphs/$GRAPH_NAME --harness openclaw &
 
 # 4. Website (dashboard to see the tree) — port 8070
 cd $WORKSPACE/TidyBot-Services.github.io && python3 -m http.server 8070 &
