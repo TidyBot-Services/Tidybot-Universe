@@ -50,8 +50,8 @@ HAS_SDK = True
 #                         subprocess (see agent_orchestrator_openclaw.py)
 # HARNESS=claude-sdk   → default, uses ClaudeSDKClient
 #
-# Currently only dev/test agents + inject_hint + stop are routed. The evaluator
-# path (`run_evaluator`) still uses Claude SDK; migration to openclaw pending.
+# Both the dev/test agents and the evaluator path (`run_evaluator`) are routed
+# when HARNESS=openclaw. inject_hint and stop also go through the shim.
 # ---------------------------------------------------------------------------
 HARNESS = os.environ.get("HARNESS", "claude-sdk").lower()
 _openclaw_backend = None
@@ -2088,38 +2088,81 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     EVAL_TIMEOUT = 900  # 15 minutes max for evaluator
 
     try:
-        async def _run_eval_client():
-            nonlocal collected_text
-            client = ClaudeSDKClient(options=options)
-            async with client:
-                await client.query(prompt)
-                async for message in client.receive_response():
-                    if isinstance(message, AssistantMessage):
-                        for block in message.content:
-                            if isinstance(block, TextBlock) and block.text.strip():
-                                text = block.text.strip()
-                                collected_text.append(text)
-                                await ws_broadcast_agent_msg(skill, text, "evaluator")
-                    elif isinstance(message, ResultMessage):
-                        cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
-                        await ws_broadcast_agent_msg(skill, f"Eval done — {message.num_turns} turns, {cost}", "evaluator")
-                        if message.session_id:
-                            import datetime
-                            eval_entry = {
-                                "session_id": message.session_id,
-                                "skill": skill,
-                                "agent_type": "evaluator",
-                                "agent_id": f"eval-{skill}",
-                                "cost_usd": message.total_cost_usd,
-                                "num_turns": message.num_turns,
-                                "log": collected_text[-10:],
-                                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                            }
-                            with open(SESSION_LOG, "a") as f:
-                                f.write(json.dumps(eval_entry) + "\n")
-                            _invalidate_session_log_cache()
+        if HARNESS == "openclaw" and _openclaw_backend is not None:
+            # OpenClaw eval path: spawn `openclaw agent --local --agent tidybot-evaluator`
+            # subprocess. Reads collected text from session JSONL.
+            async def _on_text(t: str):
+                collected_text.append(t)
+                await ws_broadcast_agent_msg(skill, t, "evaluator")
 
-        await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
+            res = await _openclaw_backend._run_eval_openclaw(
+                skill=skill,
+                system_prompt=system_prompt,
+                user_prompt=prompt,
+                on_text=_on_text,
+                timeout_s=EVAL_TIMEOUT,
+            )
+            if not res.get("ok"):
+                err = res.get("error", "unknown")
+                print(f"[EVAL/OC] {skill}: failed — {err}")
+                await ws_broadcast_agent_msg(skill, f"Evaluator failed: {err}", "evaluator")
+                return {"passed": False, "feedback": f"Evaluator (openclaw) failed: {err}"}
+
+            cost = f"${res['cost_usd']:.4f}" if res.get('cost_usd') else "free"
+            await ws_broadcast_agent_msg(
+                skill, f"Eval done — {res.get('num_turns', 0)} turns, {cost}", "evaluator"
+            )
+
+            sess_id = res.get("session_id")
+            if sess_id:
+                import datetime
+                eval_entry = {
+                    "session_id": sess_id,
+                    "skill": skill,
+                    "agent_type": "evaluator",
+                    "agent_id": f"eval-{skill}",
+                    "cost_usd": res.get("cost_usd", 0),
+                    "num_turns": res.get("num_turns", 0),
+                    "log": collected_text[-10:],
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                }
+                with open(SESSION_LOG, "a") as f:
+                    f.write(json.dumps(eval_entry) + "\n")
+                _invalidate_session_log_cache()
+        else:
+            # Default: ClaudeSDKClient path
+            async def _run_eval_client():
+                nonlocal collected_text
+                client = ClaudeSDKClient(options=options)
+                async with client:
+                    await client.query(prompt)
+                    async for message in client.receive_response():
+                        if isinstance(message, AssistantMessage):
+                            for block in message.content:
+                                if isinstance(block, TextBlock) and block.text.strip():
+                                    text = block.text.strip()
+                                    collected_text.append(text)
+                                    await ws_broadcast_agent_msg(skill, text, "evaluator")
+                        elif isinstance(message, ResultMessage):
+                            cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "?"
+                            await ws_broadcast_agent_msg(skill, f"Eval done — {message.num_turns} turns, {cost}", "evaluator")
+                            if message.session_id:
+                                import datetime
+                                eval_entry = {
+                                    "session_id": message.session_id,
+                                    "skill": skill,
+                                    "agent_type": "evaluator",
+                                    "agent_id": f"eval-{skill}",
+                                    "cost_usd": message.total_cost_usd,
+                                    "num_turns": message.num_turns,
+                                    "log": collected_text[-10:],
+                                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                                }
+                                with open(SESSION_LOG, "a") as f:
+                                    f.write(json.dumps(eval_entry) + "\n")
+                                _invalidate_session_log_cache()
+
+            await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
 
         # Parse EVAL_RESULT from collected text
         full_text = "\n".join(collected_text)

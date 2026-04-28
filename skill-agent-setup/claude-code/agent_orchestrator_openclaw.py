@@ -592,3 +592,157 @@ async def _kill_agent_openclaw(state):
         except Exception: pass
         try: await proc.wait()
         except Exception: pass
+
+
+# ---------------------------------------------------------------------------
+# Evaluator path — same idea as _run_agent_openclaw but a one-shot, returns
+# collected assistant text + cost. The orchestrator's run_evaluator() wraps
+# this and parses EVAL_RESULT JSON out of the returned text.
+# ---------------------------------------------------------------------------
+async def _run_eval_openclaw(
+    skill: str,
+    system_prompt: str,
+    user_prompt: str,
+    on_text=None,
+    timeout_s: int = 900,
+) -> dict:
+    """One-shot evaluator via openclaw subprocess.
+
+    Returns:
+      {"ok": bool, "text": str, "session_id": str, "cost_usd": float,
+       "num_turns": int, "error": str (only if ok=False)}
+    """
+    from agent_orchestrator import WORKSPACE_DIR
+
+    agent_id = AGENT_TYPE_MAP.get("evaluator")
+    if not agent_id:
+        return {"ok": False, "text": "", "error": "no evaluator agent mapped"}
+    if not _agent_exists(agent_id):
+        return {"ok": False, "text": "", "error": f"agent {agent_id!r} not configured in OpenClaw"}
+
+    # OpenClaw doesn't have a flag for system-prompt override on per-call basis;
+    # prepend system context to the message.
+    full_prompt = f"{system_prompt}\n\n--- USER TASK ---\n{user_prompt}"
+
+    cmd = [
+        "openclaw", "agent",
+        "--local",
+        "--agent", agent_id,
+        "--json",
+        "--timeout", str(timeout_s),
+        "-m", full_prompt,
+    ]
+
+    sdir = _sessions_dir(agent_id)
+    before_snapshot = set(sdir.glob("*.jsonl")) if sdir.exists() else set()
+    existing_sizes = {p: p.stat().st_size for p in before_snapshot if p.exists()}
+
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=str(WORKSPACE_DIR),
+    )
+
+    try:
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            proc.communicate(), timeout=timeout_s
+        )
+    except asyncio.TimeoutError:
+        if proc.returncode is None:
+            try: proc.send_signal(signal.SIGINT)
+            except Exception: pass
+            try: await asyncio.wait_for(proc.wait(), timeout=3)
+            except Exception: pass
+            try:
+                if proc.returncode is None: proc.kill()
+            except Exception: pass
+        return {"ok": False, "text": "", "error": f"openclaw eval timed out after {timeout_s}s"}
+
+    stderr_raw = stderr_bytes.decode(errors="replace")
+    envelope = _parse_final_envelope(stderr_raw)
+    if not envelope:
+        return {
+            "ok": False,
+            "text": "",
+            "error": f"no JSON envelope in stderr; tail: {stderr_raw[-500:]}",
+        }
+
+    meta = envelope.get("meta", {}) or {}
+    agent_meta = meta.get("agentMeta", {}) or {}
+    usage = agent_meta.get("usage", {}) or {}
+    sess_id = agent_meta.get("sessionId") or ""
+    provider = agent_meta.get("provider") or ""
+    model = agent_meta.get("model") or ""
+    cost = _estimate_cost(provider, model, usage)
+
+    # Locate the session jsonl that grew during this run
+    target_file = None
+    target_start = 0
+    if sess_id:
+        candidate = sdir / f"{sess_id}.jsonl"
+        if candidate.exists():
+            target_file = candidate
+            # If pre-existing (continuation), skip the prefix
+            if candidate in before_snapshot:
+                target_start = existing_sizes.get(candidate, 0)
+    if target_file is None and sdir.exists():
+        new_files = set(sdir.glob("*.jsonl")) - before_snapshot
+        if new_files:
+            target_file = next(iter(new_files))
+        else:
+            # fall back to file with biggest growth
+            for p, old_sz in existing_sizes.items():
+                if p.exists() and p.stat().st_size > old_sz:
+                    target_file = p
+                    target_start = old_sz
+                    break
+
+    text_parts: list[str] = []
+    if target_file is not None:
+        try:
+            with open(target_file, "rb") as f:
+                f.seek(target_start)
+                for raw in f:
+                    try:
+                        rec = json.loads(raw.decode("utf-8", errors="replace"))
+                    except Exception:
+                        continue
+                    # Extract assistant text from common JSONL shapes
+                    role = rec.get("role") or rec.get("speaker")
+                    if role and role != "assistant":
+                        continue
+                    # Try several content shapes
+                    content = rec.get("content")
+                    if isinstance(content, str):
+                        text_parts.append(content)
+                        if on_text:
+                            try: await on_text(content)
+                            except Exception: pass
+                    elif isinstance(content, list):
+                        for blk in content:
+                            if isinstance(blk, dict) and blk.get("type") == "text":
+                                t = blk.get("text") or ""
+                                if t:
+                                    text_parts.append(t)
+                                    if on_text:
+                                        try: await on_text(t)
+                                        except Exception: pass
+                    elif rec.get("text"):
+                        t = rec["text"]
+                        text_parts.append(t)
+                        if on_text:
+                            try: await on_text(t)
+                            except Exception: pass
+        except Exception as e:
+            print(f"[OC eval] {skill}: failed to read session file {target_file}: {e}")
+
+    full_text = "\n".join(text_parts)
+
+    return {
+        "ok": True,
+        "text": full_text,
+        "session_id": sess_id,
+        "cost_usd": cost,
+        "num_turns": int(agent_meta.get("turns") or len(text_parts) or 0),
+    }
