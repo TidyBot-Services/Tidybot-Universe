@@ -272,7 +272,7 @@ def _count_session_tools_from_offset(session_file: Path, start_offset: int) -> t
 
 async def _wait_for_session_file(agent_id: str, known_session_id: Optional[str],
                                   before_snapshot: set[Path],
-                                  timeout_s: float = 20.0) -> Optional[Path]:
+                                  timeout_s: float = 90.0) -> Optional[Path]:
     """Wait for the session JSONL file to appear / be touched.
 
     Lookup order:
