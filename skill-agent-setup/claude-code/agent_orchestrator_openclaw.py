@@ -320,8 +320,19 @@ async def _tail_session_jsonl(state, agent_id: str, session_file: Path,
     """
     from agent_orchestrator import (
         ws_broadcast_agent_msg, ws_broadcast_status,
-        _update_entry,
+        _update_entry, broadcast_full_sync,
     )
+
+    # Session id IS the filename (without .jsonl). OpenClaw's JSONL records
+    # don't carry the sessionId at record level, so populate state.session_id
+    # from the file path NOW so dashboard live-sessions sees this run.
+    if not state.session_id:
+        try:
+            state.session_id = session_file.stem
+            _update_entry(state.skill, {"session_id": state.session_id})
+            await broadcast_full_sync()
+        except Exception:
+            pass
 
     # Open file, seek past pre-existing content (only stream NEW entries)
     try:
