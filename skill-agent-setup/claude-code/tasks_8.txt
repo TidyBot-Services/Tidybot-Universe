@@ -1,0 +1,11 @@
+# Production 8-task slice (4 batches × 2 task each)
+# Picked from the 10 root skills in graphs/unified-single-stage,
+# covering 5 categories for representative coverage.
+RoboCasa-Open-Drawer-v0
+RoboCasa-Close-Drawer-v0
+RoboCasa-Open-Single-Door-v0
+RoboCasa-Close-Single-Door-v0
+RoboCasa-Coffee-Press-Button-v0
+RoboCasa-Microwave-Press-Button-v0
+RoboCasa-Manipulate-Sink-Faucet-v0
+RoboCasa-Pn-P-Counter-To-Sink-v0

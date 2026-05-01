@@ -1,0 +1,2 @@
+RoboCasa-Open-Drawer-v0
+RoboCasa-Close-Drawer-v0

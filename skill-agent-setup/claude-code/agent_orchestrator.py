@@ -16,16 +16,33 @@ Usage:
 """
 
 import asyncio
+import base64
 import json
 import os
 import re
 import sys
 import traceback
 import time
+import urllib.error
+import urllib.request
 import uuid
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
+
+# STRUCTURAL FIX (2026-05-01 v15): Pre-register this file as 'agent_orchestrator'
+# in sys.modules. Without this, the openclaw shim's `from agent_orchestrator import X`
+# triggers a SECOND module load — a duplicate copy with its own (never-updated)
+# `targets`, `skill_entries`, etc. globals. Symbols imported from that duplicate
+# carry __globals__ pointing to the duplicate's dict, so any code reading
+# module-level state via the duplicate sees stale empty values.
+#
+# Concrete v14 symptom: eval-retry path's spawn_agent saw `targets=[]`, fell
+# back to primary, broke target binding for iter 3+ of every skill. Caught via
+# `[EVAL/OC] ... len(targets)=2 live, 0 closure` log line that exposed the
+# divergence. This single line ELIMINATES the entire class of module-dup bugs.
+if __name__ == "__main__":
+    sys.modules["agent_orchestrator"] = sys.modules[__name__]
 
 try:
     import websockets
@@ -47,7 +64,7 @@ HAS_SDK = True
 # Config
 # ---------------------------------------------------------------------------
 
-WS_PORT = 8765
+WS_PORT = int(os.environ.get("ORCH_WS_PORT", "8765"))
 _script_dir = Path(__file__).resolve()
 # WORKSPACE_DIR = directory containing agent_orchestrator.py = claude-code/
 # This is the cwd we want SDK agents to run from, so relative paths like
@@ -124,18 +141,47 @@ def _has_test(skill: str) -> bool:
 
 
 def _is_task_root(skill: str) -> bool:
-    """Check if a skill is the root of a task graph (sim provides its test).
+    """Check whether a skill has a sim-backed ground-truth test (`/task/success`).
 
-    A skill is the task root if:
-    - The graph has task_env metadata, AND
-    - No other skill in the tree depends on this skill
+    Two valid configurations:
+      1. Unified graph (per-entry task_env): the entry itself names a
+         RoboCasa env. Every such entry is testable, regardless of whether
+         other entries depend on it.
+      2. Legacy single-task graph (graph-level task_env): only the
+         DAG-top skill (no descendants) gets the auto-test, because there
+         is only one task_env to bind to.
     """
-    if not graph_meta.get("task_env"):
+    entry = next((e for e in skill_entries if e["name"] == skill), None)
+    if not entry:
         return False
-    for entry in skill_entries:
-        if skill in entry.get("dependencies", []):
-            return False
-    return True
+    if entry.get("task_env"):
+        return True
+    if graph_meta.get("task_env"):
+        for other in skill_entries:
+            if skill in other.get("dependencies", []):
+                return False
+        return True
+    return False
+
+
+def _resolve_task_env(skill: str) -> str | None:
+    """Return the task_env this skill should be tested against, or None."""
+    entry = next((e for e in skill_entries if e["name"] == skill), None)
+    if entry and entry.get("task_env"):
+        return entry["task_env"]
+    return graph_meta.get("task_env")
+
+
+def _resolve_target_for_skill(skill: str) -> dict:
+    """Return the target whose sim runs this skill's task_env. Falls back to
+    primary_target when no per-entry task_env is set or no target self-reports
+    a matching task_env (legacy behavior)."""
+    task_env = _resolve_task_env(skill)
+    if task_env:
+        for t in targets:
+            if t.get("task_env") == task_env:
+                return t
+    return primary_target
 
 
 def _auto_generate_task_root_test(skill: str):
@@ -145,14 +191,17 @@ def _auto_generate_task_root_test(skill: str):
     if test_file.exists():
         return  # already has a test
 
-    task_env = graph_meta.get("task_env", "unknown")
+    task_env = _resolve_task_env(skill) or "unknown"
     test_dir.mkdir(parents=True, exist_ok=True)
 
     # Also ensure scripts/ dir exists
     (SKILLS_DIR / skill / "scripts").mkdir(parents=True, exist_ok=True)
 
-    agent_server_url = primary_target["agent_server"]
-    sim_api_url = primary_target.get("sim_api", "http://localhost:5500")
+    # Use the target whose sim runs this skill's task_env (unified-graph mode);
+    # falls back to primary_target for legacy single-task graphs.
+    bound_target = _resolve_target_for_skill(skill)
+    agent_server_url = bound_target["agent_server"]
+    sim_api_url = bound_target.get("sim_api", "http://localhost:5500")
 
     test_code = f'''\
 #!/usr/bin/env python3
@@ -302,6 +351,42 @@ You are a robotics skill developer for the TidyBot Universe project.
 - API at {agent_server} — read the guide at {agent_server}/docs/guide/html before writing code
 - SDK reference at {agent_server}/code/sdk/markdown
 - Skills run via POST /code/submit (fire-and-forget) with access to robot_sdk
+
+## IRON RULE — Do NOT touch infrastructure
+
+**Your only job is to write skill code at `{skills_dir}/{{skill_name}}/scripts/main.py`
+and submit it via `submit_and_wait.py`.** Everything else (sim_server, agent_server,
+planner, ports, GPU services) is owned by the orchestrator. Treat it as a black box.
+
+### What "the infrastructure" means for you (the only thing that matters)
+
+The **only** endpoint you need is `{agent_server}` — that's where you submit code.
+If `submit_and_wait.py` returns successfully (any exit code, even non-zero), the
+infrastructure is **working**. The exit code tells you about your code, not infra.
+
+You do NOT need to probe these and you should NOT panic if any of them look "down":
+- `localhost:8081` (legacy RoboCasa MuJoCo — intentionally not running)
+- `localhost:5500/state` (planner internals — the agent_server abstracts this)
+- Any other port not in your prompt
+- `ps`, `ss`, `netstat`, `fuser`, `pgrep` — DON'T run these to "check health"
+
+### NEVER run these commands
+
+- `pkill` / `kill -9` against ANYTHING (sim_server, agent_server, server.py, anything)
+- `fuser -k` on ANY port
+- `nohup python … sim_server`, `python -m sim_server`, `start.sh`, `start_robot.sh`
+- Any `restart-sim` / `start-maniskill` / similar OpenClaw skill that respawns sims
+
+### Only stop early if `submit_and_wait.py` itself fails to even submit
+
+If `submit_and_wait.py` errors out with "connection refused" / "agent_server not
+reachable" — THAT is broken infrastructure. Report failure and stop.
+**`submit_and_wait.py` returning a failure verdict from the evaluator is NOT
+broken infrastructure — that's normal feedback, fix your code and retry.**
+
+You may freely use: `curl {agent_server}/...` (read-only probing of the configured
+agent_server), `submit_and_wait.py` (code submit), `ls/cat/grep/find` for code
+exploration, `python3 -c` for quick computations.
 
 ## Existing Skills
 Skills live in {skills_dir}/. First check what's already there:
@@ -647,6 +732,42 @@ You are developing against **real hardware** (no simulator).
 - SDK reference at {agent_server}/code/sdk/markdown
 - Skills run via POST /code/submit (fire-and-forget) with access to robot_sdk
 
+## IRON RULE — Do NOT touch infrastructure
+
+**Your only job is to write skill code at `{skills_dir}/{{skill_name}}/scripts/main.py`
+and submit it via `submit_and_wait.py`.** The robot and agent_server are owned by the
+operator. Treat them as a black box.
+
+### What "the infrastructure" means for you (the only thing that matters)
+
+The **only** endpoint you need is `{agent_server}` — that's where you submit code.
+If `submit_and_wait.py` returns successfully (any exit code, even non-zero), the
+infrastructure is **working**. The exit code tells you about your code, not infra.
+
+You do NOT need to probe these and you should NOT panic if any of them look "down":
+- Any port not in your prompt
+- `franka_server`, `gripper_server`, `base_server`, `camera_server` internals
+- `ps`, `ss`, `netstat`, `fuser`, `pgrep` — DON'T run these to "check health"
+
+### NEVER run these commands
+
+- `pkill` / `kill -9` against ANYTHING
+- `fuser -k` on ANY port
+- `./start_robot.sh`, `./start.sh`, or any service-restart script
+
+### Only stop early if `submit_and_wait.py` itself fails to even submit
+
+If `submit_and_wait.py` errors out with "connection refused" / "agent_server not
+reachable" — THAT is broken infrastructure. Report failure and stop. A human will
+recover, since restarting hardware services yourself can leave the robot in an
+unsafe state, release locks held for safety, or interrupt the recording.
+**`submit_and_wait.py` returning a failure verdict from the evaluator is NOT
+broken infrastructure — that's normal feedback, fix your code and retry.**
+
+You may freely use: `curl {agent_server}/...` (read-only probing of the configured
+agent_server), `submit_and_wait.py` (code submit), `ls/cat/grep/find` for code
+exploration, `python3 -c` for quick computations.
+
 ## Hardware vs Sim — Key Differences
 - **No sim reset** — there is no `POST /reset`. The scene is real, not resettable.
 - **No `sensors.find_objects()`** — this requires a sim perception server. Use YOLO instead.
@@ -858,18 +979,47 @@ def _load_entries():
 
 
 def _save_entries():
-    """Persist entries back to local_repos.json."""
-    LOCAL_REPOS.parent.mkdir(parents=True, exist_ok=True)
-    if graph_meta:
-        data = {**graph_meta, "entries": skill_entries}
+    """Persist entries back to local_repos.json.
+
+    BUG FIX 2026-04-30: when orch runs as __main__ AND openclaw shim does
+    `from agent_orchestrator import ...`, Python loads agent_orchestrator
+    as a SECOND module with its own (stale) skill_entries. If the shim's
+    code path lands here via the second module, it'd write the stale list
+    over the live list — wiping any field (e.g. trial_images) that the
+    live __main__ updated meanwhile.
+    Always resolve to __main__'s state if available so both module copies
+    converge on a single source of truth.
+    """
+    import sys as _sys
+    _main = _sys.modules.get('__main__')
+    if _main is not None and hasattr(_main, 'skill_entries') and _main.skill_entries is not skill_entries:
+        _entries = _main.skill_entries
+        _meta = getattr(_main, 'graph_meta', graph_meta)
     else:
-        data = skill_entries
+        _entries = skill_entries
+        _meta = graph_meta
+    LOCAL_REPOS.parent.mkdir(parents=True, exist_ok=True)
+    if _meta:
+        data = {**_meta, "entries": _entries}
+    else:
+        data = _entries
     LOCAL_REPOS.write_text(json.dumps(data, indent=2))
 
 
 def _find_entry(name: str) -> dict | None:
-    """Find an entry by skill name."""
-    for e in skill_entries:
+    """Find an entry by skill name.
+
+    BUG FIX 2026-04-30: see _save_entries — same module-duplication issue.
+    Without this, openclaw shim's _update_entry path mutates a stale entry
+    dict that gets serialized over the live one.
+    """
+    import sys as _sys
+    _main = _sys.modules.get('__main__')
+    if _main is not None and hasattr(_main, 'skill_entries') and _main.skill_entries is not skill_entries:
+        _entries = _main.skill_entries
+    else:
+        _entries = skill_entries
+    for e in _entries:
         if e["name"] == name:
             return e
     return None
@@ -951,8 +1101,118 @@ class AgentState:
 agents: dict[str, AgentState] = {}    # agent_id -> AgentState
 _spawn_lock = asyncio.Lock()          # prevents double-spawning in _auto_spawn_ready_skills
 
+# ---------------------------------------------------------------------------
+# Autonomous batch-runner accounting
+# ---------------------------------------------------------------------------
+# Hard iter cap per skill (counts dev subprocess invocations + evaluator
+# subprocess invocations together). When exceeded, the skill is marked
+# `failed` with `fail_reason="iter_limit"` and no further dev/eval work
+# is scheduled. Set via env so the batch driver can lower it for smoke
+# tests without code edits.
+MAX_ITERS_PER_SKILL = int(os.environ.get("MAX_ITERS_PER_SKILL", "35"))
+
+# When True, _auto_spawn_ready_skills bypasses the dependency-must-be-done gate.
+# `dependencies` in graph.json is still kept (so the dashboard tree still draws
+# layered hexes + edges), but spawn no longer waits for them — every entry whose
+# task_env is bound to a target spawns immediately. Used by the batched driver
+# so that COMPOSITE skills don't get permanently blocked when their LEAF deps
+# fail under tight iter caps.
+IGNORE_DEPS_FOR_SPAWN = os.environ.get("IGNORE_DEPS_FOR_SPAWN", "0") == "1"
+
+# skill -> total iter count (dev + eval invocations)
+_iter_count: dict[str, int] = {}
+# skill -> first-iter unix timestamp (used for per-task wall-time reporting)
+_skill_start_ts: dict[str, float] = {}
+# skill -> latest evaluator feedback (truncated; reported in /summary)
+_last_feedback: dict[str, str] = {}
+
+
+def _record_skill_start(skill: str) -> None:
+    """First time we see activity for a skill, stamp the start time."""
+    _skill_start_ts.setdefault(skill, time.time())
+
+
+def _bump_iter(skill: str, kind: str) -> bool:
+    """Increment iter counter for ``skill``. Returns True if the cap was
+    exceeded by this bump (caller should refuse to spawn / eval).
+
+    ``kind`` is "dev" or "eval"; logged for observability only.
+    """
+    _record_skill_start(skill)
+    n = _iter_count.get(skill, 0) + 1
+    _iter_count[skill] = n
+    if n > MAX_ITERS_PER_SKILL:
+        print(f"[ITER] {skill}: cap exceeded ({n}/{MAX_ITERS_PER_SKILL}, "
+              f"refusing {kind!r}); marking skill failed")
+        try:
+            _update_entry(skill, {
+                "status": "failed",
+                "fail_reason": "iter_limit",
+                "iter_count": n,
+            })
+        except Exception as e:
+            print(f"[ITER] {skill}: failed to mark skill failed: {e}")
+        return True
+    return False
+
+
 # Per-submission eval results: skill -> {"future": asyncio.Future, "execution_id": str}
 _submission_evals: dict[str, dict] = {}
+
+# Per-skill mutex so sequential evals for the same skill serialize.
+# Without this, when a dev re-submits while the prior eval is still running,
+# the second eval starts in parallel and contends for the same per-target
+# evaluator session file (`tidybot-evaluator-<target>`), tripping the
+# 10-second openclaw lock timeout.
+_eval_skill_locks: dict[str, asyncio.Lock] = {}
+
+
+def _get_eval_lock(skill: str) -> asyncio.Lock:
+    lock = _eval_skill_locks.get(skill)
+    if lock is None:
+        lock = asyncio.Lock()
+        _eval_skill_locks[skill] = lock
+    return lock
+
+
+def _fetch_latest_exec_id(agent_server_url: str) -> str | None:
+    """Return the newest execution_id known to ``agent_server_url``, or None.
+
+    /code/recordings returns ``{"recordings": ["<id>", ...]}`` newest-first.
+    Used by _handle_agent_done to refresh trial_images at every dev-turn
+    boundary (without requiring the dev to call /job-done explicitly).
+    """
+    try:
+        import urllib.request
+        url = f"{agent_server_url}/code/recordings"
+        data = json.loads(urllib.request.urlopen(url, timeout=5).read())
+        recs = data.get("recordings", []) if isinstance(data, dict) else data
+        if not recs:
+            return None
+        first = recs[0]
+        return first if isinstance(first, str) else first.get("id")
+    except Exception:
+        return None
+
+
+def _find_exec_dir(execution_id: str):
+    """Return Path to a code_executions/<exec_id>/ folder, searching every
+    candidate root. Returns None if not found.
+
+    Roots searched (in order):
+      1. PROJECT_DIR/logs/code_executions/             (legacy single-target)
+      2. PROJECT_DIR/logs_env*/code_executions/        (per-slot LOG_DIR set
+                                                        by run_all_tasks.sh
+                                                        launch_agent for
+                                                        sim-0 / sim-1 / ...)
+    Exec ids are UUIDs so cross-root collisions don't happen.
+    """
+    candidates = [PROJECT_DIR / "logs"] + sorted(PROJECT_DIR.glob("logs_env*"))
+    for root in candidates:
+        d = root / "code_executions" / execution_id
+        if d.is_dir():
+            return d
+    return None
 
 
 def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = ""):
@@ -971,11 +1231,18 @@ def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = 
             target_name = t["name"]
             break
 
-    # Try local first, fall back to remote agent server
-    exec_dir = PROJECT_DIR / "logs" / "code_executions" / execution_id
+    # Try local first, fall back to remote agent server. When local cache
+    # exists, point dashboard URLs at orch's /cached_frames/ — those survive
+    # agent_server restarts (which wipe their own /code/recordings/).
+    # Search both the legacy logs/ root and the per-slot logs_env<N>/ roots
+    # (the batched driver gives each agent_server its own LOG_DIR so sim-0
+    # and sim-1 don't share recordings — see run_all_tasks.sh launch_agent).
+    exec_dir = _find_exec_dir(execution_id)
     frames: list[str] = []
-    if exec_dir.exists():
+    use_local = False
+    if exec_dir is not None and exec_dir.exists():
         frames = sorted(f.name for f in exec_dir.iterdir() if f.suffix == ".jpg")
+        use_local = bool(frames)
     if not frames:
         try:
             import urllib.request
@@ -987,10 +1254,16 @@ def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = 
             return
     if not frames:
         return
-    image_urls = [
-        f"{agent_server_url}/code/recordings/{execution_id}/frames/{f}"
-        for f in frames
-    ]
+    if use_local:
+        # WS_PORT+1 is orch's HTTP port; we serve from same host the dashboard
+        # is talking to (browser fetched the entries, so localhost works).
+        orch_base = f"http://localhost:{WS_PORT + 1}/cached_frames/{execution_id}"
+        image_urls = [f"{orch_base}/{f}" for f in frames]
+    else:
+        image_urls = [
+            f"{agent_server_url}/code/recordings/{execution_id}/frames/{f}"
+            for f in frames
+        ]
     if len(image_urls) > 20:
         step = len(image_urls) / 20
         image_urls = [image_urls[int(i * step)] for i in range(20)]
@@ -1010,19 +1283,181 @@ def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = 
     print(f"[ORCH] {label}: updated trial_images ({len(image_urls)} frames from {execution_id})")
 
 
+async def _sim_health_check_loop(interval_s: int = 60):
+    """Probe each target's sim_api on a fixed cadence; warn on transitions.
+
+    Sim crashes (cuRobo CUDA, SAPIEN renderer, port stomp) are silent on
+    the orch side — dev agents just hang trying to talk to a dead sim.
+    This loop emits a clear log + broadcasts a `sim_health` WS event so
+    the dashboard / operator notices fast.
+    """
+    last_ok: dict[str, bool] = {}
+    while True:
+        try:
+            import sys as _sys
+            _live = _sys.modules.get('__main__')
+            _targets = (_live.targets if _live and hasattr(_live, 'targets')
+                        else targets)
+            for t in _targets:
+                api = t.get("sim_api")
+                if not api:
+                    continue
+                name = t.get("name") or api
+                ok = False
+                try:
+                    await asyncio.to_thread(
+                        lambda u=api: urllib.request.urlopen(
+                            f"{u}/task/success", timeout=5
+                        ).read()
+                    )
+                    ok = True
+                except Exception:
+                    ok = False
+
+                prev = last_ok.get(name)
+                if prev is True and not ok:
+                    msg = f"[SIM-HEALTH] target {name} ({api}) became UNREACHABLE"
+                    print(msg)
+                    await ws_broadcast({
+                        "type": "sim_health",
+                        "target": name, "sim_api": api, "ok": False,
+                        "message": msg,
+                    })
+                elif prev is False and ok:
+                    msg = f"[SIM-HEALTH] target {name} ({api}) recovered"
+                    print(msg)
+                    await ws_broadcast({
+                        "type": "sim_health",
+                        "target": name, "sim_api": api, "ok": True,
+                        "message": msg,
+                    })
+                last_ok[name] = ok
+        except Exception as e:
+            print(f"[SIM-HEALTH] loop error: {e}")
+        await asyncio.sleep(interval_s)
+
+
 async def _run_submission_eval(skill: str, execution_id: str, job_agent_server: str = ""):
-    """Run evaluator for a specific submission, store result in _submission_evals."""
-    # Update dashboard images from this execution
+    """Run evaluator for a specific submission, store result in _submission_evals.
+
+    If the dev agent that triggered this submission has paused (e.g. its
+    openclaw turn timeout fired before the verdict arrived), automatically
+    re-spawn it with the verdict injected as feedback — otherwise the dev
+    cycle gets stranded in `paused` state forever.
+    """
+    # Serialize evals per skill — concurrent evals for the same skill share
+    # the per-target evaluator's session file and would deadlock on the
+    # openclaw 10s lock timeout. The whole submission-eval pipeline runs
+    # under the lock so the next submission's eval can't start until this
+    # one's evaluator subprocess has fully exited.
+    async with _get_eval_lock(skill):
+        await _run_submission_eval_locked(skill, execution_id, job_agent_server)
+
+
+async def _run_submission_eval_locked(skill: str, execution_id: str, job_agent_server: str = ""):
+    # First-pass: try to update dashboard images right away (best-effort —
+    # the agent_server may not have flushed all frames yet, and per-target
+    # eviction can purge them quickly, so this might no-op).
     _update_trial_images(skill, execution_id, agent_server_url=job_agent_server)
     await broadcast_full_sync()
 
+    # Hard outer timeout: even with run_evaluator's internal timeout, defend
+    # against any await that fails to complete (so the future is always set
+    # and any waiter — dev poller, downstream resume — can make progress).
+    eval_hard_timeout = int(os.environ.get("EVAL_HARD_TIMEOUT_S", "1200"))  # 20 min
     try:
-        result = await run_evaluator(skill, execution_id=execution_id)
+        result = await asyncio.wait_for(
+            run_evaluator(skill, execution_id=execution_id,
+                          agent_server_url=job_agent_server),
+            timeout=eval_hard_timeout,
+        )
+    except asyncio.TimeoutError:
+        result = {"passed": False, "feedback": (
+            f"Evaluator did not return within {eval_hard_timeout}s. The eval "
+            f"subprocess likely hung. Treat as failure and try a different "
+            f"approach in the next iteration."
+        )}
+        print(f"[EVAL] {skill}: hard timeout {eval_hard_timeout}s — falling back to failure verdict")
     except Exception as e:
         result = {"passed": True, "feedback": f"Evaluator error: {e}"}
+
+    # Second-pass: by now run_evaluator → _fetch_remote_recording has cached
+    # frames into PROJECT_DIR/logs/code_executions/<id>/, so the local-dir
+    # branch in _update_trial_images will populate the dashboard reliably
+    # even if the agent_server has since evicted the recording.
+    _update_trial_images(skill, execution_id, agent_server_url=job_agent_server)
+    await broadcast_full_sync()
+
+    # Stash the last verdict feedback so /summary can return it (truncated)
+    try:
+        _last_feedback[skill] = (result.get("feedback") or "")[:500]
+    except Exception:
+        pass
+
     entry = _submission_evals.get(skill)
     if entry and not entry["future"].done():
         entry["future"].set_result(result)
+
+    # Recovery: auto-resume the dev agent if it paused while waiting for verdict.
+    # In autonomous mode this restarts the dev cycle with the verdict as
+    # injected feedback; in review-gate mode we leave the skill in `writing`
+    # so the human can decide.
+    if autonomous_mode:
+        await _maybe_resume_paused_dev(skill, result)
+
+
+async def _maybe_resume_paused_dev(skill: str, eval_result: dict) -> None:
+    """If a dev for ``skill`` is in ``paused`` state, kill it and spawn a
+    fresh one with the latest evaluator verdict as injected feedback.
+
+    Skips when:
+      - skill status has already advanced past `writing` / `failed`
+      - dev is still actively running (polling for the verdict normally)
+      - max retries exhausted (per ``_eval_attempt_count``)
+    """
+    skill_entry = _find_entry(skill)
+    if not skill_entry:
+        return
+    cur_status = skill_entry.get("status", "")
+    if cur_status not in ("writing", "failed"):
+        return  # human already advanced it (review/done) — leave alone
+
+    paused = [a for a in agents.values()
+              if a.skill == skill and a.status == "paused"]
+    if not paused:
+        return  # dev is still running its own poll loop, don't double-spawn
+
+    attempts = _eval_attempt_count.get(skill, 0)
+    if attempts >= MAX_EVAL_RETRIES:
+        print(f"[ORCH] {skill}: eval retries exhausted ({attempts}/{MAX_EVAL_RETRIES}); leaving paused for human review")
+        _update_entry(skill, {"status": "failed"})
+        await broadcast_full_sync()
+        return
+
+    _eval_attempt_count[skill] = attempts + 1
+    passed = eval_result.get("passed", False)
+    fb = eval_result.get("feedback", "(no feedback)")
+    verdict = "PASSED" if passed else "FAILED"
+    resume_prompt = (
+        f"## Resuming after evaluator verdict\n\n"
+        f"Your previous dev turn ended before the verdict arrived (turn timeout). "
+        f"Picking up where you left off with the verdict for the last submission.\n\n"
+        f"**Evaluator: {verdict}**  (retry {attempts + 1}/{MAX_EVAL_RETRIES})\n\n"
+        f"### Feedback\n{fb}\n\n"
+        f"If PASSED: finalize the skill and stop. If FAILED: address the issues "
+        f"above in your next code submission. Read the existing scripts/main.py "
+        f"first to see what state it was left in."
+    )
+
+    bound_target = _resolve_target_for_skill(skill)
+    for a in paused:
+        try:
+            await kill_agent(a.agent_id)
+        except Exception:
+            pass
+
+    print(f"[ORCH] {skill}: auto-resuming paused dev with verdict ({verdict}, retry {attempts + 1}/{MAX_EVAL_RETRIES})")
+    await spawn_agent(skill, resume_prompt, agent_type="dev", target=bound_target)
 
 
 # ---------------------------------------------------------------------------
@@ -1032,7 +1467,16 @@ async def _run_submission_eval(skill: str, execution_id: str, job_agent_server: 
 async def ws_broadcast(msg: dict):
     data = json.dumps(msg)
     gone = set()
-    for c in ws_clients:
+    # Snapshot to a list — without this, a WS client connecting/disconnecting
+    # mid-iteration triggers `RuntimeError: Set changed size during iteration`,
+    # which propagates up through ws_broadcast_status → spawn_agent →
+    # _auto_spawn_ready_skills and kills the entire spawn task. Symptom seen
+    # 2026-05-01 v13: only the FIRST of two batch-1 dev agents successfully
+    # spawned; the second was abandoned in status="starting" with no
+    # subprocess. The loop body itself is safe — c.send awaits — but the
+    # iterator is bound to the live set, which mutates from WS handler hooks
+    # running in other tasks.
+    for c in list(ws_clients):
         try:
             await asyncio.wait_for(c.send(data), timeout=5.0)
         except (websockets.ConnectionClosed, asyncio.TimeoutError):
@@ -1165,13 +1609,22 @@ def build_full_sync() -> dict:
     def _normalize_log(entries, default_role):
         return [_normalize_log_entry(m, default_role) for m in entries]
 
+    # Skill-level terminal statuses must NOT be overridden by lingering
+    # agent state. Without this guard, a skill marked `failed` in graph.json
+    # would re-render as `done` (or `review`) on the dashboard whenever a
+    # stale agent sat in `agents` dict with status=done/confirmed_done.
+    # The agent's "done" only means "openclaw turn ended", not "skill solved".
+    SKILL_TERMINAL = {"failed", "done", "confirmed_done"}
+
     for repo in repos:
         name = repo["name"]
         skill_agents = agents_by_skill.get(name, [])
+        repo_in_terminal = repo.get("status") in SKILL_TERMINAL
         if skill_agents:
             # Pick best agent for top-level status (prefer running)
             best = next((a for a in skill_agents if a.status in ("starting", "running")), skill_agents[0])
-            repo["status"] = _map_status(best.status, best.agent_type)
+            if not repo_in_terminal:
+                repo["status"] = _map_status(best.status, best.agent_type)
             repo["agent_id"] = best.agent_id
             repo["agent_status_text"] = f"{best.status}"
             repo["agent_type"] = best.agent_type
@@ -1383,6 +1836,39 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev",
         await ws_broadcast({"type": "error", "message": msg})
         return ""
 
+    # Hard iter cap: count dev subprocess invocations toward the per-skill
+    # budget (eval invocations are counted in run_evaluator). Refusing here
+    # also blocks `_maybe_resume_paused_dev` from spawning past the cap,
+    # because that path goes through spawn_agent too.
+    if agent_type == "dev":
+        if _bump_iter(skill, "dev"):
+            return ""
+
+    # Auto-detect target by skill's task_env when caller didn't specify.
+    # Without this, WS retry / spawn / edit paths silently fall back to
+    # primary_target (sim-0), which makes a skill bound to sim-1 spawn its
+    # dev on sim-0 — and Option D then writes the wrong sim's exec into
+    # trial_images, causing cross-target video display on dashboard.
+    if target is None:
+        entry = _find_entry(skill)
+        task_env = entry.get("task_env") if entry else None
+        if task_env:
+            for t in targets:
+                if t.get("task_env") == task_env:
+                    target = t
+                    break
+            # If skill has a task_env but NO target serves it, refuse to spawn.
+            # Without this guard the fallback below would spawn on primary
+            # (a sim running a *different* task_env), Option D would then
+            # write that sim's recording into this skill's trial_images,
+            # and the dashboard would show e.g. close-drawer's hex playing
+            # the current batch's coffee-press-button video.
+            if target is None and len(targets) > 0:
+                print(f"[ORCH] {skill}: refusing spawn — task_env={task_env!r} "
+                      f"not bound to any current target (out of batch); "
+                      f"available={[t.get('task_env') for t in targets]}")
+                return ""
+
     target_name = target["name"] if target else ""
 
     # Stop any active agent FOR THIS TARGET and preserve session_id for resume
@@ -1413,6 +1899,7 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev",
     state.session_id = prev_session_id  # carry over for resume
     state.target_name = target_name
     state._agent_server_url = target["agent_server"] if target else ""
+    state._sim_api = (target or primary_target).get("sim_api", "http://localhost:5500")
     agents[agent_id] = state
 
     status_label = f"Developing on {target_name}..." if target_name else "Developing..."
@@ -1721,14 +2208,22 @@ async def _root_skill_test_loop_inner(skill: str):
                     result["stderr"] = ""
                     # Fall through to failure handling below
                 else:
-                    await ws_broadcast_agent_msg(skill, f"All {len(targets)} targets PASSED (attempt {attempt}). Waiting for review.", "test")
-                    _update_entry(skill, {"status": "review"})
+                    if autonomous_mode:
+                        await ws_broadcast_agent_msg(skill, f"All {len(targets)} targets PASSED (attempt {attempt}). Auto-promoted (autonomous).", "test")
+                        _update_entry(skill, {"status": "done"})
+                    else:
+                        await ws_broadcast_agent_msg(skill, f"All {len(targets)} targets PASSED (attempt {attempt}). Waiting for review.", "test")
+                        _update_entry(skill, {"status": "review"})
                     await broadcast_full_sync()
                     return
             else:
-                # Single target — go straight to review
-                await ws_broadcast_agent_msg(skill, f"Ground-truth test PASSED (attempt {attempt}). Waiting for review.", "test")
-                _update_entry(skill, {"status": "review"})
+                # Single target — auto-promote in autonomous, otherwise review
+                if autonomous_mode:
+                    await ws_broadcast_agent_msg(skill, f"Ground-truth test PASSED (attempt {attempt}). Auto-promoted (autonomous).", "test")
+                    _update_entry(skill, {"status": "done"})
+                else:
+                    await ws_broadcast_agent_msg(skill, f"Ground-truth test PASSED (attempt {attempt}). Waiting for review.", "test")
+                    _update_entry(skill, {"status": "review"})
                 await broadcast_full_sync()
                 return
 
@@ -1763,9 +2258,14 @@ async def _root_skill_test_loop_inner(skill: str):
         if dev_state and dev_state.task:
             await dev_state.task
 
-    # Exhausted all attempts — go to review anyway so user can inspect
-    await ws_broadcast_agent_msg(skill, f"Ground-truth test failed after {attempt} attempts. Sending to review.", "test")
-    _update_entry(skill, {"status": "review"})
+    # Exhausted all attempts — autonomous marks failed (driver moves on);
+    # interactive review goes to "review" so a human can inspect.
+    if autonomous_mode:
+        await ws_broadcast_agent_msg(skill, f"Ground-truth test failed after {attempt} attempts. Marking failed (autonomous).", "test")
+        _update_entry(skill, {"status": "failed", "fail_reason": f"ground_truth_failed_{attempt}_attempts"})
+    else:
+        await ws_broadcast_agent_msg(skill, f"Ground-truth test failed after {attempt} attempts. Sending to review.", "test")
+        _update_entry(skill, {"status": "review"})
     await broadcast_full_sync()
 
 
@@ -1822,8 +2322,9 @@ def _get_system_prompt(agent_type: str, skill_name: str = "",
         result += dep_context
 
     if not is_hardware:
-        # Tell the agent the current task_env so it doesn't need to guess or restart sim
-        task_env = graph_meta.get("task_env")
+        # Tell the agent the current task_env so it doesn't need to guess or restart sim.
+        # In unified-graph mode each entry has its own task_env; fall back to graph-level.
+        task_env = _resolve_task_env(skill_name) if skill_name else graph_meta.get("task_env")
         if task_env:
             result += (
                 f"\n\n## Current Task Environment\n\n"
@@ -1976,7 +2477,7 @@ You do NOT write or fix code — you only evaluate and report.
 2. Read the skill code: {{skill_code_path}}
 3. Review the execution recording at: {{exec_dir}}/
 
-**IMPORTANT: Read logs first, images selectively. Do NOT read every image.**
+**IMPORTANT: Read logs first, then captions, then raw images only as a last resort.**
 
 **Step 1 — Logs first:**
 - Read metadata.json for execution summary, stdout, stderr, duration
@@ -1984,16 +2485,18 @@ You do NOT write or fix code — you only evaluate and report.
 - From the logs, identify the KEY MOMENTS: when gripper opened/closed, when base stopped moving,
   when EE reached grasp height, the final state. Note the frame numbers for these moments.
 
-**Step 2 — Selective images (max 10-15):**
-Only read images at the key moments you identified from the logs:
-- First frame (starting state)
-- Frame when robot reaches the object area
-- Frame right before grasp (gripper about to close)
-- Frame right after grasp (gripper closed)
-- Frame after lift (if applicable)
-- Last frame (final state)
-Use both base_camera and wrist_camera for the most critical moment (grasp attempt).
-Skip all other frames — the logs already tell you what happened.
+**Step 2 — Read frame_captions.jsonl:**
+This file is a JSONL where each line is `{"frame": "<NNNN>_<camera>.jpg", "caption": "..."}`.
+Captions are produced by a vision-language model and describe what the camera sees per frame
+(gripper state, objects in view, surfaces, contact). Cross-reference captions with the
+state_log.jsonl frame numbers from Step 1 to verify what visually happened at each key moment.
+
+You generally do NOT need to open the .jpg files directly. Captions describe the scene already.
+The captions may include reasoning artifacts (phrases like "Let me analyze..." or partial
+sentences from a reasoning model); ignore those and focus on the concrete description content.
+
+If frame_captions.jsonl is missing or empty, fall back to selectively reading 5-10 raw images
+at key moments — but this is rare and means the caption service was unavailable.
 
 ## Evaluation Criteria
 - Did the robot move to the expected positions?
@@ -2022,26 +2525,133 @@ For each issue, describe:
 - What the likely cause is
 - What the dev agent should try to fix it
 
-End with exactly one line of JSON:
-```
+### CRITICAL OUTPUT FORMAT — READ TWICE
+
+The VERY LAST line of your response MUST be EXACTLY this format,
+on its own line, with NO markdown code fence around it, NO quoting,
+NO trailing newline characters in the JSON itself:
+
 EVAL_RESULT: {{"passed": true/false, "feedback": "detailed paragraph summarizing the above"}}
-```
-The `feedback` field should be a full paragraph (not one line) covering what happened,
-what went wrong, and what to fix. This is the dev agent's primary debugging input.
+
+DO NOT wrap that line in ```json ... ```. DO NOT prefix with anything.
+DO NOT split across multiple lines. The regex parser will REJECT
+your evaluation as a system error if EVAL_RESULT is missing or wrapped.
+
+The `feedback` field should be a full paragraph (not one line) covering what
+happened, what went wrong, and what to fix. This is the dev agent's primary
+debugging input.
 
 Only fail if something clearly went wrong (wrong object, missed grasp,
 collision, error in output, robot didn't move, etc.). Minor imperfections are OK.
 """
 
 
-async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
+VLM_CAPTION_URL = os.environ.get("VLM_CAPTION_URL", "http://localhost:8095")
+VLM_CAPTION_TIMEOUT_S = int(os.environ.get("VLM_CAPTION_TIMEOUT_S", "300"))
+# Hard cap on frames sent for captioning per recording. Recordings fetched via
+# _fetch_remote_recording are already sampled to <=30, but locally-produced
+# recordings can be thousands of frames. Capping protects against runaway VLM
+# calls.
+VLM_CAPTION_MAX_FRAMES = int(os.environ.get("VLM_CAPTION_MAX_FRAMES", "30"))
+
+
+def _select_frames_for_captioning(frame_files: list[Path], max_n: int) -> list[Path]:
+    """Pick at most ``max_n`` frames evenly spaced across the recording.
+
+    Frames are sorted by filename (which encodes recording order). If the input
+    is already <= max_n, returns as-is.
+    """
+    if len(frame_files) <= max_n:
+        return frame_files
+    step = len(frame_files) / max_n
+    return [frame_files[int(i * step)] for i in range(max_n)]
+
+
+async def _caption_recording(cache_dir: Path, skill: str) -> int:
+    """Generate per-frame captions using the VLM caption service.
+
+    Writes ``frame_captions.jsonl`` next to the frames so the evaluator (which
+    runs on a text-only model under the openclaw harness) can read visual
+    evidence as text. Failures are non-fatal — eval can still proceed against
+    state_log.jsonl alone if captioning is unavailable.
+
+    Returns the number of frames successfully captioned.
+    """
+    captions_path = cache_dir / "frame_captions.jsonl"
+    if captions_path.exists():
+        try:
+            n = sum(1 for _ in captions_path.open())
+            return n
+        except OSError:
+            pass
+
+    all_frames = sorted(p for p in cache_dir.iterdir() if p.suffix == ".jpg")
+    if not all_frames:
+        return 0
+    frame_files = _select_frames_for_captioning(all_frames, VLM_CAPTION_MAX_FRAMES)
+    if len(frame_files) < len(all_frames):
+        print(f"[EVAL] {skill}: subsampled {len(frame_files)}/{len(all_frames)} frames for captioning")
+
+    # Quick health probe; skip cleanly if service is down.
+    try:
+        await asyncio.to_thread(
+            lambda: urllib.request.urlopen(f"{VLM_CAPTION_URL}/health", timeout=3).read()
+        )
+    except Exception as e:
+        print(f"[EVAL] {skill}: VLM service unavailable at {VLM_CAPTION_URL} ({e}); skipping captions")
+        return 0
+
+    batch = [
+        {"image": base64.b64encode(p.read_bytes()).decode("ascii")}
+        for p in frame_files
+    ]
+    body = json.dumps(batch).encode("utf-8")
+    req = urllib.request.Request(
+        f"{VLM_CAPTION_URL}/caption_batch",
+        data=body,
+        headers={"Content-Type": "application/json"},
+    )
+
+    try:
+        raw = await asyncio.to_thread(
+            lambda: urllib.request.urlopen(req, timeout=VLM_CAPTION_TIMEOUT_S).read()
+        )
+        results = json.loads(raw)
+    except Exception as e:
+        print(f"[EVAL] {skill}: caption batch failed: {e}")
+        return 0
+
+    captioned = 0
+    with captions_path.open("w") as f:
+        for fname, item in zip(frame_files, results):
+            entry = {"frame": fname.name}
+            if isinstance(item, dict) and item.get("caption"):
+                entry["caption"] = item["caption"]
+                captioned += 1
+            else:
+                entry["error"] = (item or {}).get("error", "unknown")
+            f.write(json.dumps(entry) + "\n")
+
+    print(f"[EVAL] {skill}: captioned {captioned}/{len(frame_files)} frames → {captions_path.name}")
+    return captioned
+
+
+async def _fetch_remote_recording(execution_id: str, skill: str,
+                                   agent_server_url: str = "") -> Path | None:
     """Download a recording from the remote agent server to a local cache.
+
+    ``agent_server_url`` (added 2026-04-30): which sim's agent_server to
+    pull from. When empty, falls back to global AGENT_SERVER which is
+    primary_target's URL — fine for single-target setups but BUGGY for
+    multi-target: a skill bound to sim-1 would otherwise download sim-0's
+    unrelated recording. Always pass the dev's per-target URL when known.
 
     Fetches metadata, stdout/stderr (from job), state timeline, and camera frames.
     Returns the local cache directory path, or None on failure.
     """
     import urllib.request, urllib.error
 
+    server = agent_server_url or AGENT_SERVER
     cache_dir = PROJECT_DIR / "logs" / "code_executions" / execution_id
     metadata_path = cache_dir / "metadata.json"
 
@@ -2049,11 +2659,11 @@ async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
     if metadata_path.exists():
         return cache_dir
 
-    print(f"[EVAL] {skill}: fetching recording {execution_id} from {AGENT_SERVER}")
+    print(f"[EVAL] {skill}: fetching recording {execution_id} from {server}")
 
     try:
         # 1. Fetch recording metadata (has timeline, frames list, cameras, duration)
-        rec_url = f"{AGENT_SERVER}/code/recordings/{execution_id}"
+        rec_url = f"{server}/code/recordings/{execution_id}"
         rec_data = json.loads(await asyncio.to_thread(
             lambda: urllib.request.urlopen(rec_url, timeout=15).read()
         ))
@@ -2067,7 +2677,7 @@ async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
     stdout, stderr = "", ""
     try:
         # Find the job that produced this execution
-        jobs_url = f"{AGENT_SERVER}/code/jobs"
+        jobs_url = f"{server}/code/jobs"
         jobs_data = json.loads(await asyncio.to_thread(
             lambda: urllib.request.urlopen(jobs_url, timeout=10).read()
         ))
@@ -2108,17 +2718,18 @@ async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
                         **state,
                     }) + "\n")
 
-    # 5. Download frames — sample evenly, max 30 frames to keep it fast
+    # 5. Download frames — mirror ALL frames so the dashboard's Latest Execution
+    # panel can render full playback for terminal-status hexes (where the
+    # agent_server has moved on to the next batch's task and can no longer
+    # serve `/code/recordings/<id>/frames/`). Captioning has its own cap
+    # (VLM_CAPTION_MAX_FRAMES=30, see _select_frames_for_captioning), so VLM
+    # cost is unchanged. Total ~15MB per recording over localhost = a few seconds.
     all_frames = rec_data.get("frames", [])
     if all_frames:
-        if len(all_frames) > 30:
-            step = len(all_frames) / 30
-            sampled = [all_frames[int(i * step)] for i in range(30)]
-        else:
-            sampled = all_frames
+        sampled = all_frames
 
         async def _download_frame(fname: str):
-            url = f"{AGENT_SERVER}/code/recordings/{execution_id}/frames/{fname}"
+            url = f"{server}/code/recordings/{execution_id}/frames/{fname}"
             try:
                 data = await asyncio.to_thread(
                     lambda u=url: urllib.request.urlopen(u, timeout=10).read()
@@ -2137,46 +2748,61 @@ async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
 
     frame_count = len([f for f in cache_dir.iterdir() if f.suffix == ".jpg"])
     print(f"[EVAL] {skill}: cached recording {execution_id} ({frame_count} frames, {len(timeline)} state samples)")
+
+    # Caption frames via the VLM service so a text-only evaluator can read
+    # visual evidence as text. Best-effort: failures don't block the eval.
+    try:
+        await _caption_recording(cache_dir, skill)
+    except Exception as e:
+        print(f"[EVAL] {skill}: caption step raised {type(e).__name__}: {e}")
+
     return cache_dir
 
 
-async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
+async def run_evaluator(skill: str, execution_id: str | None = None,
+                         agent_server_url: str = "") -> dict:
     """Run a short-lived evaluator agent (ClaudeSDKClient) that reviews execution recordings.
+
+    ``agent_server_url`` (added 2026-04-30): which sim's agent_server to
+    query for the recording. Pass dev's per-target URL when known. Without
+    this, multi-target eval pulls the wrong sim's recording — e.g. a
+    close-drawer eval bound to sim-1 reviewing sim-0's open-drawer exec
+    just because AGENT_SERVER (global) defaults to primary_target.
 
     Returns {"passed": bool, "feedback": str}.
     """
-    # Find execution recording — try local first, then fetch from remote agent server
-    exec_dir = PROJECT_DIR / "logs" / "code_executions"
+    # Find execution recording — try local first, then fetch from remote agent server.
+    # NOTE (2026-05-01): Removed `max(all_dirs, key=mtime)` fallback. In multi-target
+    # mode this picked stale legacy dirs in logs/ when the per-slot logs_env*/ dirs
+    # were the source of truth, causing every eval to review the same wrong recording.
+    # Now we look up by EXACT execution_id via _find_exec_dir (walks logs/ + logs_env*/).
+    # If exec_id is missing, log a warning and fall through to remote fetch.
+    server = agent_server_url or AGENT_SERVER
 
     latest = None
-
-    # Try local recordings
-    if exec_dir.exists():
-        if execution_id:
-            target = exec_dir / execution_id
-            if target.exists() and target.is_dir():
-                latest = target
-        if latest is None:
-            all_dirs = [d for d in exec_dir.iterdir() if d.is_dir()]
-            if all_dirs:
-                latest = max(all_dirs, key=lambda d: d.stat().st_mtime)
+    if execution_id:
+        latest = _find_exec_dir(execution_id)
+    else:
+        print(f"[EVAL] {skill}: WARNING — no execution_id provided; cannot pick recording locally")
 
     # Fall back to fetching from agent server (works for both local and remote)
     if latest is None:
         try:
             if execution_id:
                 # Fetch specific execution
-                latest = await _fetch_remote_recording(execution_id, skill)
+                latest = await _fetch_remote_recording(execution_id, skill,
+                                                       agent_server_url=server)
             else:
                 # Find the most recent execution from the remote server
                 import urllib.request
-                rec_url = f"{AGENT_SERVER}/code/recordings"
+                rec_url = f"{server}/code/recordings"
                 rec_data = json.loads(await asyncio.to_thread(
                     lambda: urllib.request.urlopen(rec_url, timeout=10).read()
                 ))
                 recordings = rec_data.get("recordings", rec_data) if isinstance(rec_data, dict) else rec_data
                 if recordings:
-                    latest = await _fetch_remote_recording(recordings[0], skill)
+                    latest = await _fetch_remote_recording(recordings[0], skill,
+                                                           agent_server_url=server)
         except Exception as e:
             print(f"[EVAL] {skill}: failed to fetch remote recordings: {e}")
 
@@ -2184,8 +2810,28 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
         print(f"[EVAL] {skill}: no execution recordings found (local or remote)")
         return {"passed": False, "feedback": "No execution recordings found — cannot evaluate."}
 
+    # Hard iter cap: count this evaluator invocation toward the budget.
+    # If exceeded, return a synthetic failure verdict so the dev cycle
+    # gets a deterministic "stop" signal and the skill ends up `failed`.
+    if _bump_iter(skill, "eval"):
+        return {
+            "passed": False,
+            "feedback": (
+                f"Iteration cap of {MAX_ITERS_PER_SKILL} reached (dev + eval "
+                f"calls combined). Skill marked failed."
+            ),
+        }
+
     print(f"[EVAL] {skill}: reviewing execution {latest.name}")
     await ws_broadcast_agent_msg(skill, f"Evaluating execution {latest.name}...", "evaluator")
+
+    # Ensure captions exist for this recording, including locally-cached ones
+    # that were fetched before captioning was wired in. _caption_recording is
+    # idempotent: if frame_captions.jsonl already exists it returns early.
+    try:
+        await _caption_recording(latest, skill)
+    except Exception as e:
+        print(f"[EVAL] {skill}: caption step raised {type(e).__name__}: {e}")
 
     # Build evaluator prompt
     entry = _find_entry(skill)
@@ -2231,12 +2877,30 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
                 collected_text.append(t)
                 await ws_broadcast_agent_msg(skill, t, "evaluator")
 
+            # Plumb the skill's target into the eval shim so each parallel eval
+            # uses its own openclaw agent (and therefore its own session file).
+            import sys as _sys
+            _main = _sys.modules.get('__main__')
+            _live_skill_entries = _main.skill_entries if _main and hasattr(_main, 'skill_entries') else skill_entries
+            _live_targets = _main.targets if _main and hasattr(_main, 'targets') else targets
+            _eval_target_name = ""
+            _entry = next((e for e in _live_skill_entries if e["name"] == skill), None)
+            if _entry and _entry.get("task_env"):
+                for _t in _live_targets:
+                    if _t.get("task_env") == _entry["task_env"]:
+                        _eval_target_name = _t.get("name", "")
+                        break
+            print(f"[EVAL/OC] {skill}: routing target_name={_eval_target_name!r} "
+                  f"(entry.task_env={(_entry.get('task_env') if _entry else None)!r}, "
+                  f"len(targets)={len(_live_targets)} live, {len(targets)} closure)", flush=True)
+
             res = await _openclaw_backend._run_eval_openclaw(
                 skill=skill,
                 system_prompt=system_prompt,
                 user_prompt=prompt,
                 on_text=_on_text,
                 timeout_s=EVAL_TIMEOUT,
+                target_name=_eval_target_name,
             )
             if not res.get("ok"):
                 err = res.get("error", "unknown")
@@ -2300,28 +2964,48 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
 
             await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
 
-        # Parse EVAL_RESULT from collected text
+        # Parse EVAL_RESULT from collected text. Try several patterns in order
+        # of strictness — Fix #15B (2026-05-01): models occasionally wrap their
+        # JSON in markdown code blocks (```json ... ```) or split across lines
+        # despite the system-prompt warning. We accept these forms rather than
+        # default-fail (which is the worst-of-both: dev gets misleading "your
+        # output is unparseable" feedback when actually the EVALUATOR did fine,
+        # just used markdown).
         full_text = "\n".join(collected_text)
-        match = re.search(r'EVAL_RESULT:\s*(\{.*?\})', full_text)
-        if match:
+
+        # Use re.DOTALL so `.` matches across lines — feedback paragraphs span
+        # multiple lines but the JSON itself is one logical object.
+        candidates = [
+            # 1. Strict: `EVAL_RESULT: {...}` (the contract)
+            re.search(r'EVAL_RESULT:\s*(\{.*?\})\s*$', full_text, re.DOTALL | re.MULTILINE),
+            re.search(r'EVAL_RESULT:\s*(\{.*?\})', full_text, re.DOTALL),
+            # 2. Markdown-wrapped: ```json\n{"passed": ...}\n``` or ``` ... ```
+            re.search(r'```(?:json)?\s*(\{[^`]*?"passed"[^`]*?\})\s*```', full_text, re.DOTALL),
+            # 3. Bare JSON line with "passed" key anywhere
+            re.search(r'(\{[^{}]*?"passed"\s*:\s*(?:true|false)[^{}]*?\})', full_text, re.IGNORECASE | re.DOTALL),
+        ]
+        for match in candidates:
+            if not match:
+                continue
             try:
                 result = json.loads(match.group(1))
-                return {"passed": result.get("passed", True), "feedback": result.get("feedback", ""), "full_text": full_text}
+                return {
+                    "passed": result.get("passed", True),
+                    "feedback": result.get("feedback", full_text[-200:]),
+                    "full_text": full_text,
+                }
             except json.JSONDecodeError:
-                pass
+                continue
 
-        # Fallback: try to find any JSON with "passed" key
-        match = re.search(r'\{"passed":\s*(true|false)[^}]*\}', full_text, re.IGNORECASE)
-        if match:
-            try:
-                result = json.loads(match.group())
-                return {"passed": result.get("passed", True), "feedback": result.get("feedback", full_text[-200:]), "full_text": full_text}
-            except json.JSONDecodeError:
-                pass
-
-        # Can't parse — assume pass
-        print(f"[EVAL] {skill}: could not parse evaluator output, assuming pass")
-        return {"passed": True, "feedback": full_text[-200:] if full_text else "No output", "full_text": full_text}
+        # Can't parse — DEFAULT TO FAIL (changed 2026-05-01 v17 from default-pass).
+        # Reason: a model that forgot the `EVAL_RESULT: {...}` envelope is
+        # almost always doing something wrong (timeout, refusal, format drift,
+        # or genuine crash). Treating that as PASS marked failed skills as done
+        # in v12 and earlier — silent quality degradation. Default-fail is safer:
+        # the dev gets retry feedback containing the unparseable text and can
+        # rewrite. False fails surface in last_feedback and are easy to spot.
+        print(f"[EVAL] {skill}: could not parse evaluator output, treating as FAIL")
+        return {"passed": False, "feedback": "Evaluator output unparseable (no EVAL_RESULT envelope). Last 200 chars: " + (full_text[-200:] if full_text else "(empty)"), "full_text": full_text}
 
     except asyncio.TimeoutError:
         print(f"[EVAL] {skill}: evaluator timed out after {EVAL_TIMEOUT}s")
@@ -2339,16 +3023,84 @@ async def _handle_agent_done(state: AgentState):
         await ws_broadcast_status(state.skill, state.agent_id, "done", "Finished")
         return
 
+    # Skip if skill is already terminal — driver may have PATCHed
+    # status=failed (walltime cap) while this dev's last turn was still
+    # running. Without this guard, the post-turn eval below would run and
+    # OVERWRITE the walltime fail_reason with eval_retries_exhausted_*.
+    # CSV would then misreport the actual failure mode. Added 2026-05-01 v17.
+    entry = _find_entry(state.skill)
+    if entry and entry.get("status") in ("failed", "done", "confirmed_done"):
+        prev_reason = entry.get("fail_reason", "")
+        print(f"[ORCH] {state.skill}: skipping agent-done handling — "
+              f"already terminal (status={entry.get('status')}, "
+              f"fail_reason={prev_reason!r})")
+        return
+
     # Skip if this dev agent was re-spawned inside the test loop (loop manages flow)
     if state.skill in _skills_in_test_loop:
         return
+
+    # Refresh trial_images with the latest exec from this dev's agent_server.
+    # Without this, trial_images only updates when the dev explicitly POSTs
+    # /job-done (via submit_and_wait.py). Devs that call /code/submit directly
+    # — or whose openclaw turn ends after walltime cap — never trigger a
+    # refresh, leaving the dashboard stuck on stale URLs from previous runs.
+    latest_exec = None
+    agent_url = state._agent_server_url or AGENT_SERVER
+    try:
+        latest_exec = await asyncio.to_thread(_fetch_latest_exec_id, agent_url)
+        if latest_exec:
+            _update_trial_images(state.skill, latest_exec, agent_server_url=agent_url)
+            await broadcast_full_sync()
+    except Exception as e:
+        print(f"[ORCH] {state.skill}: trial_images refresh on agent-done failed: {e}")
+
+    # Eagerly mirror the full recording to PROJECT_DIR/logs/code_executions/<id>/
+    # BEFORE the next batch transition can SIGKILL the agent_server and lose it.
+    # _fetch_remote_recording is idempotent (checks metadata.json) so calling it
+    # here + later inside run_evaluator is safe. This is what guarantees terminal
+    # hexes can still play full Latest Execution video after batch rotation.
+    if latest_exec:
+        try:
+            await _fetch_remote_recording(latest_exec, state.skill,
+                                          agent_server_url=agent_url)
+        except Exception as e:
+            print(f"[ORCH] {state.skill}: pre-eval mirror failed: {e}")
 
     # Run evaluator on the latest execution
     await ws_broadcast_agent_msg(state.skill, "Dev complete — running evaluator...", "evaluator")
     _update_entry(state.skill, {"status": "evaluating"})
     await broadcast_full_sync()
 
-    eval_result = await run_evaluator(state.skill)
+    # IMPORTANT: pass execution_id explicitly. Without this, run_evaluator falls
+    # back to "find recording by mtime in logs/", which (since per-slot LOG_DIR
+    # commit ce73464) reliably picks a stale yesterday-dir, making every eval
+    # review the wrong recording. See 2026-05-01 v12 post-mortem.
+    #
+    # Fix #14 (2026-05-01): wrap in `_get_eval_lock(skill)` so this path A
+    # eval doesn't race with path B (`/job-done` webhook → `_run_submission_eval`)
+    # against the SAME tidybot-evaluator-sim-N session file. v17 batch 3 saw
+    # coffee-press-button hit FailoverError "session file locked" when path A
+    # fired while path B's openclaw subprocess (PID 141528) still held the
+    # file lock. Both paths going through the same eval lock serializes them.
+    #
+    # Fix #14b (2026-05-01): write `_last_feedback[skill]` here too. Without
+    # this, skills whose dev never POST'd /job-done (raw urllib.request to
+    # /code/submit instead of submit_and_wait.py) ended up with EMPTY
+    # last_feedback in CSV — only path B writes _last_feedback before this fix,
+    # but path A is the only path that fired for those skills. v17 caught
+    # open-drawer + manipulate-sink-faucet stuck this way. Now both paths
+    # populate the same dashboard/CSV field.
+    async with _get_eval_lock(state.skill):
+        eval_result = await run_evaluator(
+            state.skill,
+            execution_id=latest_exec,
+            agent_server_url=agent_url,
+        )
+        try:
+            _last_feedback[state.skill] = (eval_result.get("feedback") or "")[:500]
+        except Exception:
+            pass
 
     # Add evaluator feedback to in-memory log (persisted via agent_sessions.jsonl on session end)
     eval_feedback = eval_result.get("feedback", "")
@@ -2369,17 +3121,57 @@ async def _handle_agent_done(state: AgentState):
         await ws_broadcast_agent_msg(state.skill, f"Evaluator ({attempts}/{MAX_EVAL_RETRIES}): {feedback}", "evaluator")
 
         if attempts >= MAX_EVAL_RETRIES:
-            # Exhausted retries — send to review anyway
-            await ws_broadcast_agent_msg(state.skill, f"Evaluator failed {attempts} times — sending to review.", "evaluator")
+            # Fix #16 (2026-05-01): match SDK path B (`_maybe_resume_paused_dev`)
+            # behavior — when MAX consecutive eval-fails hit, RESET the counter
+            # but DO NOT mark status=failed. This lets the dev keep iterating
+            # against the SAME walltime/iter budget, mirroring what SDK mode
+            # naturally does (where dev's long ClaudeSDKClient session never
+            # ends, so this branch rarely fires).
+            #
+            # Before this fix: openclaw mode marked failed at attempts=2,
+            # driver immediately moved to next batch, dev got at most ~12
+            # iters out of MAX_ITERS_PER_SKILL=35 budget. Skill gave up too
+            # easily, never had a chance to converge on hard tasks.
+            #
+            # Real terminal now happens via:
+            #   - _bump_iter cap (iter_count > 35) at line ~1144
+            #   - driver's PER_TASK_WALLTIME_S cap
+            # Both are still enforced, both will mark failed with proper
+            # fail_reason. Just don't short-circuit here on the retry counter.
+            #
+            # Interactive (non-autonomous) mode keeps prior behavior — review
+            # gate is the explicit human-in-the-loop path.
             _eval_attempt_count.pop(state.skill, None)
-            _update_entry(state.skill, {"status": "review"})
-            await broadcast_full_sync()
-            return
+            if autonomous_mode:
+                await ws_broadcast_agent_msg(state.skill,
+                    f"Evaluator failed {attempts} times — counter reset, dev keeps iterating "
+                    f"(iter={_iter_count.get(state.skill, 0)}/{MAX_ITERS_PER_SKILL}).",
+                    "evaluator")
+                # status stays "writing" — fall through to re-spawn below
+            else:
+                await ws_broadcast_agent_msg(state.skill, f"Evaluator failed {attempts} times — sending to review.", "evaluator")
+                _update_entry(state.skill, {"status": "review"})
+                await broadcast_full_sync()
+                return
 
         _update_entry(state.skill, {"status": "writing"})
         await broadcast_full_sync()
 
-        # Inject feedback into the dev agent to continue working
+        # Inject feedback into the dev agent to continue working.
+        #
+        # SDK mode: state.client is a long-lived ClaudeSDKClient context
+        # (anthropic API session). client.query(feedback) appends to the
+        # SAME session — dev sees the new message and keeps iterating.
+        #
+        # OpenClaw mode (BUG FIX 2026-05-01): the dev was a *subprocess*
+        # that exited at end-of-turn, so state.client is always None and
+        # the original code path fell through to "dev_agent_gone" → failed.
+        # That made MAX_ITERS_PER_SKILL=35 useless under openclaw — the
+        # very first eval-fail killed the skill at iter≈3. The fix: spawn
+        # a fresh dev subprocess with the evaluator feedback as the new
+        # prompt. The new openclaw subprocess inherits the resumed session
+        # (orch's spawn_agent code already preserves session_id), so dev
+        # sees its own prior context + the feedback and keeps iterating.
         if state.client and state.status in ("done", "paused"):
             state.status = "running"
             await state.client.query(
@@ -2389,11 +3181,31 @@ async def _handle_agent_done(state: AgentState):
                 f"Fix the code and resubmit."
             )
             state.task = asyncio.create_task(_eval_retry_response(state))
+        elif HARNESS == "openclaw":
+            # Re-spawn dev subprocess with feedback as new turn's prompt.
+            # spawn_agent will: stop the dead state, preserve session_id
+            # for openclaw resume, bump iter counter, and start a new
+            # openclaw subprocess with this prompt.
+            retry_prompt = (
+                f"## Evaluator Feedback (retry {attempts}/{MAX_EVAL_RETRIES})\n\n"
+                f"Your previous submission was reviewed and found to have issues:\n\n"
+                f"{feedback}\n\n"
+                f"Re-read the existing code and fix it, then resubmit via submit_and_wait.py."
+            )
+            await ws_broadcast_agent_msg(state.skill,
+                f"Re-spawning dev with evaluator feedback (attempt {attempts}/{MAX_EVAL_RETRIES}).",
+                "evaluator")
+            asyncio.create_task(spawn_agent(state.skill, retry_prompt, agent_type="dev"))
         else:
-            # Dev agent is gone — send to review so skill doesn't get stuck
-            await ws_broadcast_agent_msg(state.skill, "Dev agent unavailable for retry — sending to review.", "evaluator")
+            # SDK mode but client is gone (race / shutdown). Autonomous
+            # marks failed; interactive sends to review.
             _eval_attempt_count.pop(state.skill, None)
-            _update_entry(state.skill, {"status": "review"})
+            if autonomous_mode:
+                await ws_broadcast_agent_msg(state.skill, "Dev agent unavailable for retry — marking failed (autonomous).", "evaluator")
+                _update_entry(state.skill, {"status": "failed", "fail_reason": "dev_agent_gone_during_eval_retry"})
+            else:
+                await ws_broadcast_agent_msg(state.skill, "Dev agent unavailable for retry — sending to review.", "evaluator")
+                _update_entry(state.skill, {"status": "review"})
             await broadcast_full_sync()
         return
 
@@ -2460,8 +3272,10 @@ async def _auto_spawn_ready_skills() -> list[str]:
             # Only auto-spawn skills that are "planned" or "failed" (retriable)
             if status not in ("planned", "failed"):
                 continue
-            # Check all dependencies are done
-            if deps and not all(d in done_skills for d in deps):
+            # Check all dependencies are done. Skipped when
+            # IGNORE_DEPS_FOR_SPAWN=1 — graph.json keeps deps for the dashboard
+            # to draw the layered tree, but the scheduler no longer gates on them.
+            if not IGNORE_DEPS_FOR_SPAWN and deps and not all(d in done_skills for d in deps):
                 continue
 
             # Build dev prompt with lessons if available
@@ -2473,9 +3287,25 @@ async def _auto_spawn_ready_skills() -> list[str]:
                 prompt += f"\n\n## Previous Debugging Lessons (READ CAREFULLY)\n{lessons}"
                 print(f"[ORCH] {name}: attached LESSONS.md ({len(lessons)} chars)")
 
-            # Spawn one agent per target (parallel multi-target development)
+            # Pick the target(s) to spawn on:
+            #   - Unified-graph mode (entry.task_env set) → 1:1 dispatch to the
+            #     target whose sim runs that task_env. Skip the skill if no
+            #     such target is configured.
+            #   - Legacy mode (no per-entry task_env) → cartesian, one agent
+            #     per target (multi-target validation of the same skill).
+            entry_task_env = entry.get("task_env")
+            if entry_task_env:
+                bound_targets = [t for t in targets if t.get("task_env") == entry_task_env]
+                if not bound_targets:
+                    print(f"[ORCH] {name}: no target with task_env={entry_task_env!r}; "
+                          f"skipping (configure target.task_env to match, or remove "
+                          f"per-entry task_env to fall back to multi-target)")
+                    continue
+            else:
+                bound_targets = targets
+
             spawned_any = False
-            for t in targets:
+            for t in bound_targets:
                 if (name, t["name"]) in active_pairs:
                     continue  # already has an agent on this target
 
@@ -2764,6 +3594,7 @@ async def handle_http(reader, writer):
     response_body = ""
     status = "200 OK"
     content_type = "application/json"
+    binary_body: bytes | None = None  # set for binary endpoints (e.g. /cached_frames/...)
 
     try:
         if method == "POST" and path == "/xbot-start":
@@ -2811,6 +3642,83 @@ async def handle_http(reader, writer):
         elif method == "GET" and path == "/entries":
             response_body = json.dumps(skill_entries)
 
+        elif method == "GET" and path == "/summary":
+            # Per-task batch-runner summary: status, iter count, fail reason,
+            # wall time, last evaluator feedback. Only entries that carry a
+            # task_env (unified-graph mode) are reported.
+            now = time.time()
+            out = []
+            for e in skill_entries:
+                if not e.get("task_env"):
+                    continue
+                start = _skill_start_ts.get(e["name"])
+                wall = (now - start) if start else 0.0
+                out.append({
+                    "name": e["name"],
+                    "task_env": e["task_env"],
+                    "status": e.get("status", "planned"),
+                    "fail_reason": e.get("fail_reason", ""),
+                    "iter_count": _iter_count.get(e["name"], 0),
+                    "iter_cap": MAX_ITERS_PER_SKILL,
+                    "wall_time_s": round(wall, 1),
+                    "last_feedback": _last_feedback.get(e["name"], ""),
+                })
+            response_body = json.dumps({"entries": out})
+
+        elif method == "POST" and path == "/targets":
+            # Hot-swap the active targets list at runtime. Used by the
+            # batch driver to rotate which (sim, agent_server, task_env)
+            # tuples are currently bound, while keeping the orch process
+            # — and the dashboard's view of all entries — alive across
+            # batches.
+            #
+            # Body: {"targets": [{name, agent_server, sim_api, task_env, primary?}, ...]}
+            # Side effects:
+            #   - global `targets` reassigned
+            #   - `primary_target` re-picked (first with primary=True, else first)
+            #   - `AGENT_SERVER` re-pointed
+            #   - any in-flight dev/eval agents whose target dropped out are killed
+            #   - _auto_spawn_ready_skills is run so newly-bound entries spawn
+            global targets, primary_target, AGENT_SERVER
+            params = json.loads(body)
+            new_targets = params.get("targets", [])
+            if not isinstance(new_targets, list):
+                status = "400 Bad Request"
+                response_body = json.dumps({"error": "expected `targets` to be a list"})
+            else:
+                old_target_names = {t.get("name") for t in targets}
+                new_target_names = {t.get("name") for t in new_targets}
+                dropped = old_target_names - new_target_names
+
+                # Kill any in-flight dev whose target was removed.
+                for a in list(agents.values()):
+                    if a.target_name and a.target_name in dropped \
+                            and a.status in ("starting", "running", "paused"):
+                        try:
+                            await kill_agent(a.agent_id)
+                        except Exception as _e:
+                            pass
+
+                targets = new_targets
+                if targets:
+                    primary_target = next((t for t in targets if t.get("primary")), targets[0])
+                    AGENT_SERVER = primary_target.get("agent_server", AGENT_SERVER)
+                else:
+                    primary_target = {"name": "default", "agent_server": AGENT_SERVER,
+                                      "sim_api": "http://localhost:5500", "primary": True}
+                    targets = [primary_target]
+
+                names = [t.get("name") for t in targets]
+                envs = [t.get("task_env", "") for t in targets]
+                print(f"[ORCH] /targets rebind: {len(targets)} target(s) — "
+                      f"names={names}, task_envs={envs}, primary={primary_target.get('name')}")
+
+                # Pick up newly-dispatchable skills for the rotated targets.
+                if dev_mode:
+                    asyncio.create_task(_auto_spawn_ready_skills())
+                await broadcast_full_sync()
+                response_body = json.dumps({"ok": True, "targets": targets})
+
         elif method == "POST" and path == "/entries":
             params = json.loads(body)
             entry = _add_entry(params["name"], params.get("description", ""), params.get("dependencies", []))
@@ -2828,9 +3736,22 @@ async def handle_http(reader, writer):
             params = json.loads(body)
             entry = _update_entry(name, params)
             await broadcast_full_sync()
+            new_status = params.get("status")
             # If status was set to "done", check for newly unblocked skills
-            if params.get("status") == "done":
+            if new_status == "done":
                 await _auto_spawn_ready_skills()
+            # If driver patched terminal failure (walltime cap), kill any
+            # in-flight dev/eval for this skill — burning compute on a doomed
+            # turn is pointless, and the late-arriving _handle_agent_done would
+            # otherwise trigger another eval round. Added 2026-05-01 v17.
+            elif new_status in ("failed", "confirmed_done"):
+                for aid, a in list(agents.items()):
+                    if a.skill == name and a.status in ("starting", "running", "paused"):
+                        print(f"[ORCH] {name}: PATCH→{new_status}, killing in-flight {a.agent_type} agent {aid}")
+                        try:
+                            await kill_agent(aid)
+                        except Exception as e:
+                            print(f"[ORCH] {name}: kill_agent({aid}) failed: {e}")
             response_body = json.dumps(entry or {"error": "not found"})
 
         elif method == "POST" and path == "/job-done":
@@ -2857,6 +3778,64 @@ async def handle_http(reader, writer):
             else:
                 content_type = "application/x-ndjson; charset=utf-8"
                 response_body = log_path.read_text() if log_path.exists() else ""
+
+        elif method == "GET" and path.startswith("/cached_frames/"):
+            # Two routes:
+            #   /cached_frames/<exec_id>            → JSON list of all frame filenames
+            #   /cached_frames/<exec_id>/<filename> → binary frame file
+            # Both serve from logs/code_executions/ + logs_env*/, surviving
+            # agent_server restarts. The list route lets the dashboard
+            # render full Latest Execution playback for terminal skills
+            # without needing the agent_server (which has moved on to the
+            # next batch's task).
+            try:
+                rest = path[len("/cached_frames/"):]
+                exec_id, _, fname = rest.partition("/")
+                # Reject path traversal in exec_id segment regardless.
+                if not exec_id or ".." in exec_id or "/" in exec_id:
+                    status = "400 Bad Request"
+                    response_body = json.dumps({"error": "bad path"})
+                else:
+                    base_dir = _find_exec_dir(exec_id)
+                    if base_dir is None:
+                        base_dir = PROJECT_DIR / "logs" / "code_executions" / exec_id
+                    if not fname:
+                        # List mode: return all .jpg frames in this exec dir
+                        if base_dir.is_dir():
+                            frames = sorted(f.name for f in base_dir.iterdir()
+                                            if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg"))
+                            response_body = json.dumps({
+                                "execution_id": exec_id,
+                                "frames": frames,
+                                "frame_count": len(frames),
+                            })
+                        else:
+                            status = "404 Not Found"
+                            response_body = json.dumps({"error": "exec not cached", "execution_id": exec_id})
+                    else:
+                        # File mode: serve the binary frame
+                        if "/" in fname or ".." in fname:
+                            status = "400 Bad Request"
+                            response_body = json.dumps({"error": "bad filename"})
+                        else:
+                            fp = base_dir / fname
+                            if fp.is_file():
+                                binary_body = fp.read_bytes()
+                                ext = fp.suffix.lower()
+                                if ext in (".jpg", ".jpeg"):
+                                    content_type = "image/jpeg"
+                                elif ext == ".png":
+                                    content_type = "image/png"
+                                elif ext == ".json":
+                                    content_type = "application/json"
+                                else:
+                                    content_type = "application/octet-stream"
+                            else:
+                                status = "404 Not Found"
+                                response_body = json.dumps({"error": "frame not cached"})
+            except Exception as e:
+                status = "500 Internal Server Error"
+                response_body = json.dumps({"error": str(e)})
 
         elif method == "GET" and path.startswith("/eval-result/"):
             skill = path.split("/eval-result/", 1)[1]
@@ -2886,7 +3865,8 @@ async def handle_http(reader, writer):
 
     # Use UTF-8 byte length (not char length) so multi-byte content
     # (e.g. Chinese text in session logs) doesn't get truncated.
-    body_bytes = response_body.encode("utf-8")
+    # For binary endpoints, binary_body wins.
+    body_bytes = binary_body if binary_body is not None else response_body.encode("utf-8")
     http_response = (
         f"HTTP/1.1 {status}\r\n"
         f"Content-Type: {content_type}\r\n"
@@ -2913,6 +3893,8 @@ async def main():
         if _openclaw_backend else "  (ClaudeSDKClient)"
     ))
     print(f"[ORCH] Project dir: {PROJECT_DIR}")
+    if IGNORE_DEPS_FOR_SPAWN:
+        print(f"[ORCH] IGNORE_DEPS_FOR_SPAWN=1  (deps still drawn by dashboard, but scheduler ignores them)")
     print(f"[ORCH] Entries loaded: {len(skill_entries)}")
     print(f"[ORCH] WebSocket: ws://0.0.0.0:{WS_PORT}")
     print(f"[ORCH] HTTP API:  http://0.0.0.0:{WS_PORT + 1}")
@@ -2928,6 +3910,9 @@ async def main():
 
     # Start HTTP API server
     http_server = await asyncio.start_server(handle_http, "0.0.0.0", WS_PORT + 1)
+
+    # Background: periodic sim health check (warns when a target's sim dies)
+    asyncio.create_task(_sim_health_check_loop())
 
     # Persist any in-flight agent logs when the process is asked to stop,
     # so sessions.html still shows their work.

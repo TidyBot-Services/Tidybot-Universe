@@ -701,7 +701,7 @@ async def test_graph_meta_load(orch):
     # Write a graph with metadata format
     meta_graph = {
         "task_env": "RoboCasa-Pn-P-Counter-To-Cab-v0",
-        "task_source": "~/tidybot_uni/sims/maniskill_tidyverse/robocasa_tasks/single_stage/kitchen_pnp.py",
+        "task_source": "~/文档/Tidybot-Universe/sims/robocasa_tasks/single_stage/kitchen_pnp.py",
         "entries": [
             make_entry("test-skill"),
         ]

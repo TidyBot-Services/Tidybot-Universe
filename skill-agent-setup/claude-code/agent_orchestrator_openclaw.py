@@ -61,6 +61,72 @@ PROVIDER_PRICING: dict[tuple[str, Optional[str]], tuple[float, float, float]] = 
 DEFAULT_TURN_TIMEOUT_S = 900  # mirrors SDK_IDLE_TIMEOUT_S
 
 
+# IRON RULES — re-injected on every prompt (resume too) because openclaw `--local`
+# mode shares one session per agent across all skills, so the original system
+# prompt's rules get buried hundreds of turns deep. Caught 2026-05-01 v15 batch 3:
+# microwave-press-button dev launched its own `maniskill_server` subprocess to
+# "fix" an unreachable sim-1, and used the WRONG task name (Open-Single-Door,
+# leaked from batch 2's session history). This single-paragraph reminder MUST
+# stay short — it's prepended to every turn.
+_IRON_RULES = """🚨 STRICT BOUNDARIES — VIOLATING ANY IS A HARD FAILURE 🚨
+
+1. DO NOT start, restart, or kill ANY background process.
+   - Never run: nohup ... &, tmux, systemctl, pkill, fuser, kill, killall.
+   - Never launch: maniskill_server, server.py, sim, agent_server, robocasa_*.
+   - If sim/agent_server is unreachable: write `import sys; print("ABORT: infra down"); sys.exit(1)`
+     to your skill code and submit. Do NOT "fix" infrastructure.
+
+2. SHELL exec only via the SDK's submit_and_wait.py. Never bash directly.
+   - Read tool, Write tool: OK (only inside skills/<your-skill>/scripts/).
+   - All robot/sim execution must go through `from robot_sdk import ...`.
+
+3. SCOPE: You are writing code for ONE SKILL THIS TURN.
+   - Stay focused on the {skill_name} task_env named in the user prompt below.
+   - Ignore any prior session content about other skills/tasks.
+   - Do NOT edit files outside skills/<this-skill>/scripts/.
+"""
+
+
+def _build_iron_rules_for(skill: str) -> str:
+    """Return iron-rules block with skill_name substituted."""
+    return _IRON_RULES.replace("{skill_name}", skill)
+
+
+def _clean_stale_locks(sdir: Path) -> int:
+    """Remove .lock files in `sdir` whose owning PID is dead.
+
+    openclaw uses file-based locks (writes {pid, createdAt} to .jsonl.lock).
+    When an openclaw subprocess gets SIGKILL'd (driver teardown, OOM, vLLM
+    compaction crash), it can't run cleanup → lock file persists. The next
+    subprocess waits 10s for the lock then errors out (`FailoverError:
+    session file locked`). This caught us 2026-05-01 v15: PIDs in batch 2
+    locks were dead but their lock files lived through batch 3, deadlocking
+    every dev/eval call on those agent slots.
+
+    Returns count of locks cleaned.
+    """
+    if not sdir.exists():
+        return 0
+    cleaned = 0
+    for lock_path in sdir.glob("*.lock"):
+        try:
+            content = lock_path.read_text().strip()
+            if not content:
+                lock_path.unlink()
+                cleaned += 1
+                continue
+            data = json.loads(content)
+            pid = data.get("pid")
+            # /proc/<pid> exists iff the process is alive (Linux)
+            if pid and not Path(f"/proc/{pid}").exists():
+                lock_path.unlink()
+                print(f"[OC] cleaned stale lock {lock_path.name} (pid={pid} dead)")
+                cleaned += 1
+        except Exception as e:
+            print(f"[OC] could not check lock {lock_path}: {e}")
+    return cleaned
+
+
 def resolve_agent_id(agent_type: str, target_name: str = "") -> str:
     """Resolve agent_type (+ optional target) → concrete OpenClaw agent id.
 
@@ -393,6 +459,16 @@ async def _run_agent_openclaw(state, prompt: str):
 
     # Per-target agent id (isolation from other targets' runs)
     target_name = getattr(state, "target_name", "") or ""
+
+    # Resolve which (agent_server, sim_api) this dev agent should talk to.
+    # We rely on orch's spawn_agent() having stamped these onto `state` —
+    # NOT on re-importing agent_orchestrator's module globals (which fail
+    # because orch runs as __main__ and `import agent_orchestrator` from a
+    # submodule loads a *separate* fresh copy of the module).
+    bound_agent_server = (getattr(state, "_agent_server_url", None)
+                          or "http://localhost:8080")
+    bound_sim_api = (getattr(state, "_sim_api", None)
+                     or "http://localhost:5500")
     base_agent_id = resolve_agent_id(state.agent_type)
     agent_id = resolve_agent_id(state.agent_type, target_name)
 
@@ -402,19 +478,24 @@ async def _run_agent_openclaw(state, prompt: str):
 
     resume_id = state.session_id
 
-    # On first turn, prepend _get_system_prompt() content so the agent has
-    # full dev/evaluator context. On resume, session transcript already has it.
-    # _get_system_prompt() already substitutes skill_name / agent_server internally,
-    # so the returned string is final — do NOT run .format() on it again (JSON
-    # braces inside it would break Python's format parser).
+    # IRON RULES re-injection: prepend on every prompt (first turn AND resume)
+    # because openclaw `--local` shares one session per agent — the original
+    # system prompt's rules get buried hundreds of turns deep across batches.
+    # See _IRON_RULES module constant above for the full reasoning.
+    iron_rules = _build_iron_rules_for(state.skill)
+
+    # On first turn, also prepend _get_system_prompt() content so the agent has
+    # full dev/evaluator context. _get_system_prompt() already substitutes
+    # skill_name / agent_server internally, so the returned string is final —
+    # do NOT run .format() on it again (JSON braces would break format parser).
     if not resume_id:
         sys_ctx = _get_system_prompt(
             state.agent_type, state.skill,
-            agent_server_url=getattr(state, "_agent_server_url", "") or "",
+            agent_server_url=bound_agent_server,
         )
-        full_prompt = f"{sys_ctx}\n\n--- USER TASK ---\n{prompt}"
+        full_prompt = f"{iron_rules}\n\n{sys_ctx}\n\n--- USER TASK ---\n{prompt}"
     else:
-        full_prompt = prompt
+        full_prompt = f"{iron_rules}\n\n--- TASK ---\n{prompt}"
 
     cmd = [
         "openclaw", "agent",
@@ -434,14 +515,25 @@ async def _run_agent_openclaw(state, prompt: str):
     # from the right offset (OpenClaw reuses a single file per agent — the
     # file may already exist with prior history we don't want to re-broadcast).
     sdir = _sessions_dir(agent_id)
+
+    # Stale-lock cleanup: any .lock file whose owning PID is dead is removed
+    # before we spawn the subprocess. Without this, openclaw's first lock-acquire
+    # call waits 10s on a dead-PID lock, then errors with FailoverError. See
+    # _clean_stale_locks docstring for the v15 incident that drove this.
+    _clean_stale_locks(sdir)
+
     before_snapshot = set(sdir.glob("*.jsonl")) if sdir.exists() else set()
     existing_sizes = {p: p.stat().st_size for p in before_snapshot if p.exists()}
 
+    sub_env = {**os.environ,
+               "AGENT_SERVER": bound_agent_server,
+               "SIM_API": bound_sim_api}
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         cwd=str(WORKSPACE_DIR),
+        env=sub_env,
     )
     state.proc = proc
     state.status = "running"
@@ -543,6 +635,28 @@ async def _run_agent_openclaw(state, prompt: str):
     await ws_broadcast_agent_msg(state.skill, done_msg, state.agent_type)
     print(f"[OC] {state.skill}: {done_msg}")
 
+    # Guard: if the dev subprocess errored before producing any tool calls,
+    # don't push the skill into the eval/review pipeline. There is no fresh
+    # execution recording to evaluate — proceeding would just re-evaluate
+    # the prior submission and produce a misleading "passed" verdict.
+    # Instead, mark the skill failed so autonomous mode picks it back up
+    # via the regular re-spawn cascade in `_auto_spawn_ready_skills`.
+    if state.agent_type == "dev" and total_calls == 0 and stop_reason == "error":
+        msg = (
+            f"Dev exited with stop=error and 0 tool calls — likely an LLM/network "
+            f"hiccup or openclaw startup error. Skipping eval pipeline; marking "
+            f"skill as failed so the orchestrator can re-spawn a fresh dev."
+        )
+        print(f"[OC] {state.skill}: {msg}")
+        state.log.append({"text": msg, "role": "agent"})
+        await ws_broadcast_agent_msg(state.skill, msg, state.agent_type)
+        try:
+            _update_entry(state.skill, {"status": "failed"})
+        except Exception as _e:
+            print(f"[OC] {state.skill}: failed to mark skill failed: {_e}")
+        state.status = "error"
+        return
+
     # Let the rest of the orchestrator state machine run
     await _resolve_completion(state)
 
@@ -616,8 +730,13 @@ async def _run_eval_openclaw(
     user_prompt: str,
     on_text=None,
     timeout_s: int = 900,
+    target_name: str = "",
 ) -> dict:
     """One-shot evaluator via openclaw subprocess.
+
+    With ``target_name`` set, uses a per-target evaluator agent
+    (``tidybot-evaluator-<target>``) so concurrent evals across multiple
+    skills don't fight over the single shared session file lock.
 
     Returns:
       {"ok": bool, "text": str, "session_id": str, "cost_usd": float,
@@ -625,9 +744,15 @@ async def _run_eval_openclaw(
     """
     from agent_orchestrator import WORKSPACE_DIR
 
-    agent_id = AGENT_TYPE_MAP.get("evaluator")
-    if not agent_id:
+    base_agent_id = AGENT_TYPE_MAP.get("evaluator")
+    if not base_agent_id:
         return {"ok": False, "text": "", "error": "no evaluator agent mapped"}
+    agent_id = resolve_agent_id("evaluator", target_name)
+
+    # If a per-target derived agent is needed, auto-create it from base
+    # (mirrors the dev-agent isolation logic).
+    if agent_id != base_agent_id:
+        _ensure_agent_exists(agent_id, base_agent_id, workspace=str(WORKSPACE_DIR))
     if not _agent_exists(agent_id):
         return {"ok": False, "text": "", "error": f"agent {agent_id!r} not configured in OpenClaw"}
 
@@ -645,6 +770,8 @@ async def _run_eval_openclaw(
     ]
 
     sdir = _sessions_dir(agent_id)
+    # Stale-lock cleanup before spawning eval subprocess (mirror dev path).
+    _clean_stale_locks(sdir)
     before_snapshot = set(sdir.glob("*.jsonl")) if sdir.exists() else set()
     existing_sizes = {p: p.stat().st_size for p in before_snapshot if p.exists()}
 
