@@ -954,6 +954,24 @@ _spawn_lock = asyncio.Lock()          # prevents double-spawning in _auto_spawn_
 # Per-submission eval results: skill -> {"future": asyncio.Future, "execution_id": str}
 _submission_evals: dict[str, dict] = {}
 
+# Per-skill mutex so sequential evals for the same skill serialize.
+# Without this, when a dev re-submits while the prior eval is still running,
+# the second eval starts in parallel and contends for the same evaluator
+# session (openclaw --local mode = single deterministic session per agent).
+# This is Fix #14 cherry-picked from unified-multi-task v18.
+_eval_skill_locks: dict[str, asyncio.Lock] = {}
+
+# Latest evaluator feedback per skill (for /summary + dashboard reporting).
+_last_feedback: dict[str, str] = {}
+
+
+def _get_eval_lock(skill: str) -> asyncio.Lock:
+    lock = _eval_skill_locks.get(skill)
+    if lock is None:
+        lock = asyncio.Lock()
+        _eval_skill_locks[skill] = lock
+    return lock
+
 
 def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = ""):
     """Update entry's trial_images with frames from the latest execution recording.
@@ -1011,18 +1029,89 @@ def _update_trial_images(skill: str, execution_id: str, agent_server_url: str = 
 
 
 async def _run_submission_eval(skill: str, execution_id: str, job_agent_server: str = ""):
-    """Run evaluator for a specific submission, store result in _submission_evals."""
+    """Run evaluator for a specific submission, store result in _submission_evals.
+
+    Path B (submit_and_wait → /job-done). Serialized with Path A
+    (_handle_agent_done) via _get_eval_lock(skill) so they don't both
+    spawn an openclaw evaluator subprocess against the same single
+    deterministic session.
+    """
     # Update dashboard images from this execution
     _update_trial_images(skill, execution_id, agent_server_url=job_agent_server)
     await broadcast_full_sync()
 
-    try:
-        result = await run_evaluator(skill, execution_id=execution_id)
-    except Exception as e:
-        result = {"passed": True, "feedback": f"Evaluator error: {e}"}
-    entry = _submission_evals.get(skill)
-    if entry and not entry["future"].done():
-        entry["future"].set_result(result)
+    async with _get_eval_lock(skill):
+        try:
+            result = await run_evaluator(skill, execution_id=execution_id)
+        except Exception as e:
+            result = {"passed": False, "feedback": f"Evaluator error: {e}"}
+        # Record latest feedback for /summary + dashboard.
+        _last_feedback[skill] = (result.get("feedback") or "")[:500]
+        entry = _submission_evals.get(skill)
+        if entry and not entry["future"].done():
+            entry["future"].set_result(result)
+
+    # Fix #19 cherry-picked from unified-multi-task v18.
+    # Auto-resume the dev agent if it paused while waiting for verdict.
+    # Without this, openclaw devs that exit on stop=toolUse before the
+    # verdict comes back stay in `paused` state forever, and the whole
+    # iteration loop stalls (master had this bug — orch went silent after
+    # eval, no retry spawn, dev just sat there).
+    if autonomous_mode:
+        await _maybe_resume_paused_dev(skill, result)
+
+
+async def _maybe_resume_paused_dev(skill: str, eval_result: dict) -> None:
+    """If a dev for ``skill`` is in ``paused`` state, kill it and spawn a
+    fresh one with the latest evaluator verdict as injected feedback.
+
+    Skips when:
+      - skill status has already advanced past `writing` / `failed`
+      - dev is still actively running (polling for the verdict normally)
+      - max retries exhausted (per ``_eval_attempt_count``)
+    """
+    skill_entry = _find_entry(skill)
+    if not skill_entry:
+        return
+    cur_status = skill_entry.get("status", "")
+    if cur_status not in ("writing", "failed", "evaluating"):
+        return  # human already advanced it (review/done) — leave alone
+
+    paused = [a for a in agents.values()
+              if a.skill == skill and a.status == "paused"]
+    if not paused:
+        return  # dev is still running its own poll loop, don't double-spawn
+
+    attempts = _eval_attempt_count.get(skill, 0)
+    if attempts >= MAX_EVAL_RETRIES:
+        print(f"[ORCH] {skill}: eval retries exhausted ({attempts}/{MAX_EVAL_RETRIES}); leaving paused for human review")
+        _update_entry(skill, {"status": "review"})
+        await broadcast_full_sync()
+        return
+
+    _eval_attempt_count[skill] = attempts + 1
+    passed = eval_result.get("passed", False)
+    fb = eval_result.get("feedback", "(no feedback)")
+    verdict = "PASSED" if passed else "FAILED"
+    resume_prompt = (
+        f"## Resuming after evaluator verdict\n\n"
+        f"Your previous dev turn ended before the verdict arrived (turn timeout). "
+        f"Picking up where you left off with the verdict for the last submission.\n\n"
+        f"**Evaluator: {verdict}**  (retry {attempts + 1}/{MAX_EVAL_RETRIES})\n\n"
+        f"### Feedback\n{fb}\n\n"
+        f"If PASSED: finalize the skill and stop. If FAILED: address the issues "
+        f"above in your next code submission. Read the existing scripts/main.py "
+        f"first to see what state it was left in."
+    )
+
+    for a in paused:
+        try:
+            await kill_agent(a.agent_id)
+        except Exception:
+            pass
+
+    print(f"[ORCH] {skill}: auto-resuming paused dev with verdict ({verdict}, retry {attempts + 1}/{MAX_EVAL_RETRIES})")
+    await spawn_agent(skill, resume_prompt, agent_type="dev")
 
 
 # ---------------------------------------------------------------------------
@@ -1032,7 +1121,12 @@ async def _run_submission_eval(skill: str, execution_id: str, job_agent_server: 
 async def ws_broadcast(msg: dict):
     data = json.dumps(msg)
     gone = set()
-    for c in ws_clients:
+    # Fix #5 cherry-picked from unified-multi-task v18: snapshot ws_clients
+    # to a list before iterating. Without this, a WS client connecting or
+    # disconnecting mid-iteration triggers `RuntimeError: Set changed size
+    # during iteration`, which propagates up and kills the calling task
+    # (eval pipeline / spawn task / etc.) silently.
+    for c in list(ws_clients):
         try:
             await asyncio.wait_for(c.send(data), timeout=5.0)
         except (websockets.ConnectionClosed, asyncio.TimeoutError):
@@ -2022,15 +2116,42 @@ For each issue, describe:
 - What the likely cause is
 - What the dev agent should try to fix it
 
-End with exactly one line of JSON:
-```
-EVAL_RESULT: {{"passed": true/false, "feedback": "detailed paragraph summarizing the above"}}
-```
-The `feedback` field should be a full paragraph (not one line) covering what happened,
-what went wrong, and what to fix. This is the dev agent's primary debugging input.
+## ⚠️ MANDATORY OUTPUT FORMAT — read this carefully
 
-Only fail if something clearly went wrong (wrong object, missed grasp,
-collision, error in output, robot didn't move, etc.). Minor imperfections are OK.
+The orchestrator parses your output with a regex looking for **exactly one line**
+in this exact form, and **NOTHING else** is parsed:
+
+    EVAL_RESULT: {{"passed": true, "feedback": "..."}}
+
+or
+
+    EVAL_RESULT: {{"passed": false, "feedback": "..."}}
+
+If you forget this line, the orchestrator defaults to FAIL and the dev agent
+gets your raw markdown as feedback (works, but loses the explicit pass/fail
+signal). So:
+
+1. Write your `### What happened`, `### Result`, `### Issues` markdown freely.
+2. Then on the **last line of your response**, write the EVAL_RESULT envelope.
+3. The envelope is one literal line — no markdown fences, no code blocks,
+   no extra prose after it.
+
+Example correct ending:
+
+```
+### Issues
+1. Robot never moved...
+
+EVAL_RESULT: {{"passed": false, "feedback": "Robot did not move during the 2.5s execution. Base pose was static at (0,0,0); no joints changed. The dev should add try-catch around find_objects() and verify SDK connectivity at start."}}
+```
+
+`feedback` is a JSON string, so escape `"` inside as `\"`. Keep newlines OUT
+of the JSON string (use spaces).
+
+PASS criterion: only `passed=true` if the camera frames clearly show the
+target object inside the sink basin AND `obj_inside_of` would return True.
+Otherwise `passed=false`. Don't be lenient — minor imperfections are still
+fail (better to retry than to merge broken code).
 """
 
 
@@ -2300,9 +2421,13 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
 
             await asyncio.wait_for(_run_eval_client(), timeout=EVAL_TIMEOUT)
 
-        # Parse EVAL_RESULT from collected text
+        # Parse EVAL_RESULT from collected text — try multiple formats
+        # (Fix #15B: regex tolerant — Qwen3.6 sometimes wraps in code fences,
+        # uses single quotes, or splits across lines).
         full_text = "\n".join(collected_text)
-        match = re.search(r'EVAL_RESULT:\s*(\{.*?\})', full_text)
+
+        # Pattern 1: standard envelope
+        match = re.search(r'EVAL_RESULT:\s*(\{[\s\S]*?\})', full_text)
         if match:
             try:
                 result = json.loads(match.group(1))
@@ -2310,7 +2435,25 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
             except json.JSONDecodeError:
                 pass
 
-        # Fallback: try to find any JSON with "passed" key
+        # Pattern 2: code-fence wrapped (markdown rendering)
+        match = re.search(r'```\s*\n?EVAL_RESULT:\s*(\{[\s\S]*?\})\s*\n?```', full_text)
+        if match:
+            try:
+                result = json.loads(match.group(1))
+                return {"passed": result.get("passed", True), "feedback": result.get("feedback", ""), "full_text": full_text}
+            except json.JSONDecodeError:
+                pass
+
+        # Pattern 3: single-quote variants
+        match = re.search(r"EVAL_RESULT:\s*(\{[\s\S]*?\})", full_text.replace("'", '"'))
+        if match:
+            try:
+                result = json.loads(match.group(1))
+                return {"passed": result.get("passed", True), "feedback": result.get("feedback", ""), "full_text": full_text}
+            except json.JSONDecodeError:
+                pass
+
+        # Pattern 4: bare JSON with "passed" key
         match = re.search(r'\{"passed":\s*(true|false)[^}]*\}', full_text, re.IGNORECASE)
         if match:
             try:
@@ -2319,9 +2462,13 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
             except json.JSONDecodeError:
                 pass
 
-        # Can't parse — assume pass
-        print(f"[EVAL] {skill}: could not parse evaluator output, assuming pass")
-        return {"passed": True, "feedback": full_text[-200:] if full_text else "No output", "full_text": full_text}
+        # Can't parse — default to FAIL (Fix #15 cherry-picked from v18).
+        # Master used to default-PASS here, which made unparsable evaluator
+        # output silently advance the skill to "review". Default-FAIL means
+        # dev gets a re-spawn with the raw output as feedback, which is the
+        # safer behavior under flaky LLM output.
+        print(f"[EVAL] {skill}: could not parse evaluator output, treating as FAIL")
+        return {"passed": False, "feedback": full_text[-200:] if full_text else "Evaluator output unparseable (no EVAL_RESULT envelope)", "full_text": full_text}
 
     except asyncio.TimeoutError:
         print(f"[EVAL] {skill}: evaluator timed out after {EVAL_TIMEOUT}s")
@@ -2330,7 +2477,8 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     except Exception as e:
         print(f"[EVAL] {skill}: evaluator error: {e}")
         traceback.print_exc()
-        return {"passed": True, "feedback": f"Evaluator error: {e}"}
+        # Default-FAIL on exception too (Fix #15).
+        return {"passed": False, "feedback": f"Evaluator error: {e}"}
 
 
 async def _handle_agent_done(state: AgentState):
@@ -2348,7 +2496,20 @@ async def _handle_agent_done(state: AgentState):
     _update_entry(state.skill, {"status": "evaluating"})
     await broadcast_full_sync()
 
-    eval_result = await run_evaluator(state.skill)
+    # Path A: wrap in _get_eval_lock(skill) so this serializes with Path B
+    # (_run_submission_eval). Without the lock, both paths can fire openclaw
+    # evaluator subprocesses concurrently and corrupt each other's session
+    # (openclaw --local mode = single deterministic session per agent).
+    # Fix #14 cherry-picked from unified-multi-task v18.
+    async with _get_eval_lock(state.skill):
+        try:
+            eval_result = await run_evaluator(state.skill)
+        except Exception as e:
+            eval_result = {"passed": False, "feedback": f"Evaluator error: {e}"}
+        # Fix #14b: record latest feedback here too — without this, dev sessions
+        # that crash before submit_and_wait writes _last_feedback leave empty
+        # last_feedback in summaries.
+        _last_feedback[state.skill] = (eval_result.get("feedback") or "")[:500]
 
     # Add evaluator feedback to in-memory log (persisted via agent_sessions.jsonl on session end)
     eval_feedback = eval_result.get("feedback", "")
