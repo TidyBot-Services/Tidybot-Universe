@@ -1,0 +1,66 @@
+{
+  "args": {
+    "skill": "/home/truares/文档/Tidybot-Universe/graphs/counter-to-sink/skills/pnp-counter-to-sink/scripts/main.py",
+    "version": "v1",
+    "label": "counter-to-sink",
+    "trials": 3,
+    "agent_url": "http://localhost:8080",
+    "sim_api": "http://localhost:5500",
+    "timeout": 180.0,
+    "out_dir": "results"
+  },
+  "summary": {
+    "label": "counter-to-sink",
+    "version": "v1",
+    "n_trials": 3,
+    "n_success": 0,
+    "success_rate": 0.0,
+    "median_elapsed_s": null,
+    "trial_elapsed_s": [
+      180.13,
+      180.14,
+      180.13
+    ]
+  },
+  "trials": [
+    {
+      "label": "counter-to-sink",
+      "version": "v1",
+      "trial_idx": 0,
+      "seed": null,
+      "success": false,
+      "elapsed_s": 180.13,
+      "job_id": "9fb7307e-1af3-4a",
+      "job_status": "wait_timeout",
+      "sim_success": false,
+      "error": "wait_timeout",
+      "stdout_tail": ""
+    },
+    {
+      "label": "counter-to-sink",
+      "version": "v1",
+      "trial_idx": 1,
+      "seed": null,
+      "success": false,
+      "elapsed_s": 180.14,
+      "job_id": "84b66b34-15ff-4a",
+      "job_status": "wait_timeout",
+      "sim_success": false,
+      "error": "wait_timeout",
+      "stdout_tail": ""
+    },
+    {
+      "label": "counter-to-sink",
+      "version": "v1",
+      "trial_idx": 2,
+      "seed": null,
+      "success": false,
+      "elapsed_s": 180.13,
+      "job_id": "9cf890c2-1d0e-49",
+      "job_status": "wait_timeout",
+      "sim_success": false,
+      "error": "wait_timeout",
+      "stdout_tail": ""
+    }
+  ]
+}
