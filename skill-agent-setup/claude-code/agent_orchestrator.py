@@ -411,48 +411,53 @@ Use this to determine which object to target rather than hardcoding object names
 ### Primary grasp strategy: `graspgen` (6-DOF learned grasps)
 
 **Always start here.** `graspgen.get_grasp_poses(<object name>)` is a remote
-service trained for the Robotiq 2F-140; it returns a list of ranked
-collision-aware 6-DOF grasp candidates. Each pose bundles position +
-quaternion, so you do NOT need to hand-compute a quaternion at all.
+service trained for the Robotiq 2F-140; it returns ranked collision-aware
+6-DOF grasp candidates with paired position + quaternion (so no hand-computed
+quaternions needed).
 
-Iterate through candidates on failure — they're sorted by score descending:
+**ALWAYS use `graspgen.ee_target_from_grasp(grasp)` and
+`graspgen.pre_grasp_pose(grasp)` — never pass `grasp.position` directly to
+`wb.move_to_pose()`.** The grasp pose is in `panda_hand` frame but
+`wb.move_to_pose` targets `ee_link`, which is 10cm forward; without the
+helper you get a silent overshoot (`position_mm == 0` after close).
 
+Full frame convention, why offsets exist, tuning notes, and the canonical
+loop are in the SDK docs — fetch with `curl <agent_server>/code/sdk/markdown`
+and read the `GraspGenAPI` section before writing grasp code.
+
+Skeleton (the helpers do all the math):
 ```python
 from robot_sdk import graspgen, wb, gripper
 
-g = graspgen.get_grasp_poses("<object name>")   # first call ~30s, subsequent <3s
-
-for i, pose in enumerate(g.poses):
-    # Pre-grasp (~10cm above the grasp) — use whole_body to allow base motion
+result = graspgen.get_grasp_poses("<object name>")  # first call ~30s, then <3s
+for g in result.grasps[:8]:
+    ee  = graspgen.ee_target_from_grasp(g)            # +10cm panda_hand→ee_link
+    pre = graspgen.pre_grasp_pose(g, offset=0.10)     # back off along grasp -Z
     try:
-        wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.10,
-                        quat=pose.quaternion, mask="whole_body")
-    except Exception as e:
-        print(f"pose {{i}} pre-grasp failed: {{e}}"); continue
-
-    # Descend to grasp pose, arm-only so the base stays locked
-    try:
-        wb.move_to_pose(*pose.position, quat=pose.quaternion, mask="arm_only")
+        wb.move_to_pose(*pre['xyz'], quat=pre['quat'], mask="whole_body", timeout=20.0)
+        wb.move_to_pose(*ee['xyz'],  quat=ee['quat'],  mask="arm_only",  timeout=15.0)
     except Exception:
         continue
-
     gripper.close(force=255)
     gs = gripper.get_state()
-    held = 10 < gs.get("position_mm", 0) < 65   # partially closed = object present
+    pos_mm = gs.get("position_mm", 0)
+    held = (5 < pos_mm < 65) and (gs.get("object_detected") or pos_mm > 15)
     if held:
-        print(f"grasped via graspgen candidate {{i}}")
-        # Lift 15-20cm
-        wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.18,
-                        quat=pose.quaternion, mask="arm_only")
-        break
-    # Miss — open, retreat, try next candidate
+        lift = list(ee['xyz']); lift[2] += 0.15
+        wb.move_to_pose(*lift, quat=ee['quat'], mask="arm_only")
+        if gripper.get_state().get("position_mm", 0) > 5:
+            print(f"grasped via candidate (conf={g.confidence:.2f})"); break
     gripper.open()
-    wb.move_to_pose(pose.position[0], pose.position[1], pose.position[2] + 0.10,
-                    quat=pose.quaternion, mask="arm_only")
 ```
 
-Typical `g.poses` length: 5–20. If all fail and none produce `held=True`, fall
-through to the hand-computed fallback below.
+If empirically tuning the offset (silent close at `pos_mm == 0`, or always
+maxing at 80+), pass `ee_target_from_grasp(g, offset=0.08/0.12)`. Don't
+modify `g.position[2]` directly — it breaks the paired 6-DoF prediction
+and IK fails with "Planning failed: IK Failed!".
+
+Typical `g.grasps` length: 5–20. If all candidates fail to produce a real
+grasp (sustained `pos_mm > 15` + `object_detected`), fall through to the
+hand-computed fallback below.
 
 ### Fallback: hand-computed quaternions (only if graspgen is unavailable OR every candidate failed)
 
