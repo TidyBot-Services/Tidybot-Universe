@@ -1,11 +1,312 @@
-INFO:     Started server process [1732737]
+INFO:     Started server process [2191409]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:7000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:49956 - "GET /health HTTP/1.1" 200 OK
+INFO:     Uvicorn running on http://127.0.0.1:7050 (Press CTRL+C to quit)
+INFO:     127.0.0.1:42956 - "GET /health HTTP/1.1" 200 OK
 [curobo] Loading franka_mobile config...
 Warp DeprecationWarning: The symbol `warp.torch.device_from_torch` will soon be removed from the public API. Use `warp.device_from_torch` instead.
 [curobo] Warming up CUDA kernels...
 [curobo] Loading arm-only config (base joints locked)...
-[curobo] Ready (16.7s, whole_body + arm_only)
-INFO:     127.0.0.1:49966 - "POST /warmup HTTP/1.1" 200 OK
+[curobo] Ready (17.1s, whole_body + arm_only)
+INFO:     127.0.0.1:42968 - "POST /warmup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39058 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39070 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (2.86s, whole_body): 31 waypoints
+INFO:     127.0.0.1:39084 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39096 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.09s, whole_body): 32 waypoints
+INFO:     127.0.0.1:39102 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56892 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 32 waypoints
+INFO:     127.0.0.1:56906 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56920 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.00s, whole_body): 31 waypoints
+INFO:     127.0.0.1:56926 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56928 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.04s, whole_body): 31 waypoints
+INFO:     127.0.0.1:56930 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56944 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.00s, whole_body): 31 waypoints
+INFO:     127.0.0.1:56958 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56974 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 31 waypoints
+INFO:     127.0.0.1:56976 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56990 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.02s, whole_body): 31 waypoints
+INFO:     127.0.0.1:57004 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36366 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.05s, whole_body): 31 waypoints
+INFO:     127.0.0.1:36370 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36374 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (0.99s, whole_body): 31 waypoints
+INFO:     127.0.0.1:36384 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36394 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 31 waypoints
+INFO:     127.0.0.1:36406 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36416 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.07s, whole_body): 34 waypoints
+INFO:     127.0.0.1:36432 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36438 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.02s, whole_body): 31 waypoints
+INFO:     127.0.0.1:36454 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36458 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 31 waypoints
+INFO:     127.0.0.1:36462 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36470 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.04s, whole_body): 31 waypoints
+INFO:     127.0.0.1:36478 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49680 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.04s, whole_body): 31 waypoints
+INFO:     127.0.0.1:49690 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49702 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.05s, whole_body): 31 waypoints
+INFO:     127.0.0.1:49708 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.02s, whole_body): 31 waypoints
+INFO:     127.0.0.1:49726 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49736 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.02s, whole_body): 32 waypoints
+INFO:     127.0.0.1:49748 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49760 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 1 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.01s, whole_body): 31 waypoints
+INFO:     127.0.0.1:49768 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49782 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 1 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.94s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:49790 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42164 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.05s, whole_body): 71 waypoints
+INFO:     127.0.0.1:42170 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42172 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.12s, whole_body): 84 waypoints
+INFO:     127.0.0.1:42184 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52842 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 1 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.94s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:52854 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52862 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.07s, whole_body): 43 waypoints
+INFO:     127.0.0.1:52872 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32954 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.07s, whole_body): 52 waypoints
+INFO:     127.0.0.1:32966 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43972 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.97s, whole_body): 62 waypoints
+INFO:     127.0.0.1:43984 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43986 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.09s, whole_body): 34 waypoints
+INFO:     127.0.0.1:43994 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47736 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.68s, whole_body): 64 waypoints
+INFO:     127.0.0.1:47744 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47752 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 34 waypoints
+INFO:     127.0.0.1:47756 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47772 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.66s, whole_body): 67 waypoints
+INFO:     127.0.0.1:47786 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52812 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (2.84s, whole_body): 49 waypoints
+INFO:     127.0.0.1:52820 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33834 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.11s, whole_body): 70 waypoints
+INFO:     127.0.0.1:33848 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33860 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.10s, whole_body): 48 waypoints
+INFO:     127.0.0.1:33872 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38000 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 1 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.94s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:38002 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38004 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.07s, whole_body): 32 waypoints
+INFO:     127.0.0.1:38016 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35814 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.05s, whole_body): 35 waypoints
+INFO:     127.0.0.1:35822 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35856 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.05s, whole_body): 33 waypoints
+INFO:     127.0.0.1:35866 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50332 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.04s, whole_body): 83 waypoints
+INFO:     127.0.0.1:50346 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50356 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 74 waypoints
+INFO:     127.0.0.1:50370 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36928 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 31 waypoints
+INFO:     127.0.0.1:36932 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46168 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.91s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:46182 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46190 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.04s, whole_body): 31 waypoints
+INFO:     127.0.0.1:46194 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46208 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.94s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:46220 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34074 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (0.99s, whole_body): 31 waypoints
+INFO:     127.0.0.1:34088 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34102 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 1 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.89s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:34110 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34114 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (0.97s, whole_body): 31 waypoints
+INFO:     127.0.0.1:34128 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34134 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.92s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:34144 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34148 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.07s, whole_body): 32 waypoints
+INFO:     127.0.0.1:34152 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35804 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.99s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:35820 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35832 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 31 waypoints
+INFO:     127.0.0.1:35836 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35846 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 1 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.96s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:35854 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35858 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.03s, whole_body): 31 waypoints
+INFO:     127.0.0.1:35870 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49432 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 1 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.94s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:49436 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49438 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.01s, whole_body): 32 waypoints
+INFO:     127.0.0.1:49444 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49458 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.93s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:49470 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49480 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.07s, whole_body): 31 waypoints
+INFO:     127.0.0.1:49486 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40764 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 0 cuboids (excl 1 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.92s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:40768 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40780 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan OK (1.05s, whole_body): 31 waypoints
+INFO:     127.0.0.1:40794 - "POST /plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40796 - "POST /world/cuboids HTTP/1.1" 200 OK
+[curobo] Updated collision world: 2 cuboids (skipped 0 overlap, 0 far)
+[curobo] Collision world for target: 1 cuboids (excl 0 at target, 1 overlap, 0 far)
+[curobo] Plan FAILED (0.99s): MotionGenStatus.IK_FAIL
+INFO:     127.0.0.1:40802 - "POST /plan HTTP/1.1" 200 OK

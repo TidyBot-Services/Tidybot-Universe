@@ -155,7 +155,8 @@ def run_one(skill_path: Path, label: str, version: str, idx: int,
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skill", required=True, help="Absolute path to main.py")
-    ap.add_argument("--version", required=True, choices=["v1", "v2"])
+    ap.add_argument("--version", required=True,
+                    help="free-form version label, e.g. v1, v2, v2-edited")
     ap.add_argument("--label", required=True,
                     help="Task label, e.g. counter-to-sink")
     ap.add_argument("--trials", type=int, default=3)
