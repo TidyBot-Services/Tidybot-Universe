@@ -2113,8 +2113,32 @@ You do NOT write or fix code — you only evaluate and report.
 ## Skill Description
 {{skill_description}}
 
+## Evidence Hierarchy (READ THIS BEFORE ANYTHING ELSE)
+
+When sources disagree, this is the order of authority:
+
+1. **stdout / stderr (HIGHEST)** — what the dev's code actually printed. If stdout
+   contains "FAILURE", "FAILED", "error", "AssertionError", "task check failed",
+   `success=False` at the final verify, or similar — the run **FAILED**, full stop,
+   regardless of what the images appear to show.
+2. **state_log.jsonl** — recorded robot state. Use to verify physical positions,
+   gripper widths at specific timestamps. Authoritative for numerical values.
+3. **camera frames** — useful for *visual confirmation* of what stdout/state_log
+   says, but **never** the primary source. Frames are easy to misinterpret
+   (occlusion, off-screen objects, lighting); don't construct narratives only
+   from frames.
+4. **SKILL.md** — describes the skill's *intent*. **Ignore any "Status" /
+   "passing N/N" / success-rate claims** — those are dev self-reports from
+   prior runs, not evidence about THIS run.
+
+**Anti-fabrication rule:** Every concrete claim ("yogurt fell to floor at frame
+60", "base never moved", "gripper closed to 0mm 4 times") MUST be backed by a
+direct quote from stdout, a state_log entry, or an image you actually opened.
+If you cannot back a claim, do not make it. Vague descriptions are better than
+specific fabrications.
+
 ## What to Review
-1. Read the skill documentation: {{skill_dir}}/SKILL.md (if it exists)
+1. Read the skill documentation: {{skill_dir}}/SKILL.md (intent only — see hierarchy rule 4)
 2. Read the skill code: {{skill_code_path}}
 3. Review the execution recording at: {{exec_dir}}/
 
