@@ -446,7 +446,7 @@ for g in result.grasps[:8]:
         lift = list(ee['xyz']); lift[2] += 0.15
         wb.move_to_pose(*lift, quat=ee['quat'], mask="arm_only")
         if gripper.get_state().get("position_mm", 0) > 5:
-            print(f"grasped via candidate (conf={g.confidence:.2f})"); break
+            print(f"grasped via candidate (conf={{g.confidence:.2f}})"); break
     gripper.open()
 ```
 
@@ -598,7 +598,50 @@ MANDATORY step 1 of the workflow).
 - `distr_cab_0` coordinates show the CENTER of the cabinet interior, not the front edge
 - After picking, you likely need to move the base forward to get closer to the cabinet
 
-### 7. Success checking: translate RoboCasa _check_success(), NEVER guess
+### 7. Base path planning — `base.plan_path()` is MANDATORY for any move ≥ 0.3m
+
+When the base must move more than ~0.3m (sink → counter side, around an
+island, etc.), you MUST use `base.plan_path()`. The following are all
+EQUIVALENT ANTI-PATTERNS and will hit fixture collisions:
+
+- ❌ chained `base.forward(0.1)` calls
+- ❌ chained `base.move_delta(dy=-0.2)` calls
+- ❌ direct `base.move_to_pose(x, y, theta)` to a faraway target
+- ❌ "strafe" loops with multiple `move_delta` steps
+
+Use the dedicated A* base planner via the SDK — it routes around all 57
+kitchen fixture cuboids and returns a collision-free trajectory in
+qpos / local frame.
+
+```python
+from robot_sdk import base
+# qpos / local frame (same frame as base.move_to_pose)
+result = base.plan_path(0.5, -0.4, 0.0)
+
+if result["status"] == "success":
+    for wp in result["trajectory"]:
+        # absolute qpos values (not deltas) — execute one-by-one
+        base.move_to_pose(wp[0], wp[1], wp[2])
+elif result["status"] == "goal_in_collision":
+    # target itself overlaps a fixture — pick a different goal
+    ...
+elif result["status"] == "no_path":
+    # A* couldn't find a route — target unreachable from current pose
+    ...
+```
+
+Status codes:
+- `"success"` — trajectory is collision-free, ready to execute
+- `"goal_in_collision"` — your goal `(x, y, θ)` overlaps a fixture; pick another
+- `"start_in_collision"` — current base inside a fixture (rare; check spawn pose)
+- `"no_path"` — A* exhausted iterations; target may be unreachable
+
+Why this matters: cuRobo (the GPU arm planner) does not reliably check
+base-vs-world collision — that's a known cuRobo limitation. `base.plan_path`
+uses A* on a (x, y, θ) lattice with SAT obstacle check (~50ms typical,
+deterministic). This is the right tool for "robot needs to walk somewhere".
+
+### 8. Success checking: translate RoboCasa _check_success(), NEVER guess
 - **IRON RULE**: Your success criteria MUST be translated from the RoboCasa task's
   `_check_success()` method in the task source code. NEVER guess from the task description.
 - The task source is in `~/tidybot_uni/sims/robocasa_tasks/` (single_stage/, multi_stage/).
@@ -2126,11 +2169,11 @@ For each issue, describe:
 The orchestrator parses your output with a regex looking for **exactly one line**
 in this exact form, and **NOTHING else** is parsed:
 
-    EVAL_RESULT: {{"passed": true, "feedback": "..."}}
+    EVAL_RESULT: {"passed": true, "feedback": "..."}
 
 or
 
-    EVAL_RESULT: {{"passed": false, "feedback": "..."}}
+    EVAL_RESULT: {"passed": false, "feedback": "..."}
 
 If you forget this line, the orchestrator defaults to FAIL and the dev agent
 gets your raw markdown as feedback (works, but loses the explicit pass/fail
