@@ -1,3 +1,48 @@
 __pycache__/
 agent_sessions.jsonl
 skill-agent-setup/claude-code/graphs/
+/graphs/
+
+# Nested git repos (each is a separate TidyBot-Services org repo — clone
+# them individually). Listed here so `git status` doesn't keep flagging them
+# as untracked at the parent level.
+/agent_server/
+/arm_franka_service/
+/common/
+/deploy-agent/
+/gripper_robotiq_service/
+/hardware/
+/services_wishlist/
+/sim/
+/sims/
+/system_logger/
+
+# Runtime log directories (per-instance, transient)
+logs/
+logs_env*/
+*.archive_*/
+
+# Per-machine agent / Claude Code config (not part of repo state)
+.claude/
+.openclaw/
+AGENTS.md
+CLAUDE.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+
+# skill-agent-setup local artifacts
+skill-agent-setup/claude-code/.git.DISABLED.*
+skill-agent-setup/claude-code/AGENTS.md
+skill-agent-setup/claude-code/HEARTBEAT.md
+skill-agent-setup/claude-code/IDENTITY.md
+skill-agent-setup/claude-code/SOUL.md
+skill-agent-setup/claude-code/TOOLS.md
+skill-agent-setup/claude-code/USER.md
+skill-agent-setup/claude-code/tasks*.txt
+skill-agent-setup/claude-code/run_parallel_slots.sh
+skill-agent-setup/claude-code/langfuse_tracing.py
+skill-agent-setup/claude-code/.gitignore
+skill-agent-setup/claude-code/docs/
