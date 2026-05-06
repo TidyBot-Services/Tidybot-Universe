@@ -132,7 +132,7 @@ def _is_task_root(skill: str) -> bool:
     """
     if not graph_meta.get("task_env"):
         return False
-    for entry in skill_entries:
+    for entry in _entries_list():
         if skill in entry.get("dependencies", []):
             return False
     return True
@@ -905,19 +905,48 @@ def _load_entries():
         _save_entries()
 
 
+def _entries_list():
+    """Return the live skill_entries list.
+
+    When the openclaw shim does ``from agent_orchestrator import _update_entry``,
+    Python loads agent_orchestrator.py as a SECOND module (the orch itself runs
+    as __main__). Each module has its own ``skill_entries`` global, so updates
+    via the shim's import diverge from __main__'s list — /entries (HTTP) reads
+    __main__'s, but Path A (_handle_agent_done called from shim) writes the
+    module's. This caused #108 (skill stuck "writing" after eval failed).
+
+    Fix: prefer __main__'s skill_entries if it exists and differs from this
+    module's. All path-finding / mutation goes through this resolver so callers
+    converge on a single source of truth regardless of which module they came
+    from. (Reinstates the structural fix originally in commit 35bbdb0; was lost
+    in a later refactor.)
+    """
+    import sys
+    main_mod = sys.modules.get("__main__")
+    main_entries = getattr(main_mod, "skill_entries", None)
+    if main_entries is not None and main_entries is not skill_entries:
+        return main_entries
+    return skill_entries
+
+
 def _save_entries():
     """Persist entries back to local_repos.json."""
     LOCAL_REPOS.parent.mkdir(parents=True, exist_ok=True)
+    entries = _entries_list()
     if graph_meta:
-        data = {**graph_meta, "entries": skill_entries}
+        data = {**graph_meta, "entries": entries}
     else:
-        data = skill_entries
+        data = entries
     LOCAL_REPOS.write_text(json.dumps(data, indent=2))
 
 
 def _find_entry(name: str) -> dict | None:
-    """Find an entry by skill name."""
-    for e in skill_entries:
+    """Find an entry by skill name.
+
+    Uses _entries_list() which prefers __main__'s skill_entries — see
+    that function's docstring for the module-duplication background.
+    """
+    for e in _entries_list():
         if e["name"] == name:
             return e
     return None
@@ -951,17 +980,19 @@ def _add_entry(name: str, description: str = "", dependencies: list[str] | None 
         "agent_status_text": None,
         "progress_history": [],
     }
-    skill_entries.append(entry)
+    _entries_list().append(entry)
     _save_entries()
     return entry
 
 
 def _remove_entry(name: str) -> bool:
     """Remove a skill entry by name. Returns True if found."""
-    global skill_entries
-    before = len(skill_entries)
-    skill_entries = [e for e in skill_entries if e["name"] != name]
-    if len(skill_entries) < before:
+    entries = _entries_list()
+    before = len(entries)
+    # Mutate the list in place (don't reassign) so __main__ and module
+    # references stay pointing at the same list object.
+    entries[:] = [e for e in entries if e["name"] != name]
+    if len(entries) < before:
         _save_entries()
         return True
     return False
@@ -1295,7 +1326,7 @@ def _invalidate_session_log_cache():
 def build_full_sync() -> dict:
     """Build a full_sync payload from in-memory entries with live agent state overlay."""
     import copy
-    repos = copy.deepcopy(skill_entries)
+    repos = copy.deepcopy(_entries_list())
 
     session_logs = _load_session_logs()
 
@@ -1928,7 +1959,7 @@ def _get_system_prompt(agent_type: str, skill_name: str = "",
     # For dev agents: tell them about dependencies and how to bundle
     dep_context = ""
     if agent_type == "dev" and skill_name:
-        entry = next((e for e in skill_entries if e["name"] == skill_name), None)
+        entry = next((e for e in _entries_list() if e["name"] == skill_name), None)
         if entry and entry.get("dependencies"):
             dep_lines = []
             for dep_name in entry["dependencies"]:
@@ -2679,13 +2710,14 @@ async def _auto_spawn_ready_skills() -> list[str]:
     each ready skill (parallel multi-target development).
     Returns list of skill names that were spawned."""
     async with _spawn_lock:
-        done_skills = {e["name"] for e in skill_entries if e.get("status") == "done"}
+        entries = _entries_list()
+        done_skills = {e["name"] for e in entries if e.get("status") == "done"}
         # Skills already being worked on — track per (skill, target_name) pair
         active_pairs = {(a.skill, a.target_name) for a in agents.values()
                         if a.status in ("starting", "running")}
 
         spawned = []
-        for entry in skill_entries:
+        for entry in entries:
             name = entry["name"]
             status = entry.get("status", "planned")
             deps = entry.get("dependencies", [])
