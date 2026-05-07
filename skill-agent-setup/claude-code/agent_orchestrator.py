@@ -905,28 +905,47 @@ def _load_entries():
         _save_entries()
 
 
-def _entries_list():
-    """Return the live skill_entries list.
+def _main_global(name: str, fallback):
+    """Return ``__main__.<name>`` if it exists and differs from this module's
+    fallback — else return the fallback.
 
-    When the openclaw shim does ``from agent_orchestrator import _update_entry``,
-    Python loads agent_orchestrator.py as a SECOND module (the orch itself runs
-    as __main__). Each module has its own ``skill_entries`` global, so updates
-    via the shim's import diverge from __main__'s list — /entries (HTTP) reads
-    __main__'s, but Path A (_handle_agent_done called from shim) writes the
-    module's. This caused #108 (skill stuck "writing" after eval failed).
+    The openclaw shim does ``from agent_orchestrator import …`` which loads
+    agent_orchestrator.py as a SECOND module (orch itself runs as __main__).
+    Module-level mutables (lists, dicts) are duplicated. _load_entries runs
+    from __main__ and populates __main__'s globals; shim-imported helpers see
+    the module's stale defaults. This produces silent divergence (writes go
+    to one list, reads from another).
 
-    Fix: prefer __main__'s skill_entries if it exists and differs from this
-    module's. All path-finding / mutation goes through this resolver so callers
-    converge on a single source of truth regardless of which module they came
-    from. (Reinstates the structural fix originally in commit 35bbdb0; was lost
-    in a later refactor.)
+    All globals that are reassigned by _load_entries (skill_entries, targets,
+    graph_meta, primary_target) and live state mutated by spawn_agent (agents)
+    must be looked up via this helper from any code that may run on the shim
+    side (Path A, _handle_agent_done, _auto_spawn_ready_skills, etc.).
+
+    Originally a per-name helper (_entries_list) reinstated the structural fix
+    from commit 35bbdb0 for skill_entries; this is the generalized form so we
+    don't keep rediscovering the same bug for every shared global.
     """
     import sys
     main_mod = sys.modules.get("__main__")
-    main_entries = getattr(main_mod, "skill_entries", None)
-    if main_entries is not None and main_entries is not skill_entries:
-        return main_entries
-    return skill_entries
+    main_val = getattr(main_mod, name, None)
+    if main_val is not None and main_val is not fallback:
+        return main_val
+    return fallback
+
+
+def _entries_list():
+    """Live skill_entries (prefers __main__'s)."""
+    return _main_global("skill_entries", skill_entries)
+
+
+def _targets_list():
+    """Live targets (prefers __main__'s)."""
+    return _main_global("targets", targets)
+
+
+def _agents_dict():
+    """Live agents (prefers __main__'s)."""
+    return _main_global("agents", agents)
 
 
 def _save_entries():
@@ -2741,9 +2760,11 @@ async def _auto_spawn_ready_skills() -> list[str]:
     Returns list of skill names that were spawned."""
     async with _spawn_lock:
         entries = _entries_list()
+        targets_live = _targets_list()
+        agents_live = _agents_dict()
         done_skills = {e["name"] for e in entries if e.get("status") == "done"}
         # Skills already being worked on — track per (skill, target_name) pair
-        active_pairs = {(a.skill, a.target_name) for a in agents.values()
+        active_pairs = {(a.skill, a.target_name) for a in agents_live.values()
                         if a.status in ("starting", "running")}
 
         spawned = []
@@ -2782,7 +2803,7 @@ async def _auto_spawn_ready_skills() -> list[str]:
 
             # Spawn one agent per target (parallel multi-target development)
             spawned_any = False
-            for t in targets:
+            for t in targets_live:
                 if (name, t["name"]) in active_pairs:
                     continue  # already has an agent on this target
 
