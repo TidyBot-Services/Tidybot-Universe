@@ -870,27 +870,42 @@ graph_meta: dict = {}  # top-level metadata (task_env, task_source, etc.)
 
 
 def _load_entries():
-    """Load entries from graph file into memory. Resets stale non-done statuses."""
-    global skill_entries, graph_meta, targets, primary_target, AGENT_SERVER
+    """Load entries from graph file into memory. Resets stale non-done statuses.
+
+    Mutates skill_entries / targets / graph_meta IN PLACE rather than rebinding,
+    so the openclaw shim (which imports agent_orchestrator as a SECOND module)
+    can also see these populated lists/dicts after a one-time bind at import
+    (see bottom of file). Without in-place semantics, __main__'s rebind would
+    leave the shim's references pointing at the old empty defaults.
+    """
+    global primary_target, AGENT_SERVER
     data = json.loads(LOCAL_REPOS.read_text())
     if isinstance(data, dict):
         # New format: {"task_env": "...", "entries": [...], ...}
-        skill_entries = data.get("entries", [])
-        graph_meta = {k: v for k, v in data.items() if k != "entries"}
+        new_entries = data.get("entries", [])
+        new_meta = {k: v for k, v in data.items() if k != "entries"}
     else:
         # Legacy format: flat list of entries
-        skill_entries = data
-        graph_meta = {}
+        new_entries = data
+        new_meta = {}
+
+    # In-place mutation (don't rebind globals)
+    skill_entries.clear()
+    skill_entries.extend(new_entries)
+    graph_meta.clear()
+    graph_meta.update(new_meta)
 
     # Load multi-target config
-    targets = graph_meta.get("targets", [])
-    if targets:
-        primary_target = next((t for t in targets if t.get("primary")), targets[0])
+    new_targets = graph_meta.get("targets", [])
+    if new_targets:
+        primary_target = next((t for t in new_targets if t.get("primary")), new_targets[0])
         AGENT_SERVER = primary_target["agent_server"]
-        print(f"[ORCH] Loaded {len(targets)} targets, primary: {primary_target['name']} ({AGENT_SERVER})")
+        print(f"[ORCH] Loaded {len(new_targets)} targets, primary: {primary_target['name']} ({AGENT_SERVER})")
     else:
         primary_target = {"name": "default", "agent_server": AGENT_SERVER, "sim_api": "http://localhost:5500", "primary": True}
-        targets = [primary_target]
+        new_targets = [primary_target]
+    targets.clear()
+    targets.extend(new_targets)
 
     # Reset stale statuses from previous sessions — anything not "done" or "planned"
     # is leftover state (writing, testing, review, failed) with no live agent behind it.
@@ -1219,17 +1234,23 @@ async def _maybe_resume_paused_dev(skill: str, eval_result: dict) -> None:
 async def ws_broadcast(msg: dict):
     data = json.dumps(msg)
     gone = set()
+    # Use __main__'s ws_clients — the HTTP server's WS handler runs in __main__
+    # and registers connections there. Shim-path callers (e.g. spawn_agent
+    # via _auto_spawn_ready_skills) running in agent_orchestrator MODULE see
+    # an empty module-level ws_clients otherwise, and broadcasts silently
+    # reach 0 clients (dashboard loses iter N+1's events).
+    clients = _main_global("ws_clients", ws_clients)
     # Fix #5 cherry-picked from unified-multi-task v18: snapshot ws_clients
     # to a list before iterating. Without this, a WS client connecting or
     # disconnecting mid-iteration triggers `RuntimeError: Set changed size
     # during iteration`, which propagates up and kills the calling task
     # (eval pipeline / spawn task / etc.) silently.
-    for c in list(ws_clients):
+    for c in list(clients):
         try:
             await asyncio.wait_for(c.send(data), timeout=5.0)
         except (websockets.ConnectionClosed, asyncio.TimeoutError):
             gone.add(c)
-    ws_clients.difference_update(gone)
+    clients.difference_update(gone)
 
 
 async def ws_broadcast_status(skill: str, agent_id: str, status: str, text: str,
@@ -3291,6 +3312,33 @@ async def main():
         print("[ORCH] shutdown signal received — persisting agent logs")
         _shutdown()
         # Let asyncio tear down cleanly (no re-raise; Future never resolves anyway)
+
+
+# ---------------------------------------------------------------------------
+# Module-import bootstrap: bind shared mutables to __main__'s instances.
+# ---------------------------------------------------------------------------
+# When the openclaw shim does `from agent_orchestrator import …`, Python loads
+# this file as a SECOND module (orch itself runs as __main__). Each module
+# instance has its OWN top-level globals — a separate skill_entries, agents,
+# ws_clients, etc. The shim's helpers then read/write the second module's
+# globals while __main__'s HTTP server / WS handler reads/writes __main__'s,
+# and the two diverge silently (caused #108 stuck-writing + the iter 2
+# auto-respawn empty-targets bug).
+#
+# Fix: at the end of this file's execution, if we're being imported (not
+# running as __main__), rebind the shared mutables to __main__'s objects so
+# both module instances refer to the same lists/dicts/sets. Combined with
+# in-place mutation in _load_entries (.clear/.extend/.update instead of
+# rebinding), this keeps both sides in lockstep across the lifetime of the
+# orch.
+import sys as _sys
+_main_mod = _sys.modules.get("__main__")
+_self_mod = _sys.modules.get(__name__)
+if _main_mod is not None and _self_mod is not None and _self_mod is not _main_mod:
+    for _shared_name in ("skill_entries", "targets", "agents", "ws_clients", "graph_meta"):
+        _main_val = getattr(_main_mod, _shared_name, None)
+        if _main_val is not None and _main_val is not globals().get(_shared_name):
+            globals()[_shared_name] = _main_val
 
 
 if __name__ == "__main__":
