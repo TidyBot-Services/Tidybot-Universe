@@ -2411,6 +2411,17 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     print(f"[EVAL] {skill}: reviewing execution {latest.name}")
     await ws_broadcast_agent_msg(skill, f"Evaluating execution {latest.name}...", "evaluator")
 
+    # Refresh dashboard's "EXECUTION RECORDING" panel (sampled trial_images
+    # on the skill entry) so it reflects this iteration's recording. Without
+    # this, autonomous-mode runs only update via Path B (submit_and_wait
+    # webhook), which never fires for openclaw dev autoloop — the dashboard
+    # would show stale frames from whichever earlier iter last triggered B.
+    try:
+        _update_trial_images(skill, latest.name)
+        await broadcast_full_sync()
+    except Exception as e:
+        print(f"[EVAL] {skill}: trial_images refresh failed (non-fatal): {e}")
+
     # Build evaluator prompt
     entry = _find_entry(skill)
     skill_desc = entry.get("description", skill) if entry else skill
