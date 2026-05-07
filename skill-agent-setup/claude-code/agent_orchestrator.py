@@ -571,10 +571,42 @@ MANDATORY step 1 of the workflow).
 - **World z = ee_pose[14] + 0.472** (arm base height offset)
 - Do NOT use ee_pose[0], ee_pose[1], ee_pose[2] as position — those are rotation
 
-### 3. Stale coordinates after base movement
-- After ANY `base.forward()`, `base.backward()`, or wb movement, sensor coordinates are STALE
-- You MUST call `sensors.find_objects()` again AFTER base movement to get updated positions
-- `wb.move_to_pose()` also has stale base coordinates after base movement — use `arm.move_to_pose()` in arm frame as a workaround if needed
+### 3. Stale coordinates after ANY base movement — MUST re-scan
+
+After **any** of these:
+- `base.forward()` / `base.backward()`
+- `base.move_to_pose()` / `base.move_delta()`
+- `base.plan_path()` + executing the returned waypoints
+- `wb.move_to_pose()` with `mask="whole_body"` (the base part)
+
+The cached `sensors.get_arm_base_world()` is STALE. It does not auto-update.
+You MUST call `sensors.find_objects()` again BEFORE computing any new
+`world_to_arm()` conversion or `arm.move_to_pose()` target.
+
+**This is THE most common cause of "arm reaches floor instead of sink"**:
+
+```python
+# ❌ WRONG — silent failure pattern:
+ab0 = sensors.get_arm_base_world()           # before strafe
+af0 = world_to_arm(food_world, ab0)           # arm_y = 1.18 (far)
+base.plan_path(0, 1.0, 0)                     # strafe 1m
+# (executing waypoints …)
+ab = sensors.get_arm_base_world()             # ⚠ STILL OLD VALUE
+af = world_to_arm(food_world, ab)             # arm_y still 1.18 — WRONG
+arm.move_to_pose(x=af[0], y=af[1], …)        # IK clamps to floor edge
+
+# ✅ RIGHT:
+base.plan_path(0, 1.0, 0)                     # strafe 1m
+# (execute waypoints …)
+sensors.find_objects()                         # REQUIRED — refreshes arm_base_world
+ab = sensors.get_arm_base_world()             # now correct
+af = world_to_arm(food_world, ab)             # arm_y now ~0.18 (reachable)
+arm.move_to_pose(x=af[0], y=af[1], …)        # reaches actual food
+```
+
+`wb.move_to_pose()` whole_body has the same issue (its base part shifts the
+robot). After it, re-scan or use `arm.move_to_pose()` in the arm frame for
+the next reach if you don't want to re-scan.
 
 ### 4. Verify with camera, not just numbers
 - After each major movement, visually verify by checking what happened
