@@ -878,7 +878,7 @@ def _load_entries():
     (see bottom of file). Without in-place semantics, __main__'s rebind would
     leave the shim's references pointing at the old empty defaults.
     """
-    global primary_target, AGENT_SERVER
+    global AGENT_SERVER
     data = json.loads(LOCAL_REPOS.read_text())
     if isinstance(data, dict):
         # New format: {"task_env": "...", "entries": [...], ...}
@@ -895,14 +895,19 @@ def _load_entries():
     graph_meta.clear()
     graph_meta.update(new_meta)
 
-    # Load multi-target config
+    # Load multi-target config — also in-place for primary_target
     new_targets = graph_meta.get("targets", [])
+    primary_target.clear()
     if new_targets:
-        primary_target = next((t for t in new_targets if t.get("primary")), new_targets[0])
+        chosen = next((t for t in new_targets if t.get("primary")), new_targets[0])
+        primary_target.update(chosen)
         AGENT_SERVER = primary_target["agent_server"]
         print(f"[ORCH] Loaded {len(new_targets)} targets, primary: {primary_target['name']} ({AGENT_SERVER})")
     else:
-        primary_target = {"name": "default", "agent_server": AGENT_SERVER, "sim_api": "http://localhost:5500", "primary": True}
+        primary_target.update({
+            "name": "default", "agent_server": AGENT_SERVER,
+            "sim_api": "http://localhost:5500", "primary": True,
+        })
         new_targets = [primary_target]
     targets.clear()
     targets.extend(new_targets)
@@ -1303,7 +1308,7 @@ def _map_status(internal: str, agent_type: str = "dev") -> str:
     }.get(internal, internal)
 
 
-_session_log_cache: dict[str, list] | None = None
+_session_log_cache: dict = {}  # empty = "not populated yet" / "invalidated"
 
 
 def _normalize_log_entry(m, default_role: str) -> dict:
@@ -1334,8 +1339,9 @@ def _load_session_logs() -> dict[str, list]:
     the dashboard uses the separate sessions.html page which reads the
     jsonl directly. Returns {skill: [{role, text}, ...]} — one session only.
     """
-    global _session_log_cache
-    if _session_log_cache is not None:
+    # Empty dict = not populated yet (or invalidated). In-place mutation
+    # keeps the same dict object so module-import-bootstrap binding stays valid.
+    if _session_log_cache:
         return _session_log_cache
     last_rec_by_skill: dict[str, dict] = {}
     if SESSION_LOG.exists():
@@ -1347,20 +1353,22 @@ def _load_session_logs() -> dict[str, list]:
                 last_rec_by_skill[rec["skill"]] = rec  # overwrite → keeps last
             except (json.JSONDecodeError, KeyError):
                 continue
-    logs_by_skill: dict[str, list] = {}
     for skill, rec in last_rec_by_skill.items():
         role = rec.get("agent_type", "agent")
-        logs_by_skill[skill] = [
+        _session_log_cache[skill] = [
             _normalize_log_entry(msg, role) for msg in rec.get("log", [])
         ]
-    _session_log_cache = logs_by_skill
     return _session_log_cache
 
 
 def _invalidate_session_log_cache():
-    """Invalidate the session log cache so next read reloads from disk."""
-    global _session_log_cache
-    _session_log_cache = None
+    """Invalidate the session log cache so next read reloads from disk.
+
+    Mutates in-place (clear) instead of rebinding to None — the openclaw
+    shim has its own reference to this dict via module-import bootstrap;
+    rebinding would leave the shim's reference stale.
+    """
+    _session_log_cache.clear()
 
 
 def build_full_sync() -> dict:
@@ -3335,7 +3343,27 @@ import sys as _sys
 _main_mod = _sys.modules.get("__main__")
 _self_mod = _sys.modules.get(__name__)
 if _main_mod is not None and _self_mod is not None and _self_mod is not _main_mod:
-    for _shared_name in ("skill_entries", "targets", "agents", "ws_clients", "graph_meta"):
+    # Comprehensive list of shared mutable state: any module-level mutable
+    # (list/dict/set/Lock) that may be read or written from BOTH __main__'s
+    # path (HTTP/WS handlers) AND the shim path (Path A `_handle_agent_done`,
+    # `_auto_spawn_ready_skills`, `_run_agent_openclaw`, etc.).
+    #
+    # If you add a new top-level mutable, add it here.
+    for _shared_name in (
+        "skill_entries",         # graph entries (status, dependencies, …)
+        "targets",               # multi-target config
+        "primary_target",        # primary target dict
+        "graph_meta",            # graph.json top-level metadata
+        "agents",                # live AgentState by id
+        "ws_clients",            # connected dashboard websockets
+        "_submission_evals",     # /job-done future store
+        "_eval_skill_locks",     # per-skill asyncio.Lock — CRITICAL (mutex)
+        "_last_feedback",        # last evaluator feedback per skill
+        "_skills_in_test_loop",  # set of skills inside _root_skill_test_loop
+        "_eval_attempt_count",   # retry counter per skill
+        "_spawn_lock",           # global spawn mutex
+        "_session_log_cache",    # cached agent_sessions.jsonl reads
+    ):
         _main_val = getattr(_main_mod, _shared_name, None)
         if _main_val is not None and _main_val is not globals().get(_shared_name):
             globals()[_shared_name] = _main_val
