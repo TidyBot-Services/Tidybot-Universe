@@ -626,6 +626,37 @@ arm.move_to_pose(x=af[0], y=af[1], …)        # reaches actual food
 robot). After it, re-scan or use `arm.move_to_pose()` in the arm frame for
 the next reach if you don't want to re-scan.
 
+### 3.5. EE orientation does NOT persist across arm.move_to_pose calls
+
+`arm.move_to_pose(x, y, z, pitch=...)` only applies the orientation **for that
+ONE call**. If you don't pass `pitch=` (or `quat=`) on a subsequent call, the
+SDK does NOT remember your previous setting — it falls back to the SDK default
+(the arm's at-rest orientation, which is NOT top-down). The gripper silently
+rotates back between calls.
+
+```python
+# ❌ WRONG — gripper rotates back between calls:
+arm.move_to_pose(x, y, pre_z, pitch=-math.pi/2)   # ✓ pre-grasp top-down
+arm.move_to_pose(x, y, grasp_z)                   # ✗ pitch lost — gripper sideways!
+arm.move_to_pose(x, y, lift_z)                    # ✗ still sideways
+
+# ✅ RIGHT — pass pitch (or quat) every single call:
+arm.move_to_pose(x, y, pre_z,   pitch=-math.pi/2)
+arm.move_to_pose(x, y, grasp_z, pitch=-math.pi/2)
+arm.move_to_pose(x, y, lift_z,  pitch=-math.pi/2)
+
+# OR use wb.move_to_pose with quat (works equivalently — also explicit each call):
+TOPDOWN = [0, 1, 0, 0]
+wb.move_to_pose(fx, fy, fz + 0.15, quat=TOPDOWN, mask="arm_only")
+wb.move_to_pose(fx, fy, fz,        quat=TOPDOWN, mask="arm_only")
+wb.move_to_pose(fx, fy, fz + 0.20, quat=TOPDOWN, mask="arm_only")
+```
+
+This is the most common silent failure for "arm reaches the right XY but the
+gripper grasps sideways instead of top-down". If the wrist camera shows the
+gripper aimed at the side of the basin or pointing away from the food, this is
+the bug.
+
 ### 4. Verify with camera, not just numbers
 - After each major movement, visually verify by checking what happened
 - The robot may report plausible-looking numbers that are actually wrong
