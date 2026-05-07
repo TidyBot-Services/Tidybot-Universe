@@ -2664,8 +2664,27 @@ async def _handle_agent_done(state: AgentState):
                 f"Fix the code and resubmit."
             )
             state.task = asyncio.create_task(_eval_retry_response(state))
+        elif autonomous_mode:
+            # OpenClaw / no live client + autonomous mode:
+            # Mark "failed" so _auto_spawn_ready_skills picks it up + spawns
+            # a fresh dev subprocess. spawn_agent preserves the previous
+            # session_id (line 1572-1586) so the new openclaw subprocess
+            # resumes the same conversation, and the next prompt is
+            # constructed with `_last_feedback[skill]` injected (see
+            # _auto_spawn_ready_skills). Attempts counter is NOT reset, so
+            # after MAX_EVAL_RETRIES iterations we still trip the
+            # exhausted-retries path above and stop at "review".
+            await ws_broadcast_agent_msg(
+                state.skill,
+                f"Auto-respawning dev (attempt {attempts}/{MAX_EVAL_RETRIES}) "
+                f"with eval feedback in next turn...",
+                "evaluator",
+            )
+            _update_entry(state.skill, {"status": "failed"})
+            await broadcast_full_sync()
+            asyncio.create_task(_auto_spawn_ready_skills())
         else:
-            # Dev agent is gone — send to review so skill doesn't get stuck
+            # Manual mode — sit at "review" for human inspection
             await ws_broadcast_agent_msg(state.skill, "Dev agent unavailable for retry — sending to review.", "evaluator")
             _eval_attempt_count.pop(state.skill, None)
             _update_entry(state.skill, {"status": "review"})
@@ -2748,6 +2767,18 @@ async def _auto_spawn_ready_skills() -> list[str]:
                 lessons = lessons_file.read_text().strip()
                 prompt += f"\n\n## Previous Debugging Lessons (READ CAREFULLY)\n{lessons}"
                 print(f"[ORCH] {name}: attached LESSONS.md ({len(lessons)} chars)")
+
+            # Inject latest evaluator feedback if this is a re-spawn after
+            # a failed eval (autonomous-mode openclaw retry). spawn_agent
+            # also resumes the previous session_id, so dev sees the prior
+            # turns + this new feedback as the next user message.
+            fb = _last_feedback.get(name, "").strip()
+            if fb:
+                prompt += (
+                    f"\n\n## Previous Eval Feedback (FIX THESE before resubmitting)\n"
+                    f"{fb}"
+                )
+                print(f"[ORCH] {name}: attached eval feedback ({len(fb)} chars) for retry")
 
             # Spawn one agent per target (parallel multi-target development)
             spawned_any = False
