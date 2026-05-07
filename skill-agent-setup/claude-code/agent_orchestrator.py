@@ -626,36 +626,36 @@ arm.move_to_pose(x=af[0], y=af[1], …)        # reaches actual food
 robot). After it, re-scan or use `arm.move_to_pose()` in the arm frame for
 the next reach if you don't want to re-scan.
 
-### 3.5. EE orientation does NOT persist across arm.move_to_pose calls
+### 3.5. EE orientation API ── arm.move_to_pose vs wb.move_to_pose
 
-`arm.move_to_pose(x, y, z, pitch=...)` only applies the orientation **for that
-ONE call**. If you don't pass `pitch=` (or `quat=`) on a subsequent call, the
-SDK does NOT remember your previous setting — it falls back to the SDK default
-(the arm's at-rest orientation, which is NOT top-down). The gripper silently
-rotates back between calls.
+**`arm.move_to_pose` (arm-only, RPY-based):** orientation IS preserved across
+calls. Each unspecified axis (roll/pitch/yaw=None) keeps its current value:
 
 ```python
-# ❌ WRONG — gripper rotates back between calls:
-arm.move_to_pose(x, y, pre_z, pitch=-math.pi/2)   # ✓ pre-grasp top-down
-arm.move_to_pose(x, y, grasp_z)                   # ✗ pitch lost — gripper sideways!
-arm.move_to_pose(x, y, lift_z)                    # ✗ still sideways
+arm.move_to_pose(x, y, pre_z, pitch=-math.pi/2)   # set top-down (yaw kept)
+arm.move_to_pose(x, y, grasp_z)                   # no RPY → keeps prior orientation ✓
+arm.move_to_pose(x, y, lift_z)                    # still top-down ✓
+```
 
-# ✅ RIGHT — pass pitch (or quat) every single call:
-arm.move_to_pose(x, y, pre_z,   pitch=-math.pi/2)
-arm.move_to_pose(x, y, grasp_z, pitch=-math.pi/2)
-arm.move_to_pose(x, y, lift_z,  pitch=-math.pi/2)
+This is safe AS LONG AS you set the orientation in the first call of a
+sequence and don't accidentally override one axis with a partial RPY along
+the way (e.g. passing `yaw=0.0` would overwrite that axis but keep pitch).
 
-# OR use wb.move_to_pose with quat (works equivalently — also explicit each call):
+**`wb.move_to_pose` (whole-body, quaternion-based):** does NOT carry over
+orientation between calls. Each `wb.move_to_pose` is a fresh motion plan and
+needs `quat=...` passed every time, otherwise the planner picks an arbitrary
+orientation that satisfies the position constraint:
+
+```python
 TOPDOWN = [0, 1, 0, 0]
 wb.move_to_pose(fx, fy, fz + 0.15, quat=TOPDOWN, mask="arm_only")
-wb.move_to_pose(fx, fy, fz,        quat=TOPDOWN, mask="arm_only")
+wb.move_to_pose(fx, fy, fz,        quat=TOPDOWN, mask="arm_only")  # ← repeat
 wb.move_to_pose(fx, fy, fz + 0.20, quat=TOPDOWN, mask="arm_only")
 ```
 
-This is the most common silent failure for "arm reaches the right XY but the
-gripper grasps sideways instead of top-down". If the wrist camera shows the
-gripper aimed at the side of the basin or pointing away from the food, this is
-the bug.
+If the wrist camera shows the gripper aimed at the side of the basin or
+pointing away from the food, you forgot to pass `quat=` to a `wb.move_to_pose`
+call (or you partial-overrode an axis on `arm.move_to_pose` mid-sequence).
 
 ### 4. Verify with camera, not just numbers
 - After each major movement, visually verify by checking what happened
