@@ -29,7 +29,7 @@ ENV_NAME="$1"
 WORKSPACE="${2:-./tidybot_uni}"
 WORKSPACE="$(mkdir -p "$WORKSPACE" && cd "$WORKSPACE" && pwd)"
 
-ORG="https://github.com/TidyBot-Services"
+ORG="git@github.com:TidyBot-Services"
 
 echo "==> Workspace: $WORKSPACE"
 echo "==> Conda env: $ENV_NAME"
