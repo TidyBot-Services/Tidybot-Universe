@@ -583,24 +583,42 @@ The cached `sensors.get_arm_base_world()` is STALE. It does not auto-update.
 You MUST call `sensors.find_objects()` again BEFORE computing any new
 `world_to_arm()` conversion or `arm.move_to_pose()` target.
 
+**NEVER hand-compute the new arm_base_world from `base.get_state()['base_pose']`
+(qpos)** — the qpos→world rotation depends on the robot's home yaw which is
+NOT what naïve formulas assume. Empirically measured on this sim:
+
+```
+qpos[0] += 0.5  →  arm_base world Δ ≈ (0, 0)        # forward often blocked / no-op
+qpos[1] += 0.5  →  arm_base world Δ ≈ (0, -0.46)    # lateral maps to world Y, not X
+```
+
+Naïve formulas like `ab[0] = ab0[0] - bp[1]; ab[1] = ab0[1] + bp[0]` ARE WRONG
+on this sim. Just do this every time after a base move:
+
+```python
+sensors.find_objects()           # refreshes the cache
+ab = sensors.get_arm_base_world()  # always trust this, never reconstruct
+```
+
 **This is THE most common cause of "arm reaches floor instead of sink"**:
 
 ```python
-# ❌ WRONG — silent failure pattern:
+# ❌ WRONG — hand-computed ab using qpos:
 ab0 = sensors.get_arm_base_world()           # before strafe
-af0 = world_to_arm(food_world, ab0)           # arm_y = 1.18 (far)
-base.plan_path(0, 1.0, 0)                     # strafe 1m
-# (executing waypoints …)
-ab = sensors.get_arm_base_world()             # ⚠ STILL OLD VALUE
-af = world_to_arm(food_world, ab)             # arm_y still 1.18 — WRONG
-arm.move_to_pose(x=af[0], y=af[1], …)        # IK clamps to floor edge
-
-# ✅ RIGHT:
-base.plan_path(0, 1.0, 0)                     # strafe 1m
+af0 = world_to_arm(food_world, ab0)
+base.plan_path(0, 1.0, 0)
 # (execute waypoints …)
-sensors.find_objects()                         # REQUIRED — refreshes arm_base_world
-ab = sensors.get_arm_base_world()             # now correct
-af = world_to_arm(food_world, ab)             # arm_y now ~0.18 (reachable)
+bp = base.get_state()["base_pose"]
+ab = [ab0[0] - bp[1], ab0[1] + bp[0], ab0[2]]   # WRONG axis assumption
+af = world_to_arm(food_world, ab)             # gives wrong arm-frame coord
+arm.move_to_pose(x=af[0], y=af[1], …)        # ends up far from target
+
+# ✅ RIGHT — re-scan, trust SDK:
+base.plan_path(0, 1.0, 0)
+# (execute waypoints …)
+sensors.find_objects()                         # REQUIRED — refreshes everything
+ab = sensors.get_arm_base_world()             # SDK gives correct world pose
+af = world_to_arm(food_world, ab)
 arm.move_to_pose(x=af[0], y=af[1], …)        # reaches actual food
 ```
 
