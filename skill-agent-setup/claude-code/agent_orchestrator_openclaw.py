@@ -391,12 +391,21 @@ async def _run_agent_openclaw(state, prompt: str):
         _get_system_prompt, WORKSPACE_DIR,
     )
 
-    # Per-target agent id (isolation from other targets' runs)
+    # Per-(target, skill) agent id — isolates parallel sub-skills' session jsonls.
+    # OpenClaw `--local` mode locks the single session file per agent_id, so two
+    # leaf sub-skills spawned in parallel against the same agent collide on
+    # `<agent>/sessions/<id>.jsonl.lock`. Including the skill name in the agent
+    # id gives each sub-skill its own session dir, avoiding the lock contention.
+    # Evaluators keep target-only id (they don't run in parallel per skill).
     target_name = getattr(state, "target_name", "") or ""
     base_agent_id = resolve_agent_id(state.agent_type)
-    agent_id = resolve_agent_id(state.agent_type, target_name)
+    if state.agent_type == "evaluator":
+        agent_id = resolve_agent_id(state.agent_type, target_name)
+    else:
+        suffix = f"{target_name}-{state.skill}" if target_name else state.skill
+        agent_id = resolve_agent_id(state.agent_type, suffix)
 
-    # Auto-create target-specific agent if missing (clones model + auth from base)
+    # Auto-create per-(target,skill) agent if missing (clones model + auth from base)
     if agent_id != base_agent_id:
         _ensure_agent_exists(agent_id, base_agent_id, workspace=str(WORKSPACE_DIR))
 
