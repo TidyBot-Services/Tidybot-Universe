@@ -400,7 +400,21 @@ async def _run_agent_openclaw(state, prompt: str):
     if agent_id != base_agent_id:
         _ensure_agent_exists(agent_id, base_agent_id, workspace=str(WORKSPACE_DIR))
 
+    # OpenClaw `--local` ignores `--session-id` and always spawns a fresh
+    # session per call. A persisted session_id from a prior run (e.g. via
+    # graph.json after orch restart) is therefore stale: the file it points
+    # at no longer corresponds to this subprocess's actual output, so
+    # _wait_for_session_file would block on a non-existent path and the
+    # dashboard tail would stay disabled for the whole run.
+    # Verify the resume target exists on disk; if not, treat this as a
+    # fresh session so _wait_for_session_file falls back to "find new
+    # / touched file" detection and tail starts streaming immediately.
     resume_id = state.session_id
+    if resume_id and not _session_file(agent_id, resume_id).exists():
+        print(f"[OC] {state.skill}: stale session_id {resume_id[:12]}… "
+              f"not on disk — clearing for fresh tail")
+        state.session_id = None
+        resume_id = None
 
     # On first turn, prepend _get_system_prompt() content so the agent has
     # full dev/evaluator context. On resume, session transcript already has it.
