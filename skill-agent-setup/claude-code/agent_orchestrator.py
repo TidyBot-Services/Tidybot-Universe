@@ -2305,10 +2305,20 @@ specific fabrications.
 **IMPORTANT: Read logs first, images selectively. Do NOT read every image.**
 
 **Step 1 — Logs first:**
-- Read metadata.json for execution summary, stdout, stderr, duration
-- Read state_log.jsonl for robot state trajectory (arm joints, base pose, gripper width, object_detected)
-- From the logs, identify the KEY MOMENTS: when gripper opened/closed, when base stopped moving,
-  when EE reached grasp height, the final state. Note the frame numbers for these moments.
+- Read **stdout.log** in the exec dir — this is the dev's actual printed output
+  (markers like `DETECT_OK`, `APPROACH_OK <dist>`, `FAIL`, error messages).
+  This is your PRIMARY source per the Evidence Hierarchy. If stdout.log is
+  missing, the dev's code crashed before any print or the run pre-dates the
+  stdout-capture fix — note that in your evaluation.
+- Read **stderr.log** for any tracebacks / warnings.
+- Read **metadata.json** for execution summary (duration, frame_count, timestamps,
+  cameras). NOTE: metadata.json does NOT contain stdout/stderr text — those live
+  in their own .log files in the same dir.
+- Read **state_log.jsonl** for robot state trajectory (arm joints, base pose,
+  gripper width, object_detected).
+- From the logs, identify the KEY MOMENTS: when gripper opened/closed, when base
+  stopped moving, when EE reached grasp height, the final state. Note the frame
+  numbers for these moments.
 
 **Step 2 — Selective images (max 10-15):**
 Only read images at the key moments you identified from the logs:
