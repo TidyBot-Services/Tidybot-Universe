@@ -71,6 +71,33 @@ Deploy a service. If already running and healthy, returns existing endpoint (ide
 
 These fields map directly from `service.yaml`. The skill agent reads the manifest and forwards it.
 
+> **⚠️ Port semantics — read this before deploying:**
+>
+> `port` is the **container's internal listen port**, not the external host port. Deploy-agent calls `docker run -p <host_port>:<port>` where `host_port` is auto-assigned by `_pick_port(req.port)` (defaults to `req.port` if free, else next available).
+>
+> If your image listens on a different port internally and you set `port` to something else, the docker mapping will publish a port that nothing inside the container is listening on → external connection refused → `/health` times out at `ready_timeout` seconds, and you get:
+> ```json
+> {"detail": "Service '<name>' failed health check after Ns"}
+> ```
+>
+> **Two safe patterns:**
+>
+> 1. **Match the image's `EXPOSE` directive** — set `port` to whatever the image listens on internally (e.g. `port: 80` for a stock nginx, `port: 8000` for a stock FastAPI app). `host_port` is auto-picked by deploy-agent.
+>
+> 2. **Override with `command`** — pass a CLI argument that makes the image listen on `port` internally. Example:
+>    ```json
+>    {
+>      "name": "smoke-test",
+>      "image": "traefik/whoami:latest",
+>      "port": 18999,
+>      "command": "--port 18999",
+>      "health": "/"
+>    }
+>    ```
+>    Now the container listens on 18999 internally AND the host publishes 18999, so external/internal align.
+>
+> A self-contained probe that exercises the full pipeline (with the correct `command`) is at `service-agent-setup/probe_pipeline.sh`.
+
 **Response (success):**
 ```json
 {
