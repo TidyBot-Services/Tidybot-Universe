@@ -26,12 +26,13 @@ logs_env*/
 .claude/
 .openclaw/
 AGENTS.md
-CLAUDE.md
 HEARTBEAT.md
 IDENTITY.md
 SOUL.md
 TOOLS.md
 USER.md
+# Note: CLAUDE.md (top-level) IS tracked — it's project-level instructions
+# shared across all collaborators (same as subdir CLAUDE.md files).
 
 # skill-agent-setup local artifacts
 skill-agent-setup/claude-code/.git.DISABLED.*
