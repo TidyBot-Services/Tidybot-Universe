@@ -4,6 +4,14 @@ Append-only milestone log. Don't edit history; add new entries at the top.
 
 ## Milestones
 
+### 2026-05-12 — Shared AI-memory tree bootstrapped
+- New `docs/ai-memory/` directory in `Tidybot-Universe` parent repo (commit `cf0be50`).
+- 18 seed files: README + active-context + progress + project-brief + 5 ADRs + 6 module docs + 3 cross-module patterns.
+- `CLAUDE.md` rewritten from 215 → 155 lines (commit `26566f2` in `common` repo, symlinked from parent).
+- `.gitignore` updated to track top-level CLAUDE.md (commit `bd0a784`).
+- Memory Policy + Startup Routine sections added to CLAUDE.md so new sessions auto-discover the structure.
+- See `decisions/0006-shared-memory-tree.md` for rationale.
+
 ### 2026-05-09 — Skill DAG pipeline end-to-end mechanism verified
 - Test graph `counter-to-cab/` (detect-objects + approach-counter + pnp-counter-to-cab)
 - 5 of 6 orchestration mechanism points pass (M1-M5). M6 (root mechanical test) didn't fire because evaluator kept failing root.
