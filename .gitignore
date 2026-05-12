@@ -8,6 +8,7 @@ skill-agent-setup/claude-code/graphs/
 # as untracked at the parent level.
 /agent_server/
 /arm_franka_service/
+/arm_franka_fr3_service/
 /common/
 /deploy-agent/
 /gripper_robotiq_service/
