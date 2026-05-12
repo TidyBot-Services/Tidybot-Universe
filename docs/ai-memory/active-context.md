@@ -1,53 +1,63 @@
 # Active Context
 
-> **Last updated:** 2026-05-12 (memory system bootstrap session complete)
+> **Last updated:** 2026-05-13 (single-arm FR3 service shipped, Day 1 validation complete)
 
 ## Current Focus
 
-The shared AI-memory system at `docs/ai-memory/` is now live and pushed. CLAUDE.md was shortened to 155 lines + Memory Policy + Startup Routine. The previously-gitignored top-level CLAUDE.md is now tracked (symlinked from common/, both repos pushed).
+Building out support for a **single-arm FR3 workstation** as a parallel deployment alongside the existing Panda + Tidybot setup. The core architectural pieces just landed in 4 repos; physical FR3 hardware is not yet acquired.
 
-The project is **ready for normal development cadence** using the new memory workflow:
+What just shipped (2026-05-13):
 
-1. Sessions start by reading `active-context.md` (this file).
-2. Touch a module → read the corresponding `modules/<name>.md`.
-3. End of session → user invokes the end-of-session prompt and I distribute updates to active-context / progress / decisions / personal memory.
+- **`arm_franka_fr3_service/`** — new hardware service repo (libfranka 0.13.3 target). Sibling of `arm_franka_service/` (which stays pinned to libfranka 0.9.1 for Panda). Same ZMQ wire protocol — `agent_server` is interchangeable.
+- **Capability profile system** in `agent_server` — robot profile YAML declares which backends/services exist on this deployment. Drives backend wiring, `/code/sdk` filtering, and `CapabilityStub` hard-fail.
+- **`start_robot.sh --profile`** flag — selects arm service dir + per-component defaults. `--profile full` (default) is identical to pre-change behavior.
+
+See `decisions/0007-single-arm-fr3-service.md` for the full design rationale, including why this couldn't be solved as a "same-PC switchable profile" (libfranka 0.10+ is FR3-exclusive, Panda dropped).
 
 ## Recently Completed
 
-- **`docs/ai-memory/` tree created and seeded** — 18 files total: README + active-context + progress + project-brief + 5 ADRs + 6 module docs + 3 cross-module patterns. See `decisions/0006-shared-memory-tree.md` for the rationale.
-- **CLAUDE.md rewritten** from 215 → 155 lines. Removed inline rewind/error/port details that now live under `modules/`. Added Memory Policy + Startup Routine sections.
-- **`.gitignore` updated** to track top-level CLAUDE.md (removed from ignore list). It's a symlink to `common/CLAUDE.md`, so both the parent repo and the common repo got pushes.
-- **Per-skill agent + stdout.log + evaluator prompt + skill-DAG mechanism** all fixes pushed earlier today (2026-05-09) — see `progress.md`.
+- **4-repo push (2026-05-13):**
+  - `arm_franka_fr3_service` — initial commit `9095501`, new repo at github.com/TidyBot-Services/arm_franka_fr3_service
+  - `agent_server` — `057abfd` profile system
+  - `common` — `017f810` start_robot.sh --profile flag
+  - `Tidybot-Universe` — `6fafaba` ADR 0007 + .gitignore
+- **Day 1 zero-regression validation:** new agent_server on port 8280 (dry-run, default profile=full) produces a `/code/sdk` response that is **byte-identical** to the May-9 production agent_server on :8080. No backend is skipped when profile=full, no behavior change. The production :8080 server was not touched during validation.
+- **Day 1 single_arm_fr3 verification:** new agent_server on :8380 with `--profile single_arm_fr3` correctly exposes only 4 modules (arm, gripper, rewind, sensors) + 2 advanced backends, and logs `Skipping base backend / mocap backend` as expected.
 
 ## Next Steps
 
-- **Use the new memory system in the next session** — invoke the end-of-session prompt to keep `active-context.md` and `progress.md` fresh. If we drift back to dumping everything in CLAUDE.md, the system has decayed.
-- **Decide whether to retire the SSH-scan `service-server-setup/` catalog** (port 8090, currently inactive). The deploy-agent on port 9000 covers service discovery in practice.
-- **Switch dev to Claude Opus 4.7 for a clean comparison** on the same DAG (`counter-to-cab` or `counter-to-sink`) to isolate "model limit" from "infrastructure". This is the cleanest test of `patterns/dev-model-failure-modes.md`.
-- **Verify M6 (root mechanical test)** on a trivially-passable root skill — we never observed `testing` state firing during the counter-to-cab run because evaluator kept failing root.
-- **Stale-memory sweep policy** — pick a cadence (monthly? per major version?) to audit `docs/ai-memory/` claims against current code. Some `modules/<X>.md` already reference file paths that could drift.
+- **Day 2 — end-to-end single_arm_fr3 against the running sim.** The May-9 sim (`RoboCasa-Pn-P-Counter-To-Cab-v0`, PID 1688506) is still up on :5555-:5580 + :50000. Plan: start a new agent_server `--profile single_arm_fr3 --port-offset 400`, submit `from robot_sdk import base; base.move_delta(dx=0.5)`, confirm the subprocess raises `CapabilityNotAvailableError` with the expected message and the stdout/job log captures it cleanly. This validates the env-var inheritance from parent agent_server → code_executor subprocess → robot_sdk capability filter.
+- **Day 3 — libfranka 0.13.3 compile (no FR3 required).** Run `arm_franka_fr3_service/setup_server.sh` on a Linux box with cmake + Eigen + Poco. Verifies the build matrix (and the RT-PREEMPT warning) before the hardware arrives. Conda env decision deferred (don't conflate with Panda's pylibfranka 0.9.1).
+- **Day 4+ — physical FR3 setup.** Mount, network (172.16.0.2 on private subnet), Desk 5.x unlock, FCI activation, collision-threshold tuning. Hardware not yet acquired.
+- **Skill metadata for base-dependent skills** — the 3 skills under `graphs/` that call `base.*` (counter-to-cab/approach-counter, counter-to-sink/pnp-counter-to-sink, unified-single-stage/open-single-door) need `requires: [base]` so the orchestrator can hide them from single-arm profiles. Deferred — capability system is in place, this is just metadata + an orchestrator filter pass.
 
 ## Open Questions
 
-- Are there other top-level files in `.gitignore` (`AGENTS.md`, `IDENTITY.md`, etc.) that should also be tracked for the same reason CLAUDE.md was promoted? These are also symlinks into `common/`. Probably yes for `AGENTS.md` (project-level agent instructions), maybe yes for the others — but lower priority.
-- Should `~/.claude/` auto-memory entries that have shared value (e.g. `feedback_pathfinder_subdir_shadowing.md`) be deleted now that the patterns/ doc covers them? Risk of duplication. Currently keeping both — the auto-memory entry has more raw debug context, the patterns/ doc has the distilled lesson. Worth deciding the policy.
-- M6 mechanical test path may have a subtle bug we haven't caught — worth a clean test with `task_env` set and a guaranteed-pass root skill.
+- **`/code/sdk` loads RobotProfile on every request** (saw 5 `Loaded robot profile 'full'` log lines during Day 1 validation across 5 curls). Functionally correct but should cache. Cleanup task — not blocking anything.
+- **CapabilityStub `__setattr__` raises**, which is correct for "agent shouldn't reassign", but if something legitimate in the code_executor tries `robot_sdk.base.foo = …` it'll fail. Worth a quick grep before real deployment.
+- **Pre-existing untracked items in parent repo** (`eval/curobo_v1_v2/results/*.log`, `sync_catalog.sh`) are still untouched — they were there at session start and aren't my concern, but worth deciding whether to commit/ignore.
+- **Hardware decision still pending** from the user: FR3 with or without Robotiq 2F-85 gripper? With or without RealSense camera on EE? Profile YAML defaults to having both; easy to override.
 
 ## Relevant Files (current session's touched code)
 
-- `docs/ai-memory/` — entire new directory (18 files)
-- `CLAUDE.md` → symlink to `common/CLAUDE.md` (now both tracked)
-- `.gitignore` — removed `CLAUDE.md` line at row 29
+- `arm_franka_fr3_service/` (new repo) — `franka_server/franka_server/server.py:74,687`, `command_buffer.py:635` (FR3 joint limits)
+- `agent_server/robot_profile.py` (new) — `RobotProfile` dataclass + YAML loader
+- `agent_server/profiles/full.yaml`, `profiles/single_arm_fr3.yaml` (new)
+- `agent_server/config.py` — `ServerConfig.profile: RobotProfile`
+- `agent_server/server.py` — profile arg + env publish + backend skip
+- `agent_server/routes/sdk_docs.py` — capability-filtered docs
+- `agent_server/robot_sdk/__init__.py` — `CapabilityStub`, `CapabilityNotAvailableError`, `apply_capability_filter`
+- `agent_server/code_executor.py` — bootstrap calls `apply_capability_filter()`
+- `common/start_robot.sh` (symlinked from parent) — `--profile` + per-component routing
+- `Tidybot-Universe/.gitignore` — added `/arm_franka_fr3_service/`
+- `docs/ai-memory/decisions/0007-single-arm-fr3-service.md` (new ADR)
 
 ## What's running right now (local)
 
-- `agent_server` :8080 — alive (PID 1772976)
-- `cuRobo service` :7000 — alive
-- Sim — Counter-To-Cab-v0 was running with GUI earlier (may have been Ctrl-C'd)
-- Orchestrator :8765/8766 — stopped at end of DAG test
-- Deploy-agent :9000 (local) + 158.130.109.188:9000 (remote) — alive
-- Qwen3.6 + Kimi-K2.6 (Penn LiteLLM) — periodic outages observed this session, currently alive
+- **Production-ish:** `agent_server` :8080 (PID 1772976, started May 9, **old code, not impacted by today's push**), maniskill sim :5555-:5580 + :50000 (PID 1688506, Counter-To-Cab-v0 task), cuRobo service :7000.
+- **From Day 1 validation:** all dry-run instances on :8180/:8280/:8380 are killed clean.
+- Deploy-agent :9000 local + 158.130.109.188:9000 remote — alive.
 
 ## Branch state
 
-All recent work on Tidybot-Universe `master` and common `master`. No active feature branches. `eval/curobo-v1-v2` was deleted 2026-05-09 after merging.
+All work on `master` of the four repos. No active feature branches. The deleted `eval/curobo-v1-v2` branch from earlier is gone.

@@ -4,6 +4,14 @@ Append-only milestone log. Don't edit history; add new entries at the top.
 
 ## Milestones
 
+### 2026-05-13 — Single-arm FR3 service + capability profile system shipped
+- **New repo:** `arm_franka_fr3_service` at github.com/TidyBot-Services/arm_franka_fr3_service. Sibling of `arm_franka_service` — same ZMQ wire protocol, different libfranka version (0.13.3 vs 0.9.1) because libfranka 0.10+ dropped Panda support and is FR3-exclusive. Initial commit `9095501` includes the Python wrapper code (~8.3k lines, copied from the Panda service + 3 surgical edits: version pin, collision thresholds `[100]→[30]`, FR3 joint limits). libfranka source is intentionally not committed — `setup_server.sh` clones 0.13.3 fresh.
+- **Capability profile system in `agent_server`** (`057abfd`): `RobotProfile` YAML loader (`agent_server/profiles/full.yaml` + `single_arm_fr3.yaml`), `--profile` CLI flag, env publishing for code-exec subprocesses, profile-aware backend connect, capability-filtered `/code/sdk` endpoint (9 modules → 4 modules under single_arm_fr3), `CapabilityStub` hard safety net in `robot_sdk` that raises `CapabilityNotAvailableError` on disabled-capability calls.
+- **`common/start_robot.sh --profile` flag** (`017f810`): chooses arm service directory (`arm_franka_service` for Panda, `arm_franka_fr3_service` for FR3) and toggles base/controller defaults per profile. Default profile (`full`) is byte-identical to old behavior — no regression for Tidybot.
+- **Parent repo** (`6fafaba`): ADR `0007-single-arm-fr3-service.md` + `.gitignore` entry for the new service dir.
+- **Day 1 zero-regression validation:** new agent_server (default profile=full, dry-run on :8280) produces a `/code/sdk` response **byte-identical** to the May-9 production server on :8080. No backend is skipped when profile=full. Production :8080 was not touched.
+- **Day 1 single_arm_fr3 verification:** new agent_server on :8380 with `--profile single_arm_fr3` exposes 4 modules + 2 advanced backends, logs `Skipping base backend / mocap backend`.
+
 ### 2026-05-12 — Shared AI-memory tree bootstrapped
 - New `docs/ai-memory/` directory in `Tidybot-Universe` parent repo (commit `cf0be50`).
 - 18 seed files: README + active-context + progress + project-brief + 5 ADRs + 6 module docs + 3 cross-module patterns.
