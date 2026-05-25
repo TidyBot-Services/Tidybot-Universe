@@ -127,12 +127,15 @@ def _ensure_agent_exists(target_agent_id: str, base_agent_id: str,
 
     # Look up base agent's configured model
     base_cfg_path = OPENCLAW_HOME / "openclaw.json"
-    model = "ollama/llama3.1:8b-ctx32k"  # last-resort default
+    model = "deepseek/deepseek-v4-pro"  # last-resort default
     try:
         cfg = json.loads(base_cfg_path.read_text())
+        # try agent list first, then defaults
+        agents_default_model = cfg.get("agents", {}).get("defaults", {}).get("model", {}).get("primary", "")
+        model = agents_default_model or model
         for a in cfg.get("agents", {}).get("list", []):
             if a.get("id") == base_agent_id:
-                model = a.get("model", model)
+                model = a.get("model") or model
                 break
     except Exception as e:
         print(f"[OC] warn: could not read base config {base_cfg_path}: {e}")
@@ -396,14 +399,12 @@ async def _run_agent_openclaw(state, prompt: str):
     # leaf sub-skills spawned in parallel against the same agent collide on
     # `<agent>/sessions/<id>.jsonl.lock`. Including the skill name in the agent
     # id gives each sub-skill its own session dir, avoiding the lock contention.
-    # Evaluators keep target-only id (they don't run in parallel per skill).
+    # This applies to ALL agent types (dev, evaluator, test) — evaluators also
+    # run in parallel when multiple skills finish writing at the same time.
     target_name = getattr(state, "target_name", "") or ""
     base_agent_id = resolve_agent_id(state.agent_type)
-    if state.agent_type == "evaluator":
-        agent_id = resolve_agent_id(state.agent_type, target_name)
-    else:
-        suffix = f"{target_name}-{state.skill}" if target_name else state.skill
-        agent_id = resolve_agent_id(state.agent_type, suffix)
+    suffix = f"{target_name}-{state.skill}" if target_name else state.skill
+    agent_id = resolve_agent_id(state.agent_type, suffix)
 
     # Auto-create per-(target,skill) agent if missing (clones model + auth from base)
     if agent_id != base_agent_id:
@@ -507,7 +508,8 @@ async def _run_agent_openclaw(state, prompt: str):
         except asyncio.CancelledError: pass
 
     stderr_raw = stderr_bytes.decode(errors="replace")
-    envelope = _parse_final_envelope(stderr_raw)
+    stdout_raw = stdout_bytes.decode(errors="replace")
+    envelope = _parse_final_envelope(stderr_raw) or _parse_final_envelope(stdout_raw)
     if not envelope:
         err_tail = stderr_raw[-500:] if stderr_raw else "(no stderr)"
         state.status = "error"
@@ -648,11 +650,16 @@ async def _run_eval_openclaw(
     """
     from agent_orchestrator import WORKSPACE_DIR
 
-    agent_id = AGENT_TYPE_MAP.get("evaluator")
-    if not agent_id:
+    base_agent_id = AGENT_TYPE_MAP.get("evaluator")
+    if not base_agent_id:
         return {"ok": False, "text": "", "error": "no evaluator agent mapped"}
-    if not _agent_exists(agent_id):
-        return {"ok": False, "text": "", "error": f"agent {agent_id!r} not configured in OpenClaw"}
+    # Per-skill agent id to prevent session file collisions when two skills
+    # finish writing in parallel and both fire evaluators at the same time.
+    agent_id = f"{base_agent_id}-{skill}"
+    if not _agent_exists(base_agent_id):
+        return {"ok": False, "text": "", "error": f"agent {base_agent_id!r} not configured in OpenClaw"}
+    if agent_id != base_agent_id and not _agent_exists(agent_id):
+        _ensure_agent_exists(agent_id, base_agent_id, workspace=str(WORKSPACE_DIR))
 
     # OpenClaw doesn't have a flag for system-prompt override on per-call basis;
     # prepend system context to the message.
@@ -694,7 +701,8 @@ async def _run_eval_openclaw(
         return {"ok": False, "text": "", "error": f"openclaw eval timed out after {timeout_s}s"}
 
     stderr_raw = stderr_bytes.decode(errors="replace")
-    envelope = _parse_final_envelope(stderr_raw)
+    stdout_raw = stdout_bytes.decode(errors="replace")
+    envelope = _parse_final_envelope(stderr_raw) or _parse_final_envelope(stdout_raw)
     if not envelope:
         return {
             "ok": False,
