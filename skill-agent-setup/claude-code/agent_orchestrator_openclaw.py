@@ -295,13 +295,16 @@ async def _wait_for_session_file(agent_id: str, known_session_id: Optional[str],
         if known_session_id:
             f = _session_file(agent_id, known_session_id)
             if f.exists():
+                print(f"[OC wait] {agent_id}: known session file found", flush=True)
                 return f
         elif sdir.exists():
-            now_files = set(sdir.glob("*.jsonl"))
+            now_files = {p for p in sdir.glob("*.jsonl") if "trajectory" not in p.name}
             # (2) new file
             new = now_files - before_snapshot
             if new:
-                return max(new, key=lambda p: p.stat().st_mtime)
+                chosen = max(new, key=lambda p: p.stat().st_mtime)
+                print(f"[OC wait] {agent_id}: new session file {chosen.name}", flush=True)
+                return chosen
             # (3) existing file got touched after we spawned
             for p in now_files & before_snapshot:
                 try:
@@ -370,6 +373,7 @@ async def _tail_session_jsonl(state, agent_id: str, session_file: Path,
                         text = (c.get("text") or "").strip()
                         if text:
                             state.log.append({"text": text, "role": "agent"})
+                            print(f"[OC tail] {state.skill}: LOG APPEND {len(state.log)}: {text[:80]}")
                             if len(state.log) > 200:
                                 state.log[:] = state.log[-200:]
                             await ws_broadcast_agent_msg(
@@ -480,15 +484,33 @@ async def _run_agent_openclaw(state, prompt: str):
     async def _tail_wrapper():
         sf = await _wait_for_session_file(agent_id, resume_id, before_snapshot)
         if sf is None:
-            print(f"[OC] {state.skill}: session file never appeared — dashboard tail disabled")
-            return
+            # Fallback: find the most recently modified .jsonl in the agent's
+            # sessions dir (handles orchestrator restarts where resume_id is
+            # stale or the session file was created before we snapshot'd).
+            sdir = _sessions_dir(agent_id)
+            if sdir.exists():
+                candidates = sorted(
+                    [p for p in sdir.glob("*.jsonl") if "trajectory" not in p.name],
+                    key=lambda p: p.stat().st_mtime, reverse=True,
+                )
+                if candidates:
+                    sf = candidates[0]
+                    print(f"[OC] {state.skill}: fallback tailing newest session {sf.name}")
+                else:
+                    print(f"[OC] {state.skill}: no session files found — dashboard tail disabled")
+                    return
+            else:
+                print(f"[OC] {state.skill}: sessions dir missing — dashboard tail disabled")
+                return
         # Start offset = existing size if we're appending to an old file; 0 if new.
         start = existing_sizes.get(sf, 0)
         tail_info["file"] = sf
         tail_info["start_offset"] = start
+        print(f"[OC tail] {state.skill}: starting tail on {sf.name} offset={start} size={sf.stat().st_size}")
         await _tail_session_jsonl(state, agent_id, sf, start_offset=start)
 
     tail_task = asyncio.create_task(_tail_wrapper())
+    
 
     try:
         stdout_bytes, stderr_bytes = await proc.communicate()

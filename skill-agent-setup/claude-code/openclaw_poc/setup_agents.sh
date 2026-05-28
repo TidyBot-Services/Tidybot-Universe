@@ -9,8 +9,8 @@
 # Override via env:
 #   DEV_AGENT_ID   (default: tidybot-dev)
 #   EVAL_AGENT_ID  (default: tidybot-evaluator)
-#   DEV_MODEL      (default: ollama/llama3.1:8b-ctx32k)
-#   EVAL_MODEL     (default: ollama/llama3.1:8b-ctx32k)
+#   DEV_MODEL      (default: penn-litellm/deepseek-ai/DeepSeek-V4-Flash)
+#   EVAL_MODEL     (default: penn-litellm/Qwen/Qwen3-VL-235B-A22B-Instruct)
 #   WORKSPACE      (default: ./claude-code abs path, one dir up from this script)
 set -euo pipefail
 
@@ -19,8 +19,8 @@ WORKSPACE="${WORKSPACE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 DEV_AGENT_ID="${DEV_AGENT_ID:-tidybot-dev}"
 EVAL_AGENT_ID="${EVAL_AGENT_ID:-tidybot-evaluator}"
-DEV_MODEL="${DEV_MODEL:-ollama/llama3.1:8b-ctx32k}"
-EVAL_MODEL="${EVAL_MODEL:-ollama/llama3.1:8b-ctx32k}"
+DEV_MODEL="${DEV_MODEL:-penn-litellm/deepseek-ai/DeepSeek-V4-Flash}"
+EVAL_MODEL="${EVAL_MODEL:-penn-litellm/Qwen/Qwen3-VL-235B-A22B-Instruct}"
 
 echo "==> OpenClaw setup for orchestrator"
 echo "   workspace:    $WORKSPACE"

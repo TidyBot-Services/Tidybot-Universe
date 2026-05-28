@@ -1431,7 +1431,14 @@ def _load_session_logs() -> dict[str, list]:
                 continue
             try:
                 rec = json.loads(line)
-                last_rec_by_skill[rec["skill"]] = rec  # overwrite → keeps last
+                skill = rec["skill"]
+                # Keep the record with the MOST log entries (not just the
+                # chronologically last one). The last record is often a
+                # nearly-empty "Orchestrator shutting down" stub saved during
+                # shutdown, which would wipe out the meaningful history.
+                prev = last_rec_by_skill.get(skill)
+                if prev is None or len(rec.get("log", [])) >= len(prev.get("log", [])):
+                    last_rec_by_skill[skill] = rec
             except (json.JSONDecodeError, KeyError):
                 continue
     for skill, rec in last_rec_by_skill.items():
@@ -1716,6 +1723,18 @@ async def spawn_agent(skill: str, prompt: str, agent_type: str = "dev",
     state.target_name = target_name
     state._agent_server_url = target["agent_server"] if target else ""
     agents[agent_id] = state
+
+    # Restore historical logs from agent_sessions.jsonl so the dashboard
+    # chat panel shows prior evaluator feedback and dev messages after an
+    # orchestrator restart (not just messages produced by this spawn).
+    try:
+        session_logs = _load_session_logs()
+        prev_log = session_logs.get(skill, [])
+        if prev_log:
+            state.log = list(prev_log)
+            print(f"[ORCH] {label}: restored {len(prev_log)} historical log entries")
+    except Exception:
+        pass
 
     status_label = f"Developing on {target_name}..." if target_name else "Developing..."
     await ws_broadcast_status(skill, agent_id, "starting", status_label)
@@ -2744,7 +2763,30 @@ async def _handle_agent_done(state: AgentState):
     if state.skill in _skills_in_test_loop:
         return
 
-    # Run evaluator on the latest execution
+    # Run evaluator on the latest execution.
+    # FIRST: proactively refresh trial_images from the most recent completed
+    # job. Without this, the dashboard stays blank until the evaluator finishes
+    # (which can take minutes). In openclaw autonomous mode the
+    # submit_and_wait webhook (Path B) never fires, so the only trial_images
+    # update path is here. Do it BEFORE the evaluator so the user sees frames
+    # immediately after dev submits code.
+    try:
+        import urllib.request
+        jobs_url = f"{AGENT_SERVER}/code/jobs"
+        jobs_data = json.loads(await asyncio.to_thread(
+            lambda: urllib.request.urlopen(jobs_url, timeout=10).read()
+        ))
+        job_list = jobs_data if isinstance(jobs_data, list) else jobs_data.get("jobs", [])
+        completed = [j for j in job_list if j.get("status") == "completed" and j.get("execution_id")]
+        if completed:
+            latest_job = completed[-1]
+            eid = latest_job.get("execution_id")
+            _update_trial_images(state.skill, eid)
+            await broadcast_full_sync()
+            print(f"[ORCH] {state.skill}: trial_images refreshed from job {latest_job.get('job_id','?')[:12]} exec={eid[:12]}")
+    except Exception as e:
+        print(f"[ORCH] {state.skill}: trial_images pre-fetch failed (non-fatal): {e}")
+
     await ws_broadcast_agent_msg(state.skill, "Dev complete — running evaluator...", "evaluator")
     _update_entry(state.skill, {"status": "evaluating"})
     await broadcast_full_sync()
@@ -2813,6 +2855,14 @@ async def _handle_agent_done(state: AgentState):
             # _auto_spawn_ready_skills). Attempts counter is NOT reset, so
             # after MAX_EVAL_RETRIES iterations we still trip the
             # exhausted-retries path above and stop at "review".
+            #
+            # BUGFIX: when the failure reason is "no recording", the dev agent
+            # likely didn't actually execute code (e.g. resumed an old session
+            # where it had already passed). Clear the session_id so the next
+            # spawn starts fresh, forcing the agent to actually submit code.
+            if "no recording" in feedback.lower() or "no execution recording" in feedback.lower():
+                _update_entry(state.skill, {"session_id": ""})
+                print(f"[ORCH] {state.skill}: cleared session_id (no-recording failure, will start fresh next spawn)")
             await ws_broadcast_agent_msg(
                 state.skill,
                 f"Auto-respawning dev (attempt {attempts}/{MAX_EVAL_RETRIES}) "
