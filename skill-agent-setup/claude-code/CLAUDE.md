@@ -45,9 +45,13 @@ fuser -k 8070/tcp 2>/dev/null   # dashboard
 cd $WORKSPACE/sims/maniskill && \
   conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
-  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
+  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 CUROBO_SERVICE_URL=${CUROBO_SERVICE_URL:-http://localhost:7000} \
   python3 -m maniskill_server --task $TASK_ENV --gui &
-# Wait for port 5555 to be ready before proceeding
+# Wait for port 5555 to be ready before proceeding.
+# IMPORTANT: CUROBO_SERVICE_URL must be set (above) or the sim falls back to the
+# in-process cuRobo planner (not installed in most envs → "cuRobo unavailable" on every
+# wb.move_to_pose, silently crippling all collision-aware placement). Verify the sim log
+# shows "[curobo] Using remote service ... Loaded N cuboids", NOT "Using in-process planner".
 
 # 2. Agent server (HTTP API for code execution) — port 8080
 cd $WORKSPACE/agent_server && \
@@ -144,7 +148,7 @@ Each instance is a sim+agent_server pair on offset ports.
 # Target 0 (primary, default ports)
 cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
-  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
+  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 CUROBO_SERVICE_URL=${CUROBO_SERVICE_URL:-http://localhost:7000} \
   python3 -m maniskill_server --task $TASK_ENV --port-offset 0 --seed 0 &
 cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
@@ -153,7 +157,7 @@ cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
 # Target 1 (offset=100 → sim:5600, agent:8180)
 cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
-  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
+  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 CUROBO_SERVICE_URL=${CUROBO_SERVICE_URL:-http://localhost:7000} \
   python3 -m maniskill_server --task $TASK_ENV --port-offset 100 --seed 42 &
 cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
@@ -162,7 +166,7 @@ cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
 # Target 2 (offset=200 → sim:5700, agent:8280)
 cd $WORKSPACE/sims/maniskill && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \
-  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 \
+  DISPLAY=${DISPLAY:-:1} PYTHONUNBUFFERED=1 CUROBO_SERVICE_URL=${CUROBO_SERVICE_URL:-http://localhost:7000} \
   python3 -m maniskill_server --task $TASK_ENV --port-offset 200 --seed 100 &
 cd $WORKSPACE/agent_server && conda run -n $CONDA_ENV \
   env LD_PRELOAD=$HOME/miniconda3/envs/$CONDA_ENV/lib/libstdc++.so.6 \

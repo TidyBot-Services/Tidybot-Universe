@@ -1,8 +1,16 @@
 # Active Context
 
-> **Last updated:** 2026-05-13 (single-arm FR3 service shipped, Day 1 validation complete)
+> **Last updated:** 2026-06-13 (sink-to-counter graph solved end-to-end; root reliability blocked on cuRobo planning)
 
-## Current Focus
+## Current Focus — Skill development (sink-to-counter graph)
+
+`graphs/sink-to-counter/` (`RoboCasa-Pn-P-Sink-To-Counter-v0`) is **5/5 skills `done`** — the full pick-from-sink → place-on-counter pipeline passes ground truth. `place-object-on-counter` was solved by **seeding it with `pick-object-from-sink`'s proven Jacobian-IK grasp+lift**, then a **one-grasp held transport** (base-strafe-while-gripping → carry → descend → gradual release → vertical-only retract), replacing a fragile release→strafe→re-pick design. See `progress.md` 2026-06-13.
+
+**Robustness blocker (top priority before relying on this graph):** the root is `done` on a passing eval but **not robustly reliable** — most runs fail because `wb.move_to_pose` returns `Planning failed: cuRobo unavailable`, forcing imprecise Jacobian-IK fallbacks (failure modes: carry-drop, release-fling, placement y-precision, AABB-proxy-vs-real-`_check_success` mismatch, j1-retract arm-body-sweep). **Fixing cuRobo planning is the real unblock** for reliable placement — cuRobo's port :7000 is up but planning fails (likely a residual config issue; cf. the franka-tidyverse finger-lock DOF fix in personal memory).
+
+**Deferred (not pushed):** local-only branches from earlier cuRobo/sim/tooling fixes (curobo_service finger-lock + IK-kwarg, maniskill solve_ik kwarg, canonical start-stack script, xbot operating-discipline doc) await `git push` + PRs — pushing was never explicitly authorized. `graphs/` is gitignored, so all skill code lives on disk only.
+
+## Parallel Track: Single-arm FR3 service
 
 Building out support for a **single-arm FR3 workstation** as a parallel deployment alongside the existing Panda + Tidybot setup. The core architectural pieces just landed in 4 repos; physical FR3 hardware is not yet acquired.
 
