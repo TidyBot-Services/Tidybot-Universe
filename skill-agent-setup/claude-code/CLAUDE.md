@@ -355,3 +355,39 @@ Run orchestrator pipeline tests (no sim/agent server needed):
 cd $WORKSPACE/Tidybot-Universe/skill-agent-setup/claude-code
 python3 tests/test_orchestrator_pipeline.py
 ```
+
+## Operating Discipline (hard-won)
+
+These are lessons from real runs that went sideways. Ignore them and you will
+re-create the same failures.
+
+### 1. Don't pollute the evaluator's recording stream
+
+**Don't `/code/submit` probes to the live agent server during `/xbot-dev`** — it
+pollutes the evaluator's recording stream. The evaluator pulls the *latest*
+execution recording for a skill; if you (or anyone) submit ad-hoc diagnostic code
+to the same agent server while dev agents are running, your recording can become
+the one the evaluator judges. Every "wrong/older code executed — code mismatch"
+verdict traces back to this. If you must test something against the live stack
+during a run, ask the human first, or use a separate agent server (`--port-offset`).
+
+### 2. The dev agent has two opposite failure modes
+
+A dev agent that isn't producing a clean skill recording is failing in one of two
+*opposite* ways — diagnose which before reacting:
+- **Premature exit** — finishes in ~2 turns having only acknowledged/probed, never
+  submitting a full `main.py` run. No real recording is ever produced.
+- **Infinite over-exploration** — probes for tens of minutes (or hours) without ever
+  committing to a full skill run, eventually burning the API session limit (this is
+  what `pick-object-from-counter` did on the clean re-run).
+Both leave the evaluator with only probe recordings. The fix differs by mode, so
+identify it from the log tail and recording stream, don't assume.
+
+### 3. Patience principle — distinguish "working" from "stuck"
+
+**Do not intervene at *apparent* stuck.** A dev agent that is slow but still
+surfacing *new specifics* each cycle (new coordinates, new IK results, a new
+conclusion) is working — leave it alone. **True stuck** = the exact same conclusion
+repeated across checks with **zero new specifics**. Only then is intervention
+warranted. Premature nudging (injecting hints mid-run) *interrupts* the claude-sdk
+dev and can itself cause the premature-exit failure mode above.
