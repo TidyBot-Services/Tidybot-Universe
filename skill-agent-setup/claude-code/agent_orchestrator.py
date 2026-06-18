@@ -169,7 +169,13 @@ import urllib.error
 
 AGENT_SERVER = "{agent_server_url}"
 SIM_API = "{sim_api_url}"
-NUM_TRIALS = 1
+
+# Multi-trial reliability gate: `done` should mean "passes most of the time",
+# not "passed once on a lucky run". Each trial gets a fresh sim reset (the
+# /code/submit job queue resets the env between jobs), so N trials measure
+# real reliability. Require PASS_RATE_THRESHOLD of them to succeed.
+NUM_TRIALS = 5
+PASS_RATE_THRESHOLD = 0.8  # need >= 80% (e.g. 4/5) to count as reliably done
 
 
 def submit_code(code: str) -> str:
@@ -199,14 +205,27 @@ def wait_for_job(job_id: str, timeout: int = 300) -> dict:
     return {{"status": "timeout"}}
 
 
-def check_success() -> bool:
-    """Check task success via sim endpoint."""
-    try:
-        resp = json.loads(urllib.request.urlopen(f"{{SIM_API}}/task/success").read())
-        return resp.get("success", False)
-    except Exception as e:
-        print(f"Could not check sim success: {{e}}")
-        return False
+def check_success(settle_wait: float = 1.5, retries: int = 4,
+                  retry_interval: float = 0.5) -> bool:
+    """Check task success via the sim endpoint, de-jittered for settle timing.
+
+    The sim's AABB proxy can read False for a beat right after release —
+    before the object physically settles into the basin — even on a genuinely
+    successful placement. So wait for the object to settle, then poll a few
+    times and accept the first True (a correctly-placed object stays in once
+    settled; this only suppresses the transient-False false negative, it does
+    not manufacture a pass).
+    """
+    time.sleep(settle_wait)
+    for _ in range(retries):
+        try:
+            resp = json.loads(urllib.request.urlopen(f"{{SIM_API}}/task/success").read())
+            if resp.get("success", False):
+                return True
+        except Exception as e:
+            print(f"Could not check sim success: {{e}}")
+        time.sleep(retry_interval)
+    return False
 
 
 def run_trial(trial_num: int) -> bool:
@@ -272,6 +291,11 @@ def main():
 
     total = passed + failed
     rate = (passed / total * 100) if total > 0 else 0
+    meets = rate >= PASS_RATE_THRESHOLD * 100
+
+    print(f"=== {{passed}}/{{total}} trials passed "
+          f"(success_rate={{rate:.0f}}%, threshold={{PASS_RATE_THRESHOLD*100:.0f}}%) "
+          f"-> {{'PASS' if meets else 'FAIL'}} ===")
 
     result = {{
         "skill": "{skill}",
@@ -280,6 +304,8 @@ def main():
         "total_trials": total,
         "passed": passed,
         "failed": failed,
+        "meets_threshold": meets,
+        "pass_rate_threshold": PASS_RATE_THRESHOLD * 100,
         "failure_modes": failures,
     }}
     print(json.dumps(result))
@@ -1756,6 +1782,12 @@ async def spawn_skill_pipeline(skill: str, user_prompt: str):
     await spawn_agent(skill, user_prompt, agent_type="dev")
 
 
+# Mechanical-test promotion gate. A root skill must pass at least this fraction
+# of its trials (as a percentage) to be promoted — "passes most of the time",
+# not "passed once". Keep in sync with PASS_RATE_THRESHOLD in the generated test.
+MECH_TEST_PASS_RATE = 80.0
+
+
 async def run_mechanical_test(skill: str) -> dict:
     """Run the skill's test as a subprocess and parse results.
     Returns {"passed": bool, "success_rate": float, "total_trials": int, "stdout": str, "stderr": str}.
@@ -1841,8 +1873,10 @@ async def run_mechanical_test(skill: str) -> dict:
                 sr = 100.0 if exit_code == 0 else 0.0
                 total_trials = 1
 
-        # Update entry and broadcast
-        passed = sr is not None and sr > 0
+        # Update entry and broadcast.
+        # Reliability gate: require >= MECH_TEST_PASS_RATE across trials, not a
+        # single lucky pass (sr > 0). A skill that passes 1/5 is NOT done.
+        passed = sr is not None and sr >= MECH_TEST_PASS_RATE
         if passed and autonomous_mode:
             status_label = "done"
         elif passed:
@@ -1856,11 +1890,11 @@ async def run_mechanical_test(skill: str) -> dict:
             "status": status_label,
         })
         if status_label == "review":
-            msg = f"Tests complete (success_rate={sr:.0f}%). Waiting for review."
+            msg = f"Tests complete (success_rate={sr:.0f}% >= {MECH_TEST_PASS_RATE:.0f}% over {total_trials} trials). Waiting for review."
         elif status_label == "done":
-            msg = f"Tests complete (success_rate={sr:.0f}%). Auto-promoted (autonomous mode)."
+            msg = f"Tests complete (success_rate={sr:.0f}% >= {MECH_TEST_PASS_RATE:.0f}% over {total_trials} trials). Auto-promoted (autonomous mode)."
         else:
-            msg = f"Tests complete (success_rate={sr:.0f}%). Failed."
+            msg = f"Tests complete (success_rate={sr:.0f}% < {MECH_TEST_PASS_RATE:.0f}% threshold over {total_trials} trials). Not reliably passing — Failed."
         await ws_broadcast_agent_msg(skill, msg, "test")
         await broadcast_full_sync()
         print(f"[TEST] {skill}: {status_label} (sr={sr}%, trials={total_trials})")
@@ -2390,10 +2424,31 @@ EVAL_RESULT: {{"passed": false, "feedback": "Robot did not move during the 2.5s 
 `feedback` is a JSON string, so escape `"` inside as `\"`. Keep newlines OUT
 of the JSON string (use spaces).
 
-PASS criterion: only `passed=true` if the camera frames clearly show the
-target object inside the sink basin AND `obj_inside_of` would return True.
-Otherwise `passed=false`. Don't be lenient — minor imperfections are still
-fail (better to retry than to merge broken code).
+## PASS criterion — structured rubric (work through this BEFORE the envelope)
+
+Do NOT decide pass/fail from a general impression of the frames. Work through
+this checklist, and for EACH item quote the exact stdout line or state_log value
+that backs your answer. An item with no quotable evidence is UNKNOWN, not PASS.
+
+  R1. Ground truth — does stdout contain `/task/success = True`?
+      → PASS if True, FAIL if False, N/A if the skill never calls it. Quote the line.
+  R2. Final marker — did the skill's own code report success
+      (`SUCCESS:` / `PICK SUCCESS`) or failure (`FAILURE:`)? Quote the line.
+  R3. Numbers agree with the marker? A "picked"/"held" claim needs gripper
+      pmm > 5 (NOT pmm == 0) and ideally object_detected; a "placed" claim needs
+      the object inside the target region per the printed coordinates. Quote the values.
+  R4. Frames — do the camera frames at the key moment visually CONTRADICT the
+      numbers? Frames are the LOWEST authority: use them only to turn a numbers-PASS
+      into a FAIL when they clearly show a different outcome, NEVER to manufacture
+      a PASS the numbers don't support.
+
+Decision rule:
+  - R1 == PASS  → passed=true.   R1 == FAIL → passed=false.  (Ground truth wins outright.)
+  - R1 == N/A   → passed=true ONLY when R2 and R3 are both PASS and R4 shows no
+    contradiction. Any UNKNOWN, any disagreement, or an R4 contradiction → passed=false.
+
+Don't be lenient — when evidence conflicts, prefer false (better to retry than to
+merge broken code).
 """
 
 
@@ -2503,10 +2558,57 @@ async def _fetch_remote_recording(execution_id: str, skill: str) -> Path | None:
     return cache_dir
 
 
+def _programmatic_precheck(stdout: str) -> dict | None:
+    """Deterministic verdict from stdout markers, bypassing the LLM evaluator
+    when the evidence is unambiguous. Returns {"passed", "feedback", "source"}
+    or None (defer to the LLM).
+
+    Authority order, conservative by design (only ever auto-PASS on real ground
+    truth — never on a dev self-report):
+
+      1. ``/task/success = True|False`` — sim ground truth. Trusted both ways.
+         This is what makes the root skill AND any sub-skill that calls
+         ``/task/success`` (e.g. place-object-in-sink) deterministic.
+      2. An explicit ``FAILURE`` marker (when no ground truth is present) →
+         fail. A false FAILURE only costs a retry, so trusting it is safe.
+
+    A bare ``SUCCESS`` marker with no ground truth is a dev self-report — exactly
+    the "pos=0 reported as success" failure mode — so it is NOT trusted here and
+    falls through to the LLM (which applies the evidence-anchored rubric).
+    """
+    if not stdout:
+        return None
+
+    # 1. Sim ground truth — highest authority, trust unconditionally.
+    m = re.search(r'/task/success\s*=\s*(True|False)', stdout)
+    if m:
+        passed = (m.group(1) == "True")
+        return {
+            "passed": passed,
+            "feedback": f"Programmatic verdict from sim ground truth: /task/success={m.group(1)}.",
+            "source": "precheck:task_success",
+        }
+
+    # 2. Explicit dev FAILURE marker (no ground truth available) → fail.
+    if re.search(r'(?m)^\s*FAILURE\b', stdout):
+        return {
+            "passed": False,
+            "feedback": "Programmatic verdict: stdout contains an explicit FAILURE marker and no /task/success ground truth.",
+            "source": "precheck:failure_marker",
+        }
+
+    # SUCCESS-only self-report, or no markers at all → defer to the LLM.
+    return None
+
+
 async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
     """Run a short-lived evaluator agent (ClaudeSDKClient) that reviews execution recordings.
 
     Returns {"passed": bool, "feedback": str}.
+
+    A deterministic ``_programmatic_precheck`` runs first: when stdout carries
+    sim ground truth or an explicit FAILURE marker, the verdict skips the LLM
+    entirely. Only ambiguous runs reach the LLM evaluator.
     """
     # Find execution recording — try local first, then fetch from remote agent server
     exec_dir = PROJECT_DIR / "logs" / "code_executions"
@@ -2522,7 +2624,25 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
         if latest is None:
             all_dirs = [d for d in exec_dir.iterdir() if d.is_dir()]
             if all_dirs:
-                latest = max(all_dirs, key=lambda d: d.stat().st_mtime)
+                # Holder-tag filter: prefer the recording produced by THIS skill's
+                # own submission (metadata holder == dev:<skill> / test:<skill>) over
+                # the global latest. Without this, under concurrency the evaluator
+                # picks whichever skill wrote a recording most recently — which made
+                # find-sink-interior get judged against pick-object-from-counter's run.
+                _wanted = {f"dev:{skill}", f"test:{skill}"}
+                def _holder_of(d):
+                    try:
+                        return json.loads((d / "metadata.json").read_text()).get("holder", "")
+                    except Exception:
+                        return ""
+                _own = [d for d in all_dirs if _holder_of(d) in _wanted]
+                if _own:
+                    latest = max(_own, key=lambda d: d.stat().st_mtime)
+                else:
+                    latest = max(all_dirs, key=lambda d: d.stat().st_mtime)
+                    print(f"[ORCH] WARN run_evaluator({skill}): no holder-tagged "
+                          f"recording found; falling back to globally-latest "
+                          f"{latest.name} (may be another skill's run)")
 
     # Fall back to fetching from agent server (works for both local and remote)
     if latest is None:
@@ -2560,6 +2680,20 @@ async def run_evaluator(skill: str, execution_id: str | None = None) -> dict:
         await broadcast_full_sync()
     except Exception as e:
         print(f"[EVAL] {skill}: trial_images refresh failed (non-fatal): {e}")
+
+    # Programmatic precheck — deterministic verdict from stdout when the evidence
+    # is unambiguous (sim ground truth or explicit FAILURE), bypassing the LLM.
+    try:
+        stdout_text = (latest / "stdout.log").read_text(errors="replace")
+    except (OSError, FileNotFoundError):
+        stdout_text = ""
+    pre = _programmatic_precheck(stdout_text)
+    if pre is not None:
+        print(f"[EVAL] {skill}: programmatic verdict ({pre['source']}): passed={pre['passed']}")
+        await ws_broadcast_agent_msg(
+            skill, f"Programmatic verdict ({pre['source']}): {pre['feedback']}", "evaluator"
+        )
+        return {"passed": pre["passed"], "feedback": pre["feedback"]}
 
     # Build evaluator prompt
     entry = _find_entry(skill)
@@ -2756,7 +2890,13 @@ async def _handle_agent_done(state: AgentState):
     # Fix #14 cherry-picked from unified-multi-task v18.
     async with _get_eval_lock(state.skill):
         try:
-            eval_result = await run_evaluator(state.skill)
+            # Use the execution_id the dev's submit_and_wait already reported via
+            # /job-done (Path B) instead of letting run_evaluator fall back to the
+            # globally-latest recording — under concurrency that picks ANOTHER
+            # running skill's recording (this made find-sink-interior get judged
+            # against pick-object-from-counter's run and falsely fail).
+            _known_exec = (_submission_evals.get(state.skill) or {}).get("execution_id") or None
+            eval_result = await run_evaluator(state.skill, execution_id=_known_exec)
         except Exception as e:
             eval_result = {"passed": False, "feedback": f"Evaluator error: {e}"}
         # Fix #14b: record latest feedback here too — without this, dev sessions
