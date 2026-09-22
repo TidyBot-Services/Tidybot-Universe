@@ -22,6 +22,7 @@ skill-agent-setup/claude-code/graphs/
 logs/
 logs_env*/
 *.archive_*/
+/artifacts/attentionbench*/
 
 # Per-machine agent / Claude Code config (not part of repo state)
 .claude/

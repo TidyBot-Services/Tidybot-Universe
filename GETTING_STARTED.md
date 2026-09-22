@@ -116,6 +116,35 @@ cd maniskill_sim
 python3 -m maniskill_server --gui
 ```
 
+**Robosuite service** (MuJoCo benchmark environments):
+```bash
+git clone https://github.com/TidyBot-Services/Tidybot-Universe.git
+cd Tidybot-Universe
+./benchmarks/attention_harness/setup_env.sh
+~/.cache/tidybot-attention/venv/bin/python -m robosuite_sim --port 8082
+
+# Health check
+curl http://127.0.0.1:8082/health
+```
+
+`robosuite_sim` is a separate process from AttentionHarness. It owns the
+Robosuite environment and native evaluator; the harness connects through its
+client API.
+
+For a PARCC development-only connectivity run (seed `101`, never held-out),
+inject the credential through the protected wrapper and select the model policy:
+
+```bash
+MUJOCO_GL=egl ~/bin/with-litellm.sh \
+  ~/.cache/tidybot-attention/venv/bin/python -m \
+  benchmarks.attention_harness.runner \
+  --task cube_lift --seed 101 --policy parcc
+```
+
+The generated policy runs without credentials in a constrained subprocess.
+Robosuite native success remains authoritative; Qwen's image review is saved as
+diagnostic metadata only.
+
 The API is now live at `http://localhost:8080` — connect a skill agent and start developing. The sim provides full physics, rendered camera feeds, and gripper interaction. Skills developed here transfer directly to hardware.
 
 ### 1. Set up your robot and agent server (with hardware)

@@ -1,0 +1,9 @@
+{
+  "protocol_version": "v1",
+  "splits": {
+    "dev": {"start": 101, "stop": 125},
+    "heldout": {"start": 1001, "stop": 1100},
+    "smoke": {"start": 9001, "stop": 9005}
+  },
+  "heldout_requires_explicit_opt_in": true
+}
