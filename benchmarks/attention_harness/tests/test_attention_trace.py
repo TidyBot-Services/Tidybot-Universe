@@ -22,6 +22,7 @@ from benchmarks.attention_harness.core.trace import (
     TracePipeline,
     TraceProjectionError,
     VisibilityProjector,
+    summarize_failure,
 )
 from benchmarks.attention_harness.tests.test_attention_store import records
 
@@ -241,3 +242,26 @@ def test_projected_trace_cannot_link_to_a_different_raw_trace(tmp_path: Path) ->
     packet = VisibilityProjector().project(raw, trace_id="trace-1")
     with pytest.raises(StateConflictError, match="links do not match"):
         store.put_trace(replace(packet, execution_id="different-execution"))
+
+
+def test_wrapped_timeout_is_classified_from_error_message() -> None:
+    failure = summarize_failure(
+        [
+            TraceEvent(
+                event_id="finished",
+                sequence=0,
+                timestamp=1.0,
+                source="attention_harness",
+                event_type="execution.finished",
+                operation="run_policy",
+                status="failed",
+                visibility=PUBLIC,
+                error={
+                    "type": "RuntimeError",
+                    "message": "policy exceeded 1.0s timeout",
+                },
+            )
+        ]
+    )
+    assert failure.stage == "timeout"
+    assert failure.termination_reason == "timeout"

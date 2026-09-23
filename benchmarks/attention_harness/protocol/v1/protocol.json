@@ -55,6 +55,10 @@
     "robocasa_task_validation": "attentionbench.robocasa-task-validation.v1",
     "attention_core_validation": "attentionbench.core-validation.v1",
     "attention_core_records": "attentionbench.core.v1",
+    "raw_execution_trace": "attentionbench.raw-execution-trace.v1",
+    "advisor_trace_packet": "attentionbench.advisor-trace-packet.v1",
+    "episode_trace_link": "attentionbench.episode-trace-link.v1",
+    "sdk_event": "attentionbench.sdk-event.v1",
     "ui_projection": "attentionbench.ui-projection.v1",
     "run_bundle": "attentionbench.run-bundle.v1",
     "freeze_manifest": "attentionbench.freeze-manifest.v1"
@@ -127,6 +131,7 @@
     "development_gate": "reference 5/5, no-op 0/5, reset recovery 5/5 per task",
     "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/robocasa_task_report.json",
     "formal_public_policy_status": "not_implemented",
+    "trace_entrypoint": "benchmarks.attention_harness.robocasa_native.persist_robocasa_episode_trace",
     "heldout_eligible": false
   },
   "attention_core": {
@@ -145,7 +150,8 @@
       "full_trace_aware_attention_planner"
     ],
     "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/attention_core_report.json",
-    "experiment_data": false
+    "experiment_data": false,
+    "trace_pipeline": "RawExecutionTrace -> VisibilityProjector -> AdvisorTracePacket"
   },
   "ui_state_skeleton": {
     "status": "backend_projection_complete",

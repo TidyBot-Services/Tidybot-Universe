@@ -9,7 +9,12 @@ from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
-from .artifacts import create_episode_dir, write_episode_artifacts
+from .artifacts import (
+    create_episode_dir,
+    write_episode_artifacts,
+    write_result_artifact,
+)
+from .episode_trace import persist_episode_trace
 from .frozen_policy import execute_frozen_policy, get_frozen_policy
 from .freeze import REPO_ROOT, verify_manifest
 from .reference_policy import EpisodeTimeout, run_reference_policy
@@ -43,6 +48,7 @@ def run_episode(
     error: str | None = None
     initial = {}
     final = {}
+    execution = None
 
     service_context = (
         nullcontext(service_url)
@@ -120,6 +126,32 @@ def run_episode(
         initial_observation=initial,
         final_observation=final,
     )
+    result["attention_trace"] = persist_episode_trace(
+        episode_dir=episode_dir,
+        suite="robosuite",
+        task_id=task_id,
+        seed=seed,
+        policy_id=policy,
+        developer_model="scripted",
+        execution_target="robosuite_sim",
+        execution_status=(execution.status if execution is not None else status),
+        native_success=success,
+        elapsed_seconds=elapsed,
+        action_trace=trace,
+        sdk_trace=(execution.sdk_trace if execution is not None else ()),
+        error=error or (execution.error if execution is not None else None),
+        stdout=execution.stdout if execution is not None else "",
+        stderr=execution.stderr if execution is not None else "",
+        timed_out=execution.timed_out if execution is not None else False,
+        exit_code=execution.exit_code if execution is not None else None,
+        code_path=(
+            get_frozen_policy(task_id).path if policy == "frozen-public" else None
+        ),
+        runtime=metadata,
+        attention_eligible=policy == "frozen-public",
+        token_limit=0,
+    )
+    write_result_artifact(episode_dir, result)
     return result
 
 

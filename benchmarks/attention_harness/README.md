@@ -237,3 +237,12 @@ semantic operations for every backend (`sensor_read`, `perception`,
 `frame_transform`, `arm_command`, and `gripper_command`). Sandbox workers save
 these events atomically after every SDK call, allowing a timeout to retain the
 latest complete partial trace.
+
+The native Robosuite and PARCC runners now finalize this path automatically.
+Every episode writes `attention.sqlite3` and `attention_bundle.json`; every
+episode has a raw trace, while only an assistance-eligible failed attempt gets
+an AdvisorTracePacket. The result artifact links the records through its
+`attention_trace` field. The RoboCasa package exposes
+`persist_robocasa_episode_trace()` for its production runner / agent_server.
+The current privileged RoboCasa infrastructure validator intentionally does not
+use this entry point because teleport-based probes are not agent executions.

@@ -25,11 +25,19 @@ def write_episode_artifacts(
     initial_observation: Mapping[str, np.ndarray],
     final_observation: Mapping[str, np.ndarray],
 ) -> None:
-    (episode_dir / "result.json").write_text(
-        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    write_result_artifact(episode_dir, result)
     with (episode_dir / "trace.jsonl").open("w", encoding="utf-8") as stream:
         for event in trace:
             stream.write(json.dumps(event, sort_keys=True) + "\n")
     np.savez_compressed(episode_dir / "initial_observation.npz", **initial_observation)
     np.savez_compressed(episode_dir / "final_observation.npz", **final_observation)
+
+
+def write_result_artifact(
+    episode_dir: Path, result: Mapping[str, Any]
+) -> Path:
+    path = episode_dir / "result.json"
+    path.write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return path

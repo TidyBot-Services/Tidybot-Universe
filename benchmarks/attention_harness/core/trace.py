@@ -252,6 +252,13 @@ def summarize_failure(
     error = failed.error or {}
     error_type = str(error.get("type") or failed.status)
     message = str(error.get("message") or f"{failed.operation} {failed.status}")
+    termination_reason = (
+        "timeout"
+        if stage == "timeout"
+        or "timeout" in error_type.lower()
+        or "timeout" in message.lower()
+        else None
+    )
     return FailureSummary(
         stage=stage,
         error_type=error_type,
@@ -261,7 +268,7 @@ def summarize_failure(
         last_successful_event_id=previous.event_id if previous else None,
         observed_symptom=message,
         inferred_cause=None,
-        termination_reason="timeout" if "timeout" in failed.status.lower() else None,
+        termination_reason=termination_reason,
         retryable=None,
         safety_relevant="safety" in failed.event_type.lower(),
         classification_source="deterministic_event_rules",
@@ -270,8 +277,16 @@ def summarize_failure(
 
 
 def _failure_stage(event: TraceEvent) -> tuple[str, float]:
+    error = event.error or {}
     text = " ".join(
-        (event.source, event.event_type, event.operation, event.status)
+        (
+            event.source,
+            event.event_type,
+            event.operation,
+            event.status,
+            str(error.get("type", "")),
+            str(error.get("message", "")),
+        )
     ).lower()
     rules = (
         (("code_generation", "generate_code"), "code_generation"),

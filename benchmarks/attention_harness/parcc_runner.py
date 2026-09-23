@@ -11,7 +11,12 @@ from typing import Any
 
 import numpy as np
 
-from .artifacts import create_episode_dir, write_episode_artifacts
+from .artifacts import (
+    create_episode_dir,
+    write_episode_artifacts,
+    write_result_artifact,
+)
+from .episode_trace import persist_episode_trace
 from .model_protocol import (
     DEVELOPER_MODEL,
     EVALUATOR_MODEL,
@@ -235,6 +240,34 @@ def run_parcc_episode(
     _write_json(episode_dir / "developer_response.json", codegen_artifact)
     _write_json(episode_dir / "execution.json", execution.artifact())
     _write_json(episode_dir / "evaluator.json", review)
+    tokens_used = _total_tokens(codegen_artifact) + _total_tokens(review)
+    result["attention_trace"] = persist_episode_trace(
+        episode_dir=episode_dir,
+        suite="robosuite",
+        task_id=task_id,
+        seed=seed,
+        policy_id="parcc-generated",
+        developer_model=DEVELOPER_MODEL,
+        execution_target="robosuite_sim",
+        execution_status=(
+            execution.status if execution.status != "not_started" else status
+        ),
+        native_success=native_success,
+        elapsed_seconds=float(result["elapsed_seconds"]),
+        action_trace=trace,
+        sdk_trace=execution.sdk_trace,
+        error=error,
+        stdout=execution.stdout,
+        stderr=execution.stderr,
+        timed_out=execution.timed_out,
+        exit_code=execution.exit_code,
+        code_path=(episode_dir / "generated_policy.py" if generated_code else None),
+        runtime=metadata,
+        attention_eligible=True,
+        token_limit=max(4096, tokens_used),
+        tokens_used=tokens_used,
+    )
+    write_result_artifact(episode_dir, result)
     return result
 
 
@@ -251,6 +284,18 @@ def _camera_pair(
 
 def _write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _total_tokens(value: dict[str, Any]) -> int:
+    usage = value.get("usage")
+    if not isinstance(usage, dict):
+        return 0
+    count = usage.get("total_tokens", 0)
+    return (
+        int(count)
+        if isinstance(count, (int, float)) and not isinstance(count, bool)
+        else 0
+    )
 
 
 def _parser() -> argparse.ArgumentParser:

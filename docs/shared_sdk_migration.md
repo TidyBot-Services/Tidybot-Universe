@@ -29,6 +29,10 @@ single service process.
   path can enable it; Robosuite cannot until it has a non-oracle perception
   service.
 - Retained compatibility imports for the first AttentionHarness revision.
+- Added an optional shared SDK event sink so all peer backends emit the same
+  sensor, perception, frame-transform, arm, and gripper event vocabulary.
+- Added a backend-neutral episode trace finalizer and a RoboCasa entry point;
+  the current privileged RoboCasa validator remains outside the Agent Trace.
 
 ## Still required before declaring the platform fully unified
 
