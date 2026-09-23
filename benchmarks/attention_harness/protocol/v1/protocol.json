@@ -1,0 +1,64 @@
+{
+  "protocol_id": "tidybot-attentionbench-robosuite-v1",
+  "status": "harness_contract_frozen",
+  "tasks": {
+    "cube_lift": {
+      "robosuite_env": "Lift",
+      "goal": "Lift the cube clear of the table."
+    },
+    "cube_stack": {
+      "robosuite_env": "Stack",
+      "goal": "Place cube A on top of cube B."
+    }
+  },
+  "runtime_versions": {
+    "robosuite": "1.5.1",
+    "mujoco": "3.3.0",
+    "numpy": "1.26.4"
+  },
+  "models": {
+    "developer": {
+      "model": "parcc/GLM",
+      "temperature": 0.0,
+      "reasoning_effort": "low",
+      "max_tokens": 2048,
+      "max_invalid_program_retries": 2
+    },
+    "artifact_reviewer": {
+      "model": "parcc/Qwen",
+      "authoritative": false,
+      "max_tokens": 384
+    }
+  },
+  "evaluation": {
+    "authoritative_success": "Robosuite native _check_success",
+    "policy_timeout_seconds": 90,
+    "codegen_timeout_seconds": 240,
+    "review_timeout_seconds": 180,
+    "heldout_model_calls_allowed": false
+  },
+  "schemas": {
+    "reference_episode": "attentionbench.episode.v1",
+    "model_episode": "attentionbench.parcc_episode.v1",
+    "evaluator_probes": "attentionbench.evaluator-probes.v1",
+    "evaluator_parity": "attentionbench.evaluator-parity.v1",
+    "freeze_manifest": "attentionbench.freeze-manifest.v1"
+  },
+  "sdk": {
+    "modules": ["sensors", "arm", "gripper"],
+    "object_oracle_visible": false,
+    "generated_process_receives_credentials": false
+  },
+  "reference_policy": {
+    "source": "robosuite_sim/reference_policy.py",
+    "privileged": true,
+    "role": "infrastructure validation only",
+    "success_gate": "at least 4/5 per task"
+  },
+  "formal_model_policies": {
+    "status": "not_frozen",
+    "reason": "D4/D5 programs validate connectivity but are not task-solving policies",
+    "heldout_eligible": false
+  },
+  "heldout_ready": false
+}

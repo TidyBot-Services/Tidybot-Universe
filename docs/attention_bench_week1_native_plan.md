@@ -64,6 +64,40 @@ Export evaluator decisions from the legacy path and compare them offline by
 `(task_id, seed)`. Required agreement is 100%. Then freeze the protocol and run
 the first controlled model comparison; held-out seeds remain opt-in.
 
+Implemented D6 status:
+
+- Both runtimes report `robosuite==1.5.1`, `mujoco==3.3.0`, and
+  `numpy==1.26.4`.
+- The normalized AST hash of Lift `_check_success` and Stack
+  `_check_success + staged_rewards` matches between the ASPIRE submodule and
+  official PyPI installation.
+- Thirty decisions were compared across tasks `cube_lift / cube_stack`, seeds
+  `101-105`, and reset-failure / boundary-failure / synthetic-success probes.
+- Final agreement is `30/30 = 100%`, with no missing keys or mismatches.
+- The first Stack contact probe used exact geometric tangency and produced
+  `83.33%`; that failed report is retained. The fixed probe uses a documented
+  shallow overlap because contact generation at exact tangency is not stable
+  across the ASPIRE fork and PyPI build.
+- This gate proves evaluator semantics only. It explicitly does not claim reset,
+  observation, controller, placement-sampler, or trajectory parity.
+
+Implemented D7 status:
+
+- `protocol/v1/protocol.json` freezes tasks, versions, seed policy, model
+  parameters, SDK boundary, timeouts, schema names, native success authority,
+  and the privileged reference-policy role.
+- `freeze_manifest.json` hashes 30 semantic source/evidence files and can be
+  deterministically regenerated and verified.
+- The native harness contract and reference policy are frozen.
+- Formal task-solving model policies are not frozen: D4/D5 generated
+  connectivity probes, not successful task policies. The manifest therefore
+  sets `heldout_ready=false`, and the held-out verification gate fails closed.
+
+Stage-3 boundary: D6 is complete. D7 harness/protocol freeze is complete, but
+formal experiment release remains blocked until task-solving model policies and
+the later Attention-System policy matrix are developed on the dev split and
+frozen without looking at held-out results.
+
 ## Gate to leave Stage 1
 
 - Official PyPI Robosuite runs from a TidyBot-owned environment.

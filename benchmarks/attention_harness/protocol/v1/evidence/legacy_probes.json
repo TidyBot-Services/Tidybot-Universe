@@ -1,0 +1,206 @@
+{
+  "metadata": {
+    "implementation": "legacy",
+    "known_environment_differences": [
+      "legacy rotates Panda joint 7 by -pi after reset",
+      "legacy settles physics for 50 raw simulation steps",
+      "legacy uses a joint-position controller; native uses Robosuite's Panda composite controller",
+      "legacy Stack replaces the default placement sampler ranges",
+      "legacy enables reward shaping; evaluator predicates remain native"
+    ],
+    "predicate_ast_sha256": {
+      "cube_lift": "89828ca3454a38d339deaf35b5ff71be049b8c3477044543d0c69d66cd46ed51",
+      "cube_stack": "533424da74916439e06a2c15d6c1f193caf2d5143302bb59d11b1358fb8cd339"
+    },
+    "probe_scope": "native evaluator only; not reset, observation, or controller parity",
+    "source_revision": "97292732ed909ac3ae116579fb768607034a4dbd",
+    "versions": {
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4",
+      "robosuite": "1.5.1"
+    }
+  },
+  "records": [
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 101,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "below_lift_margin",
+      "seed": 101,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": true,
+      "probe_id": "above_lift_margin",
+      "seed": 101,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 102,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "below_lift_margin",
+      "seed": 102,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": true,
+      "probe_id": "above_lift_margin",
+      "seed": 102,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 103,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "below_lift_margin",
+      "seed": 103,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": true,
+      "probe_id": "above_lift_margin",
+      "seed": 103,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 104,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "below_lift_margin",
+      "seed": 104,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": true,
+      "probe_id": "above_lift_margin",
+      "seed": 104,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 105,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "below_lift_margin",
+      "seed": 105,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": true,
+      "probe_id": "above_lift_margin",
+      "seed": 105,
+      "task_id": "cube_lift"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 101,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "separated_cubes",
+      "seed": 101,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": true,
+      "probe_id": "stable_contact_stack",
+      "seed": 101,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 102,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "separated_cubes",
+      "seed": 102,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": true,
+      "probe_id": "stable_contact_stack",
+      "seed": 102,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 103,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "separated_cubes",
+      "seed": 103,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": true,
+      "probe_id": "stable_contact_stack",
+      "seed": 103,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 104,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "separated_cubes",
+      "seed": 104,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": true,
+      "probe_id": "stable_contact_stack",
+      "seed": 104,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "reset_failure",
+      "seed": 105,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": false,
+      "probe_id": "separated_cubes",
+      "seed": 105,
+      "task_id": "cube_stack"
+    },
+    {
+      "native_success": true,
+      "probe_id": "stable_contact_stack",
+      "seed": 105,
+      "task_id": "cube_stack"
+    }
+  ],
+  "schema_version": "attentionbench.evaluator-probes.v1"
+}

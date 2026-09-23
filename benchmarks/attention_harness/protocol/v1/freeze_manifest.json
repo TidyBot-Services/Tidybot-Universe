@@ -1,0 +1,50 @@
+{
+  "d6_parity": {
+    "agreement": 1.0,
+    "compared": 30,
+    "predicate_source_match": true,
+    "version_match": true
+  },
+  "file_sha256": {
+    "benchmarks/attention_harness/artifacts.py": "d0413fd2725df3ee00b2e779f7804fed7f4f09aad7dafdebd0ec2c55fd3eb90f",
+    "benchmarks/attention_harness/freeze.py": "2abef7e9d527a296257823cd6d831934f72139a42bc26ae49667f7533e98a216",
+    "benchmarks/attention_harness/migration/export_evaluator_probes.py": "32cfffa5295353648a979a29266f0c596d6f16d81bfa92ef35bfa26ca7b501d5",
+    "benchmarks/attention_harness/model_protocol.py": "355ae20d18590d328c3ae32a49bffdf37cc3f262ee690a6eee6563b3e6000192",
+    "benchmarks/attention_harness/parcc_client.py": "f184ce32a8f0ffb8c335d9083391853c2a6f562e1ecf75d988ef7ffd75125051",
+    "benchmarks/attention_harness/parcc_runner.py": "18be281dace4630d16b342fc226848cdd4edc4c9b1b6e9ce429818e7a787f6e5",
+    "benchmarks/attention_harness/parity.py": "4a719dc9d0c9b8d29d1d3bcc0fba7e4c33f045fba728f8cd3193251e11fbc967",
+    "benchmarks/attention_harness/protocol/v1/evidence/legacy_probes.json": "4c60b4b127015366ea95e6a1cb1c31021a4cd6f7a2738b0a080353c18a46a737",
+    "benchmarks/attention_harness/protocol/v1/evidence/native_probes.json": "5a6585754d501bca168e7061cde936c9a4ec8125748eaaa56006df8bb617c901",
+    "benchmarks/attention_harness/protocol/v1/evidence/parity_report.json": "a8516aa03512db947ef701ea6ae9f9c0005a4de651755ad76b1bc9779ca3afee",
+    "benchmarks/attention_harness/protocol/v1/protocol.json": "0be4d92c7e209adcf771141bd9d2fe7fcb8e83a29474382682f0246a7939679b",
+    "benchmarks/attention_harness/protocol/v1/seeds.json": "ed5d88e070cc5d12b3efa6558d93dae48b35758732071266d5dbaf95ca4912b1",
+    "benchmarks/attention_harness/reference_policy.py": "d6d48c410d1198b40403a2080604ebd631e527007062e53d9a5531cf27046a5e",
+    "benchmarks/attention_harness/requirements-robosuite.txt": "b40b63614b21a2089c32a39eaf451b350357240d5f75793efe1c37c37bd4ad9b",
+    "benchmarks/attention_harness/robosuite_adapter.py": "21cd9eb8800f2da7bdce04faf0cfd42bd6420a05abec07a92b0a463dcdd9c439",
+    "benchmarks/attention_harness/robot_sdk.py": "89faf9afa74bcdf8ca23391f6e7730f5466b98e1eae79c93bd5e3484e438225b",
+    "benchmarks/attention_harness/run_d6_parity.sh": "adcbea038fc55c46282b3afdcb3b9c8370e9352be30a1d9335a3a075f8190ebc",
+    "benchmarks/attention_harness/runner.py": "36aa71b32f2e59139067afc3528852baa1fd062bd435aa60d3a3996b9af90f6c",
+    "benchmarks/attention_harness/sandbox.py": "805a0682a407a7084f0c1dc572402259a38c9afdfb4aecc2eaac06a2d9dd3b0d",
+    "benchmarks/attention_harness/sandbox_worker.py": "11ebb43503089d3a0cdc51af85edccc9fbae25b91b82cd278870f1dc1fbb30c9",
+    "benchmarks/attention_harness/seed_guard.py": "41c04562aa0cf7989a9ef53d39311ad9b8e2ed73893ab528817d76da46e69676",
+    "benchmarks/attention_harness/service_process.py": "43260185a9dd6efdca70c48c87262c5bb26e6f6ad566e0e37bd7dcee87142b4b",
+    "benchmarks/attention_harness/task_registry.py": "d1cb0fc34615b09642239d0ccb435a397cfc288b936526a4a7549582cefba86e",
+    "robosuite_sim/backend.py": "a8048063d1796e1eb004d831c95652362ef5dfc4f066d8faaa9275ada089e2da",
+    "robosuite_sim/client.py": "a739b8767421c816e8d124e6a4f920451a379e555fed40d4e0e8015cbc5b30ac",
+    "robosuite_sim/codec.py": "76585ee5df11dcc88d8744c41b75c83900ed240e6b52bdf63129dd8d2f33e63a",
+    "robosuite_sim/reference_policy.py": "b49bb034570262224f8dc1c91683f1c108ad7e4c325ccb163d60f64693981ec6",
+    "robosuite_sim/requirements.txt": "bc43930332e53c4d1dacce073a8c283156011aa877c0e8b59c3fea1d506aaddd",
+    "robosuite_sim/server.py": "554ad65e037e7da879fd28ebe08d7523b3604195ab6568fd8c8ca829f317ccfa",
+    "robosuite_sim/tasks.py": "b7ea7a04edc694662c3355a60e6765f6d25b61e2ca2ccf98b0a7ed6cf72fa752"
+  },
+  "formal_model_policies": {
+    "heldout_eligible": false,
+    "reason": "D4/D5 programs validate connectivity but are not task-solving policies",
+    "status": "not_frozen"
+  },
+  "freeze_digest_sha256": "0c5df803319896f7236e5cbffeeb257564b3806464f775b42013af71d6f8d87c",
+  "freeze_scope": "Robosuite harness contract and privileged reference policy",
+  "heldout_ready": false,
+  "protocol_id": "tidybot-attentionbench-robosuite-v1",
+  "schema_version": "attentionbench.freeze-manifest.v1"
+}

@@ -1,0 +1,29 @@
+{
+  "agreement": 1.0,
+  "compared": 30,
+  "complete_keyset": true,
+  "known_environment_differences": [
+    "legacy rotates Panda joint 7 by -pi after reset",
+    "legacy settles physics for 50 raw simulation steps",
+    "legacy uses a joint-position controller; native uses Robosuite's Panda composite controller",
+    "legacy Stack replaces the default placement sampler ranges",
+    "legacy enables reward shaping; evaluator predicates remain native"
+  ],
+  "legacy_versions": {
+    "mujoco": "3.3.0",
+    "numpy": "1.26.4",
+    "robosuite": "1.5.1"
+  },
+  "matches": 30,
+  "mismatches": [],
+  "missing_in_legacy": [],
+  "missing_in_native": [],
+  "native_versions": {
+    "mujoco": "3.3.0",
+    "numpy": "1.26.4",
+    "robosuite": "1.5.1"
+  },
+  "predicate_source_match": true,
+  "schema_version": "attentionbench.evaluator-parity.v1",
+  "version_match": true
+}

@@ -71,3 +71,38 @@ Each model episode additionally records `developer_request.json`,
 `developer_response.json`, `generated_policy.py`, `sandbox_worker.json`,
 `execution.json`, and `evaluator.json`. A Qwen timeout is recorded but cannot
 change or erase the native evaluator result.
+
+## D6 evaluator parity
+
+The legacy ASPIRE wrapper and TidyBot-native service intentionally have
+different reset, controller, settle, and Stack sampling behavior. D6 therefore
+freezes evaluator parity only; it does not claim observation or trajectory
+parity. The exporter compares the normalized native predicate source and 30
+behavioral decisions over development seeds 101--105.
+
+```bash
+ASPIRE_SIM_ROOT=/path/to/ASPIRE/aspire/sim \
+  ./benchmarks/attention_harness/run_d6_parity.sh
+```
+
+The strict gate rejects missing or duplicate `(task_id, seed, probe_id)` rows,
+non-Boolean decisions, version differences, predicate-source differences, or
+agreement below 100%.
+
+## D7 protocol freeze
+
+Create and verify the deterministic manifest:
+
+```bash
+python -m benchmarks.attention_harness.freeze create
+python -m benchmarks.attention_harness.freeze verify
+```
+
+The current manifest freezes the native harness contract, D6 evidence, and
+privileged reference policy. It deliberately reports `heldout_ready: false`:
+the D4/D5 programs are connectivity probes, not frozen task-solving model
+policies. Consequently this command must fail closed:
+
+```bash
+python -m benchmarks.attention_harness.freeze verify --require-heldout-ready
+```
