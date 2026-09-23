@@ -5,22 +5,18 @@ from __future__ import annotations
 import hashlib
 import os
 import time
-from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
 import numpy as np
 
 from robosuite_sim.client import ClientStep, ReferenceResult, RobosuiteSimClient
 
+from .service_contract import ServiceStep, copy_observation
 from .task_registry import get_task
 
-
-@dataclass(frozen=True)
-class StepResult:
-    observation: dict[str, np.ndarray]
-    reward: float
-    done: bool
-    info: dict[str, Any]
+# Compatibility name for existing policies and tests. New code should use the
+# backend-neutral ServiceStep contract.
+StepResult = ServiceStep
 
 
 class SimulatorClient(Protocol):
@@ -72,6 +68,10 @@ class RobosuiteAdapter:
         return tuple(self._action_low.shape)
 
     @property
+    def control_frame(self) -> str:
+        return str(self._metadata.get("control_frame", "robosuite_world"))
+
+    @property
     def metadata(self) -> dict[str, Any]:
         return {
             "adapter": f"{type(self).__module__}.{type(self).__name__}",
@@ -97,7 +97,7 @@ class RobosuiteAdapter:
         self._action_high = np.asarray(high, dtype=np.float64)
         self._metadata = dict(metadata)
         self.trace.clear()
-        return _copy_observation(observation)
+        return copy_observation(observation)
 
     def attach(self) -> dict[str, np.ndarray]:
         """Attach a sandbox process to the service's active episode."""
@@ -114,7 +114,7 @@ class RobosuiteAdapter:
         self._action_high = np.asarray(high, dtype=np.float64)
         self._metadata = dict(metadata)
         self.trace.clear()
-        return _copy_observation(observation)
+        return copy_observation(observation)
 
     def step(self, action: np.ndarray | list[float]) -> StepResult:
         if self._action_low is None or self._action_high is None:
@@ -127,7 +127,7 @@ class RobosuiteAdapter:
         clipped = np.clip(array, self._action_low, self._action_high)
         result = self._client.step(clipped)
         self._last_observation = result.observation
-        public = _copy_observation(result.observation)
+        public = copy_observation(result.observation)
         self.trace.append(
             {
                 "step": len(self.trace),
@@ -137,18 +137,18 @@ class RobosuiteAdapter:
                 "observation_sha256": observation_fingerprint(public),
             }
         )
-        return StepResult(public, result.reward, result.done, dict(result.info))
+        return ServiceStep(public, result.reward, result.done, dict(result.info))
 
     def observe(self) -> dict[str, np.ndarray]:
         if self._last_observation is None:
             raise RuntimeError("reset must be called before observe")
-        return _copy_observation(self._last_observation)
+        return copy_observation(self._last_observation)
 
     def refresh(self) -> dict[str, np.ndarray]:
         """Fetch state changed by another client, such as a sandbox worker."""
         observation = self._client.observe()
         self._last_observation = observation
-        return _copy_observation(observation)
+        return copy_observation(observation)
 
     def native_success(self) -> bool:
         return self._client.native_success()
@@ -168,11 +168,6 @@ class RobosuiteAdapter:
 
     def close(self) -> None:
         self._client.close_environment()
-
-
-def _copy_observation(observation: Mapping[str, np.ndarray]) -> dict[str, np.ndarray]:
-    return {key: np.array(value, copy=True) for key, value in observation.items()}
-
 
 def observation_fingerprint(observation: Mapping[str, np.ndarray]) -> str:
     digest = hashlib.sha256()

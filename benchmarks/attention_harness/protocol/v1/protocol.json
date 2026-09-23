@@ -46,6 +46,15 @@
   },
   "sdk": {
     "modules": ["sensors", "arm", "gripper"],
+    "service_contract": "benchmarks.attention_harness.service_contract.RobotService",
+    "sensor_methods": ["get_observation", "pixel_to_world"],
+    "observation": {
+      "camera_rgb": "<camera>_image",
+      "camera_depth_meters": "<camera>_depth",
+      "camera_intrinsics": "<camera>_intrinsics",
+      "camera_to_control_frame": "<camera>_pose_mat",
+      "proprioception": "robot0_*"
+    },
     "object_oracle_visible": false,
     "generated_process_receives_credentials": false
   },

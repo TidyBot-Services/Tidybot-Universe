@@ -39,6 +39,9 @@ class RobosuiteSimClient:
     def health(self) -> dict[str, Any]:
         return self._request("GET", "/health")
 
+    def capabilities(self) -> dict[str, Any]:
+        return self._request("GET", "/v1/capabilities")
+
     def reset(self, **request: Any) -> tuple[dict[str, np.ndarray], np.ndarray, np.ndarray, dict[str, Any]]:
         response = self._request("POST", "/v1/reset", request)
         return self._decode_session(response)

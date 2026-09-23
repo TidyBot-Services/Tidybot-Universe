@@ -98,6 +98,20 @@ formal experiment release remains blocked until task-solving model policies and
 the later Attention-System policy matrix are developed on the dev split and
 frozen without looking at held-out results.
 
+## Post-D7 service-boundary refinement
+
+Before any held-out run, the SDK boundary was refined into a backend-neutral
+`RobotService` protocol. `NativeRobotSDK` no longer names the Robosuite adapter;
+the Robosuite implementation is one service peer alongside the existing
+RoboCasa and real-robot paths. The Robosuite service now owns metric-depth and
+camera-calibration publication, while the SDK supplies a deterministic
+`pixel_to_world()` convenience method using only those public values.
+
+This is intentionally not a Robosuite `find_objects()` implementation. The
+RoboCasa simulation version uses privileged segmentation, so copying its
+behavior would violate AttentionBench's non-oracle observation contract. The
+D7 manifest is regenerated after this pre-heldout protocol change.
+
 ## Gate to leave Stage 1
 
 - Official PyPI Robosuite runs from a TidyBot-owned environment.

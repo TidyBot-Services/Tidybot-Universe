@@ -50,7 +50,7 @@ class FakeBackend:
 
 
 def test_public_filter_removes_object_oracle() -> None:
-    public = RobosuiteBackend._public_observation(
+    public = RobosuiteBackend._filter_observation(
         {
             "agentview_image": np.zeros((2, 2, 3)),
             "robot0_joint_pos": np.zeros(7),
@@ -70,6 +70,12 @@ def test_http_service_contract_round_trip() -> None:
     client = RobosuiteSimClient(f"http://{host}:{port}")
     try:
         assert client.health()["status"] == "ok"
+        capabilities = client.capabilities()
+        assert capabilities["api_version"] == "v1"
+        assert capabilities["object_oracle_visible"] is False
+        assert capabilities["policy_operations"] == ["attach", "observe", "step"]
+        assert "success" not in capabilities["policy_operations"]
+        assert "camera_intrinsics" in capabilities["sensors"]
         observation, low, high, metadata = client.reset(
             task_id="cube_lift", seed=101, camera=False
         )

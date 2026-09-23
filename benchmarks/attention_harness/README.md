@@ -6,9 +6,26 @@ MuJoCo directly. The peer `robosuite_sim` process owns the official Robosuite
 environment and native evaluator; another benchmark harness is not a runtime
 dependency.
 
-`NativeRobotSDK` is the code-execution boundary. It exposes `sensors`, `arm`,
-and `gripper`; its position controller sends actions to the service-owned local
-OSC controller, so basic motion does not require PyRoKi.
+`NativeRobotSDK` is the code-execution boundary. It consumes the backend-neutral
+`RobotService` protocol rather than a concrete simulator class, and exposes
+`sensors`, `arm`, and `gripper`. Its position controller sends actions to the
+service-owned local OSC controller, so basic motion does not require PyRoKi.
+
+The intended service topology is:
+
+```text
+TidyBot robot_sdk
+  -> RobotService contract
+     -> RoboCasa service adapter (existing platform path; not changed here)
+     -> Robosuite service adapter (implemented here)
+     -> real-robot service adapter (existing platform path; not changed here)
+```
+
+The Robosuite observation includes RGB, metric depth, camera intrinsics,
+camera-to-world pose, and robot proprioception. `sensors.pixel_to_world()` is a
+thin SDK helper over those public arrays. `find_objects()` remains absent: the
+Robosuite benchmark must not turn simulator object poses or segmentation IDs
+into an oracle policy input.
 
 Frozen tasks:
 
@@ -46,7 +63,7 @@ python -m benchmarks.attention_harness.runner \
 The reference policy runs inside `robosuite_sim`, where it may read privileged
 object positions solely to prove the task/controller/evaluator chain is
 solvable. Those positions never cross the service boundary. Model policies
-receive only camera and robot proprioception.
+receive only camera calibration / RGB-D and robot proprioception.
 
 ## PARCC development smoke (D4/D5)
 

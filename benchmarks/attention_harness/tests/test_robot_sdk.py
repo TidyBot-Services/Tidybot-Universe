@@ -7,6 +7,7 @@ from benchmarks.attention_harness.robot_sdk import NativeRobotSDK
 
 
 class FakeAdapter:
+    control_frame = "test_world"
     action_shape = (7,)
 
     def __init__(self) -> None:
@@ -17,6 +18,18 @@ class FakeAdapter:
         return {
             "robot0_eef_pos": self.position.copy(),
             "agentview_image": np.zeros((2, 2, 3), dtype=np.uint8),
+            "agentview_depth": np.full((2, 2, 1), 2.0, dtype=np.float32),
+            "agentview_intrinsics": np.array(
+                [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0], [0.0, 0.0, 1.0]]
+            ),
+            "agentview_pose_mat": np.array(
+                [
+                    [1.0, 0.0, 0.0, 10.0],
+                    [0.0, 1.0, 0.0, 20.0],
+                    [0.0, 0.0, 1.0, 30.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ]
+            ),
         }
 
     def step(self, action):
@@ -30,7 +43,27 @@ def test_sdk_exposes_only_owned_facade() -> None:
     adapter = FakeAdapter()
     sdk = NativeRobotSDK(adapter)  # type: ignore[arg-type]
     assert set(sdk.describe()) == {"frame", "arm", "gripper", "sensors"}
-    assert set(sdk.sensors.get_observation()) == {"robot0_eef_pos", "agentview_image"}
+    assert sdk.describe()["frame"] == "test_world"
+    assert set(sdk.describe()["sensors"]) == {"get_observation", "pixel_to_world"}
+    assert set(sdk.sensors.get_observation()) == {
+        "robot0_eef_pos",
+        "agentview_image",
+        "agentview_depth",
+        "agentview_intrinsics",
+        "agentview_pose_mat",
+    }
+
+
+def test_pixel_to_world_uses_only_public_rgbd_calibration() -> None:
+    sdk = NativeRobotSDK(FakeAdapter())  # type: ignore[arg-type]
+    assert sdk.sensors.pixel_to_world(1, 1) == (10.0, 20.0, 32.0)
+    assert sdk.sensors.pixel_to_world(0, 0, depth_meters=2.0) == (9.0, 19.0, 32.0)
+
+
+def test_pixel_to_world_rejects_invalid_pixels() -> None:
+    sdk = NativeRobotSDK(FakeAdapter())  # type: ignore[arg-type]
+    with np.testing.assert_raises(ValueError):
+        sdk.sensors.pixel_to_world(2, 0)
 
 
 def test_local_osc_move_and_gripper_state() -> None:

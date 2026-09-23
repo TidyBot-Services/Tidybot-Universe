@@ -34,6 +34,19 @@ class SimulatorState:
                 "task_id": self._config.task_id if self._config else None,
             }
 
+    def capabilities(self) -> dict[str, Any]:
+        """Describe the stable, non-privileged Robot Service boundary."""
+
+        return {
+            "service": "robosuite_sim",
+            "api_version": "v1",
+            "control_frame": "robosuite_world",
+            "policy_operations": ["attach", "observe", "step"],
+            "harness_operations": ["reset", "success", "reference", "close"],
+            "sensors": ["rgb", "metric_depth", "camera_intrinsics", "camera_pose", "proprioception"],
+            "object_oracle_visible": False,
+        }
+
     def reset(self, request: dict[str, Any]) -> dict[str, Any]:
         config = BackendConfig(
             task_id=str(request["task_id"]),
@@ -144,6 +157,7 @@ def handler_factory(state: SimulatorState):
             path = urlparse(self.path).path
             routes = {
                 "/health": state.health,
+                "/v1/capabilities": state.capabilities,
                 "/v1/session": state.session,
                 "/v1/observation": state.observe,
                 "/v1/success": state.success,

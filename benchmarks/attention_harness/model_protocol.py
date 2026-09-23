@@ -33,6 +33,7 @@ Public camera metadata: {json.dumps(image_summary)}
 The available API is exactly:
   from robot_sdk import sensors, arm, gripper
   sensors.get_observation() -> dict of public camera/proprioception numpy arrays
+  sensors.pixel_to_world(u, v, camera="agentview", depth_meters=None) -> (x, y, z)
   arm.move_delta(dx, dy, dz, rotation_delta=(0, 0, 0))
   arm.move_to_position(x, y, z, tolerance=0.004, max_steps=100)
   gripper.open(settle_steps=10)

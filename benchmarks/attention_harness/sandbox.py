@@ -26,6 +26,7 @@ ALLOWED_METHOD_CALLS = {
     "move_delta",
     "move_to_position",
     "open",
+    "pixel_to_world",
     "tolist",
     "values",
 }

@@ -95,10 +95,13 @@ class RobosuiteBackend:
     def metadata(self) -> dict[str, Any]:
         return {
             "service": "robosuite_sim",
+            "service_api_version": "v1",
             "backend_class": f"{type(self._env).__module__}.{type(self._env).__name__}",
             "task_id": self.spec.task_id,
             "robosuite_env": self.spec.robosuite_env,
             "seed": self._seed,
+            "control_frame": "robosuite_world",
+            "observation_schema": "tidybot.robot-observation.v1",
             "robosuite_origin": str(self._module_path),
             "versions": self._versions,
         }
@@ -155,8 +158,83 @@ class RobosuiteBackend:
     def close(self) -> None:
         self._env.close()
 
+    def _public_observation(self, raw: Mapping[str, Any]) -> dict[str, np.ndarray]:
+        public = self._filter_observation(raw)
+        if not self.config.camera:
+            return public
+
+        camera = self.config.camera_name
+        depth_key = f"{camera}_depth"
+        if depth_key in public:
+            public[depth_key] = np.asarray(
+                self._metric_depth(self._env.sim, public[depth_key]),
+                dtype=np.float32,
+            )
+        public[f"{camera}_intrinsics"] = np.asarray(
+            self._camera_intrinsics(
+                self._env.sim,
+                camera,
+                self.config.camera_height,
+                self.config.camera_width,
+            ),
+            dtype=np.float64,
+        )
+        public[f"{camera}_pose_mat"] = np.asarray(
+            self._camera_pose(self._env.sim, camera),
+            dtype=np.float64,
+        )
+        return public
+
     @staticmethod
-    def _public_observation(raw: Mapping[str, Any]) -> dict[str, np.ndarray]:
+    def _metric_depth(sim: Any, depth: np.ndarray) -> np.ndarray:
+        """Convert MuJoCo's normalized depth buffer to meters."""
+
+        normalized = np.asarray(depth, dtype=np.float64)
+        if np.any(normalized < 0.0) or np.any(normalized > 1.0):
+            raise ValueError("normalized depth must lie in [0, 1]")
+        extent = float(sim.model.stat.extent)
+        far = float(sim.model.vis.map.zfar) * extent
+        near = float(sim.model.vis.map.znear) * extent
+        return near / (1.0 - normalized * (1.0 - near / far))
+
+    @staticmethod
+    def _camera_intrinsics(
+        sim: Any,
+        camera_name: str,
+        camera_height: int,
+        camera_width: int,
+    ) -> np.ndarray:
+        camera_id = sim.model.camera_name2id(camera_name)
+        fovy = float(sim.model.cam_fovy[camera_id])
+        focal = 0.5 * camera_height / np.tan(fovy * np.pi / 360.0)
+        return np.array(
+            [
+                [focal, 0.0, camera_width / 2.0],
+                [0.0, focal, camera_height / 2.0],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+
+    @staticmethod
+    def _camera_pose(sim: Any, camera_name: str) -> np.ndarray:
+        """Return OpenCV camera coordinates transformed into simulator world."""
+
+        camera_id = sim.model.camera_name2id(camera_name)
+        camera_to_world = np.eye(4, dtype=np.float64)
+        camera_to_world[:3, :3] = np.asarray(
+            sim.data.cam_xmat[camera_id], dtype=np.float64
+        ).reshape(3, 3)
+        camera_to_world[:3, 3] = np.asarray(
+            sim.data.cam_xpos[camera_id], dtype=np.float64
+        )
+        axis_correction = np.diag([1.0, -1.0, -1.0, 1.0])
+        return camera_to_world @ axis_correction
+
+    @staticmethod
+    def _filter_observation(raw: Mapping[str, Any]) -> dict[str, np.ndarray]:
+        """Strip privileged task/object state before adding public calibration."""
+
         public: dict[str, np.ndarray] = {}
         for key, value in raw.items():
             if key.endswith("_image") or key.endswith("_depth") or key.startswith("robot0_"):

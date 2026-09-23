@@ -27,6 +27,7 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/task_registry.py"),
     Path("benchmarks/attention_harness/seed_guard.py"),
     Path("benchmarks/attention_harness/robosuite_adapter.py"),
+    Path("benchmarks/attention_harness/service_contract.py"),
     Path("benchmarks/attention_harness/robot_sdk.py"),
     Path("benchmarks/attention_harness/sandbox.py"),
     Path("benchmarks/attention_harness/sandbox_worker.py"),

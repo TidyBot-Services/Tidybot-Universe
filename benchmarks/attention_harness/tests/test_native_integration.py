@@ -42,12 +42,17 @@ def test_native_reset_is_deterministic(service_url: str, task_id: str) -> None:
         assert first == second
         depth = second_observation["agentview_depth"]
         assert np.isfinite(depth).all()
-        assert 0.0 <= float(depth.min()) <= float(depth.max()) <= 2.0
+        assert 0.01 <= float(depth.min()) <= float(depth.max()) <= 10.0
+        assert second_observation["agentview_intrinsics"].shape == (3, 3)
+        assert second_observation["agentview_pose_mat"].shape == (4, 4)
         assert int(second_observation["agentview_image"].max()) > 0
         backend_file = Path(adapter.metadata["robosuite_origin"])
         assert adapter.metadata["service"] == "robosuite_sim"
         assert "ASPIRE" not in backend_file.parts
         assert "aspire" not in backend_file.parts
+        sdk = NativeRobotSDK(adapter)
+        center = sdk.sensors.pixel_to_world(42, 42)
+        assert np.isfinite(center).all()
     finally:
         adapter.close()
 
