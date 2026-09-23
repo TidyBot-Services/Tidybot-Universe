@@ -164,10 +164,18 @@ class RobosuiteBackend:
             return public
 
         camera = self.config.camera_name
+        image_key = f"{camera}_image"
         depth_key = f"{camera}_depth"
+        # Robosuite's observation arrays retain MuJoCo's bottom-left image
+        # origin, while the published pinhole intrinsics and corrected camera
+        # pose use the OpenCV top-left convention. Canonicalize both RGB and
+        # depth here so every public camera field shares one pixel coordinate
+        # system.
+        if image_key in public:
+            public[image_key] = np.flipud(public[image_key]).copy()
         if depth_key in public:
             public[depth_key] = np.asarray(
-                self._metric_depth(self._env.sim, public[depth_key]),
+                self._metric_depth(self._env.sim, np.flipud(public[depth_key])),
                 dtype=np.float32,
             )
         public[f"{camera}_intrinsics"] = np.asarray(

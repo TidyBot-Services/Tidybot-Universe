@@ -1,0 +1,425 @@
+{
+  "authoritative_success": "Robosuite native _check_success",
+  "episodes": [
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 101,
+      "steps": 83,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 102,
+      "steps": 86,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 103,
+      "steps": 86,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 104,
+      "steps": 80,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 105,
+      "steps": 81,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 106,
+      "steps": 82,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 107,
+      "steps": 82,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 108,
+      "steps": 84,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 109,
+      "steps": 84,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 110,
+      "steps": 83,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 111,
+      "steps": 84,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 112,
+      "steps": 83,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 113,
+      "steps": 84,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 114,
+      "steps": 82,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 115,
+      "steps": 88,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 116,
+      "steps": 87,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 117,
+      "steps": 85,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 118,
+      "steps": 84,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 119,
+      "steps": 82,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 120,
+      "steps": 84,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 121,
+      "steps": 87,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 122,
+      "steps": 83,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 123,
+      "steps": 85,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 124,
+      "steps": 83,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 125,
+      "steps": 88,
+      "task_id": "cube_lift"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 101,
+      "steps": 167,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 102,
+      "steps": 163,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 103,
+      "steps": 164,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 104,
+      "steps": 158,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 105,
+      "steps": 159,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 106,
+      "steps": 152,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 107,
+      "steps": 158,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 108,
+      "steps": 160,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 109,
+      "steps": 161,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 110,
+      "steps": 156,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 111,
+      "steps": 158,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 112,
+      "steps": 165,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 113,
+      "steps": 158,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 114,
+      "steps": 169,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 115,
+      "steps": 183,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 116,
+      "steps": 163,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 117,
+      "steps": 170,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 118,
+      "steps": 173,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 119,
+      "steps": 150,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 120,
+      "steps": 178,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 121,
+      "steps": 165,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 122,
+      "steps": 160,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 123,
+      "steps": 154,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 124,
+      "steps": 157,
+      "task_id": "cube_stack"
+    },
+    {
+      "error": null,
+      "native_success": true,
+      "sandbox_status": "completed",
+      "seed": 125,
+      "steps": 158,
+      "task_id": "cube_stack"
+    }
+  ],
+  "observation_boundary": "public RGB-D, camera calibration, and proprioception only",
+  "passed": true,
+  "schema_version": "attentionbench.public-policy-validation.v1",
+  "seed_split": "dev",
+  "seeds": {
+    "start": 101,
+    "stop": 125
+  },
+  "task_summary": {
+    "cube_lift": {
+      "passed": 25,
+      "policy_sha256": "44b61405f6ad230c265d38be48caa509f66fd64c9cac75a82f0c69a392cd9d08",
+      "total": 25
+    },
+    "cube_stack": {
+      "passed": 25,
+      "policy_sha256": "6aae896d5f727adaacc90bfa0567ea01367c9ca8b51118885142560759f55b53",
+      "total": 25
+    }
+  }
+}

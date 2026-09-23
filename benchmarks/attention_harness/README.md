@@ -64,6 +64,10 @@ MUJOCO_GL=egl ~/.cache/tidybot-attention/venv/bin/python -m \
   --task cube_lift --seed 101 --policy reference
 ```
 
+Use `--policy frozen-public` to run the D7 task-solving policy. It executes in
+the same credential-free sandbox as generated programs and can see only public
+RGB-D, camera calibration, and proprioception.
+
 The runner starts and stops a local `robosuite_sim` process by default. To use
 an already-running service instead:
 
@@ -122,18 +126,32 @@ agreement below 100%.
 
 ## D7 protocol freeze
 
+Regenerate the public-policy development evidence before freezing:
+
+```bash
+MUJOCO_GL=egl ~/.cache/tidybot-attention/venv/bin/python -m \
+  benchmarks.attention_harness.validate_frozen_policies
+```
+
+The strict gate covers all development seeds 101--125 and requires 25/25
+native successes for both `cube_lift` and `cube_stack`. The report binds each
+result to the exact policy SHA-256. It does not run held-out seeds.
+
 Create and verify the deterministic manifest:
 
 ```bash
 python -m benchmarks.attention_harness.freeze create
-python -m benchmarks.attention_harness.freeze verify
-```
-
-The current manifest freezes the native harness contract, D6 evidence, and
-privileged reference policy. It deliberately reports `heldout_ready: false`:
-the D4/D5 programs are connectivity probes, not frozen task-solving model
-policies. Consequently this command must fail closed:
-
-```bash
 python -m benchmarks.attention_harness.freeze verify --require-heldout-ready
 ```
+
+The D7 manifest also freezes the camera convention, non-oracle task policies,
+AdvisorProxy prompt/cache identity, and both assistance modes:
+
+- `benchmark_proxy`: fixed cached `parcc/Qwen`; humans cannot answer; eligible
+  for reproducible benchmark ranking.
+- `live_human_first`: waits up to 60 seconds for a human, then falls back to the
+  same proxy; validation/case-study only.
+
+`heldout_ready: true` means only that this frozen Robosuite task-policy gate may
+be run with explicit opt-in. No D7 command runs held-out seeds automatically,
+and the full seven-policy Attention experiment remains a later-stage gate.

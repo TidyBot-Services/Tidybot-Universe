@@ -27,8 +27,8 @@ the native evaluator never appear in policy observations.
 
 Public camera observations use flat array keys:
 
-- `<camera>_image`: uint8 RGB
-- `<camera>_depth`: metric depth in meters
+- `<camera>_image`: uint8 RGB with OpenCV top-left origin
+- `<camera>_depth`: metric depth in meters with the same top-left origin
 - `<camera>_intrinsics`: 3x3 pinhole matrix
 - `<camera>_pose_mat`: 4x4 OpenCV-camera-to-Robosuite-world transform
 

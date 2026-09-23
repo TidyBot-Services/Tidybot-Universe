@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from benchmarks.attention_harness.reference_policy import run_reference_policy
+from benchmarks.attention_harness.frozen_policy import execute_frozen_policy
 from benchmarks.attention_harness.robosuite_adapter import (
     RobosuiteRobotBackend,
     observation_fingerprint,
@@ -138,3 +139,26 @@ def test_reference_policy_succeeds_five_of_five(service_url: str, task_id: str) 
     finally:
         adapter.close()
     assert successes >= 4
+
+
+@pytest.mark.parametrize("task_id", ("cube_lift", "cube_stack"))
+def test_frozen_public_policy_succeeds_five_of_five(
+    service_url: str, task_id: str, tmp_path: Path
+) -> None:
+    successes = 0
+    adapter = RobosuiteRobotBackend(task_id, service_url=service_url, camera=True)
+    try:
+        for seed in range(101, 106):
+            adapter.reset(seed)
+            execution = execute_frozen_policy(
+                task_id=task_id,
+                service_url=service_url,
+                output_path=tmp_path / f"{task_id}-{seed}.json",
+                timeout_seconds=90.0,
+            )
+            adapter.refresh()
+            assert execution.status == "completed"
+            successes += int(adapter.native_success())
+    finally:
+        adapter.close()
+    assert successes == 5

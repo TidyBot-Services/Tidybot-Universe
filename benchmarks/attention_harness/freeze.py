@@ -19,6 +19,9 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/protocol/v1/evidence/legacy_probes.json"),
     Path("benchmarks/attention_harness/protocol/v1/evidence/native_probes.json"),
     Path("benchmarks/attention_harness/protocol/v1/evidence/parity_report.json"),
+    Path("benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json"),
+    Path("benchmarks/attention_harness/protocol/v1/policies/cube_lift.py"),
+    Path("benchmarks/attention_harness/protocol/v1/policies/cube_stack.py"),
     Path("benchmarks/attention_harness/artifacts.py"),
     Path("benchmarks/attention_harness/parity.py"),
     Path("benchmarks/attention_harness/freeze.py"),
@@ -34,6 +37,10 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/model_protocol.py"),
     Path("benchmarks/attention_harness/parcc_client.py"),
     Path("benchmarks/attention_harness/parcc_runner.py"),
+    Path("benchmarks/attention_harness/advisor_proxy.py"),
+    Path("benchmarks/attention_harness/attention_modes.py"),
+    Path("benchmarks/attention_harness/frozen_policy.py"),
+    Path("benchmarks/attention_harness/validate_frozen_policies.py"),
     Path("benchmarks/attention_harness/reference_policy.py"),
     Path("benchmarks/attention_harness/runner.py"),
     Path("benchmarks/attention_harness/service_process.py"),
@@ -83,6 +90,31 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
     parity = _read_json(parity_path)
     if not passed(parity):
         raise FreezeError("D6 evaluator parity gate has not passed")
+    policy_validation = _read_json(
+        repo_root
+        / "benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json"
+    )
+    summaries = policy_validation.get("task_summary", {})
+    current_policy_hashes = {
+        task_id: sha256_file(
+            repo_root
+            / f"benchmarks/attention_harness/protocol/v1/policies/{task_id}.py"
+        )
+        for task_id in ("cube_lift", "cube_stack")
+    }
+    policy_gate_passed = bool(
+        policy_validation.get("passed")
+        and set(summaries) == {"cube_lift", "cube_stack"}
+        and all(
+            summaries[task_id].get("passed") == 25
+            and summaries[task_id].get("total") == 25
+            and summaries[task_id].get("policy_sha256")
+            == current_policy_hashes[task_id]
+            for task_id in current_policy_hashes
+        )
+    )
+    if not policy_gate_passed:
+        raise FreezeError("D7 public task-policy development gate has not passed")
     files: dict[str, str] = {}
     for relative in FREEZE_INPUTS:
         path = repo_root / relative
@@ -91,15 +123,16 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         files[relative.as_posix()] = sha256_file(path)
     heldout_ready = bool(
         protocol.get("heldout_ready")
-        and protocol.get("formal_model_policies", {}).get("heldout_eligible")
-        and protocol.get("formal_model_policies", {}).get("status") == "frozen"
+        and protocol.get("formal_task_policies", {}).get("heldout_eligible")
+        and protocol.get("formal_task_policies", {}).get("status") == "frozen"
+        and policy_gate_passed
     )
     return {
         "schema_version": "attentionbench.freeze-manifest.v1",
         "protocol_id": protocol["protocol_id"],
         "freeze_scope": (
-            "shared TidyBot SDK, Robosuite harness contract, and privileged "
-            "reference policy"
+            "shared TidyBot SDK, Robosuite harness, public task policies, "
+            "assistance modes, AdvisorProxy contract, and evaluator evidence"
         ),
         "file_sha256": files,
         "freeze_digest_sha256": _canonical_digest(files),
@@ -109,7 +142,10 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
             "predicate_source_match": parity["predicate_source_match"],
             "version_match": parity["version_match"],
         },
-        "formal_model_policies": protocol["formal_model_policies"],
+        "formal_task_policies": protocol["formal_task_policies"],
+        "assistance_modes": protocol["assistance_modes"],
+        "public_policy_development_gate": summaries,
+        "primary_experiment": protocol["primary_experiment"],
         "heldout_ready": heldout_ready,
     }
 
@@ -140,7 +176,7 @@ def verify_manifest(
         )
     if require_heldout_ready and not manifest.get("heldout_ready"):
         raise FreezeError(
-            "held-out run denied: formal task-solving model policies are not frozen"
+            "held-out run denied: D7 public task policies are not frozen"
         )
     return {
         "verified": True,

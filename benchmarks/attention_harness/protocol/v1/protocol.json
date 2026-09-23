@@ -1,6 +1,6 @@
 {
   "protocol_id": "tidybot-attentionbench-robosuite-v1",
-  "status": "harness_contract_frozen",
+  "status": "d7_frozen",
   "tasks": {
     "cube_lift": {
       "robosuite_env": "Lift",
@@ -28,6 +28,13 @@
       "model": "parcc/Qwen",
       "authoritative": false,
       "max_tokens": 384
+    },
+    "advisor_proxy": {
+      "model": "parcc/Qwen",
+      "temperature": 0.0,
+      "prompt_source": "benchmarks/attention_harness/advisor_proxy.py",
+      "response_cache_required": true,
+      "oracle_fields_allowed": false
     }
   },
   "evaluation": {
@@ -42,6 +49,7 @@
     "model_episode": "attentionbench.parcc_episode.v1",
     "evaluator_probes": "attentionbench.evaluator-probes.v1",
     "evaluator_parity": "attentionbench.evaluator-parity.v1",
+    "public_policy_validation": "attentionbench.public-policy-validation.v1",
     "freeze_manifest": "attentionbench.freeze-manifest.v1"
   },
   "sdk": {
@@ -59,6 +67,7 @@
     "observation": {
       "camera_rgb": "<camera>_image",
       "camera_depth_meters": "<camera>_depth",
+      "camera_pixel_origin": "opencv_top_left",
       "camera_intrinsics": "<camera>_intrinsics",
       "camera_to_control_frame": "<camera>_pose_mat",
       "proprioception": "robot0_*"
@@ -72,10 +81,35 @@
     "role": "infrastructure validation only",
     "success_gate": "at least 4/5 per task"
   },
-  "formal_model_policies": {
-    "status": "not_frozen",
-    "reason": "D4/D5 programs validate connectivity but are not task-solving policies",
-    "heldout_eligible": false
+  "assistance_modes": {
+    "benchmark_proxy": {
+      "primary_responder": "advisor_proxy",
+      "human_allowed": false,
+      "fixed_proxy_latency_seconds": 2.0,
+      "logical_cost_per_response": 1,
+      "primary_ranking_eligible": true
+    },
+    "live_human_first": {
+      "primary_responder": "human",
+      "human_deadline_seconds": 60.0,
+      "fallback_responder": "advisor_proxy",
+      "primary_ranking_eligible": false,
+      "role": "deployment and case-study validation only"
+    },
+    "locked_after_run_start": true,
+    "contract_source": "benchmarks/attention_harness/attention_modes.py"
   },
-  "heldout_ready": false
+  "formal_task_policies": {
+    "status": "frozen",
+    "source_directory": "benchmarks/attention_harness/protocol/v1/policies",
+    "observation_boundary": "public RGB-D, camera calibration, and proprioception only",
+    "development_gate": "25/25 native successes per task",
+    "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json",
+    "heldout_eligible": true
+  },
+  "primary_experiment": {
+    "ready": false,
+    "reason": "the seven Attention-System policies and full RoboCasa matrix belong to the next stage"
+  },
+  "heldout_ready": true
 }

@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import create_episode_dir, write_episode_artifacts
+from .frozen_policy import execute_frozen_policy, get_frozen_policy
+from .freeze import REPO_ROOT, verify_manifest
 from .reference_policy import EpisodeTimeout, run_reference_policy
 from .robosuite_adapter import RobosuiteRobotBackend, observation_fingerprint
 from .seed_guard import validate_seed
@@ -29,6 +31,12 @@ def run_episode(
     service_url: str | None = None,
 ) -> dict[str, Any]:
     split = validate_seed(seed, allow_heldout=allow_heldout)
+    if split == "heldout":
+        verify_manifest(
+            REPO_ROOT
+            / "benchmarks/attention_harness/protocol/v1/freeze_manifest.json",
+            require_heldout_ready=True,
+        )
     episode_dir = create_episode_dir(artifact_root, task_id, seed)
     started = time.monotonic()
     status = "completed"
@@ -49,6 +57,21 @@ def run_episode(
             initial = adapter.reset(seed)
             if policy == "reference":
                 run_reference_policy(adapter, timeout_seconds=timeout_seconds)
+            elif policy == "frozen-public":
+                execution = execute_frozen_policy(
+                    task_id=task_id,
+                    service_url=active_service_url,
+                    output_path=episode_dir / "sandbox_worker.json",
+                    timeout_seconds=timeout_seconds,
+                )
+                adapter.refresh()
+                adapter.trace = list(execution.trace)
+                (episode_dir / "execution.json").write_text(
+                    json.dumps(execution.artifact(), indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                if execution.status != "completed":
+                    raise RuntimeError(execution.error or "frozen public policy failed")
             elif policy == "no-op":
                 for _ in range(50):
                     if time.monotonic() - started > timeout_seconds:
@@ -79,6 +102,9 @@ def run_episode(
         "seed": seed,
         "seed_split": split,
         "policy": policy,
+        "policy_sha256": (
+            get_frozen_policy(task_id).sha256() if policy == "frozen-public" else None
+        ),
         "native_success": success,
         "steps": len(trace),
         "elapsed_seconds": elapsed,
@@ -101,7 +127,11 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--task", choices=sorted(TASKS), required=True)
     parser.add_argument("--seed", type=int, required=True)
-    parser.add_argument("--policy", choices=("no-op", "reference", "parcc"), required=True)
+    parser.add_argument(
+        "--policy",
+        choices=("no-op", "reference", "frozen-public", "parcc"),
+        required=True,
+    )
     parser.add_argument("--artifact-root", type=Path, default=Path("artifacts/attentionbench"))
     parser.add_argument("--timeout", type=float, default=60.0)
     parser.add_argument("--no-camera", action="store_true")

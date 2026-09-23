@@ -245,8 +245,8 @@ def _camera_pair(
     if not keys:
         raise RuntimeError("no public camera image is available for evaluator review")
     key = keys[0]
-    # Robosuite's offscreen images use an OpenGL bottom-left origin.
-    return np.flipud(initial[key]), np.flipud(final[key])
+    # robosuite_sim canonicalizes public images to OpenCV top-left origin.
+    return initial[key], final[key]
 
 
 def _write_json(path: Path, value: Any) -> None:

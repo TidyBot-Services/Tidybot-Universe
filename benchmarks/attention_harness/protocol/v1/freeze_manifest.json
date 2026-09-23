@@ -1,4 +1,22 @@
 {
+  "assistance_modes": {
+    "benchmark_proxy": {
+      "fixed_proxy_latency_seconds": 2.0,
+      "human_allowed": false,
+      "logical_cost_per_response": 1,
+      "primary_ranking_eligible": true,
+      "primary_responder": "advisor_proxy"
+    },
+    "contract_source": "benchmarks/attention_harness/attention_modes.py",
+    "live_human_first": {
+      "fallback_responder": "advisor_proxy",
+      "human_deadline_seconds": 60.0,
+      "primary_ranking_eligible": false,
+      "primary_responder": "human",
+      "role": "deployment and case-study validation only"
+    },
+    "locked_after_run_start": true
+  },
   "d6_parity": {
     "agreement": 1.0,
     "compared": 30,
@@ -6,31 +24,38 @@
     "version_match": true
   },
   "file_sha256": {
+    "benchmarks/attention_harness/advisor_proxy.py": "5dc14d61c50afc155f03f92cd54147b45e5cd9bcf56db0623d019bed3b4787f8",
     "benchmarks/attention_harness/artifacts.py": "d0413fd2725df3ee00b2e779f7804fed7f4f09aad7dafdebd0ec2c55fd3eb90f",
-    "benchmarks/attention_harness/freeze.py": "1362787b321453abb8eb2f1c6ccee688159b87fb43263ec4ca8b53af12ea299c",
+    "benchmarks/attention_harness/attention_modes.py": "9e11cf07fd786d3dc1eec40eeae348f2a51ecd25144d5df2710bf33a7943bd92",
+    "benchmarks/attention_harness/freeze.py": "cdf621cb0993ed2ad661be49c6ed502c02031a7b358af9be21392fa24e5a0f28",
+    "benchmarks/attention_harness/frozen_policy.py": "f919e4b2c30c456269dd45697ca996c3fe17f1df2d8e7ac929c323a4835c2fa3",
     "benchmarks/attention_harness/migration/export_evaluator_probes.py": "32cfffa5295353648a979a29266f0c596d6f16d81bfa92ef35bfa26ca7b501d5",
     "benchmarks/attention_harness/model_protocol.py": "145f5a2a3b2f2b1d574435299b9e6ee7b54f6f3481b36ef0685b90a99b221041",
     "benchmarks/attention_harness/parcc_client.py": "f184ce32a8f0ffb8c335d9083391853c2a6f562e1ecf75d988ef7ffd75125051",
-    "benchmarks/attention_harness/parcc_runner.py": "0b721f37372c7309bf94880d7b740d0bf0016b34a108185ffd55e51496b907b9",
+    "benchmarks/attention_harness/parcc_runner.py": "3c9463e12e9c419ebc542b4114bc9e03e5f441827b5a1586fed17057ac4a3d9a",
     "benchmarks/attention_harness/parity.py": "4a719dc9d0c9b8d29d1d3bcc0fba7e4c33f045fba728f8cd3193251e11fbc967",
     "benchmarks/attention_harness/protocol/v1/evidence/legacy_probes.json": "4c60b4b127015366ea95e6a1cb1c31021a4cd6f7a2738b0a080353c18a46a737",
     "benchmarks/attention_harness/protocol/v1/evidence/native_probes.json": "5a6585754d501bca168e7061cde936c9a4ec8125748eaaa56006df8bb617c901",
     "benchmarks/attention_harness/protocol/v1/evidence/parity_report.json": "a8516aa03512db947ef701ea6ae9f9c0005a4de651755ad76b1bc9779ca3afee",
-    "benchmarks/attention_harness/protocol/v1/protocol.json": "67c759fb3b51e33d52331749f48137b6916c27c3ef34586044a1c7a50b908b1c",
+    "benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json": "66419cee51e85273c4e66e15cab066e365e0e131def86700882f2517c5163bff",
+    "benchmarks/attention_harness/protocol/v1/policies/cube_lift.py": "44b61405f6ad230c265d38be48caa509f66fd64c9cac75a82f0c69a392cd9d08",
+    "benchmarks/attention_harness/protocol/v1/policies/cube_stack.py": "6aae896d5f727adaacc90bfa0567ea01367c9ca8b51118885142560759f55b53",
+    "benchmarks/attention_harness/protocol/v1/protocol.json": "b5592b28fc670533f1fec005845b4d4f5bab48417db722fb060fc01224b8dd33",
     "benchmarks/attention_harness/protocol/v1/seeds.json": "ed5d88e070cc5d12b3efa6558d93dae48b35758732071266d5dbaf95ca4912b1",
     "benchmarks/attention_harness/reference_policy.py": "8eda023b6c753e441bf19bb2bfa871b038fb8e17c7d8d228879975244fe68235",
     "benchmarks/attention_harness/requirements-robosuite.txt": "b40b63614b21a2089c32a39eaf451b350357240d5f75793efe1c37c37bd4ad9b",
     "benchmarks/attention_harness/robosuite_adapter.py": "d223e3914fb92e45f0278781034d8dfe2f59df773f124e689dd802b2a8aa3d9f",
     "benchmarks/attention_harness/robot_sdk.py": "bf1cb8e24eae2d4423c9d01895c960fe317a0cfe047e8b2c0bb05149dbe80c09",
     "benchmarks/attention_harness/run_d6_parity.sh": "adcbea038fc55c46282b3afdcb3b9c8370e9352be30a1d9335a3a075f8190ebc",
-    "benchmarks/attention_harness/runner.py": "a62086f94a49cf813b6b38d0077cd508a9c7de730206bf9e10afabb67ff2162d",
+    "benchmarks/attention_harness/runner.py": "2853d7e076984cf76e335caffbdbdef46c2cf5c105092f7284b1e124d8cc275a",
     "benchmarks/attention_harness/sandbox.py": "a2b08f6d36215796d7d50134ff3da8f8a99f7139f45107e6f718ce1f7cd577ad",
     "benchmarks/attention_harness/sandbox_worker.py": "006f5cf5a6a4e81f56360b9cb3ac078a46e251316315d0811171a7577f354203",
     "benchmarks/attention_harness/seed_guard.py": "41c04562aa0cf7989a9ef53d39311ad9b8e2ed73893ab528817d76da46e69676",
     "benchmarks/attention_harness/service_contract.py": "21228e91b1445587a45d7c14bd1a5ef04e04b896930fcc23a4145ecfde900f57",
     "benchmarks/attention_harness/service_process.py": "43260185a9dd6efdca70c48c87262c5bb26e6f6ad566e0e37bd7dcee87142b4b",
     "benchmarks/attention_harness/task_registry.py": "d1cb0fc34615b09642239d0ccb435a397cfc288b936526a4a7549582cefba86e",
-    "robosuite_sim/backend.py": "cc0e20d143867bcd405cd9e5e59e30fbd5ed3d7efaddf6cd8516b206dceb24d6",
+    "benchmarks/attention_harness/validate_frozen_policies.py": "c839860c1df76ba925724f53e7d93715ed4d12c31ac2a5c355f293aa366ad045",
+    "robosuite_sim/backend.py": "2e8c3241c0a78728cb4da80e932b3755233443ff03754215269f98536aa3c87d",
     "robosuite_sim/client.py": "c7913a12696a9e39c47df5c2f9ce995dbd834b5ed8fa0f36ad5d82fb65aa5db7",
     "robosuite_sim/codec.py": "76585ee5df11dcc88d8744c41b75c83900ed240e6b52bdf63129dd8d2f33e63a",
     "robosuite_sim/reference_policy.py": "b49bb034570262224f8dc1c91683f1c108ad7e4c325ccb163d60f64693981ec6",
@@ -43,14 +68,33 @@
     "tidybot_sdk/facade.py": "af1a15ecf995c6968dc62e8d95ffb18546b84d21d23fb078c8dd8e79fa3970ee",
     "tidybot_sdk/module_backend.py": "422f8c389edd0ca0bc1c0e083da393c968766dddaae4247f2f83877ad3e581ac"
   },
-  "formal_model_policies": {
-    "heldout_eligible": false,
-    "reason": "D4/D5 programs validate connectivity but are not task-solving policies",
-    "status": "not_frozen"
+  "formal_task_policies": {
+    "development_gate": "25/25 native successes per task",
+    "heldout_eligible": true,
+    "observation_boundary": "public RGB-D, camera calibration, and proprioception only",
+    "source_directory": "benchmarks/attention_harness/protocol/v1/policies",
+    "status": "frozen",
+    "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json"
   },
-  "freeze_digest_sha256": "55ab705ca2e82f8d2a263c104987150b9053810dd4abe239fd312fb3333bf5a5",
-  "freeze_scope": "shared TidyBot SDK, Robosuite harness contract, and privileged reference policy",
-  "heldout_ready": false,
+  "freeze_digest_sha256": "d9f6391a002c897fc153ddf0f86d5f1e9f6ddb2c15e21c2d7cf95aaed071f698",
+  "freeze_scope": "shared TidyBot SDK, Robosuite harness, public task policies, assistance modes, AdvisorProxy contract, and evaluator evidence",
+  "heldout_ready": true,
+  "primary_experiment": {
+    "ready": false,
+    "reason": "the seven Attention-System policies and full RoboCasa matrix belong to the next stage"
+  },
   "protocol_id": "tidybot-attentionbench-robosuite-v1",
+  "public_policy_development_gate": {
+    "cube_lift": {
+      "passed": 25,
+      "policy_sha256": "44b61405f6ad230c265d38be48caa509f66fd64c9cac75a82f0c69a392cd9d08",
+      "total": 25
+    },
+    "cube_stack": {
+      "passed": 25,
+      "policy_sha256": "6aae896d5f727adaacc90bfa0567ea01367c9ca8b51118885142560759f55b53",
+      "total": 25
+    }
+  },
   "schema_version": "attentionbench.freeze-manifest.v1"
 }

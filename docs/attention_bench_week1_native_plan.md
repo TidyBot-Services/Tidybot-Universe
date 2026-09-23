@@ -85,18 +85,30 @@ Implemented D7 status:
 
 - `protocol/v1/protocol.json` freezes tasks, versions, seed policy, model
   parameters, SDK boundary, timeouts, schema names, native success authority,
-  and the privileged reference-policy role.
-- `freeze_manifest.json` hashes 30 semantic source/evidence files and can be
+  assistance modes, AdvisorProxy boundary, and policy roles.
+- `freeze_manifest.json` hashes every semantic source/evidence file and can be
   deterministically regenerated and verified.
-- The native harness contract and reference policy are frozen.
-- Formal task-solving model policies are not frozen: D4/D5 generated
-  connectivity probes, not successful task policies. The manifest therefore
-  sets `heldout_ready=false`, and the held-out verification gate fails closed.
+- The native harness contract and privileged reference policy are frozen.
+- Two non-oracle public RGB-D task policies run in the credential-free sandbox.
+  On development seeds 101--125, `cube_lift` passes 25/25 and `cube_stack`
+  passes 25/25 using Robosuite native success. The evidence report records each
+  episode and the exact policy hashes.
+- Public RGB and depth are now both canonicalized to OpenCV top-left pixel
+  coordinates. This fixes the earlier RGB-D deprojection mismatch without
+  exposing simulator object state.
+- `Benchmark--Proxy` fixes `parcc/Qwen` as the cached AdvisorProxy and prohibits
+  human responses. `Live--Human-first` waits 60 seconds and then routes to the
+  same proxy; it is validation-only and cannot enter primary ranking.
+- Run mode and assistance budget become immutable when a run starts. Request
+  states cover pending, answered, timeout, cancelled, and fallback.
+- The manifest sets `heldout_ready=true`; held-out execution still requires an
+  explicit flag and no held-out seed has been run during D7 development.
 
-Stage-3 boundary: D6 is complete. D7 harness/protocol freeze is complete, but
-formal experiment release remains blocked until task-solving model policies and
-the later Attention-System policy matrix are developed on the dev split and
-frozen without looking at held-out results.
+Stage-3 boundary: D6 and D7 are complete for the Robosuite harness. This means
+the frozen task-policy gate is eligible for an explicitly authorized held-out
+run. It does not mean the paper's primary experiment is ready: the seven
+Attention-System policies, full request/memory loop, RoboCasa matrix, and UI
+integration remain the next stage.
 
 ## Post-D7 service-boundary refinement
 
