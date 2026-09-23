@@ -1,0 +1,11 @@
+{
+  "schema_version": "attentionbench.perception-contract-freeze.v2",
+  "scope": "mode selection, track separation, and shared find_objects output; no task policy or success evidence is frozen",
+  "files": {
+    "benchmarks/attention_harness/protocol/v2/perception.json": "3fb9b51158569fed014d11bea7453abd5be495f1cd1310bc546d3b50810a26ce",
+    "tidybot_sdk/perception.py": "2e95c6638b3e90163779e295eeb982af41a422892d6cf6e1f94ccda4fd57a05e"
+  },
+  "v1_freeze_digest_sha256": "e6fc381706cbaa158b58541000b29f0db6f0e0ee51693467a9be52aef62bdb91",
+  "task_policy_frozen": false,
+  "formal_score_ready": false
+}

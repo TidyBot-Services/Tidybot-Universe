@@ -1,0 +1,30 @@
+{
+  "schema_version": "attentionbench.robocasa-gt-perception-smoke.v2",
+  "date": "2026-09-24",
+  "status": "partial_chain_only",
+  "score_namespace": "v2/gt_perception_attentionbench",
+  "perception_mode": "sim_gt",
+  "seed_split": "dev",
+  "service_revision": "747f86722e4bf0419ba43dbd3b1af57bc4b559c3",
+  "task_revision": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7",
+  "setup": "isolated ManiSkill service on local port 6300; arm, gripper, base, camera, and mocap bridges disabled",
+  "checks_per_seed": ["reset", "sim_gt find_objects", "arm_base frame and source label", "no-op native success false"],
+  "not_checked": ["policy action", "agent_server", "motion completion", "advisor on live service", "memory on live service", "formal policy success"],
+  "tasks": {
+    "counter_to_cab": [
+      {"seed": 101, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 102, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 103, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 104, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 105, "objects": 23, "label_and_frame_valid": true, "no_op_success": false}
+    ],
+    "counter_to_sink": [
+      {"seed": 101, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 102, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 103, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 104, "objects": 23, "label_and_frame_valid": true, "no_op_success": false},
+      {"seed": 105, "objects": 23, "label_and_frame_valid": true, "no_op_success": false}
+    ]
+  },
+  "formal_gate_passed": false
+}

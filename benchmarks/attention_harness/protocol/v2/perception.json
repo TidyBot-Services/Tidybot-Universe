@@ -1,0 +1,67 @@
+{
+  "protocol_id": "tidybot-attentionbench-v2-dual-perception",
+  "status": "protocol_frozen_implementation_in_progress",
+  "supersedes_v1": false,
+  "v1_freeze_digest_sha256": "e6fc381706cbaa158b58541000b29f0db6f0e0ee51693467a9be52aef62bdb91",
+  "perception_modes": ["sim_gt", "vision"],
+  "mode_selection": {
+    "required_at_startup": true,
+    "immutable_during_run": true,
+    "fallback_across_modes": false,
+    "sim_gt_allowed_targets": ["robocasa_sim", "robosuite_sim"],
+    "vision_allowed_targets": ["robocasa_sim", "robosuite_sim", "real_robot"],
+    "real_robot_sim_gt_allowed": false
+  },
+  "object_contract": {
+    "sdk_method": "sensors.find_objects(target_names=None, camera_names=None)",
+    "required_fields": ["name", "position", "confidence", "source", "frame"],
+    "position": "three finite meters in the SDK backend control frame",
+    "confidence": "finite number in [0, 1]; sim_gt uses 1.0 as a provenance marker, not a detector calibration claim",
+    "source": "same value as perception_mode",
+    "frame": "same value as sdk.describe().frame",
+    "extra_fields": "forbidden in the policy-facing v2 contract"
+  },
+  "tracks": {
+    "gt_perception_attentionbench": {
+      "perception_mode": "sim_gt",
+      "target": "simulator",
+      "role": "primary attention, trace, and memory experiment",
+      "score_namespace": "v2/gt_perception_attentionbench",
+      "oracle_object_perception": true,
+      "success_authority": "simulator native success Boolean, evaluator-only",
+      "evaluator_debug_visible_to_policy": false
+    },
+    "vision_perception_deployment": {
+      "perception_mode": "vision",
+      "target": "real_robot",
+      "role": "deployment and transfer validation",
+      "score_namespace": "v2/vision_perception_deployment",
+      "oracle_object_perception": false,
+      "success_authority": "separately specified hardware outcome assessor",
+      "evaluator_debug_visible_to_policy": false
+    }
+  },
+  "legacy_v1": {
+    "label": "Robosuite non-oracle frozen public policy",
+    "results_immutable": true,
+    "mix_into_v2_score": false
+  },
+  "robocasa_dev_gate": {
+    "tasks": ["counter_to_cab", "counter_to_sink"],
+    "chain_smoke_seeds": [101, 102, 103, 104, 105],
+    "chain_checks": ["reset", "find_objects", "action", "native_success", "trace", "advisor", "memory_provenance", "no_op_false"],
+    "stability_seeds": "frozen v1 development split 101..125",
+    "stability_threshold": "25/25 native successes per task before freezing any policy",
+    "heldout_requires_explicit_opt_in": true,
+    "current_status": "not_passed"
+  },
+  "memory": {
+    "required_applicability_key": "perception_mode",
+    "cross_mode_reuse": "forbidden without separate transfer validation",
+    "trace_provenance_required": true
+  },
+  "reporting": {
+    "mode_required_in_every_run_and_trace": true,
+    "cross_track_success_rate_comparison": false
+  }
+}
