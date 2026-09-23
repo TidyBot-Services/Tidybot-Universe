@@ -17,6 +17,19 @@
     },
     "locked_after_run_start": true
   },
+  "attention_core_gate": {
+    "experiment_data": false,
+    "passed": true,
+    "policies": [
+      "autonomous",
+      "budget_matched_random_escalation",
+      "demo_first",
+      "full_trace_aware_attention_planner",
+      "reactive_help",
+      "retry_k_then_ask",
+      "trace_aware_hint_only"
+    ]
+  },
   "d6_parity": {
     "agreement": 1.0,
     "compared": 30,
@@ -27,23 +40,38 @@
     "benchmarks/attention_harness/advisor_proxy.py": "5dc14d61c50afc155f03f92cd54147b45e5cd9bcf56db0623d019bed3b4787f8",
     "benchmarks/attention_harness/artifacts.py": "d0413fd2725df3ee00b2e779f7804fed7f4f09aad7dafdebd0ec2c55fd3eb90f",
     "benchmarks/attention_harness/attention_modes.py": "9e11cf07fd786d3dc1eec40eeae348f2a51ecd25144d5df2710bf33a7943bd92",
-    "benchmarks/attention_harness/freeze.py": "cdf621cb0993ed2ad661be49c6ed502c02031a7b358af9be21392fa24e5a0f28",
+    "benchmarks/attention_harness/core/__init__.py": "d11b44a5ff803bac515512bbd02540c3a206062a510b6b6f64e6900678d75fc9",
+    "benchmarks/attention_harness/core/advisor.py": "9de97ad161c36d5aff4bea2e504f876445a2563915335bee29da5983766db4f2",
+    "benchmarks/attention_harness/core/artifacts.py": "259f15587257d3d3ad4d296809dd9dfdf968839cde10e39e79a8a54f8ff00268",
+    "benchmarks/attention_harness/core/memory.py": "b6837ac36669d6943849107503c26aedf76f3c7c28cd6366aff520fb56e360b5",
+    "benchmarks/attention_harness/core/models.py": "d562f5204334e1b4d53c16426a6ca839ddbf75ced9ccec405690703730893898",
+    "benchmarks/attention_harness/core/policies.py": "d7fa8ff371ae4b97722d653c6fd119ae6b961621bd15619b2a52cd96e5b93cd5",
+    "benchmarks/attention_harness/core/projection.py": "92a34aa8d17bde6eac6253fc4a2c7c3102b999fbcb8d8cee54874085b39e0715",
+    "benchmarks/attention_harness/core/runtime.py": "4fdd677350ac71db556f418020f5cbe50a0ff0b67f3a5852ac03f7a3d836f0aa",
+    "benchmarks/attention_harness/core/store.py": "98b897d1e5d1c48d46a73cf02ef0a40deeeaa6f943bb0ec4140637987ffc0468",
+    "benchmarks/attention_harness/freeze.py": "3921e0871d49aa87ad80afe1dcc1043c8a9feece42a5ee358b6869491f69692d",
     "benchmarks/attention_harness/frozen_policy.py": "f919e4b2c30c456269dd45697ca996c3fe17f1df2d8e7ac929c323a4835c2fa3",
     "benchmarks/attention_harness/migration/export_evaluator_probes.py": "32cfffa5295353648a979a29266f0c596d6f16d81bfa92ef35bfa26ca7b501d5",
     "benchmarks/attention_harness/model_protocol.py": "145f5a2a3b2f2b1d574435299b9e6ee7b54f6f3481b36ef0685b90a99b221041",
     "benchmarks/attention_harness/parcc_client.py": "f184ce32a8f0ffb8c335d9083391853c2a6f562e1ecf75d988ef7ffd75125051",
     "benchmarks/attention_harness/parcc_runner.py": "3c9463e12e9c419ebc542b4114bc9e03e5f441827b5a1586fed17057ac4a3d9a",
     "benchmarks/attention_harness/parity.py": "4a719dc9d0c9b8d29d1d3bcc0fba7e4c33f045fba728f8cd3193251e11fbc967",
+    "benchmarks/attention_harness/protocol/v1/evidence/attention_core_report.json": "96a868873fb2da411be883c907b496e88944fb762fa7728e3efe11d7122f2eb2",
     "benchmarks/attention_harness/protocol/v1/evidence/legacy_probes.json": "4c60b4b127015366ea95e6a1cb1c31021a4cd6f7a2738b0a080353c18a46a737",
     "benchmarks/attention_harness/protocol/v1/evidence/native_probes.json": "5a6585754d501bca168e7061cde936c9a4ec8125748eaaa56006df8bb617c901",
     "benchmarks/attention_harness/protocol/v1/evidence/parity_report.json": "a8516aa03512db947ef701ea6ae9f9c0005a4de651755ad76b1bc9779ca3afee",
     "benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json": "66419cee51e85273c4e66e15cab066e365e0e131def86700882f2517c5163bff",
+    "benchmarks/attention_harness/protocol/v1/evidence/robocasa_task_report.json": "69289b38f0fa4e816b36c37d27c594cda9981992c8ea877bf539cd6f9b9bff77",
     "benchmarks/attention_harness/protocol/v1/policies/cube_lift.py": "44b61405f6ad230c265d38be48caa509f66fd64c9cac75a82f0c69a392cd9d08",
     "benchmarks/attention_harness/protocol/v1/policies/cube_stack.py": "6aae896d5f727adaacc90bfa0567ea01367c9ca8b51118885142560759f55b53",
-    "benchmarks/attention_harness/protocol/v1/protocol.json": "b5592b28fc670533f1fec005845b4d4f5bab48417db722fb060fc01224b8dd33",
+    "benchmarks/attention_harness/protocol/v1/protocol.json": "7c0f42bc40749621be41ad390174ce5b0285edbf4179248cb62f9865ac7ada76",
     "benchmarks/attention_harness/protocol/v1/seeds.json": "ed5d88e070cc5d12b3efa6558d93dae48b35758732071266d5dbaf95ca4912b1",
     "benchmarks/attention_harness/reference_policy.py": "8eda023b6c753e441bf19bb2bfa871b038fb8e17c7d8d228879975244fe68235",
     "benchmarks/attention_harness/requirements-robosuite.txt": "b40b63614b21a2089c32a39eaf451b350357240d5f75793efe1c37c37bd4ad9b",
+    "benchmarks/attention_harness/robocasa_native/__init__.py": "cd766d9308e50ddfc567d0b8fda819a49c0e0325789b550ddc1fba7902b4517b",
+    "benchmarks/attention_harness/robocasa_native/client.py": "4b493c6319224553f238ddf97e901d1a10035c492e49e5d700afba574416a618",
+    "benchmarks/attention_harness/robocasa_native/probe.py": "d0084555061a56a8aa869aaf590f203e4c1ec9c8bd3cb23418443c0141613990",
+    "benchmarks/attention_harness/robocasa_native/tasks.py": "47f0fe1cd921f4d98b32516279aeee607811010081274335e5251f70f26c31d0",
     "benchmarks/attention_harness/robosuite_adapter.py": "d223e3914fb92e45f0278781034d8dfe2f59df773f124e689dd802b2a8aa3d9f",
     "benchmarks/attention_harness/robot_sdk.py": "bf1cb8e24eae2d4423c9d01895c960fe317a0cfe047e8b2c0bb05149dbe80c09",
     "benchmarks/attention_harness/run_d6_parity.sh": "adcbea038fc55c46282b3afdcb3b9c8370e9352be30a1d9335a3a075f8190ebc",
@@ -54,7 +82,9 @@
     "benchmarks/attention_harness/service_contract.py": "21228e91b1445587a45d7c14bd1a5ef04e04b896930fcc23a4145ecfde900f57",
     "benchmarks/attention_harness/service_process.py": "43260185a9dd6efdca70c48c87262c5bb26e6f6ad566e0e37bd7dcee87142b4b",
     "benchmarks/attention_harness/task_registry.py": "d1cb0fc34615b09642239d0ccb435a397cfc288b936526a4a7549582cefba86e",
+    "benchmarks/attention_harness/validate_attention_core.py": "5e938dcf79c890998e7f6d023f511302299b4f5357109647c9c12cea73d25324",
     "benchmarks/attention_harness/validate_frozen_policies.py": "c839860c1df76ba925724f53e7d93715ed4d12c31ac2a5c355f293aa366ad045",
+    "benchmarks/attention_harness/validate_robocasa_tasks.py": "58cd5ca856f4707d7655f1052492d39cad5305343c55ef37dc35e97441f66553",
     "robosuite_sim/backend.py": "2e8c3241c0a78728cb4da80e932b3755233443ff03754215269f98536aa3c87d",
     "robosuite_sim/client.py": "c7913a12696a9e39c47df5c2f9ce995dbd834b5ed8fa0f36ad5d82fb65aa5db7",
     "robosuite_sim/codec.py": "76585ee5df11dcc88d8744c41b75c83900ed240e6b52bdf63129dd8d2f33e63a",
@@ -76,14 +106,14 @@
     "status": "frozen",
     "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json"
   },
-  "freeze_digest_sha256": "d9f6391a002c897fc153ddf0f86d5f1e9f6ddb2c15e21c2d7cf95aaed071f698",
-  "freeze_scope": "shared TidyBot SDK, Robosuite harness, public task policies, assistance modes, AdvisorProxy contract, and evaluator evidence",
+  "freeze_digest_sha256": "21cabf2d061aa757a4c204b345ca24155c8335b5ab1db1aaf061a1ef7010f0dd",
+  "freeze_scope": "shared TidyBot SDK, Robosuite and RoboCasa harness contracts, public Robosuite task policies, assistance core, seven policies, UI state projection, AdvisorProxy contract, and evaluator evidence",
   "heldout_ready": true,
   "primary_experiment": {
     "ready": false,
-    "reason": "the seven Attention-System policies and full RoboCasa matrix belong to the next stage"
+    "reason": "RoboCasa formal public policies, production frontend, and the full matched policy matrix remain; no primary data has been collected"
   },
-  "protocol_id": "tidybot-attentionbench-robosuite-v1",
+  "protocol_id": "tidybot-attentionbench-v1",
   "public_policy_development_gate": {
     "cube_lift": {
       "passed": 25,
@@ -94,6 +124,20 @@
       "passed": 25,
       "policy_sha256": "6aae896d5f727adaacc90bfa0567ea01367c9ca8b51118885142560759f55b53",
       "total": 25
+    }
+  },
+  "robocasa_infrastructure_gate": {
+    "counter_to_cab": {
+      "no_op_failures": 5,
+      "reference_successes": 5,
+      "reset_recoveries": 5,
+      "total": 5
+    },
+    "counter_to_sink": {
+      "no_op_failures": 5,
+      "reference_successes": 5,
+      "reset_recoveries": 5,
+      "total": 5
     }
   },
   "schema_version": "attentionbench.freeze-manifest.v1"

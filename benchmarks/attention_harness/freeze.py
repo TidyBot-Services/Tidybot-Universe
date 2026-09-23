@@ -20,6 +20,8 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/protocol/v1/evidence/native_probes.json"),
     Path("benchmarks/attention_harness/protocol/v1/evidence/parity_report.json"),
     Path("benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json"),
+    Path("benchmarks/attention_harness/protocol/v1/evidence/robocasa_task_report.json"),
+    Path("benchmarks/attention_harness/protocol/v1/evidence/attention_core_report.json"),
     Path("benchmarks/attention_harness/protocol/v1/policies/cube_lift.py"),
     Path("benchmarks/attention_harness/protocol/v1/policies/cube_stack.py"),
     Path("benchmarks/attention_harness/artifacts.py"),
@@ -39,6 +41,21 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/parcc_runner.py"),
     Path("benchmarks/attention_harness/advisor_proxy.py"),
     Path("benchmarks/attention_harness/attention_modes.py"),
+    Path("benchmarks/attention_harness/core/__init__.py"),
+    Path("benchmarks/attention_harness/core/models.py"),
+    Path("benchmarks/attention_harness/core/store.py"),
+    Path("benchmarks/attention_harness/core/advisor.py"),
+    Path("benchmarks/attention_harness/core/runtime.py"),
+    Path("benchmarks/attention_harness/core/memory.py"),
+    Path("benchmarks/attention_harness/core/policies.py"),
+    Path("benchmarks/attention_harness/core/projection.py"),
+    Path("benchmarks/attention_harness/core/artifacts.py"),
+    Path("benchmarks/attention_harness/robocasa_native/__init__.py"),
+    Path("benchmarks/attention_harness/robocasa_native/tasks.py"),
+    Path("benchmarks/attention_harness/robocasa_native/client.py"),
+    Path("benchmarks/attention_harness/robocasa_native/probe.py"),
+    Path("benchmarks/attention_harness/validate_robocasa_tasks.py"),
+    Path("benchmarks/attention_harness/validate_attention_core.py"),
     Path("benchmarks/attention_harness/frozen_policy.py"),
     Path("benchmarks/attention_harness/validate_frozen_policies.py"),
     Path("benchmarks/attention_harness/reference_policy.py"),
@@ -115,6 +132,51 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
     )
     if not policy_gate_passed:
         raise FreezeError("D7 public task-policy development gate has not passed")
+    robocasa = _read_json(
+        repo_root
+        / "benchmarks/attention_harness/protocol/v1/evidence/robocasa_task_report.json"
+    )
+    expected_robocasa_tasks = {"counter_to_cab", "counter_to_sink"}
+    robocasa_summaries = robocasa.get("tasks", {})
+    robocasa_gate_passed = bool(
+        robocasa.get("passed")
+        and not robocasa.get("oracle_visible_to_policy")
+        and set(robocasa_summaries) == expected_robocasa_tasks
+        and all(
+            item.get("passed")
+            and item.get("summary") == {
+                "no_op_failures": 5,
+                "reference_successes": 5,
+                "reset_recoveries": 5,
+                "total": 5,
+            }
+            for item in robocasa_summaries.values()
+        )
+    )
+    if not robocasa_gate_passed:
+        raise FreezeError("RoboCasa infrastructure task gate has not passed")
+    attention_core = _read_json(
+        repo_root
+        / "benchmarks/attention_harness/protocol/v1/evidence/attention_core_report.json"
+    )
+    expected_policies = {
+        "autonomous",
+        "demo_first",
+        "reactive_help",
+        "retry_k_then_ask",
+        "budget_matched_random_escalation",
+        "trace_aware_hint_only",
+        "full_trace_aware_attention_planner",
+    }
+    core_rows = attention_core.get("policies", [])
+    attention_core_gate_passed = bool(
+        attention_core.get("passed")
+        and len(core_rows) == 7
+        and {row.get("policy_id") for row in core_rows} == expected_policies
+        and all(row.get("passed") for row in core_rows)
+    )
+    if not attention_core_gate_passed:
+        raise FreezeError("Attention core scripted validation gate has not passed")
     files: dict[str, str] = {}
     for relative in FREEZE_INPUTS:
         path = repo_root / relative
@@ -131,8 +193,9 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         "schema_version": "attentionbench.freeze-manifest.v1",
         "protocol_id": protocol["protocol_id"],
         "freeze_scope": (
-            "shared TidyBot SDK, Robosuite harness, public task policies, "
-            "assistance modes, AdvisorProxy contract, and evaluator evidence"
+            "shared TidyBot SDK, Robosuite and RoboCasa harness contracts, public "
+            "Robosuite task policies, assistance core, seven policies, UI state "
+            "projection, AdvisorProxy contract, and evaluator evidence"
         ),
         "file_sha256": files,
         "freeze_digest_sha256": _canonical_digest(files),
@@ -145,6 +208,14 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         "formal_task_policies": protocol["formal_task_policies"],
         "assistance_modes": protocol["assistance_modes"],
         "public_policy_development_gate": summaries,
+        "robocasa_infrastructure_gate": {
+            task_id: item["summary"] for task_id, item in robocasa_summaries.items()
+        },
+        "attention_core_gate": {
+            "passed": attention_core_gate_passed,
+            "policies": sorted(expected_policies),
+            "experiment_data": False,
+        },
         "primary_experiment": protocol["primary_experiment"],
         "heldout_ready": heldout_ready,
     }

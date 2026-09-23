@@ -1,0 +1,392 @@
+{
+  "passed": true,
+  "policies": [
+    {
+      "decisions": [
+        {
+          "action": "retry",
+          "failure_index": 0,
+          "reason": "autonomous_retry",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 1,
+          "reason": "autonomous_retry",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 2,
+          "reason": "autonomous_retry",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 3,
+          "reason": "autonomous_retry",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 4,
+          "reason": "autonomous_retry",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 5,
+          "reason": "autonomous_retry",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 6,
+          "reason": "autonomous_retry",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 7,
+          "reason": "autonomous_retry",
+          "request_type": null
+        }
+      ],
+      "passed": true,
+      "policy_id": "autonomous",
+      "request_count": 0
+    },
+    {
+      "decisions": [
+        {
+          "action": "use_demo",
+          "failure_index": 0,
+          "reason": "fixed_pre_task_demo",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 1,
+          "reason": "no_online_assistance",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 2,
+          "reason": "no_online_assistance",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 3,
+          "reason": "no_online_assistance",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 4,
+          "reason": "no_online_assistance",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 5,
+          "reason": "no_online_assistance",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 6,
+          "reason": "no_online_assistance",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 7,
+          "reason": "no_online_assistance",
+          "request_type": null
+        }
+      ],
+      "passed": true,
+      "policy_id": "demo_first",
+      "request_count": 0
+    },
+    {
+      "decisions": [
+        {
+          "action": "request",
+          "failure_index": 0,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 1,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 2,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 3,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 4,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 5,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 6,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 7,
+          "reason": "request_after_each_failure",
+          "request_type": "hint"
+        }
+      ],
+      "passed": true,
+      "policy_id": "reactive_help",
+      "request_count": 8
+    },
+    {
+      "decisions": [
+        {
+          "action": "retry",
+          "failure_index": 0,
+          "reason": "retry_before_threshold_2",
+          "request_type": null
+        },
+        {
+          "action": "request",
+          "failure_index": 1,
+          "reason": "retry_threshold_2_reached",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 2,
+          "reason": "retry_threshold_2_reached",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 3,
+          "reason": "retry_threshold_2_reached",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 4,
+          "reason": "retry_threshold_2_reached",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 5,
+          "reason": "retry_threshold_2_reached",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 6,
+          "reason": "retry_threshold_2_reached",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 7,
+          "reason": "retry_threshold_2_reached",
+          "request_type": "hint"
+        }
+      ],
+      "passed": true,
+      "policy_id": "retry_k_then_ask",
+      "request_count": 7
+    },
+    {
+      "decisions": [
+        {
+          "action": "retry",
+          "failure_index": 0,
+          "reason": "random_slot_not_selected",
+          "request_type": null
+        },
+        {
+          "action": "request",
+          "failure_index": 1,
+          "reason": "budget_matched_random_slot",
+          "request_type": "hint"
+        },
+        {
+          "action": "retry",
+          "failure_index": 2,
+          "reason": "random_slot_not_selected",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 3,
+          "reason": "random_slot_not_selected",
+          "request_type": null
+        },
+        {
+          "action": "retry",
+          "failure_index": 4,
+          "reason": "random_slot_not_selected",
+          "request_type": null
+        },
+        {
+          "action": "request",
+          "failure_index": 5,
+          "reason": "budget_matched_random_slot",
+          "request_type": "hint"
+        },
+        {
+          "action": "retry",
+          "failure_index": 6,
+          "reason": "random_slot_not_selected",
+          "request_type": null
+        },
+        {
+          "action": "request",
+          "failure_index": 7,
+          "reason": "budget_matched_random_slot",
+          "request_type": "hint"
+        }
+      ],
+      "passed": true,
+      "policy_id": "budget_matched_random_escalation",
+      "request_count": 3
+    },
+    {
+      "decisions": [
+        {
+          "action": "retry",
+          "failure_index": 0,
+          "reason": "trace_gate_continue",
+          "request_type": null
+        },
+        {
+          "action": "request",
+          "failure_index": 1,
+          "reason": "trace_gate_escalated",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 2,
+          "reason": "trace_gate_escalated",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 3,
+          "reason": "trace_gate_escalated",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 4,
+          "reason": "trace_gate_escalated",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 5,
+          "reason": "trace_gate_escalated",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 6,
+          "reason": "trace_gate_escalated",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 7,
+          "reason": "trace_gate_escalated",
+          "request_type": "hint"
+        }
+      ],
+      "passed": true,
+      "policy_id": "trace_aware_hint_only",
+      "request_count": 7
+    },
+    {
+      "decisions": [
+        {
+          "action": "retry",
+          "failure_index": 0,
+          "reason": "safe_grounded_retry",
+          "request_type": null
+        },
+        {
+          "action": "request",
+          "failure_index": 1,
+          "reason": "repeated_grounded_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 2,
+          "reason": "repeated_grounded_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 3,
+          "reason": "repeated_grounded_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 4,
+          "reason": "repeated_grounded_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 5,
+          "reason": "repeated_grounded_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 6,
+          "reason": "repeated_grounded_failure",
+          "request_type": "hint"
+        },
+        {
+          "action": "request",
+          "failure_index": 7,
+          "reason": "repeated_grounded_failure",
+          "request_type": "hint"
+        }
+      ],
+      "passed": true,
+      "policy_id": "full_trace_aware_attention_planner",
+      "request_count": 7
+    }
+  ],
+  "schema_version": "attentionbench.core-validation.v1",
+  "source": "scripted failures only; not experiment data"
+}

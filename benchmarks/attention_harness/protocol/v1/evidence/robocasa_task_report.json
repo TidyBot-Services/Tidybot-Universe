@@ -1,0 +1,126 @@
+{
+  "oracle_visible_to_policy": false,
+  "passed": true,
+  "schema_version": "attentionbench.robocasa-task-validation.v1",
+  "seed_split": "dev",
+  "tasks": {
+    "counter_to_cab": {
+      "environment_id": "RoboCasa-Pn-P-Counter-To-Cab-v0",
+      "episodes": [
+        {
+          "initial_observation_sha256": "679542415783b26f4c78a10cdfb1173fd2c1054ff26bca046d416dbdb07b6563",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "bfc8f2be80d815dc6d0ff36762a7d39133262fb8d7d707349e1ab27740de718c",
+          "reset_cleared_success": true,
+          "seed": 101
+        },
+        {
+          "initial_observation_sha256": "6591c634f956369269ab285ef7018846c5f01002230552d0c0263161aa441ae7",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "8553aa7388df48f18408fb9af2a15b85003e140fa320b044dceacf6d38e4dcda",
+          "reset_cleared_success": true,
+          "seed": 102
+        },
+        {
+          "initial_observation_sha256": "99439c844c47f45cb7b274443257a7d7dca152e581eedffd8f24c1c47080749a",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "8553aa7388df48f18408fb9af2a15b85003e140fa320b044dceacf6d38e4dcda",
+          "reset_cleared_success": true,
+          "seed": 103
+        },
+        {
+          "initial_observation_sha256": "99439c844c47f45cb7b274443257a7d7dca152e581eedffd8f24c1c47080749a",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "8553aa7388df48f18408fb9af2a15b85003e140fa320b044dceacf6d38e4dcda",
+          "reset_cleared_success": true,
+          "seed": 104
+        },
+        {
+          "initial_observation_sha256": "99439c844c47f45cb7b274443257a7d7dca152e581eedffd8f24c1c47080749a",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "8553aa7388df48f18408fb9af2a15b85003e140fa320b044dceacf6d38e4dcda",
+          "reset_cleared_success": true,
+          "seed": 105
+        }
+      ],
+      "language": "pick the condiment bottle from the counter and place it in the cabinet",
+      "native_success_endpoint": "/task/success",
+      "passed": true,
+      "privileged_reference_role": "infrastructure validation only",
+      "public_observation": "task info plus existing RGB-D segmentation perception",
+      "service_revision": "747f86722e4bf0419ba43dbd3b1af57bc4b559c3",
+      "summary": {
+        "no_op_failures": 5,
+        "reference_successes": 5,
+        "reset_recoveries": 5,
+        "total": 5
+      },
+      "task_id": "counter_to_cab",
+      "task_revision": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7"
+    },
+    "counter_to_sink": {
+      "environment_id": "RoboCasa-Pn-P-Counter-To-Sink-v0",
+      "episodes": [
+        {
+          "initial_observation_sha256": "01f3a5f0a0db3c6ee2e789078d54d793f28436f08548f27497c107b3c110855c",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "dba97440417c09f77bd82db761905891ea8cb0a4e710aa118d262416308dd304",
+          "reset_cleared_success": true,
+          "seed": 101
+        },
+        {
+          "initial_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "reset_cleared_success": true,
+          "seed": 102
+        },
+        {
+          "initial_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "reset_cleared_success": true,
+          "seed": 103
+        },
+        {
+          "initial_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "reset_cleared_success": true,
+          "seed": 104
+        },
+        {
+          "initial_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "no_op_success": false,
+          "privileged_reference_success": true,
+          "recovered_observation_sha256": "40bbf129ca6121dbf0ebf0bd41dc6d04bb7baa2134f3273061bc1560839b384b",
+          "reset_cleared_success": true,
+          "seed": 105
+        }
+      ],
+      "language": "pick the boxed drink from the counter and place it in the sink",
+      "native_success_endpoint": "/task/success",
+      "passed": true,
+      "privileged_reference_role": "infrastructure validation only",
+      "public_observation": "task info plus existing RGB-D segmentation perception",
+      "service_revision": "747f86722e4bf0419ba43dbd3b1af57bc4b559c3",
+      "summary": {
+        "no_op_failures": 5,
+        "reference_successes": 5,
+        "reset_recoveries": 5,
+        "total": 5
+      },
+      "task_id": "counter_to_sink",
+      "task_revision": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7"
+    }
+  }
+}

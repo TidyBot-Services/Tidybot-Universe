@@ -1,6 +1,6 @@
 {
-  "protocol_id": "tidybot-attentionbench-robosuite-v1",
-  "status": "d7_frozen",
+  "protocol_id": "tidybot-attentionbench-v1",
+  "status": "week2_core_validation_frozen",
   "tasks": {
     "cube_lift": {
       "robosuite_env": "Lift",
@@ -14,7 +14,9 @@
   "runtime_versions": {
     "robosuite": "1.5.1",
     "mujoco": "3.3.0",
-    "numpy": "1.26.4"
+    "numpy": "1.26.4",
+    "robocasa_maniskill_service_revision": "747f86722e4bf0419ba43dbd3b1af57bc4b559c3",
+    "robocasa_tasks_revision": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7"
   },
   "models": {
     "developer": {
@@ -38,7 +40,7 @@
     }
   },
   "evaluation": {
-    "authoritative_success": "Robosuite native _check_success",
+    "authoritative_success": "suite-native evaluator Boolean only",
     "policy_timeout_seconds": 90,
     "codegen_timeout_seconds": 240,
     "review_timeout_seconds": 180,
@@ -50,6 +52,11 @@
     "evaluator_probes": "attentionbench.evaluator-probes.v1",
     "evaluator_parity": "attentionbench.evaluator-parity.v1",
     "public_policy_validation": "attentionbench.public-policy-validation.v1",
+    "robocasa_task_validation": "attentionbench.robocasa-task-validation.v1",
+    "attention_core_validation": "attentionbench.core-validation.v1",
+    "attention_core_records": "attentionbench.core.v1",
+    "ui_projection": "attentionbench.ui-projection.v1",
+    "run_bundle": "attentionbench.run-bundle.v1",
     "freeze_manifest": "attentionbench.freeze-manifest.v1"
   },
   "sdk": {
@@ -107,9 +114,49 @@
     "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/public_policy_dev_report.json",
     "heldout_eligible": true
   },
+  "robocasa_harness": {
+    "status": "infrastructure_frozen",
+    "service_boundary": "benchmarks.attention_harness.robocasa_native.RobocasaSimClient",
+    "tasks": {
+      "counter_to_cab": "RoboCasa-Pn-P-Counter-To-Cab-v0",
+      "counter_to_sink": "RoboCasa-Pn-P-Counter-To-Sink-v0"
+    },
+    "native_success_endpoint": "/task/success",
+    "public_adapter_exposes_evaluator_debug": false,
+    "privileged_probe_role": "infrastructure validation only",
+    "development_gate": "reference 5/5, no-op 0/5, reset recovery 5/5 per task",
+    "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/robocasa_task_report.json",
+    "formal_public_policy_status": "not_implemented",
+    "heldout_eligible": false
+  },
+  "attention_core": {
+    "status": "scripted_validation_frozen",
+    "persistent_store": "SQLite event and snapshot store",
+    "resource_accounting": ["assistance_credits", "tokens", "execution_seconds", "gpu_seconds"],
+    "request_states": ["pending", "answered", "timeout", "cancelled", "fallback"],
+    "memory_states": ["candidate", "validated", "trusted", "rejected", "disabled", "expired", "rolled_back"],
+    "policies": [
+      "autonomous",
+      "demo_first",
+      "reactive_help",
+      "retry_k_then_ask",
+      "budget_matched_random_escalation",
+      "trace_aware_hint_only",
+      "full_trace_aware_attention_planner"
+    ],
+    "validation_evidence": "benchmarks/attention_harness/protocol/v1/evidence/attention_core_report.json",
+    "experiment_data": false
+  },
+  "ui_state_skeleton": {
+    "status": "backend_projection_complete",
+    "source": "benchmarks/attention_harness/core/projection.py",
+    "areas": ["run_context", "resource_budget", "autonomous_work", "attention_inbox", "request_detail", "live_station"],
+    "frontend_complete": false
+  },
   "primary_experiment": {
     "ready": false,
-    "reason": "the seven Attention-System policies and full RoboCasa matrix belong to the next stage"
+    "reason": "RoboCasa formal public policies, production frontend, and the full matched policy matrix remain; no primary data has been collected"
   },
-  "heldout_ready": true
+  "heldout_ready": true,
+  "heldout_scope": "Robosuite frozen public task policies only; not the cross-suite primary Attention experiment"
 }

@@ -1,4 +1,4 @@
-# TidyBot AttentionHarness: native Robosuite path
+# TidyBot AttentionHarness: primary-suite services and Attention core
 
 This package owns the service client adapter, runner, seed policy, artifacts,
 timeout, and success-result envelope. It never imports the simulator or
@@ -17,7 +17,7 @@ The intended service topology is:
 ```text
 TidyBot robot_sdk (`tidybot_sdk` shared core)
   -> RobotBackend client contract
-     -> RoboCasa service adapter (existing platform path; not changed here)
+     -> RoboCasa service adapter (`robocasa_native`, existing ManiSkill service)
      -> Robosuite robot backend (implemented here)
      -> real-robot service adapter (existing platform path; not changed here)
 ```
@@ -155,3 +155,53 @@ AdvisorProxy prompt/cache identity, and both assistance modes:
 `heldout_ready: true` means only that this frozen Robosuite task-policy gate may
 be run with explicit opt-in. No D7 command runs held-out seeds automatically,
 and the full seven-policy Attention experiment remains a later-stage gate.
+
+## RoboCasa frozen infrastructure tasks
+
+The RoboCasa adapter is a peer of the Robosuite adapter. It talks over HTTP to
+the existing ManiSkill-based RoboCasa service and returns only the native
+success Boolean. Its public client intentionally has no teleport method and
+strips evaluator debug. A separate privileged probe exists only to validate
+task/reset/evaluator infrastructure before model policies are run.
+
+Frozen infrastructure tasks:
+
+- `counter_to_cab` -> `RoboCasa-Pn-P-Counter-To-Cab-v0`
+- `counter_to_sink` -> `RoboCasa-Pn-P-Counter-To-Sink-v0`
+
+The committed development evidence uses seeds 101--105 and requires, per task,
+reference 5/5, no-op 0/5, and reset recovery 5/5. This does **not** claim that a
+non-oracle RoboCasa task policy is complete or held-out eligible.
+
+## Persistent Attention core
+
+`benchmarks.attention_harness.core` provides one backend-neutral path for both
+primary suites:
+
+```text
+suite adapter -> run/attempt -> trace packet -> policy decision
+             -> attention request -> human or fixed AdvisorProxy
+             -> candidate memory -> validation -> trusted retrieval
+             -> native result + deterministic run bundle
+```
+
+Run, attempt, trace, request, response, cache, assistance reservation, memory,
+memory-use, and event data share one SQLite store. Writes and state transitions
+are idempotent; a process restart reconstructs the same attention inbox and UI
+state projection. Benchmark-proxy cache hits keep the same logical latency and
+cost as uncached responses. Live-human-first requests fall back to that same
+proxy after their fixed deadline.
+
+The seven policy implementations share `PolicyContext` / `PolicyDecision` and
+cannot call a model or mutate budget directly. The scripted validator checks
+their routing contracts; it is system validation, not benchmark data:
+
+```bash
+python -m benchmarks.attention_harness.validate_attention_core
+pytest benchmarks/attention_harness/tests/test_attention_e2e.py
+```
+
+The UI backend projection exposes the required run context, resource budget,
+autonomous work, attention inbox, request detail, and live station from real
+persisted events. A production browser frontend is still a separate remaining
+deliverable.
