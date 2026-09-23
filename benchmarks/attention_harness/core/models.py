@@ -375,6 +375,12 @@ class AttentionResponseRecord:
     created_at: float
     cache_key: str | None = None
     cached: bool = False
+    provider_model: str | None = None
+    provider_latency_seconds: float = 0.0
+    logical_latency_seconds: float = 0.0
+    provider_attempts: int = 0
+    token_usage: dict[str, Any] = field(default_factory=dict)
+    provider_request_id: str | None = None
     schema_version: str = SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -382,6 +388,10 @@ class AttentionResponseRecord:
         _required(self.request_id, "request_id")
         _required(self.responder, "responder")
         _required(self.content, "response content")
+        if self.provider_latency_seconds < 0 or self.logical_latency_seconds < 0:
+            raise ValueError("Advisor response latency must be non-negative")
+        if self.provider_attempts < 0:
+            raise ValueError("Advisor provider attempts must be non-negative")
 
     def artifact(self) -> dict[str, Any]:
         return _artifact(self)

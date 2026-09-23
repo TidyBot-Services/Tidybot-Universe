@@ -32,8 +32,10 @@
       "max_tokens": 384
     },
     "advisor_proxy": {
-      "model": "parcc/Qwen",
+      "model": "parcc/GLM",
       "temperature": 0.0,
+      "max_tokens": 512,
+      "reasoning_effort": "low",
       "prompt_source": "benchmarks/attention_harness/advisor_proxy.py",
       "response_cache_required": true,
       "oracle_fields_allowed": false
@@ -57,6 +59,8 @@
     "attention_core_records": "attentionbench.core.v1",
     "raw_execution_trace": "attentionbench.raw-execution-trace.v1",
     "advisor_trace_packet": "attentionbench.advisor-trace-packet.v1",
+    "advisor_advice": "attentionbench.advisor-advice.v1",
+    "advisor_run": "attentionbench.advisor-run.v1",
     "episode_trace_link": "attentionbench.episode-trace-link.v1",
     "sdk_event": "attentionbench.sdk-event.v1",
     "ui_projection": "attentionbench.ui-projection.v1",

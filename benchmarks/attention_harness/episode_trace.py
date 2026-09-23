@@ -55,6 +55,11 @@ def persist_episode_trace(
     tokens_used: int = 0,
     assistance_credits: int = 0,
     assistance_mode: AssistanceMode = AssistanceMode.BENCHMARK_PROXY,
+    store_path: Path | None = None,
+    run_id: str | None = None,
+    attempt_index: int = 0,
+    finalize_run: bool = True,
+    execution_budget_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Persist a complete raw ledger and, on eligible failure, its projection.
 
@@ -70,26 +75,38 @@ def persist_episode_trace(
         raise ValueError("elapsed_seconds must be non-negative")
     if tokens_used < 0 or token_limit < 0:
         raise ValueError("token counts must be non-negative")
+    if attempt_index < 0:
+        raise ValueError("attempt_index must be non-negative")
 
     identity = episode_dir.name
-    run_id = f"run:{identity}"
-    attempt_id = f"attempt:{identity}:0"
-    execution_id = f"execution:{identity}:0"
-    raw_trace_id = f"raw-trace:{identity}:0"
-    advisor_trace_id = f"trace:{identity}:0"
+    run_id = run_id or f"run:{identity}"
+    attempt_id = f"attempt:{identity}:{attempt_index}"
+    execution_id = f"execution:{identity}:{attempt_index}"
+    raw_trace_id = f"raw-trace:{identity}:{attempt_index}"
+    advisor_trace_id = f"trace:{identity}:{attempt_index}"
     failed = execution_status != "completed" or not native_success
 
-    store = AttentionStore(episode_dir / "attention.sqlite3")
+    database_path = (store_path or episode_dir / "attention.sqlite3").resolve()
+    store = AttentionStore(database_path)
     existing_run = store.get_run(run_id)
+    existing_attempt = store.get_attempt(attempt_id)
     result_path = episode_dir / "result.json"
-    created_at = (
-        float(existing_run["created_at"])
-        if existing_run is not None
-        else result_path.stat().st_mtime
+    attempt_started_at = (
+        float(existing_attempt["started_at"])
+        if existing_attempt is not None
+        else result_path.stat().st_mtime - elapsed_seconds
         if result_path.is_file()
         else episode_dir.stat().st_mtime
     )
-    execution_budget = max(float(elapsed_seconds), 0.001)
+    created_at = (
+        float(existing_run["created_at"])
+        if existing_run is not None
+        else attempt_started_at
+    )
+    execution_budget = max(
+        float(execution_budget_seconds if execution_budget_seconds is not None else elapsed_seconds),
+        0.001,
+    )
     run = RunRecord(
         run_id=run_id,
         suite=suite,
@@ -109,13 +126,13 @@ def persist_episode_trace(
     if existing_run is None:
         store.create_run(run)
     store.transition_run(run_id, RunStatus.RUNNING, event_key=f"start:{run_id}")
-    if store.get_attempt(attempt_id) is None:
+    if existing_attempt is None:
         store.create_attempt(
             AttemptRecord(
                 attempt_id=attempt_id,
                 run_id=run_id,
-                index=0,
-                started_at=created_at,
+                index=attempt_index,
+                started_at=attempt_started_at,
             )
         )
 
@@ -166,7 +183,7 @@ def persist_episode_trace(
         run_id=run_id,
         attempt_id=attempt_id,
         execution_id=execution_id,
-        created_at=created_at,
+        created_at=attempt_started_at,
         agent_state="blocked_after_failure" if failed else "completed",
         events=events,
         evidence=evidence,
@@ -207,17 +224,18 @@ def persist_episode_trace(
     store.complete_attempt(
         attempt_id,
         attempt_status,
-        ended_at=created_at + elapsed_seconds,
+        ended_at=attempt_started_at + elapsed_seconds,
         native_success=native_success,
         artifact_uri=_artifact_uri(episode_dir, "result.json"),
         event_key=f"finish:{attempt_id}",
     )
-    run_status = (
-        RunStatus.COMPLETED
-        if attempt_status is AttemptStatus.SUCCEEDED
-        else RunStatus.FAILED
-    )
-    store.transition_run(run_id, run_status, event_key=f"finish:{run_id}")
+    if finalize_run:
+        run_status = (
+            RunStatus.COMPLETED
+            if attempt_status is AttemptStatus.SUCCEEDED
+            else RunStatus.FAILED
+        )
+        store.transition_run(run_id, run_status, event_key=f"finish:{run_id}")
     if tokens_used or elapsed_seconds:
         store.consume_resources(
             run_id,
@@ -226,7 +244,7 @@ def persist_episode_trace(
             event_key=f"resources:{attempt_id}",
         )
     bundle_path = write_run_bundle(
-        store, run_id, episode_dir / "attention_bundle.json"
+        store, run_id, database_path.parent / "attention_bundle.json"
     )
     return {
         "schema_version": "attentionbench.episode-trace-link.v1",
@@ -235,7 +253,7 @@ def persist_episode_trace(
         "execution_id": execution_id,
         "raw_trace_id": raw_trace_id,
         "advisor_trace_id": advisor_packet.trace_id if advisor_packet else None,
-        "store": str((episode_dir / "attention.sqlite3").resolve()),
+        "store": str(database_path),
         "bundle": str(bundle_path.resolve()),
     }
 

@@ -25,7 +25,9 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/protocol/v1/policies/cube_lift.py"),
     Path("benchmarks/attention_harness/protocol/v1/policies/cube_stack.py"),
     Path("benchmarks/attention_harness/artifacts.py"),
+    Path("benchmarks/attention_harness/advisor_run.py"),
     Path("benchmarks/attention_harness/episode_trace.py"),
+    Path("benchmarks/attention_harness/parcc_advisor.py"),
     Path("benchmarks/attention_harness/parity.py"),
     Path("benchmarks/attention_harness/freeze.py"),
     Path("benchmarks/attention_harness/migration/export_evaluator_probes.py"),
@@ -198,7 +200,7 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         "freeze_scope": (
             "shared TidyBot SDK, Robosuite and RoboCasa harness contracts, public "
             "Robosuite task policies, assistance core, seven policies, UI state "
-            "projection, AdvisorProxy contract, and evaluator evidence"
+            "projection, PARCC GLM Advisor loop, and evaluator evidence"
         ),
         "file_sha256": files,
         "freeze_digest_sha256": _canonical_digest(files),

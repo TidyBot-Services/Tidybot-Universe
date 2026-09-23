@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, Callable
 
 from ..attention_modes import AssistanceMode, RequestState
@@ -43,11 +43,12 @@ class AttentionRuntime:
         request_id: str,
         *,
         trace_packet: Mapping[str, Any] | AdvisorTracePacket | None = None,
+        public_images: Sequence[str] = (),
     ) -> AttentionRequestRecord:
         request = self._request(request_id)
         if request.mode is not AssistanceMode.BENCHMARK_PROXY:
             raise StateConflictError("request is not in benchmark-proxy mode")
-        return self._resolve_proxy(request, trace_packet=trace_packet)
+        return self._resolve_proxy(request, trace_packet=trace_packet, public_images=public_images)
 
     def submit_human_response(
         self, request_id: str, *, response_id: str, content: str
@@ -78,6 +79,7 @@ class AttentionRuntime:
         request_id: str,
         *,
         trace_packet: Mapping[str, Any] | AdvisorTracePacket | None = None,
+        public_images: Sequence[str] = (),
     ) -> AttentionRequestRecord:
         request = self._request(request_id)
         if request.mode is not AssistanceMode.LIVE_HUMAN_FIRST:
@@ -96,7 +98,7 @@ class AttentionRuntime:
             raise StateConflictError(
                 f"request in state {request.state.value} cannot enter fallback"
             )
-        return self._resolve_proxy(fallback, trace_packet=trace_packet)
+        return self._resolve_proxy(fallback, trace_packet=trace_packet, public_images=public_images)
 
     def cancel(self, request_id: str) -> AttentionRequestRecord:
         request = self._request(request_id)
@@ -113,6 +115,7 @@ class AttentionRuntime:
         request: AttentionRequestRecord,
         *,
         trace_packet: Mapping[str, Any] | AdvisorTracePacket | None,
+        public_images: Sequence[str],
     ) -> AttentionRequestRecord:
         if request.state is RequestState.ANSWERED:
             return request
@@ -125,7 +128,14 @@ class AttentionRuntime:
             reply = self.proxy.answer(
                 request_type=request.request_type.value,
                 trace_packet=packet,
+                public_images=public_images,
             )
+            if reply.total_tokens:
+                self.store.consume_resources(
+                    request.run_id,
+                    tokens=reply.total_tokens,
+                    event_key=f"advisor-tokens:{request.request_id}",
+                )
             response = AttentionResponseRecord(
                 response_id=f"proxy-response:{request.request_id}",
                 request_id=request.request_id,
@@ -134,6 +144,12 @@ class AttentionRuntime:
                 created_at=self.clock(),
                 cache_key=reply.cache_key,
                 cached=reply.cached,
+                provider_model=reply.model,
+                provider_latency_seconds=reply.provider_latency_seconds,
+                logical_latency_seconds=reply.logical_latency_seconds,
+                provider_attempts=reply.provider_attempts,
+                token_usage=reply.usage,
+                provider_request_id=reply.provider_request_id,
             )
             updated = self.store.transition_request(
                 request.request_id,

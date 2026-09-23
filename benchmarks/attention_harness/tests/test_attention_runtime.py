@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from benchmarks.attention_harness.attention_modes import AssistanceMode, RequestState
-from benchmarks.attention_harness.core.advisor import AdvisorProxy
+from benchmarks.attention_harness.core.advisor import AdvisorProxy, AdvisorTransportReply
 from benchmarks.attention_harness.core.models import (
     AttentionRequestRecord,
     RequestPriority,
@@ -133,3 +133,30 @@ def test_oracle_trace_is_rejected_without_spending_credit(tmp_path: Path) -> Non
         "reserved": 1,
         "remaining": 1,
     }
+
+
+def test_cached_advisor_reply_does_not_double_count_provider_tokens(tmp_path: Path) -> None:
+    store, base = populated_store(tmp_path / "attention.sqlite3")
+    calls = []
+
+    def transport(_request):
+        calls.append(1)
+        return AdvisorTransportReply(
+            "grounded hint", "parcc/GLM", 0.3, 1, {"total_tokens": 7}
+        )
+
+    runtime = AttentionRuntime(
+        store,
+        AdvisorProxy(store, transport=transport, sleeper=lambda _: None),
+        clock=lambda: 100.0,
+    )
+    runtime.open_request(base)
+    runtime.resolve_benchmark_proxy(base.request_id, trace_packet=trace_packet())
+    second = replace(base, request_id="cached-request")
+    runtime.open_request(second)
+    runtime.resolve_benchmark_proxy(second.request_id, trace_packet=trace_packet())
+
+    assert calls == [1]
+    assert store.resource_status(base.run_id)["tokens"]["used"] == 7
+    assert store.budget_status(base.run_id)["used"] == 2
+    assert store.get_response("proxy-response:cached-request")["cached"] is True

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -99,3 +100,26 @@ def test_parcc_runner_automatically_projects_failed_attempt(
     assert advisor["failure"]["error_type"] == "TaskOutcomeFailure"
     assert "native_success" not in str(advisor).lower()
     assert store.resource_status(link["run_id"])["tokens"]["used"] == 12
+
+
+def test_parcc_retry_prompt_receives_advisor_guidance(tmp_path: Path, monkeypatch) -> None:
+    sandbox = SandboxResult("completed", 0, False, "", "", [], None)
+    monkeypatch.setattr(parcc_runner, "RobosuiteRobotBackend", FakeAdapter)
+    monkeypatch.setattr(parcc_runner, "ParccClient", FakeParccClient)
+    monkeypatch.setattr(parcc_runner, "execute_policy", lambda **_kwargs: sandbox)
+
+    result = parcc_runner.run_parcc_episode(
+        task_id="cube_lift",
+        seed=101,
+        artifact_root=tmp_path,
+        service_url="http://fake-service",
+        skip_review=True,
+        advisor_guidance="Align with the public RGB-D view.",
+        previous_policy="from robot_sdk import sensors\n",
+    )
+    request = json.loads(
+        (Path(result["artifact_dir"]) / "developer_request.json").read_text()
+    )
+    retry_prompt = request["messages"][-1]["content"]
+    assert "Align with the public RGB-D view." in retry_prompt
+    assert "from robot_sdk import sensors" in retry_prompt

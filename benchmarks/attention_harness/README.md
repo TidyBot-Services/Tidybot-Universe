@@ -147,7 +147,7 @@ python -m benchmarks.attention_harness.freeze verify --require-heldout-ready
 The D7 manifest also freezes the camera convention, non-oracle task policies,
 AdvisorProxy prompt/cache identity, and both assistance modes:
 
-- `benchmark_proxy`: fixed cached `parcc/Qwen`; humans cannot answer; eligible
+- `benchmark_proxy`: fixed cached `parcc/GLM`; humans cannot answer; eligible
   for reproducible benchmark ranking.
 - `live_human_first`: waits up to 60 seconds for a human, then falls back to the
   same proxy; validation/case-study only.
@@ -246,3 +246,22 @@ an AdvisorTracePacket. The result artifact links the records through its
 `persist_robocasa_episode_trace()` for its production runner / agent_server.
 The current privileged RoboCasa infrastructure validator intentionally does not
 use this entry point because teleport-based probes are not agent executions.
+
+### PARCC GLM Advisor development loop
+
+The development runner can execute a PARCC-generated policy, apply a fixed
+Attention policy to its Advisor-safe failure trace, ask GLM for structured
+advice, and pass the guidance into the next code-generation attempt. A single
+SQLite run contains both attempts, the request/response, token usage, logical
+latency, and assistance credit consumption. The default policy is
+`reactive_help`; `retry_k_then_ask` is also supported.
+
+```bash
+MUJOCO_GL=egl python -m benchmarks.attention_harness.advisor_run \
+  --task cube_lift --seed 101 --max-attempts 2 --skip-review
+```
+
+This command uses `PARCC_API_KEY` or `LITELLM_KEY` in the harness process.
+Its summary is `advisor_run.json` under the output run directory. The Advisor
+must return `attentionbench.advisor-advice.v1` JSON; invalid responses stop the
+run without injecting advice into a retry. Only development seeds are accepted.
