@@ -205,3 +205,35 @@ The UI backend projection exposes the required run context, resource budget,
 autonomous work, attention inbox, request detail, and live station from real
 persisted events. A production browser frontend is still a separate remaining
 deliverable.
+
+### Trace evidence boundary
+
+The Attention core stores two linked trace records rather than exposing the
+execution log directly:
+
+```text
+SDK / sandbox / recorder / evaluator events
+                  -> RawExecutionTrace (internal, complete)
+                  -> VisibilityProjector (deterministic redaction)
+                  -> AdvisorTracePacket (human/advisor-visible evidence only)
+```
+
+`RawExecutionTrace` may contain native-evaluator results and simulator-only
+diagnostics. Every event and evidence reference defaults to `internal`; it must
+be explicitly labelled `advisor` or `public` before it is eligible for the
+projection. The projector then removes oracle, reward/success, evaluator, and
+credential fields recursively. It also rebuilds the failure summary from the
+visible event stream instead of copying an internal diagnosis. The resulting
+packet links back through `raw_trace_id`, `run_id`, `attempt_id`, and
+`execution_id`, plus deterministic source/projection hashes.
+
+Use `TracePipeline.persist()` for new Attention runs. It writes the immutable
+raw ledger first and then its immutable advisor packet to the same SQLite event
+store. `AttentionRuntime` loads that persisted packet by default, so callers do
+not need to reconstruct or hand-filter Advisor input.
+
+The shared `TidyBotSDK` accepts an optional event sink and emits the same
+semantic operations for every backend (`sensor_read`, `perception`,
+`frame_transform`, `arm_command`, and `gripper_command`). Sandbox workers save
+these events atomically after every SDK call, allowing a timeout to retain the
+latest complete partial trace.

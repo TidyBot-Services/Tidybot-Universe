@@ -27,6 +27,9 @@ def test_advisor_request_and_cache_key_are_deterministic() -> None:
         {"cubeA_pos": [0.0, 0.0, 0.0]},
         {"evidence": {"object_pose": [0.0, 0.0, 0.0]}},
         {"history": [{"simulator_state": {}}]},
+        {"api-key": "secret"},
+        {"access_token": "secret"},
+        {"privileged_reference_success": True},
     ],
 )
 def test_advisor_rejects_oracle_fields(packet) -> None:

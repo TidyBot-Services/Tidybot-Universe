@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import numpy as np
@@ -14,13 +16,23 @@ from .contracts import (
 
 
 class Sensors:
-    def __init__(self, backend: RobotBackend) -> None:
+    def __init__(
+        self, backend: RobotBackend, emitter: _SDKTraceEmitter | None = None
+    ) -> None:
         self._backend = backend
+        self._emitter = emitter
 
     def get_observation(self) -> dict[str, np.ndarray]:
         """Return public camera and robot state, never object oracle state."""
 
-        return self._backend.observe()
+        return _trace_call(
+            self._emitter,
+            source="robot_sdk.sensors",
+            event_type="sdk.sensor_read",
+            operation="get_observation",
+            arguments={},
+            callback=self._backend.observe,
+        )
 
     def find_objects(
         self,
@@ -34,11 +46,21 @@ class Sensors:
         a future RGB-D perception backend before this method becomes available.
         """
 
-        if not isinstance(self._backend, ObjectPerceptionBackend):
-            raise CapabilityNotAvailableError(
-                "find_objects is not available on the selected robot backend"
-            )
-        return self._backend.find_objects(target_names, camera_names)
+        def execute() -> list[dict[str, Any]]:
+            if not isinstance(self._backend, ObjectPerceptionBackend):
+                raise CapabilityNotAvailableError(
+                    "find_objects is not available on the selected robot backend"
+                )
+            return self._backend.find_objects(target_names, camera_names)
+
+        return _trace_call(
+            self._emitter,
+            source="robot_sdk.sensors",
+            event_type="sdk.perception",
+            operation="find_objects",
+            arguments={"target_names": target_names, "camera_names": camera_names},
+            callback=execute,
+        )
 
     def pixel_to_world(
         self,
@@ -55,6 +77,33 @@ class Sensors:
         evaluator state and is therefore portable to calibrated hardware.
         """
 
+        return _trace_call(
+            self._emitter,
+            source="robot_sdk.sensors",
+            event_type="sdk.frame_transform",
+            operation="pixel_to_world",
+            arguments={
+                "u": u,
+                "v": v,
+                "camera": camera,
+                "depth_meters": depth_meters,
+            },
+            callback=lambda: self._pixel_to_world(
+                u,
+                v,
+                camera=camera,
+                depth_meters=depth_meters,
+            ),
+        )
+
+    def _pixel_to_world(
+        self,
+        u: float,
+        v: float,
+        *,
+        camera: str,
+        depth_meters: float | None,
+    ) -> tuple[float, float, float]:
         observation = self._backend.observe()
         depth_key = f"{camera}_depth"
         intrinsics_key = f"{camera}_intrinsics"
@@ -106,8 +155,11 @@ class Sensors:
 
 
 class Arm:
-    def __init__(self, backend: RobotBackend) -> None:
+    def __init__(
+        self, backend: RobotBackend, emitter: _SDKTraceEmitter | None = None
+    ) -> None:
         self._backend = backend
+        self._emitter = emitter
 
     def move_delta(
         self,
@@ -116,7 +168,19 @@ class Arm:
         dz: float,
         rotation_delta: tuple[float, float, float] = (0.0, 0.0, 0.0),
     ) -> Any:
-        return self._backend.move_arm_delta(dx, dy, dz, rotation_delta)
+        return _trace_call(
+            self._emitter,
+            source="robot_sdk.arm",
+            event_type="sdk.arm_command",
+            operation="move_delta",
+            arguments={
+                "dx": dx,
+                "dy": dy,
+                "dz": dz,
+                "rotation_delta": rotation_delta,
+            },
+            callback=lambda: self._backend.move_arm_delta(dx, dy, dz, rotation_delta),
+        )
 
     def move_to_position(
         self,
@@ -129,34 +193,75 @@ class Arm:
     ) -> None:
         """Move in the backend control frame using its local controller."""
 
-        self._backend.move_arm_to_position(
-            x,
-            y,
-            z,
-            tolerance=tolerance,
-            max_steps=max_steps,
+        _trace_call(
+            self._emitter,
+            source="robot_sdk.arm",
+            event_type="sdk.arm_command",
+            operation="move_to_position",
+            arguments={
+                "x": x,
+                "y": y,
+                "z": z,
+                "tolerance": tolerance,
+                "max_steps": max_steps,
+            },
+            callback=lambda: self._backend.move_arm_to_position(
+                x,
+                y,
+                z,
+                tolerance=tolerance,
+                max_steps=max_steps,
+            ),
         )
 
 
 class Gripper:
-    def __init__(self, backend: RobotBackend) -> None:
+    def __init__(
+        self, backend: RobotBackend, emitter: _SDKTraceEmitter | None = None
+    ) -> None:
         self._backend = backend
+        self._emitter = emitter
 
     def open(self, *, settle_steps: int = 10) -> None:
-        self._backend.set_gripper(-1.0, settle_steps=settle_steps)
+        _trace_call(
+            self._emitter,
+            source="robot_sdk.gripper",
+            event_type="sdk.gripper_command",
+            operation="open",
+            arguments={"settle_steps": settle_steps},
+            callback=lambda: self._backend.set_gripper(
+                -1.0, settle_steps=settle_steps
+            ),
+        )
 
     def close(self, *, settle_steps: int = 10) -> None:
-        self._backend.set_gripper(1.0, settle_steps=settle_steps)
+        _trace_call(
+            self._emitter,
+            source="robot_sdk.gripper",
+            event_type="sdk.gripper_command",
+            operation="close",
+            arguments={"settle_steps": settle_steps},
+            callback=lambda: self._backend.set_gripper(
+                1.0, settle_steps=settle_steps
+            ),
+        )
 
 
 class TidyBotSDK:
     """Shared SDK facade; environment-specific behavior lives in its backend."""
 
-    def __init__(self, backend: RobotBackend) -> None:
+    def __init__(
+        self,
+        backend: RobotBackend,
+        *,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._backend = backend
-        self.sensors = Sensors(backend)
-        self.arm = Arm(backend)
-        self.gripper = Gripper(backend)
+        emitter = _SDKTraceEmitter(event_sink, clock=clock) if event_sink else None
+        self.sensors = Sensors(backend, emitter)
+        self.arm = Arm(backend, emitter)
+        self.gripper = Gripper(backend, emitter)
 
     def describe(self) -> dict[str, Any]:
         sensor_methods = ["get_observation", "pixel_to_world"]
@@ -168,3 +273,127 @@ class TidyBotSDK:
             "gripper": ("open", "close"),
             "sensors": tuple(sensor_methods),
         }
+
+
+class _SDKTraceEmitter:
+    """Small dependency-free hook used by every service backend."""
+
+    def __init__(
+        self,
+        sink: Callable[[dict[str, Any]], None],
+        *,
+        clock: Callable[[], float],
+    ) -> None:
+        self._sink = sink
+        self._clock = clock
+        self._started_at = clock()
+        self._sequence = 0
+
+    def call(
+        self,
+        *,
+        source: str,
+        event_type: str,
+        operation: str,
+        arguments: Mapping[str, Any],
+        callback: Callable[[], Any],
+    ) -> Any:
+        started = self._clock()
+        try:
+            result = callback()
+        except BaseException as exc:
+            self._emit(
+                source=source,
+                event_type=event_type,
+                operation=operation,
+                status="failed",
+                started=started,
+                arguments=arguments,
+                result={},
+                error={"type": type(exc).__name__, "message": str(exc)},
+            )
+            raise
+        self._emit(
+            source=source,
+            event_type=event_type,
+            operation=operation,
+            status="completed",
+            started=started,
+            arguments=arguments,
+            result=_summarize(result),
+            error=None,
+        )
+        return result
+
+    def _emit(
+        self,
+        *,
+        source: str,
+        event_type: str,
+        operation: str,
+        status: str,
+        started: float,
+        arguments: Mapping[str, Any],
+        result: Any,
+        error: dict[str, str] | None,
+    ) -> None:
+        finished = self._clock()
+        sequence = self._sequence
+        self._sequence += 1
+        self._sink(
+            {
+                "schema_version": "attentionbench.sdk-event.v1",
+                "event_id": f"sdk-{sequence}",
+                "sequence": sequence,
+                "timestamp": round(finished - self._started_at, 6),
+                "source": source,
+                "event_type": event_type,
+                "operation": operation,
+                "status": status,
+                "duration_ms": round(max(0.0, finished - started) * 1000.0, 3),
+                "arguments": _summarize(dict(arguments)),
+                "result": result,
+                "error": error,
+            }
+        )
+
+
+def _trace_call(
+    emitter: _SDKTraceEmitter | None,
+    *,
+    source: str,
+    event_type: str,
+    operation: str,
+    arguments: Mapping[str, Any],
+    callback: Callable[[], Any],
+) -> Any:
+    if emitter is None:
+        return callback()
+    return emitter.call(
+        source=source,
+        event_type=event_type,
+        operation=operation,
+        arguments=arguments,
+        callback=callback,
+    )
+
+
+def _summarize(value: Any, *, depth: int = 0) -> Any:
+    """Bound trace size while retaining shapes and simple public values."""
+
+    if depth > 3:
+        return {"type": type(value).__name__}
+    if isinstance(value, np.ndarray):
+        return {"shape": list(value.shape), "dtype": str(value.dtype)}
+    if isinstance(value, Mapping):
+        return {
+            str(key): _summarize(nested, depth=depth + 1)
+            for key, nested in sorted(value.items(), key=lambda item: str(item[0]))
+        }
+    if isinstance(value, (tuple, list)):
+        if len(value) > 32:
+            return {"type": type(value).__name__, "count": len(value)}
+        return [_summarize(item, depth=depth + 1) for item in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return {"type": type(value).__name__}

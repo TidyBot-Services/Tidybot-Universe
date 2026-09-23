@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Mapping
+from typing import Any, Callable
 
 from ..attention_modes import AssistanceMode, RequestState
 from .advisor import AdvisorProxy
-from .models import AttentionRequestRecord, AttentionResponseRecord
+from .models import (
+    AdvisorTracePacket,
+    AttentionRequestRecord,
+    AttentionResponseRecord,
+)
 from .store import AttentionStore, StateConflictError
 
 
@@ -34,7 +39,10 @@ class AttentionRuntime:
             raise
 
     def resolve_benchmark_proxy(
-        self, request_id: str, *, trace_packet: dict
+        self,
+        request_id: str,
+        *,
+        trace_packet: Mapping[str, Any] | AdvisorTracePacket | None = None,
     ) -> AttentionRequestRecord:
         request = self._request(request_id)
         if request.mode is not AssistanceMode.BENCHMARK_PROXY:
@@ -66,7 +74,10 @@ class AttentionRuntime:
         return updated
 
     def handle_deadline(
-        self, request_id: str, *, trace_packet: dict
+        self,
+        request_id: str,
+        *,
+        trace_packet: Mapping[str, Any] | AdvisorTracePacket | None = None,
     ) -> AttentionRequestRecord:
         request = self._request(request_id)
         if request.mode is not AssistanceMode.LIVE_HUMAN_FIRST:
@@ -98,7 +109,10 @@ class AttentionRuntime:
         return updated
 
     def _resolve_proxy(
-        self, request: AttentionRequestRecord, *, trace_packet: dict
+        self,
+        request: AttentionRequestRecord,
+        *,
+        trace_packet: Mapping[str, Any] | AdvisorTracePacket | None,
     ) -> AttentionRequestRecord:
         if request.state is RequestState.ANSWERED:
             return request
@@ -107,9 +121,10 @@ class AttentionRuntime:
                 f"request in state {request.state.value} cannot use AdvisorProxy"
             )
         try:
+            packet = self._advisor_packet(request, trace_packet)
             reply = self.proxy.answer(
                 request_type=request.request_type.value,
-                trace_packet=trace_packet,
+                trace_packet=packet,
             )
             response = AttentionResponseRecord(
                 response_id=f"proxy-response:{request.request_id}",
@@ -135,6 +150,27 @@ class AttentionRuntime:
             self._reservation_id(request.request_id), commit=True
         )
         return updated
+
+    def _advisor_packet(
+        self,
+        request: AttentionRequestRecord,
+        supplied: Mapping[str, Any] | AdvisorTracePacket | None,
+    ) -> Mapping[str, Any] | AdvisorTracePacket:
+        if supplied is None:
+            persisted = self.store.get_trace(request.trace_id)
+            if persisted is None:
+                raise StateConflictError(
+                    f"trace {request.trace_id!r} does not exist"
+                )
+            return persisted
+        packet_id = (
+            supplied.trace_id
+            if isinstance(supplied, AdvisorTracePacket)
+            else supplied.get("trace_id")
+        )
+        if packet_id is not None and packet_id != request.trace_id:
+            raise StateConflictError("supplied trace does not match the request")
+        return supplied
 
     def _request(self, request_id: str) -> AttentionRequestRecord:
         request = self.store.get_request(request_id)

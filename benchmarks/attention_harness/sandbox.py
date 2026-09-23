@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +46,7 @@ class SandboxResult:
     stderr: str
     trace: list[dict[str, Any]]
     error: str | None
+    sdk_trace: list[dict[str, Any]] = field(default_factory=list)
 
     def artifact(self) -> dict[str, Any]:
         return {
@@ -56,6 +57,7 @@ class SandboxResult:
             "stderr": self.stderr,
             "trace": self.trace,
             "error": self.error,
+            "sdk_trace": self.sdk_trace,
         }
 
 
@@ -154,14 +156,16 @@ def execute_policy(
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
+        worker = _read_worker_output(output_path)
         return SandboxResult(
             status="timeout",
             exit_code=None,
             timed_out=True,
             stdout=_limited(exc.stdout or ""),
             stderr=_limited(exc.stderr or ""),
-            trace=[],
+            trace=list(worker.get("trace") or []),
             error=f"policy exceeded {timeout_seconds:.1f}s timeout",
+            sdk_trace=list(worker.get("sdk_trace") or []),
         )
     worker = _read_worker_output(output_path)
     trace = list(worker.get("trace") or [])
@@ -181,6 +185,7 @@ def execute_policy(
         stderr=_limited(completed.stderr),
         trace=trace,
         error=error or (None if status == "completed" else "sandbox worker failed"),
+        sdk_trace=list(worker.get("sdk_trace") or []),
     )
 
 

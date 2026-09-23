@@ -113,3 +113,42 @@ def test_move_delta_preserves_gripper_command() -> None:
     sdk.gripper.open(settle_steps=1)
     sdk.arm.move_delta(0.2, 0.0, 0.0)
     assert adapter.actions[-1].tolist() == [0.2, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0]
+
+
+def test_sdk_emits_backend_neutral_semantic_trace() -> None:
+    adapter = FakeAdapter()
+    events = []
+    ticks = iter((10.0, 10.1, 10.2, 10.3, 10.5, 10.6, 10.7))
+    sdk = TidyBotSDK(
+        adapter,  # type: ignore[arg-type]
+        event_sink=events.append,
+        clock=lambda: next(ticks),
+    )
+
+    sdk.sensors.get_observation()
+    sdk.gripper.close(settle_steps=1)
+    sdk.arm.move_delta(0.1, 0.0, 0.0)
+
+    assert [event["operation"] for event in events] == [
+        "get_observation",
+        "close",
+        "move_delta",
+    ]
+    assert [event["sequence"] for event in events] == [0, 1, 2]
+    assert events[0]["result"]["agentview_image"] == {
+        "shape": [2, 2, 3],
+        "dtype": "uint8",
+    }
+    assert all(event["status"] == "completed" for event in events)
+
+
+def test_sdk_trace_records_error_before_reraising() -> None:
+    events = []
+    sdk = TidyBotSDK(FakeAdapter(), event_sink=events.append)  # type: ignore[arg-type]
+
+    with np.testing.assert_raises(ValueError):
+        sdk.sensors.pixel_to_world(50, 50)
+
+    assert events[-1]["operation"] == "pixel_to_world"
+    assert events[-1]["status"] == "failed"
+    assert events[-1]["error"]["type"] == "ValueError"

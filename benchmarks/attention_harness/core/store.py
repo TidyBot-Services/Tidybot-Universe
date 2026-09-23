@@ -18,6 +18,7 @@ from .models import (
     MemoryRecord,
     MemoryStatus,
     MemoryUseRecord,
+    RawExecutionTrace,
     RunRecord,
     RunStatus,
     TracePacket,
@@ -169,7 +170,33 @@ class AttentionStore:
             raise StateConflictError(f"attempt {trace.attempt_id!r} does not exist")
         if attempt["run_id"] != trace.run_id:
             raise StateConflictError("trace run does not match its attempt")
+        if trace.raw_trace_id is not None:
+            raw = self.get_raw_trace(trace.raw_trace_id)
+            if raw is None:
+                raise StateConflictError(
+                    f"raw trace {trace.raw_trace_id!r} does not exist"
+                )
+            if (
+                raw["run_id"] != trace.run_id
+                or raw["attempt_id"] != trace.attempt_id
+                or raw["execution_id"] != trace.execution_id
+            ):
+                raise StateConflictError("advisor trace links do not match its raw trace")
         self._insert_immutable("traces", trace.trace_id, trace.artifact(), "trace.created")
+        return trace
+
+    def put_raw_trace(self, trace: RawExecutionTrace) -> RawExecutionTrace:
+        attempt = self.get_attempt(trace.attempt_id)
+        if attempt is None:
+            raise StateConflictError(f"attempt {trace.attempt_id!r} does not exist")
+        if attempt["run_id"] != trace.run_id:
+            raise StateConflictError("raw trace run does not match its attempt")
+        self._insert_immutable(
+            "raw_traces",
+            trace.raw_trace_id,
+            trace.artifact(),
+            "raw_trace.created",
+        )
         return trace
 
     def create_request(self, request: AttentionRequestRecord) -> AttentionRequestRecord:
@@ -246,6 +273,9 @@ class AttentionStore:
 
     def get_trace(self, trace_id: str) -> dict[str, Any] | None:
         return self._get_payload("traces", trace_id)
+
+    def get_raw_trace(self, raw_trace_id: str) -> dict[str, Any] | None:
+        return self._get_payload("raw_traces", raw_trace_id)
 
     def get_request(self, request_id: str) -> AttentionRequestRecord | None:
         payload = self._get_payload("requests", request_id)
@@ -542,6 +572,7 @@ class AttentionStore:
             for table in (
                 "runs",
                 "attempts",
+                "raw_traces",
                 "traces",
                 "requests",
                 "responses",

@@ -19,20 +19,39 @@ FORBIDDEN_TRACE_KEYS = {
     "cube_pos",
     "cubea_pos",
     "cubeb_pos",
+    "done",
+    "evaluator_authoritative",
+    "evaluator_verdict",
+    "is_success",
     "object_pose",
     "object_poses",
     "native_success",
     "oracle_state",
+    "reward",
     "segmentation_id",
     "simulator_state",
+    "success",
+    "task_completed",
 }
+
+FORBIDDEN_TRACE_MARKERS = (
+    "api_key",
+    "credential",
+    "oracle",
+    "password",
+    "privileged",
+    "secret",
+    "token",
+)
 
 
 def _check_public(value: Any, path: str = "trace_packet") -> None:
     if isinstance(value, Mapping):
         for key, nested in value.items():
-            normalized = str(key).lower()
-            if normalized in FORBIDDEN_TRACE_KEYS:
+            normalized = str(key).lower().replace("-", "_")
+            if normalized in FORBIDDEN_TRACE_KEYS or any(
+                marker in normalized for marker in FORBIDDEN_TRACE_MARKERS
+            ):
                 raise ValueError(f"privileged AdvisorProxy field is forbidden: {path}.{key}")
             _check_public(nested, f"{path}.{key}")
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):

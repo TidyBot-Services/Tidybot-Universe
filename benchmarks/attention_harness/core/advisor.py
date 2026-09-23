@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Mapping
 from typing import Any, Callable
 
 from ..advisor_proxy import advisor_cache_key, build_advisor_request
 from .store import AttentionStore
+from .models import AdvisorTracePacket
 
 
 AdvisorTransport = Callable[[dict[str, Any]], str]
@@ -36,11 +38,19 @@ class AdvisorProxy:
         self.sleeper = sleeper
 
     def answer(
-        self, *, request_type: str, trace_packet: dict[str, Any]
+        self,
+        *,
+        request_type: str,
+        trace_packet: Mapping[str, Any] | AdvisorTracePacket,
     ) -> ProxyReply:
+        packet = (
+            trace_packet.artifact()
+            if isinstance(trace_packet, AdvisorTracePacket)
+            else trace_packet
+        )
         request = build_advisor_request(
             request_type=request_type,
-            trace_packet=trace_packet,
+            trace_packet=packet,
         )
         key = advisor_cache_key(request)
         cached = self.store.cache_get(key)

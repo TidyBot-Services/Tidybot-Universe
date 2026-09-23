@@ -55,10 +55,25 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     adapter = RobosuiteRobotBackend(args.task, service_url=args.service_url)
-    result = {"status": "failed", "error": None, "trace": []}
+    result = {"status": "failed", "error": None, "trace": [], "sdk_trace": []}
+
+    def persist() -> None:
+        temporary = args.output.with_suffix(args.output.suffix + ".tmp")
+        temporary.write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(args.output)
+
+    def record_sdk_event(event: dict) -> None:
+        result["sdk_trace"].append(event)
+        # Incremental atomic persistence preserves the latest complete SDK event
+        # when the parent terminates this process at its timeout boundary.
+        persist()
+
     try:
         adapter.attach()
-        sdk = TidyBotSDK(adapter)
+        sdk = TidyBotSDK(adapter, event_sink=record_sdk_event)
         module = types.ModuleType("robot_sdk")
         module.sensors = sdk.sensors
         module.arm = sdk.arm
@@ -84,7 +99,7 @@ def main() -> int:
         result["error"] = f"{type(exc).__name__}: {exc}"
     finally:
         result["trace"] = adapter.trace
-        args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        persist()
     return 0 if result["status"] == "completed" else 1
 
 

@@ -46,6 +46,7 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/core/store.py"),
     Path("benchmarks/attention_harness/core/advisor.py"),
     Path("benchmarks/attention_harness/core/runtime.py"),
+    Path("benchmarks/attention_harness/core/trace.py"),
     Path("benchmarks/attention_harness/core/memory.py"),
     Path("benchmarks/attention_harness/core/policies.py"),
     Path("benchmarks/attention_harness/core/projection.py"),
