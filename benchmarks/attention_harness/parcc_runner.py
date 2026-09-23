@@ -20,7 +20,7 @@ from .model_protocol import (
     extract_python,
 )
 from .parcc_client import ParccClient
-from .robosuite_adapter import RobosuiteAdapter, observation_fingerprint
+from .robosuite_adapter import RobosuiteRobotBackend, observation_fingerprint
 from .sandbox import SandboxResult, execute_policy, validate_policy
 from .seed_guard import validate_seed
 from .service_process import ManagedRobosuiteService
@@ -66,7 +66,9 @@ def run_parcc_episode(
     )
     try:
         with service_context as active_service_url:
-            adapter = RobosuiteAdapter(task_id, camera=True, service_url=active_service_url)
+            adapter = RobosuiteRobotBackend(
+                task_id, camera=True, service_url=active_service_url
+            )
             try:
                 initial = adapter.reset(seed)
                 metadata = adapter.metadata

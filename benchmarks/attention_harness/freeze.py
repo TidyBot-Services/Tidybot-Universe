@@ -38,6 +38,11 @@ FREEZE_INPUTS = (
     Path("benchmarks/attention_harness/runner.py"),
     Path("benchmarks/attention_harness/service_process.py"),
     Path("benchmarks/attention_harness/requirements-robosuite.txt"),
+    Path("tidybot_sdk/__init__.py"),
+    Path("tidybot_sdk/contracts.py"),
+    Path("tidybot_sdk/facade.py"),
+    Path("tidybot_sdk/module_backend.py"),
+    Path("tidybot_sdk/README.md"),
     Path("robosuite_sim/backend.py"),
     Path("robosuite_sim/client.py"),
     Path("robosuite_sim/codec.py"),
@@ -92,7 +97,10 @@ def create_manifest(*, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
     return {
         "schema_version": "attentionbench.freeze-manifest.v1",
         "protocol_id": protocol["protocol_id"],
-        "freeze_scope": "Robosuite harness contract and privileged reference policy",
+        "freeze_scope": (
+            "shared TidyBot SDK, Robosuite harness contract, and privileged "
+            "reference policy"
+        ),
         "file_sha256": files,
         "freeze_digest_sha256": _canonical_digest(files),
         "d6_parity": {

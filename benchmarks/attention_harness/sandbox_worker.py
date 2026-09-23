@@ -8,8 +8,9 @@ import sys
 import types
 from pathlib import Path
 
-from .robosuite_adapter import RobosuiteAdapter
-from .robot_sdk import NativeRobotSDK
+from tidybot_sdk import TidyBotSDK
+
+from .robosuite_adapter import RobosuiteRobotBackend
 
 
 SAFE_BUILTINS = {
@@ -53,11 +54,11 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _parser().parse_args()
-    adapter = RobosuiteAdapter(args.task, service_url=args.service_url)
+    adapter = RobosuiteRobotBackend(args.task, service_url=args.service_url)
     result = {"status": "failed", "error": None, "trace": []}
     try:
         adapter.attach()
-        sdk = NativeRobotSDK(adapter)
+        sdk = TidyBotSDK(adapter)
         module = types.ModuleType("robot_sdk")
         module.sensors = sdk.sensors
         module.arm = sdk.arm

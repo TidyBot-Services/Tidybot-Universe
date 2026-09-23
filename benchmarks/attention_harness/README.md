@@ -6,18 +6,19 @@ MuJoCo directly. The peer `robosuite_sim` process owns the official Robosuite
 environment and native evaluator; another benchmark harness is not a runtime
 dependency.
 
-`NativeRobotSDK` is the code-execution boundary. It consumes the backend-neutral
-`RobotService` protocol rather than a concrete simulator class, and exposes
-`sensors`, `arm`, and `gripper`. Its position controller sends actions to the
-service-owned local OSC controller, so basic motion does not require PyRoKi.
+The shared `TidyBotSDK` is the code-execution boundary. It consumes the
+backend-neutral, client-side `RobotBackend` protocol rather than a concrete
+simulator class, and exposes `sensors`, `arm`, and `gripper`. Its position
+controller sends actions to the service-owned local OSC controller, so basic
+motion does not require PyRoKi.
 
 The intended service topology is:
 
 ```text
-TidyBot robot_sdk
-  -> RobotService contract
+TidyBot robot_sdk (`tidybot_sdk` shared core)
+  -> RobotBackend client contract
      -> RoboCasa service adapter (existing platform path; not changed here)
-     -> Robosuite service adapter (implemented here)
+     -> Robosuite robot backend (implemented here)
      -> real-robot service adapter (existing platform path; not changed here)
 ```
 
@@ -26,6 +27,19 @@ camera-to-world pose, and robot proprioception. `sensors.pixel_to_world()` is a
 thin SDK helper over those public arrays. `find_objects()` remains absent: the
 Robosuite benchmark must not turn simulator object poses or segmentation IDs
 into an oracle policy input.
+
+The shared SDK supports `find_objects()` as an optional backend capability.
+Existing RoboCasa deployments can opt in through
+`PerceptionModuleRobotBackend`; `RobosuiteRobotBackend` does not implement that
+capability until a non-oracle RGB-D perception service exists.
+
+For this path specifically, `RobosuiteRobotBackend` translates SDK actions and
+benchmark lifecycle calls into `RobosuiteSimClient` HTTP requests. The client
+then talks to the independent `robosuite_sim` server process; adapter/client
+code and service/server code are separate layers.
+
+The cross-repository rollout status and remaining agent_server work are tracked
+in `docs/shared_sdk_migration.md`.
 
 Frozen tasks:
 

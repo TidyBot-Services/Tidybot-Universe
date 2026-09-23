@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from .robosuite_adapter import RobosuiteAdapter
+from .robosuite_adapter import RobosuiteRobotBackend
 
 
 class EpisodeTimeout(TimeoutError):
     pass
 
 
-def run_reference_policy(adapter: RobosuiteAdapter, timeout_seconds: float = 60.0) -> None:
+def run_reference_policy(
+    adapter: RobosuiteRobotBackend, timeout_seconds: float = 60.0
+) -> None:
     try:
         adapter.run_reference_policy(timeout_seconds)
     except TimeoutError as exc:

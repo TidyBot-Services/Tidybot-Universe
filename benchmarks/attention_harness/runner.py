@@ -11,7 +11,7 @@ from typing import Any
 
 from .artifacts import create_episode_dir, write_episode_artifacts
 from .reference_policy import EpisodeTimeout, run_reference_policy
-from .robosuite_adapter import RobosuiteAdapter, observation_fingerprint
+from .robosuite_adapter import RobosuiteRobotBackend, observation_fingerprint
 from .seed_guard import validate_seed
 from .service_process import ManagedRobosuiteService
 from .task_registry import TASKS
@@ -42,7 +42,9 @@ def run_episode(
         else ManagedRobosuiteService(log_path=episode_dir / "service.log")
     )
     with service_context as active_service_url:
-        adapter = RobosuiteAdapter(task_id, camera=camera, service_url=active_service_url)
+        adapter = RobosuiteRobotBackend(
+            task_id, camera=camera, service_url=active_service_url
+        )
         try:
             initial = adapter.reset(seed)
             if policy == "reference":

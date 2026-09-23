@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from benchmarks.attention_harness.robosuite_adapter import RobosuiteAdapter
+from benchmarks.attention_harness.robosuite_adapter import RobosuiteRobotBackend
 from robosuite_sim.client import ClientStep, ReferenceResult
 
 
@@ -50,9 +50,9 @@ class FakeClient:
         self.closed = True
 
 
-def make_adapter() -> tuple[RobosuiteAdapter, FakeClient]:
+def make_adapter() -> tuple[RobosuiteRobotBackend, FakeClient]:
     client = FakeClient()
-    adapter = RobosuiteAdapter("cube_lift", client=client)
+    adapter = RobosuiteRobotBackend("cube_lift", client=client)
     return adapter, client
 
 

@@ -10,13 +10,13 @@ from typing import Any, Mapping, Protocol
 import numpy as np
 
 from robosuite_sim.client import ClientStep, ReferenceResult, RobosuiteSimClient
+from tidybot_sdk import ActionResult, copy_observation
 
-from .service_contract import ServiceStep, copy_observation
 from .task_registry import get_task
 
 # Compatibility name for existing policies and tests. New code should use the
-# backend-neutral ServiceStep contract.
-StepResult = ServiceStep
+# backend-neutral ActionResult contract.
+StepResult = ActionResult
 
 
 class SimulatorClient(Protocol):
@@ -30,7 +30,7 @@ class SimulatorClient(Protocol):
     def close_environment(self) -> None: ...
 
 
-class RobosuiteAdapter:
+class RobosuiteRobotBackend:
     """Own benchmark semantics while delegating simulation to its peer service."""
 
     def __init__(
@@ -59,6 +59,7 @@ class RobosuiteAdapter:
         self._action_low: np.ndarray | None = None
         self._action_high: np.ndarray | None = None
         self._metadata: dict[str, Any] = {}
+        self._sdk_gripper_command = -1.0
         self.trace: list[dict[str, Any]] = []
 
     @property
@@ -96,6 +97,7 @@ class RobosuiteAdapter:
         self._action_low = np.asarray(low, dtype=np.float64)
         self._action_high = np.asarray(high, dtype=np.float64)
         self._metadata = dict(metadata)
+        self._sdk_gripper_command = -1.0
         self.trace.clear()
         return copy_observation(observation)
 
@@ -113,6 +115,7 @@ class RobosuiteAdapter:
         self._action_low = np.asarray(low, dtype=np.float64)
         self._action_high = np.asarray(high, dtype=np.float64)
         self._metadata = dict(metadata)
+        self._sdk_gripper_command = -1.0
         self.trace.clear()
         return copy_observation(observation)
 
@@ -137,7 +140,7 @@ class RobosuiteAdapter:
                 "observation_sha256": observation_fingerprint(public),
             }
         )
-        return ServiceStep(public, result.reward, result.done, dict(result.info))
+        return ActionResult(public, result.reward, result.done, dict(result.info))
 
     def observe(self) -> dict[str, np.ndarray]:
         if self._last_observation is None:
@@ -166,8 +169,62 @@ class RobosuiteAdapter:
         action[-1] = -1.0
         return action
 
+    def move_arm_delta(
+        self,
+        dx: float,
+        dy: float,
+        dz: float,
+        rotation_delta: tuple[float, float, float],
+    ) -> ActionResult:
+        """Translate the shared SDK arm delta into Robosuite's OSC action."""
+
+        action = np.zeros(self.action_shape, dtype=np.float64)
+        action[:3] = (dx, dy, dz)
+        action[3:6] = rotation_delta
+        action[-1] = self._sdk_gripper_command
+        return self.step(action)
+
+    def move_arm_to_position(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        *,
+        tolerance: float,
+        max_steps: int,
+    ) -> None:
+        """Run Robosuite's local OSC loop in the service control frame."""
+
+        target = np.asarray((x, y, z), dtype=np.float64)
+        for _ in range(max_steps):
+            current = np.asarray(self.observe()["robot0_eef_pos"], dtype=np.float64)
+            error = target - current
+            if np.linalg.norm(error) < tolerance:
+                return
+            action = np.zeros(self.action_shape, dtype=np.float64)
+            action[:3] = np.clip(error / 0.05, -1.0, 1.0)
+            action[-1] = self._sdk_gripper_command
+            self.step(action)
+        raise TimeoutError(f"arm did not reach target within {max_steps} steps")
+
+    def set_gripper(self, command: float, *, settle_steps: int) -> None:
+        if command not in (-1.0, 1.0):
+            raise ValueError("gripper command must be -1.0 (open) or 1.0 (close)")
+        if settle_steps < 1:
+            raise ValueError("settle_steps must be positive")
+        self._sdk_gripper_command = command
+        for _ in range(settle_steps):
+            action = np.zeros(self.action_shape, dtype=np.float64)
+            action[-1] = command
+            self.step(action)
+
     def close(self) -> None:
         self._client.close_environment()
+
+
+# Compatibility alias for the first native-harness revision.
+RobosuiteAdapter = RobosuiteRobotBackend
+
 
 def observation_fingerprint(observation: Mapping[str, np.ndarray]) -> str:
     digest = hashlib.sha256()

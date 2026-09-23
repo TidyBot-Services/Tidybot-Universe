@@ -8,12 +8,12 @@ import pytest
 
 from benchmarks.attention_harness.reference_policy import run_reference_policy
 from benchmarks.attention_harness.robosuite_adapter import (
-    RobosuiteAdapter,
+    RobosuiteRobotBackend,
     observation_fingerprint,
 )
-from benchmarks.attention_harness.robot_sdk import NativeRobotSDK
 from benchmarks.attention_harness.sandbox import execute_policy
 from benchmarks.attention_harness.service_process import ManagedRobosuiteService
+from tidybot_sdk import TidyBotSDK
 
 
 pytestmark = pytest.mark.skipif(
@@ -31,7 +31,7 @@ def service_url(tmp_path_factory):
 
 @pytest.mark.parametrize("task_id", ("cube_lift", "cube_stack"))
 def test_native_reset_is_deterministic(service_url: str, task_id: str) -> None:
-    adapter = RobosuiteAdapter(
+    adapter = RobosuiteRobotBackend(
         task_id, service_url=service_url, camera=True, camera_height=84, camera_width=84
     )
     try:
@@ -50,7 +50,7 @@ def test_native_reset_is_deterministic(service_url: str, task_id: str) -> None:
         assert adapter.metadata["service"] == "robosuite_sim"
         assert "ASPIRE" not in backend_file.parts
         assert "aspire" not in backend_file.parts
-        sdk = NativeRobotSDK(adapter)
+        sdk = TidyBotSDK(adapter)
         center = sdk.sensors.pixel_to_world(42, 42)
         assert np.isfinite(center).all()
     finally:
@@ -60,7 +60,7 @@ def test_native_reset_is_deterministic(service_url: str, task_id: str) -> None:
 @pytest.mark.parametrize("task_id", ("cube_lift", "cube_stack"))
 def test_noop_fails_five_of_five(service_url: str, task_id: str) -> None:
     successes = 0
-    adapter = RobosuiteAdapter(task_id, service_url=service_url, camera=False)
+    adapter = RobosuiteRobotBackend(task_id, service_url=service_url, camera=False)
     try:
         for seed in range(101, 106):
             adapter.reset(seed)
@@ -73,11 +73,13 @@ def test_noop_fails_five_of_five(service_url: str, task_id: str) -> None:
 
 
 def test_native_sdk_moves_without_external_motion_service(service_url: str) -> None:
-    adapter = RobosuiteAdapter("cube_lift", service_url=service_url, camera=False)
+    adapter = RobosuiteRobotBackend(
+        "cube_lift", service_url=service_url, camera=False
+    )
     try:
         initial = adapter.reset(101)
         start = initial["robot0_eef_pos"]
-        sdk = NativeRobotSDK(adapter)
+        sdk = TidyBotSDK(adapter)
         sdk.arm.move_to_position(float(start[0]), float(start[1]), float(start[2] + 0.02))
         final = sdk.sensors.get_observation()["robot0_eef_pos"]
         assert abs(float(final[2] - start[2]) - 0.02) < 0.006
@@ -88,7 +90,9 @@ def test_native_sdk_moves_without_external_motion_service(service_url: str) -> N
 def test_sandbox_process_attaches_and_controls_active_episode(
     service_url: str, tmp_path: Path, monkeypatch
 ) -> None:
-    adapter = RobosuiteAdapter("cube_lift", service_url=service_url, camera=False)
+    adapter = RobosuiteRobotBackend(
+        "cube_lift", service_url=service_url, camera=False
+    )
     try:
         initial = adapter.reset(101)
         code = tmp_path / "policy.py"
@@ -124,7 +128,7 @@ def test_sandbox_process_attaches_and_controls_active_episode(
 @pytest.mark.parametrize("task_id", ("cube_lift", "cube_stack"))
 def test_reference_policy_succeeds_five_of_five(service_url: str, task_id: str) -> None:
     successes = 0
-    adapter = RobosuiteAdapter(task_id, service_url=service_url, camera=False)
+    adapter = RobosuiteRobotBackend(task_id, service_url=service_url, camera=False)
     try:
         for seed in range(101, 106):
             adapter.reset(seed)

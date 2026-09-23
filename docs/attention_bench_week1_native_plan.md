@@ -100,12 +100,20 @@ frozen without looking at held-out results.
 
 ## Post-D7 service-boundary refinement
 
-Before any held-out run, the SDK boundary was refined into a backend-neutral
-`RobotService` protocol. `NativeRobotSDK` no longer names the Robosuite adapter;
-the Robosuite implementation is one service peer alongside the existing
-RoboCasa and real-robot paths. The Robosuite service now owns metric-depth and
-camera-calibration publication, while the SDK supplies a deterministic
-`pixel_to_world()` convenience method using only those public values.
+Before any held-out run, the SDK implementation moved out of AttentionHarness
+into the top-level `tidybot_sdk` shared core. Its client-side interface is named
+`RobotBackend`, avoiding confusion with the actual server process. The concrete
+Robosuite chain is `TidyBotSDK -> RobosuiteRobotBackend -> RobosuiteSimClient ->
+robosuite_sim service`; RoboCasa and real-robot adapters are intended peers.
+The Robosuite service owns metric-depth and camera-calibration publication,
+while the shared SDK supplies a deterministic `pixel_to_world()` convenience
+method using only those public values.
+
+The shared contract exposes high-level arm / gripper operations rather than
+Robosuite's seven-dimensional action vector. `ModuleRobotBackend` adapts the
+existing agent_server `ArmAPI / SensorAPI / GripperAPI` objects, and
+`PerceptionModuleRobotBackend` explicitly opts RoboCasa into its existing
+`find_objects()` service. Robosuite does not advertise that optional capability.
 
 This is intentionally not a Robosuite `find_objects()` implementation. The
 RoboCasa simulation version uses privileged segmentation, so copying its

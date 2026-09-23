@@ -1,43 +1,16 @@
-"""Backend-neutral contract consumed by the public TidyBot robot SDK.
+"""Compatibility imports for the pre-shared-SDK AttentionHarness API."""
 
-Simulator and hardware adapters may implement this protocol.  The SDK must not
-know which concrete service is behind it; it only consumes public observations
-and bounded robot actions.
-"""
+from tidybot_sdk import ActionResult, RobotBackend, copy_observation
 
-from __future__ import annotations
+# Kept temporarily so external development scripts from the first native
+# harness revision continue to import. New code uses the unambiguous names in
+# ``tidybot_sdk`` directly.
+ServiceStep = ActionResult
+RobotService = RobotBackend
 
-from dataclasses import dataclass
-from typing import Any, Mapping, Protocol
-
-import numpy as np
-
-
-@dataclass(frozen=True)
-class ServiceStep:
-    observation: dict[str, np.ndarray]
-    reward: float
-    done: bool
-    info: dict[str, Any]
-
-
-class RobotService(Protocol):
-    """Minimum service surface required by ``NativeRobotSDK``."""
-
-    @property
-    def control_frame(self) -> str: ...
-
-    @property
-    def action_shape(self) -> tuple[int, ...]: ...
-
-    def observe(self) -> dict[str, np.ndarray]: ...
-
-    def step(self, action: np.ndarray | list[float]) -> ServiceStep: ...
-
-
-def copy_observation(
-    observation: Mapping[str, np.ndarray],
-) -> dict[str, np.ndarray]:
-    """Return an owned copy so policy code cannot mutate adapter state."""
-
-    return {key: np.array(value, copy=True) for key, value in observation.items()}
+__all__ = [
+    "RobotBackend",
+    "RobotService",
+    "ServiceStep",
+    "copy_observation",
+]

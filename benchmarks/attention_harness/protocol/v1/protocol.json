@@ -46,8 +46,16 @@
   },
   "sdk": {
     "modules": ["sensors", "arm", "gripper"],
-    "service_contract": "benchmarks.attention_harness.service_contract.RobotService",
+    "shared_sdk": "tidybot_sdk.TidyBotSDK",
+    "backend_contract": "tidybot_sdk.RobotBackend",
     "sensor_methods": ["get_observation", "pixel_to_world"],
+    "optional_capabilities": {
+      "find_objects": {
+        "contract": "tidybot_sdk.ObjectPerceptionBackend",
+        "robosuite_enabled": false,
+        "reason": "requires a future non-oracle RGB-D perception service"
+      }
+    },
     "observation": {
       "camera_rgb": "<camera>_image",
       "camera_depth_meters": "<camera>_depth",
