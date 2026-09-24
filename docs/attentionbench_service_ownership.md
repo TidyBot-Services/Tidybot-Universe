@@ -2,7 +2,7 @@
 
 | Component | Source of truth | Runtime boundary |
 | --- | --- | --- |
-| Robosuite simulator | [TidyBot-Services/robosuite_sim](https://github.com/TidyBot-Services/robosuite_sim), initial commit `fbc547489b65d0b3a8fd4e870f4c9b5761738cf1` | Separate HTTP process exposing `/v1` |
+| Robosuite simulator | [TidyBot-Services/robosuite_sim](https://github.com/TidyBot-Services/robosuite_sim), v2 Memory API commit `12bc69afe83c8398988be3eee637f91c14e9bf19` | Separate HTTP process exposing `/v1`; opt-in `/v2/perceive_gt` |
 | AttentionHarness, shared SDK adapters, Memory Agent | This Universe repository | Harness / agent code, not standalone services |
 | Memory Service v2 | [TidyBot-Services/attention_memory_service](https://github.com/TidyBot-Services/attention_memory_service), pinned at `c64f61ec7e35cf54d22052d536f7e094d119258f` | Authenticated HTTP daemon or in-process gateway; SQLite and memory artifacts are authoritative |
 
@@ -11,7 +11,7 @@ external process, use a dedicated environment with the service's pinned
 dependencies, then pass its address to the Universe runner:
 
 ```bash
-pip install 'git+https://github.com/TidyBot-Services/robosuite_sim.git@fbc547489b65d0b3a8fd4e870f4c9b5761738cf1'
+pip install 'git+https://github.com/TidyBot-Services/robosuite_sim.git@12bc69afe83c8398988be3eee637f91c14e9bf19'
 python -I -m robosuite_sim --host 127.0.0.1 --port 8082
 python -m benchmarks.attention_harness.external_robosuite_runner --service-url http://127.0.0.1:8082 \
   --task cube_lift --seed 101 --policy no-op

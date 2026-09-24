@@ -15,7 +15,7 @@ uv pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements-robo
 uv pip install --python "$VENV_DIR/bin/python" \
   "git+https://github.com/TidyBot-Services/attention_memory_service.git@f1733006a2adc92953658ac95329fabf0aa4b5eb"
 uv pip install --python "$VENV_DIR/bin/python" --no-deps \
-  "git+https://github.com/TidyBot-Services/robosuite_sim.git@fbc547489b65d0b3a8fd4e870f4c9b5761738cf1"
+  "git+https://github.com/TidyBot-Services/robosuite_sim.git@12bc69afe83c8398988be3eee637f91c14e9bf19"
 
 echo "TidyBot AttentionBench environment ready: $VENV_DIR"
 echo "Run tests with: $VENV_DIR/bin/python -m pytest benchmarks/attention_harness/tests"

@@ -30,6 +30,7 @@ def main() -> int:
     validate.add_argument("--cases", type=Path, required=True, help="same frozen variation cases used in the plan")
     validate.add_argument("--assistance-credits", type=int, default=0)
     validate.add_argument("--policy", required=True, help="same trusted module:function policy as source run")
+    validate.add_argument("--suite", choices=["robocasa", "robosuite"], help="defaults to the candidate's source suite")
     validate.add_argument("--sim-url", default="http://127.0.0.1:5500")
     validate.add_argument("--agent-url", default="http://127.0.0.1:8080")
     validate.add_argument("--artifact-root", type=Path, required=True)
@@ -62,25 +63,44 @@ def main() -> int:
     elif args.command == "report":
         value = agent.service.impact_report(args.memory_id)
     elif args.command == "validate":
-        if not args.confirm_simulator_agent:
-            parser.error("--confirm-simulator-agent is required for simulator validation")
-        from .robocasa_native.agent_actions import AgentServerActionBackend
-        from .robocasa_native.client import RobocasaSimClient
-        from .robocasa_native.paired_trials import RoboCasaPairedTrialExecutor
         from .robocasa_native.sim_gt_cli import _load_policy
 
         cases = tuple(json.loads(args.cases.read_text()))
-        executor = RoboCasaPairedTrialExecutor(
+        source_suite = agent.service.provenance(args.memory_id)["artifact"]["applicability"]["suite"]
+        if args.suite is not None and source_suite != args.suite:
+            parser.error("--suite does not match the candidate memory's source suite")
+        suite = source_suite
+        common = dict(
             policy=_load_policy(args.policy), policy_id=args.policy,
             artifact_root=args.artifact_root, store_path=args.store_path,
-            backend_factory=lambda: AgentServerActionBackend(
-                base_url=args.agent_url, simulator_attested=True,
-            ),
-            client_factory=lambda task: RobocasaSimClient(task, base_url=args.sim_url),
             memory_gateway=agent.service,
             max_delta_m=args.max_delta_m,
             max_observed_step_m=args.max_observed_step_m,
         )
+        if suite == "robocasa":
+            if not args.confirm_simulator_agent:
+                parser.error("--confirm-simulator-agent is required for RoboCasa validation")
+            from .robocasa_native.agent_actions import AgentServerActionBackend
+            from .robocasa_native.client import RobocasaSimClient
+            from .robocasa_native.paired_trials import RoboCasaPairedTrialExecutor
+            executor = RoboCasaPairedTrialExecutor(
+                **common,
+                backend_factory=lambda: AgentServerActionBackend(
+                    base_url=args.agent_url, simulator_attested=True,
+                ),
+                client_factory=lambda task: RobocasaSimClient(task, base_url=args.sim_url),
+            )
+        elif suite == "robosuite":
+            from .robosuite_memory.adapter import RobosuiteSimGTBackend
+            from .robosuite_memory.paired_trials import RobosuitePairedTrialExecutor
+            executor = RobosuitePairedTrialExecutor(
+                **common,
+                adapter_factory=lambda task, camera: RobosuiteSimGTBackend(
+                    task, service_url=args.sim_url, camera_name=camera,
+                ),
+            )
+        else:
+            parser.error(f"unsupported candidate source suite: {suite}")
         value = agent.run_validation(
             args.memory_id, executor=executor, cases=cases,
             assistance_credits=args.assistance_credits,

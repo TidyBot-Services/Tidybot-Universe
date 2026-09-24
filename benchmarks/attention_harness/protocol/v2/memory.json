@@ -56,10 +56,11 @@
     "formal success-attention frontier across all assistance budgets",
     "demo-video corpus and budgeted demo retrieval",
     "live-human UI",
-    "independent collision/contact telemetry for the RoboCasa GT runner",
+    "independent collision/contact telemetry for simulator GT runners",
     "automatic legacy orchestrator registration",
     "live RoboCasa paired-trial acceptance evidence",
     "live deployment and acceptance of maniskill_sim variation attestation",
-    "live two-task/25-seed policy validation"
+    "live two-task/25-seed policy validation",
+    "live Robosuite successful-policy paired validation and promotion evidence"
   ]
 }

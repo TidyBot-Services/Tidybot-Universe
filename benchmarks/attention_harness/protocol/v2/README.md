@@ -5,7 +5,7 @@ Robosuite non-oracle result. The v1 freeze manifest and its evidence remain
 unchanged.
 
 `sim_gt` means that a simulator may supply object identity and position,
-including through RoboCasa `/perceive`. It is the **GT-perception
+through RoboCasa `/perceive` or Robosuite `/v2/perceive_gt`. It is the **GT-perception
 AttentionBench** track: the experimental question is when to request help and
 how to use trace and memory, not visual recognition. `vision` means an RGB-D
 detector and calibrated coordinate conversion. Real hardware is `vision` only.
@@ -18,7 +18,7 @@ applicability retain provenance. Native success and evaluator debug are
 evaluation-only. Neither the legacy v1 non-oracle score nor real-robot vision
 success rates may be pooled with the v2 simulator GT score.
 
-The RoboCasa GT track is not frozen or held-out eligible yet. First complete
+The RoboCasa and Robosuite GT tracks are not frozen or held-out eligible yet. First complete
 the two-task, five-development-seed chain check; then meet 25/25 native
 successes per task on the frozen development split. Privileged teleport
 probes do not count as policy successes.
@@ -27,7 +27,7 @@ probes do not count as policy successes.
 
 `memory.json` defines the additive v2 memory contract. The implementation is
 the separately versioned [attention_memory_service](https://github.com/TidyBot-Services/attention_memory_service)
-package; the old Universe module paths are compatibility imports. RoboCasa GT runs use
+package; the old Universe module paths are compatibility imports. Both simulator GT runners use
 one shared SQLite database by default (`ARTIFACT_ROOT/attention_memory.sqlite3`)
 and retain a separate bundle inside each episode directory. GLM advice is
 recorded as `advisor_proxy`, **not** human attention. A manually promoted v1
@@ -110,6 +110,7 @@ simulator-only agent services, then run five development-seed pairs:
 
 ```bash
 python -m benchmarks.attention_harness.memory_agent_cli validate MEMORY_ID \
+  --suite robocasa \
   --cases /path/to/frozen-validation-cases.json \
   --policy my_lab_policy:run \
   --artifact-root artifacts/attentionbench-v2-gt \
@@ -147,6 +148,40 @@ RoboCasa task. Its reset reconfigures the scene for each development seed and
 reports IDs computed from realized fixture geometry and object configurations;
 it never treats a requested label as evidence. Scene IDs attest geometry, not
 texture/style, and must not be used as evidence of visual-style variation.
+
+Robosuite uses the same Memory Service, candidate and promotion gate through
+an additive v2 adapter/runner. The frozen v1 non-oracle adapter and score are
+untouched. Start a dedicated instance with
+`benchmarks/attention_harness/start_robosuite_v2_service.sh` after
+`setup_env.sh`; this launcher imports the separately installed service instead
+of the frozen v1 package retained in the Universe checkout. Its
+privileged endpoint must not be reachable by formal v1 non-oracle policies.
+Discover actual reset identities and active camera views first:
+
+```bash
+python -m benchmarks.attention_harness.robosuite_memory.discover_variations \
+  --task cube_lift --seeds 102,103,104,105,106 \
+  --camera agentview --camera frontview \
+  --task-prompt 'Lift the cube' --task-prompt 'Raise the cube' \
+  --output /path/to/robosuite-cases.json
+python -m benchmarks.attention_harness.robosuite_memory.sim_gt_cli \
+  --task cube_lift --seed 102 --perception-mode sim_gt --policy my_lab_policy:run \
+  --camera-name agentview --variation /path/to/one-case.json \
+  --artifact-root artifacts/attentionbench-v2-gt
+python -m benchmarks.attention_harness.memory_agent_cli validate MEMORY_ID \
+  --suite robosuite --cases /path/to/robosuite-cases.json \
+  --policy my_lab_policy:run --sim-url http://127.0.0.1:8082 \
+  --artifact-root artifacts/attentionbench-v2-gt \
+  --store-path artifacts/attentionbench-v2-gt/attention_memory.sqlite3 --promote
+```
+
+`sim_gt_cli --variation` expects one JSON object without `seed`, selected
+from the discovered cases. The scene and object-set IDs hash realized
+object/robot positions at reset; they prove repeatable initial state, not
+independent changes in room geometry or object type. Task-prompt variants
+keep the same `task_id` and native evaluator. This trusted callback track is
+development-only (`formal_eligible=false`); successful strategy promotion
+and use remain for the later effectiveness tests.
 
 Human lifecycle controls use a separate `ATTENTION_MEMORY_OPERATOR_KEY` in
 addition to `ATTENTION_MEMORY_API_KEY`. For example:
