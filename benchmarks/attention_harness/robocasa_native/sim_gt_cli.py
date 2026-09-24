@@ -43,6 +43,7 @@ def main() -> int:
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--perception-mode", choices=["sim_gt"], required=True)
     parser.add_argument("--policy", required=True, help="trusted module:function or noop")
+    parser.add_argument("--variation", type=Path, help="JSON variation object attested by simulator reset")
     parser.add_argument("--sim-url", default="http://127.0.0.1:5500")
     parser.add_argument("--agent-url", default="http://127.0.0.1:8080")
     parser.add_argument(
@@ -88,6 +89,7 @@ def main() -> int:
         client=RobocasaSimClient(args.task, base_url=args.sim_url),
         store_path=args.store_path or args.artifact_root / "attention_memory.sqlite3",
         validation_memory_id=args.validation_memory_id,
+        runtime_variation=None if args.variation is None else json.loads(args.variation.read_text()),
         retrieve_memory=not args.no_memory,
         advisor_transport=ParccGLMAdvisorTransport() if args.advisor else None,
         assistance_credits=1 if args.advisor else 0,

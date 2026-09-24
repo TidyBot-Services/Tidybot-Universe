@@ -17,14 +17,19 @@ class RobocasaGTPerception:
     position estimate. Evaluator endpoints are never called here.
     """
 
-    def __init__(self, client: RobocasaSimClient) -> None:
+    def __init__(self, client: RobocasaSimClient, *, fixed_camera_names: list[str] | None = None) -> None:
         self._client = client
+        self._fixed_camera_names = fixed_camera_names
 
     def find_objects(
         self,
         target_names: list[str] | None = None,
         camera_names: list[str] | None = None,
     ) -> list[dict[str, Any]]:
+        if self._fixed_camera_names is not None:
+            if camera_names is not None and camera_names != self._fixed_camera_names:
+                raise RobocasaServiceError("policy requested cameras outside frozen validation case")
+            camera_names = self._fixed_camera_names
         response = self._client._call(
             "POST",
             "/perceive",
@@ -33,6 +38,8 @@ class RobocasaGTPerception:
         )
         if response.get("error"):
             raise RobocasaServiceError(str(response["error"]))
+        if self._fixed_camera_names is not None and response.get("cameras") != self._fixed_camera_names:
+            raise RobocasaServiceError("/perceive did not attest the frozen camera views")
         objects = response.get("objects")
         if not isinstance(objects, list):
             raise RobocasaServiceError("/perceive did not return objects")

@@ -11,7 +11,7 @@
     "per_run_evidence": "existing task-seed-time trace/result/bundle directories remain separate",
     "per_memory_view": "artifact_root/memory/<safe-memory-id>/",
     "manifest": "MEMORY.json binds identity, status, applicability, core record digest, and SHA-256 of generated files",
-    "files": ["knowledge/guidance.md", "knowledge/repair.md", "source/provenance.json", "validation/plan.json", "validation/pairs.jsonl", "validation/impact.json", "lifecycle.jsonl", "usage.jsonl"],
+    "files": ["knowledge/guidance.md", "knowledge/repair.md", "source/provenance.json", "validation/plan.json", "validation/pairs.jsonl", "validation/impact.json", "validation/scope.json", "lifecycle.jsonl", "usage.jsonl"],
     "recovery": "regenerate from SQLite through Memory Service export; never import edited files as authoritative state"
   },
   "source_chain": [
@@ -23,13 +23,15 @@
   ],
   "artifact_kinds": ["text_hint", "policy_patch", "skill"],
   "normal_retrieval": {
-    "requires": ["trusted status", "v2 provenance", "matching suite/task/perception_mode", "explicit policy retrieval event"],
+    "requires": ["trusted status", "v2 provenance", "matching suite/task/perception_mode", "exact validated scene/object/camera/task-variant tuple", "explicit policy retrieval event"],
     "candidate_use": "only in an explicitly labelled development validation run",
     "cross_mode_reuse": "forbidden without a separate transfer validation"
   },
   "promotion_gate": {
     "minimum_distinct_paired_dev_seeds": 5,
-    "pair_identity": ["suite", "task", "seed", "policy id and code digest", "developer model", "execution target", "perception mode", "budget"],
+    "pair_identity": ["suite", "task", "seed", "policy id and code digest", "execution configuration digest", "developer model", "execution target", "perception mode", "budget"],
+    "variation_plan": "five or more predefined development cases; scene/object IDs are simulator-attested, camera_names are perception-attested, task_prompt varies within the same task_id, and all four axes vary",
+    "coverage": "every planned case must be paired before promotion; a counterexample removes its full variation tuple from retrieval scope",
     "control": "no memory exposure",
     "treatment": "raw trace metadata and explicit retrieval event must attest exactly the candidate memory use",
     "outcome": "native evaluator and raw trace must agree",
@@ -45,12 +47,19 @@
     "unsafe attempts",
     "source human attention seconds and seconds per success gain when human-sourced"
   ],
+  "operator_lifecycle": {
+    "authorization": "separate operator key in addition to Memory Service API key",
+    "actions": ["set expiry", "disable", "rollback"],
+    "audit": "actor and reason recorded; non-trusted memories are not retrieved"
+  },
   "not_implemented_here": [
     "formal success-attention frontier across all assistance budgets",
     "demo-video corpus and budgeted demo retrieval",
     "live-human UI",
-    "independent safety monitor for the current RoboCasa GT runner",
-    "live validation executor and automatic legacy orchestrator registration",
+    "independent collision/contact telemetry for the RoboCasa GT runner",
+    "automatic legacy orchestrator registration",
+    "live RoboCasa paired-trial acceptance evidence",
+    "live deployment and acceptance of maniskill_sim variation attestation",
     "live two-task/25-seed policy validation"
   ]
 }

@@ -10,17 +10,19 @@ import pytest
 from attention_memory_service.core.store import StateConflictError
 from benchmarks.attention_harness.memory_service_api import create_app
 from benchmarks.attention_harness.memory_service_client import MemoryServiceClient
-from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode, _safety
+from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode, _safety, _cases, _plan
 
 
 KEY = "memory-service-test-key"
 
 
-def _request(app, method, path, *, payload=None, key=None):
+def _request(app, method, path, *, payload=None, key=None, operator_key=None):
     body = json.dumps(payload).encode() if payload is not None else b""
     headers = [(b"content-type", b"application/json")]
     if key:
         headers.append((b"x-memory-service-key", key.encode()))
+    if operator_key:
+        headers.append((b"x-memory-operator-key", operator_key.encode()))
     scope = {
         "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
         "method": method, "scheme": "http", "path": path,
@@ -101,9 +103,10 @@ def test_remote_agent_client_uses_auth_and_preserves_service_conflicts(monkeypat
 
 
 def test_http_pair_uploads_safety_artifacts_into_service_store(tmp_path):
-    shared, _, memory_id, _ = _candidate(tmp_path)
-    control = _episode(tmp_path, shared, 102)
-    treatment = _episode(tmp_path, shared, 102, candidate=memory_id)
+    shared, manager, memory_id, _ = _candidate(tmp_path)
+    _plan(manager, memory_id)
+    control = _episode(tmp_path, shared, 102, variation=True)
+    treatment = _episode(tmp_path, shared, 102, candidate=memory_id, variation=True)
     control_id = control["attention_trace"]["attempt_id"]
     treatment_id = treatment["attention_trace"]["attempt_id"]
     cpath = _safety(tmp_path / "control-monitor.json", control_id)
@@ -139,6 +142,7 @@ def test_http_memory_plan_and_package_are_authenticated(tmp_path):
         "policy_id": provenance["source_policy_id"],
         "assistance_credits": 0,
         "seeds": [102, 103, 104, 105, 106],
+        "cases": list(_cases()),
     }
     status, plan = _request(app, "PUT", f"/memories/{memory_id}/plan", key=KEY, payload=payload)
     assert status == 200 and plan["seeds"] == payload["seeds"]
@@ -146,3 +150,19 @@ def test_http_memory_plan_and_package_are_authenticated(tmp_path):
     assert status == 200 and manifest["files"]["validation/plan.json"]
     status, exported = _request(app, "POST", f"/memories/{memory_id}/export", key=KEY)
     assert status == 200 and exported["directory"]
+
+
+def test_lifecycle_mutations_require_separate_operator_key(tmp_path):
+    shared, _, memory_id, _ = _candidate(tmp_path)
+    operator_key = "memory-operator-test-key"
+    app = create_app(shared, api_key=KEY, operator_key=operator_key)
+    path = f"/memories/{memory_id}/expiry"
+    payload = {"expires_at": 12345.0, "actor": "operator-1", "reason": "retention limit"}
+    assert _request(app, "PUT", path, key=KEY, payload=payload)[0] == 403
+    status, updated = _request(
+        app, "PUT", path, key=KEY, operator_key=operator_key, payload=payload,
+    )
+    assert status == 200 and updated["expires_at"] == 12345.0
+    assert _request(app, "POST", f"/memories/{memory_id}/disable", key=KEY, payload={
+        "actor": "operator-1", "reason": "bad memory",
+    })[0] == 403

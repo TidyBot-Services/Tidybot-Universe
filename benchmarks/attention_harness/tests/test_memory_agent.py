@@ -9,7 +9,7 @@ from attention_memory_service.core.store import StateConflictError
 from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.memory_agent import MemoryAgent, TrialEvidence
 from benchmarks.attention_harness.memory_service import MemoryService
-from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode
+from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode, _cases
 
 
 def test_memory_agent_plans_and_orchestrates_evidence_gated_validation(tmp_path):
@@ -22,19 +22,20 @@ def test_memory_agent_plans_and_orchestrates_evidence_gated_validation(tmp_path)
     assert source["perception_mode"] == "sim_gt"
     assert "object_pose" not in json.dumps(source)
     assert agent.ingest_answered_hint(source["request_id"], memory_id=memory_id).memory_id == memory_id
-    plan = agent.plan_validation(memory_id)
+    plan = agent.plan_validation(memory_id, cases=_cases())
     assert [pair[0].seed for pair in plan] == [102, 103, 104, 105, 106]
     assert all(not control.treatment and treatment.treatment for control, treatment in plan)
     assert all(control.policy_id == treatment.policy_id for control, treatment in plan)
     with pytest.raises(PermissionError, match="held-out"):
-        agent.plan_validation(memory_id, seeds=(1001, 102, 103, 104, 105))
-    with pytest.raises(StateConflictError, match="five"):
+        agent.plan_validation(memory_id, cases=({**_cases()[0], "seed": 1001}, *_cases()[1:]))
+    with pytest.raises(StateConflictError, match="predefined variation"):
         agent.request_promotion(memory_id)
 
     def executor(trial):
         result = _episode(
             tmp_path, shared, trial.seed,
             candidate=trial.memory_id if trial.treatment else None,
+            variation=True,
         )
         attempt_id = result["attention_trace"]["attempt_id"]
         path = tmp_path / f"monitor-{trial.seed}-{trial.treatment}.json"
@@ -43,13 +44,14 @@ def test_memory_agent_plans_and_orchestrates_evidence_gated_validation(tmp_path)
             "attempt_id": attempt_id,
             "unsafe_attempts": 0,
         }))
-        return TrialEvidence(attempt_id, path)
+        return TrialEvidence(attempt_id, path, "synthetic-config")
 
-    report = agent.run_validation(memory_id, executor=executor)
+    report = agent.run_validation(memory_id, executor=executor, cases=_cases())
     assert report["success_gain"] == 5
     assert agent.run_validation(
         memory_id,
         executor=lambda trial: (_ for _ in ()).throw(AssertionError("reran completed seed")),
+        cases=_cases(),
     )["paired_dev_seeds"] == 5
     assert agent.request_promotion(memory_id).status is MemoryStatus.TRUSTED
     assert AttentionStore(shared).get_memory(memory_id).status.value == MemoryStatus.TRUSTED.value
@@ -69,14 +71,43 @@ def test_agent_cannot_promote_when_executor_omits_safety(tmp_path):
         result = _episode(
             tmp_path, shared, trial.seed,
             candidate=trial.memory_id if trial.treatment else None,
+            variation=True,
         )
         return TrialEvidence(
             result["attention_trace"]["attempt_id"],
             tmp_path / "missing-safety.json",
+            "synthetic-config",
         )
 
     with pytest.raises(FileNotFoundError):
-        agent.run_validation(memory_id, executor=executor)
-    with pytest.raises(StateConflictError, match="five"):
+        agent.run_validation(memory_id, executor=executor, cases=_cases())
+    with pytest.raises(StateConflictError, match="predefined variation"):
         agent.request_promotion(memory_id)
     assert AttentionStore(shared).get_memory(memory_id).status.value == MemoryStatus.CANDIDATE.value
+
+
+def test_agent_rejects_mismatched_trial_config_before_pair_registration(tmp_path):
+    shared, _, memory_id, _ = _candidate(tmp_path)
+    service = MemoryService(shared)
+    agent = MemoryAgent(service)
+
+    def executor(trial):
+        result = _episode(
+            tmp_path, shared, trial.seed,
+            candidate=trial.memory_id if trial.treatment else None,
+            variation=True,
+        )
+        path = tmp_path / f"config-monitor-{trial.seed}-{trial.treatment}.json"
+        path.write_text(json.dumps({
+            "source": "independent_safety_monitor",
+            "attempt_id": result["attention_trace"]["attempt_id"],
+            "unsafe_attempts": 0,
+        }))
+        return TrialEvidence(
+            result["attention_trace"]["attempt_id"], path,
+            "different-config" if trial.treatment else "expected-config",
+        )
+
+    with pytest.raises(ValueError, match="different configurations"):
+        agent.run_validation(memory_id, executor=executor, cases=_cases())
+    assert service.list_pairs(memory_id) == []

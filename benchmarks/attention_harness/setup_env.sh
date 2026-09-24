@@ -13,7 +13,7 @@ command -v uv >/dev/null 2>&1 || {
 uv venv "$VENV_DIR" --python "$PYTHON_VERSION"
 uv pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements-robosuite.txt"
 uv pip install --python "$VENV_DIR/bin/python" \
-  "git+https://github.com/TidyBot-Services/attention_memory_service.git@c64f61ec7e35cf54d22052d536f7e094d119258f"
+  "git+https://github.com/TidyBot-Services/attention_memory_service.git@f1733006a2adc92953658ac95329fabf0aa4b5eb"
 uv pip install --python "$VENV_DIR/bin/python" --no-deps \
   "git+https://github.com/TidyBot-Services/robosuite_sim.git@fbc547489b65d0b3a8fd4e870f4c9b5761738cf1"
 

@@ -69,6 +69,9 @@ def run_robocasa_sim_gt_episode(
     client: RobocasaSimClient | None = None,
     store_path: Path | None = None,
     validation_memory_id: str | None = None,
+    validation_variation: dict[str, Any] | None = None,
+    validation_config_sha256: str | None = None,
+    runtime_variation: dict[str, Any] | None = None,
     retrieve_memory: bool = True,
     advisor_transport: AdvisorTransport | None = None,
     assistance_credits: int = 0,
@@ -105,13 +108,28 @@ def run_robocasa_sim_gt_episode(
         if memory_gateway.store_id() != memory_store_id(store.path):
             raise RuntimeError("Memory Service is connected to a different Attention store")
     memory_service = memory_gateway or MemoryService(store, artifact_root=artifact_root)
+    selected_variation = validation_variation or runtime_variation
+    if selected_variation is not None:
+        required = {"scene_id", "object_set_id", "camera_config_id", "task_variant_id", "camera_names", "task_prompt"}
+        if set(selected_variation) != required:
+            raise ValueError("variation must define scene/object/camera/task identities and concrete camera/prompt settings")
+        if (
+            not isinstance(selected_variation["camera_names"], list)
+            or not selected_variation["camera_names"]
+            or any(not isinstance(name, str) or not name for name in selected_variation["camera_names"])
+            or not isinstance(selected_variation["task_prompt"], str)
+            or not selected_variation["task_prompt"].strip()
+        ):
+            raise ValueError("invalid variation camera names or task prompt")
     context = {"perception_mode": "sim_gt", "suite": "robocasa", "task_id": task_id}
+    if selected_variation is not None:
+        context.update({key: selected_variation[key] for key in ("scene_id", "object_set_id", "camera_config_id", "task_variant_id")})
     if validation_memory_id is not None:
         candidate = store.get_memory(validation_memory_id)
         if candidate is None or candidate.status is not MemoryStatus.CANDIDATE:
             raise ValueError("validation exposure requires a candidate memory")
         memory_service.provenance(validation_memory_id)
-        if candidate.applicability != context:
+        if any(candidate.applicability.get(key) != context.get(key) for key in ("suite", "task_id", "perception_mode")):
             raise ValueError("validation candidate applicability mismatch")
         retrieved = [candidate]
     else:
@@ -160,7 +178,10 @@ def run_robocasa_sim_gt_episode(
             action_backend,
             mode="sim_gt",
             target="robocasa_sim",
-            provider=RobocasaGTPerception(service),
+            provider=RobocasaGTPerception(
+                service,
+                fixed_camera_names=None if selected_variation is None else selected_variation["camera_names"],
+            ),
         ),
         event_sink=sdk_trace.append,
     )
@@ -174,9 +195,16 @@ def run_robocasa_sim_gt_episode(
     final_observation: dict[str, Any] = {}
     initial_objects: list[dict[str, Any]] = []
     try:
-        reset = service._call("POST", "/reset", {"seed": seed}, timeout=120.0)
+        reset_payload: dict[str, Any] = {"seed": seed}
+        if selected_variation is not None:
+            reset_payload["variation"] = {
+                key: selected_variation[key] for key in ("scene_id", "object_set_id")
+            }
+        reset = service._call("POST", "/reset", reset_payload, timeout=120.0)
         if reset.get("status") != "ok":
             raise RuntimeError(f"RoboCasa reset failed: {reset}")
+        if selected_variation is not None and reset.get("applied_variation") != reset_payload["variation"]:
+            raise RuntimeError("RoboCasa service did not attest the planned variation")
         no_op_success = service.native_success()
         if no_op_success:
             raise RuntimeError("native success is true immediately after reset")
@@ -187,7 +215,7 @@ def run_robocasa_sim_gt_episode(
             {
                 "task_id": task_id,
                 "goal": spec.goal,
-                "language": task_info["lang"],
+                "language": task_info["lang"] if selected_variation is None else selected_variation["task_prompt"],
                 "perception_mode": "sim_gt",
                 "initial_objects": initial_objects,
                 "memory_catalog": [
@@ -235,6 +263,9 @@ def run_robocasa_sim_gt_episode(
         "policy_id": policy_id,
         "policy_sha256": policy_sha256,
         "perception_mode": "sim_gt",
+        "validation_variation": validation_variation,
+        "validation_config_sha256": validation_config_sha256,
+        "runtime_variation": runtime_variation,
         "execution_target": "robocasa_sim",
         "trusted_policy_callback": True,
         "formal_eligible": False,
@@ -273,6 +304,8 @@ def run_robocasa_sim_gt_episode(
             "memory_ids": result["memory_ids"],
             "policy_sha256": policy_sha256,
             "memory_exposure": "candidate_validation" if validation_memory_id else "trusted" if retrieved else "none",
+            "validation_variation": validation_variation,
+            "validation_config_sha256": validation_config_sha256,
         },
         assistance_credits=assistance_credits,
         store_path=store_path,

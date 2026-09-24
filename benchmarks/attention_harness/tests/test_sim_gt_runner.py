@@ -31,13 +31,17 @@ class FakeWorld:
             return {"task": "RoboCasa-Pn-P-Counter-To-Sink-v0", "lang": "place mug in sink"}
         if path == "/reset":
             self.success = False
-            return {"status": "ok"}
+            result = {"status": "ok"}
+            if "variation" in payload:
+                result["applied_variation"] = payload["variation"]
+            return result
         if path == "/task/success":
             return {"success": self.success, "debug": {"object_pose": [9, 9, 9]}}
         if path == "/perceive":
             return {
                 "objects": [{"name": "mug", "x": 1.0, "y": 2.0, "z": 3.0,
                              "segmentation_id": 7}],
+                "cameras": payload.get("camera_names") if payload else [],
                 "arm_base": [0.0, 0.0, 0.0],
                 "arm_base_quat": [1.0, 0.0, 0.0, 0.0],
             }

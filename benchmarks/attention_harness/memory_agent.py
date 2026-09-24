@@ -33,12 +33,14 @@ class ValidationTrial:
     perception_mode: str
     policy_id: str
     assistance_credits: int
+    variation: dict[str, Any]
 
 
 @dataclass(frozen=True)
 class TrialEvidence:
     attempt_id: str
     safety_artifact: Path
+    config_sha256: str
 
 
 class TrialExecutor(Protocol):
@@ -96,7 +98,7 @@ class MemoryAgent:
         )
 
     def plan_validation(
-        self, memory_id: str, *, seeds: tuple[int, ...] | None = None,
+        self, memory_id: str, *, cases: tuple[dict[str, Any], ...],
         assistance_credits: int = 0,
     ) -> tuple[tuple[ValidationTrial, ValidationTrial], ...]:
         memory = self.service.get_memory(memory_id)
@@ -105,10 +107,7 @@ class MemoryAgent:
         provenance = self.service.provenance(memory_id)
         if provenance["source_execution_target"] not in {"robocasa_sim", "robosuite_sim"}:
             raise PermissionError("automatic memory validation is simulator-only")
-        selected = tuple(
-            seed for seed in range(101, 126)
-            if seed != provenance["source_seed"]
-        )[:5] if seeds is None else seeds
+        selected = tuple(case.get("seed") for case in cases)
         if len(selected) < 5 or len(set(selected)) != len(selected):
             raise ValueError("validation needs at least five distinct seeds")
         if isinstance(assistance_credits, bool) or not isinstance(assistance_credits, int) or assistance_credits < 0:
@@ -116,6 +115,18 @@ class MemoryAgent:
         for seed in selected:
             if validate_seed(seed) != "dev":
                 raise PermissionError("memory validation is development-only")
+        axes = ("scene_id", "object_set_id", "camera_config_id", "task_variant_id")
+        for case in cases:
+            if set(case) != {"seed", *axes, "camera_names", "task_prompt"} or any(
+                not isinstance(case[axis], str) or not case[axis].strip() for axis in axes
+            ) or not isinstance(case["camera_names"], list) or not case["camera_names"] or any(
+                not isinstance(name, str) or not name for name in case["camera_names"]
+            ) or not isinstance(case["task_prompt"], str) or not case["task_prompt"].strip():
+                raise ValueError("each validation case needs four explicit variation axes")
+        if any(len({case[axis] for case in cases}) < 2 for axis in axes):
+            raise ValueError("validation must vary every scene/object/camera/task axis")
+        if len({tuple(case["camera_names"]) for case in cases}) < 2 or len({case["task_prompt"] for case in cases}) < 2:
+            raise ValueError("camera and task variants need different concrete views and prompts")
         context = provenance["artifact"]["applicability"]
         self.service.record_plan(memory_id, {
             "schema_version": "attentionbench.memory-validation-plan.v2",
@@ -126,15 +137,18 @@ class MemoryAgent:
             "policy_id": provenance["source_policy_id"],
             "assistance_credits": assistance_credits,
             "seeds": list(selected),
+            "cases": [dict(case) for case in cases],
         })
         pairs = []
-        for seed in selected:
+        for case in cases:
+            seed = case["seed"]
             common = dict(
                 memory_id=memory_id, seed=seed,
                 suite=context["suite"], task_id=context["task_id"],
                 perception_mode=context["perception_mode"],
                 policy_id=provenance["source_policy_id"],
                 assistance_credits=assistance_credits,
+                variation={axis: case[axis] for axis in (*axes, "camera_names", "task_prompt")},
             )
             pairs.append((
                 ValidationTrial(treatment=False, **common),
@@ -144,12 +158,12 @@ class MemoryAgent:
 
     def run_validation(
         self, memory_id: str, *, executor: TrialExecutor,
-        seeds: tuple[int, ...] | None = None,
+        cases: tuple[dict[str, Any], ...],
         assistance_credits: int = 0,
     ) -> dict[str, Any]:
         """Run matched trials and report them; promotion remains service-gated."""
         pairs = self.plan_validation(
-            memory_id, seeds=seeds, assistance_credits=assistance_credits,
+            memory_id, cases=cases, assistance_credits=assistance_credits,
         )
         completed = {item["seed"] for item in self.service.list_pairs(memory_id)}
         for control, treatment in pairs:
@@ -159,6 +173,8 @@ class MemoryAgent:
             treatment_evidence = executor(treatment)
             if not isinstance(control_evidence, TrialEvidence) or not isinstance(treatment_evidence, TrialEvidence):
                 raise TypeError("trial executor must return TrialEvidence")
+            if not control_evidence.config_sha256 or control_evidence.config_sha256 != treatment_evidence.config_sha256:
+                raise ValueError("paired trial executor reported different configurations")
             self.service.record_pair(
                 memory_id=memory_id,
                 control_attempt_id=control_evidence.attempt_id,

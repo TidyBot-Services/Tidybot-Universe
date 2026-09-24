@@ -9,7 +9,7 @@ from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.memory_agent import MemoryAgent
 from benchmarks.attention_harness.memory_artifacts import safe_memory_directory
 from benchmarks.attention_harness.memory_service import MemoryService
-from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode, _safety
+from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode, _safety, _cases
 
 
 def test_memory_package_is_service_materialized_and_rebuildable(tmp_path):
@@ -29,13 +29,13 @@ def test_memory_package_is_service_materialized_and_rebuildable(tmp_path):
     assert (directory / "validation/pairs.jsonl").read_text() == ""
     assert origin["memory_candidate_id"] == memory_id
 
-    MemoryAgent(service).plan_validation(memory_id)
+    MemoryAgent(service).plan_validation(memory_id, cases=_cases())
     plan = json.loads((directory / "validation/plan.json").read_text())
     assert plan["seeds"] == [102, 103, 104, 105, 106]
     assert service.verify_package(memory_id)["files"]["validation/plan.json"]
 
-    control = _episode(tmp_path, shared, 102)
-    treatment = _episode(tmp_path, shared, 102, candidate=memory_id)
+    control = _episode(tmp_path, shared, 102, variation=True)
+    treatment = _episode(tmp_path, shared, 102, candidate=memory_id, variation=True)
     service.record_pair(
         memory_id=memory_id,
         control_attempt_id=control["attention_trace"]["attempt_id"],
@@ -74,6 +74,7 @@ def test_memory_package_detects_unpublished_db_changes_and_safe_id(tmp_path):
         "policy_id": source["source_policy_id"],
         "assistance_credits": 0,
         "seeds": [102, 103, 104, 105, 106],
+        "cases": list(_cases()),
     })
     with pytest.raises(StateConflictError, match="stale"):
         service.verify_package(memory_id)

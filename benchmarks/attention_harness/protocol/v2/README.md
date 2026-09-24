@@ -42,10 +42,18 @@ exposure only in treatment, identical run conditions, and hashed outputs from
 an independent safety monitor. The policy callback's code and captured values
 are fingerprinted, so a changed policy cannot masquerade as a memory benefit.
 Source human-attention cost, subsequent help
-credits, robot time, and safety are reported separately. The current runner
-does **not** produce independent safety-monitor files, so its live runs cannot
-yet pass this gate; unit tests use controlled synthetic fixtures. This is an
-intentional fail-closed boundary, not a claim of formal benchmark readiness.
+credits, robot time, and safety are reported separately. The RoboCasa paired
+executor wraps the backend in an independent command/proprioception monitor.
+It writes one safety artifact per attempt, including sampled state, proposed
+actions, limit violations, and explicit coverage. It can reject an excessive
+command before dispatch. The backend has no independent collision/contact
+telemetry, so this is **not** a full physical-safety certification.
+The frozen validation plan names every scene, object set, camera configuration,
+and task variant. Both arms must attest the same applied variation and
+execution-configuration digest in their raw traces; all planned cases must
+finish before promotion. The impact artifact lists supporting successes,
+counterexamples, empirical confidence, and the exact variation tuples still
+eligible for trusted retrieval. Any counterexample excludes its tuple.
 
 ## Memory Agent and Memory Service
 
@@ -80,20 +88,77 @@ For a local daemon, provide a nonempty `ATTENTION_MEMORY_API_KEY` of at least
 ```bash
 python -m attention_memory_service \
   --store-path artifacts/attentionbench-v2-gt/attention_memory.sqlite3
-python -m benchmarks.attention_harness.memory_agent_cli plan MEMORY_ID
+python -m benchmarks.attention_harness.memory_agent_cli plan MEMORY_ID \
+  --cases /path/to/frozen-validation-cases.json
 ```
 
 The daemon binds to `127.0.0.1:8768` by default. Remote client URLs require
 HTTPS; do not expose the daemon on a public interface without TLS and normal
 deployment controls. HTTP validation pairs upload safety-monitor JSON into the
 Service's persistent evidence directory; they do not depend on shared local
-paths. `MemoryAgent.run_validation()` accepts an injected trial
-executor, but no live executor is registered yet because the current RoboCasa
-GT chain does not supply independent safety-monitor artifacts. The agent can
-plan and request validation; the Service will still reject promotion until
-real paired evidence exists. Registered seed pairs survive restart and are
-skipped on a resumed validation run. This is not yet wired into the legacy skill-DAG
-orchestrator's automatic agent-spawn path.
+paths. `RoboCasaPairedTrialExecutor` now drives the GT runner through the same
+task, seed, policy code, budget, and simulator configuration for both arms.
+Only candidate exposure differs. Each episode keeps `trial_config.json`,
+`result.json`, its raw trace/bundle, and `safety_monitor.json`. The Memory
+Service independently checks the stored attempts, native outcomes, retrieval
+events, and safety-file hashes before promotion. Registered seed pairs survive
+restart and are skipped on a resumed validation run. This is not yet wired into
+the legacy skill-DAG orchestrator's automatic agent-spawn path.
+
+For a candidate already produced by a failed GT run, start the RoboCasa and
+simulator-only agent services, then run five development-seed pairs:
+
+```bash
+python -m benchmarks.attention_harness.memory_agent_cli validate MEMORY_ID \
+  --cases /path/to/frozen-validation-cases.json \
+  --policy my_lab_policy:run \
+  --artifact-root artifacts/attentionbench-v2-gt \
+  --store-path artifacts/attentionbench-v2-gt/attention_memory.sqlite3 \
+  --confirm-simulator-agent --promote
+```
+
+The policy entry point must match the source run; `--promote` asks the Service
+to apply its gate and may fail even when all trials execute. This command is
+development-only, not a formal score. The in-memory fake-world smoke test
+proves candidate-to-promotion behavior. A live RoboCasa no-op smoke completed
+five control/treatment pairs with both camera views and correctly refused
+promotion; successful policy trials and the two-task 25/25 stability gate
+remain pending. The monitor defaults to a 0.25 m commanded
+delta and a 0.5 m observed step; both limits are CLI-configurable, recorded in
+each trial configuration, and must remain identical within each pair.
+The cases file is a JSON array with at least five unique development seeds;
+each item contains `seed`, `scene_id`, `object_set_id`, `camera_config_id`,
+`camera_names`, `task_variant_id`, and `task_prompt`. The two prompt variants
+share one `task_id` and native evaluator. Use the discovery tool against an
+updated `maniskill_sim` to obtain actual scene/object IDs and camera receipts:
+
+```bash
+python -m benchmarks.attention_harness.robocasa_native.discover_variations \
+  --task counter_to_sink --seeds 102,103,104,105,106 \
+  --camera-config base_camera --camera-config wrist_camera \
+  --task-prompt 'place mug in sink' \
+  --task-prompt 'move the mug into the sink' \
+  --output /path/to/frozen-validation-cases.json
+```
+
+Every axis must vary. The simulator-side variation contract is implemented in
+`maniskill_sim` at commit `4e59015` and was smoke-tested against a live local
+RoboCasa task. Its reset reconfigures the scene for each development seed and
+reports IDs computed from realized fixture geometry and object configurations;
+it never treats a requested label as evidence. Scene IDs attest geometry, not
+texture/style, and must not be used as evidence of visual-style variation.
+
+Human lifecycle controls use a separate `ATTENTION_MEMORY_OPERATOR_KEY` in
+addition to `ATTENTION_MEMORY_API_KEY`. For example:
+
+```bash
+python -m attention_memory_service.operator_cli --actor operator-1 \
+  disable MEMORY_ID --reason 'camera mismatch'
+```
+
+`rollback` and `set-expiry --expires-at UNIX_SECONDS` use the same operator
+CLI. The Service records actor and reason; disabled, rolled-back, or expired
+memories stop appearing in retrieval immediately.
 
 The RoboCasa GT CLI can use the same daemon with `--memory-service-url
 http://127.0.0.1:8768`. Set `ATTENTION_MEMORY_API_KEY` in its environment and
@@ -120,7 +185,8 @@ hash-checked, rebuildable view, not a second writable memory database:
     ├── validation/
     │   ├── plan.json              # immutable dev-seed paired-trial plan
     │   ├── pairs.jsonl            # control/treatment evidence references
-    │   └── impact.json            # current paired outcome and attention costs
+    │   ├── impact.json            # current paired outcome and attention costs
+    │   └── scope.json             # validated variation tuples after counterexamples
     ├── lifecycle.jsonl            # recorded memory transitions
     └── usage.jsonl                # explicit trusted-memory uses
 ```
