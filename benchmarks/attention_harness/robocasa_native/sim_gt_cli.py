@@ -9,7 +9,10 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 from pathlib import Path
+
+from attention_memory_service import MemoryServiceClient
 
 from ..parcc_advisor import ParccGLMAdvisorTransport
 from .agent_actions import AgentServerActionBackend
@@ -59,9 +62,19 @@ def main() -> int:
         "--no-memory", action="store_true", help="control run: do not retrieve trusted memory",
     )
     parser.add_argument("--advisor", action="store_true", help="ask PARCC GLM on failure")
+    parser.add_argument(
+        "--memory-service-url",
+        help="authenticated Memory Service using the same Attention SQLite store",
+    )
     args = parser.parse_args()
     if not args.confirm_simulator_agent:
         parser.error("--confirm-simulator-agent is required before enabling sim_gt actions")
+    memory_gateway = None
+    if args.memory_service_url:
+        memory_gateway = MemoryServiceClient(
+            args.memory_service_url,
+            api_key=os.environ.get("ATTENTION_MEMORY_API_KEY", ""),
+        )
     result = run_robocasa_sim_gt_episode(
         task_id=args.task,
         seed=args.seed,
@@ -78,6 +91,7 @@ def main() -> int:
         retrieve_memory=not args.no_memory,
         advisor_transport=ParccGLMAdvisorTransport() if args.advisor else None,
         assistance_credits=1 if args.advisor else 0,
+        memory_gateway=memory_gateway,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["native_success"] else 1

@@ -26,7 +26,8 @@ probes do not count as policy successes.
 ## Memory v2
 
 `memory.json` defines the additive v2 memory contract. The implementation is
-`benchmarks.attention_harness.memory_v2.MemoryV2Manager`; RoboCasa GT runs use
+the separately versioned [attention_memory_service](https://github.com/TidyBot-Services/attention_memory_service)
+package; the old Universe module paths are compatibility imports. RoboCasa GT runs use
 one shared SQLite database by default (`ARTIFACT_ROOT/attention_memory.sqlite3`)
 and retain a separate bundle inside each episode directory. GLM advice is
 recorded as `advisor_proxy`, **not** human attention. A manually promoted v1
@@ -77,7 +78,7 @@ For a local daemon, provide a nonempty `ATTENTION_MEMORY_API_KEY` of at least
 16 characters and run:
 
 ```bash
-python -m benchmarks.attention_harness.memory_service_api \
+python -m attention_memory_service \
   --store-path artifacts/attentionbench-v2-gt/attention_memory.sqlite3
 python -m benchmarks.attention_harness.memory_agent_cli plan MEMORY_ID
 ```
@@ -93,6 +94,12 @@ plan and request validation; the Service will still reject promotion until
 real paired evidence exists. Registered seed pairs survive restart and are
 skipped on a resumed validation run. This is not yet wired into the legacy skill-DAG
 orchestrator's automatic agent-spawn path.
+
+The RoboCasa GT CLI can use the same daemon with `--memory-service-url
+http://127.0.0.1:8768`. Set `ATTENTION_MEMORY_API_KEY` in its environment and
+point the daemon at the **same** `--store-path`; the runner verifies the
+database's opaque identity before actions begin. Without the option, the
+runner uses the independently installed package in-process.
 
 ### Per-memory artifact package
 

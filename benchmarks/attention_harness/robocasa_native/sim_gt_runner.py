@@ -16,6 +16,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from attention_memory_service import MemoryService, MemoryServiceClient
+from attention_memory_service.identity import store_id as memory_store_id
 from tidybot_sdk import RobotBackend, TidyBotSDK
 from tidybot_sdk.perception import ModeBoundPerceptionBackend, PerceptionMode
 
@@ -34,7 +36,6 @@ from ..core.runtime import AttentionRuntime
 from ..core.store import AttentionStore
 from ..episode_trace import persist_episode_trace
 from ..memory_agent import MemoryAgent
-from ..memory_service import MemoryService
 from ..parcc_advisor import parse_advisor_advice
 from ..seed_guard import validate_seed
 from ..v2_advisor import SimGTAdvisorProxy
@@ -73,6 +74,7 @@ def run_robocasa_sim_gt_episode(
     assistance_credits: int = 0,
     advisor_sleeper: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.time,
+    memory_gateway: MemoryService | MemoryServiceClient | None = None,
 ) -> dict[str, Any]:
     """Run one trusted policy attempt, evaluator check, trace, and optional help.
 
@@ -97,7 +99,12 @@ def run_robocasa_sim_gt_episode(
     task_info = service.assert_task()
     episode_dir = create_episode_dir(artifact_root, task_id, seed)
     store = AttentionStore(store_path or episode_dir / "attention.sqlite3")
-    memory_service = MemoryService(store, artifact_root=artifact_root)
+    if isinstance(memory_gateway, MemoryServiceClient):
+        if memory_gateway.health().get("schema_version") != "attentionbench.memory-service.v2":
+            raise RuntimeError("incompatible Memory Service schema")
+        if memory_gateway.store_id() != memory_store_id(store.path):
+            raise RuntimeError("Memory Service is connected to a different Attention store")
+    memory_service = memory_gateway or MemoryService(store, artifact_root=artifact_root)
     context = {"perception_mode": "sim_gt", "suite": "robocasa", "task_id": task_id}
     if validation_memory_id is not None:
         candidate = store.get_memory(validation_memory_id)
@@ -279,7 +286,7 @@ def run_robocasa_sim_gt_episode(
     for item in retrieved:
         if item.memory_id not in used_memories:
             continue
-        if item.status is not MemoryStatus.TRUSTED:
+        if item.status.value != MemoryStatus.TRUSTED.value:
             continue  # candidate exposure is attested in the raw trace, not v1 memory_uses
         memory_service.record_use(
             MemoryUseRecord(
@@ -295,11 +302,11 @@ def run_robocasa_sim_gt_episode(
     if advisor_transport is not None and not result["native_success"] and assistance_credits:
         _ask_advisor_and_create_candidate(
             store=store,
-            artifact_root=artifact_root,
             result=result,
             transport=advisor_transport,
             sleeper=advisor_sleeper,
             clock=clock,
+            memory_gateway=memory_service,
         )
     write_result_artifact(episode_dir, result)
     return result
@@ -308,11 +315,11 @@ def run_robocasa_sim_gt_episode(
 def _ask_advisor_and_create_candidate(
     *,
     store: AttentionStore,
-    artifact_root: Path,
     result: dict[str, Any],
     transport: AdvisorTransport,
     sleeper: Callable[[float], None],
     clock: Callable[[], float],
+    memory_gateway: MemoryService | MemoryServiceClient,
 ) -> None:
     link = result["attention_trace"]
     trace_id = link["advisor_trace_id"]
@@ -343,7 +350,7 @@ def _ask_advisor_and_create_candidate(
         answered = runtime.resolve_benchmark_proxy(request.request_id)
         response = store.get_response(answered.response_id)
         advice = parse_advisor_advice(response["content"], request_type="hint")
-        candidate = MemoryAgent(MemoryService(store, artifact_root=artifact_root)).ingest_answered_hint(
+        candidate = MemoryAgent(memory_gateway).ingest_answered_hint(
             request.request_id,
             memory_id=f"candidate:{link['attempt_id']}",
         )

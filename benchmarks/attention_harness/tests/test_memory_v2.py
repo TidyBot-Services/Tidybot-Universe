@@ -5,8 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from benchmarks.attention_harness.core.models import MemoryStatus
-from benchmarks.attention_harness.core.store import AttentionStore, StateConflictError
+from attention_memory_service.core.models import MemoryStatus
+from attention_memory_service.core.store import StateConflictError
+from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.memory_v2 import MemoryV2Manager
 from benchmarks.attention_harness.robocasa_native.client import RobocasaSimClient
 from benchmarks.attention_harness.robocasa_native.sim_gt_runner import run_robocasa_sim_gt_episode
@@ -193,7 +194,7 @@ def test_no_gain_and_safety_regression_fail_closed(tmp_path):
         )
     with pytest.raises(StateConflictError, match="no measured success gain"):
         manager.validate_and_promote(memory_id)
-    assert AttentionStore(shared).get_memory(memory_id).status is MemoryStatus.CANDIDATE
+    assert AttentionStore(shared).get_memory(memory_id).status.value == MemoryStatus.CANDIDATE.value
 
 
 def test_validation_requires_independent_safety_evidence(tmp_path):

@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from benchmarks.attention_harness.core.store import StateConflictError
+from attention_memory_service.core.store import StateConflictError
 from benchmarks.attention_harness.memory_service_api import create_app
 from benchmarks.attention_harness.memory_service_client import MemoryServiceClient
 from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode, _safety
@@ -88,7 +88,7 @@ def test_remote_agent_client_uses_auth_and_preserves_service_conflicts(monkeypat
         return Response()
 
     monkeypatch.setattr(
-        "benchmarks.attention_harness.memory_service_client.urlopen", fake_urlopen,
+        "attention_memory_service.memory_service_client.urlopen", fake_urlopen,
     )
     client = MemoryServiceClient("http://127.0.0.1:8768", api_key=KEY)
     assert client.provenance("candidate:run:1")["source_kind"] == "advisor_proxy"

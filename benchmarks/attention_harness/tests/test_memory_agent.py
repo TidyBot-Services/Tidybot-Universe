@@ -4,8 +4,9 @@ import json
 
 import pytest
 
-from benchmarks.attention_harness.core.models import MemoryStatus
-from benchmarks.attention_harness.core.store import AttentionStore, StateConflictError
+from attention_memory_service.core.models import MemoryStatus
+from attention_memory_service.core.store import StateConflictError
+from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.memory_agent import MemoryAgent, TrialEvidence
 from benchmarks.attention_harness.memory_service import MemoryService
 from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode
@@ -51,7 +52,7 @@ def test_memory_agent_plans_and_orchestrates_evidence_gated_validation(tmp_path)
         executor=lambda trial: (_ for _ in ()).throw(AssertionError("reran completed seed")),
     )["paired_dev_seeds"] == 5
     assert agent.request_promotion(memory_id).status is MemoryStatus.TRUSTED
-    assert AttentionStore(shared).get_memory(memory_id).status is MemoryStatus.TRUSTED
+    assert AttentionStore(shared).get_memory(memory_id).status.value == MemoryStatus.TRUSTED.value
     package = service.artifacts.directory(memory_id)
     assert service.verify_package(memory_id)["status"] == "trusted"
     lifecycle = [json.loads(line) for line in (package / "lifecycle.jsonl").read_text().splitlines()]
@@ -78,4 +79,4 @@ def test_agent_cannot_promote_when_executor_omits_safety(tmp_path):
         agent.run_validation(memory_id, executor=executor)
     with pytest.raises(StateConflictError, match="five"):
         agent.request_promotion(memory_id)
-    assert AttentionStore(shared).get_memory(memory_id).status is MemoryStatus.CANDIDATE
+    assert AttentionStore(shared).get_memory(memory_id).status.value == MemoryStatus.CANDIDATE.value

@@ -121,15 +121,17 @@ python3 -m maniskill_server --gui
 git clone https://github.com/TidyBot-Services/Tidybot-Universe.git
 cd Tidybot-Universe
 ./benchmarks/attention_harness/setup_env.sh
-~/.cache/tidybot-attention/venv/bin/python -m robosuite_sim --port 8082
-
-# Health check
-curl http://127.0.0.1:8082/health
+~/.cache/tidybot-attention/venv/bin/python -m \
+  benchmarks.attention_harness.external_robosuite_runner \
+  --task cube_lift --seed 101 --policy no-op --no-camera
 ```
 
-`robosuite_sim` is a separate process from AttentionHarness. It owns the
-Robosuite environment and native evaluator; the harness connects through its
-client API.
+This entry point starts the pinned service package from its
+[independent repository](https://github.com/TidyBot-Services/robosuite_sim)
+and stops it after the run. The original `runner` and in-tree service package
+remain unchanged for the frozen v1 replay contract. To manage the service
+separately, run `python -I -m robosuite_sim --port 8082` from the installed
+AttentionBench environment and pass `--service-url http://127.0.0.1:8082`.
 
 For a PARCC development-only connectivity run (seed `101`, never held-out),
 inject the credential through the protected wrapper and select the model policy:

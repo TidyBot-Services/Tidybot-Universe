@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
+
+from attention_memory_service import MemoryServiceClient
 
 from benchmarks.attention_harness.core.memory import MemoryManager
 from benchmarks.attention_harness.core.models import MemoryRecord, MemoryStatus
@@ -72,6 +75,18 @@ def _run(tmp_path: Path, world, policy, **kwargs):
         client=RobocasaSimClient("counter_to_sink", transport=world.transport),
         **kwargs,
     )
+
+
+def test_remote_memory_rejects_wrong_store_before_reset(tmp_path, monkeypatch):
+    world = FakeWorld()
+    gateway = MemoryServiceClient("http://127.0.0.1:8768", api_key="memory-service-test-key")
+    monkeypatch.setattr(gateway, "health", lambda: {
+        "status": "ok", "schema_version": "attentionbench.memory-service.v2",
+    })
+    monkeypatch.setattr(gateway, "store_id", lambda: "other-store")
+    with pytest.raises(RuntimeError, match="different Attention store"):
+        _run(tmp_path, world, lambda sdk, context: None, memory_gateway=gateway)
+    assert ("POST", "/reset") not in world.calls
 
 
 def test_sim_gt_runner_exposes_only_labelled_sdk_objects_and_persists_trace(tmp_path):

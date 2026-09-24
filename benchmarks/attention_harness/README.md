@@ -56,13 +56,18 @@ MUJOCO_GL=egl TIDYBOT_ROBOSUITE_INTEGRATION=1 \
   benchmarks/attention_harness/tests/test_native_integration.py
 ```
 
-Run one episode:
+Run one episode through the independently installed, commit-pinned service
+(recommended for new work):
 
 ```bash
 MUJOCO_GL=egl ~/.cache/tidybot-attention/venv/bin/python -m \
-  benchmarks.attention_harness.runner \
+  benchmarks.attention_harness.external_robosuite_runner \
   --task cube_lift --seed 101 --policy reference
 ```
+
+The original `benchmarks.attention_harness.runner` remains available for
+frozen v1 replay. Its managed-process source snapshot cannot be changed
+without invalidating the v1 freeze manifest.
 
 Use `--policy frozen-public` to run the D7 task-solving policy. It executes in
 the same credential-free sandbox as generated programs and can see only public
@@ -72,8 +77,8 @@ The runner starts and stops a local `robosuite_sim` process by default. To use
 an already-running service instead:
 
 ```bash
-python -m robosuite_sim --port 8082
-python -m benchmarks.attention_harness.runner \
+python -I -m robosuite_sim --port 8082
+python -m benchmarks.attention_harness.external_robosuite_runner \
   --service-url http://127.0.0.1:8082 \
   --task cube_lift --seed 101 --policy reference
 ```

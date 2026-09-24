@@ -25,9 +25,6 @@ Skill Agent                    Compute Node (deploy-agent :9000)
 ```
 service-agent-setup/
 ├── README.md               # You are here
-├── deploy-agent/           # Deploy-agent daemon (runs on compute nodes)
-│   ├── server.py
-│   └── requirements.txt
 ├── claude-code/            # CLAUDE.md for human developers building services
 │   ├── README.md
 │   └── CLAUDE.md
@@ -49,11 +46,15 @@ service-agent-setup/
 
 ### 1. Deploy-agent (one-time per compute node)
 
-SSH into your GPU server and start the deploy-agent:
+SSH into your GPU server, clone the authoritative
+[deploy-agent repository](https://github.com/TidyBot-Services/deploy-agent),
+and start it there:
 
 ```bash
-pip install -r deploy-agent/requirements.txt
-python deploy-agent/server.py --port 9000
+git clone https://github.com/TidyBot-Services/deploy-agent.git
+cd deploy-agent
+pip install -r requirements.txt
+python server.py --port 9000
 ```
 
 The user running deploy-agent needs Docker access (`sudo usermod -aG docker $USER`).

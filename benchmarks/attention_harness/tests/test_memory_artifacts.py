@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from benchmarks.attention_harness.core.store import AttentionStore, StateConflictError
+from attention_memory_service.core.store import StateConflictError
+from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.memory_agent import MemoryAgent
 from benchmarks.attention_harness.memory_artifacts import safe_memory_directory
 from benchmarks.attention_harness.memory_service import MemoryService
