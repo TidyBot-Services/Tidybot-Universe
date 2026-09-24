@@ -9,6 +9,8 @@ the task evaluator client.
 from __future__ import annotations
 
 import json
+import hashlib
+import marshal
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -20,10 +22,9 @@ from tidybot_sdk.perception import ModeBoundPerceptionBackend, PerceptionMode
 from ..artifacts import create_episode_dir, write_episode_artifacts, write_result_artifact
 from ..attention_modes import AssistanceMode, MODE_SPECS, RequestState
 from ..core.advisor import AdvisorTransport
-from ..core.memory import MemoryManager
+from ..core.artifacts import write_run_bundle
 from ..core.models import (
     AttentionRequestRecord,
-    MemoryRecord,
     MemoryStatus,
     MemoryUseRecord,
     RequestPriority,
@@ -32,6 +33,8 @@ from ..core.models import (
 from ..core.runtime import AttentionRuntime
 from ..core.store import AttentionStore
 from ..episode_trace import persist_episode_trace
+from ..memory_agent import MemoryAgent
+from ..memory_service import MemoryService
 from ..parcc_advisor import parse_advisor_advice
 from ..seed_guard import validate_seed
 from ..v2_advisor import SimGTAdvisorProxy
@@ -41,6 +44,16 @@ from .tasks import get_robocasa_task
 
 
 Policy = Callable[[TidyBotSDK, dict[str, Any]], None]
+
+
+def _policy_fingerprint(policy: Policy) -> str:
+    """Bind paired trials to the same trusted callback and captured values."""
+    code = getattr(policy, "__code__", None)
+    if code is None:
+        raise TypeError("v2 dev runner requires a Python function policy")
+    closure = tuple(repr(cell.cell_contents) for cell in (policy.__closure__ or ()))
+    payload = marshal.dumps(code) + repr((policy.__defaults__, closure)).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def run_robocasa_sim_gt_episode(
@@ -54,6 +67,8 @@ def run_robocasa_sim_gt_episode(
     perception_mode: PerceptionMode | str,
     client: RobocasaSimClient | None = None,
     store_path: Path | None = None,
+    validation_memory_id: str | None = None,
+    retrieve_memory: bool = True,
     advisor_transport: AdvisorTransport | None = None,
     assistance_credits: int = 0,
     advisor_sleeper: Callable[[float], None] = time.sleep,
@@ -74,6 +89,7 @@ def run_robocasa_sim_gt_episode(
         raise ValueError("assistance_credits must be non-negative")
     if action_backend.control_frame != "arm_base":
         raise ValueError("RoboCasa GT positions require arm_base action coordinates")
+    policy_sha256 = _policy_fingerprint(policy)
     spec = get_robocasa_task(task_id)
     service = client or RobocasaSimClient(task_id)
     if service.spec.task_id != task_id:
@@ -81,28 +97,57 @@ def run_robocasa_sim_gt_episode(
     task_info = service.assert_task()
     episode_dir = create_episode_dir(artifact_root, task_id, seed)
     store = AttentionStore(store_path or episode_dir / "attention.sqlite3")
-    memory = MemoryManager(store)
-    retrieved = [
-        item for item in memory.retrieve(
-            {"perception_mode": "sim_gt", "suite": "robocasa", "task_id": task_id},
-            now=clock(),
-        )
-        if item.applicability.get("perception_mode") == "sim_gt"
-        and item.applicability.get("suite") == "robocasa"
-        and item.applicability.get("task_id") == task_id
-        and item.status is MemoryStatus.TRUSTED
-    ]
+    memory_service = MemoryService(store, artifact_root=artifact_root)
+    context = {"perception_mode": "sim_gt", "suite": "robocasa", "task_id": task_id}
+    if validation_memory_id is not None:
+        candidate = store.get_memory(validation_memory_id)
+        if candidate is None or candidate.status is not MemoryStatus.CANDIDATE:
+            raise ValueError("validation exposure requires a candidate memory")
+        memory_service.provenance(validation_memory_id)
+        if candidate.applicability != context:
+            raise ValueError("validation candidate applicability mismatch")
+        retrieved = [candidate]
+    else:
+        retrieved = memory_service.retrieve(context, now=clock()) if retrieve_memory else []
+    memory_context = {}
+    for item in retrieved:
+        provenance = memory_service.provenance(item.memory_id)
+        memory_context[item.memory_id] = {
+            "memory_id": item.memory_id,
+            "guidance": item.guidance,
+            "artifact_kind": provenance["artifact"]["kind"],
+            "source_kind": provenance["source_kind"],
+            "perception_mode": item.applicability["perception_mode"],
+            "validation_status": item.status.value,
+        }
+    used_memories: list[str] = []
     sdk_trace: list[dict[str, Any]] = [
         {
             "timestamp": 0.0,
             "source": "attention_harness.memory",
-            "event_type": "attention.memory_retrieval",
-            "operation": "retrieve",
+            "event_type": "attention.memory_catalog",
+            "operation": "list_available",
             "status": "completed",
             "arguments": {"perception_mode": "sim_gt", "task_id": task_id},
             "result": {"memory_ids": [item.memory_id for item in retrieved]},
         }
     ]
+
+    def retrieve_memory(memory_id: str) -> dict[str, Any]:
+        if memory_id not in memory_context:
+            raise KeyError("memory is not available for this task and perception mode")
+        if memory_id not in used_memories:
+            used_memories.append(memory_id)
+            sdk_trace.append({
+                "timestamp": clock(),
+                "source": "attention_harness.memory",
+                "event_type": "attention.memory_retrieval",
+                "operation": "retrieve",
+                "status": "completed",
+                "arguments": {"memory_id": memory_id},
+                "result": {"source_kind": memory_context[memory_id]["source_kind"]},
+            })
+        return dict(memory_context[memory_id])
     sdk = TidyBotSDK(
         ModeBoundPerceptionBackend(
             action_backend,
@@ -138,10 +183,11 @@ def run_robocasa_sim_gt_episode(
                 "language": task_info["lang"],
                 "perception_mode": "sim_gt",
                 "initial_objects": initial_objects,
-                "memories": [
-                    {"memory_id": item.memory_id, "guidance": item.guidance}
-                    for item in retrieved
+                "memory_catalog": [
+                    {key: value for key, value in item.items() if key != "guidance"}
+                    for item in memory_context.values()
                 ],
+                "retrieve_memory": retrieve_memory,
             },
         )
     except Exception as exc:
@@ -180,6 +226,7 @@ def run_robocasa_sim_gt_episode(
         "task_id": task_id,
         "seed": seed,
         "policy_id": policy_id,
+        "policy_sha256": policy_sha256,
         "perception_mode": "sim_gt",
         "execution_target": "robocasa_sim",
         "trusted_policy_callback": True,
@@ -190,7 +237,7 @@ def run_robocasa_sim_gt_episode(
         "error": error,
         "elapsed_seconds": elapsed,
         "initial_object_count": len(initial_objects),
-        "memory_ids": [item.memory_id for item in retrieved],
+        "memory_ids": list(used_memories),
         "artifact_dir": str(episode_dir.resolve()),
     }
     write_episode_artifacts(
@@ -214,13 +261,27 @@ def run_robocasa_sim_gt_episode(
         action_trace=action_trace,
         sdk_trace=sdk_trace,
         error=error,
-        runtime={"perception_mode": "sim_gt", "score_namespace": result["score_namespace"]},
+        runtime={
+            "perception_mode": "sim_gt", "score_namespace": result["score_namespace"],
+            "memory_ids": result["memory_ids"],
+            "policy_sha256": policy_sha256,
+            "memory_exposure": "candidate_validation" if validation_memory_id else "trusted" if retrieved else "none",
+        },
         assistance_credits=assistance_credits,
         store_path=store_path,
+        execution_budget_seconds=300.0,
     )
     result["attention_trace"] = link
+    # The frozen trace assembler writes beside the DB. A shared cross-run DB
+    # would overwrite that file, so v2 keeps a stable per-episode copy.
+    bundle = write_run_bundle(store, link["run_id"], episode_dir / "attention_bundle.json")
+    link["bundle"] = str(bundle.resolve())
     for item in retrieved:
-        memory.record_use(
+        if item.memory_id not in used_memories:
+            continue
+        if item.status is not MemoryStatus.TRUSTED:
+            continue  # candidate exposure is attested in the raw trace, not v1 memory_uses
+        memory_service.record_use(
             MemoryUseRecord(
                 use_id=f"use:{link['attempt_id']}:{item.memory_id}",
                 memory_id=item.memory_id,
@@ -234,8 +295,8 @@ def run_robocasa_sim_gt_episode(
     if advisor_transport is not None and not result["native_success"] and assistance_credits:
         _ask_advisor_and_create_candidate(
             store=store,
+            artifact_root=artifact_root,
             result=result,
-            task_id=task_id,
             transport=advisor_transport,
             sleeper=advisor_sleeper,
             clock=clock,
@@ -247,8 +308,8 @@ def run_robocasa_sim_gt_episode(
 def _ask_advisor_and_create_candidate(
     *,
     store: AttentionStore,
+    artifact_root: Path,
     result: dict[str, Any],
-    task_id: str,
     transport: AdvisorTransport,
     sleeper: Callable[[float], None],
     clock: Callable[[], float],
@@ -282,23 +343,10 @@ def _ask_advisor_and_create_candidate(
         answered = runtime.resolve_benchmark_proxy(request.request_id)
         response = store.get_response(answered.response_id)
         advice = parse_advisor_advice(response["content"], request_type="hint")
-        trace = store.get_trace(trace_id)
-        evidence_ids = tuple(item["evidence_id"] for item in trace["evidence"])
-        candidate = MemoryRecord(
+        candidate = MemoryAgent(MemoryService(store, artifact_root=artifact_root)).ingest_answered_hint(
+            request.request_id,
             memory_id=f"candidate:{link['attempt_id']}",
-            version=1,
-            source_trace_id=trace_id,
-            guidance=advice.guidance,
-            candidate_repair=advice.guidance,
-            applicability={
-                "perception_mode": "sim_gt",
-                "suite": "robocasa",
-                "task_id": task_id,
-            },
-            evidence_refs=evidence_ids,
-            created_at=clock(),
         )
-        MemoryManager(store).add_candidate(candidate)
         result["advisor_advice"] = advice.artifact()
         result["memory_candidate_id"] = candidate.memory_id
     except Exception as exc:

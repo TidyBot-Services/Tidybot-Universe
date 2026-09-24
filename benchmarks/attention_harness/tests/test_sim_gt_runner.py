@@ -177,11 +177,13 @@ def test_memory_retrieval_requires_explicit_matching_perception_provenance(tmp_p
     seen = []
     second = _run(
         tmp_path, world,
-        lambda sdk, context: seen.extend(context["memories"]),
+        lambda sdk, context: seen.extend(context["memory_catalog"]),
         store_path=shared,
     )
-    assert seen == [{"memory_id": "gt", "guidance": "gt"}]
-    assert second["memory_ids"] == ["gt"]
-    assert len(store.list_memory_uses("gt")) == 1
+    # A legacy v1 trusted label without v2 request/response provenance and
+    # paired-trial evidence cannot leak into the v2 policy context.
+    assert seen == []
+    assert second["memory_ids"] == []
+    assert store.list_memory_uses("gt") == []
     assert store.list_memory_uses("untagged") == []
     assert store.list_memory_uses("vision") == []

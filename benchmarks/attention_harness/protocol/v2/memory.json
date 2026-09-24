@@ -1,0 +1,56 @@
+{
+  "schema_version": "attentionbench.memory-protocol.v2",
+  "relationship_to_v1": "additive; the v1 freeze and scores are unchanged",
+  "components": {
+    "memory_agent": "distills answered hints and orchestrates paired validation through a pluggable executor",
+    "memory_service": "owns persistence, provenance, retrieval, evidence registration, and promotion gate",
+    "transport": "in-process interface or authenticated HTTP; remote clients require HTTPS"
+  },
+  "persistence": {
+    "authority": "artifact_root/attention_memory.sqlite3",
+    "per_run_evidence": "existing task-seed-time trace/result/bundle directories remain separate",
+    "per_memory_view": "artifact_root/memory/<safe-memory-id>/",
+    "manifest": "MEMORY.json binds identity, status, applicability, core record digest, and SHA-256 of generated files",
+    "files": ["knowledge/guidance.md", "knowledge/repair.md", "source/provenance.json", "validation/plan.json", "validation/pairs.jsonl", "validation/impact.json", "lifecycle.jsonl", "usage.jsonl"],
+    "recovery": "regenerate from SQLite through Memory Service export; never import edited files as authoritative state"
+  },
+  "source_chain": [
+    "completed run and failed trace",
+    "answered costed hint request",
+    "response with human, curated-human-packet, or advisor-proxy identity",
+    "versioned structured artifact with SHA-256 and exact task/perception applicability",
+    "candidate memory"
+  ],
+  "artifact_kinds": ["text_hint", "policy_patch", "skill"],
+  "normal_retrieval": {
+    "requires": ["trusted status", "v2 provenance", "matching suite/task/perception_mode", "explicit policy retrieval event"],
+    "candidate_use": "only in an explicitly labelled development validation run",
+    "cross_mode_reuse": "forbidden without a separate transfer validation"
+  },
+  "promotion_gate": {
+    "minimum_distinct_paired_dev_seeds": 5,
+    "pair_identity": ["suite", "task", "seed", "policy id and code digest", "developer model", "execution target", "perception mode", "budget"],
+    "control": "no memory exposure",
+    "treatment": "raw trace metadata and explicit retrieval event must attest exactly the candidate memory use",
+    "outcome": "native evaluator and raw trace must agree",
+    "safety": "independent monitor artifact required for each run; no increase in unsafe attempts",
+    "success": "positive paired success gain, >=3 treatment successes, >=0.75 treatment success fraction",
+    "heldout": "forbidden during memory development and promotion"
+  },
+  "metrics": [
+    "paired success gain/rate gain",
+    "future assistance credits saved",
+    "robot execution seconds saved",
+    "GPU seconds and tokens saved",
+    "unsafe attempts",
+    "source human attention seconds and seconds per success gain when human-sourced"
+  ],
+  "not_implemented_here": [
+    "formal success-attention frontier across all assistance budgets",
+    "demo-video corpus and budgeted demo retrieval",
+    "live-human UI",
+    "independent safety monitor for the current RoboCasa GT runner",
+    "live validation executor and automatic legacy orchestrator registration",
+    "live two-task/25-seed policy validation"
+  ]
+}

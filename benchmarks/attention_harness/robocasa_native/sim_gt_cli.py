@@ -47,6 +47,17 @@ def main() -> int:
         help="confirm the agent_server endpoint controls only this simulator, never hardware",
     )
     parser.add_argument("--artifact-root", type=Path, default=Path("artifacts/attentionbench-v2-gt"))
+    parser.add_argument(
+        "--store-path", type=Path,
+        help="shared Attention SQLite path (default: ARTIFACT_ROOT/attention_memory.sqlite3)",
+    )
+    parser.add_argument(
+        "--validation-memory-id",
+        help="explicitly expose one candidate for a paired development-seed validation run",
+    )
+    parser.add_argument(
+        "--no-memory", action="store_true", help="control run: do not retrieve trusted memory",
+    )
     parser.add_argument("--advisor", action="store_true", help="ask PARCC GLM on failure")
     args = parser.parse_args()
     if not args.confirm_simulator_agent:
@@ -62,6 +73,9 @@ def main() -> int:
         policy_id=args.policy,
         perception_mode=args.perception_mode,
         client=RobocasaSimClient(args.task, base_url=args.sim_url),
+        store_path=args.store_path or args.artifact_root / "attention_memory.sqlite3",
+        validation_memory_id=args.validation_memory_id,
+        retrieve_memory=not args.no_memory,
         advisor_transport=ParccGLMAdvisorTransport() if args.advisor else None,
         assistance_credits=1 if args.advisor else 0,
     )
