@@ -55,6 +55,9 @@ class DedicatedRobosuiteService:
         self.revision = revision
         environment = os.environ.copy()
         environment["MUJOCO_GL"] = environment.get("MUJOCO_GL", "egl")
+        environment["TIDYBOT_INVALID_DEPTH_DIR"] = str(
+            (self.log_path.parent / "invalid_depth_frames").resolve()
+        )
         environment.pop("PYTHONPATH", None)
         origin = subprocess.check_output(
             [sys.executable, "-c", "import robosuite_sim; print(robosuite_sim.__file__)"],
