@@ -207,13 +207,24 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
         raise ValueError("max_attempts must be 1-10")
     if isinstance(credits, bool) or not isinstance(credits, int) or not 0 <= credits <= 10:
         raise ValueError("assistance_credits must be 0-10")
+    token_limit = config.get("token_limit", 30_000)
+    deadline = config.get("overall_deadline_seconds", 300)
+    if isinstance(token_limit, bool) or not isinstance(token_limit, int) or not 1 <= token_limit <= 30_000:
+        raise ValueError("token_limit must be 1-30000")
+    if isinstance(deadline, bool) or not isinstance(deadline, (int, float)) or not 1 <= deadline <= 300:
+        raise ValueError("overall_deadline_seconds must be 1-300")
+    if not isinstance(config.get("single_glm_call", False), bool):
+        raise ValueError("single_glm_call must be boolean")
     cmd = [sys.executable, "-m", "benchmarks.attention_harness.formal_attention_cli",
            "--suite", config["suite"], "--task", config["task"],
            "--seed", str(config["seed"]), "--attention-policy", config["attention_policy"],
            "--code", str(source), "--approved-policy-sha256", config["approved_policy_sha256"],
            "--config", str(formal_config), "--approved-config-sha256", config["approved_config_sha256"],
            "--artifact-root", str(artifact_root), "--store-path", str(store_path),
-           "--max-attempts", str(attempts), "--assistance-credits", str(credits)]
+           "--max-attempts", str(attempts), "--assistance-credits", str(credits),
+           "--token-limit", str(token_limit), "--overall-deadline-seconds", str(deadline)]
+    if config.get("single_glm_call") is True:
+        cmd.append("--single-glm-call")
     roots = (("robosuite", ("service_source_root",))
              if config["suite"] == "robosuite" else
              ("robocasa", ("sim_source_root", "agent_source_root", "task_source_root",

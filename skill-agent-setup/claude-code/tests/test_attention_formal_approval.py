@@ -30,9 +30,16 @@ def test_formal_graph_routes_to_formal_cli_only_after_exact_approval(tmp_path):
     with pytest.raises(ValueError, match="explicit post-Dev"):
         build_attention_command(config, repo_root=tmp_path)
     config["approved_generated_policy"] = True
+    config.update(token_limit=3000, overall_deadline_seconds=90,
+                  single_glm_call=True, max_attempts=2, assistance_credits=1)
     command = build_attention_command(config, repo_root=tmp_path)
     assert "benchmarks.attention_harness.formal_attention_cli" in command
     assert "benchmarks.attention_harness.sim_gt_attention_cli" not in command
+    assert command[command.index("--token-limit") + 1] == "3000"
+    assert command[command.index("--overall-deadline-seconds") + 1] == "90"
+    assert "--single-glm-call" in command
+    with pytest.raises(ValueError, match="token_limit"):
+        build_attention_command({**config, "token_limit": 30001}, repo_root=tmp_path)
     policy.write_text("from robot_sdk import sensors\nsensors.get_observation()\n")
     with pytest.raises(ValueError, match="approved_policy_sha256"):
         build_attention_command(config, repo_root=tmp_path)

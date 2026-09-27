@@ -107,3 +107,41 @@ def test_attention_orchestrator_native_verdict_cannot_be_overridden(tmp_path, mo
     assert current["attentionbench_last_run"]["native_success"] is False
     assert current["attentionbench_last_run"]["run_id"] == "run:attempt"
     assert "Native success=False" in orch._last_feedback["lift"]
+
+
+def test_formal_failure_dispatches_memory_candidate_task(tmp_path, monkeypatch):
+    from test_orchestrator_pipeline import import_orchestrator, make_graph, make_entry
+
+    entry = make_entry("lift")
+    entry["attentionbench"] = _config(runner_boundary="formal")
+    orch = import_orchestrator(make_graph([entry]))
+    orch._load_entries()
+    sys.modules["agent_orchestrator"] = orch
+    sys.modules.pop("attention_orchestrator", None)
+    adapter = importlib.import_module("attention_orchestrator")
+    adapter.install()
+    monkeypatch.setattr(orch, "broadcast_full_sync", AsyncMock())
+    monkeypatch.setattr(orch, "ws_broadcast_agent_msg", AsyncMock())
+    artifact_dir = tmp_path / "run"
+    artifact_dir.mkdir()
+    (artifact_dir / "attention_run.json").write_text("{}")
+
+    async def run_job(config, *, repo_root):
+        return {
+            "artifact_dir": str(artifact_dir), "store": str(tmp_path / "memory.sqlite3"),
+            "native_success": False, "suite": "robosuite", "task_id": "cube_lift",
+            "seed": 101, "runner_boundary": {"mode": "formal"},
+            "requests": [{"request_id": "request:1", "candidate_memory_id": "candidate:1"}],
+            "attempts": [],
+        }
+
+    monkeypatch.setattr(adapter, "run_attention_job", run_job)
+    monkeypatch.setattr(adapter, "dispatch_memory_candidates", lambda *args, **kwargs: [
+        {"memory_id": "candidate:1", "status": "awaiting_approved_repair", "state_path": "task.json"},
+    ])
+    monkeypatch.setattr(adapter, "_diagnose_attention", AsyncMock(return_value="failure diagnosed"))
+    state = orch.AgentState(agent_id="dev-test", skill="lift", status="done")
+    asyncio.run(orch._handle_agent_done(state))
+    current = orch._find_entry("lift")
+    assert current["status"] == "review"
+    assert current["attentionbench_last_run"]["memory_validation_tasks"][0]["memory_id"] == "candidate:1"

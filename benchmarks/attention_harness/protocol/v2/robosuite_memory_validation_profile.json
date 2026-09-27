@@ -1,0 +1,15 @@
+{
+  "approved_cases_sha256": "04beb79a1dd5d427174ba61cfbb2cb5fca16f0ac1f8ffdc4c2db67ff560deb24",
+  "approved_policy_sha256": "0c72c388c6256a37fd8b9246f9f5629a1105bb76b491e025041c6dee806265ae",
+  "approved_service_revision": "12bc69afe83c8398988be3eee637f91c14e9bf19",
+  "assistance_credits": 0,
+  "cases_file": "benchmarks/attention_harness/protocol/v2/robosuite_memory_cases_101_105.json",
+  "formal_eligible": false,
+  "pair_executor": "development-only Memory Service paired validation; source and independent use are formal Harness runs",
+  "perception_mode": "sim_gt",
+  "policy_ref": "benchmarks.attention_harness.protocol.v2.policies.robosuite_memory_validation:policy",
+  "schema_version": "attentionbench.approved-memory-validation-profile.v1",
+  "service_deadline_seconds": 300,
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

@@ -18,6 +18,7 @@ import agent_orchestrator as orch
 from attention_dev import generate_policy
 from attention_eval import diagnose_attention
 from attentionbench_bridge import run_attention_job
+from attention_memory_dispatch import dispatch_memory_candidates
 from dev_memory_bridge import record_dev_memory_result
 
 
@@ -201,6 +202,19 @@ async def _handle_attention_done(state) -> None:
     orch._update_entry(state.skill, {
         "attentionbench_last_run": run_link, "attentionbench_error": "",
     })
+    if config.get("runner_boundary") == "formal":
+        try:
+            memory_tasks = await asyncio.to_thread(
+                dispatch_memory_candidates, config, result, repo_root=REPO_ROOT,
+            )
+            run_link["memory_validation_tasks"] = memory_tasks
+            orch._update_entry(state.skill, {"attentionbench_last_run": run_link})
+        except Exception as exc:
+            reason = f"Memory validation scheduling blocked: {type(exc).__name__}: {exc}"[:600]
+            orch._update_entry(state.skill, {"status": "review",
+                                             "attentionbench_error": reason})
+            await orch.broadcast_full_sync()
+            return
     await orch.ws_broadcast_agent_msg(
         state.skill, f"Native outcome: {result['native_success']}; artifact: {artifact}", "test",
     )

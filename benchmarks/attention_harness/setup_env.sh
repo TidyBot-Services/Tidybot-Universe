@@ -18,8 +18,11 @@ command -v uv >/dev/null 2>&1 || {
   exit 1
 }
 
-uv venv "$VENV_DIR" --python "$PYTHON_VERSION"
+if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+  uv venv "$VENV_DIR" --python "$PYTHON_VERSION"
+fi
 uv pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements-robosuite.txt"
+uv pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements-orchestrator.txt"
 uv pip install --python "$VENV_DIR/bin/python" -e "$MEMORY_SERVICE_SOURCE"
 "$VENV_DIR/bin/python" -c 'from attention_memory_service.memory_service import MemoryService; from attention_memory_service.memory_service_client import MemoryServiceClient; assert hasattr(MemoryService, "authorize_dev_use") and hasattr(MemoryServiceClient, "authorize_dev_use"), "Memory Service lacks Dev-use evidence API"'
 uv pip install --python "$VENV_DIR/bin/python" --no-deps \

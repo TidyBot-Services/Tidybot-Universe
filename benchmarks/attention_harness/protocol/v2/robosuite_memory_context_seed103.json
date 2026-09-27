@@ -1,0 +1,13 @@
+{
+  "camera_config_id": "camera:agentview",
+  "camera_names": [
+    "agentview"
+  ],
+  "object_set_id": "objects:6dac406b2c845d381cdc",
+  "perception_mode": "sim_gt",
+  "scene_id": "scene:36e4b2483e89af66a7e6",
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "task_prompt": "Lift the cube clear of the table.",
+  "task_variant_id": "task-variant-0"
+}

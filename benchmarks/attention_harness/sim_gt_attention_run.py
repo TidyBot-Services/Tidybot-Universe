@@ -145,8 +145,15 @@ def run_sim_gt_attention(
     control_store.transition_run(unified_run_id, RunStatus.RUNNING,
                                  event_key=f"start:{unified_run_id}")
     interrupted = lambda: (control_store.interrupt_status(unified_run_id) or {}).get("state") == "requested"
+    # A later formal run may reuse the source run's authoritative SQLite store.
+    # Its candidate evidence URIs are relative to that source run's attempts/.
+    # Keep the original run layout for fresh stores and resolve the source
+    # evidence root only when the store belongs to a different run directory.
+    memory_artifact_root = store_path.parent
+    if runner_boundary_mode == "formal" and store_path.parent.resolve() != run_dir.resolve():
+        memory_artifact_root = store_path.parent / "attempts"
     memory_gateway = memory_gateway or MemoryService(
-        AttentionStore(store_path), artifact_root=store_path.parent,
+        AttentionStore(store_path), artifact_root=memory_artifact_root,
     )
     attempts: list[dict[str, Any]] = []
     decisions: list[dict[str, Any]] = []

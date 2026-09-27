@@ -1,0 +1,2 @@
+websockets==16.1.1
+claude-agent-sdk==0.2.160

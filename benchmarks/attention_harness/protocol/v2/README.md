@@ -308,8 +308,15 @@ Only candidate exposure differs. Each episode keeps `trial_config.json`,
 `result.json`, its raw trace/bundle, and `safety_monitor.json`. The Memory
 Service independently checks the stored attempts, native outcomes, retrieval
 events, and safety-file hashes before promotion. Registered seed pairs survive
-restart and are skipped on a resumed validation run. This is not yet wired into
-the legacy skill-DAG orchestrator's automatic agent-spawn path.
+restart and are skipped on a resumed validation run. The opt-in
+`attention_orchestrator.py` now schedules formal-run candidates through
+`attention_memory_dispatch.py`. An approved Robosuite validation recipe runs
+the durable `memory_validation_task.py`; each arm has a hashed receipt and
+the Service alone decides promotion. A candidate without an approved repair
+remains `awaiting_approved_repair`, as in the RoboCasa engineering smoke.
+Paired validation remains a separate development-only executor; the task
+source and later trusted-use attempts run through the formal Harness boundary.
+No branch of this route falls back to `trusted_dev` for a formal attempt.
 
 For a candidate already produced by a failed GT run, start the RoboCasa and
 simulator-only agent services, then run five development-seed pairs:
