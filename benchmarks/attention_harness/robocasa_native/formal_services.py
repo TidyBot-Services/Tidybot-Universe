@@ -190,7 +190,7 @@ class DedicatedRobocasaServices:
             self._spawn("agent", [
                 str(self.agent_python), "server.py", "--host", "127.0.0.1",
                 "--port-offset", str(self.port_offset), "--no-service-manager",
-                "--no-dashboard",
+                "--no-dashboard", "--no-reset-on-release",
             ], root=self.agent_source_root, env=agent_env)
             def agent_ready() -> bool:
                 with urllib.request.urlopen(self.agent_url + "/health", timeout=0.5) as response:
