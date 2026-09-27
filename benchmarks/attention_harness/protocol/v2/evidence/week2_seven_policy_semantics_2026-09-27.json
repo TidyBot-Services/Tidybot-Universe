@@ -1,0 +1,341 @@
+{
+  "branch": "feature/attention-native-robosuite",
+  "commands": [
+    "/home/truares/.cache/tidybot-attention/venv/bin/python -m pytest benchmarks/attention_harness/tests -q > benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_semantics_pytest_2026-09-27.txt 2>&1",
+    "/home/truares/.cache/tidybot-attention/venv/bin/python -m pytest benchmarks/attention_harness/tests/test_sim_gt_attention_run.py -q -k 'all_seven_policies_use_both_native_gt_runners or random_prereg_early_success_records_unmet_target_without_trace_assessment or full_trace_interrupt_records_evidence_without_advisor_wait' --basetemp benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27 > benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_pytest_2026-09-27.txt 2>&1",
+    "git diff --check"
+  ],
+  "formal_eligible": false,
+  "head": "bb16e29dbde34f200be49af2489303f40ae56f66",
+  "logs": [
+    {
+      "path": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_semantics_pytest_2026-09-27.txt",
+      "result": "317 passed, 10 skipped in 35.76s",
+      "sha256": "000fa52b1f7a5038893710ff7b0ab90a9d7065a81733ec1536db4e11b75ae613"
+    },
+    {
+      "path": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_pytest_2026-09-27.txt",
+      "result": "18 passed, 25 deselected in 1.94s",
+      "sha256": "e4445a60b09aeee8f8d97bd15457a17e3cdfc4e43973227608f280612a355a59"
+    }
+  ],
+  "schema_version": "attentionbench.week2-seven-policy-semantics-evidence.v1",
+  "scope": "development seed 101 and fake simulator fixtures only; no human, Memory promotion, held-out seeds, or formal matrix",
+  "summaries": [
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "autonomous",
+      "random_matching": null,
+      "requests": 0,
+      "seed": 101,
+      "sha256": "5c80df7a95c71c16b11d77f4b9b81b6d7277a0791b4165b0e1bbe6e2798bd605",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo0/attention-robocasa-counter_to_sink-seed101-bf3fcb9c6b12/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "autonomous",
+      "random_matching": null,
+      "requests": 0,
+      "seed": 101,
+      "sha256": "d79e774d73926ea57914759a424bab605e5ac3ae55a27cd9259795fb8502501b",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo1/attention-robosuite-cube_lift-seed101-dcfcc04bedfe/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "trace_aware_hint_only",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "b80519cb3b072315488e07ff9e74934f14e14d73299fc98f915ee352aa2541c4",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo10/attention-robocasa-counter_to_sink-seed101-e80aa22183cd/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "trace_aware_hint_only",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "8e44eaf9ceba4729f05b2be508298db72bf19b3a8e001c5ac694359fc5b41a76",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "full_trace_aware_attention_planner",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "f8d42c8f36febf38d96908806a053b32b9e3e61d76380c06e3e13be7f8a6df0d",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo12/attention-robocasa-counter_to_sink-seed101-2082686f481d/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "full_trace_aware_attention_planner",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "7d9898a9168a9b2243911c4f499b958e747b8480f1fd0a200cfe3e0af1dce3ac",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo13/attention-robosuite-cube_lift-seed101-e749c351f200/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": "c285f366e8af21061fddef9f553ea38a0221922e272b0b410efc469d4af5b464",
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "demo_first",
+      "random_matching": null,
+      "requests": 0,
+      "seed": 101,
+      "sha256": "1e0945aa7de6dc2a17d76551cb8c1c167be5c41c06e69a96ad0f52c0ba661caf",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo2/attention-robocasa-counter_to_sink-seed101-2ff2b62af77c/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": "81fffc986c45d3d9f3eeea1113ade1c911155f56b4c0fdca5bd181b00bcce71a",
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "demo_first",
+      "random_matching": null,
+      "requests": 0,
+      "seed": 101,
+      "sha256": "762d119e2b2a54e26dd74dcca230d92f031dd9b32b1a304c2d858ad7dcf14233",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo3/attention-robosuite-cube_lift-seed101-71cc831ebff5/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 2,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "reactive_help",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "b5d42633bca10c1d3855d4c74e551aeaef992479b18d50418d101568c8558cee",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo4/attention-robocasa-counter_to_sink-seed101-3cb483f9bc8f/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 2,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "reactive_help",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "7ccc5d02408699ce0b767a29a989b8de41030cad89d3cf437dcd0f071507a29d",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo5/attention-robosuite-cube_lift-seed101-cf5900a44e67/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "retry_k_then_ask",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "ac89cf4160d8b0b5e59ff63b54803e280f89f44af9365315dc1741e3d907fb1d",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo6/attention-robocasa-counter_to_sink-seed101-e0ca261861ed/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 3,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "retry_k_then_ask",
+      "random_matching": null,
+      "requests": 1,
+      "seed": 101,
+      "sha256": "4e75d3384f7ea452d7cf468d004b19c2212c368dc355a6b6728ec786b77e8d62",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo7/attention-robosuite-cube_lift-seed101-8f9aab4e3f9d/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 2,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "budget_matched_random_escalation",
+      "random_matching": {
+        "deviation": 1,
+        "deviation_reason": "early_native_success",
+        "realized_request_count": 1,
+        "realized_slots": [
+          0
+        ],
+        "selected_slots": [
+          0,
+          1
+        ],
+        "target_request_count": 2
+      },
+      "requests": 1,
+      "seed": 101,
+      "sha256": "8c8d5ee1d648facbfddcb444a2760e68ce224b0e1372b9c8088ad503597f25bd",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo8/attention-robocasa-counter_to_sink-seed101-d65d2a9a7cc8/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 2,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "budget_matched_random_escalation",
+      "random_matching": {
+        "deviation": 1,
+        "deviation_reason": "early_native_success",
+        "realized_request_count": 1,
+        "realized_slots": [
+          0
+        ],
+        "selected_slots": [
+          0,
+          1
+        ],
+        "target_request_count": 2
+      },
+      "requests": 1,
+      "seed": 101,
+      "sha256": "bf6e64f2968434e0890168c7baca3b073ecb54b9718499db0fd50bf33f27f4f4",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo9/attention-robosuite-cube_lift-seed101-f9bd0775c021/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 1,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": false,
+      "policy_id": "full_trace_aware_attention_planner",
+      "random_matching": null,
+      "requests": 0,
+      "seed": 101,
+      "sha256": "3fbc7f19ed046a356d2c931d9b4ae5a1455810483d1f4b49be388b0b63c7a0e1",
+      "stopped_reason": "trace_safety_interrupt",
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_full_trace_interrupt_reco0/attention-robocasa-counter_to_sink-seed101-80e3677f86d5/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 1,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": false,
+      "policy_id": "full_trace_aware_attention_planner",
+      "random_matching": null,
+      "requests": 0,
+      "seed": 101,
+      "sha256": "05a1dd5cfe01e6ddf8a13d7689a529f4a057fca68e7cc03d4dbb9553a53d6f59",
+      "stopped_reason": "trace_safety_interrupt",
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_full_trace_interrupt_reco1/attention-robosuite-cube_lift-seed101-a7121be265c2/attention_run.json",
+      "task_id": "cube_lift"
+    },
+    {
+      "attempts": 1,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "budget_matched_random_escalation",
+      "random_matching": {
+        "deviation": 2,
+        "deviation_reason": "early_native_success",
+        "realized_request_count": 0,
+        "realized_slots": [],
+        "selected_slots": [
+          0,
+          1
+        ],
+        "target_request_count": 2
+      },
+      "requests": 0,
+      "seed": 101,
+      "sha256": "516b5a2a3655667e5269916746ef92d459bfb3925f2b573ed2d21b9b34fc0bc3",
+      "stopped_reason": null,
+      "suite": "robocasa",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_random_prereg_early_succe0/attention-robocasa-counter_to_sink-seed101-d6dc0edddb80/attention_run.json",
+      "task_id": "counter_to_sink"
+    },
+    {
+      "attempts": 1,
+      "demo_manifest_sha256": null,
+      "formal_eligible": false,
+      "native_success": true,
+      "policy_id": "budget_matched_random_escalation",
+      "random_matching": {
+        "deviation": 2,
+        "deviation_reason": "early_native_success",
+        "realized_request_count": 0,
+        "realized_slots": [],
+        "selected_slots": [
+          0,
+          1
+        ],
+        "target_request_count": 2
+      },
+      "requests": 0,
+      "seed": 101,
+      "sha256": "7d88b5abbe57a07e081d73d5a9270bbc7e7faed66d750ad321c7516b6dfd0dbd",
+      "stopped_reason": null,
+      "suite": "robosuite",
+      "summary": "benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_random_prereg_early_succe1/attention-robosuite-cube_lift-seed101-3dd9fb2fc797/attention_run.json",
+      "task_id": "cube_lift"
+    }
+  ],
+  "worktree": "/home/truares/桌面/Tidybot-Universe-attention-native"
+}

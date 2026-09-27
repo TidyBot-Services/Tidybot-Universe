@@ -1,0 +1,82 @@
+{
+  "all_discoveries_passed": true,
+  "cases": [
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 20,
+      "seed": 101,
+      "task_prompt": "pick the kettle electric from the counter and place it in the cabinet",
+      "variation": {
+        "object_set_id": "objects:5d63e75a74d4c378388f",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      }
+    }
+  ],
+  "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_variation_discovery --task counter_to_cab --config benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_cab_seed101.json --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --task-source-root '/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --seed-start 101 --seed-end 101 --port-offset 1700 --log-dir benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_seed101_language_logs --evidence benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_seed101_language_2026-09-27.json",
+  "config_sha256": "341fabaa34c7ae328267eaf9c121a79e00028f72cb5d563c2bdb923d5c702820",
+  "config_snapshot_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_seed101_language_discovery_config_snapshot_2026-09-27.json",
+  "config_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_cab_seed101.json",
+  "formal_eligible": false,
+  "logs": {
+    "agent": {
+      "sha256": "ee9ea3e282bf7be5dc5b1001a3e407630246756324a56ef33085e0eba1278e0b",
+      "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_seed101_language_logs/agent.log"
+    },
+    "simulator": {
+      "sha256": "1fdfd8d61e38b0c2b30786976def2623b0f2cde63c2f278dbd53fe8e3a98b780",
+      "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_seed101_language_logs/simulator.log"
+    }
+  },
+  "schema_version": "attentionbench.robocasa-variation-discovery.v1",
+  "seeds_requested": [
+    101
+  ],
+  "service_stop": {
+    "mechanism": "dedicated_simulator_and_agent_process_groups",
+    "reason": "normal_cleanup",
+    "services": {
+      "agent": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 707484,
+        "process_group": 707484,
+        "process_group_gone": true
+      },
+      "simulator": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 705884,
+        "process_group": 705884,
+        "process_group_gone": true
+      }
+    }
+  },
+  "source_identities": {
+    "agent": {
+      "dirty": true,
+      "revision": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30",
+      "tree_sha256": "9c42acdb0ce72cfb72f39dac3ee4e593c23e31d9fdb532c1d757e3fcac04d1b1"
+    },
+    "sim": {
+      "dirty": true,
+      "revision": "4e590158761493414a036f68e0ae26a7e61dc77b",
+      "tree_sha256": "c5c595992b75fc645490f852bbee1015754a8c108a592561035cde8ff35c58ca"
+    },
+    "task": {
+      "dirty": true,
+      "revision": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7",
+      "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756"
+    }
+  },
+  "source_unchanged": true,
+  "task_id": "counter_to_cab"
+}

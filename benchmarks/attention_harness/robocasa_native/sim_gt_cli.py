@@ -14,7 +14,7 @@ from pathlib import Path
 
 from attention_memory_service import MemoryServiceClient
 
-from ..parcc_advisor import ParccGLMAdvisorTransport
+from ..v2_advisor import SimGTGLMAdvisorTransport
 from .agent_actions import AgentServerActionBackend
 from .client import RobocasaSimClient
 from .sim_gt_runner import run_robocasa_sim_gt_episode
@@ -91,7 +91,7 @@ def main() -> int:
         validation_memory_id=args.validation_memory_id,
         runtime_variation=None if args.variation is None else json.loads(args.variation.read_text()),
         retrieve_memory=not args.no_memory,
-        advisor_transport=ParccGLMAdvisorTransport() if args.advisor else None,
+        advisor_transport=SimGTGLMAdvisorTransport() if args.advisor else None,
         assistance_credits=1 if args.advisor else 0,
         memory_gateway=memory_gateway,
     )

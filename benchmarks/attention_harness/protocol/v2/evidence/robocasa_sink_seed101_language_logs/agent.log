@@ -1,0 +1,49 @@
+2026-09-27 07:10:14,859 INFO robot_profile: Loaded robot profile 'full' from /home/truares/文档/Tidybot-Universe/agent_server/profiles/full.yaml (disabled: [])
+2026-09-27 07:10:14,859 INFO agent_server: Robot profile: full (disabled capabilities: none)
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:226: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:330: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+INFO:     Started server process [704202]
+INFO:     Waiting for application startup.
+2026-09-27 07:10:14,908 INFO agent_server: Starting hardware server (dry_run=False)
+2026-09-27 07:10:15,116 INFO backends.base: BaseBackend: connected to localhost:51650
+2026-09-27 07:10:15,128 INFO franka_protocol.client: Connected to server at localhost
+2026-09-27 07:10:15,128 INFO backends.franka: FrankaBackend: connected to localhost
+2026-09-27 07:10:15,130 INFO gripper_protocol.client: Connected to localhost
+2026-09-27 07:10:15,130 INFO backends.gripper: GripperBackend: connected to localhost
+2026-09-27 07:10:15,131 INFO backends.mocap: MocapBackend: connected to tcp://localhost:7240
+2026-09-27 07:10:15,632 WARNING backends.mocap: MocapBackend: no message within 500ms, mocap may not be publishing
+2026-09-27 07:10:15,632 INFO system_logger.logger: [SystemLogger] Started recording (interval=0.1s)
+2026-09-27 07:10:15,632 INFO safety_monitor: SafetyMonitor started
+2026-09-27 07:10:15,632 INFO arm_monitor: ArmMonitor started (grace=3.0s, cooldown=30.0s)
+2026-09-27 07:10:15,632 INFO agent_server: API key auth DISABLED (no keys configured)
+2026-09-27 07:10:15,632 INFO agent_server: Hardware server ready on 127.0.0.1:9730
+2026-09-27 07:10:15,633 WARNING safety_monitor: SafetyMonitor: mocap lost — auto-rewind disabled (re-enable when mocap is tracking)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:9730 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-27 07:10:19,536 INFO agent_server: Shutting down hardware server
+2026-09-27 07:10:19,536 INFO arm_monitor: ArmMonitor stopped
+2026-09-27 07:10:19,536 INFO safety_monitor: SafetyMonitor stopped
+2026-09-27 07:10:19,536 INFO system_logger.logger: [SystemLogger] Stopped recording (2/40 samples, 2 waypoints)
+2026-09-27 07:10:19,537 INFO backends.mocap: MocapBackend: disconnected
+2026-09-27 07:10:19,537 INFO backends.cameras: CameraBackend: disconnected
+2026-09-27 07:10:19,537 INFO gripper_protocol.client: Disconnected
+2026-09-27 07:10:19,537 INFO backends.gripper: GripperBackend: disconnected
+2026-09-27 07:10:19,544 INFO franka_protocol.client: Disconnected
+2026-09-27 07:10:19,544 INFO backends.franka: FrankaBackend: disconnected
+2026-09-27 07:10:19,586 INFO backends.base: BaseBackend: disconnected
+INFO:     Application shutdown complete.
+INFO:     Finished server process [704202]

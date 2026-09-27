@@ -1,0 +1,214 @@
+{
+  "artifact_dir": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3",
+  "assistance_mode": "benchmark_proxy",
+  "attempts": [
+    {
+      "artifact_dir": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.121723Z",
+      "attention_trace": {
+        "advisor_trace_id": "trace:cube_lift-seed101-20260927T025410.121723Z:0",
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025410.121723Z:0",
+        "bundle": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.121723Z/attention_bundle.json",
+        "execution_id": "execution:cube_lift-seed101-20260927T025410.121723Z:0",
+        "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025410.121723Z:0",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-b165b16787f3",
+        "schema_version": "attentionbench.episode-trace-link.v1",
+        "store": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attention.sqlite3"
+      },
+      "native_success": false,
+      "safety_artifact": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.121723Z/safety_monitor.json",
+      "status": "completed"
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.139375Z",
+      "attention_trace": {
+        "advisor_trace_id": "trace:cube_lift-seed101-20260927T025410.139375Z:1",
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025410.139375Z:1",
+        "bundle": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.139375Z/attention_bundle.json",
+        "execution_id": "execution:cube_lift-seed101-20260927T025410.139375Z:1",
+        "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025410.139375Z:1",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-b165b16787f3",
+        "schema_version": "attentionbench.episode-trace-link.v1",
+        "store": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attention.sqlite3"
+      },
+      "native_success": false,
+      "safety_artifact": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.139375Z/safety_monitor.json",
+      "status": "completed"
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.193985Z",
+      "attention_trace": {
+        "advisor_trace_id": null,
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025410.193985Z:2",
+        "bundle": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.193985Z/attention_bundle.json",
+        "execution_id": "execution:cube_lift-seed101-20260927T025410.193985Z:2",
+        "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025410.193985Z:2",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-b165b16787f3",
+        "schema_version": "attentionbench.episode-trace-link.v1",
+        "store": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attention.sqlite3"
+      },
+      "native_success": true,
+      "safety_artifact": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attempts/cube_lift-seed101-20260927T025410.193985Z/safety_monitor.json",
+      "status": "completed"
+    }
+  ],
+  "decisions": [
+    {
+      "action": "inspect_trace",
+      "after_attempt": 0,
+      "assessment": {
+        "code_changed": null,
+        "code_sha256": "39950d2cc489f5007a3144e684aed267bc8ce3a6c3ef0fd57102da91af478012",
+        "event_ids": [
+          "execution-finished"
+        ],
+        "evidence_ids": [
+          "evidence:final_observation.npz",
+          "evidence:initial_observation.npz",
+          "evidence:trace_context.json"
+        ],
+        "evidence_sufficient": false,
+        "failure_type": "unknown",
+        "hypothesis_unverified": true,
+        "locally_repairable": false,
+        "prior_code_sha256": null,
+        "prior_event_ids": [],
+        "prior_trace_ids": [],
+        "progress": false,
+        "repeated_failure": false,
+        "risk": "normal",
+        "schema_version": "attentionbench.trace-assessment.v1",
+        "trace_id": "trace:cube_lift-seed101-20260927T025410.121723Z:0"
+      },
+      "decision_source": "projected_public_trace",
+      "event_ids": [
+        "execution-finished"
+      ],
+      "evidence_ids": [
+        "evidence:final_observation.npz",
+        "evidence:initial_observation.npz",
+        "evidence:trace_context.json"
+      ],
+      "monitor_signals": {},
+      "prior_event_ids": [],
+      "prior_trace_ids": [],
+      "priority": null,
+      "reason": "insufficient_visible_evidence",
+      "request_type": null,
+      "safety_artifact": null,
+      "trusted_memory_ids": []
+    },
+    {
+      "action": "request",
+      "after_attempt": 1,
+      "assessment": {
+        "code_changed": true,
+        "code_sha256": "8de5fb54a66cdc2d19e8733657fe8887f54a3d677254d7576ce3536b7ad75f7f",
+        "event_ids": [
+          "execution-finished",
+          "sdk-0",
+          "sdk-1",
+          "sdk-2",
+          "sdk-3",
+          "sdk-4"
+        ],
+        "evidence_ids": [
+          "evidence:final_observation.npz",
+          "evidence:initial_observation.npz",
+          "evidence:trace_context.json"
+        ],
+        "evidence_sufficient": false,
+        "failure_type": "unknown",
+        "hypothesis_unverified": true,
+        "locally_repairable": false,
+        "prior_code_sha256": "39950d2cc489f5007a3144e684aed267bc8ce3a6c3ef0fd57102da91af478012",
+        "prior_event_ids": [
+          "execution-finished"
+        ],
+        "prior_trace_ids": [
+          "trace:cube_lift-seed101-20260927T025410.121723Z:0"
+        ],
+        "progress": true,
+        "repeated_failure": true,
+        "risk": "normal",
+        "schema_version": "attentionbench.trace-assessment.v1",
+        "trace_id": "trace:cube_lift-seed101-20260927T025410.139375Z:1"
+      },
+      "decision_source": "projected_public_trace",
+      "event_ids": [
+        "execution-finished",
+        "sdk-0",
+        "sdk-1",
+        "sdk-2",
+        "sdk-3",
+        "sdk-4"
+      ],
+      "evidence_ids": [
+        "evidence:final_observation.npz",
+        "evidence:initial_observation.npz",
+        "evidence:trace_context.json"
+      ],
+      "monitor_signals": {},
+      "prior_event_ids": [
+        "execution-finished"
+      ],
+      "prior_trace_ids": [
+        "trace:cube_lift-seed101-20260927T025410.121723Z:0"
+      ],
+      "priority": "normal",
+      "reason": "cause_unknown_after_inspection",
+      "request_type": "hint",
+      "safety_artifact": null,
+      "trusted_memory_ids": []
+    }
+  ],
+  "demo_receipt": null,
+  "formal_blockers": [
+    "development runner has not passed formal acceptance"
+  ],
+  "formal_eligible": false,
+  "native_success": true,
+  "perception_mode": "sim_gt",
+  "policy_config": {},
+  "policy_id": "trace_aware_hint_only",
+  "random_preregistration": null,
+  "requests": [
+    {
+      "advice": {
+        "caution": "keep within the workspace",
+        "confidence": 0.8,
+        "diagnosis": "grasp was not completed",
+        "guidance": "close the gripper after aligning with the object",
+        "request_type": "hint",
+        "schema_version": "attentionbench.advisor-advice.v1"
+      },
+      "cached": false,
+      "candidate_memory_id": "candidate:attempt:cube_lift-seed101-20260927T025410.139375Z:1",
+      "failure_slot": 1,
+      "request_id": "attention-request:attention-robosuite-cube_lift-seed101-b165b16787f3:1",
+      "responder": "advisor_proxy",
+      "response_id": "proxy-response:attention-request:attention-robosuite-cube_lift-seed101-b165b16787f3:1",
+      "token_usage": {}
+    }
+  ],
+  "resource_usage": {
+    "assistance_credits": 1,
+    "tokens": 0
+  },
+  "runner_boundary": {
+    "formal_runner_registered": false,
+    "generated_code_sandboxed": false,
+    "mode": "trusted_dev",
+    "overall_deadline_certified": false
+  },
+  "safety_signals": [
+    {},
+    {},
+    {}
+  ],
+  "schema_version": "attentionbench.sim-gt-attention-run.v1",
+  "seed": 101,
+  "stopped_reason": null,
+  "store": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_seven_policy_fixture_artifacts_2026-09-27/test_all_seven_policies_use_bo11/attention-robosuite-cube_lift-seed101-b165b16787f3/attention.sqlite3",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

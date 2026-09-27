@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Callable
 
@@ -12,6 +13,8 @@ from tidybot_sdk import RobotBackend
 
 from ..memory_agent import TrialEvidence, ValidationTrial
 from .client import RobocasaSimClient
+from .generated_policy_runner import run_robocasa_generated_policy_episode
+from .policy_sandbox import validate_generated_policy
 from .safety_monitor import SafetyMonitorBackend
 from .sim_gt_runner import Policy, _policy_fingerprint, run_robocasa_sim_gt_episode
 
@@ -24,13 +27,20 @@ class RoboCasaPairedTrialExecutor:
     """
 
     def __init__(
-        self, *, policy: Policy, policy_id: str, artifact_root: Path,
+        self, *, policy: Policy | None = None, policy_code_path: Path | None = None,
+        policy_id: str, artifact_root: Path,
         store_path: Path, backend_factory: Callable[[], RobotBackend],
         client_factory: Callable[[str], RobocasaSimClient],
         memory_gateway: MemoryService | MemoryServiceClient | None = None,
         max_delta_m: float = 0.25, max_observed_step_m: float = 0.5,
+        timeout_seconds: float = 300.0,
     ) -> None:
+        if (policy is None) == (policy_code_path is None):
+            raise ValueError("select exactly one callback or generated policy file")
+        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+            raise ValueError("generated-policy timeout must be positive")
         self.policy = policy
+        self.policy_code_path = None if policy_code_path is None else policy_code_path.resolve()
         self.policy_id = policy_id
         self.artifact_root = artifact_root
         self.store_path = store_path
@@ -39,13 +49,23 @@ class RoboCasaPairedTrialExecutor:
         self.memory_gateway = memory_gateway
         self.max_delta_m = max_delta_m
         self.max_observed_step_m = max_observed_step_m
-        self.policy_sha256 = _policy_fingerprint(policy)
+        self.timeout_seconds = timeout_seconds
+        if self.policy_code_path is None:
+            self.policy_sha256 = _policy_fingerprint(policy)
+        else:
+            source = self.policy_code_path.read_bytes()
+            validate_generated_policy(source.decode("utf-8"))
+            self.policy_sha256 = hashlib.sha256(source).hexdigest()
 
     def __call__(self, trial: ValidationTrial) -> TrialEvidence:
         if trial.suite != "robocasa" or trial.perception_mode != "sim_gt":
             raise ValueError("RoboCasa paired executor only supports robocasa/sim_gt")
         if trial.policy_id != self.policy_id:
             raise ValueError("validation policy differs from executor policy")
+        if self.policy_code_path is not None and hashlib.sha256(
+            self.policy_code_path.read_bytes()
+        ).hexdigest() != self.policy_sha256:
+            raise RuntimeError("generated policy code changed after executor creation")
         backend = self.backend_factory()
         client = self.client_factory(trial.task_id)
         task_info = client.assert_task()
@@ -62,6 +82,10 @@ class RoboCasaPairedTrialExecutor:
             "perception_mode": trial.perception_mode,
             "policy_id": trial.policy_id,
             "policy_sha256": self.policy_sha256,
+            "policy_execution_mode": (
+                "trusted_callback" if self.policy_code_path is None else "sandboxed_generated"
+            ),
+            "timeout_seconds": self.timeout_seconds if self.policy_code_path else None,
             "assistance_credits": trial.assistance_credits,
             "variation": trial.variation,
             # The live task-info language describes the *previous* episode
@@ -74,15 +98,17 @@ class RoboCasaPairedTrialExecutor:
             "safety_limits": {
                 "max_delta_m": self.max_delta_m,
                 "max_observed_step_m": self.max_observed_step_m,
+                "max_base_delta_m": monitor.max_base_delta_m,
+                "max_base_rotation_rad": monitor.max_base_rotation_rad,
             },
         }
         config_digest = hashlib.sha256(
             json.dumps(common, sort_keys=True).encode("utf-8")
         ).hexdigest()
-        result = run_robocasa_sim_gt_episode(
+        runner_kwargs = dict(
             task_id=trial.task_id, seed=trial.seed,
             artifact_root=self.artifact_root, store_path=self.store_path,
-            action_backend=monitor, policy=self.policy, policy_id=self.policy_id,
+            action_backend=monitor, policy_id=self.policy_id,
             perception_mode="sim_gt", client=client,
             validation_memory_id=trial.memory_id if trial.treatment else None,
             validation_variation=trial.variation,
@@ -91,6 +117,14 @@ class RoboCasaPairedTrialExecutor:
             assistance_credits=trial.assistance_credits,
             memory_gateway=self.memory_gateway,
         )
+        if self.policy_code_path is None:
+            result = run_robocasa_sim_gt_episode(policy=self.policy, **runner_kwargs)
+        else:
+            result = run_robocasa_generated_policy_episode(
+                policy_code_path=self.policy_code_path,
+                timeout_seconds=self.timeout_seconds,
+                **runner_kwargs,
+            )
         if result["policy_sha256"] != self.policy_sha256:
             raise RuntimeError("policy changed during paired trial")
         episode_dir = Path(result["artifact_dir"])

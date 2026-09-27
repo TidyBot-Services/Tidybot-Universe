@@ -103,6 +103,8 @@ Cap at 3 attempts per skill before giving up. Subsequent runs need manual `/spaw
 |---|---|
 | `GET /entries` | All skill entries with status |
 | `POST /xbot-start` | Spawn all ready leaf skills |
+| `POST /attention/auto-start` | Activate autonomous Dev/Eval dispatch for the active graph from the AttentionBench workspace; body contains its graph name |
+| `GET /ui-snapshot` | Operator-safe graph, agent, session and dispatch-mode snapshot for the unified UI |
 | `POST /spawn` | Spawn one specific skill |
 | `PATCH /entries/{name}` | Manual status update (e.g. mark `done`) |
 | `GET /agents` | Currently active agents |

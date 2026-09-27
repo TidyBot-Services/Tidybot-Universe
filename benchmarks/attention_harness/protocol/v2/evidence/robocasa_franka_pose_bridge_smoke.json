@@ -1,0 +1,42 @@
+{
+  "schema_version": "attentionbench.robocasa-franka-pose-bridge-smoke.v1",
+  "date": "2026-09-25",
+  "status": "orientation_control_fixed_task_policy_still_incomplete",
+  "suite": "robocasa",
+  "task_id": "counter_to_cab",
+  "seed": 101,
+  "service_repository": "/home/truares/文档/maniskill-tidyverse/arm_franka_maniskill_service",
+  "service_change": "The ManiSkill Franka bridge now solves both Cartesian position and orientation with a 6D Jacobian instead of discarding orientation.",
+  "test": "tests/test_franka_pose_ik.py passed when invoked with the maniskill environment Python; that environment has no pytest installation.",
+  "live_setup": "Simulator :6300 used the independent arm_franka_maniskill_service package via PYTHONPATH; agent_server :8880 was simulator-only.",
+  "live_policy": "benchmarks/attention_harness/protocol/v2/policies/robocasa_cab_wrist_probe.py",
+  "live_artifact_dir": "/home/truares/桌面/attentionbench-v2-robocasa-mobile-dev/counter_to_cab-seed101-20260924T160357.110248Z",
+  "installed_package_recheck": {
+    "editable_location": "/home/truares/文档/maniskill-tidyverse/arm_franka_maniskill_service",
+    "bundled_urdf": "franka_server/tidyverse_arm_only.urdf",
+    "temporary_pythonpath_required": false,
+    "artifact_dir": "/home/truares/桌面/attentionbench-v2-robocasa-mobile-dev/counter_to_cab-seed101-20260924T161249.874837Z",
+    "result_status": "completed",
+    "native_success": false,
+    "eef_quat_wxyz_after": [0.06103385612368584, 0.9215197563171387, 0.3826722502708435, -0.025263464078307152],
+    "left_pad_z_m_after": 0.9699363708496094,
+    "right_pad_z_m_after": 0.9785400032997131
+  },
+  "wrist_command": "arm.move_delta(0, 0, 0, rotation_delta=(0, 0.5, 0))",
+  "before": {
+    "eef_quat_wxyz": [-0.15724632143974304, 0.9100710153579712, 0.3779069185256958, 0.06504392623901367],
+    "left_pad_z_m": 0.9863998889923096,
+    "right_pad_z_m": 0.9645054340362549
+  },
+  "after": {
+    "eef_quat_wxyz": [0.06012783944606781, 0.9215792417526245, 0.3826969265937805, -0.024888381361961365],
+    "left_pad_z_m": 0.969947338104248,
+    "right_pad_z_m": 0.9784237146377563
+  },
+  "limits": [
+    "The debug robot-link query is developer-only and is not exposed to the policy SDK.",
+    "The wrist probe validates actuation, not grasp or native task success.",
+    "Subsequent cabinet pick probes sometimes raised the bottle but did not retain a stable grasp; native success remains false."
+  ],
+  "formal_eligible": false
+}

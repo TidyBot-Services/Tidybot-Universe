@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from dataclasses import asdict
@@ -25,17 +26,28 @@ def main() -> int:
     plan.add_argument("memory_id")
     plan.add_argument("--cases", type=Path, required=True, help="JSON array of frozen variation cases")
     plan.add_argument("--assistance-credits", type=int, default=0)
+    preflight = commands.add_parser("preflight", help="check source and paired cases without running a simulator")
+    preflight.add_argument("memory_id")
+    preflight.add_argument("--cases", type=Path, required=True)
+    preflight.add_argument("--assistance-credits", type=int, default=0)
+    preflight_policy = preflight.add_mutually_exclusive_group(required=True)
+    preflight_policy.add_argument("--policy", help="trusted module:function policy")
+    preflight_policy.add_argument("--code", type=Path, help="sandboxed generated RoboCasa policy file")
+    preflight.add_argument("--suite", choices=["robocasa", "robosuite"])
     validate = commands.add_parser("validate")
     validate.add_argument("memory_id")
     validate.add_argument("--cases", type=Path, required=True, help="same frozen variation cases used in the plan")
     validate.add_argument("--assistance-credits", type=int, default=0)
-    validate.add_argument("--policy", required=True, help="same trusted module:function policy as source run")
+    policy_source = validate.add_mutually_exclusive_group(required=True)
+    policy_source.add_argument("--policy", help="same trusted module:function policy as source run")
+    policy_source.add_argument("--code", type=Path, help="sandboxed generated RoboCasa policy file")
+    validate.add_argument("--timeout-seconds", type=float, default=300.0)
     validate.add_argument("--suite", choices=["robocasa", "robosuite"], help="defaults to the candidate's source suite")
     validate.add_argument("--sim-url", default="http://127.0.0.1:5500")
     validate.add_argument("--agent-url", default="http://127.0.0.1:8080")
     validate.add_argument("--artifact-root", type=Path, required=True)
     validate.add_argument("--store-path", type=Path, required=True)
-    validate.add_argument("--confirm-simulator-agent", action="store_true", required=True)
+    validate.add_argument("--confirm-simulator-agent", action="store_true")
     validate.add_argument("--max-delta-m", type=float, default=0.25)
     validate.add_argument("--max-observed-step-m", type=float, default=0.5)
     validate.add_argument("--promote", action="store_true", help="ask the Memory Service to apply its promotion gate")
@@ -60,18 +72,47 @@ def main() -> int:
                 assistance_credits=args.assistance_credits,
             )
         ]
+    elif args.command == "preflight":
+        from .robocasa_native.sim_gt_cli import _load_policy
+        from .sim_gt_memory import policy_fingerprint
+
+        cases = tuple(json.loads(args.cases.read_text()))
+        provenance = agent.service.provenance(args.memory_id)
+        source_suite = provenance["artifact"]["applicability"]["suite"]
+        if args.suite is not None and source_suite != args.suite:
+            parser.error("--suite does not match the candidate memory's source suite")
+        if args.policy is not None:
+            if args.policy != provenance["source_policy_id"]:
+                parser.error("--policy must match the candidate source policy ID")
+            policy_sha256 = policy_fingerprint(_load_policy(args.policy))
+        else:
+            if source_suite != "robocasa":
+                parser.error("--code is currently supported only for RoboCasa validation")
+            from .robocasa_native.policy_sandbox import validate_generated_policy
+            code = args.code.read_bytes()
+            validate_generated_policy(code.decode("utf-8"))
+            policy_sha256 = hashlib.sha256(code).hexdigest()
+        value = agent.preflight_validation(
+            args.memory_id, cases=cases,
+            assistance_credits=args.assistance_credits,
+            validation_policy_sha256=policy_sha256,
+        )
     elif args.command == "report":
         value = agent.service.impact_report(args.memory_id)
     elif args.command == "validate":
         from .robocasa_native.sim_gt_cli import _load_policy
 
         cases = tuple(json.loads(args.cases.read_text()))
-        source_suite = agent.service.provenance(args.memory_id)["artifact"]["applicability"]["suite"]
+        provenance = agent.service.provenance(args.memory_id)
+        source_suite = provenance["artifact"]["applicability"]["suite"]
         if args.suite is not None and source_suite != args.suite:
             parser.error("--suite does not match the candidate memory's source suite")
         suite = source_suite
+        source_policy_id = provenance["source_policy_id"]
+        if args.policy is not None and args.policy != source_policy_id:
+            parser.error("--policy must match the candidate source policy ID")
         common = dict(
-            policy=_load_policy(args.policy), policy_id=args.policy,
+            policy_id=source_policy_id,
             artifact_root=args.artifact_root, store_path=args.store_path,
             memory_gateway=agent.service,
             max_delta_m=args.max_delta_m,
@@ -85,16 +126,21 @@ def main() -> int:
             from .robocasa_native.paired_trials import RoboCasaPairedTrialExecutor
             executor = RoboCasaPairedTrialExecutor(
                 **common,
+                **({"policy": _load_policy(args.policy)} if args.policy is not None
+                   else {"policy_code_path": args.code, "timeout_seconds": args.timeout_seconds}),
                 backend_factory=lambda: AgentServerActionBackend(
                     base_url=args.agent_url, simulator_attested=True,
                 ),
                 client_factory=lambda task: RobocasaSimClient(task, base_url=args.sim_url),
             )
         elif suite == "robosuite":
+            if args.code is not None:
+                parser.error("--code is currently supported only for RoboCasa validation")
             from .robosuite_memory.adapter import RobosuiteSimGTBackend
             from .robosuite_memory.paired_trials import RobosuitePairedTrialExecutor
             executor = RobosuitePairedTrialExecutor(
                 **common,
+                policy=_load_policy(args.policy),
                 adapter_factory=lambda task, camera: RobosuiteSimGTBackend(
                     task, service_url=args.sim_url, camera_name=camera,
                 ),

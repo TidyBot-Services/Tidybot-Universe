@@ -1,0 +1,54 @@
+{
+  "artifact_sha256": "32cd614dd7cfe4564eb386e31ae793ec96723277c4913cb54d88818ac76ff8b8",
+  "assistance_credits": 1,
+  "episode_result_uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/result.json",
+  "evidence_ids": [
+    "evidence:final_observation.npz",
+    "evidence:initial_observation.npz",
+    "evidence:trace_context.json"
+  ],
+  "human_attention_seconds": 0.0,
+  "memory_id": "candidate:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+  "raw_evidence_refs": [
+    {
+      "evidence_id": "evidence:trace_context.json",
+      "kind": "execution_context",
+      "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+      "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/trace_context.json"
+    },
+    {
+      "evidence_id": "evidence:initial_observation.npz",
+      "kind": "initial_observation",
+      "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+      "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/initial_observation.npz"
+    },
+    {
+      "evidence_id": "evidence:final_observation.npz",
+      "kind": "final_observation",
+      "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+      "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/final_observation.npz"
+    },
+    {
+      "evidence_id": "evidence:trace.jsonl",
+      "kind": "action_trace",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/trace.jsonl"
+    }
+  ],
+  "received_guidance": "close the gripper after aligning with the object",
+  "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+  "responder": "advisor_proxy",
+  "response_content_sha256": "239f7d3ec9a80be13d366fb0b11b5c8e9783900ad0015b5be91e33f978c6b48b",
+  "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+  "schema_version": "attentionbench.memory-provenance.v2",
+  "source_attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+  "source_developer_model": "trusted-policy-callback",
+  "source_execution_target": "robocasa_sim",
+  "source_kind": "advisor_proxy",
+  "source_policy_id": "full_trace_aware_attention_planner",
+  "source_policy_sha256": "c7b136cfd89f7889bc797ce44e8738505c389c8cfc82963104be6d6730a17277",
+  "source_raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+  "source_run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+  "source_seed": 101,
+  "source_trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1"
+}

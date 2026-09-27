@@ -10,7 +10,9 @@ import pytest
 from attention_memory_service.core.store import StateConflictError
 from benchmarks.attention_harness.memory_service_api import create_app
 from benchmarks.attention_harness.memory_service_client import MemoryServiceClient
-from benchmarks.attention_harness.tests.test_memory_v2 import _candidate, _episode, _safety, _cases, _plan
+from benchmarks.attention_harness.tests.test_memory_v2 import (
+    _candidate, _episode, _safety, _cases, _plan, _trusted_for_revocation_test,
+)
 
 
 KEY = "memory-service-test-key"
@@ -128,6 +130,12 @@ def test_http_pair_uploads_safety_artifacts_into_service_store(tmp_path):
 def test_http_memory_plan_and_package_are_authenticated(tmp_path):
     shared, _, memory_id, _ = _candidate(tmp_path)
     app = create_app(shared, api_key=KEY)
+    status, _ = _request(app, "GET", f"/memories/{memory_id}/preflight")
+    assert status == 401
+    status, preview = _request(app, "GET", f"/memories/{memory_id}/preflight", key=KEY)
+    assert status == 200 and preview["source_evidence_verified"] is True
+    assert preview["source_policy_sha256"]
+    assert _request(app, "GET", f"/memories/{memory_id}/plan", key=KEY)[1] is None
     status, _ = _request(app, "GET", f"/memories/{memory_id}/artifact")
     assert status == 401
     status, manifest = _request(app, "GET", f"/memories/{memory_id}/artifact", key=KEY)
@@ -166,3 +174,47 @@ def test_lifecycle_mutations_require_separate_operator_key(tmp_path):
     assert _request(app, "POST", f"/memories/{memory_id}/disable", key=KEY, payload={
         "actor": "operator-1", "reason": "bad memory",
     })[0] == 403
+    assert _request(app, "POST", f"/memories/{memory_id}/rollback", key=KEY, payload={
+        "actor": "operator-1", "reason": "bad memory",
+    })[0] == 403
+
+
+def test_http_use_grant_is_attempt_bound_and_revocation_checked(tmp_path):
+    shared, service, memory_id = _trusted_for_revocation_test(tmp_path)
+    app = create_app(shared, api_key=KEY, operator_key="memory-operator-test-key")
+    context = {
+        "suite": "robocasa", "task_id": "counter_to_sink", "perception_mode": "sim_gt",
+        **{key: value for key, value in _cases()[0].items() if key != "seed"},
+    }
+    payload = {"context": context, "memory_id": memory_id, "attempt_id": "attempt:future:0", "now": 1.0}
+    assert _request(app, "POST", "/use-grants", payload=payload)[0] == 401
+    status, grant = _request(app, "POST", "/use-grants", key=KEY, payload=payload)
+    assert status == 200
+    assert grant["memory_id"] == memory_id and grant["attempt_id"] == payload["attempt_id"]
+    assert _request(app, "POST", "/use-grants", key=KEY, payload=payload)[1] == grant
+    service.disable(memory_id, actor="operator-1", reason="regression")
+    assert _request(app, "POST", "/use-grants", key=KEY, payload={
+        **payload, "attempt_id": "attempt:after-disable:0",
+    })[0] == 409
+
+
+def test_http_operator_rollback_removes_trusted_memory_from_retrieval(tmp_path):
+    shared, _, memory_id = _trusted_for_revocation_test(tmp_path)
+    operator_key = "memory-operator-test-key"
+    app = create_app(shared, api_key=KEY, operator_key=operator_key)
+    payload = {"actor": "operator-1", "reason": "counterexample found"}
+    path = f"/memories/{memory_id}/rollback"
+    assert _request(app, "POST", path, key=KEY, payload=payload)[0] == 403
+    status, memory = _request(
+        app, "POST", path, key=KEY, operator_key=operator_key, payload=payload,
+    )
+    assert status == 200 and memory["status"] == "rolled_back"
+    context = {
+        "suite": "robocasa", "task_id": "counter_to_sink", "perception_mode": "sim_gt",
+        **{key: value for key, value in _cases()[0].items() if key != "seed"},
+    }
+    status, retrieved = _request(
+        app, "POST", "/retrieve", key=KEY,
+        payload={"context": context, "now": 1.0},
+    )
+    assert status == 200 and retrieved == []

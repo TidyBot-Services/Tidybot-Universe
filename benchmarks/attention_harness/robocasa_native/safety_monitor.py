@@ -11,11 +11,12 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
 from tidybot_sdk import RobotBackend
+from ..core.control import EmergencyInterrupt, raise_if_interrupted
 
 
 class SafetyViolation(RuntimeError):
@@ -25,13 +26,20 @@ class SafetyViolation(RuntimeError):
 class SafetyMonitorBackend:
     def __init__(
         self, backend: RobotBackend, *, max_delta_m: float = 0.25,
-        max_observed_step_m: float = 0.5,
+        max_observed_step_m: float = 0.5, max_base_delta_m: float = 0.3,
+        max_base_rotation_rad: float = 0.5,
+        interrupt_check: Callable[[], bool] | None = None,
     ) -> None:
-        if not all(math.isfinite(value) and value > 0 for value in (max_delta_m, max_observed_step_m)):
+        if not all(math.isfinite(value) and value > 0 for value in (
+            max_delta_m, max_observed_step_m, max_base_delta_m, max_base_rotation_rad,
+        )):
             raise ValueError("safety limits must be positive")
         self.backend = backend
+        self.interrupt_check = interrupt_check
         self.max_delta_m = max_delta_m
         self.max_observed_step_m = max_observed_step_m
+        self.max_base_delta_m = max_base_delta_m
+        self.max_base_rotation_rad = max_base_rotation_rad
         self.events: list[dict[str, Any]] = []
         self.violations: list[dict[str, Any]] = []
         self._last_position: np.ndarray | None = None
@@ -67,11 +75,21 @@ class SafetyMonitorBackend:
             self._violate("state_unavailable", error=f"{type(exc).__name__}: {exc}")
 
     def _execute(self, kind: str, callback, details: dict[str, Any]) -> Any:
+        raise_if_interrupted(self.interrupt_check)
         if self._last_position is None:
             self.observe()
         self.events.append({"kind": kind, **details})
         try:
             value = callback()
+            raise_if_interrupted(self.interrupt_check)
+        except EmergencyInterrupt:
+            raise
+        except TimeoutError as exc:
+            self.violations.append({
+                "kind": "action_outcome_unknown", "event_index": len(self.events),
+                "action": kind, "error": f"{type(exc).__name__}: {exc}",
+            })
+            raise
         except Exception as exc:
             self._violate("action_outcome_unknown", action=kind, error=f"{type(exc).__name__}: {exc}")
         self.observe()
@@ -110,16 +128,45 @@ class SafetyMonitorBackend:
             {"command": command, "settle_steps": settle_steps},
         )
 
-    def write_artifact(self, path: Path, *, attempt_id: str) -> Path:
+    def move_base_delta(self, dx, dy, dtheta=0.0, *, frame="local"):
+        values = (dx, dy, dtheta)
+        if frame not in {"local", "global"} or not all(
+            isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value) for value in values
+        ):
+            self._violate("invalid_base_command")
+        # Match the simulator-backed base adapter's per-axis envelope. A
+        # diagonal (0.30, -0.15) command is valid even though its norm > 0.30.
+        if max(abs(dx), abs(dy)) > self.max_base_delta_m or abs(dtheta) > self.max_base_rotation_rad:
+            self._violate(
+                "base_delta_exceeds_limit", delta_m=[dx, dy], rotation_rad=dtheta,
+            )
+        callback = getattr(self.backend, "move_base_delta", None)
+        if not callable(callback):
+            self._violate("base_unavailable")
+        return self._execute(
+            "move_base_delta",
+            lambda: callback(dx, dy, dtheta, frame=frame),
+            {"delta_m": [dx, dy], "rotation_rad": dtheta, "frame": frame},
+        )
+
+    def write_artifact(self, path: Path, *, attempt_id: str,
+                       run_id: str | None = None) -> Path:
         if self._last_position is None:
             self.violations.append({"kind": "no_state_samples", "event_index": len(self.events)})
         payload = {
             "schema_version": "attentionbench.safety-monitor.v1",
             "source": "independent_safety_monitor",
             "attempt_id": attempt_id,
+            **({"run_id": run_id} if run_id is not None else {}),
             "unsafe_attempts": int(bool(self.violations)),
             "coverage": "command_envelope_and_proprioception; no_collision_telemetry",
-            "limits": {"max_delta_m": self.max_delta_m, "max_observed_step_m": self.max_observed_step_m},
+            "limits": {
+                "max_delta_m": self.max_delta_m,
+                "max_observed_step_m": self.max_observed_step_m,
+                "max_base_delta_m": self.max_base_delta_m,
+                "max_base_rotation_rad": self.max_base_rotation_rad,
+            },
             "events": self.events,
             "violations": self.violations,
         }

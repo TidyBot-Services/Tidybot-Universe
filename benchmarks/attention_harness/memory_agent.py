@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
 from typing import Any, Callable, Protocol
 
 from .core.models import MemoryRecord
@@ -53,7 +54,9 @@ class MemoryGateway(Protocol):
     def source_for_agent(self, request_id: str) -> dict[str, Any]: ...
     def create_candidate(self, **payload: Any) -> MemoryRecord: ...
     def get_memory(self, memory_id: str) -> MemoryRecord: ...
+    def check_candidate(self, memory_id: str) -> dict[str, Any]: ...
     def provenance(self, memory_id: str) -> dict[str, Any]: ...
+    def get_plan(self, memory_id: str) -> dict[str, Any] | None: ...
     def record_plan(self, memory_id: str, plan: dict[str, Any]) -> dict[str, Any]: ...
     def record_pair(self, **payload: Any) -> dict[str, Any]: ...
     def impact_report(self, memory_id: str) -> dict[str, Any]: ...
@@ -101,14 +104,68 @@ class MemoryAgent:
         self, memory_id: str, *, cases: tuple[dict[str, Any], ...],
         assistance_credits: int = 0,
     ) -> tuple[tuple[ValidationTrial, ValidationTrial], ...]:
+        plan, pairs = self._prepare_validation(
+            memory_id, cases=cases, assistance_credits=assistance_credits,
+        )
+        self.service.record_plan(memory_id, plan)
+        return pairs
+
+    def preflight_validation(
+        self, memory_id: str, *, cases: tuple[dict[str, Any], ...],
+        assistance_credits: int = 0,
+        validation_policy_sha256: str | None = None,
+    ) -> dict[str, Any]:
+        """Check evidence and frozen cases without running or registering trials."""
+        if validation_policy_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}", validation_policy_sha256):
+            raise ValueError("validation policy digest must be a lowercase SHA-256 hex string")
+        source = self.service.check_candidate(memory_id)
+        plan, pairs = self._prepare_validation(
+            memory_id, cases=cases, assistance_credits=assistance_credits,
+        )
+        existing = self.service.get_plan(memory_id)
+        if existing is not None and existing != plan:
+            raise ValueError("preflight cases differ from the frozen validation plan")
+        completed = {item["seed"] for item in self.service.list_pairs(memory_id)}
+        seeds = [control.seed for control, _ in pairs]
+        return {
+            "memory_id": memory_id,
+            "suite": source["suite"],
+            "task_id": source["task_id"],
+            "perception_mode": source["perception_mode"],
+            "source_evidence_verified": source["source_evidence_verified"],
+            "source_policy_id": source["source_policy_id"],
+            "source_policy_sha256": source["source_policy_sha256"],
+            "validation_policy_sha256": validation_policy_sha256,
+            "policy_changed_since_source": (
+                validation_policy_sha256 != source["source_policy_sha256"]
+                if validation_policy_sha256 is not None and source["source_policy_sha256"] is not None
+                else None
+            ),
+            "frozen_plan": existing is not None,
+            "total_seeds": len(seeds),
+            "completed_seeds": [seed for seed in seeds if seed in completed],
+            "remaining_seeds": [seed for seed in seeds if seed not in completed],
+            "simulator_executed": False,
+        }
+
+    def _prepare_validation(
+        self, memory_id: str, *, cases: tuple[dict[str, Any], ...],
+        assistance_credits: int,
+    ) -> tuple[dict[str, Any], tuple[tuple[ValidationTrial, ValidationTrial], ...]]:
         memory = self.service.get_memory(memory_id)
         if memory.status.value != "candidate":
             raise ValueError("validation planning requires a candidate memory")
         provenance = self.service.provenance(memory_id)
         if provenance["source_execution_target"] not in {"robocasa_sim", "robosuite_sim"}:
             raise PermissionError("automatic memory validation is simulator-only")
+        if not isinstance(cases, tuple) or any(not isinstance(case, dict) for case in cases):
+            raise ValueError("validation cases must be a tuple of case objects")
         selected = tuple(case.get("seed") for case in cases)
-        if len(selected) < 5 or len(set(selected)) != len(selected):
+        if (
+            len(selected) < 5
+            or any(isinstance(seed, bool) or not isinstance(seed, int) for seed in selected)
+            or len(set(selected)) != len(selected)
+        ):
             raise ValueError("validation needs at least five distinct seeds")
         if isinstance(assistance_credits, bool) or not isinstance(assistance_credits, int) or assistance_credits < 0:
             raise ValueError("assistance_credits must be nonnegative")
@@ -127,8 +184,17 @@ class MemoryAgent:
             raise ValueError("validation must vary every scene/object/camera/task axis")
         if len({tuple(case["camera_names"]) for case in cases}) < 2 or len({case["task_prompt"] for case in cases}) < 2:
             raise ValueError("camera and task variants need different concrete views and prompts")
+        camera_map = {case["camera_config_id"]: tuple(case["camera_names"]) for case in cases}
+        task_map = {case["task_variant_id"]: case["task_prompt"] for case in cases}
+        if (
+            len(camera_map) != len({tuple(case["camera_names"]) for case in cases})
+            or len(task_map) != len({case["task_prompt"] for case in cases})
+            or any(camera_map[case["camera_config_id"]] != tuple(case["camera_names"]) for case in cases)
+            or any(task_map[case["task_variant_id"]] != case["task_prompt"] for case in cases)
+        ):
+            raise ValueError("camera/task variant IDs must map one-to-one to concrete settings")
         context = provenance["artifact"]["applicability"]
-        self.service.record_plan(memory_id, {
+        plan = {
             "schema_version": "attentionbench.memory-validation-plan.v2",
             "memory_id": memory_id,
             "suite": context["suite"],
@@ -138,7 +204,7 @@ class MemoryAgent:
             "assistance_credits": assistance_credits,
             "seeds": list(selected),
             "cases": [dict(case) for case in cases],
-        })
+        }
         pairs = []
         for case in cases:
             seed = case["seed"]
@@ -154,7 +220,7 @@ class MemoryAgent:
                 ValidationTrial(treatment=False, **common),
                 ValidationTrial(treatment=True, **common),
             ))
-        return tuple(pairs)
+        return plan, tuple(pairs)
 
     def run_validation(
         self, memory_id: str, *, executor: TrialExecutor,
@@ -193,8 +259,14 @@ class MemoryAgent:
         if source["responder"] == "advisor_proxy":
             advice = parse_advisor_advice(content, request_type="hint")
             guidance = advice.guidance
+            repair = (
+                f"Failure hypothesis: {advice.diagnosis}\n"
+                f"Proposed change: {advice.guidance}\n"
+                f"Caution: {advice.caution}"
+            )
         else:
             guidance = content.strip()
+            repair = guidance
         if not guidance or len(guidance) > 2000:
             raise ValueError("memory guidance must be 1-2000 characters")
-        return MemoryDraft(guidance=guidance, repair=guidance)
+        return MemoryDraft(guidance=guidance, repair=repair)

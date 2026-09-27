@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any, Iterable, Mapping, TYPE_CHECKING
 
 from .models import (
@@ -104,8 +105,19 @@ class VisibilityProjector:
                 raw.failure.consecutive_failures if raw.failure is not None else 1
             ),
         )
+        failure = FailureSummary(**_sanitize(failure.artifact(), "failure", redacted_paths))
         code = _sanitize(raw.code, "code", redacted_paths)
         outcome = _public_outcome(raw, redacted_paths)
+        hypothesis = _sanitize(raw.hypothesis, "hypothesis", redacted_paths)
+        runtime = raw.metadata.get("runtime", {})
+        experiment = {
+            "suite": raw.metadata.get("suite"),
+            "task_id": raw.metadata.get("task_id"),
+            "seed": raw.metadata.get("seed"),
+            "policy_id": raw.metadata.get("policy_id"),
+            "config_sha256": runtime.get("config_sha256"),
+            "scheduler_config_sha256": runtime.get("scheduler_config_sha256"),
+        }
 
         packet_id = trace_id or f"advisor:{raw.raw_trace_id}"
         source_sha256 = _digest(raw.artifact())
@@ -119,11 +131,13 @@ class VisibilityProjector:
             "agent_state": raw.agent_state,
             "failure": failure.artifact(),
             "evidence": evidence,
-            "hypothesis": raw.hypothesis,
+            "hypothesis": hypothesis,
+            "hypothesis_status": "provided" if hypothesis else "unknown",
             "memory_refs": raw.memory_refs,
             "code": code,
             "events": events,
             "outcome": outcome,
+            "experiment": experiment,
         }
         projection_sha256 = _digest(public_body)
         projection = {
@@ -147,13 +161,15 @@ class VisibilityProjector:
             agent_state=raw.agent_state,
             failure=failure,
             evidence=evidence,
-            hypothesis=raw.hypothesis,
+            hypothesis=hypothesis,
+            hypothesis_status="provided" if hypothesis else "unknown",
             memory_refs=raw.memory_refs,
             raw_trace_id=raw.raw_trace_id,
             execution_id=raw.execution_id,
             code=code,
             events=events,
             outcome=outcome,
+            experiment=experiment,
             projection=projection,
         )
 
@@ -356,6 +372,12 @@ def _sanitize(value: Any, path: str, redacted_paths: list[str]) -> Any:
             _sanitize(item, f"{path}[{index}]", redacted_paths)
             for index, item in enumerate(value)
         ]
+    if isinstance(value, str) and re.search(
+        r"\b(?:native_success|evaluator_verdict|oracle_state|simulator_state|privileged_state)\b",
+        value, re.IGNORECASE,
+    ):
+        redacted_paths.append(path)
+        return "[redacted private state]"
     return value
 
 

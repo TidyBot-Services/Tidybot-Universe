@@ -1,0 +1,55 @@
+{
+  "schema_version": "attentionbench.robocasa-generated-policy-motion-timeout-smoke.v1",
+  "date": "2026-09-24",
+  "status": "partial_live_chain_with_formal_timeout_blocker",
+  "task_id": "counter_to_sink",
+  "seed": 101,
+  "artifact_root": "/home/truares/桌面/attentionbench-v2-live-motion-smoke",
+  "setup": "isolated RoboCasa simulator :6300, arm/gripper bridges :6355/:6370, agent_server :8880; all stopped after testing",
+  "checks": {
+    "arm_delta": {
+      "policy": "protocol/v2/policies/robocasa_arm_delta_smoke.py",
+      "requested_delta_m": [0.01, 0.0, 0.0],
+      "measured_eef_delta_m": [0.009332176894971511, -0.0000034317180817555224, -0.0007264589184377557],
+      "status": "completed",
+      "native_success": false,
+      "artifact": "counter_to_sink-seed101-20260924T053536.093574Z"
+    },
+    "spin_timeout": {
+      "policy_timeout_seconds": 1.0,
+      "status": "timeout",
+      "timed_out": true,
+      "elapsed_seconds": 1.328341767999973,
+      "new_agent_jobs": 0,
+      "lease_holder_after": null,
+      "artifact": "counter_to_sink-seed101-20260924T053605.717733Z"
+    },
+    "aligned_action_timeout": {
+      "policy_timeout_seconds": 0.6,
+      "action_job_timeout_seconds": 0.6,
+      "status": "timeout",
+      "elapsed_seconds": 1.1681855799999994,
+      "action_job_status": "failed",
+      "action_job_error": "Execution timed out after 0.6s",
+      "measured_eef_delta_m": [0.0000000000008901213099932193, 0.00000000004142649548116406, -0.0000000000007029377080414179],
+      "artifact": "counter_to_sink-seed101-20260924T053646.439776Z"
+    },
+    "mismatched_action_timeout_before_guard": {
+      "policy_timeout_seconds": 0.6,
+      "action_job_timeout_seconds": 90.0,
+      "status": "timeout",
+      "elapsed_seconds": 1.936086873999784,
+      "action_job_status": "completed",
+      "measured_eef_delta_m": [0.00921344416435288, -0.0000036940354102021406, -0.0007253262043234732],
+      "artifact": "counter_to_sink-seed101-20260924T053714.215469Z"
+    },
+    "deadline_guard_after_change": {
+      "result": "ValueError before reset and before action submission",
+      "job_count_before": 3,
+      "job_count_after": 3
+    }
+  },
+  "planner_observation": "in-process cuRobo warmup failed because curobo.wrap is unavailable; the tested arm.move_delta uses agent_server direct Cartesian control and does not validate task-level motion planning",
+  "remaining_formal_blocker": "The parent broker dispatches SDK actions synchronously; timeout can exceed the configured wall-clock budget. Service-side cancellation and bounded in-flight action handling still require implementation and live attestation.",
+  "formal_eligible": false
+}

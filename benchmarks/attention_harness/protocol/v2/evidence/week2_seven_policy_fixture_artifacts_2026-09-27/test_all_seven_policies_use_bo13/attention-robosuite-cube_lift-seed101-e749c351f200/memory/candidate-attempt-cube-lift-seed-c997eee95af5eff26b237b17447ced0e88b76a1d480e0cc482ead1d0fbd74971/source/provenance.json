@@ -1,0 +1,54 @@
+{
+  "artifact_sha256": "1a8a2cb5d919a87677767a81c3ec6f17d6a2e93512df61ba5965a9cb95562243",
+  "assistance_credits": 1,
+  "episode_result_uri": "artifact://cube_lift-seed101-20260927T025410.401784Z/result.json",
+  "evidence_ids": [
+    "evidence:final_observation.npz",
+    "evidence:initial_observation.npz",
+    "evidence:trace_context.json"
+  ],
+  "human_attention_seconds": 0.0,
+  "memory_id": "candidate:attempt:cube_lift-seed101-20260927T025410.401784Z:1",
+  "raw_evidence_refs": [
+    {
+      "evidence_id": "evidence:trace_context.json",
+      "kind": "execution_context",
+      "sha256": "39d0efaa3210cdb6831e2675bf7d4bb77b81eed16fe5e8f08f2fe20cfebacb66",
+      "uri": "artifact://cube_lift-seed101-20260927T025410.401784Z/trace_context.json"
+    },
+    {
+      "evidence_id": "evidence:initial_observation.npz",
+      "kind": "initial_observation",
+      "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+      "uri": "artifact://cube_lift-seed101-20260927T025410.401784Z/initial_observation.npz"
+    },
+    {
+      "evidence_id": "evidence:final_observation.npz",
+      "kind": "final_observation",
+      "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+      "uri": "artifact://cube_lift-seed101-20260927T025410.401784Z/final_observation.npz"
+    },
+    {
+      "evidence_id": "evidence:trace.jsonl",
+      "kind": "action_trace",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uri": "artifact://cube_lift-seed101-20260927T025410.401784Z/trace.jsonl"
+    }
+  ],
+  "received_guidance": "close the gripper after aligning with the object",
+  "request_id": "attention-request:attention-robosuite-cube_lift-seed101-e749c351f200:1",
+  "responder": "advisor_proxy",
+  "response_content_sha256": "239f7d3ec9a80be13d366fb0b11b5c8e9783900ad0015b5be91e33f978c6b48b",
+  "response_id": "proxy-response:attention-request:attention-robosuite-cube_lift-seed101-e749c351f200:1",
+  "schema_version": "attentionbench.memory-provenance.v2",
+  "source_attempt_id": "attempt:cube_lift-seed101-20260927T025410.401784Z:1",
+  "source_developer_model": "trusted-policy-callback",
+  "source_execution_target": "robosuite_sim",
+  "source_kind": "advisor_proxy",
+  "source_policy_id": "full_trace_aware_attention_planner",
+  "source_policy_sha256": "519e2ce81e1aa811e2ea72d82b3498f05fa8eda07423ed99a31dd7f5f0db3433",
+  "source_raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025410.401784Z:1",
+  "source_run_id": "run:attention-robosuite-cube_lift-seed101-e749c351f200",
+  "source_seed": 101,
+  "source_trace_id": "trace:cube_lift-seed101-20260927T025410.401784Z:1"
+}

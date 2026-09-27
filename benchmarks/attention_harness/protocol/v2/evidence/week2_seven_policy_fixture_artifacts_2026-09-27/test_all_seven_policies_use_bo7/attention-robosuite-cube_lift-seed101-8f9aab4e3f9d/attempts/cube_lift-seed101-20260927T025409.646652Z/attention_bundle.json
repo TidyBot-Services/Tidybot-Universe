@@ -1,0 +1,1988 @@
+{
+  "events": [
+    {
+      "entity_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+      "entity_type": "runs",
+      "event_key": "run.created:run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+      "event_type": "run.created",
+      "payload": {
+        "assistance_mode": "benchmark_proxy",
+        "budget": {
+          "assistance_credits": 2,
+          "execution_seconds": 900.0,
+          "gpu_seconds": 0.0,
+          "token_limit": 30000
+        },
+        "created_at": 1790477649.6137328,
+        "developer_model": "trusted-policy-callback",
+        "evaluator_model": "native_evaluator",
+        "execution_target": "robosuite_sim",
+        "policy_id": "retry_k_then_ask",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "schema_version": "attentionbench.core.v1",
+        "seed": 101,
+        "status": "created",
+        "suite": "robosuite",
+        "task_id": "cube_lift"
+      },
+      "sequence": 1
+    },
+    {
+      "entity_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+      "entity_type": "run",
+      "event_key": "start:run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+      "event_type": "run.running",
+      "payload": {
+        "run": {
+          "assistance_mode": "benchmark_proxy",
+          "budget": {
+            "assistance_credits": 2,
+            "execution_seconds": 900.0,
+            "gpu_seconds": 0.0,
+            "token_limit": 30000
+          },
+          "created_at": 1790477649.6137328,
+          "developer_model": "trusted-policy-callback",
+          "evaluator_model": "native_evaluator",
+          "execution_target": "robosuite_sim",
+          "policy_id": "retry_k_then_ask",
+          "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+          "schema_version": "attentionbench.core.v1",
+          "seed": 101,
+          "status": "running",
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        }
+      },
+      "sequence": 2
+    },
+    {
+      "entity_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+      "entity_type": "attempts",
+      "event_key": "attempt.created:attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+      "event_type": "attempt.created",
+      "payload": {
+        "artifact_uri": null,
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+        "ended_at": null,
+        "index": 0,
+        "native_success": null,
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "schema_version": "attentionbench.core.v1",
+        "started_at": 1790477649.6282089,
+        "status": "running"
+      },
+      "sequence": 3
+    },
+    {
+      "entity_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+      "entity_type": "attempt",
+      "event_key": "finish:attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+      "event_type": "attempt.failed",
+      "payload": {
+        "attempt": {
+          "artifact_uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/result.json",
+          "attempt_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+          "ended_at": 1790477649.6285665,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477649.6282089,
+          "status": "failed"
+        }
+      },
+      "sequence": 4
+    },
+    {
+      "entity_id": "raw-trace:cube_lift-seed101-20260927T025409.628411Z:0",
+      "entity_type": "raw_traces",
+      "event_key": "raw_trace.created:raw-trace:cube_lift-seed101-20260927T025409.628411Z:0",
+      "event_type": "raw_trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+        "code": {
+          "sha256": "39950d2cc489f5007a3144e684aed267bc8ce3a6c3ef0fd57102da91af478012"
+        },
+        "complete": true,
+        "created_at": 1790477649.6282089,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "cube_lift"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 1,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.052,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 2,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 9.3e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.035,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "robosuite_world",
+                  "name": "cube",
+                  "position": [
+                    0.1,
+                    0.2,
+                    0.3
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000136,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.037,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000355,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "action-log",
+            "event_type": "robot.action_log",
+            "evidence_refs": [],
+            "operation": "step_sequence",
+            "result": {
+              "action_count": 0
+            },
+            "sequence": 5,
+            "source": "robot_backend",
+            "status": "completed",
+            "timestamp": 0.00035600000000000003,
+            "visibility": [
+              "internal"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 6,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00035700000000000006,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "native-evaluator",
+            "event_type": "evaluator.result",
+            "evidence_refs": [],
+            "operation": "native_success",
+            "result": {
+              "native_success": false
+            },
+            "sequence": 7,
+            "source": "native_evaluator",
+            "status": "completed",
+            "timestamp": 0.0003580000000000001,
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477649.6315665,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 200
+            },
+            "mime_type": "application/json",
+            "sha256": "dae948fbe7e7e5abe26f59bfc678b18141d10973247d8e0599ede9b90358a5df",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6285665,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6285665,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6285665,
+            "evidence_id": "evidence:trace.jsonl",
+            "kind": "action_trace",
+            "metadata": {
+              "bytes": 0
+            },
+            "mime_type": "application/x-ndjson",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/trace.jsonl",
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "execution_id": "execution:cube_lift-seed101-20260927T025409.628411Z:0",
+        "failure": null,
+        "hypothesis": "gripper never closed",
+        "memory_refs": [],
+        "metadata": {
+          "policy_id": "retry_k_then_ask",
+          "runtime": {
+            "memory_context": {
+              "perception_mode": "sim_gt",
+              "suite": "robosuite",
+              "task_id": "cube_lift"
+            },
+            "memory_exposure": "none",
+            "memory_ids": [],
+            "perception_mode": "sim_gt",
+            "policy_sha256": "39950d2cc489f5007a3144e684aed267bc8ce3a6c3ef0fd57102da91af478012",
+            "score_namespace": "v2/gt_perception_attentionbench",
+            "validation_config_sha256": null,
+            "validation_variation": null
+          },
+          "seed": 101,
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        },
+        "outcome": {
+          "elapsed_seconds": 0.00035772999945038464,
+          "evaluator_authoritative": true,
+          "evaluator_verdict": "failed",
+          "exit_code": null,
+          "native_success": false,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025409.628411Z:0",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "schema_version": "attentionbench.raw-execution-trace.v1"
+      },
+      "sequence": 5
+    },
+    {
+      "entity_id": "trace:cube_lift-seed101-20260927T025409.628411Z:0",
+      "entity_type": "traces",
+      "event_key": "trace.created:trace:cube_lift-seed101-20260927T025409.628411Z:0",
+      "event_type": "trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+        "code": {
+          "sha256": "39950d2cc489f5007a3144e684aed267bc8ce3a6c3ef0fd57102da91af478012"
+        },
+        "created_at": 1790477649.6282089,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "cube_lift"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 1,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.052,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 2,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 9.3e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.035,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "robosuite_world",
+                  "name": "cube",
+                  "position": [
+                    0.1,
+                    0.2,
+                    0.3
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000136,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.037,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000355,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 6,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00035700000000000006,
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477649.6285665,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6285665,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6315665,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 200
+            },
+            "mime_type": "application/json",
+            "sha256": "dae948fbe7e7e5abe26f59bfc678b18141d10973247d8e0599ede9b90358a5df",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "execution_id": "execution:cube_lift-seed101-20260927T025409.628411Z:0",
+        "experiment": {
+          "config_sha256": null,
+          "policy_id": "retry_k_then_ask",
+          "scheduler_config_sha256": null,
+          "seed": 101,
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        },
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 0.5,
+          "consecutive_failures": 1,
+          "error_type": "TaskOutcomeFailure",
+          "first_failed_event_id": "execution-finished",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-3",
+          "message": "execution finished but the task goal was not verified",
+          "observed_symptom": "execution finished but the task goal was not verified",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "unknown",
+          "termination_reason": null
+        },
+        "hypothesis": "gripper never closed",
+        "hypothesis_status": "provided",
+        "memory_refs": [],
+        "outcome": {
+          "elapsed_seconds": 0.00035772999945038464,
+          "exit_code": null,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "projection": {
+          "included_event_count": 6,
+          "included_evidence_count": 3,
+          "omitted_event_count": 2,
+          "omitted_evidence_count": 1,
+          "policy_version": "attentionbench.advisor-visibility.v1",
+          "projection_sha256": "ad3be6d9046f783f8b3ee2c62e19f7099362c488e257c5c1f70f779d74e075ee",
+          "redacted_field_count": 3,
+          "source_complete": true,
+          "source_sha256": "a74ea7442769442ac55b764a011b09711f1dec689c7d44b8f7069abb7bf93bca"
+        },
+        "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025409.628411Z:0",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "schema_version": "attentionbench.advisor-trace-packet.v1",
+        "trace_id": "trace:cube_lift-seed101-20260927T025409.628411Z:0"
+      },
+      "sequence": 6
+    },
+    {
+      "entity_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+      "entity_type": "resource_usage",
+      "event_key": "resource-event:resources:attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+      "event_type": "resources.consumed",
+      "payload": {
+        "execution_seconds": 0.00035772999945038464,
+        "gpu_seconds": 0.0,
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "tokens": 0
+      },
+      "sequence": 7
+    },
+    {
+      "entity_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+      "entity_type": "attempts",
+      "event_key": "attempt.created:attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+      "event_type": "attempt.created",
+      "payload": {
+        "artifact_uri": null,
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+        "ended_at": null,
+        "index": 1,
+        "native_success": null,
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "schema_version": "attentionbench.core.v1",
+        "started_at": 1790477649.6462464,
+        "status": "running"
+      },
+      "sequence": 8
+    },
+    {
+      "entity_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+      "entity_type": "attempt",
+      "event_key": "finish:attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+      "event_type": "attempt.failed",
+      "payload": {
+        "attempt": {
+          "artifact_uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/result.json",
+          "attempt_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+          "ended_at": 1790477649.6465664,
+          "index": 1,
+          "native_success": false,
+          "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477649.6462464,
+          "status": "failed"
+        }
+      },
+      "sequence": 9
+    },
+    {
+      "entity_id": "raw-trace:cube_lift-seed101-20260927T025409.646652Z:1",
+      "entity_type": "raw_traces",
+      "event_key": "raw_trace.created:raw-trace:cube_lift-seed101-20260927T025409.646652Z:1",
+      "event_type": "raw_trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+        "code": {
+          "sha256": "69cd0e8a8d4212bf8462e8b4ab91e463b8fe51da315e030eeee2e26e4b5468e2"
+        },
+        "complete": true,
+        "created_at": 1790477649.6462464,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "cube_lift"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 1,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.033,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 2,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 5.5e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.024,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "robosuite_world",
+                  "name": "cube",
+                  "position": [
+                    0.1,
+                    0.2,
+                    0.3
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 8.6e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.03,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000312,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "action-log",
+            "event_type": "robot.action_log",
+            "evidence_refs": [],
+            "operation": "step_sequence",
+            "result": {
+              "action_count": 0
+            },
+            "sequence": 5,
+            "source": "robot_backend",
+            "status": "completed",
+            "timestamp": 0.000313,
+            "visibility": [
+              "internal"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 6,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00031400000000000004,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "native-evaluator",
+            "event_type": "evaluator.result",
+            "evidence_refs": [],
+            "operation": "native_success",
+            "result": {
+              "native_success": false
+            },
+            "sequence": 7,
+            "source": "native_evaluator",
+            "status": "completed",
+            "timestamp": 0.00031500000000000007,
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477649.6505663,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 200
+            },
+            "mime_type": "application/json",
+            "sha256": "dae948fbe7e7e5abe26f59bfc678b18141d10973247d8e0599ede9b90358a5df",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6465664,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6465664,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6465664,
+            "evidence_id": "evidence:trace.jsonl",
+            "kind": "action_trace",
+            "metadata": {
+              "bytes": 0
+            },
+            "mime_type": "application/x-ndjson",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/trace.jsonl",
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "execution_id": "execution:cube_lift-seed101-20260927T025409.646652Z:1",
+        "failure": null,
+        "hypothesis": "gripper never closed",
+        "memory_refs": [],
+        "metadata": {
+          "policy_id": "retry_k_then_ask",
+          "runtime": {
+            "memory_context": {
+              "perception_mode": "sim_gt",
+              "suite": "robosuite",
+              "task_id": "cube_lift"
+            },
+            "memory_exposure": "none",
+            "memory_ids": [],
+            "perception_mode": "sim_gt",
+            "policy_sha256": "69cd0e8a8d4212bf8462e8b4ab91e463b8fe51da315e030eeee2e26e4b5468e2",
+            "score_namespace": "v2/gt_perception_attentionbench",
+            "validation_config_sha256": null,
+            "validation_variation": null
+          },
+          "seed": 101,
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        },
+        "outcome": {
+          "elapsed_seconds": 0.0003199699995093397,
+          "evaluator_authoritative": true,
+          "evaluator_verdict": "failed",
+          "exit_code": null,
+          "native_success": false,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025409.646652Z:1",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "schema_version": "attentionbench.raw-execution-trace.v1"
+      },
+      "sequence": 10
+    },
+    {
+      "entity_id": "trace:cube_lift-seed101-20260927T025409.646652Z:1",
+      "entity_type": "traces",
+      "event_key": "trace.created:trace:cube_lift-seed101-20260927T025409.646652Z:1",
+      "event_type": "trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+        "code": {
+          "sha256": "69cd0e8a8d4212bf8462e8b4ab91e463b8fe51da315e030eeee2e26e4b5468e2"
+        },
+        "created_at": 1790477649.6462464,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "cube_lift"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 1,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.033,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 2,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 5.5e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.024,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "robosuite_world",
+                  "name": "cube",
+                  "position": [
+                    0.1,
+                    0.2,
+                    0.3
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 8.6e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.03,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000312,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 6,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00031400000000000004,
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477649.6465664,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6465664,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 432
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477649.6505663,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 200
+            },
+            "mime_type": "application/json",
+            "sha256": "dae948fbe7e7e5abe26f59bfc678b18141d10973247d8e0599ede9b90358a5df",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "execution_id": "execution:cube_lift-seed101-20260927T025409.646652Z:1",
+        "experiment": {
+          "config_sha256": null,
+          "policy_id": "retry_k_then_ask",
+          "scheduler_config_sha256": null,
+          "seed": 101,
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        },
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 0.5,
+          "consecutive_failures": 1,
+          "error_type": "TaskOutcomeFailure",
+          "first_failed_event_id": "execution-finished",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-3",
+          "message": "execution finished but the task goal was not verified",
+          "observed_symptom": "execution finished but the task goal was not verified",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "unknown",
+          "termination_reason": null
+        },
+        "hypothesis": "gripper never closed",
+        "hypothesis_status": "provided",
+        "memory_refs": [],
+        "outcome": {
+          "elapsed_seconds": 0.0003199699995093397,
+          "exit_code": null,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "projection": {
+          "included_event_count": 6,
+          "included_evidence_count": 3,
+          "omitted_event_count": 2,
+          "omitted_evidence_count": 1,
+          "policy_version": "attentionbench.advisor-visibility.v1",
+          "projection_sha256": "176e372350c589feda5f873a574b5186dd993e838aaeaf3b90f7a684a1673655",
+          "redacted_field_count": 3,
+          "source_complete": true,
+          "source_sha256": "f0aa59448ad2bc4fa5e969f451384c59d11cde89a46697591c459a5093a1f7ef"
+        },
+        "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025409.646652Z:1",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "schema_version": "attentionbench.advisor-trace-packet.v1",
+        "trace_id": "trace:cube_lift-seed101-20260927T025409.646652Z:1"
+      },
+      "sequence": 11
+    },
+    {
+      "entity_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+      "entity_type": "resource_usage",
+      "event_key": "resource-event:resources:attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+      "event_type": "resources.consumed",
+      "payload": {
+        "execution_seconds": 0.0003199699995093397,
+        "gpu_seconds": 0.0,
+        "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+        "tokens": 0
+      },
+      "sequence": 12
+    }
+  ],
+  "projection": {
+    "attention_inbox": [],
+    "autonomous_work": {
+      "attempts": [
+        {
+          "artifact_uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/result.json",
+          "attempt_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+          "ended_at": 1790477649.6285665,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477649.6282089,
+          "status": "failed"
+        },
+        {
+          "artifact_uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/result.json",
+          "attempt_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+          "ended_at": 1790477649.6465664,
+          "index": 1,
+          "native_success": false,
+          "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477649.6462464,
+          "status": "failed"
+        }
+      ]
+    },
+    "live_station": {
+      "emergency_interrupt_available": true,
+      "execution_target": "robosuite_sim",
+      "status": "running"
+    },
+    "request_detail": {
+      "memories": [],
+      "responses": [],
+      "traces": [
+        {
+          "agent_state": "blocked_after_failure",
+          "attempt_id": "attempt:cube_lift-seed101-20260927T025409.628411Z:0",
+          "code": {
+            "sha256": "39950d2cc489f5007a3144e684aed267bc8ce3a6c3ef0fd57102da91af478012"
+          },
+          "created_at": 1790477649.6282089,
+          "events": [
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "execution-started",
+              "event_type": "execution.started",
+              "evidence_refs": [],
+              "operation": "run_policy",
+              "result": {},
+              "sequence": 0,
+              "source": "attention_harness",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "perception_mode": "sim_gt",
+                "task_id": "cube_lift"
+              },
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-0",
+              "event_type": "attention.memory_catalog",
+              "evidence_refs": [],
+              "operation": "list_available",
+              "result": {
+                "memory_ids": []
+              },
+              "sequence": 1,
+              "source": "attention_harness.memory",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.052,
+              "error": null,
+              "event_id": "sdk-1",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                }
+              },
+              "sequence": 2,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 9.3e-05,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 0.035,
+              "error": null,
+              "event_id": "sdk-2",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {
+                "objects": [
+                  {
+                    "confidence": 1.0,
+                    "frame": "robosuite_world",
+                    "name": "cube",
+                    "position": [
+                      0.1,
+                      0.2,
+                      0.3
+                    ],
+                    "source": "sim_gt"
+                  }
+                ],
+                "perception_mode": "sim_gt"
+              },
+              "sequence": 3,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.000136,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.037,
+              "error": null,
+              "event_id": "sdk-3",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                }
+              },
+              "sequence": 4,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.000355,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": {
+                "message": "execution finished but the task goal was not verified",
+                "type": "TaskOutcomeFailure"
+              },
+              "event_id": "execution-finished",
+              "event_type": "execution.finished",
+              "evidence_refs": [
+                "evidence:trace_context.json",
+                "evidence:initial_observation.npz",
+                "evidence:final_observation.npz"
+              ],
+              "operation": "run_policy",
+              "result": {
+                "execution_status": "completed",
+                "exit_code": null,
+                "stderr_tail": "",
+                "stdout_tail": "",
+                "timed_out": false
+              },
+              "sequence": 6,
+              "source": "attention_harness",
+              "status": "failed",
+              "timestamp": 0.00035700000000000006,
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "created_at": 1790477649.6285665,
+              "evidence_id": "evidence:final_observation.npz",
+              "kind": "final_observation",
+              "metadata": {
+                "bytes": 432
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/final_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477649.6285665,
+              "evidence_id": "evidence:initial_observation.npz",
+              "kind": "initial_observation",
+              "metadata": {
+                "bytes": 432
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/initial_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477649.6315665,
+              "evidence_id": "evidence:trace_context.json",
+              "kind": "execution_context",
+              "metadata": {
+                "bytes": 200
+              },
+              "mime_type": "application/json",
+              "sha256": "dae948fbe7e7e5abe26f59bfc678b18141d10973247d8e0599ede9b90358a5df",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-20260927T025409.628411Z/trace_context.json",
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "execution_id": "execution:cube_lift-seed101-20260927T025409.628411Z:0",
+          "experiment": {
+            "config_sha256": null,
+            "policy_id": "retry_k_then_ask",
+            "scheduler_config_sha256": null,
+            "seed": 101,
+            "suite": "robosuite",
+            "task_id": "cube_lift"
+          },
+          "failure": {
+            "classification_source": "deterministic_event_rules",
+            "confidence": 0.5,
+            "consecutive_failures": 1,
+            "error_type": "TaskOutcomeFailure",
+            "first_failed_event_id": "execution-finished",
+            "inferred_cause": null,
+            "last_successful_event_id": "sdk-3",
+            "message": "execution finished but the task goal was not verified",
+            "observed_symptom": "execution finished but the task goal was not verified",
+            "retryable": null,
+            "safety_relevant": false,
+            "stage": "unknown",
+            "termination_reason": null
+          },
+          "hypothesis": "gripper never closed",
+          "hypothesis_status": "provided",
+          "memory_refs": [],
+          "outcome": {
+            "elapsed_seconds": 0.00035772999945038464,
+            "exit_code": null,
+            "status": "completed",
+            "stop_reason": null,
+            "timed_out": false
+          },
+          "projection": {
+            "included_event_count": 6,
+            "included_evidence_count": 3,
+            "omitted_event_count": 2,
+            "omitted_evidence_count": 1,
+            "policy_version": "attentionbench.advisor-visibility.v1",
+            "projection_sha256": "ad3be6d9046f783f8b3ee2c62e19f7099362c488e257c5c1f70f779d74e075ee",
+            "redacted_field_count": 3,
+            "source_complete": true,
+            "source_sha256": "a74ea7442769442ac55b764a011b09711f1dec689c7d44b8f7069abb7bf93bca"
+          },
+          "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025409.628411Z:0",
+          "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+          "schema_version": "attentionbench.advisor-trace-packet.v1",
+          "trace_id": "trace:cube_lift-seed101-20260927T025409.628411Z:0"
+        },
+        {
+          "agent_state": "blocked_after_failure",
+          "attempt_id": "attempt:cube_lift-seed101-20260927T025409.646652Z:1",
+          "code": {
+            "sha256": "69cd0e8a8d4212bf8462e8b4ab91e463b8fe51da315e030eeee2e26e4b5468e2"
+          },
+          "created_at": 1790477649.6462464,
+          "events": [
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "execution-started",
+              "event_type": "execution.started",
+              "evidence_refs": [],
+              "operation": "run_policy",
+              "result": {},
+              "sequence": 0,
+              "source": "attention_harness",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "perception_mode": "sim_gt",
+                "task_id": "cube_lift"
+              },
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-0",
+              "event_type": "attention.memory_catalog",
+              "evidence_refs": [],
+              "operation": "list_available",
+              "result": {
+                "memory_ids": []
+              },
+              "sequence": 1,
+              "source": "attention_harness.memory",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.033,
+              "error": null,
+              "event_id": "sdk-1",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                }
+              },
+              "sequence": 2,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 5.5e-05,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 0.024,
+              "error": null,
+              "event_id": "sdk-2",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {
+                "objects": [
+                  {
+                    "confidence": 1.0,
+                    "frame": "robosuite_world",
+                    "name": "cube",
+                    "position": [
+                      0.1,
+                      0.2,
+                      0.3
+                    ],
+                    "source": "sim_gt"
+                  }
+                ],
+                "perception_mode": "sim_gt"
+              },
+              "sequence": 3,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 8.6e-05,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.03,
+              "error": null,
+              "event_id": "sdk-3",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                }
+              },
+              "sequence": 4,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.000312,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": {
+                "message": "execution finished but the task goal was not verified",
+                "type": "TaskOutcomeFailure"
+              },
+              "event_id": "execution-finished",
+              "event_type": "execution.finished",
+              "evidence_refs": [
+                "evidence:trace_context.json",
+                "evidence:initial_observation.npz",
+                "evidence:final_observation.npz"
+              ],
+              "operation": "run_policy",
+              "result": {
+                "execution_status": "completed",
+                "exit_code": null,
+                "stderr_tail": "",
+                "stdout_tail": "",
+                "timed_out": false
+              },
+              "sequence": 6,
+              "source": "attention_harness",
+              "status": "failed",
+              "timestamp": 0.00031400000000000004,
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "created_at": 1790477649.6465664,
+              "evidence_id": "evidence:final_observation.npz",
+              "kind": "final_observation",
+              "metadata": {
+                "bytes": 432
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/final_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477649.6465664,
+              "evidence_id": "evidence:initial_observation.npz",
+              "kind": "initial_observation",
+              "metadata": {
+                "bytes": 432
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "6a55ae9cae920128cf2ca18b3d5732fb59f0541dcd22eae536dd1e50d79406b4",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/initial_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477649.6505663,
+              "evidence_id": "evidence:trace_context.json",
+              "kind": "execution_context",
+              "metadata": {
+                "bytes": 200
+              },
+              "mime_type": "application/json",
+              "sha256": "dae948fbe7e7e5abe26f59bfc678b18141d10973247d8e0599ede9b90358a5df",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-20260927T025409.646652Z/trace_context.json",
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "execution_id": "execution:cube_lift-seed101-20260927T025409.646652Z:1",
+          "experiment": {
+            "config_sha256": null,
+            "policy_id": "retry_k_then_ask",
+            "scheduler_config_sha256": null,
+            "seed": 101,
+            "suite": "robosuite",
+            "task_id": "cube_lift"
+          },
+          "failure": {
+            "classification_source": "deterministic_event_rules",
+            "confidence": 0.5,
+            "consecutive_failures": 1,
+            "error_type": "TaskOutcomeFailure",
+            "first_failed_event_id": "execution-finished",
+            "inferred_cause": null,
+            "last_successful_event_id": "sdk-3",
+            "message": "execution finished but the task goal was not verified",
+            "observed_symptom": "execution finished but the task goal was not verified",
+            "retryable": null,
+            "safety_relevant": false,
+            "stage": "unknown",
+            "termination_reason": null
+          },
+          "hypothesis": "gripper never closed",
+          "hypothesis_status": "provided",
+          "memory_refs": [],
+          "outcome": {
+            "elapsed_seconds": 0.0003199699995093397,
+            "exit_code": null,
+            "status": "completed",
+            "stop_reason": null,
+            "timed_out": false
+          },
+          "projection": {
+            "included_event_count": 6,
+            "included_evidence_count": 3,
+            "omitted_event_count": 2,
+            "omitted_evidence_count": 1,
+            "policy_version": "attentionbench.advisor-visibility.v1",
+            "projection_sha256": "176e372350c589feda5f873a574b5186dd993e838aaeaf3b90f7a684a1673655",
+            "redacted_field_count": 3,
+            "source_complete": true,
+            "source_sha256": "f0aa59448ad2bc4fa5e969f451384c59d11cde89a46697591c459a5093a1f7ef"
+          },
+          "raw_trace_id": "raw-trace:cube_lift-seed101-20260927T025409.646652Z:1",
+          "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+          "schema_version": "attentionbench.advisor-trace-packet.v1",
+          "trace_id": "trace:cube_lift-seed101-20260927T025409.646652Z:1"
+        }
+      ]
+    },
+    "resource_budget": {
+      "assistance": {
+        "limit": 2,
+        "remaining": 2,
+        "reserved": 0,
+        "used": 0
+      },
+      "execution_seconds": {
+        "limit": 900.0,
+        "remaining": 899.999322300001,
+        "used": 0.0006776999989597243
+      },
+      "gpu_seconds": {
+        "limit": 0.0,
+        "remaining": 0.0,
+        "used": 0.0
+      },
+      "tokens": {
+        "limit": 30000,
+        "remaining": 30000,
+        "used": 0
+      }
+    },
+    "run_context": {
+      "assistance_mode": "benchmark_proxy",
+      "execution_target": "robosuite_sim",
+      "locked": true,
+      "policy_id": "retry_k_then_ask",
+      "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+      "suite": "robosuite",
+      "task_id": "cube_lift"
+    },
+    "schema_version": "attentionbench.ui-projection.v1"
+  },
+  "run": {
+    "assistance_mode": "benchmark_proxy",
+    "budget": {
+      "assistance_credits": 2,
+      "execution_seconds": 900.0,
+      "gpu_seconds": 0.0,
+      "token_limit": 30000
+    },
+    "created_at": 1790477649.6137328,
+    "developer_model": "trusted-policy-callback",
+    "evaluator_model": "native_evaluator",
+    "execution_target": "robosuite_sim",
+    "policy_id": "retry_k_then_ask",
+    "run_id": "run:attention-robosuite-cube_lift-seed101-8f9aab4e3f9d",
+    "schema_version": "attentionbench.core.v1",
+    "seed": 101,
+    "status": "running",
+    "suite": "robosuite",
+    "task_id": "cube_lift"
+  },
+  "schema_version": "attentionbench.run-bundle.v1"
+}

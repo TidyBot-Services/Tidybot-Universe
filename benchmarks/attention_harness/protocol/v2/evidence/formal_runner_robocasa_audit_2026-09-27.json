@@ -1,0 +1,54 @@
+{
+  "schema_version": "attentionbench.formal-runner-audit.v1",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "development_seed": 101,
+  "conclusion": "无法验收",
+  "formal_episode_executed": false,
+  "formal_eligible": false,
+  "reason": "No concrete RoboCasa FormalSuiteRunner is registered; the available generated-policy runner explicitly emits formal_eligible=false.",
+  "repository_versions": {
+    "Tidybot-Universe-attention-native": {
+      "branch": "feature/attention-native-robosuite",
+      "head": "bb16e29",
+      "worktree": "modified and untracked files present"
+    },
+    "maniskill_sim-attention-variation": {
+      "branch": "main",
+      "head": "4e59015",
+      "worktree": "maniskill_server/server.py modified"
+    },
+    "agent_server": {
+      "branch": "master",
+      "head": "057abfd",
+      "worktree": "code_executor.py and routes/code_routes.py modified; tests/test_job_cancellation.py untracked"
+    }
+  },
+  "service_runtime_version": null,
+  "service_started_for_this_audit": false,
+  "executed_commands": [
+    {
+      "command": "~/.cache/tidybot-attention/venv/bin/python -m pytest benchmarks/attention_harness/tests/test_formal_runner_boundary.py -q -k robocasa",
+      "exit_code": 0,
+      "output": "1 passed, 1 deselected in 0.06s",
+      "scope": "FakeRunner contract test only; not a simulator or formal runner test"
+    }
+  ],
+  "formal_test_command": null,
+  "formal_run_artifacts": [],
+  "checks": {
+    "source_and_config_digest": "unverified",
+    "policy_sandbox": "unverified; development subprocess is not certified as an OS sandbox",
+    "overall_deadline_and_action_cancellation": "unverified; only development action-job cancellation smoke exists",
+    "independent_safety_record": "unverified in a formal attempt",
+    "native_success": "unverified in a formal attempt",
+    "trace_and_artifact_hashes": "unverified in a formal attempt"
+  },
+  "missing_code": [
+    "Concrete RoboCasa FormalSuiteRunner adapter and registration",
+    "Certified policy sandbox and independently verified receipt",
+    "One deadline covering reset, queueing, action, and episode with confirmed cancellation",
+    "Runner-owned safety, native result, trace, and sandbox receipts with verified hashes"
+  ],
+  "next_step": "Implement the RoboCasa adapter and acceptance probes, then run counter_to_sink seed 101 on pinned simulator and Agent Server revisions. This audit does not authorize a formal score."
+}

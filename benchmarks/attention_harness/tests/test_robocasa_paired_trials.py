@@ -13,6 +13,7 @@ from benchmarks.attention_harness.memory_agent import MemoryAgent
 from benchmarks.attention_harness.robocasa_native.client import RobocasaSimClient
 from benchmarks.attention_harness.robocasa_native.paired_trials import RoboCasaPairedTrialExecutor
 from benchmarks.attention_harness.robocasa_native.discover_variations import discover_cases
+from benchmarks.attention_harness.robocasa_native.generated_policy_runner import run_robocasa_generated_policy_episode
 from benchmarks.attention_harness.robocasa_native.safety_monitor import SafetyMonitorBackend, SafetyViolation
 from benchmarks.attention_harness.robocasa_native.sim_gt_runner import run_robocasa_sim_gt_episode
 from benchmarks.attention_harness.tests.test_memory_v2 import _cases
@@ -130,6 +131,8 @@ def test_candidate_to_paired_evidence_to_promotion_smoke(tmp_path: Path):
     context = {"suite": "robocasa", "task_id": "counter_to_sink", "perception_mode": "sim_gt", **variation}
     assert [item.memory_id for item in service.retrieve(context, now=100.0)] == [memory_id]
     assert service.retrieve({**context, "scene_id": "untested-scene"}, now=100.0) == []
+    assert service.retrieve({**context, "camera_names": ["wrong_camera"]}, now=100.0) == []
+    assert service.retrieve({**context, "task_prompt": "different task wording"}, now=100.0) == []
     assert service.disable(memory_id, actor="operator-1", reason="camera mismatch").status.value == "disabled"
     assert service.retrieve(context, now=100.0) == []
     assert service.rollback(memory_id, actor="operator-1", reason="regression").status.value == "rolled_back"
@@ -151,6 +154,83 @@ def test_independent_monitor_blocks_unsafe_command_and_records_evidence(tmp_path
     assert artifact["source"] == "independent_safety_monitor"
     assert artifact["unsafe_attempts"] == 1
     assert artifact["violations"][0]["kind"] == "delta_exceeds_limit"
+
+
+def test_generated_policy_uses_same_paired_memory_gate(tmp_path):
+    world = World()
+    code = tmp_path / "generated_memory_policy.py"
+    code.write_text(
+        "from robot_sdk import gripper\n"
+        "for item in context['memory_catalog']:\n"
+        "    context['retrieve_memory'](item['memory_id'])\n"
+        "    gripper.close()\n",
+        encoding="utf-8",
+    )
+    store_path = tmp_path / "attention_memory.sqlite3"
+    service = MemoryService(AttentionStore(store_path), artifact_root=tmp_path)
+    client_factory = lambda task: RobocasaSimClient(task, transport=world.transport)
+    source = run_robocasa_generated_policy_episode(
+        task_id="counter_to_sink", seed=101, artifact_root=tmp_path,
+        store_path=store_path, action_backend=Backend(world),
+        policy_code_path=code, policy_id="generated-paired",
+        perception_mode="sim_gt", client=client_factory("counter_to_sink"),
+        advisor_transport=lambda request: json.dumps({
+            "schema_version": "attentionbench.advisor-advice.v1",
+            "request_type": "hint", "diagnosis": "No action",
+            "guidance": "Close gripper", "caution": "Simulator only",
+            "confidence": 0.8,
+        }),
+        advisor_sleeper=lambda seconds: None, assistance_credits=1,
+        memory_gateway=service,
+    )
+    assert source["native_success"] is False
+    memory_id = source["memory_candidate_id"]
+    executor = RoboCasaPairedTrialExecutor(
+        policy_code_path=code, policy_id="generated-paired",
+        artifact_root=tmp_path, store_path=store_path,
+        backend_factory=lambda: Backend(world), client_factory=client_factory,
+        memory_gateway=service, timeout_seconds=30.0,
+    )
+    report = MemoryAgent(service).run_validation(
+        memory_id, executor=executor, cases=_cases(),
+    )
+    assert report["control_successes"] == 0
+    assert report["treatment_successes"] == 5
+    assert report["paired_dev_seeds"] == 5
+    assert MemoryAgent(service).request_promotion(memory_id).status.value == "trusted"
+    for pair in service.list_pairs(memory_id):
+        for arm in ("control", "treatment"):
+            episode_dir = Path(pair[f"{arm}_safety"]["uri"]).parent
+            result = json.loads((episode_dir / "result.json").read_text())
+            assert result["policy_execution_mode"] == "sandboxed_generated"
+            assert result["formal_eligible"] is False
+            assert (episode_dir / "generated_policy_execution.json").is_file()
+
+
+def test_safety_monitor_checks_base_steps_and_preserves_timeout(tmp_path):
+    world = World()
+
+    class MobileBackend(Backend):
+        def move_base_delta(self, dx, dy, dtheta=0.0, *, frame="local"):
+            self.world.actions += 1
+
+    monitor = SafetyMonitorBackend(MobileBackend(world))
+    monitor.move_base_delta(0.2, 0.0)
+    monitor.move_base_delta(0.30, -0.15)
+    assert world.actions == 2
+    with pytest.raises(SafetyViolation, match="base_delta_exceeds_limit"):
+        monitor.move_base_delta(0.31, 0.0)
+    assert world.actions == 2
+
+    class TimeoutBackend(Backend):
+        def set_gripper(self, command, *, settle_steps):
+            raise TimeoutError("service action exceeded deadline")
+
+    timed = SafetyMonitorBackend(TimeoutBackend(world))
+    with pytest.raises(TimeoutError, match="deadline"):
+        timed.set_gripper(1.0, settle_steps=1)
+    artifact = json.loads(timed.write_artifact(tmp_path / "timeout-safety.json", attempt_id="a").read_text())
+    assert artifact["unsafe_attempts"] == 1
 
 
 def test_validation_does_not_run_policy_without_simulator_variation_attestation(tmp_path):

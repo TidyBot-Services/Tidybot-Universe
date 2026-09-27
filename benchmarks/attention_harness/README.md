@@ -33,6 +33,32 @@ Existing RoboCasa deployments can opt in through
 `PerceptionModuleRobotBackend`; `RobosuiteRobotBackend` does not implement that
 capability until a non-oracle RGB-D perception service exists.
 
+## v2 formal-runner engineering chain
+
+`formal_attention_cli` is the seven-policy entrypoint for the two dedicated
+`FormalSuiteRunner` implementations. It requires the exact post-Dev policy
+SHA-256, simulator config SHA-256, and the suite's Service source paths. The
+Skill DAG bridge selects this CLI only for `runner_boundary=formal` with
+`approved_generated_policy=true`; after Dev writes a new file, the node waits
+for approval of its new digest. New Dev generation also requires
+`allow_generated_sandbox=true`. Re-run the node after updating its approval
+fields. A changed source or config, missing formal runner, bad evidence digest,
+or mismatched run/attempt identity fails the node without a development fallback.
+
+Every attempt retains its suite-owned isolated worker, dedicated Service,
+independent safety monitor, and native evaluator. The Harness adds one run and
+attempt identity, approved hashes, decision and Advisor request records, a
+projected trace in AttentionStore, Memory use grants when an approved
+applicability context is supplied, and references to the four formal runner
+artifacts. Eval reads and verifies the formal trace, safety, sandbox receipt,
+and native result directly. UI can follow `attentionbench_last_run` to the
+summary, store, attempt IDs, request IDs, and formal result directories.
+
+This path is currently an engineering gate: every summary has
+`formal_eligible=false`. The protocol freeze, independent acceptance matrix,
+and held-out run have not been completed. Single seed smoke commands and
+their results are indexed in `STATUS.md`.
+
 For this path specifically, `RobosuiteRobotBackend` translates SDK actions and
 benchmark lifecycle calls into `RobosuiteSimClient` HTTP requests. The client
 then talks to the independent `robosuite_sim` server process; adapter/client
@@ -47,6 +73,10 @@ Frozen tasks:
 - `cube_stack` -> Robosuite `Stack`
 
 Setup and smoke test:
+
+The setup script expects the independent `attention_memory_service` checkout
+next to this Universe checkout. Set `TIDYBOT_MEMORY_SERVICE_SOURCE` if it lives
+elsewhere; setup stops if that checkout lacks the Dev-use evidence API.
 
 ```bash
 ./benchmarks/attention_harness/setup_env.sh
@@ -221,6 +251,8 @@ SDK / sandbox / recorder / evaluator events
                   -> RawExecutionTrace (internal, complete)
                   -> VisibilityProjector (deterministic redaction)
                   -> AdvisorTracePacket (human/advisor-visible evidence only)
+                  -> TraceAssessment (deterministic failure/progress/provenance)
+                  -> trace-aware Attention decision
 ```
 
 `RawExecutionTrace` may contain native-evaluator results and simulator-only
@@ -231,6 +263,20 @@ credential fields recursively. It also rebuilds the failure summary from the
 visible event stream instead of copying an internal diagnosis. The resulting
 packet links back through `raw_trace_id`, `run_id`, `attempt_id`, and
 `execution_id`, plus deterministic source/projection hashes.
+
+The two trace-aware policies consume the same deterministic assessment of the
+projected packet and earlier projected attempts. It classifies visible SDK or
+execution errors, compares failure signatures and public code hashes, records
+whether more SDK operations completed before failure, and cites event/evidence
+IDs. An agent hypothesis remains explicitly unverified. Generic task outcome
+failure alone does not establish a robot cause. The hint-only policy can
+inspect, retry, request a text hint, or stop; the full policy can also retrieve
+applicable trusted Memory and request approval. Independent safety signals
+stop a run before any Advisor request. The rule version and assessment are
+saved with each decision. This first version uses no extra model, tokens, or
+latency; a future video/complex-trace model must fix its model and prompt and
+charge its tokens and latency to the same experiment budget.
+The hint-only arm has no Memory catalog or retrieval access during replay.
 
 Use `TracePipeline.persist()` for new Attention runs. It writes the immutable
 raw ledger first and then its immutable advisor packet to the same SQLite event
@@ -270,3 +316,35 @@ This command uses `PARCC_API_KEY` or `LITELLM_KEY` in the harness process.
 Its summary is `advisor_run.json` under the output run directory. The Advisor
 must return `attentionbench.advisor-advice.v1` JSON; invalid responses stop the
 run without injecting advice into a retry. Only development seeds are accepted.
+
+### Formal Attention run operator console (development only)
+
+The single-page UI can start the two approved simulator profiles in
+`protocol/v2/dev_ui_run_catalog_2026-09-27.json`. Start it with an existing
+AttentionStore and an artifact directory:
+
+```bash
+python -m benchmarks.attention_harness.ui_server \
+  --store /path/to/attention.sqlite3 \
+  --artifact-root /path/to/attention-artifacts \
+  --run-catalog benchmarks/attention_harness/protocol/v2/dev_ui_run_catalog_2026-09-27.json
+```
+
+The operator selects an approved task/seed profile, Attention policy,
+simulator target, assistance mode, attempt count, assistance credits, token
+budget, human deadline and per-attempt execution deadline. The backend
+checks the policy/config hashes, rejects held-out seeds and target mismatches,
+persists the locked launch selection, then starts the formal runner in a
+detached process. A launch worker records the runner's terminal exit code,
+linked run ID, and native result in the same store; `/api/runs` restores that
+receipt after a UI restart. Each Advisor request launched through the UI is
+limited to one PARCC provider call. The current catalog is local to this checkout; replace its
+absolute paths when moving machines. It contains no real-robot profile.
+
+During a live-human wait, the only pre-authorized background job indexes at
+most eight Advisor-visible evidence references. It has no robot actions and
+its own read-only validation. The human request has a bounded deadline;
+deferral is a persisted event that does not extend it. The UI exposes request,
+deferral, timeout, proxy fallback, cancellation, response and actual response
+use from the SQLite store after restart. A cancelled human request stops the
+current run. All these runs keep `formal_eligible=false`.

@@ -1,0 +1,56 @@
+{
+  "schema_version": "attentionbench.dev-harness-eval-e2e-evidence.v1",
+  "date": "2026-09-27",
+  "scope": "one development-seed Robosuite full-chain smoke; not formal AttentionBench data",
+  "universe": {
+    "branch": "feature/attention-native-robosuite",
+    "base_commit": "bb16e29",
+    "working_tree": "uncommitted AttentionBench changes"
+  },
+  "service": {
+    "repository": "robosuite_sim-service",
+    "revision": "12bc69a",
+    "launch": "python -m robosuite_sim --port 8082 --enable-sim-gt"
+  },
+  "graph": "skill-agent-setup/claude-code/graphs/attentionbench-e2e-corrected-20260927/graph.json",
+  "dispatch": {
+    "endpoint": "POST /attention/auto-start",
+    "spawned": ["cube-lift-dev-smoke"],
+    "dev_model": "parcc/GLM",
+    "dev_format_attempts": 1,
+    "dev_model_tokens": 346,
+    "generated_policy": "benchmarks/attention_harness/protocol/v2/policies/attention_e2e_dev_corrected_20260927.py",
+    "generated_policy_sha256": "11c503c871295be194c7fb649bdaf3f41cd96d109bf26508940a76a31f1ccc4d"
+  },
+  "harness": {
+    "suite": "robosuite",
+    "task_id": "cube_lift",
+    "seed": 101,
+    "attempts": 1,
+    "attempt_status": "completed",
+    "sdk_action_count": 5,
+    "native_evaluator_authoritative": true,
+    "native_success": false,
+    "safety_violations": 0,
+    "formal_eligible": false,
+    "artifact": "artifacts/attentionbench-e2e-20260927/robosuite-corrected/attention-robosuite-cube_lift-seed101-f8b43d2fbb9e/attention_run.json"
+  },
+  "eval": {
+    "model": "parcc/GLM",
+    "status": "completed",
+    "model_tokens": 1019,
+    "cited_attempt_and_event": true,
+    "artifact": "artifacts/attentionbench-e2e-20260927/robosuite-corrected/attention-robosuite-cube_lift-seed101-f8b43d2fbb9e/eval_diagnosis.json",
+    "diagnosis_scope": "Grasp/lift was not verified; exact cause not proven from the compact trace"
+  },
+  "preflight_failure": {
+    "artifact": "artifacts/attentionbench-e2e-20260927/robosuite/attention-robosuite-cube_lift-seed101-2daadf3acb2c/attention_run.json",
+    "cause": "first service launch omitted --enable-sim-gt; reset failed before policy execution",
+    "not_counted_as_completed_chain": true
+  },
+  "checks": {
+    "attention_harness_pytest": "266 passed, 10 skipped",
+    "attention_bridge_pytest": "13 passed",
+    "legacy_orchestrator_script": "84 passed, 0 failed"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "error": null,
+  "execution_status": "completed",
+  "policy_id": "trace_aware_hint_only",
+  "seed": 101,
+  "stop_reason": null,
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "timed_out": false
+}

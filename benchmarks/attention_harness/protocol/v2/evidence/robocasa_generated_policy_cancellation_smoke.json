@@ -1,0 +1,46 @@
+{
+  "schema_version": "attentionbench.robocasa-generated-policy-cancellation-smoke.v1",
+  "date": "2026-09-24",
+  "status": "two_task_live_action_timeout_passed_not_formal",
+  "scope": "isolated simulator and agent_server, seed 101, one 1 cm SDK arm action with a 0.8 second episode budget per task",
+  "policy": "benchmarks/attention_harness/protocol/v2/policies/robocasa_arm_delta_smoke.py",
+  "services": {
+    "simulator": "http://127.0.0.1:6300",
+    "agent_server": "http://127.0.0.1:8880",
+    "hardware_port_mapping_used": false,
+    "service_manager_enabled": false,
+    "simulator_base_commit": "4e590158761493414a036f68e0ae26a7e61dc77b",
+    "simulator_diagnostic_endpoint": "uncommitted /debug/robot_links",
+    "agent_server_base_commit": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30",
+    "agent_server_cancellation_change": "uncommitted"
+  },
+  "results": {
+    "counter_to_sink": {
+      "artifact_dir": "/home/truares/桌面/attentionbench-v2-robocasa-timeout-live/counter_to_sink-seed101-20260924T154700.080031Z",
+      "result_status": "timeout",
+      "elapsed_seconds": 0.9047872640003334,
+      "job_id": "cb0cef4b-47d1-4e",
+      "terminal_job_status": "cancelled",
+      "terminal_execution_status": "stopped",
+      "eef_world_before_wait_m": [3.386435031890869, -1.199796199798584, 0.9616268873214722],
+      "eef_world_after_2_5_seconds_m": [3.386435031890869, -1.199796199798584, 0.9616268873214722]
+    },
+    "counter_to_cab": {
+      "artifact_dir": "/home/truares/桌面/attentionbench-v2-robocasa-timeout-live/counter_to_cab-seed101-20260924T154920.402655Z",
+      "result_status": "timeout",
+      "elapsed_seconds": 0.9055575839956873,
+      "job_id": "79f8a0cd-c56f-4f",
+      "terminal_job_status": "cancelled",
+      "terminal_execution_status": "stopped",
+      "eef_world_before_wait_m": [3.490433692932129, -1.0135151147842407, 0.9616266489028931],
+      "eef_world_after_2_5_seconds_m": [3.49043345451355, -1.0135152339935303, 0.9616267681121826]
+    }
+  },
+  "limits": [
+    "The cancellation token was not stored in this report or run artifacts.",
+    "This checks one running SDK action and one development seed per task; queued-job, transport-failure and longer multi-action expiry remain separate acceptance cases.",
+    "Elapsed wall time includes cancellation and artifact writing; it exceeded the 0.8 second action budget by about 0.1 seconds, while terminal cancellation was confirmed before the timeout result was reported.",
+    "No task-solving success or frozen 25-seed gate is claimed."
+  ],
+  "formal_eligible": false
+}

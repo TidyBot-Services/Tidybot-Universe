@@ -1,0 +1,45 @@
+{
+  "attempt_id": "attempt:counter_to_sink-seed101-20260927T025409.129923Z:2",
+  "coverage": "command_envelope_and_proprioception; no_collision_telemetry",
+  "events": [
+    {
+      "eef_position_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 10
+    },
+    {
+      "eef_position_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kind": "state_sample"
+    }
+  ],
+  "limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "schema_version": "attentionbench.safety-monitor.v1",
+  "source": "independent_safety_monitor",
+  "unsafe_attempts": 0,
+  "violations": []
+}

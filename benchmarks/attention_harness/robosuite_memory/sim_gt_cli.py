@@ -9,7 +9,7 @@ from pathlib import Path
 
 from attention_memory_service import MemoryServiceClient
 
-from ..parcc_advisor import ParccGLMAdvisorTransport
+from ..v2_advisor import SimGTGLMAdvisorTransport
 from ..robocasa_native.sim_gt_cli import _load_policy
 from ..task_registry import TASKS
 from .adapter import RobosuiteSimGTBackend
@@ -49,7 +49,7 @@ def main() -> int:
             store_path=args.store_path or args.artifact_root / "attention_memory.sqlite3",
             runtime_variation=None if args.variation is None else json.loads(args.variation.read_text()),
             retrieve_memory=not args.no_memory,
-            advisor_transport=ParccGLMAdvisorTransport() if args.advisor else None,
+            advisor_transport=SimGTGLMAdvisorTransport() if args.advisor else None,
             assistance_credits=1 if args.advisor else 0,
             memory_gateway=gateway,
         )

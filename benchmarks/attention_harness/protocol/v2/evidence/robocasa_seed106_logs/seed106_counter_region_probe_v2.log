@@ -1,0 +1,252 @@
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Food-Cleanup-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Open-Door-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Open-Single-Door-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Close-Door-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Counter-To-Cab-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Cab-To-Counter-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Counter-To-Sink-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Sink-To-Counter-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Counter-To-Microwave-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Microwave-To-Counter-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Counter-To-Stove-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,358 - mani_skill  - WARNING - Env RoboCasa-Pn-P-Stove-To-Counter-v0 is already registered. Skip registration.[0m
+[33;1m2026-09-27 06:46:32,359 - mani_skill  - WARNING - tidyverse is not in the task's list of supported robots. Code may not run as intended[0m
+[maniskill] Creating env: task=RoboCasa-Pn-P-Counter-To-Cab-v0, control_mode=whole_body, obs_mode=rgbd, num_envs=1
+TARGET_SAMPLER 1 x_range [1.1200000000000006, 1.48] y_range [-0.205, 0.095] reference_pos [2.2, -0.325, 0.92] reference_rot 0.0 placed_names ['toaster_main_group', 'knife_block_main_group', 'plant_front_group', 'coffee_machine_left_group', 'utensil_holder_left_group', 'paper_towel_right_group']
+[obj_inside_of] obj=obj obj_pos=[ 3.5591247  -0.42642283  1.0231758 ] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+TARGET_SAMPLER 2 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 3 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 4 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 5 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 6 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 7 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 8 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 9 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 10 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+TARGET_SAMPLER 11 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+Could not place objects. Trying again with new objects
+TARGET_SAMPLER 12 x_range [-0.02916668451494577, 0.01916668451494598] y_range [-0.20500000000000002, 0.09499999999999997] reference_pos [5.574988043719581, -1.704998806186382, 0.92] reference_rot -1.5708 placed_names ['coffee_machine_main_group', 'utensil_holder_main_group', 'plant_main_group', 'toaster_main_group', 'paper_towel_right_group']
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[maniskill] Env reset with seed=106 (reconfigure=True)
+[maniskill] Simulation device: cpu
+[viz-debug] all robot links:
+  root: pos=(4.500,-1.700,0.000) q=(1.000,0.000,0.000,-0.000)
+  base_x_link: pos=(4.500,-1.700,0.000) q=(1.000,0.000,0.000,-0.000)
+  base_y_link: pos=(4.500,-1.700,0.000) q=(1.000,0.000,0.000,-0.000)
+  base_link: pos=(4.500,-1.700,0.000) q=(1.000,0.000,0.000,-0.000)
+  panda_link0: pos=(4.500,-1.700,0.472) q=(1.000,-0.000,-0.000,-0.000)
+  panda_link1: pos=(4.500,-1.700,0.805) q=(1.000,0.000,0.000,-0.000)
+  panda_link2: pos=(4.500,-1.700,0.805) q=(0.653,-0.653,-0.270,-0.270)
+  panda_link3: pos=(4.277,-1.700,1.029) q=(0.924,-0.000,-0.382,-0.000)
+  panda_link4: pos=(4.335,-1.700,1.087) q=(0.500,0.500,0.500,-0.500)
+  panda_link5: pos=(4.719,-1.700,1.170) q=(0.707,0.000,0.707,-0.000)
+  panda_link6: pos=(4.719,-1.700,1.170) q=(0.697,0.697,-0.120,0.120)
+  panda_link7: pos=(4.802,-1.700,1.199) q=(-0.065,0.910,-0.377,0.157)
+  panda_link8: pos=(4.838,-1.700,1.098) q=(-0.065,0.910,-0.377,0.157)
+  robotiq_arg2f_base_link: pos=(4.838,-1.700,1.098) q=(-0.065,0.910,-0.377,0.157)
+  eef: pos=(4.886,-1.700,0.962) q=(-0.065,0.910,-0.377,0.157)
+  left_outer_knuckle: pos=(4.877,-1.678,1.054) q=(-0.157,-0.377,-0.910,-0.065)
+  left_inner_knuckle: pos=(4.867,-1.691,1.043) q=(-0.157,-0.377,-0.910,-0.065)
+  right_outer_knuckle: pos=(4.836,-1.722,1.039) q=(-0.065,0.910,-0.377,0.157)
+  right_inner_knuckle: pos=(4.850,-1.709,1.037) q=(-0.065,0.910,-0.377,0.157)
+  left_outer_finger: pos=(4.896,-1.656,1.065) q=(-0.157,-0.377,-0.910,-0.065)
+  right_outer_finger: pos=(4.813,-1.744,1.036) q=(-0.065,0.910,-0.377,0.157)
+  left_inner_finger: pos=(4.916,-1.652,1.022) q=(-0.157,-0.377,-0.910,-0.065)
+  right_inner_finger: pos=(4.825,-1.748,0.990) q=(-0.065,0.910,-0.377,0.157)
+  left_inner_finger_pad: pos=(4.912,-1.667,0.986) q=(-0.157,-0.377,-0.910,-0.065)
+  right_inner_finger_pad: pos=(4.851,-1.733,0.965) q=(-0.065,0.910,-0.377,0.157)
+[viz] cuRobo OBB visualization created (0.734m x 0.524m, red transparent)
+[planner] base_link home: pos=[4.499988, -1.6999948, 0.0] q=[1.0, 0.0, 0.0, -1.8366026e-06]
+[planner] Creating SapienPlanningWorld...
+
+  Planning world contents (ACM mode=strict):
+    Robot links (25): ['scene-0-tidyverse_root', 'scene-0-tidyverse_base_x_link', 'scene-0-tidyverse_base_y_link', 'scene-0-tidyverse_base_link', 'scene-0-tidyverse_panda_link0']...
+    Articulations (34):
+      [PENDING] scene-0_microwave_front_group_0_187 (3 links)
+      [PENDING] scene-0_cab_middle_front_group_0_183 (4 links)
+      [PENDING] scene-0_bottom_front_group_2_0_180 (3 links)
+      [PENDING] scene-0_bottom_front_group_1_0_177 (3 links)
+      [PENDING] scene-0_stack_2_main_group_1_0_76 (4 links)
+      [PENDING] scene-0_stack_1_main_group_3_0_72 (3 links)
+      [PENDING] scene-0_stack_3_main_group_2_0_92 (3 links)
+      [PENDING] scene-0_top_front_group_0_191 (4 links)
+      [PENDING] scene-0_stack_3_main_group_3_0_95 (3 links)
+      [PENDING] scene-0_stack_2_main_group_3_0_83 (3 links)
+      [PENDING] scene-0_stack_3_main_group_1_0_88 (4 links)
+      [PENDING] scene-0_stack_1_main_group_2_0_69 (3 links)
+      [PENDING] scene-0_cab_1_main_group_0_56 (4 links)
+      [PENDING] scene-0_stack_2_main_group_2_0_80 (3 links)
+      [PENDING] scene-0_stack_1_front_group_1_0_168 (4 links)
+      [PENDING] scene-0_stack_1_main_group_1_0_65 (4 links)
+      [ROBOT] scene-0_tidyverse_1
+      [PENDING] scene-0_stack_4_main_group_1_0_99 (3 links)
+      [PENDING] scene-0_stack_right_left_group_1_0_129 (3 links)
+      [PENDING] scene-0_stack_4_main_group_2_0_102 (3 links)
+      [PENDING] scene-0_stack_4_main_group_3_0_105 (3 links)
+      [PENDING] scene-0_stack_left_left_group_2_0_125 (3 links)
+      [PENDING] scene-0_fridge_top_left_group_0_117 (4 links)
+      [PENDING] scene-0_stack_1_right_group_1_0_147 (4 links)
+      [PENDING] scene-0_cab_main_main_group_0_52 (4 links)
+      [PENDING] scene-0_stack_left_left_group_1_0_122 (3 links)
+      [PENDING] scene-0_cab_2_right_group_0_161 (3 links)
+      [PENDING] scene-0_stove_main_group_0_42 (7 links)
+      [PENDING] scene-0_stack_right_left_group_2_0_132 (3 links)
+      [PENDING] scene-0_stack_1_front_group_2_0_172 (3 links)
+      [PENDING] scene-0_stack_4_main_group_4_0_108 (3 links)
+      [PENDING] scene-0_sink_right_group_0_139 (5 links)
+      [PENDING] scene-0_stack_2_right_group_1_0_154 (3 links)
+      [PENDING] scene-0_cab_1_right_group_0_157 (4 links)
+    Static objects (124 total):
+      Targets (always checked): 0
+      Collision-checked (near, <1.5m): 124
+        - fixture_box_stool_3_stool_group  dist=-1.00m
+        - fixture_box_top_front_group  dist=-1.00m
+        - fixture_box_stack_1_front_group_2  dist=-1.00m
+        - fixture_box_stack_1_front_group_1  dist=-1.00m
+        - fixture_box_window_group_right_group  dist=-1.00m
+        - fixture_box_cab_2_right_group  dist=-1.00m
+        - fixture_box_stack_1_right_group_1  dist=-1.00m
+        - fixture_box_counter_1_right_group  dist=-1.00m
+        - fixture_box_stack_2_right_group_base  dist=-1.00m
+        - fixture_box_dishwasher_right_group  dist=-1.00m
+        - fixture_box_sink_right_group  dist=-1.00m
+        - fixture_box_box_right_bottom_left_group  dist=-1.00m
+        - fixture_box_microwave_front_group  dist=-1.00m
+        - fixture_box_box_right_top_left_group  dist=-1.00m
+        - fixture_box_stack_right_left_group_2  dist=-1.00m
+        - fixture_box_stack_right_left_group_1  dist=-1.00m
+        - fixture_box_box_left_bottom_left_group  dist=-1.00m
+        - fixture_box_stack_left_left_group_2  dist=-1.00m
+        - fixture_box_stack_left_left_group_1  dist=-1.00m
+        - fixture_box_fridge_left_group  dist=-1.00m
+        - fixture_box_utensil_holder_main_group  dist=-1.00m
+        - fixture_box_coffee_machine_main_group  dist=-1.00m
+        - fixture_box_stack_4_main_group_2  dist=-1.00m
+        - fixture_box_stack_4_main_group_1  dist=-1.00m
+        - fixture_box_bottom_front_group_base  dist=-1.00m
+        - fixture_box_counter_1_front_group  dist=-1.00m
+        - fixture_box_stack_3_main_group_2  dist=-1.00m
+        - fixture_box_stack_3_main_group_base  dist=-1.00m
+        - fixture_box_stack_4_main_group_3  dist=-1.00m
+        - fixture_box_stack_2_main_group_2  dist=-1.00m
+        - fixture_box_stack_2_main_group_1  dist=-1.00m
+        - fixture_box_bottom_front_group_2  dist=-1.00m
+        - fixture_box_stack_2_main_group_base  dist=-1.00m
+        - fixture_box_stack_1_main_group_3  dist=-1.00m
+        - fixture_box_paper_towel_right_group  dist=-1.00m
+        - fixture_box_stack_1_main_group_2  dist=-1.00m
+        - fixture_box_stack_3_main_group_3  dist=-1.00m
+        - fixture_box_stack_3_main_group_1  dist=-1.00m
+        - fixture_box_stack_1_main_group_1  dist=-1.00m
+        - fixture_box_cab_corner_4_main_group  dist=-1.00m
+        - fixture_box_stack_left_left_group_base  dist=-1.00m
+        - fixture_box_stack_4_main_group_base  dist=-1.00m
+        - scene-0_box_left_top_left_group_0_135  dist=-1.00m
+        - fixture_box_stack_4_main_group_4  dist=-1.00m
+        - scene-0_stack_2_main_group_base_0_75  dist=-1.00m
+        - fixture_box_stack_2_main_group_3  dist=-1.00m
+        - scene-0_counter_1_front_group_0_166  dist=-1.00m
+        - scene-0_stack_right_left_group_base_0_128  dist=-1.00m
+        - fixture_box_stack_1_main_group_base  dist=-1.00m
+        - scene-0_plant_main_group_0_113  dist=-1.00m
+        - scene-0_stack_left_left_group_base_0_121  dist=-1.00m
+        - scene-0_stack_1_right_group_base_0_146  dist=-1.00m
+        - fixture_box_fridge_top_left_group  dist=-1.00m
+        - fixture_box_cab_main_main_group  dist=-1.00m
+        - scene-0_right_corner_box_main_group_0_86  dist=-1.00m
+        - fixture_box_toaster_main_group  dist=-1.00m
+        - scene-0_dishwasher_right_group_0_152  dist=-1.00m
+        - fixture_box_counter_1_main_group  dist=-1.00m
+        - scene-0_cab_corner_4_main_group_0_63  dist=-1.00m
+        - scene-0_cab_corner_3_main_group_0_62  dist=-1.00m
+        - scene-0_floor_room_0_37  dist=-1.00m
+        - scene-0_wall_room_0_26  dist=-1.00m
+        - scene-0_stack_3_main_group_base_0_87  dist=-1.00m
+        - scene-0_stack_1_main_group_base_0_64  dist=-1.00m
+        - scene-0_counter_corner_2_main_group_0_50  dist=-1.00m
+        - scene-0_wall_front_room_0_27  dist=-1.00m
+        - fixture_box_cab_corner_main_group  dist=-1.00m
+        - fixture_box_bottom_front_group_1  dist=-1.00m
+        - fixture_box_cab_1_right_group  dist=-1.00m
+        - fixture_box_stack_2_right_group_1  dist=-1.00m
+        - fixture_box_fridge_housing_left_group  dist=-1.00m
+        - fixture_box_plant_main_group  dist=-1.00m
+        - scene-0_cab_corner_main_group_0_51  dist=-1.00m
+        - scene-0_counter_1_main_group_0_49  dist=-1.00m
+        - scene-0_coffee_machine_main_group_0_111  dist=-1.00m
+        - fixture_box_cab_middle_front_group  dist=-1.00m
+        - scene-0_wall_right_room_0_30  dist=-1.00m
+        - fixture_box_shelves_front_group  dist=-1.00m
+        - scene-0_toaster_main_group_0_114  dist=-1.00m
+        - scene-0_box_right_top_left_group_0_137  dist=-1.00m
+        - scene-0_wall_left_2_room_0_29  dist=-1.00m
+        - scene-0_stool_3_stool_group_0_198  dist=-1.00m
+        - fixture_box_stool_2_stool_group  dist=-1.00m
+        - scene-0_utensil_holder_main_group_0_112  dist=-1.00m
+        - scene-0_utensil_rack_room_0_31  dist=-1.00m
+        - scene-0_stool_2_stool_group_0_197  dist=-1.00m
+        - scene-0_floor_front_room_0_39  dist=-1.00m
+        - fixture_box_stack_1_right_group_2  dist=-1.00m
+        - fixture_box_counter_corner_right_group  dist=-1.00m
+        - scene-0_shelves_main_group_0_61  dist=-1.00m
+        - scene-0_stack_2_right_group_base_0_153  dist=-1.00m
+        - scene-0_counter_main_main_group_0_41  dist=-1.00m
+        - fixture_box_stool_1_stool_group  dist=-1.00m
+        - scene-0_hood_main_group_0_60  dist=-1.00m
+        - fixture_box_box_left_top_left_group  dist=-1.00m
+        - scene-0_stool_1_stool_group_0_196  dist=-1.00m
+        - scene-0_box_left_bottom_left_group_0_136  dist=-1.00m
+        - scene-0_stack_1_front_group_base_0_167  dist=-1.00m
+        - scene-0_counter_corner_right_group_0_145  dist=-1.00m
+        - scene-0_fridge_left_group_0_115  dist=-1.00m
+        - scene-0_counter_1_right_group_0_144  dist=-1.00m
+        - scene-0_stack_1_right_group_2_0_151  dist=-1.00m
+        - scene-0_paper_towel_right_group_0_165  dist=-1.00m
+        - scene-0_wall_left_room_0_28  dist=-1.00m
+        - scene-0_window_group_right_group_0_164  dist=-1.00m
+        - fixture_box_stack_1_front_group_base  dist=-1.00m
+        - fixture_box_utensil_rack_room  dist=-1.00m
+        - fixture_box_island_island_group  dist=-1.00m
+        - fixture_box_micro_housing_front_group  dist=-1.00m
+        - scene-0_bottom_front_group_base_0_176  dist=-1.00m
+        - fixture_box_cab_1_main_group  dist=-1.00m
+        - fixture_box_right_corner_box_main_group  dist=-1.00m
+        - scene-0_island_island_group_0_195  dist=-1.00m
+        - scene-0_stack_4_main_group_base_0_98  dist=-1.00m
+        - fixture_box_counter_main_main_group  dist=-1.00m
+        - fixture_box_stack_1_right_group_base  dist=-1.00m
+        - fixture_box_cab_corner_3_main_group  dist=-1.00m
+        - fixture_box_stove_main_group  dist=-1.00m
+        - fixture_box_counter_corner_2_main_group  dist=-1.00m
+        - fixture_box_shelves_main_group  dist=-1.00m
+        - fixture_box_stack_right_left_group_base  dist=-1.00m
+        - scene-0_box_right_bottom_left_group_0_138  dist=-1.00m
+        - scene-0_shelves_front_group_0_175  dist=-1.00m
+        - fixture_box_hood_main_group  dist=-1.00m
+      ACM-relaxed (far): 0
+
+  No initial collisions.
+[planner] Added 76 fixture boxes (cached 76 cuboids for cuRobo)
+[planner] mplib ready
+[curobo] Using in-process planner (set CUROBO_SERVICE_URL to switch)
+[curobo] Loading franka_mobile config...
+Warp DeprecationWarning: The symbol `warp.torch.device_from_torch` will soon be removed from the public API. Use `warp.device_from_torch` instead.
+[curobo] Warming up CUDA kernels...
+[curobo] Loading arm-only config (base joints locked)...
+[curobo] Ready (16.1s, whole_body + arm_only)
+[curobo] Updated collision world: 41 cuboids (skipped 0 overlap, 35 far)
+[curobo] Loaded 76 cuboids (transformed world→local)
+[curobo] Collision world for target: 41 cuboids (excl 0 at target, 0 overlap, 35 far)
+[curobo] Plan OK (2.71s, whole_body): 31 waypoints
+[planner] dummy plan JIT warmup done (2.7s)
+[maniskill] Environment ready (1 env(s))
+SAMPLER_COUNTS {'obj_Sampler': 101, 'failure:obj_Sampler': 100}
+OBJECT_ACTORS [(0, [])]

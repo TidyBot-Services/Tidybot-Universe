@@ -1,0 +1,95 @@
+{
+  "schema_version": "attentionbench.dual-sim-dev-eval-glm-smoke.v1",
+  "date": "2026-09-26",
+  "result": "partial: dual real-service Harness bridge passed; production diagnostic Eval did not complete",
+  "universe": {
+    "branch": "feature/attention-native-robosuite",
+    "base_commit": "bb16e29",
+    "working_tree": "uncommitted AttentionBench changes"
+  },
+  "service_revisions": {
+    "robosuite_sim": "12bc69a (clean)",
+    "maniskill_sim": "4e59015 (server.py modified)",
+    "agent_server": "057abfd (code_executor.py and routes/code_routes.py modified; tests/test_job_cancellation.py untracked)"
+  },
+  "approved_policy": {
+    "path": "benchmarks/attention_harness/protocol/v2/policies/dual_sim_connection_noop.py",
+    "sha256": "e634b7a321ffcd9fa568dba94029633023101c27f162e805657d64297aa6b767",
+    "operator_approval": "User approved this exact hash in the conversation before these runs",
+    "effect": "Intentional no-op negative control; native task failure is expected"
+  },
+  "dev_model": {
+    "provider": "litellm-parcc",
+    "model": "parcc/GLM",
+    "scope": "Read-only OpenClaw canary reviewed the exact no-op code; it did not generate or edit the policy and was not dispatched through the graph"
+  },
+  "harness_runs": [
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 101,
+      "attention_policy": "autonomous",
+      "max_attempts": 1,
+      "assistance_credits": 0,
+      "bridge": "run_attention_job; approved source hash and persisted summary checked",
+      "native_success": false,
+      "attempts": 1,
+      "attempt_status": "completed",
+      "attempt_error": null,
+      "unsafe_attempts": 0,
+      "formal_eligible": false,
+      "attention_run_uri": "artifacts/attentionbench-dev-eval-glm-smoke-2026-09-26/robosuite/attention-robosuite-cube_lift-seed101-0541b2eb0982/attention_run.json",
+      "attention_run_sha256": "6008b2f2a47a440b1e5793d475df1cd277b02553402795f26f42038352461d5a",
+      "safety_sha256": "28e0adf00ff04113b35bef0299e84eebcea6d8261ed21b8a918ae134ccafe510",
+      "attempt_id": "attempt:cube_lift-seed101-20260926T040435.600226Z:0"
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 101,
+      "attention_policy": "autonomous",
+      "max_attempts": 1,
+      "assistance_credits": 0,
+      "bridge": "run_attention_job; approved source hash and persisted summary checked",
+      "native_success": false,
+      "attempts": 1,
+      "attempt_status": "completed",
+      "attempt_error": null,
+      "unsafe_attempts": 0,
+      "formal_eligible": false,
+      "attention_run_uri": "artifacts/attentionbench-dev-eval-glm-smoke-2026-09-26/robocasa-corrected/attention-robocasa-counter_to_sink-seed101-194409f0e77e/attention_run.json",
+      "attention_run_sha256": "df092f8efed8bf9880d25e66d273df6a6b401d0fb186367bb7a3c347e280c706",
+      "safety_sha256": "311439d857d07b7921aa325f876820f5d1d7510b085d177d4a4db0b6e148852d",
+      "attempt_id": "attempt:counter_to_sink-seed101-20260926T041207.921142Z:0"
+    }
+  ],
+  "robocasa_preflight_failure": {
+    "cause": "Service was first started as RoboCasaKitchen-v1 instead of RoboCasa-Pn-P-Counter-To-Sink-v0",
+    "attempts": 0,
+    "store_event": "work.failed: RobocasaServiceError: service task does not match requested task",
+    "attention_run_uri": "artifacts/attentionbench-dev-eval-glm-smoke-2026-09-26/robocasa/attention-robocasa-counter_to_sink-seed101-144b2e1f8f61/attention_run.json",
+    "attention_run_sha256": "27d259e6db67505804b94d7fe75211d908f342e1b31634b2884e66c3f45f6558",
+    "resolution": "Stopped both services, restarted the exact task on isolated ports, then ran one actual attempt"
+  },
+  "eval": {
+    "temporary_model": "parcc/GLM (user authorized in place of unavailable Qwen)",
+    "production_entrypoint": "attention_orchestrator._diagnose_attention",
+    "production_result": "Not accepted: OpenClaw Eval made 37 tool calls, explored unrelated files, and did not complete a diagnosis before being terminated to conserve budget",
+    "direct_bounded_check": "A separate GLM chat request received a compact projection read from both actual artifacts. It correctly described the Robosuite no-op native failure but its 300-token output was truncated during the RoboCasa sentence; a second 500-token request used all tokens for reasoning and produced no final content.",
+    "direct_first_response_excerpt": "The robosuite cube_lift run (attempt:cube_lift-seed101-20260926T040435.600226Z:0) completed cleanly with native_success=false and zero unsafe attempts, which is the expected outcome for the no-op negative control and does not indicate evaluator malfunction. Similarly, the robocasa counter_to_sink run",
+    "direct_model_usage": [
+      {"prompt_tokens": 355, "completion_tokens": 300, "reasoning_tokens": 227},
+      {"prompt_tokens": 188, "completion_tokens": 500, "reasoning_tokens": 500}
+    ],
+    "native_verdict_overridden": false
+  },
+  "acceptance": {
+    "real_service_harness_bridge": true,
+    "real_dev_graph_dispatch": false,
+    "diagnostic_eval_artifact_link": false,
+    "full_dev_harness_eval_chain": false,
+    "formal_runner": false,
+    "performance_data": false
+  },
+  "services_stopped_after_test": true
+}

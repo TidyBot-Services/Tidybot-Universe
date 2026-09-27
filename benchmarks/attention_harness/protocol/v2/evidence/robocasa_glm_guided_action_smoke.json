@@ -1,0 +1,72 @@
+{
+  "schema_version": "attentionbench.robocasa-glm-guided-action-smoke.v1",
+  "date": "2026-09-24",
+  "status": "live_advisor_to_manual_policy_revision_passed_task_unsolved",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "seed": 101,
+  "perception_mode": "sim_gt",
+  "artifact_root": "/home/truares/桌面/attentionbench-v2-live-glm-closed-loop-smoke",
+  "service_revisions": {
+    "maniskill_sim": "4e590158761493414a036f68e0ae26a7e61dc77b",
+    "agent_server": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30"
+  },
+  "isolation": {
+    "simulator_http": "127.0.0.1:6300",
+    "agent_server_http": "127.0.0.1:8880",
+    "hardware_port_mapping_used": false,
+    "service_manager_enabled": false,
+    "services_stopped_after_test": true
+  },
+  "first_attempt": {
+    "episode": "counter_to_sink-seed101-20260924T144658.783891Z",
+    "policy": "robocasa_noop.py",
+    "policy_sha256": "4b3ab783307912713f457db7208f6dab8835e1814b7a99aa79eb0c6f9b",
+    "sdk_calls": 1,
+    "sdk_action_count": 0,
+    "execution_status": "completed",
+    "native_success": false,
+    "advisor_request_state": "answered",
+    "advisor_model": "parcc/GLM",
+    "advisor_provider_attempts": 1,
+    "advisor_token_usage": {
+      "prompt_tokens": 5516,
+      "completion_tokens": 399,
+      "total_tokens": 5915
+    },
+    "advisor_diagnosis": "Perception alone does not complete the pick-and-place task; no robot action occurred.",
+    "advisor_target": "boxed_drink",
+    "candidate_memory_id": "candidate:attempt:counter_to_sink-seed101-20260924T144658.783891Z:0",
+    "candidate_memory_status": "candidate"
+  },
+  "revision_method": "A developer manually translated GLM's target-identification and move-toward-target advice into one bounded 1 cm SDK action. GLM did not generate or execute policy code automatically.",
+  "second_attempt": {
+    "episode": "counter_to_sink-seed101-20260924T144750.964667Z",
+    "policy": "robocasa_glm_guided_approach_smoke.py",
+    "policy_sha256": "9747c9ac515254fb386af6fbf8aa399336f830d322bff5311b96f0f66a9c8e22",
+    "prior_attempt_count": 1,
+    "prior_history_contains_glm_guidance": true,
+    "advisor_packet_contains_prior_history_and_policy_code": true,
+    "sdk_calls": 3,
+    "sdk_action": {
+      "operation": "move_delta",
+      "arguments_m": [0.01, -0.01, 0.01],
+      "status": "completed"
+    },
+    "eef_start_m": [0.3864369419709771, 0.00000010809435193950441, 0.4893768408204491],
+    "eef_end_m": [0.39595690011262735, -0.009248366253396862, 0.4979486473119638],
+    "eef_displacement_m": 0.015799992003406663,
+    "execution_status": "completed",
+    "native_success": false
+  },
+  "conclusion": "The live GLM hint was persisted, projected into the next attempt's failure history, and manually applied to a real simulator-backed SDK action. This proves the advice-to-action handoff, not task-solving effectiveness.",
+  "not_verified": [
+    "automatic developer-agent repair from GLM guidance",
+    "complete grasp-lift-transfer-release policy",
+    "task-solving success",
+    "paired memory benefit or trusted promotion",
+    "service-side cancellation of in-flight actions",
+    "whole-episode hard timeout and frozen-seed stability"
+  ],
+  "formal_eligible": false
+}

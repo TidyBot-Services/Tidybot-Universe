@@ -1,0 +1,10 @@
+{
+  "error": null,
+  "execution_status": "completed",
+  "policy_id": "demo_first",
+  "seed": 101,
+  "stop_reason": null,
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "timed_out": false
+}

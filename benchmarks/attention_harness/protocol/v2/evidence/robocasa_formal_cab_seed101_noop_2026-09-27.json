@@ -1,0 +1,80 @@
+{
+  "agent_service": {
+    "dirty": true,
+    "revision": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30",
+    "tree_sha256": "9c42acdb0ce72cfb72f39dac3ee4e593c23e31d9fdb532c1d757e3fcac04d1b1"
+  },
+  "artifact_hashes_valid": true,
+  "artifacts": {
+    "native_result": {
+      "sha256": "a3350d19ce99022ef58021179446c3df46b918ffa237e6a486bb5b1ad9872075",
+      "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_cab-seed101-formal-1790461109491682743/native_result.json"
+    },
+    "safety": {
+      "sha256": "b3f2d8d2f8f8f93048175fa331bf34b07a386db86f7f655884716f181f861b62",
+      "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_cab-seed101-formal-1790461109491682743/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "e73b4d34c1db734f2b97b23112fa530f4ffdc32d77189a72bf7903680a7ec21f",
+      "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_cab-seed101-formal-1790461109491682743/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "18344a35dd371497ef9bc628faf198379d7a9fc52cbca7ef9a4c913b7e021700",
+      "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_cab-seed101-formal-1790461109491682743/trace.json"
+    }
+  },
+  "camera_attestation": [
+    "base_camera",
+    "wrist_camera"
+  ],
+  "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_cli --task counter_to_cab --seed 101 --code benchmarks/attention_harness/protocol/v2/policies/robocasa_noop.py --approved-policy-sha256 4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b --config benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_cab_seed101.json --approved-config-sha256 1454c3df061914b7d0c7f9d41e899d8ec5b209949e65482dcb99fc579a6eb19c --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --artifact-root '/home/truares/桌面/attentionbench-robocasa-formal-seed101' --overall-deadline-seconds 180",
+  "config_sha256": "1454c3df061914b7d0c7f9d41e899d8ec5b209949e65482dcb99fc579a6eb19c",
+  "config_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_cab_seed101.json",
+  "policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+  "policy_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/robocasa_noop.py",
+  "reset_attestation": {
+    "object_set_id": "objects:7fb789b38802e31ab144",
+    "scene_id": "scene:29f6ddc71995db3e0fd6"
+  },
+  "result": {
+    "artifact_dir": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_cab-seed101-formal-1790461109491682743",
+    "boundary_checked": true,
+    "formal_eligible": false,
+    "native_success": false,
+    "status": "completed"
+  },
+  "run_artifact": {
+    "sha256": "c71ee623da2a8cee6691c3b9239ce353459f109404bebc5d4f297c9d971a3168",
+    "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_cab-seed101-formal-1790461109491682743/result.json"
+  },
+  "schema_version": "attentionbench.robocasa-formal-second-task-smoke.v1",
+  "scope": "single-seed no-op real Service plumbing; task success and formal matrix are not accepted",
+  "seed": 101,
+  "service_stop": {
+    "mechanism": "dedicated_simulator_and_agent_process_groups",
+    "reason": "normal_cleanup",
+    "services": {
+      "agent": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 515274,
+        "process_group": 515274,
+        "process_group_gone": true
+      },
+      "simulator": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 513111,
+        "process_group": 513111,
+        "process_group_gone": true
+      }
+    }
+  },
+  "sim_service": {
+    "dirty": true,
+    "revision": "4e590158761493414a036f68e0ae26a7e61dc77b",
+    "tree_sha256": "c5c595992b75fc645490f852bbee1015754a8c108a592561035cde8ff35c58ca"
+  },
+  "suite": "robocasa",
+  "task_id": "counter_to_cab"
+}

@@ -1,0 +1,244 @@
+{
+  "all_seed101_probes_passed": true,
+  "cases": [
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458876627532381",
+      "artifacts": {
+        "native_result": {
+          "sha256": "5261821f1868be8fa9a67d384bbeef5379b16b74bf32a6d0b14147558005ac28",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458876627532381/native_result.json"
+        },
+        "safety": {
+          "sha256": "7d59ca2424cb0656fe957f5132107120daf750f052a5554163aa69eae3283310",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458876627532381/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "e0ea9248753870385aa73e6d93807abdec4d60607664c6d7d84a6372d75dbae9",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458876627532381/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "5d59c726e42d10c81e67b6bb1260d76ff262259bbae8aa6ef6faece54c49dc4b",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458876627532381/trace.json"
+        }
+      },
+      "backend_step_count": 1,
+      "checks": {
+        "action_trace": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_revision": true,
+        "service_stopped": true,
+        "status": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robosuite_memory.formal_cli --task cube_lift --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_normal.py' --approved-policy-sha256 fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json' --approved-config-sha256 96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115 --service-source-root '/home/truares/桌面/robosuite_sim-service' --artifact-root '/home/truares/桌面/attentionbench-formal-robosuite-dev' --overall-deadline-seconds 90",
+      "exit_code": 0,
+      "name": "normal",
+      "native_success": false,
+      "observed_status": "completed",
+      "passed": true,
+      "safety_violations": [],
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 383534,
+        "process_group": 383534,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "stderr": ""
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458878928342572",
+      "artifacts": {
+        "native_result": {
+          "sha256": "fff89b514f2238e304de043b303d2fdc705839ae08905e6ab614baaacc91822c",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458878928342572/native_result.json"
+        },
+        "safety": {
+          "sha256": "fe7ed96ffa782e4a968b99224717445c6dfe8aa829d15381dd1fbb3411366a5c",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458878928342572/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "0237f5c99536315203fa4ded598ea31d62d671ae6b43be99e49449b43e8a7387",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458878928342572/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "b9e5508496696189a2152c7a12ac5064bdc00449c985dabedcf3e35ce63f203e",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458878928342572/trace.json"
+        }
+      },
+      "backend_step_count": 645,
+      "checks": {
+        "action_trace": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_revision": true,
+        "service_stopped": true,
+        "status": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robosuite_memory.formal_cli --task cube_lift --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_long_action.py' --approved-policy-sha256 89ba8edd68ff710483d5759abc8c6939156c62d373ee8848e94a0e67ecf5daa5 --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json' --approved-config-sha256 96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115 --service-source-root '/home/truares/桌面/robosuite_sim-service' --artifact-root '/home/truares/桌面/attentionbench-formal-robosuite-dev' --overall-deadline-seconds 5",
+      "exit_code": 0,
+      "name": "timeout",
+      "native_success": false,
+      "observed_status": "timeout",
+      "passed": true,
+      "safety_violations": [
+        "action_outcome_unknown"
+      ],
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 383717,
+        "process_group": 383717,
+        "process_group_gone": true,
+        "reason": "episode_deadline",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "stderr": ""
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458884185048042",
+      "artifacts": {
+        "native_result": {
+          "sha256": "d06f850ee1e44caceacdc751134129aae7e501cde95206476dfe72da837e7882",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458884185048042/native_result.json"
+        },
+        "safety": {
+          "sha256": "71af472c9a26d89667f5dfeb59fb24775a87de824c70c2ff8321e99d332a8142",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458884185048042/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "ee10df9de02c8973149692b5892ab24bb05e4b27d9f36226b137cba507100288",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458884185048042/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "9117e95b395188860c83e2b42770bf0bc55205bf9a3541b65e7d290d96e2a94f",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458884185048042/trace.json"
+        }
+      },
+      "backend_step_count": 212,
+      "checks": {
+        "action_trace": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_revision": true,
+        "service_stopped": true,
+        "status": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robosuite_memory.formal_cli --task cube_lift --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_long_action.py' --approved-policy-sha256 89ba8edd68ff710483d5759abc8c6939156c62d373ee8848e94a0e67ecf5daa5 --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json' --approved-config-sha256 96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115 --service-source-root '/home/truares/桌面/robosuite_sim-service' --artifact-root '/home/truares/桌面/attentionbench-formal-robosuite-dev' --overall-deadline-seconds 30 --cancel-after-policy-start-seconds 1",
+      "exit_code": 0,
+      "name": "cancel",
+      "native_success": false,
+      "observed_status": "cancelled",
+      "passed": true,
+      "safety_violations": [
+        "action_outcome_unknown"
+      ],
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 384065,
+        "process_group": 384065,
+        "process_group_gone": true,
+        "reason": "operator_cancel",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "stderr": ""
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458887372455092",
+      "artifacts": {
+        "native_result": {
+          "sha256": "8a007e403cf58e772de433904f7350f2ab972016bdff6f07a40fe655c258a8a9",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458887372455092/native_result.json"
+        },
+        "safety": {
+          "sha256": "5247c58ff326c842e3c7031825c148f8274b64837c9ed82533ce8326c59d60cd",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458887372455092/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "d6a9c04f15571bc56521d7b82a9550b6b2dc0c8f0895be2c1b15220963f518f9",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458887372455092/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "fe0600c8464f5cf6beb93db3f7f6c4633ad47a29cb2ca43b169b11a84a8bad59",
+          "uri": "/home/truares/桌面/attentionbench-formal-robosuite-dev/cube_lift-seed101-formal-1790458887372455092/trace.json"
+        }
+      },
+      "backend_step_count": 0,
+      "checks": {
+        "action_trace": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_revision": true,
+        "service_stopped": true,
+        "status": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robosuite_memory.formal_cli --task cube_lift --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_safety_reject.py' --approved-policy-sha256 867a001cac3338515594bb73563be5dc56a032120f7d3dbb667c6ad7f884a061 --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json' --approved-config-sha256 96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115 --service-source-root '/home/truares/桌面/robosuite_sim-service' --artifact-root '/home/truares/桌面/attentionbench-formal-robosuite-dev' --overall-deadline-seconds 30",
+      "exit_code": 0,
+      "name": "safety_reject",
+      "native_success": false,
+      "observed_status": "failed",
+      "passed": true,
+      "safety_violations": [
+        "delta_exceeds_limit"
+      ],
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 384327,
+        "process_group": 384327,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "stderr": ""
+    }
+  ],
+  "config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+  "config_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json",
+  "formal_eligible": false,
+  "harness_branch": "feature/attention-native-robosuite",
+  "harness_dirty": true,
+  "harness_head": "bb16e29dbde34f200be49af2489303f40ae56f66",
+  "schema_version": "attentionbench.robosuite-formal-acceptance.v1",
+  "seed": 101,
+  "service_clean": true,
+  "service_revision": "12bc69afe83c8398988be3eee637f91c14e9bf19",
+  "service_root": "/home/truares/桌面/robosuite_sim-service",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

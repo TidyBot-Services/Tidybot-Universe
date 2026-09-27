@@ -83,6 +83,181 @@ class AttentionStore:
     def close(self) -> None:
         """Compatibility no-op: connections are intentionally short-lived."""
 
+    def record_launch(self, launch_id: str, *, locked: dict[str, Any],
+                      log_path: str) -> dict[str, Any]:
+        payload = {"launch_id": launch_id, "locked": locked,
+                   "log_path": log_path, "state": "created"}
+        with self._transaction() as connection:
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'launch', ?, 'launch.created', ?)",
+                (f"launch-created:{launch_id}", launch_id, _json(payload)))
+        return payload
+
+    def record_launch_started(self, launch_id: str, *, pid: int) -> dict[str, Any]:
+        payload = {"launch_id": launch_id, "pid": pid, "state": "started"}
+        with self._transaction() as connection:
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'launch', ?, 'launch.started', ?)",
+                (f"launch-started:{launch_id}", launch_id, _json(payload)))
+        return payload
+
+    def record_launch_failed(self, launch_id: str, *, reason: str) -> dict[str, Any]:
+        payload = {"launch_id": launch_id, "state": "failed", "reason": reason}
+        with self._transaction() as connection:
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'launch', ?, 'launch.failed', ?)",
+                (f"launch-failed:{launch_id}", launch_id, _json(payload)))
+        return payload
+
+    def record_launch_terminal(self, launch_id: str, *, exit_code: int,
+                               summary: dict[str, Any] | None = None,
+                               reason: str | None = None) -> dict[str, Any]:
+        state = "completed" if summary is not None else "failed"
+        payload = {"launch_id": launch_id, "state": state, "exit_code": exit_code,
+                   "run_id": (f"run:{Path(summary['artifact_dir']).name}"
+                              if summary is not None else None),
+                   "native_success": summary.get("native_success") if summary else None,
+                   "formal_eligible": False, "reason": reason}
+        with self._transaction() as connection:
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'launch', ?, ?, ?)",
+                (f"launch-terminal:{launch_id}", launch_id, f"launch.{state}", _json(payload)))
+        return payload
+
+    def list_launches(self) -> list[dict[str, Any]]:
+        values: dict[str, dict[str, Any]] = {}
+        for event in self.events():
+            if event["entity_type"] == "launch":
+                launch_id = event["entity_id"]
+                if (event["event_type"] == "launch.started"
+                        and values.get(launch_id, {}).get("state") in {"completed", "failed"}):
+                    values[launch_id] = {**values[launch_id], "pid": event["payload"]["pid"]}
+                    continue
+                values[launch_id] = {**values.get(launch_id, {}), **event["payload"]}
+        return list(values.values())
+
+    def request_interrupt(self, run_id: str, *, event_key: str, requested_at: float) -> dict[str, Any]:
+        """Persist an operator stop request; the runner must acknowledge it separately."""
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM runs WHERE id = ?", (run_id,)).fetchone()
+            if row is None:
+                raise StateConflictError("run not found")
+            if json.loads(row[0])["status"] != RunStatus.RUNNING.value:
+                raise StateConflictError("run is not running")
+            existing = self._interrupt_status_in(connection, run_id)
+            if existing is not None:
+                return existing
+            payload = {"run_id": run_id, "state": "requested", "requested_at": requested_at}
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'control', ?, 'control.interrupt_requested', ?)",
+                (event_key, run_id, _json(payload)),
+            )
+            return payload
+
+    def acknowledge_interrupt(self, run_id: str, *, state: str, event_key: str) -> dict[str, Any]:
+        if state not in {"stopped", "stop_unconfirmed"}:
+            raise ValueError("invalid interrupt acknowledgement")
+        with self._transaction() as connection:
+            current = self._interrupt_status_in(connection, run_id)
+            if current is None:
+                raise StateConflictError("no interrupt request")
+            if current["state"] != "requested":
+                return current
+            payload = {**current, "state": state}
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'control', ?, 'control.interrupt_acknowledged', ?)",
+                (event_key, run_id, _json(payload)),
+            )
+            return payload
+
+    def interrupt_status(self, run_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            return self._interrupt_status_in(connection, run_id)
+
+    def record_work_block(self, run_id: str, *, work_id: str, resource: str,
+                          required: float, remaining: float, event_key: str) -> dict[str, Any]:
+        if resource not in {"execution_seconds", "tokens", "gpu_seconds", "assistance"}:
+            raise ValueError("unknown work resource")
+        if required <= 0 or remaining < 0 or remaining >= required:
+            raise ValueError("work is not resource blocked")
+        if self.get_run(run_id) is None:
+            raise StateConflictError("run not found")
+        payload = {"work_id": work_id, "run_id": run_id, "state": "blocked",
+                   "reason": "resource_exhausted", "resource": resource,
+                   "required": required, "remaining": remaining}
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM events WHERE event_key = ?", (event_key,)).fetchone()
+            if row is not None:
+                return json.loads(row[0])
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'work', ?, 'work.blocked', ?)",
+                (event_key, work_id, _json(payload)),
+            )
+        return payload
+
+    def list_work_items(self, run_id: str) -> list[dict[str, Any]]:
+        return [event["payload"] for event in self.events()
+                if event["entity_type"] == "work" and event["payload"].get("run_id") == run_id]
+
+    def record_work_failure(self, run_id: str, *, work_id: str, reason: str,
+                            event_key: str) -> dict[str, Any]:
+        if self.get_run(run_id) is None:
+            raise StateConflictError("run not found")
+        if not reason or len(reason) > 300:
+            raise ValueError("invalid work failure reason")
+        payload = {"work_id": work_id, "run_id": run_id, "state": "failed", "reason": reason}
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM events WHERE event_key = ?", (event_key,)).fetchone()
+            if row is not None:
+                return json.loads(row[0])
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'work', ?, 'work.failed', ?)",
+                (event_key, work_id, _json(payload)),
+            )
+        return payload
+
+    def record_waiting_work(self, request_id: str, *, work_type: str,
+                            evidence: list[dict[str, str]]) -> dict[str, Any]:
+        """Only a fixed read-only evidence index may run during human wait."""
+        if work_type != "visible_evidence_index" or len(evidence) > 8 or any(
+            set(item) != {"sha256", "kind"} or not isinstance(item["sha256"], str)
+            or len(item["sha256"]) != 64 for item in evidence
+        ):
+            raise ValueError("waiting work violates independent read-only safety constraints")
+        request = self.get_request(request_id)
+        if request is None or request.mode.value != "live_human_first":
+            raise StateConflictError("waiting work requires a human request")
+        payload = {"work_id": f"waiting:{request_id}", "run_id": request.run_id,
+                   "request_id": request_id, "state": "completed", "work_type": work_type,
+                   "evidence": evidence, "robot_actions": 0, "max_items": 8}
+        with self._transaction() as connection:
+            key = f"waiting-work:{request_id}"
+            row = connection.execute("SELECT payload FROM events WHERE event_key = ?", (key,)).fetchone()
+            if row:
+                return json.loads(row[0])
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'work', ?, 'work.waiting_completed', ?)",
+                (key, payload["work_id"], _json(payload)))
+        return payload
+
+    @staticmethod
+    def _interrupt_status_in(connection: sqlite3.Connection, run_id: str) -> dict[str, Any] | None:
+        row = connection.execute(
+            "SELECT payload FROM events WHERE entity_type = 'control' AND entity_id = ? "
+            "AND event_type IN ('control.interrupt_requested', 'control.interrupt_acknowledged') "
+            "ORDER BY sequence DESC LIMIT 1", (run_id,),
+        ).fetchone()
+        return json.loads(row[0]) if row else None
+
     def create_run(self, run: RunRecord) -> RunRecord:
         self._insert_immutable("runs", run.run_id, run.artifact(), "run.created")
         return run
@@ -170,6 +345,8 @@ class AttentionStore:
             raise StateConflictError(f"attempt {trace.attempt_id!r} does not exist")
         if attempt["run_id"] != trace.run_id:
             raise StateConflictError("trace run does not match its attempt")
+        if trace.raw_trace_id is not None and attempt["status"] == AttemptStatus.RUNNING.value:
+            raise StateConflictError("Advisor trace requires a terminal attempt")
         if trace.raw_trace_id is not None:
             raw = self.get_raw_trace(trace.raw_trace_id)
             if raw is None:
@@ -283,6 +460,63 @@ class AttentionStore:
 
     def get_response(self, response_id: str) -> dict[str, Any] | None:
         return self._get_payload("responses", response_id)
+
+    def record_response_use(
+        self, request_id: str, *, response_id: str, use: str,
+        execution_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Record what the runner actually adopted, separately from an answer."""
+        if use not in {"guidance", "approval_granted", "approval_denied", "interrupt"}:
+            raise ValueError("unsupported response use")
+        request = self.get_request(request_id)
+        if request is None or request.state is not RequestState.ANSWERED:
+            raise StateConflictError("request is not answered")
+        if request.response_id != response_id:
+            raise StateConflictError("response does not belong to this request")
+        payload = {
+            "request_id": request_id, "response_id": response_id,
+            "run_id": request.run_id, "use": use, "execution_id": execution_id,
+        }
+        event_key = f"response-used:{request_id}"
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT payload FROM events WHERE event_key = ?", (event_key,)
+            ).fetchone()
+            if row is not None:
+                existing = json.loads(row[0])
+                if existing != payload:
+                    raise StateConflictError("response use has already been recorded differently")
+                return existing
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'response_use', ?, 'response.used', ?)",
+                (event_key, request_id, _json(payload)),
+            )
+        return payload
+
+    def link_response_execution(self, request_id: str, *, execution_id: str) -> dict[str, Any]:
+        """Link the next execution after a response was adopted."""
+        if not execution_id:
+            raise ValueError("execution_id is required")
+        uses = [event["payload"] for event in self.events()
+                if event["event_type"] == "response.used" and event["entity_id"] == request_id]
+        if not uses:
+            raise StateConflictError("response has not been adopted")
+        payload = {**uses[-1], "execution_id": execution_id}
+        event_key = f"response-execution:{request_id}"
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM events WHERE event_key = ?", (event_key,)).fetchone()
+            if row is not None:
+                existing = json.loads(row[0])
+                if existing != payload:
+                    raise StateConflictError("response execution link already differs")
+                return existing
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'response_use', ?, 'response.execution_linked', ?)",
+                (event_key, request_id, _json(payload)),
+            )
+        return payload
 
     def create_memory(self, memory: MemoryRecord) -> MemoryRecord:
         if self.get_trace(memory.source_trace_id) is None:
@@ -404,6 +638,47 @@ class AttentionStore:
 
     def cache_put(self, cache_key: str, value: dict[str, Any]) -> None:
         self._insert_immutable("advisor_cache", cache_key, value, "advisor.cached")
+
+    def defer_request(self, request_id: str, *, deferred_at: float) -> dict[str, Any]:
+        """Record an operator deferral without extending the human deadline."""
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM requests WHERE id = ?", (request_id,)).fetchone()
+            if row is None:
+                raise StateConflictError("request not found")
+            request = json.loads(row[0])
+            if request["mode"] != "live_human_first" or request["state"] != "pending":
+                raise StateConflictError("only pending human requests can be deferred")
+            if request["deadline_at"] is not None and deferred_at >= request["deadline_at"]:
+                raise StateConflictError("request deadline has elapsed")
+            event_key = f"request-deferred:{request_id}"
+            existing = connection.execute("SELECT payload FROM events WHERE event_key = ?",
+                                          (event_key,)).fetchone()
+            if existing:
+                return json.loads(existing[0])
+            payload = {"request_id": request_id, "run_id": request["run_id"],
+                       "deferred_at": deferred_at, "deadline_at": request["deadline_at"]}
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'request', ?, 'request.deferred', ?)",
+                (event_key, request_id, _json(payload)))
+            return payload
+
+    def record_request_timeout(self, request_id: str, *, timed_out_at: float) -> dict[str, Any]:
+        request = self.get_request(request_id)
+        if request is None or request.state not in {RequestState.PENDING, RequestState.FALLBACK}:
+            raise StateConflictError("request cannot time out")
+        payload = {"request_id": request_id, "run_id": request.run_id,
+                   "timed_out_at": timed_out_at, "deadline_at": request.deadline_at}
+        with self._transaction() as connection:
+            key = f"request-timeout:{request_id}"
+            existing = connection.execute("SELECT payload FROM events WHERE event_key = ?", (key,)).fetchone()
+            if existing:
+                return json.loads(existing[0])
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'request', ?, 'request.timeout_observed', ?)",
+                (key, request_id, _json(payload)))
+        return payload
 
     def reserve_assistance(
         self, run_id: str, *, credits: int, reservation_id: str
@@ -712,6 +987,7 @@ class AttentionStore:
                 gpu_seconds=float(budget.get("gpu_seconds", 0.0)),
             ),
             created_at=float(payload["created_at"]),
+            evaluator_model=payload.get("evaluator_model"),
             status=RunStatus(payload["status"]),
             schema_version=payload["schema_version"],
         )

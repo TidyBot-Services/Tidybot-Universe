@@ -1,0 +1,1 @@
+{"source": "public_sdk", "steps": [{"operation": "sdk.gripper.close", "arguments": {}}]}

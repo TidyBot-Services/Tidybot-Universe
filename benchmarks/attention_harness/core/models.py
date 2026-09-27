@@ -98,6 +98,7 @@ class RunRecord:
     execution_target: str
     budget: AssistanceBudget
     created_at: float
+    evaluator_model: str | None = None
     status: RunStatus = RunStatus.CREATED
     schema_version: str = SCHEMA_VERSION
 
@@ -314,12 +315,14 @@ class TracePacket:
     failure: FailureSummary
     evidence: tuple[dict[str, Any], ...]
     hypothesis: str
+    hypothesis_status: str = "unknown"
     memory_refs: tuple[str, ...] = field(default_factory=tuple)
     raw_trace_id: str | None = None
     execution_id: str | None = None
     code: dict[str, Any] = field(default_factory=dict)
     events: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     outcome: dict[str, Any] = field(default_factory=dict)
+    experiment: dict[str, Any] = field(default_factory=dict)
     projection: dict[str, Any] = field(default_factory=dict)
     schema_version: str = ADVISOR_TRACE_SCHEMA_VERSION
 

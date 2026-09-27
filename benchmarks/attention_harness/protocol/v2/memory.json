@@ -4,7 +4,8 @@
   "components": {
     "memory_agent": "distills answered hints and orchestrates paired validation through a pluggable executor",
     "memory_service": "owns persistence, provenance, retrieval, evidence registration, and promotion gate",
-    "transport": "in-process interface or authenticated HTTP; remote clients require HTTPS"
+    "transport": "in-process interface or authenticated HTTP; remote clients require HTTPS",
+    "robocasa_paired_executor": "trusted development callbacks or sandboxed generated policies with independent safety monitoring and deadline/cancellation preflight"
   },
   "persistence": {
     "authority": "artifact_root/attention_memory.sqlite3",
@@ -21,27 +22,30 @@
     "versioned structured artifact with SHA-256 and exact task/perception applicability",
     "candidate memory"
   ],
+  "candidate_semantics": "an answered hint is an untrusted proposed intervention; effectiveness is established only by paired validation before promotion",
+  "raw_evidence": "candidate provenance retains raw trace ID, evidence URI/SHA-256, received guidance and response-content SHA-256; source response lineage/content and original artifact bytes are checked before promotion and trusted retrieval",
   "artifact_kinds": ["text_hint", "policy_patch", "skill"],
   "normal_retrieval": {
-    "requires": ["trusted status", "v2 provenance", "matching suite/task/perception_mode", "exact validated scene/object/camera/task-variant tuple", "explicit policy retrieval event"],
+    "requires": ["trusted status at catalog and use time", "v2 provenance", "matching suite/task/perception_mode", "exact validated scene/object/camera/task-variant tuple", "matching concrete camera names and task prompt", "intact source evidence", "explicit policy retrieval event with memory version and Service-issued attempt-bound grant"],
     "candidate_use": "only in an explicitly labelled development validation run",
     "cross_mode_reuse": "forbidden without a separate transfer validation"
   },
   "promotion_gate": {
     "minimum_distinct_paired_dev_seeds": 5,
     "pair_identity": ["suite", "task", "seed", "policy id and code digest", "execution configuration digest", "developer model", "execution target", "perception mode", "budget"],
+    "policy_version": "one fixed validation code digest across every pair/case; source code digest is recorded separately and may differ after a repair",
     "variation_plan": "five or more predefined development cases; scene/object IDs are simulator-attested, camera_names are perception-attested, task_prompt varies within the same task_id, and all four axes vary",
-    "coverage": "every planned case must be paired before promotion; a counterexample removes its full variation tuple from retrieval scope",
+    "coverage": "every planned case must be paired before promotion; a counterexample removes its full variation tuple from retrieval scope; an empty validated scope blocks promotion",
     "control": "no memory exposure",
     "treatment": "raw trace metadata and explicit retrieval event must attest exactly the candidate memory use",
-    "outcome": "native evaluator and raw trace must agree",
-    "safety": "independent monitor artifact required for each run; no increase in unsafe attempts",
-    "success": "positive paired success gain, >=3 treatment successes, >=0.75 treatment success fraction",
+    "outcome": "native evaluator and raw trace must agree for validation pairs; trusted use outcome and memory version must agree with the retrieval trace; timeout, cancellation, and evaluator-unavailable uses are logged without inventing an authoritative native verdict and cannot count as completed promotion pairs",
+    "safety": "independent monitor artifact required for each run; no treatment safety regression in any pair, regardless of aggregate unsafe-attempt totals",
+    "success": "positive paired success gain or positive assistance credits saved on both-success pairs, with no success regression; >=3 treatment successes and >=0.75 treatment success fraction",
     "heldout": "forbidden during memory development and promotion"
   },
   "metrics": [
     "paired success gain/rate gain",
-    "future assistance credits saved",
+    "future assistance credits saved, separated into both-success and both-failed pairs",
     "robot execution seconds saved",
     "GPU seconds and tokens saved",
     "unsafe attempts",
@@ -59,6 +63,7 @@
     "independent collision/contact telemetry for simulator GT runners",
     "automatic legacy orchestrator registration",
     "live RoboCasa paired-trial acceptance evidence",
+    "live generated-policy paired validation and trusted-memory reuse evidence",
     "live deployment and acceptance of maniskill_sim variation attestation",
     "live two-task/25-seed policy validation",
     "live Robosuite successful-policy paired validation and promotion evidence"

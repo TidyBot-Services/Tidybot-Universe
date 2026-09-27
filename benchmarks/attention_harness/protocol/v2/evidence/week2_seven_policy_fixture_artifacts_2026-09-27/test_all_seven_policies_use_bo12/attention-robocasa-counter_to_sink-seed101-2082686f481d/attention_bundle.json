@@ -1,0 +1,2703 @@
+{
+  "events": [
+    {
+      "entity_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "entity_type": "runs",
+      "event_key": "run.created:run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "event_type": "run.created",
+      "payload": {
+        "assistance_mode": "benchmark_proxy",
+        "budget": {
+          "assistance_credits": 2,
+          "execution_seconds": 900.0,
+          "gpu_seconds": 0.0,
+          "token_limit": 30000
+        },
+        "created_at": 1790477650.2394228,
+        "developer_model": "trusted-policy-callback",
+        "evaluator_model": "native_evaluator",
+        "execution_target": "robocasa_sim",
+        "policy_id": "full_trace_aware_attention_planner",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.core.v1",
+        "seed": 101,
+        "status": "created",
+        "suite": "robocasa",
+        "task_id": "counter_to_sink"
+      },
+      "sequence": 1
+    },
+    {
+      "entity_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "entity_type": "run",
+      "event_key": "start:run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "event_type": "run.running",
+      "payload": {
+        "run": {
+          "assistance_mode": "benchmark_proxy",
+          "budget": {
+            "assistance_credits": 2,
+            "execution_seconds": 900.0,
+            "gpu_seconds": 0.0,
+            "token_limit": 30000
+          },
+          "created_at": 1790477650.2394228,
+          "developer_model": "trusted-policy-callback",
+          "evaluator_model": "native_evaluator",
+          "execution_target": "robocasa_sim",
+          "policy_id": "full_trace_aware_attention_planner",
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "seed": 101,
+          "status": "running",
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        }
+      },
+      "sequence": 2
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "entity_type": "attempts",
+      "event_key": "attempt.created:attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "event_type": "attempt.created",
+      "payload": {
+        "artifact_uri": null,
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+        "ended_at": null,
+        "index": 0,
+        "native_success": null,
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.core.v1",
+        "started_at": 1790477650.2542024,
+        "status": "running"
+      },
+      "sequence": 3
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "entity_type": "attempt",
+      "event_key": "finish:attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "event_type": "attempt.failed",
+      "payload": {
+        "attempt": {
+          "artifact_uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+          "ended_at": 1790477650.2545605,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477650.2542024,
+          "status": "failed"
+        }
+      },
+      "sequence": 4
+    },
+    {
+      "entity_id": "raw-trace:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "entity_type": "raw_traces",
+      "event_key": "raw_trace.created:raw-trace:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "event_type": "raw_trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+        "code": {
+          "sha256": "f3fa9450dbf34f0cf426b4d93d85315b4810f37a700aca72705756c3de96748f"
+        },
+        "complete": true,
+        "created_at": 1790477650.2542024,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.task_spec",
+            "evidence_refs": [],
+            "operation": "present_goal",
+            "result": {
+              "goal": "Pick the target object from the counter and place it in the sink.",
+              "language": "place mug in sink",
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "sequence": 1,
+            "source": "attention_harness.task",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 2,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.061,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 7e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.075,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mug",
+                  "position": [
+                    1.0,
+                    2.0,
+                    3.0
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000154,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.021,
+            "error": null,
+            "event_id": "sdk-4",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 5,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000355,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "action-log",
+            "event_type": "robot.action_log",
+            "evidence_refs": [],
+            "operation": "step_sequence",
+            "result": {
+              "action_count": 0
+            },
+            "sequence": 6,
+            "source": "robot_backend",
+            "status": "completed",
+            "timestamp": 0.00035600000000000003,
+            "visibility": [
+              "internal"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 7,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00035700000000000006,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "native-evaluator",
+            "event_type": "evaluator.result",
+            "evidence_refs": [],
+            "operation": "native_success",
+            "result": {
+              "native_success": false
+            },
+            "sequence": 8,
+            "source": "native_evaluator",
+            "status": "completed",
+            "timestamp": 0.0003580000000000001,
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477650.2565603,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 223
+            },
+            "mime_type": "application/json",
+            "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2545605,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2545605,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2545605,
+            "evidence_id": "evidence:trace.jsonl",
+            "kind": "action_trace",
+            "metadata": {
+              "bytes": 0
+            },
+            "mime_type": "application/x-ndjson",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/trace.jsonl",
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "execution_id": "execution:counter_to_sink-seed101-20260927T025410.253879Z:0",
+        "failure": null,
+        "hypothesis": "gripper never closed",
+        "memory_refs": [],
+        "metadata": {
+          "policy_id": "full_trace_aware_attention_planner",
+          "runtime": {
+            "memory_context": {
+              "perception_mode": "sim_gt",
+              "suite": "robocasa",
+              "task_id": "counter_to_sink"
+            },
+            "memory_exposure": "none",
+            "memory_ids": [],
+            "perception_mode": "sim_gt",
+            "policy_execution_mode": "trusted_callback",
+            "policy_sha256": "f3fa9450dbf34f0cf426b4d93d85315b4810f37a700aca72705756c3de96748f",
+            "score_namespace": "v2/gt_perception_attentionbench",
+            "validation_config_sha256": null,
+            "validation_variation": null
+          },
+          "seed": 101,
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "outcome": {
+          "elapsed_seconds": 0.0003580029997465317,
+          "evaluator_authoritative": true,
+          "evaluator_verdict": "failed",
+          "exit_code": null,
+          "native_success": false,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.253879Z:0",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.raw-execution-trace.v1"
+      },
+      "sequence": 5
+    },
+    {
+      "entity_id": "trace:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "entity_type": "traces",
+      "event_key": "trace.created:trace:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "event_type": "trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+        "code": {
+          "sha256": "f3fa9450dbf34f0cf426b4d93d85315b4810f37a700aca72705756c3de96748f"
+        },
+        "created_at": 1790477650.2542024,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.task_spec",
+            "evidence_refs": [],
+            "operation": "present_goal",
+            "result": {
+              "goal": "Pick the target object from the counter and place it in the sink.",
+              "language": "place mug in sink",
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "sequence": 1,
+            "source": "attention_harness.task",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 2,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.061,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 7e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.075,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mug",
+                  "position": [
+                    1.0,
+                    2.0,
+                    3.0
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000154,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.021,
+            "error": null,
+            "event_id": "sdk-4",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 5,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000355,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 7,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00035700000000000006,
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477650.2545605,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2545605,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2565603,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 223
+            },
+            "mime_type": "application/json",
+            "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "execution_id": "execution:counter_to_sink-seed101-20260927T025410.253879Z:0",
+        "experiment": {
+          "config_sha256": null,
+          "policy_id": "full_trace_aware_attention_planner",
+          "scheduler_config_sha256": null,
+          "seed": 101,
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 0.5,
+          "consecutive_failures": 1,
+          "error_type": "TaskOutcomeFailure",
+          "first_failed_event_id": "execution-finished",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-4",
+          "message": "execution finished but the task goal was not verified",
+          "observed_symptom": "execution finished but the task goal was not verified",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "unknown",
+          "termination_reason": null
+        },
+        "hypothesis": "gripper never closed",
+        "hypothesis_status": "provided",
+        "memory_refs": [],
+        "outcome": {
+          "elapsed_seconds": 0.0003580029997465317,
+          "exit_code": null,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "projection": {
+          "included_event_count": 7,
+          "included_evidence_count": 3,
+          "omitted_event_count": 2,
+          "omitted_evidence_count": 1,
+          "policy_version": "attentionbench.advisor-visibility.v1",
+          "projection_sha256": "8260a9e3d1ce7c82953abba2e2ec777f244e4662114f50dc6ea95b198dd86427",
+          "redacted_field_count": 3,
+          "source_complete": true,
+          "source_sha256": "51f7bc523d28066e0342b7e803ce3b4abf7bcc951287bfd958175fcbfc790343"
+        },
+        "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.253879Z:0",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.advisor-trace-packet.v1",
+        "trace_id": "trace:counter_to_sink-seed101-20260927T025410.253879Z:0"
+      },
+      "sequence": 6
+    },
+    {
+      "entity_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "entity_type": "resource_usage",
+      "event_key": "resource-event:resources:attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+      "event_type": "resources.consumed",
+      "payload": {
+        "execution_seconds": 0.0003580029997465317,
+        "gpu_seconds": 0.0,
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "tokens": 0
+      },
+      "sequence": 7
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "entity_type": "attempts",
+      "event_key": "attempt.created:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "event_type": "attempt.created",
+      "payload": {
+        "artifact_uri": null,
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "ended_at": null,
+        "index": 1,
+        "native_success": null,
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.core.v1",
+        "started_at": 1790477650.2712545,
+        "status": "running"
+      },
+      "sequence": 8
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "entity_type": "attempt",
+      "event_key": "finish:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "event_type": "attempt.failed",
+      "payload": {
+        "attempt": {
+          "artifact_uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "ended_at": 1790477650.2715602,
+          "index": 1,
+          "native_success": false,
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477650.2712545,
+          "status": "failed"
+        }
+      },
+      "sequence": 9
+    },
+    {
+      "entity_id": "raw-trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "entity_type": "raw_traces",
+      "event_key": "raw_trace.created:raw-trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "event_type": "raw_trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "code": {
+          "sha256": "c7b136cfd89f7889bc797ce44e8738505c389c8cfc82963104be6d6730a17277"
+        },
+        "complete": true,
+        "created_at": 1790477650.2712545,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.task_spec",
+            "evidence_refs": [],
+            "operation": "present_goal",
+            "result": {
+              "goal": "Pick the target object from the counter and place it in the sink.",
+              "language": "place mug in sink",
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "sequence": 1,
+            "source": "attention_harness.task",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 2,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "attention.policy_input",
+            "evidence_refs": [],
+            "operation": "present_attention_input",
+            "result": {
+              "inspected_trace": "{\"failure\": {\"classification_source\": \"deterministic_event_rules\", \"confidence\": 0.5, \"consecutive_failures\": 1, \"error_type\": \"TaskOutcomeFailure\", \"first_failed_event_id\": \"execution-finished\", \"inferred_cause\": null, \"last_successful_event_id\": \"sdk-4\", \"message\": \"execution finished but the task goal was not verified\", \"observed_symptom\": \"execution finished but the task goal was not verified\", \"retryable\": null, \"safety_relevant\": false, \"stage\": \"unknown\", \"termination_reason\": null}, \"assessment\": {\"trace_id\": \"trace:counter_to_sink-seed101-20260927T025410.253879Z:0\", \"failure_type\": \"unknown\", \"repeated_failure\": false, \"code_changed\": null, \"progress\": false, \"evidence_sufficient\": false, \"locally_repairable\": false, \"risk\": \"normal\", \"event_ids\": [\"execution-finished\"], \"evidence_ids\": [\"evidence:final_observation.npz\", \"evidence:initial_observation.npz\", \"evidence:trace_context.json\"], \"prior_trace_ids\": [], \"prior_event_ids\": [], \"code_sha256\": \"f3fa9450dbf34f0cf426b4d93d85315b4810f37a700aca72705756c3de96748f\", \"prior_code_sha256\": null, \"hypothesis_unverified\": true, \"schema_version\": \"attentionbench.trace-assessment.v1\"}}"
+            },
+            "sequence": 3,
+            "source": "attention_harness.policy",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.029,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.6e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.056,
+            "error": null,
+            "event_id": "sdk-4",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mug",
+                  "position": [
+                    1.0,
+                    2.0,
+                    3.0
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 5,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 9.9e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.021,
+            "error": null,
+            "event_id": "sdk-5",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 6,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000301,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "action-log",
+            "event_type": "robot.action_log",
+            "evidence_refs": [],
+            "operation": "step_sequence",
+            "result": {
+              "action_count": 0
+            },
+            "sequence": 7,
+            "source": "robot_backend",
+            "status": "completed",
+            "timestamp": 0.000302,
+            "visibility": [
+              "internal"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 8,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00030300000000000005,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "native-evaluator",
+            "event_type": "evaluator.result",
+            "evidence_refs": [],
+            "operation": "native_success",
+            "result": {
+              "native_success": false
+            },
+            "sequence": 9,
+            "source": "native_evaluator",
+            "status": "completed",
+            "timestamp": 0.00030400000000000007,
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477650.2745602,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 223
+            },
+            "mime_type": "application/json",
+            "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2715602,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2715602,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2715602,
+            "evidence_id": "evidence:trace.jsonl",
+            "kind": "action_trace",
+            "metadata": {
+              "bytes": 0
+            },
+            "mime_type": "application/x-ndjson",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/trace.jsonl",
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "execution_id": "execution:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "failure": null,
+        "hypothesis": "gripper never closed",
+        "memory_refs": [],
+        "metadata": {
+          "policy_id": "full_trace_aware_attention_planner",
+          "runtime": {
+            "memory_context": {
+              "perception_mode": "sim_gt",
+              "suite": "robocasa",
+              "task_id": "counter_to_sink"
+            },
+            "memory_exposure": "none",
+            "memory_ids": [],
+            "perception_mode": "sim_gt",
+            "policy_execution_mode": "trusted_callback",
+            "policy_sha256": "c7b136cfd89f7889bc797ce44e8738505c389c8cfc82963104be6d6730a17277",
+            "score_namespace": "v2/gt_perception_attentionbench",
+            "validation_config_sha256": null,
+            "validation_variation": null
+          },
+          "seed": 101,
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "outcome": {
+          "elapsed_seconds": 0.00030560999948647805,
+          "evaluator_authoritative": true,
+          "evaluator_verdict": "failed",
+          "exit_code": null,
+          "native_success": false,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.raw-execution-trace.v1"
+      },
+      "sequence": 10
+    },
+    {
+      "entity_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "entity_type": "traces",
+      "event_key": "trace.created:trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "event_type": "trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "code": {
+          "sha256": "c7b136cfd89f7889bc797ce44e8738505c389c8cfc82963104be6d6730a17277"
+        },
+        "created_at": 1790477650.2712545,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.task_spec",
+            "evidence_refs": [],
+            "operation": "present_goal",
+            "result": {
+              "goal": "Pick the target object from the counter and place it in the sink.",
+              "language": "place mug in sink",
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "sequence": 1,
+            "source": "attention_harness.task",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 2,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "attention.policy_input",
+            "evidence_refs": [],
+            "operation": "present_attention_input",
+            "result": {
+              "inspected_trace": "{\"failure\": {\"classification_source\": \"deterministic_event_rules\", \"confidence\": 0.5, \"consecutive_failures\": 1, \"error_type\": \"TaskOutcomeFailure\", \"first_failed_event_id\": \"execution-finished\", \"inferred_cause\": null, \"last_successful_event_id\": \"sdk-4\", \"message\": \"execution finished but the task goal was not verified\", \"observed_symptom\": \"execution finished but the task goal was not verified\", \"retryable\": null, \"safety_relevant\": false, \"stage\": \"unknown\", \"termination_reason\": null}, \"assessment\": {\"trace_id\": \"trace:counter_to_sink-seed101-20260927T025410.253879Z:0\", \"failure_type\": \"unknown\", \"repeated_failure\": false, \"code_changed\": null, \"progress\": false, \"evidence_sufficient\": false, \"locally_repairable\": false, \"risk\": \"normal\", \"event_ids\": [\"execution-finished\"], \"evidence_ids\": [\"evidence:final_observation.npz\", \"evidence:initial_observation.npz\", \"evidence:trace_context.json\"], \"prior_trace_ids\": [], \"prior_event_ids\": [], \"code_sha256\": \"f3fa9450dbf34f0cf426b4d93d85315b4810f37a700aca72705756c3de96748f\", \"prior_code_sha256\": null, \"hypothesis_unverified\": true, \"schema_version\": \"attentionbench.trace-assessment.v1\"}}"
+            },
+            "sequence": 3,
+            "source": "attention_harness.policy",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.029,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.6e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.056,
+            "error": null,
+            "event_id": "sdk-4",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mug",
+                  "position": [
+                    1.0,
+                    2.0,
+                    3.0
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 5,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 9.9e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.021,
+            "error": null,
+            "event_id": "sdk-5",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 6,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000301,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 8,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 0.00030300000000000005,
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477650.2715602,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2715602,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.2745602,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 223
+            },
+            "mime_type": "application/json",
+            "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "execution_id": "execution:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "experiment": {
+          "config_sha256": null,
+          "policy_id": "full_trace_aware_attention_planner",
+          "scheduler_config_sha256": null,
+          "seed": 101,
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 0.5,
+          "consecutive_failures": 1,
+          "error_type": "TaskOutcomeFailure",
+          "first_failed_event_id": "execution-finished",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-5",
+          "message": "execution finished but the task goal was not verified",
+          "observed_symptom": "execution finished but the task goal was not verified",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "unknown",
+          "termination_reason": null
+        },
+        "hypothesis": "gripper never closed",
+        "hypothesis_status": "provided",
+        "memory_refs": [],
+        "outcome": {
+          "elapsed_seconds": 0.00030560999948647805,
+          "exit_code": null,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "projection": {
+          "included_event_count": 8,
+          "included_evidence_count": 3,
+          "omitted_event_count": 2,
+          "omitted_evidence_count": 1,
+          "policy_version": "attentionbench.advisor-visibility.v1",
+          "projection_sha256": "b813cd79694e0b717349349b092b46fd398a358188df6b7cb7dd30a3ee98de48",
+          "redacted_field_count": 3,
+          "source_complete": true,
+          "source_sha256": "0987c75a2df472c51c01877fdb9a0fc84eb61160c062be97978de61900fc29c8"
+        },
+        "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.advisor-trace-packet.v1",
+        "trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1"
+      },
+      "sequence": 11
+    },
+    {
+      "entity_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "entity_type": "resource_usage",
+      "event_key": "resource-event:resources:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "event_type": "resources.consumed",
+      "payload": {
+        "execution_seconds": 0.00030560999948647805,
+        "gpu_seconds": 0.0,
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "tokens": 0
+      },
+      "sequence": 12
+    },
+    {
+      "entity_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+      "entity_type": "requests",
+      "event_key": "request.created:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+      "event_type": "request.created",
+      "payload": {
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "created_at": 1790477650.2912998,
+        "deadline_at": null,
+        "mode": "benchmark_proxy",
+        "priority": "normal",
+        "reason": "cause_unknown_after_inspection",
+        "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+        "request_type": "hint",
+        "response_id": null,
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.core.v1",
+        "state": "pending",
+        "trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1"
+      },
+      "sequence": 13
+    },
+    {
+      "entity_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+      "entity_type": "request",
+      "event_key": "proxy-answer:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+      "event_type": "request.answered",
+      "payload": {
+        "request": {
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "created_at": 1790477650.2912998,
+          "deadline_at": null,
+          "mode": "benchmark_proxy",
+          "priority": "normal",
+          "reason": "cause_unknown_after_inspection",
+          "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+          "request_type": "hint",
+          "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "state": "answered",
+          "trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1"
+        },
+        "response": {
+          "cache_key": "2235effb2a76e3024125d89a06a761c12aaffc53cb287cd8a728cea132e67406",
+          "cached": false,
+          "content": "{\"schema_version\": \"attentionbench.advisor-advice.v1\", \"request_type\": \"hint\", \"diagnosis\": \"grasp was not completed\", \"guidance\": \"close the gripper after aligning with the object\", \"caution\": \"keep within the workspace\", \"confidence\": 0.8}",
+          "created_at": 1790477650.3005571,
+          "logical_latency_seconds": 2.0,
+          "provider_attempts": 1,
+          "provider_latency_seconds": 0.0,
+          "provider_model": "parcc/GLM",
+          "provider_request_id": null,
+          "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+          "responder": "advisor_proxy",
+          "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+          "schema_version": "attentionbench.core.v1",
+          "token_usage": {}
+        }
+      },
+      "sequence": 14
+    },
+    {
+      "entity_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+      "entity_type": "response_use",
+      "event_key": "response-used:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+      "event_type": "response.used",
+      "payload": {
+        "execution_id": null,
+        "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+        "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "use": "guidance"
+      },
+      "sequence": 15
+    },
+    {
+      "entity_id": "candidate:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "entity_type": "memories",
+      "event_key": "memory.created:candidate:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+      "event_type": "memory.created",
+      "payload": {
+        "applicability": {
+          "perception_mode": "sim_gt",
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "candidate_repair": "Failure hypothesis: grasp was not completed\nProposed change: close the gripper after aligning with the object\nCaution: keep within the workspace",
+        "confidence": 0.0,
+        "created_at": 1790477650.3005571,
+        "evidence_refs": [
+          "evidence:final_observation.npz",
+          "evidence:initial_observation.npz",
+          "evidence:trace_context.json"
+        ],
+        "expires_at": null,
+        "guidance": "close the gripper after aligning with the object",
+        "memory_id": "candidate:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "parent_memory_id": null,
+        "schema_version": "attentionbench.core.v1",
+        "source_trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "status": "candidate",
+        "status_reason": null,
+        "validation_failures": 0,
+        "validation_successes": 0,
+        "version": 1
+      },
+      "sequence": 16
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+      "entity_type": "attempts",
+      "event_key": "attempt.created:attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+      "event_type": "attempt.created",
+      "payload": {
+        "artifact_uri": null,
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+        "ended_at": null,
+        "index": 2,
+        "native_success": null,
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.core.v1",
+        "started_at": 1790477650.326013,
+        "status": "running"
+      },
+      "sequence": 17
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+      "entity_type": "attempt",
+      "event_key": "finish:attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+      "event_type": "attempt.succeeded",
+      "payload": {
+        "attempt": {
+          "artifact_uri": "artifact://counter_to_sink-seed101-20260927T025410.325892Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+          "ended_at": 1790477650.3265595,
+          "index": 2,
+          "native_success": true,
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477650.326013,
+          "status": "succeeded"
+        }
+      },
+      "sequence": 18
+    },
+    {
+      "entity_id": "raw-trace:counter_to_sink-seed101-20260927T025410.325892Z:2",
+      "entity_type": "raw_traces",
+      "event_key": "raw_trace.created:raw-trace:counter_to_sink-seed101-20260927T025410.325892Z:2",
+      "event_type": "raw_trace.created",
+      "payload": {
+        "agent_state": "completed",
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+        "code": {
+          "sha256": "e0c423c4bf06588142a3c8af17e767980c410c8bfebc13d05e65d49d6c4b1722"
+        },
+        "complete": true,
+        "created_at": 1790477650.326013,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.task_spec",
+            "evidence_refs": [],
+            "operation": "present_goal",
+            "result": {
+              "goal": "Pick the target object from the counter and place it in the sink.",
+              "language": "place mug in sink",
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "sequence": 1,
+            "source": "attention_harness.task",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 2,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "attention.policy_input",
+            "evidence_refs": [],
+            "operation": "present_attention_input",
+            "result": {
+              "advisor_guidance": "close the gripper after aligning with the object"
+            },
+            "sequence": 3,
+            "source": "attention_harness.policy",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.032,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.9e-05,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.055,
+            "error": null,
+            "event_id": "sdk-4",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mug",
+                  "position": [
+                    1.0,
+                    2.0,
+                    3.0
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 5,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000101,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "settle_steps": 10
+            },
+            "duration_ms": 0.185,
+            "error": null,
+            "event_id": "sdk-5",
+            "event_type": "sdk.gripper_command",
+            "evidence_refs": [],
+            "operation": "close",
+            "result": {},
+            "sequence": 6,
+            "source": "robot_sdk.gripper",
+            "status": "completed",
+            "timestamp": 0.000404,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.022,
+            "error": null,
+            "event_id": "sdk-6",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              }
+            },
+            "sequence": 7,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000541,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "action-log",
+            "event_type": "robot.action_log",
+            "evidence_refs": [],
+            "operation": "step_sequence",
+            "result": {
+              "action_count": 1
+            },
+            "sequence": 8,
+            "source": "robot_backend",
+            "status": "completed",
+            "timestamp": 0.0005420000000000001,
+            "visibility": [
+              "internal"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 9,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0005430000000000001,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "native-evaluator",
+            "event_type": "evaluator.result",
+            "evidence_refs": [],
+            "operation": "native_success",
+            "result": {
+              "native_success": true
+            },
+            "sequence": 10,
+            "source": "native_evaluator",
+            "status": "completed",
+            "timestamp": 0.0005440000000000001,
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790477650.3285596,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 223
+            },
+            "mime_type": "application/json",
+            "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.325892Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.3265595,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.325892Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.3265595,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 225
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.325892Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790477650.3265595,
+            "evidence_id": "evidence:trace.jsonl",
+            "kind": "action_trace",
+            "metadata": {
+              "bytes": 57
+            },
+            "mime_type": "application/x-ndjson",
+            "sha256": "c2e018c36d94156269799eadee2057723847ebb0125decc1276ac0925a1298a2",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed101-20260927T025410.325892Z/trace.jsonl",
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "execution_id": "execution:counter_to_sink-seed101-20260927T025410.325892Z:2",
+        "failure": null,
+        "hypothesis": "gripper never closed",
+        "memory_refs": [],
+        "metadata": {
+          "policy_id": "full_trace_aware_attention_planner",
+          "runtime": {
+            "memory_context": {
+              "perception_mode": "sim_gt",
+              "suite": "robocasa",
+              "task_id": "counter_to_sink"
+            },
+            "memory_exposure": "none",
+            "memory_ids": [],
+            "perception_mode": "sim_gt",
+            "policy_execution_mode": "trusted_callback",
+            "policy_sha256": "e0c423c4bf06588142a3c8af17e767980c410c8bfebc13d05e65d49d6c4b1722",
+            "score_namespace": "v2/gt_perception_attentionbench",
+            "validation_config_sha256": null,
+            "validation_variation": null
+          },
+          "seed": 101,
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "outcome": {
+          "elapsed_seconds": 0.0005464679998112842,
+          "evaluator_authoritative": true,
+          "evaluator_verdict": "succeeded",
+          "exit_code": null,
+          "native_success": true,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.325892Z:2",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.raw-execution-trace.v1"
+      },
+      "sequence": 19
+    },
+    {
+      "entity_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "entity_type": "resource_usage",
+      "event_key": "resource-event:resources:attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+      "event_type": "resources.consumed",
+      "payload": {
+        "execution_seconds": 0.0005464679998112842,
+        "gpu_seconds": 0.0,
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "tokens": 0
+      },
+      "sequence": 20
+    }
+  ],
+  "projection": {
+    "attention_inbox": [
+      {
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+        "created_at": 1790477650.2912998,
+        "deadline_at": null,
+        "mode": "benchmark_proxy",
+        "priority": "normal",
+        "reason": "cause_unknown_after_inspection",
+        "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+        "request_type": "hint",
+        "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+        "schema_version": "attentionbench.core.v1",
+        "state": "answered",
+        "trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1"
+      }
+    ],
+    "autonomous_work": {
+      "attempts": [
+        {
+          "artifact_uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+          "ended_at": 1790477650.2545605,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477650.2542024,
+          "status": "failed"
+        },
+        {
+          "artifact_uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "ended_at": 1790477650.2715602,
+          "index": 1,
+          "native_success": false,
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477650.2712545,
+          "status": "failed"
+        },
+        {
+          "artifact_uri": "artifact://counter_to_sink-seed101-20260927T025410.325892Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.325892Z:2",
+          "ended_at": 1790477650.3265595,
+          "index": 2,
+          "native_success": true,
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790477650.326013,
+          "status": "succeeded"
+        }
+      ]
+    },
+    "live_station": {
+      "emergency_interrupt_available": true,
+      "execution_target": "robocasa_sim",
+      "status": "running"
+    },
+    "request_detail": {
+      "memories": [
+        {
+          "applicability": {
+            "perception_mode": "sim_gt",
+            "suite": "robocasa",
+            "task_id": "counter_to_sink"
+          },
+          "candidate_repair": "Failure hypothesis: grasp was not completed\nProposed change: close the gripper after aligning with the object\nCaution: keep within the workspace",
+          "confidence": 0.0,
+          "created_at": 1790477650.3005571,
+          "evidence_refs": [
+            "evidence:final_observation.npz",
+            "evidence:initial_observation.npz",
+            "evidence:trace_context.json"
+          ],
+          "expires_at": null,
+          "guidance": "close the gripper after aligning with the object",
+          "memory_id": "candidate:attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "parent_memory_id": null,
+          "schema_version": "attentionbench.core.v1",
+          "source_trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "status": "candidate",
+          "status_reason": null,
+          "validation_failures": 0,
+          "validation_successes": 0,
+          "version": 1
+        }
+      ],
+      "responses": [
+        {
+          "cache_key": "2235effb2a76e3024125d89a06a761c12aaffc53cb287cd8a728cea132e67406",
+          "cached": false,
+          "content": "{\"schema_version\": \"attentionbench.advisor-advice.v1\", \"request_type\": \"hint\", \"diagnosis\": \"grasp was not completed\", \"guidance\": \"close the gripper after aligning with the object\", \"caution\": \"keep within the workspace\", \"confidence\": 0.8}",
+          "created_at": 1790477650.3005571,
+          "logical_latency_seconds": 2.0,
+          "provider_attempts": 1,
+          "provider_latency_seconds": 0.0,
+          "provider_model": "parcc/GLM",
+          "provider_request_id": null,
+          "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+          "responder": "advisor_proxy",
+          "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-2082686f481d:1",
+          "schema_version": "attentionbench.core.v1",
+          "token_usage": {}
+        }
+      ],
+      "traces": [
+        {
+          "agent_state": "blocked_after_failure",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.253879Z:0",
+          "code": {
+            "sha256": "f3fa9450dbf34f0cf426b4d93d85315b4810f37a700aca72705756c3de96748f"
+          },
+          "created_at": 1790477650.2542024,
+          "events": [
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "execution-started",
+              "event_type": "execution.started",
+              "evidence_refs": [],
+              "operation": "run_policy",
+              "result": {},
+              "sequence": 0,
+              "source": "attention_harness",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-0",
+              "event_type": "attention.task_spec",
+              "evidence_refs": [],
+              "operation": "present_goal",
+              "result": {
+                "goal": "Pick the target object from the counter and place it in the sink.",
+                "language": "place mug in sink",
+                "perception_mode": "sim_gt",
+                "task_id": "counter_to_sink"
+              },
+              "sequence": 1,
+              "source": "attention_harness.task",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "perception_mode": "sim_gt",
+                "task_id": "counter_to_sink"
+              },
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-1",
+              "event_type": "attention.memory_catalog",
+              "evidence_refs": [],
+              "operation": "list_available",
+              "result": {
+                "memory_ids": []
+              },
+              "sequence": 2,
+              "source": "attention_harness.memory",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.061,
+              "error": null,
+              "event_id": "sdk-2",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                }
+              },
+              "sequence": 3,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 7e-05,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 0.075,
+              "error": null,
+              "event_id": "sdk-3",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {
+                "objects": [
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "mug",
+                    "position": [
+                      1.0,
+                      2.0,
+                      3.0
+                    ],
+                    "source": "sim_gt"
+                  }
+                ],
+                "perception_mode": "sim_gt"
+              },
+              "sequence": 4,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.000154,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.021,
+              "error": null,
+              "event_id": "sdk-4",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                }
+              },
+              "sequence": 5,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.000355,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": {
+                "message": "execution finished but the task goal was not verified",
+                "type": "TaskOutcomeFailure"
+              },
+              "event_id": "execution-finished",
+              "event_type": "execution.finished",
+              "evidence_refs": [
+                "evidence:trace_context.json",
+                "evidence:initial_observation.npz",
+                "evidence:final_observation.npz"
+              ],
+              "operation": "run_policy",
+              "result": {
+                "execution_status": "completed",
+                "exit_code": null,
+                "stderr_tail": "",
+                "stdout_tail": "",
+                "timed_out": false
+              },
+              "sequence": 7,
+              "source": "attention_harness",
+              "status": "failed",
+              "timestamp": 0.00035700000000000006,
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "created_at": 1790477650.2545605,
+              "evidence_id": "evidence:final_observation.npz",
+              "kind": "final_observation",
+              "metadata": {
+                "bytes": 225
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/final_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477650.2545605,
+              "evidence_id": "evidence:initial_observation.npz",
+              "kind": "initial_observation",
+              "metadata": {
+                "bytes": 225
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/initial_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477650.2565603,
+              "evidence_id": "evidence:trace_context.json",
+              "kind": "execution_context",
+              "metadata": {
+                "bytes": 223
+              },
+              "mime_type": "application/json",
+              "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed101-20260927T025410.253879Z/trace_context.json",
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "execution_id": "execution:counter_to_sink-seed101-20260927T025410.253879Z:0",
+          "experiment": {
+            "config_sha256": null,
+            "policy_id": "full_trace_aware_attention_planner",
+            "scheduler_config_sha256": null,
+            "seed": 101,
+            "suite": "robocasa",
+            "task_id": "counter_to_sink"
+          },
+          "failure": {
+            "classification_source": "deterministic_event_rules",
+            "confidence": 0.5,
+            "consecutive_failures": 1,
+            "error_type": "TaskOutcomeFailure",
+            "first_failed_event_id": "execution-finished",
+            "inferred_cause": null,
+            "last_successful_event_id": "sdk-4",
+            "message": "execution finished but the task goal was not verified",
+            "observed_symptom": "execution finished but the task goal was not verified",
+            "retryable": null,
+            "safety_relevant": false,
+            "stage": "unknown",
+            "termination_reason": null
+          },
+          "hypothesis": "gripper never closed",
+          "hypothesis_status": "provided",
+          "memory_refs": [],
+          "outcome": {
+            "elapsed_seconds": 0.0003580029997465317,
+            "exit_code": null,
+            "status": "completed",
+            "stop_reason": null,
+            "timed_out": false
+          },
+          "projection": {
+            "included_event_count": 7,
+            "included_evidence_count": 3,
+            "omitted_event_count": 2,
+            "omitted_evidence_count": 1,
+            "policy_version": "attentionbench.advisor-visibility.v1",
+            "projection_sha256": "8260a9e3d1ce7c82953abba2e2ec777f244e4662114f50dc6ea95b198dd86427",
+            "redacted_field_count": 3,
+            "source_complete": true,
+            "source_sha256": "51f7bc523d28066e0342b7e803ce3b4abf7bcc951287bfd958175fcbfc790343"
+          },
+          "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.253879Z:0",
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.advisor-trace-packet.v1",
+          "trace_id": "trace:counter_to_sink-seed101-20260927T025410.253879Z:0"
+        },
+        {
+          "agent_state": "blocked_after_failure",
+          "attempt_id": "attempt:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "code": {
+            "sha256": "c7b136cfd89f7889bc797ce44e8738505c389c8cfc82963104be6d6730a17277"
+          },
+          "created_at": 1790477650.2712545,
+          "events": [
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "execution-started",
+              "event_type": "execution.started",
+              "evidence_refs": [],
+              "operation": "run_policy",
+              "result": {},
+              "sequence": 0,
+              "source": "attention_harness",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-0",
+              "event_type": "attention.task_spec",
+              "evidence_refs": [],
+              "operation": "present_goal",
+              "result": {
+                "goal": "Pick the target object from the counter and place it in the sink.",
+                "language": "place mug in sink",
+                "perception_mode": "sim_gt",
+                "task_id": "counter_to_sink"
+              },
+              "sequence": 1,
+              "source": "attention_harness.task",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "perception_mode": "sim_gt",
+                "task_id": "counter_to_sink"
+              },
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-1",
+              "event_type": "attention.memory_catalog",
+              "evidence_refs": [],
+              "operation": "list_available",
+              "result": {
+                "memory_ids": []
+              },
+              "sequence": 2,
+              "source": "attention_harness.memory",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-2",
+              "event_type": "attention.policy_input",
+              "evidence_refs": [],
+              "operation": "present_attention_input",
+              "result": {
+                "inspected_trace": "{\"failure\": {\"classification_source\": \"deterministic_event_rules\", \"confidence\": 0.5, \"consecutive_failures\": 1, \"error_type\": \"TaskOutcomeFailure\", \"first_failed_event_id\": \"execution-finished\", \"inferred_cause\": null, \"last_successful_event_id\": \"sdk-4\", \"message\": \"execution finished but the task goal was not verified\", \"observed_symptom\": \"execution finished but the task goal was not verified\", \"retryable\": null, \"safety_relevant\": false, \"stage\": \"unknown\", \"termination_reason\": null}, \"assessment\": {\"trace_id\": \"trace:counter_to_sink-seed101-20260927T025410.253879Z:0\", \"failure_type\": \"unknown\", \"repeated_failure\": false, \"code_changed\": null, \"progress\": false, \"evidence_sufficient\": false, \"locally_repairable\": false, \"risk\": \"normal\", \"event_ids\": [\"execution-finished\"], \"evidence_ids\": [\"evidence:final_observation.npz\", \"evidence:initial_observation.npz\", \"evidence:trace_context.json\"], \"prior_trace_ids\": [], \"prior_event_ids\": [], \"code_sha256\": \"f3fa9450dbf34f0cf426b4d93d85315b4810f37a700aca72705756c3de96748f\", \"prior_code_sha256\": null, \"hypothesis_unverified\": true, \"schema_version\": \"attentionbench.trace-assessment.v1\"}}"
+              },
+              "sequence": 3,
+              "source": "attention_harness.policy",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.029,
+              "error": null,
+              "event_id": "sdk-3",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                }
+              },
+              "sequence": 4,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 3.6e-05,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 0.056,
+              "error": null,
+              "event_id": "sdk-4",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {
+                "objects": [
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "mug",
+                    "position": [
+                      1.0,
+                      2.0,
+                      3.0
+                    ],
+                    "source": "sim_gt"
+                  }
+                ],
+                "perception_mode": "sim_gt"
+              },
+              "sequence": 5,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 9.9e-05,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.021,
+              "error": null,
+              "event_id": "sdk-5",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                }
+              },
+              "sequence": 6,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.000301,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": {
+                "message": "execution finished but the task goal was not verified",
+                "type": "TaskOutcomeFailure"
+              },
+              "event_id": "execution-finished",
+              "event_type": "execution.finished",
+              "evidence_refs": [
+                "evidence:trace_context.json",
+                "evidence:initial_observation.npz",
+                "evidence:final_observation.npz"
+              ],
+              "operation": "run_policy",
+              "result": {
+                "execution_status": "completed",
+                "exit_code": null,
+                "stderr_tail": "",
+                "stdout_tail": "",
+                "timed_out": false
+              },
+              "sequence": 8,
+              "source": "attention_harness",
+              "status": "failed",
+              "timestamp": 0.00030300000000000005,
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "created_at": 1790477650.2715602,
+              "evidence_id": "evidence:final_observation.npz",
+              "kind": "final_observation",
+              "metadata": {
+                "bytes": 225
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/final_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477650.2715602,
+              "evidence_id": "evidence:initial_observation.npz",
+              "kind": "initial_observation",
+              "metadata": {
+                "bytes": 225
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "d21cefec20e714eae8c8e5736e19c8912d3dbc8826927c52f8751f22301385d5",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/initial_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790477650.2745602,
+              "evidence_id": "evidence:trace_context.json",
+              "kind": "execution_context",
+              "metadata": {
+                "bytes": 223
+              },
+              "mime_type": "application/json",
+              "sha256": "cde0ab413f319c62bd0b24eaf3a7a07c93d22db3a7a53448b9d09042a89c8600",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed101-20260927T025410.271774Z/trace_context.json",
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "execution_id": "execution:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "experiment": {
+            "config_sha256": null,
+            "policy_id": "full_trace_aware_attention_planner",
+            "scheduler_config_sha256": null,
+            "seed": 101,
+            "suite": "robocasa",
+            "task_id": "counter_to_sink"
+          },
+          "failure": {
+            "classification_source": "deterministic_event_rules",
+            "confidence": 0.5,
+            "consecutive_failures": 1,
+            "error_type": "TaskOutcomeFailure",
+            "first_failed_event_id": "execution-finished",
+            "inferred_cause": null,
+            "last_successful_event_id": "sdk-5",
+            "message": "execution finished but the task goal was not verified",
+            "observed_symptom": "execution finished but the task goal was not verified",
+            "retryable": null,
+            "safety_relevant": false,
+            "stage": "unknown",
+            "termination_reason": null
+          },
+          "hypothesis": "gripper never closed",
+          "hypothesis_status": "provided",
+          "memory_refs": [],
+          "outcome": {
+            "elapsed_seconds": 0.00030560999948647805,
+            "exit_code": null,
+            "status": "completed",
+            "stop_reason": null,
+            "timed_out": false
+          },
+          "projection": {
+            "included_event_count": 8,
+            "included_evidence_count": 3,
+            "omitted_event_count": 2,
+            "omitted_evidence_count": 1,
+            "policy_version": "attentionbench.advisor-visibility.v1",
+            "projection_sha256": "b813cd79694e0b717349349b092b46fd398a358188df6b7cb7dd30a3ee98de48",
+            "redacted_field_count": 3,
+            "source_complete": true,
+            "source_sha256": "0987c75a2df472c51c01877fdb9a0fc84eb61160c062be97978de61900fc29c8"
+          },
+          "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260927T025410.271774Z:1",
+          "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+          "schema_version": "attentionbench.advisor-trace-packet.v1",
+          "trace_id": "trace:counter_to_sink-seed101-20260927T025410.271774Z:1"
+        }
+      ]
+    },
+    "resource_budget": {
+      "assistance": {
+        "limit": 2,
+        "remaining": 1,
+        "reserved": 0,
+        "used": 1
+      },
+      "execution_seconds": {
+        "limit": 900.0,
+        "remaining": 899.998789919001,
+        "used": 0.001210080999044294
+      },
+      "gpu_seconds": {
+        "limit": 0.0,
+        "remaining": 0.0,
+        "used": 0.0
+      },
+      "tokens": {
+        "limit": 30000,
+        "remaining": 30000,
+        "used": 0
+      }
+    },
+    "run_context": {
+      "assistance_mode": "benchmark_proxy",
+      "execution_target": "robocasa_sim",
+      "locked": true,
+      "policy_id": "full_trace_aware_attention_planner",
+      "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink"
+    },
+    "schema_version": "attentionbench.ui-projection.v1"
+  },
+  "run": {
+    "assistance_mode": "benchmark_proxy",
+    "budget": {
+      "assistance_credits": 2,
+      "execution_seconds": 900.0,
+      "gpu_seconds": 0.0,
+      "token_limit": 30000
+    },
+    "created_at": 1790477650.2394228,
+    "developer_model": "trusted-policy-callback",
+    "evaluator_model": "native_evaluator",
+    "execution_target": "robocasa_sim",
+    "policy_id": "full_trace_aware_attention_planner",
+    "run_id": "run:attention-robocasa-counter_to_sink-seed101-2082686f481d",
+    "schema_version": "attentionbench.core.v1",
+    "seed": 101,
+    "status": "running",
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  },
+  "schema_version": "attentionbench.run-bundle.v1"
+}

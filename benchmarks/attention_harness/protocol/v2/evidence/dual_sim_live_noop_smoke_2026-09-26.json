@@ -1,0 +1,66 @@
+{
+  "schema_version": "attentionbench.dual-sim-live-noop-smoke.v1",
+  "date": "2026-09-26",
+  "purpose": "One development-seed service-chain check per primary simulator; not policy-effectiveness or formal acceptance evidence",
+  "universe": {
+    "branch": "feature/attention-native-robosuite",
+    "base_commit": "bb16e29",
+    "working_tree": "uncommitted AttentionBench changes"
+  },
+  "service_revisions": {
+    "robosuite_sim": "12bc69a (clean)",
+    "maniskill_sim": "4e59015 (server.py modified)",
+    "agent_server": "057abfd (code_executor.py and routes/code_routes.py modified; tests/test_job_cancellation.py untracked)"
+  },
+  "local_contract_tests": {
+    "command": "pytest test_sim_gt_attention_run.py test_formal_runner_boundary.py test_attention_architecture_bridge.py test_attention_bridge_runtime.py -q",
+    "result": "44 passed"
+  },
+  "runs": [
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 101,
+      "service_mode": "--enable-sim-gt",
+      "attention_policy": "autonomous",
+      "robot_policy": "noop",
+      "max_attempts": 1,
+      "assistance_credits": 0,
+      "attempt_status": "completed",
+      "initial_object_count": 1,
+      "native_success": false,
+      "result_error": null,
+      "safety_unsafe_attempts": 0,
+      "advisor_visible_trace_count": 1,
+      "formal_eligible": false,
+      "attention_run_uri": "/tmp/attentionbench-budget-smoke.O7wg7a/robosuite/attention-robosuite-cube_lift-seed101-383af467cc40/attention_run.json",
+      "attention_run_sha256": "2ddcef91e705b952016c15548ead792546a5b768faec747b6fc34f9356b9a50e"
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 101,
+      "service_mode": "isolated simulator and Agent Server ports; service manager disabled",
+      "attention_policy": "autonomous",
+      "robot_policy": "noop",
+      "max_attempts": 1,
+      "assistance_credits": 0,
+      "attempt_status": "completed",
+      "initial_object_count": 26,
+      "native_success": false,
+      "result_error": null,
+      "safety_unsafe_attempts": 0,
+      "advisor_visible_trace_count": 1,
+      "formal_eligible": false,
+      "attention_run_uri": "/tmp/attentionbench-budget-smoke.O7wg7a/robocasa/attention-robocasa-counter_to_sink-seed101-17b54fcc80c0/attention_run.json",
+      "attention_run_sha256": "389c3ecd8ab4e4a5f501e3fb11e7d57542d855868dce463b8b10bd254468848b"
+    }
+  ],
+  "first_robosuite_attempt": "Started the service without --enable-sim-gt; reset was rejected and the safety monitor correctly marked state unavailable. The same seed was rerun with the required flag; only the rerun is counted above.",
+  "limits": [
+    "Raw run directories are temporary and may be removed by the OS; hashes are retained here only as a smoke receipt.",
+    "No real Dev Agent or diagnostic Eval Agent model was invoked; their bridge remains covered by local mock-based tests.",
+    "No GLM request, task-solving policy, generated-policy formal sandbox, held-out seed, multi-seed stability check, or full seven-policy live matrix was run."
+  ],
+  "services_stopped_after_test": true
+}

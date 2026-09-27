@@ -1,0 +1,72 @@
+{
+  "schema_version": "attentionbench.dev-harness-eval-live-smoke.v1",
+  "date": "2026-09-27",
+  "scope": "one RoboCasa development seed, not a formal benchmark result",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "seed": 101,
+  "perception_mode": "sim_gt",
+  "attention_policy": "autonomous",
+  "runner_boundary": "generated_sandbox",
+  "service_revisions": {
+    "universe": "bb16e29 plus uncommitted changes on feature/attention-native-robosuite",
+    "maniskill_sim_service": "4e59015 plus modified maniskill_server/server.py",
+    "agent_server": "057abfd plus modified code_executor.py and routes/code_routes.py"
+  },
+  "service_endpoints": {
+    "simulator": "http://127.0.0.1:6300",
+    "simulator_task": "RoboCasa-Pn-P-Counter-To-Sink-v0",
+    "simulator_bridges": ["arm:6355/6356/6357", "gripper:6370/6371"],
+    "agent_server": "http://127.0.0.1:8880",
+    "service_manager_enabled": false,
+    "hardware_port_mapping_used": false
+  },
+  "initial_run": {
+    "graph": "skill-agent-setup/claude-code/graphs/attentionbench-robocasa-e2e-20260927/graph.json",
+    "run": "artifacts/attentionbench-e2e-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-4e04fa7bbada/attention_run.json",
+    "finding": "Dev hard-coded boxed_drink; actual task language was yogurt; policy returned after perception, action_count=0. Eval cited action-log. Preserved as a failed development smoke, not counted as real action execution."
+  },
+  "corrected_run": {
+    "graph": "skill-agent-setup/claude-code/graphs/attentionbench-robocasa-e2e-corrected-20260927/graph.json",
+    "dev_generation": "skill-agent-setup/claude-code/graphs/attentionbench-robocasa-e2e-corrected-20260927/dev_generation.json",
+    "policy": "benchmarks/attention_harness/protocol/v2/policies/attention_e2e_robocasa_corrected_20260927.py",
+    "policy_sha256": "4c8a526a0a276e850d7f96f970d9f68a8d9d28ecd8c9140455260ff234a15082",
+    "run": "artifacts/attentionbench-e2e-20260927/robocasa-corrected/attention-robocasa-counter_to_sink-seed101-42b3b68848f6/attention_run.json",
+    "attempt_result": "artifacts/attentionbench-e2e-20260927/robocasa-corrected/attention-robocasa-counter_to_sink-seed101-42b3b68848f6/attempts/counter_to_sink-seed101-20260926T192323.335575Z/result.json",
+    "attention_bundle": "artifacts/attentionbench-e2e-20260927/robocasa-corrected/attention-robocasa-counter_to_sink-seed101-42b3b68848f6/attempts/counter_to_sink-seed101-20260926T192323.335575Z/attention_bundle.json",
+    "safety_monitor": "artifacts/attentionbench-e2e-20260927/robocasa-corrected/attention-robocasa-counter_to_sink-seed101-42b3b68848f6/attempts/counter_to_sink-seed101-20260926T192323.335575Z/safety_monitor.json",
+    "eval_diagnosis": "artifacts/attentionbench-e2e-20260927/robocasa-corrected/attention-robocasa-counter_to_sink-seed101-42b3b68848f6/eval_diagnosis.json",
+    "dev_model": "parcc/GLM",
+    "dev_usage_tokens": 455,
+    "eval_model": "parcc/GLM",
+    "eval_usage_tokens": 938,
+    "graph_status": "review",
+    "attempt_status": "failed",
+    "action_count": 2,
+    "successful_gripper_event": "sdk-4",
+    "failed_arm_event": "sdk-6",
+    "safety_violation": "action_outcome_unknown: Agent Server action subprocess exited with code 1",
+    "native_success": false,
+    "formal_eligible": false,
+    "eval_cited_attempt_and_event": true
+  },
+  "postmortem_2026_09_27": {
+    "agent_server_execution_id": "6c074787-d560-43",
+    "agent_server_job_id": "6c07cc53-b8fa-45",
+    "local_log": "/home/truares/文档/Tidybot-Universe/logs/code_execution.log",
+    "observed_exit_code": 1,
+    "observed_duration_seconds": 11.48,
+    "direct_sdk_error": "robot_sdk.arm.ArmError: Timeout: arm did not converge (error=0.3588 m)",
+    "physical_obstacle_confirmed": false,
+    "partial_motion_recorded_by_independent_monitor": true,
+    "fix_scope": "bounded non-convergence detail is now projected from known SDK stderr signature; action_outcome_unknown and no automatic retry remain unchanged",
+    "focused_regression": "17 passed: test_agent_actions_v2.py, test_robocasa_paired_trials.py, test_formal_runner_boundary.py"
+  },
+  "checks": {
+    "focused_tests": "7 passed: test_attention_generated_flow.py and test_attention_bridge_runtime.py",
+    "live_simulator_and_agent_server_used": true,
+    "memory_promotion_tested": false,
+    "formal_experiment_accepted": false
+  },
+  "next_investigation": "Diagnose Agent Server arm-action subprocess exit code 1 and verify safety outcome before retrying arm movement; do not blindly apply the GLM suggestion to retry an uncertain action."
+}

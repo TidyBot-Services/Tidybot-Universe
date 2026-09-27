@@ -60,13 +60,20 @@ def test_budget_matched_random_has_exact_deterministic_count() -> None:
     assert first.selected_slots == second.selected_slots
 
 
+def test_random_target_and_slots_are_validated() -> None:
+    with pytest.raises(ValueError, match="target count"):
+        BudgetMatchedRandomEscalationPolicy(target_request_count=3, total_failure_slots=2, seed=9)
+    assert BudgetMatchedRandomEscalationPolicy(
+        target_request_count=0, total_failure_slots=0, seed=9).selected_slots == frozenset()
+
+
 def test_trace_gate_is_hint_only_and_full_planner_routes_all_actions() -> None:
     gate = build_policy("trace_aware_hint_only")
     assert gate.decide(context(consecutive_failures=2)).request_type is RequestType.HINT
     assert gate.decide(context(evidence_count=0)).action is DecisionAction.INSPECT_TRACE
 
     full = build_policy("full_trace_aware_attention_planner")
-    assert full.decide(context(unsafe=True)).request_type is RequestType.INTERRUPT
+    assert full.decide(context(unsafe=True)).action is DecisionAction.STOP
     assert full.decide(context(approval_required=True)).request_type is RequestType.APPROVAL
     assert full.decide(context(matching_memory_count=1)).action is DecisionAction.RETRIEVE_MEMORY
     assert full.decide(context(consecutive_failures=2)).request_type is RequestType.HINT

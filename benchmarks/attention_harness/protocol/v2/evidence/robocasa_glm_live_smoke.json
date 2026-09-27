@@ -1,0 +1,64 @@
+{
+  "schema_version": "attentionbench.robocasa-glm-live-smoke.v1",
+  "date": "2026-09-24",
+  "status": "live_glm_advisor_candidate_chain_passed_not_formal",
+  "task_id": "counter_to_sink",
+  "seed": 101,
+  "perception_mode": "sim_gt",
+  "model": "parcc/GLM",
+  "endpoint": "https://litellm.parcc.upenn.edu/v1/chat/completions",
+  "credential_handling": "process-only credential; not stored in repository or artifacts; generated-policy worker clears provider credentials before executing policy code",
+  "artifact_root": "/home/truares/桌面/attentionbench-v2-live-glm-budget-smoke",
+  "episode_artifact": "counter_to_sink-seed101-20260924T055222.189580Z",
+  "advisor_trace_id": "trace:counter_to_sink-seed101-20260924T055222.189580Z:0",
+  "request_state": "answered",
+  "response_cached": false,
+  "provider_attempts": 1,
+  "provider_latency_seconds": 4.203,
+  "logical_latency_seconds": 2.0,
+  "token_usage": {
+    "prompt_tokens": 5516,
+    "completion_tokens": 540,
+    "total_tokens": 6056
+  },
+  "resource_accounting": {
+    "token_limit": 30000,
+    "tokens_used": 6056,
+    "assistance_credits_used": 1
+  },
+  "advice_checks": {
+    "schema_valid": true,
+    "task_language_visible": "pick the boxed drink from the counter and place it in the sink",
+    "correctly_named_pick_target": "boxed_drink",
+    "warned_against_generic_object": true,
+    "native_success": false,
+    "advice_executed": false
+  },
+  "memory": {
+    "id": "candidate:attempt:counter_to_sink-seed101-20260924T055222.189580Z:0",
+    "status": "candidate",
+    "source_kind": "advisor_proxy",
+    "source_trace_id": "trace:counter_to_sink-seed101-20260924T055222.189580Z:0",
+    "evidence_ref_count": 4,
+    "applicability": {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "perception_mode": "sim_gt"
+    },
+    "promoted": false
+  },
+  "cache_recheck_without_provider": "hit",
+  "initial_failures_and_fixes": [
+    "A 512-token v2 GLM response could be truncated before valid JSON; v2 now uses a 1024-token cap and bounded format retry with token aggregation.",
+    "The v2 sim_gt runner originally had a zero token budget, cancelling an answered GLM request at accounting; both v2 simulator runners now reserve 30000 tokens by default.",
+    "Without task language in the Advisor packet, GLM guessed the generic object; the public task instruction is now projected and the live response selected boxed_drink."
+  ],
+  "not_verified": [
+    "GLM advice used by a successful robot policy",
+    "candidate paired validation and trusted promotion",
+    "service-side cancellation of in-flight actions",
+    "25/25 task-solving policy stability per task",
+    "held-out performance"
+  ],
+  "formal_eligible": false
+}

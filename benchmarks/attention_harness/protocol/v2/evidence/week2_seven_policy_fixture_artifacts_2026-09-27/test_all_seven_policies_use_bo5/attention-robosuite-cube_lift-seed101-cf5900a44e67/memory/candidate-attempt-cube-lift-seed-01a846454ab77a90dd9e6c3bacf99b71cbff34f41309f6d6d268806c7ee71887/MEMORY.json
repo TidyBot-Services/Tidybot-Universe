@@ -1,0 +1,26 @@
+{
+  "applicability": {
+    "perception_mode": "sim_gt",
+    "suite": "robosuite",
+    "task_id": "cube_lift"
+  },
+  "artifact_kind": "text_hint",
+  "core_record_sha256": "6e1ba0d4ef1c642b36e42efe17dcdff2b4a13b088e091169f50a50df22542421",
+  "created_at": 1790477649.4165885,
+  "files": {
+    "knowledge/guidance.md": "dc39ca8ab4c45d90cfac8b7d5f9d7345c329983248e66bf63947cc1fcd02f181",
+    "knowledge/repair.md": "4e49e67ea6c9637cae1194bde1d6a38f9b7b3ff9fd680b8bbaa02e1ebf3c02a8",
+    "lifecycle.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source/provenance.json": "7dcf243efd9de0d8ad334491f6a3ea7428234e059006b42e9741931c6b9e78f7",
+    "usage.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "validation/impact.json": "19bc5ef74aee4d6513f76a0308b5530fb36a2eaa36bb88d25e06f4c89b77bcd9",
+    "validation/pairs.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "validation/plan.json": "3a84a47b7e4b3263225f4d34c787ea3d7ad8bc0aa936f6946095c0ae97b6692b",
+    "validation/scope.json": "45bd7a6f67cb2ba3c291351badc3730426b4bf6550bc12b28fd9bdd7ba93c7bd"
+  },
+  "memory_id": "candidate:attempt:cube_lift-seed101-20260927T025409.390376Z:0",
+  "schema_version": "attentionbench.memory-package.v2",
+  "source_kind": "advisor_proxy",
+  "status": "candidate",
+  "version": 1
+}

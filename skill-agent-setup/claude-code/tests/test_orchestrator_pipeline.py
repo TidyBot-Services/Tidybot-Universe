@@ -373,6 +373,115 @@ async def test_xbot_start_endpoint(orch):
         orch.spawn_skill_pipeline = mock_pipeline
 
 
+async def test_attention_auto_start_dispatches_ready_graph(orch):
+    """The Attention UI entrypoint enables autonomous mode and delegates DAG order."""
+    orch.skill_entries = [make_entry("leaf"), make_entry("child", deps=["leaf"])]
+    original_targets = orch.targets
+    original_dev_mode = orch.dev_mode
+    original_autonomous_mode = orch.autonomous_mode
+    orch.targets = [{"name": "sim", "agent_server": "http://localhost:8080"}]
+    orch.agents.clear()
+    orch.dev_mode = False
+    orch.autonomous_mode = False
+    spawned = []
+    original_spawn = orch.spawn_agent
+
+    async def mock_spawn(skill, prompt, agent_type="dev", target=None):
+        spawned.append((skill, target["name"]))
+        return f"agent-{skill}"
+
+    async def request(body, *, split_body=False):
+        payload = json.dumps(body)
+        header = f"POST /attention/auto-start HTTP/1.1\r\nContent-Length: {len(payload)}\r\n\r\n"
+        reader = asyncio.StreamReader()
+        reader.feed_data(header.encode() if split_body else (header + payload).encode())
+        if not split_body:
+            reader.feed_eof()
+        transport = type("T", (), {"is_closing": lambda self: False})()
+        writer = asyncio.StreamWriter(transport, asyncio.StreamReaderProtocol(asyncio.StreamReader()),
+                                      None, asyncio.get_event_loop())
+        written = []
+        writer.write = lambda data: written.append(data)
+        writer.drain = AsyncMock()
+        writer.close = lambda: None
+        if split_body:
+            response_task = asyncio.create_task(orch.handle_http(reader, writer))
+            await asyncio.sleep(0)
+            reader.feed_data(payload.encode())
+            reader.feed_eof()
+            await response_task
+        else:
+            await orch.handle_http(reader, writer)
+        return b"".join(written).decode()
+
+    orch.spawn_agent = mock_spawn
+    try:
+        rejected = await request({"graph": "other-graph"})
+        check("wrong graph is rejected", "409 Conflict" in rejected and not spawned)
+        response = await request({"graph": orch.GRAPH_DIR.name}, split_body=True)
+        check("fragmented HTTP body is accepted", "200 OK" in response)
+        check("auto-start enables autonomous mode", orch.autonomous_mode and orch.dev_mode)
+        check("only ready leaf is dispatched", spawned == [("leaf", "sim")])
+        check("child remains planned", orch._find_entry("child")["status"] == "planned")
+        check("auto-start reports spawned leaf", '"spawned": ["leaf"]' in response)
+        await orch._confirm_skill_done("leaf")
+        check("completion dispatches downstream", spawned[-1] == ("child", "sim"))
+    finally:
+        orch.spawn_agent = original_spawn
+        orch.targets = original_targets
+        orch.dev_mode = original_dev_mode
+        orch.autonomous_mode = original_autonomous_mode
+
+
+async def test_ui_snapshot_endpoint(orch):
+    """The unified workspace can read DAG state without changing it."""
+    orch.skill_entries = [make_entry("detect", status="done"), make_entry("grasp", ["detect"])]
+    orch.agents.clear()
+    orch.agents["eval-grasp"] = orch.AgentState(
+        agent_id="eval-grasp", skill="grasp", agent_type="evaluator", status="running"
+    )
+    request = "GET /ui-snapshot HTTP/1.1\r\nHost: localhost\r\n\r\n"
+    reader = asyncio.StreamReader()
+    reader.feed_data(request.encode())
+    reader.feed_eof()
+    transport = type("T", (), {"is_closing": lambda self: False})()
+    writer = asyncio.StreamWriter(transport, asyncio.StreamReaderProtocol(asyncio.StreamReader()),
+                                  None, asyncio.get_event_loop())
+    written = []
+    writer.write = lambda data: written.append(data)
+    writer.drain = AsyncMock()
+    writer.close = lambda: None
+    await orch.handle_http(reader, writer)
+    response = written[0].decode()
+    payload = json.loads(response.split("\r\n\r\n", 1)[1])
+    check("/ui-snapshot returns graph", payload["graph"] == orch.GRAPH_DIR.name)
+    check("/ui-snapshot retains dependencies", payload["entries"][1]["dependencies"] == ["detect"])
+    check("/ui-snapshot does not mutate entries", orch.skill_entries[1]["status"] == "planned")
+    check("/ui-snapshot reports dispatch mode", payload["autonomous_mode"] == orch.autonomous_mode)
+    check("/ui-snapshot exposes active Eval model", payload["agents"][0]["model"] == "claude-sonnet-4-6")
+    orch.agents.clear()
+
+
+async def test_ui_snapshot_keeps_confirmed_done_with_stale_agent(orch):
+    orch.skill_entries = [make_entry("leaf", status="done")]
+    orch.agents.clear()
+    orch.agents["dev-leaf"] = orch.AgentState(agent_id="dev-leaf", skill="leaf", status="done")
+    reader = asyncio.StreamReader()
+    reader.feed_data(b"GET /ui-snapshot HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    reader.feed_eof()
+    transport = type("T", (), {"is_closing": lambda self: False})()
+    writer = asyncio.StreamWriter(transport, asyncio.StreamReaderProtocol(asyncio.StreamReader()),
+                                  None, asyncio.get_event_loop())
+    written = []
+    writer.write = lambda data: written.append(data)
+    writer.drain = AsyncMock()
+    writer.close = lambda: None
+    await orch.handle_http(reader, writer)
+    payload = json.loads(written[0].decode().split("\r\n\r\n", 1)[1])
+    check("/ui-snapshot keeps graph done status", payload["entries"][0]["status"] == "done")
+    orch.agents.clear()
+
+
 async def test_task_root_detection(orch):
     """_is_task_root should identify the skill no other skill depends on."""
     orch.skill_entries = [
@@ -733,6 +842,30 @@ async def test_graph_meta_load(orch):
         os.unlink(graph_file.name)
 
 
+async def test_restart_keeps_review_gate(orch):
+    """An exhausted review must not become an automatically retriable failure."""
+    graph_file = make_graph([
+        make_entry("needs-review", status="review"),
+        make_entry("in-flight", status="evaluating"),
+    ])
+    old_repos = orch.LOCAL_REPOS
+    old_entries = orch.skill_entries
+    old_meta = orch.graph_meta
+    old_targets = orch.targets
+    try:
+        from pathlib import Path
+        orch.LOCAL_REPOS = Path(graph_file)
+        orch._load_entries()
+        check("restart preserves review", orch._find_entry("needs-review")["status"] == "review")
+        check("restart resets in-flight work", orch._find_entry("in-flight")["status"] == "failed")
+    finally:
+        orch.LOCAL_REPOS = old_repos
+        orch.skill_entries = old_entries
+        orch.graph_meta = old_meta
+        orch.targets = old_targets
+        os.unlink(graph_file)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -764,6 +897,9 @@ def main():
             ("Planner done does NOT auto-spawn", test_handle_planner_done),
             ("Dev done goes to review", test_handle_dev_done_goes_to_review),
             ("/xbot-start endpoint", test_xbot_start_endpoint),
+            ("Attention auto-start dispatch", test_attention_auto_start_dispatches_ready_graph),
+            ("/ui-snapshot endpoint", test_ui_snapshot_endpoint),
+            ("/ui-snapshot completed-node status", test_ui_snapshot_keeps_confirmed_done_with_stale_agent),
             ("Task root detection", test_task_root_detection),
             ("Task root needs task_env meta", test_task_root_no_meta),
             ("Task root skips test_writer", test_task_root_skips_test_writer),
@@ -777,6 +913,7 @@ def main():
             ("Dev → plan → dev status transitions", test_dev_to_plan_back_to_dev_status_transitions),
             ("Concurrent plan and dev branches", test_concurrent_plan_and_dev_branches),
             ("Graph metadata loading", test_graph_meta_load),
+            ("Restart preserves review gate", test_restart_keeps_review_gate),
         ]
 
         print("=" * 60)

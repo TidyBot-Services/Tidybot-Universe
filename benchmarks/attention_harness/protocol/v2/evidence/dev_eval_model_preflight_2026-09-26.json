@@ -1,0 +1,36 @@
+{
+  "schema_version": "attentionbench.dev-eval-model-preflight.v1",
+  "date": "2026-09-26",
+  "purpose": "Bounded model and Dev-agent preflight before a dual-simulator development smoke; not a harness or formal result",
+  "universe_branch": "feature/attention-native-robosuite",
+  "universe_base_commit": "bb16e29",
+  "gateway": {
+    "models_endpoint_authenticated": true,
+    "available_model_ids": ["parcc/GLM", "parcc/Qwen"],
+    "glm_chat_completion": "HTTP success in 0.24 seconds with max_tokens=16; output budget was consumed by reasoning tokens",
+    "qwen_chat_completion": "Timeout after 20.04 seconds; one diagnostic retry timed out after 55.09 seconds"
+  },
+  "dev_agent_canary": {
+    "backend": "OpenClaw local tidybot-dev",
+    "provider": "litellm-parcc",
+    "model": "parcc/GLM",
+    "result": "Completed a read-only review of a no-op policy; did not edit or execute code",
+    "session_id": "e0a2b5aa-ce71-49eb-bcd8-ecde395d5161",
+    "workspace_note": "OpenClaw's configured workspace is an older checkout; the prompt included the exact code snippet, not a path-based read of the current checkout"
+  },
+  "temporary_eval_agent_canary": {
+    "user_authorized_model_substitution": "Use GLM instead of Qwen for this connection smoke only",
+    "backend": "OpenClaw local tidybot-evaluator-glm-smoke",
+    "provider": "litellm-parcc",
+    "model": "parcc/GLM",
+    "result": "Model responded to a read-only diagnostic prompt; no harness artifact was supplied",
+    "diagnostic_quality_note": "The canary incorrectly interpreted expected no-op native failure as evaluator breakage. The native verdict was not changed; artifact-grounded Eval remains untested.",
+    "session_id": "09151a52-dff0-4272-89ed-f9c197bcc9a6"
+  },
+  "connection_policy": {
+    "path": "benchmarks/attention_harness/protocol/v2/policies/dual_sim_connection_noop.py",
+    "sha256": "e634b7a321ffcd9fa568dba94029633023101c27f162e805657d64297aa6b767",
+    "purpose": "Negative control only; expected native_success=false"
+  },
+  "status": "Temporary GLM Eval choice granted; awaiting operator approval of policy hash; no new simulator attempt executed"
+}

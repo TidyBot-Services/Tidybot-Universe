@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol
 
+from .assessment import TraceAssessment
 from .models import RequestPriority, RequestType
 
 
@@ -17,6 +18,7 @@ class DecisionAction(str, Enum):
     INSPECT_TRACE = "inspect_trace"
     RETRIEVE_MEMORY = "retrieve_memory"
     REQUEST = "request"
+    STOP = "stop"
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,7 @@ class PolicyContext:
     unsafe: bool = False
     approval_required: bool = False
     demo_available: bool = False
+    assessment: TraceAssessment | None = None
 
 
 @dataclass(frozen=True)
@@ -40,12 +43,19 @@ class PolicyDecision:
     reason: str
     request_type: RequestType | None = None
     priority: RequestPriority | None = None
+    event_ids: tuple[str, ...] = ()
+    evidence_ids: tuple[str, ...] = ()
+    prior_trace_ids: tuple[str, ...] = ()
+    prior_event_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         is_request = self.action is DecisionAction.REQUEST
-        if is_request != (self.request_type is not None):
+        local_interrupt = (self.action is DecisionAction.STOP and
+                           self.request_type is RequestType.INTERRUPT and
+                           self.priority is RequestPriority.CRITICAL)
+        if not local_interrupt and is_request != (self.request_type is not None):
             raise ValueError("request decisions require exactly one request type")
-        if is_request != (self.priority is not None):
+        if not local_interrupt and is_request != (self.priority is not None):
             raise ValueError("request decisions require exactly one priority")
 
 
@@ -113,10 +123,16 @@ class BudgetMatchedRandomEscalationPolicy:
     policy_id = "budget_matched_random_escalation"
 
     def __init__(self, *, target_request_count: int, total_failure_slots: int, seed: int) -> None:
-        if total_failure_slots < 1:
-            raise ValueError("total_failure_slots must be positive")
-        if not 0 <= target_request_count <= total_failure_slots:
+        if isinstance(total_failure_slots, bool) or not isinstance(total_failure_slots, int) or total_failure_slots < 0:
+            raise ValueError("total_failure_slots must be non-negative")
+        if (isinstance(target_request_count, bool) or not isinstance(target_request_count, int)
+                or not 0 <= target_request_count <= total_failure_slots):
             raise ValueError("target count must fit within failure slots")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise ValueError("random escalation seed must be an integer")
+        self.target_request_count = target_request_count
+        self.total_failure_slots = total_failure_slots
+        self.seed = seed
         ranked = sorted(
             range(total_failure_slots),
             key=lambda slot: hashlib.sha256(f"{seed}:{slot}".encode()).digest(),
@@ -133,39 +149,71 @@ class TraceAwareHintOnlyPolicy:
     policy_id = "trace_aware_hint_only"
 
     def decide(self, context: PolicyContext) -> PolicyDecision:
-        trace_is_actionable = context.evidence_count >= 1 and context.has_hypothesis
-        if context.consecutive_failures >= 2 and trace_is_actionable:
-            return _request(context, RequestType.HINT, "trace_gate_escalated")
-        if not trace_is_actionable:
-            return PolicyDecision(DecisionAction.INSPECT_TRACE, "trace_not_actionable")
-        return PolicyDecision(DecisionAction.RETRY, "trace_gate_continue")
+        return _trace_decision(context, full=False)
 
 
 class FullTraceAwareAttentionPlanner:
     policy_id = "full_trace_aware_attention_planner"
 
     def decide(self, context: PolicyContext) -> PolicyDecision:
-        if context.unsafe:
-            return _request(
-                context,
-                RequestType.INTERRUPT,
-                "unsafe_execution_detected",
-                RequestPriority.CRITICAL,
-            )
-        if context.approval_required:
-            return _request(
-                context,
-                RequestType.APPROVAL,
-                "irreversible_action_requires_approval",
-                RequestPriority.HIGH,
-            )
-        if context.matching_memory_count:
+        return _trace_decision(context, full=True)
+
+
+def _trace_decision(context: PolicyContext, *, full: bool) -> PolicyDecision:
+    """Shared trace gate; the full method alone can choose Memory or approval."""
+    a = context.assessment
+    refs = dict(event_ids=a.event_ids, evidence_ids=a.evidence_ids,
+                prior_trace_ids=a.prior_trace_ids,
+                prior_event_ids=a.prior_event_ids) if a else {}
+    if context.unsafe:
+        return PolicyDecision(DecisionAction.STOP, "independent_safety_stop", **refs)
+    if a and a.risk == "safety":
+        if full:
+            return PolicyDecision(DecisionAction.STOP, "trace_safety_interrupt",
+                                  RequestType.INTERRUPT, RequestPriority.CRITICAL, **refs)
+        return PolicyDecision(DecisionAction.STOP, "trace_safety_stop", **refs)
+    if context.approval_required:
+        if full:
+            decision = _request(context, RequestType.APPROVAL,
+                                "irreversible_action_requires_approval", RequestPriority.HIGH)
+            return PolicyDecision(decision.action, decision.reason, decision.request_type,
+                                  decision.priority, **refs)
+        return PolicyDecision(DecisionAction.STOP, "approval_required_policy_cannot_proceed", **refs)
+    if a is None:
+        # Compatibility for callers that have not supplied a projected packet.
+        if full and context.matching_memory_count:
             return PolicyDecision(DecisionAction.RETRIEVE_MEMORY, "trusted_memory_matches")
         if context.evidence_count == 0 or not context.has_hypothesis:
-            return PolicyDecision(DecisionAction.INSPECT_TRACE, "collect_trace_evidence")
+            return PolicyDecision(DecisionAction.INSPECT_TRACE, "trace_needs_inspection")
         if context.consecutive_failures >= 2:
             return _request(context, RequestType.HINT, "repeated_grounded_failure")
         return PolicyDecision(DecisionAction.RETRY, "safe_grounded_retry")
+    if not a.evidence_sufficient:
+        if context.consecutive_failures >= 2:
+            decision = _trace_request(context, "cause_unknown_after_inspection")
+        else:
+            decision = PolicyDecision(DecisionAction.INSPECT_TRACE, "insufficient_visible_evidence")
+    elif full and context.matching_memory_count:
+        decision = PolicyDecision(DecisionAction.RETRIEVE_MEMORY, "trusted_memory_matches")
+    elif a.repeated_failure and not a.progress:
+        decision = _trace_request(context,
+                            "same_failure_after_code_change" if a.code_changed else
+                            "unchanged_repeated_failure" if a.code_changed is False else
+                            "repeated_failure_code_unknown")
+    elif a.locally_repairable:
+        decision = PolicyDecision(DecisionAction.RETRY, "visible_local_repair_candidate")
+    elif context.consecutive_failures >= 2:
+        decision = _trace_request(context, "cause_unresolved")
+    else:
+        decision = PolicyDecision(DecisionAction.INSPECT_TRACE, "cause_needs_inspection")
+    return PolicyDecision(decision.action, decision.reason, decision.request_type,
+                          decision.priority, **refs)
+
+
+def _trace_request(context: PolicyContext, reason: str) -> PolicyDecision:
+    if context.assistance_remaining <= 0:
+        return PolicyDecision(DecisionAction.STOP, "unresolved_failure_no_assistance_budget")
+    return _request(context, RequestType.HINT, reason)
 
 
 POLICY_IDS = (

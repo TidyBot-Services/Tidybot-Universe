@@ -1,0 +1,32 @@
+{
+  "schema_version": "attentionbench.ui-run-catalog.v1",
+  "profiles": [
+    {
+      "id": "robosuite-cube-lift-101",
+      "suite": "robosuite",
+      "task": "cube_lift",
+      "execution_target": "robosuite_sim",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_normal.py",
+      "approved_policy_sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json",
+      "approved_config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+      "service_source_root": "/home/truares/桌面/robosuite_sim-service"
+    },
+    {
+      "id": "robocasa-counter-to-sink-101",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "execution_target": "robocasa_sim",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/robocasa_noop.py",
+      "approved_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json",
+      "approved_config_sha256": "ba1178b86b5f810b4a89ccc4a3d6545e208c488e6f9be936ae22de2ff01c0c54",
+      "sim_source_root": "/home/truares/桌面/maniskill_sim-attention-variation",
+      "agent_source_root": "/home/truares/文档/Tidybot-Universe/agent_server",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks",
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python"
+    }
+  ],
+  "formal_eligible": false
+}

@@ -1,0 +1,12 @@
+{
+  "rule": "SHA-256(seed:failure_slot) rank; select lowest target_request_count slots",
+  "schema_version": "attentionbench.random-escalation-prereg.v1",
+  "seed": 101,
+  "selected_slots": [
+    0,
+    1
+  ],
+  "source": "operator_pre_registered_target_no_full_trace_or_result",
+  "target_request_count": 2,
+  "total_failure_slots": 2
+}

@@ -9,6 +9,7 @@ from benchmarks.attention_harness.advisor_proxy import build_advisor_request
 from benchmarks.attention_harness.core.advisor import AdvisorProxy
 from benchmarks.attention_harness.core.models import (
     AttentionRequestRecord,
+    AttemptStatus,
     EvidenceRef,
     ExecutionOutcome,
     FailureSummary,
@@ -137,6 +138,10 @@ def _populated_store(path: Path) -> AttentionStore:
     run, attempt, _, _ = records()
     store.create_run(run)
     store.create_attempt(attempt)
+    store.complete_attempt(attempt.attempt_id, AttemptStatus.FAILED,
+                           ended_at=3.0, native_success=False,
+                           artifact_uri="artifact://attempt/result.json",
+                           event_key="finish:attempt-1")
     return store
 
 

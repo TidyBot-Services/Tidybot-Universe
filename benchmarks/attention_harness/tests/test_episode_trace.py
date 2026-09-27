@@ -60,6 +60,7 @@ def test_failed_episode_persists_linked_raw_and_advisor_traces(
     episode_dir = _episode_dir(tmp_path)
     code_path = episode_dir / "generated_policy.py"
     code_path.write_text("from robot_sdk import gripper\ngripper.close()\n", encoding="utf-8")
+    (episode_dir / "advisor_replay.mp4").write_bytes(b"public-camera-recording")
     action_trace = json.loads((episode_dir / "trace.jsonl").read_text())
     kwargs = dict(
         episode_dir=episode_dir,
@@ -96,6 +97,8 @@ def test_failed_episode_persists_linked_raw_and_advisor_traces(
     assert raw["code"]["artifact_uri"].endswith("/generated_policy.py")
     assert advisor["raw_trace_id"] == raw["raw_trace_id"]
     assert advisor["failure"]["stage"] == "grasp"
+    assert any(item["kind"] == "advisor_replay" and item["mime_type"] == "video/mp4"
+               and item["visibility"] == ["advisor"] for item in advisor["evidence"])
     serialized = json.dumps(advisor, sort_keys=True).lower()
     assert "native_success" not in serialized
     assert "object_pose" not in serialized

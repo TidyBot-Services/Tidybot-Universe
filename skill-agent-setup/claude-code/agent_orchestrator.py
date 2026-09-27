@@ -993,12 +993,13 @@ def _load_entries():
     targets.clear()
     targets.extend(new_targets)
 
-    # Reset stale statuses from previous sessions — anything not "done" or "planned"
-    # is leftover state (writing, testing, review, failed) with no live agent behind it.
+    # Reset in-flight work from a previous process. Review is a deliberate
+    # terminal gate (including exhausted evaluator retries), so it must
+    # survive restart or auto-dispatch would silently retry it again.
     reset_count = 0
     for entry in skill_entries:
         status = entry.get("status", "planned")
-        if status not in ("done", "confirmed_done", "planned"):
+        if status not in ("done", "confirmed_done", "planned", "review"):
             entry["status"] = "failed"
             reset_count += 1
     if reset_count:
@@ -2971,6 +2972,15 @@ async def _auto_spawn_ready_skills() -> list[str]:
                 )
                 print(f"[ORCH] {name}: attached eval feedback ({len(fb)} chars) for retry")
 
+            # Legacy graph tests and callers may not have loaded targets yet.
+            # Preserve their single-target pipeline while graph-backed runs
+            # use the configured per-target agent server below.
+            if not targets_live and (name, "") not in active_pairs:
+                await spawn_skill_pipeline(name, prompt)
+                _update_entry(name, {"status": "writing"})
+                spawned.append(name)
+                continue
+
             # Spawn one agent per target (parallel multi-target development)
             spawned_any = False
             for t in targets_live:
@@ -2978,8 +2988,8 @@ async def _auto_spawn_ready_skills() -> list[str]:
                     continue  # already has an agent on this target
 
                 print(f"[ORCH] Auto-spawning dev for '{name}' on target '{t['name']}' ({t['agent_server']})")
-                await spawn_agent(name, prompt, agent_type="dev", target=t)
-                spawned_any = True
+                agent_id = await spawn_agent(name, prompt, agent_type="dev", target=t)
+                spawned_any = spawned_any or bool(agent_id)
 
             if spawned_any:
                 _update_entry(name, {"status": "writing"})
@@ -3247,23 +3257,29 @@ async def handle_http(reader, writer):
     POST /xbot-start  Trigger auto-spawn of all skills with satisfied dependencies
     GET  /status      -> all agents
     """
-    data = await reader.read(8192)
-    request = data.decode()
-    lines = request.split("\r\n")
-    method, path, _ = lines[0].split(" ", 2)
-
-    # Extract body
-    body = ""
-    if "\r\n\r\n" in request:
-        body = request.split("\r\n\r\n", 1)[1]
-
-    global dev_mode
+    global dev_mode, autonomous_mode
 
     response_body = ""
     status = "200 OK"
     content_type = "application/json"
 
     try:
+        # A single read() may return only the headers. Wait for the declared
+        # body before handling writes, otherwise a split TCP packet makes an
+        # otherwise valid /attention/auto-start look like a graph mismatch.
+        header = (await reader.readuntil(b"\r\n\r\n")).decode("utf-8")
+        lines = header.split("\r\n")
+        method, path, _ = lines[0].split(" ", 2)
+        headers = {}
+        for line in lines[1:]:
+            if ":" in line:
+                key, value = line.split(":", 1)
+                headers[key.lower()] = value.strip()
+        body_size = int(headers.get("content-length", "0"))
+        if body_size < 0 or body_size > 16 * 1024 * 1024:
+            raise ValueError("invalid Content-Length")
+        body = (await reader.readexactly(body_size)).decode("utf-8") if body_size else ""
+
         if method == "POST" and path == "/xbot-start":
             dev_mode = True
             print("[ORCH] Dev mode enabled — agents can now spawn")
@@ -3273,6 +3289,29 @@ async def handle_http(reader, writer):
                 "spawned": spawned if spawned else [],
                 "message": f"Started {len(spawned)} skill(s)" if spawned else "No skills ready (all deps not met or already in progress)",
             })
+
+        elif method == "POST" and path == "/attention/auto-start":
+            # The Attention workspace starts the existing DAG state machine;
+            # it does not duplicate dependency or evaluator decisions.
+            params = json.loads(body or "{}")
+            if not isinstance(params, dict) or params.get("graph") != GRAPH_DIR.name:
+                status = "409 Conflict"
+                response_body = json.dumps({"error": "active graph does not match"})
+            else:
+                dev_mode = True
+                autonomous_mode = True
+                # OpenClaw imports this file a second time as a module. Its
+                # immutable mode flags do not share identity with __main__.
+                # Keep both execution paths in autonomous mode before spawning.
+                sibling = sys.modules.get("agent_orchestrator")
+                if sibling is not None and sibling is not sys.modules.get(__name__):
+                    sibling.dev_mode = True
+                    sibling.autonomous_mode = True
+                spawned = await _auto_spawn_ready_skills()
+                response_body = json.dumps({
+                    "ok": True, "graph": GRAPH_DIR.name,
+                    "autonomous_mode": autonomous_mode, "spawned": spawned,
+                })
 
         elif method == "POST" and path == "/spawn":
             params = json.loads(body)
@@ -3308,6 +3347,29 @@ async def handle_http(reader, writer):
 
         elif method == "GET" and path == "/entries":
             response_body = json.dumps(skill_entries)
+
+        elif method == "GET" and path == "/ui-snapshot":
+            # Read-only snapshot for the unified AttentionBench workspace.
+            # Keep historical agent_log and target server URLs out of this
+            # endpoint. Full conversations remain in the session API. The
+            # persisted graph status is authoritative: build_full_sync overlays
+            # stale finished-agent states for the legacy dashboard.
+            snapshot = build_full_sync()
+            response_body = json.dumps({
+                "graph": snapshot["graph"],
+                "dev_mode": dev_mode,
+                "autonomous_mode": autonomous_mode,
+                "entries": [
+                    {key: entry.get(key) for key in
+                     ("name", "description", "status", "dependencies", "agent_id", "agent_type")}
+                    for entry in _entries_list()
+                ],
+                "agents": [
+                    {**agent, "model": "claude-sonnet-4-6" if HARNESS == "claude-sdk" else None}
+                    for agent in snapshot["agents"]
+                ],
+                "live_sessions": snapshot["live_sessions"],
+            })
 
         elif method == "POST" and path == "/entries":
             params = json.loads(body)
@@ -3378,6 +3440,9 @@ async def handle_http(reader, writer):
             status = "404 Not Found"
             response_body = json.dumps({"error": "not found"})
 
+    except (ValueError, asyncio.IncompleteReadError, asyncio.LimitOverrunError) as e:
+        status = "400 Bad Request"
+        response_body = json.dumps({"error": str(e)})
     except Exception as e:
         status = "500 Internal Server Error"
         response_body = json.dumps({"error": str(e)})

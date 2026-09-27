@@ -1,0 +1,72 @@
+{
+  "schema_version": "attentionbench.robocasa-generated-policy-live-smoke.v1",
+  "date": "2026-09-24",
+  "status": "partial_live_chain_passed_not_formal",
+  "score_namespace": "v2/gt_perception_attentionbench",
+  "perception_mode": "sim_gt",
+  "artifact_root": "/home/truares/桌面/attentionbench-v2-live-smoke",
+  "synthetic_advisor_artifact_root": "/home/truares/桌面/attentionbench-v2-live-synthetic-advisor-smoke",
+  "revisions": {
+    "universe_base": "bb16e29dbde34f200be49af2489303f40ae56f66",
+    "universe_generated_policy_changes": "uncommitted_feature_branch",
+    "maniskill_sim_service": "4e590158761493414a036f68e0ae26a7e61dc77b",
+    "agent_server": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30",
+    "robocasa_tasks": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7"
+  },
+  "isolation": {
+    "simulator_http": "127.0.0.1:6300",
+    "agent_server_http": "127.0.0.1:8880",
+    "simulator_bridges": ["arm:6355/6356/6357", "gripper:6370/6371"],
+    "hardware_port_mapping_used": false,
+    "service_manager_enabled": false,
+    "services_stopped_after_test": true
+  },
+  "results": {
+    "counter_to_sink": {
+      "no_op_dev_seeds": [101, 102, 103, 104, 105],
+      "no_op_completed": 5,
+      "no_op_native_success_false": 5,
+      "gripper_open_seed": 101,
+      "gripper_open_sdk_calls": 1,
+      "gripper_open_execution_status": "completed",
+      "gripper_open_native_success": false,
+      "initial_object_count_per_run": 26
+    },
+    "counter_to_cab": {
+      "no_op_dev_seeds": [101, 102, 103, 104, 105],
+      "no_op_completed": 5,
+      "no_op_native_success_false": 5,
+      "gripper_open_seed": 101,
+      "gripper_open_sdk_calls": 1,
+      "gripper_open_execution_status": "completed",
+      "gripper_open_native_success": false,
+      "initial_object_count_per_run": 21
+    }
+  },
+  "trace_checks": {
+    "all_twelve_runs_have_failed_advisor_packet": true,
+    "all_twelve_packets_contain_policy_code": true,
+    "both_action_runs_have_one_gripper_event": true
+  },
+  "synthetic_advisor_chain": {
+    "task": "counter_to_sink",
+    "seed": 101,
+    "responder": "fixed_test_stub_not_parcc_glm",
+    "request_state": "answered",
+    "memory_status": "candidate",
+    "candidate_applicability": {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "perception_mode": "sim_gt"
+    },
+    "model_effectiveness_evidence": false
+  },
+  "not_verified": [
+    "PARCC GLM response (no PARCC_API_KEY or LITELLM_KEY in test environment)",
+    "task-solving generated policy native success",
+    "in-flight agent_server action cancellation at whole-policy timeout",
+    "25/25 development success per task",
+    "held-out performance"
+  ],
+  "formal_eligible": false
+}

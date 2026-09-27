@@ -24,6 +24,7 @@ from .models import (
 from .store import AttentionStore, StateConflictError
 from .memory import MemoryManager
 from .policies import POLICY_IDS, build_policy
+from .assessment import ASSESSMENT_VERSION, TraceAssessment, assess_trace
 from .projection import AttentionProjection
 from .artifacts import build_run_bundle, write_run_bundle
 from .trace import (
@@ -63,6 +64,9 @@ __all__ = [
     "VisibilityProjector",
     "PROJECTION_POLICY_VERSION",
     "AttentionProjection",
+    "ASSESSMENT_VERSION",
+    "TraceAssessment",
+    "assess_trace",
     "build_policy",
     "build_run_bundle",
     "write_run_bundle",

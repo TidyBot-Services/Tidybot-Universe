@@ -1,0 +1,531 @@
+{
+  "date": "2026-09-27",
+  "formal_eligible": false,
+  "repository": {
+    "branch": "feature/attention-native-robosuite",
+    "head": "bb16e29dbde34f200be49af2489303f40ae56f66",
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native",
+    "preexisting_dirty_worktree": true
+  },
+  "runs": [
+    {
+      "approved_config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+      "approved_policy_sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+      "attempts": [
+        {
+          "advisor_guidance_applied": false,
+          "artifacts": {
+            "native_result": {
+              "sha256": "c6c20cafe47276db9643d365363f8573d5dcf61be670f904e7640211d192ec2d",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473427090797644/native_result.json"
+            },
+            "safety": {
+              "sha256": "765eae7f97f7cef2f3667be66f0bc8277c8b0bd970bea7bbafe7b7501e66bf75",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473427090797644/safety.json"
+            },
+            "sandbox_receipt": {
+              "sha256": "901bb270271d34bf106c6b09c168a4410463389d4ceb94a5f8ff9d1c35fd3fe7",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473427090797644/sandbox_receipt.json"
+            },
+            "trace": {
+              "sha256": "d2ae17eda23b0cc9d4470c31a7c99356e3634cd8ffc5841818f97e239d9a5b2f",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473427090797644/trace.json"
+            }
+          },
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-001c01c7e0a0:0",
+          "formal_eligible": false,
+          "index": 0,
+          "native_evaluated": true,
+          "native_source": "robosuite_sim/v1/success",
+          "native_success": false,
+          "safety_source": "independent_safety_monitor",
+          "safety_unsafe_attempts": 0,
+          "service_stop": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "mechanism": "dedicated_service_process_group_termination",
+            "pid": 31970,
+            "process_group": 31970,
+            "process_group_gone": true,
+            "reason": "normal_cleanup",
+            "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+          },
+          "status": "completed"
+        },
+        {
+          "advisor_guidance_applied": true,
+          "artifacts": {
+            "native_result": {
+              "sha256": "425a70b565f192dae06656d81129810d3a310bb5dbcf2129610196c67f9d8870",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473434581525322/native_result.json"
+            },
+            "safety": {
+              "sha256": "cfe3e80dbc7efc03b552c4126c00fb648afa51ccfb40768f617bb732bc663697",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473434581525322/safety.json"
+            },
+            "sandbox_receipt": {
+              "sha256": "542f6d6955f58435fb1ee222b7b8680287e0a7cc1c5f0e31aa9b52a7ac230441",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473434581525322/sandbox_receipt.json"
+            },
+            "trace": {
+              "sha256": "9499a8986208d3f17df357e8e5e7a04afe2fd9f98bacc56c2de1483096d1455f",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attempts/cube_lift-seed101-formal-1790473434581525322/trace.json"
+            }
+          },
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-001c01c7e0a0:1",
+          "formal_eligible": false,
+          "index": 1,
+          "native_evaluated": true,
+          "native_source": "robosuite_sim/v1/success",
+          "native_success": false,
+          "safety_source": "independent_safety_monitor",
+          "safety_unsafe_attempts": 0,
+          "service_stop": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "mechanism": "dedicated_service_process_group_termination",
+            "pid": 32609,
+            "process_group": 32609,
+            "process_group_gone": true,
+            "reason": "normal_cleanup",
+            "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+          },
+          "status": "completed"
+        }
+      ],
+      "command_argv": [
+        "/home/truares/bin/with-litellm.sh",
+        "/home/truares/.cache/tidybot-attention/venv/bin/python",
+        "-m",
+        "benchmarks.attention_harness.formal_attention_cli",
+        "--suite",
+        "robosuite",
+        "--task",
+        "cube_lift",
+        "--seed",
+        "101",
+        "--attention-policy",
+        "reactive_help",
+        "--code",
+        "benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_normal.py",
+        "--approved-policy-sha256",
+        "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+        "--config",
+        "benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json",
+        "--approved-config-sha256",
+        "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+        "--artifact-root",
+        "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite",
+        "--max-attempts",
+        "2",
+        "--assistance-credits",
+        "1",
+        "--token-limit",
+        "30000",
+        "--overall-deadline-seconds",
+        "90",
+        "--single-glm-call",
+        "--service-source-root",
+        "/home/truares/桌面/robosuite_sim-service"
+      ],
+      "first_failure_visible_trace": {
+        "evidence": [
+          {
+            "kind": "policy_code",
+            "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa"
+          },
+          {
+            "kind": "execution_context",
+            "sha256": "f92f892c7b0c28cdefce49ea8dcfba13dbbd749915d96b94f03d3821b281cfdf"
+          }
+        ],
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 0.5,
+          "consecutive_failures": 1,
+          "error_type": "TaskOutcomeFailure",
+          "first_failed_event_id": "execution-finished",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-3",
+          "message": "execution finished but the task goal was not verified",
+          "observed_symptom": "execution finished but the task goal was not verified",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "unknown",
+          "termination_reason": null
+        },
+        "hypothesis_status": "unknown",
+        "private_native_success_absent": true,
+        "trace_id": "trace:cube_lift-seed101-formal-1790473427090797644:0"
+      },
+      "formal_eligible": false,
+      "memory_promotion_performed": false,
+      "memory_records": [
+        {
+          "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-001c01c7e0a0:0",
+          "status": "candidate"
+        }
+      ],
+      "native_success": false,
+      "request": {
+        "advice": {
+          "caution": "Do not rely on hidden physics state, actor IDs, or evaluator internals; use only find_objects() results and get_observation() fields as evidence. A gripper.open() alone guarantees failure on cube_lift — the cube must actually be grasped and lifted.",
+          "confidence": 0.95,
+          "diagnosis": "The policy only calls sensors.find_objects() and gripper.open(settle_steps=1), then exits. No motion commands were issued: the end-effector never moved toward the cube, never closed the gripper, and never lifted. The task (cube_lift) cannot succeed because the pick-and-place sequence is entirely missing; the failure is a policy-completeness issue, not a perception or SDK error.",
+          "guidance": "Extend the policy to perform the full lift sequence using the SDK: (1) call sensors.find_objects() and use the returned cube position (sim_gt perception) as the target; (2) read sensors.get_observation() for robot0_eef_pos/quat to know the current gripper pose; (3) command the arm to move above the cube, descend, close the gripper on the cube, and lift upward. Keep gripper.open() only as an initial reset before approaching. Verify each motion step completes before the next, and ensure the cube ends elevated to satisfy the task verification.",
+          "request_type": "hint",
+          "schema_version": "attentionbench.advisor-advice.v1"
+        },
+        "assistance_cost": {
+          "credits": 1,
+          "currency_cost": "unavailable: no verified PARCC tariff or billed amount in response",
+          "tokens": 2190
+        },
+        "cache_key": "564150c1ad1bc0c1d2ffccb26e1ffc8d7ce105ffb4f0c42f67506f10a4d22268",
+        "cached": false,
+        "provider_attempts": 1,
+        "provider_latency_seconds": 2.426,
+        "provider_model": "parcc/GLM",
+        "provider_request_id": null,
+        "request_id": "attention-request:attention-robosuite-cube_lift-seed101-001c01c7e0a0:0",
+        "request_type": "hint",
+        "responder": "advisor_proxy",
+        "response_id": "proxy-response:attention-request:attention-robosuite-cube_lift-seed101-001c01c7e0a0:0",
+        "token_usage": {
+          "completion_tokens": 303,
+          "prompt_tokens": 1887,
+          "total_tokens": 2190
+        },
+        "trace_id": "trace:cube_lift-seed101-formal-1790473427090797644:0"
+      },
+      "resource_usage": {
+        "assistance_credits": 1,
+        "tokens": 2190
+      },
+      "run_id": "run:attention-robosuite-cube_lift-seed101-001c01c7e0a0",
+      "scheduler_config_sha256": "44262aaecd183be137cde5db964709a944f2f5a88dd17ea59f1aad7390aeb249",
+      "second_attempt_used_actual_guidance": true,
+      "seed": 101,
+      "stdout_stderr_log": "/home/truares/桌面/attentionbench-glm-robosuite.log",
+      "stdout_stderr_log_sha256": "d83b96458f8db1fe38b7f9192e3af196572cd0889dcc5a14f88bff6081e0873d",
+      "suite": "robosuite",
+      "summary": {
+        "sha256": "d83b96458f8db1fe38b7f9192e3af196572cd0889dcc5a14f88bff6081e0873d",
+        "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robosuite/attention-robosuite-cube_lift-seed101-001c01c7e0a0/attention_run.json"
+      },
+      "task": "cube_lift"
+    },
+    {
+      "approved_config_sha256": "ba1178b86b5f810b4a89ccc4a3d6545e208c488e6f9be936ae22de2ff01c0c54",
+      "approved_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+      "attempts": [
+        {
+          "advisor_guidance_applied": false,
+          "artifacts": {
+            "native_result": {
+              "sha256": "401bd84a6a8ae73acf161b599123d7302883ac54cb9a8b15ca189f342757497c",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473453662217263/native_result.json"
+            },
+            "safety": {
+              "sha256": "0bb3b3253db643ce172a66f18f63dcaee932449e5b7d12c1a58ed796b32e210b",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473453662217263/safety.json"
+            },
+            "sandbox_receipt": {
+              "sha256": "988ad4045acc26d4b62f2def3819516ef1bb77b896adeb5529ded5c57b1ebd11",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473453662217263/sandbox_receipt.json"
+            },
+            "trace": {
+              "sha256": "17bb9410a55bfaee1e9eae38c77942a249dad4edeb639fd5137d8021a9338654",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473453662217263/trace.json"
+            }
+          },
+          "attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-75ba6438bf97:0",
+          "formal_eligible": false,
+          "index": 0,
+          "native_evaluated": true,
+          "native_source": "robocasa/task/success",
+          "native_success": false,
+          "safety_source": "independent_safety_monitor",
+          "safety_unsafe_attempts": 0,
+          "service_stop": {
+            "mechanism": "dedicated_simulator_and_agent_process_groups",
+            "reason": "normal_cleanup",
+            "services": {
+              "agent": {
+                "exit_code": -15,
+                "leader_reaped": true,
+                "pid": 36960,
+                "process_group": 36960,
+                "process_group_gone": true
+              },
+              "simulator": {
+                "exit_code": -15,
+                "leader_reaped": true,
+                "pid": 34163,
+                "process_group": 34163,
+                "process_group_gone": true
+              }
+            }
+          },
+          "status": "completed"
+        },
+        {
+          "advisor_guidance_applied": true,
+          "artifacts": {
+            "native_result": {
+              "sha256": "1dda56d74dca6745bc5675ec36f41f43672282d804a9c1db3c1f1cba13fabc5d",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473516414481468/native_result.json"
+            },
+            "safety": {
+              "sha256": "7a68756dac945fc38a8849c30c6672edb27771e1e8f3c5c6268244abf888faef",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473516414481468/safety.json"
+            },
+            "sandbox_receipt": {
+              "sha256": "89e943fd5097160cbdf8d02ede1a328bcb7b5fa945dff94964f21ba06914e783",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473516414481468/sandbox_receipt.json"
+            },
+            "trace": {
+              "sha256": "6938a73b4f3cdd585606dc861b4f2a5b3539a3a4c5928fcef09b3cc2e45c1dc7",
+              "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attempts/counter_to_sink-seed101-formal-1790473516414481468/trace.json"
+            }
+          },
+          "attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-75ba6438bf97:1",
+          "formal_eligible": false,
+          "index": 1,
+          "native_evaluated": true,
+          "native_source": "robocasa/task/success",
+          "native_success": false,
+          "safety_source": "independent_safety_monitor",
+          "safety_unsafe_attempts": 0,
+          "service_stop": {
+            "mechanism": "dedicated_simulator_and_agent_process_groups",
+            "reason": "normal_cleanup",
+            "services": {
+              "agent": {
+                "exit_code": -15,
+                "leader_reaped": true,
+                "pid": 41342,
+                "process_group": 41342,
+                "process_group_gone": true
+              },
+              "simulator": {
+                "exit_code": -15,
+                "leader_reaped": true,
+                "pid": 38058,
+                "process_group": 38058,
+                "process_group_gone": true
+              }
+            }
+          },
+          "status": "completed"
+        }
+      ],
+      "command_argv": [
+        "/home/truares/bin/with-litellm.sh",
+        "/home/truares/.cache/tidybot-attention/venv/bin/python",
+        "-m",
+        "benchmarks.attention_harness.formal_attention_cli",
+        "--suite",
+        "robocasa",
+        "--task",
+        "counter_to_sink",
+        "--seed",
+        "101",
+        "--attention-policy",
+        "reactive_help",
+        "--code",
+        "benchmarks/attention_harness/protocol/v2/policies/robocasa_noop.py",
+        "--approved-policy-sha256",
+        "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+        "--config",
+        "benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json",
+        "--approved-config-sha256",
+        "ba1178b86b5f810b4a89ccc4a3d6545e208c488e6f9be936ae22de2ff01c0c54",
+        "--artifact-root",
+        "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa",
+        "--max-attempts",
+        "2",
+        "--assistance-credits",
+        "1",
+        "--token-limit",
+        "30000",
+        "--overall-deadline-seconds",
+        "90",
+        "--single-glm-call",
+        "--sim-source-root",
+        "/home/truares/桌面/maniskill_sim-attention-variation",
+        "--agent-source-root",
+        "/home/truares/文档/Tidybot-Universe/agent_server",
+        "--task-source-root",
+        "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks",
+        "--sim-python",
+        "/home/truares/miniconda3/envs/maniskill/bin/python",
+        "--agent-python",
+        "/home/truares/miniconda3/envs/maniskill/bin/python"
+      ],
+      "first_failure_visible_trace": {
+        "evidence": [
+          {
+            "kind": "policy_code",
+            "sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b"
+          },
+          {
+            "kind": "execution_context",
+            "sha256": "f72dc1d959d7279a6034bb1621abb0decfa2ae466be94cac25d712e73864d424"
+          }
+        ],
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 0.5,
+          "consecutive_failures": 1,
+          "error_type": "TaskOutcomeFailure",
+          "first_failed_event_id": "execution-finished",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-3",
+          "message": "execution finished but the task goal was not verified",
+          "observed_symptom": "execution finished but the task goal was not verified",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "unknown",
+          "termination_reason": null
+        },
+        "hypothesis_status": "unknown",
+        "private_native_success_absent": true,
+        "trace_id": "trace:counter_to_sink-seed101-formal-1790473453662217263:0"
+      },
+      "formal_eligible": false,
+      "memory_promotion_performed": false,
+      "memory_records": [
+        {
+          "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-75ba6438bf97:0",
+          "status": "candidate"
+        }
+      ],
+      "native_success": false,
+      "request": {
+        "advice": {
+          "caution": "Do not request evaluator success criteria, hidden physics state, actor IDs, or any actions outside the documented SDK. The find_objects() results are simulator GT perception, not visual recognition — treat them as permitted evidence only.",
+          "confidence": 0.95,
+          "diagnosis": "The policy is only a stub: it calls sensors.find_objects() twice and sensors.get_observation() once, then exits. No robot actions (arm motion, gripper control, or object manipulation) were ever issued, so the counter_to_sink task goal could not be achieved. The TaskOutcomeFailure is expected — the run completed without attempting the task.",
+          "guidance": "Use the object names and positions returned by sim_gt find_objects() to identify the object(s) on the counter and their target location at the sink. Then implement the full manipulation sequence with the SDK: move the end-effector above the target object, lower it, close the gripper to grasp, lift, transport the object to the sink position, and release. Use get_observation() (robot0_eef_pos, robot0_gripper_width, joint positions) in a closed loop to verify each step before proceeding to the next.",
+          "request_type": "hint",
+          "schema_version": "attentionbench.advisor-advice.v1"
+        },
+        "assistance_cost": {
+          "credits": 1,
+          "currency_cost": "unavailable: no verified PARCC tariff or billed amount in response",
+          "tokens": 2061
+        },
+        "cache_key": "cf85f27570945f35a218aaa64b907883229497e6683cf61ad1220a87d053157c",
+        "cached": false,
+        "provider_attempts": 1,
+        "provider_latency_seconds": 2.332,
+        "provider_model": "parcc/GLM",
+        "provider_request_id": null,
+        "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-75ba6438bf97:0",
+        "request_type": "hint",
+        "responder": "advisor_proxy",
+        "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-75ba6438bf97:0",
+        "token_usage": {
+          "completion_tokens": 289,
+          "prompt_tokens": 1772,
+          "total_tokens": 2061
+        },
+        "trace_id": "trace:counter_to_sink-seed101-formal-1790473453662217263:0"
+      },
+      "resource_usage": {
+        "assistance_credits": 1,
+        "tokens": 2061
+      },
+      "run_id": "run:attention-robocasa-counter_to_sink-seed101-75ba6438bf97",
+      "scheduler_config_sha256": "7e92c25acd72d03a4a999eaaff47d7f040b4b65f747af1a7cc6435d11f881ed0",
+      "second_attempt_used_actual_guidance": true,
+      "seed": 101,
+      "stdout_stderr_log": "/home/truares/桌面/attentionbench-glm-robocasa.log",
+      "stdout_stderr_log_sha256": "83c0d87e2cf0338f9b2b39fdd987c2987d33002ecb8ce8791e1862eef7fc3249",
+      "suite": "robocasa",
+      "summary": {
+        "sha256": "83c0d87e2cf0338f9b2b39fdd987c2987d33002ecb8ce8791e1862eef7fc3249",
+        "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-75ba6438bf97/attention_run.json"
+      },
+      "task": "counter_to_sink"
+    }
+  ],
+  "schema_version": "attentionbench.real-glm-advisor-closure-evidence.v1",
+  "source_sha256": {
+    "benchmarks/attention_harness/core/store.py": "4c29d6ee97ddb62313a11d66d3dc73559177e7b58adefb9fadbefe202d0c597b",
+    "benchmarks/attention_harness/formal_attention_cli.py": "0acf00dca2db1b2f6f7530fc64d65f5e88057128dedfe4dfd236f1b1681d5f24",
+    "benchmarks/attention_harness/tests/test_attention_closure.py": "0d0b2782eeb1a24911aac9e7d1f0fa9c3487173d919e813223d225abf0a50c01",
+    "benchmarks/attention_harness/ui_launch.py": "043d4f312f0f09a9b4cf6402f354187dad90f9d651b760a76b590e134f5fa08b",
+    "benchmarks/attention_harness/ui_launch_worker.py": "5fb38b29296bd90e7326fb44fa95d4de2c6a8295128fd7beff9362ea0c73057f",
+    "benchmarks/attention_harness/v2_advisor.py": "534c78fe0200c4e76a2c6f14e6697ff59de80c3e59ad8ed8af4b367c4ef4cb12"
+  },
+  "tests": {
+    "cache_positive_negative": "test_shared_advisor_cache_reuses_only_matching_visible_conditions passed",
+    "failure_receipt": "test_ui_launch_worker_records_failed_process_without_summary passed",
+    "final_focused": "6 passed in 1.02s after historical evidence content, SHA, run ID and timestamp cases",
+    "final_harness": "309 passed, 10 skipped in 36.54s",
+    "focused": "17 passed in 12.81s; after CLI change 17 passed in 3.18s",
+    "harness": "309 passed, 10 skipped in 35.76s"
+  },
+  "ui": {
+    "advisor_request_count": 0,
+    "assistance_credits_used": 0,
+    "attempt_count": 1,
+    "catalog": {
+      "sha256": "ffc8205a6c89b9bd53d944497fd3332cfa6d4ec25160c5406ee35735625da13a",
+      "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/dev_ui_run_catalog_2026-09-27.json"
+    },
+    "http_entry": "POST http://127.0.0.1:8779/api/runs/start",
+    "launch_id": "launch:554ffd7d5b044b6b9511a5f0a53587f2",
+    "locked_selection": {
+      "approved_config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+      "approved_policy_sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+      "assistance_credits": 0,
+      "assistance_mode": "benchmark_proxy",
+      "attention_policy": "autonomous",
+      "execution_target": "robosuite_sim",
+      "formal_eligible": false,
+      "human_deadline_seconds": 30,
+      "max_attempts": 1,
+      "overall_deadline_seconds": 90,
+      "profile_id": "robosuite-cube-lift-101",
+      "seed": 101,
+      "suite": "robosuite",
+      "task": "cube_lift",
+      "token_limit": 0
+    },
+    "log": {
+      "sha256": "989a01dc51a68dfd4d7c635ce9da96575d45ab503181635033bf4b730b9a3139",
+      "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/ui/launch-554ffd7d5b044b6b9511a5f0a53587f2.log"
+    },
+    "pid": 43830,
+    "restart_observation": "GET /api/runs after stopping and restarting UI server returned the same launch_id, terminal receipt and run_id",
+    "run_status_after_restart": "failed",
+    "server_command_argv": [
+      "/home/truares/bin/with-litellm.sh",
+      "/home/truares/.cache/tidybot-attention/venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.ui_server",
+      "--store",
+      "/home/truares/桌面/attentionbench-glm-closure-20260927/ui/attention.sqlite3",
+      "--artifact-root",
+      "/home/truares/桌面/attentionbench-glm-closure-20260927/ui",
+      "--run-catalog",
+      "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/dev_ui_run_catalog_2026-09-27.json",
+      "--port",
+      "8779"
+    ],
+    "summary": {
+      "sha256": "eac06628b34c65df68375f47b572c825d6c2c8139d767ed3e1cb5b371eb24464",
+      "uri": "/home/truares/桌面/attentionbench-glm-closure-20260927/ui/launch-554ffd7d5b044b6b9511a5f0a53587f2.summary.json"
+    },
+    "terminal_receipt": {
+      "exit_code": 1,
+      "formal_eligible": false,
+      "native_success": false,
+      "run_id": "run:attention-robosuite-cube_lift-seed101-3ac4a1df1905",
+      "state": "completed"
+    }
+  }
+}

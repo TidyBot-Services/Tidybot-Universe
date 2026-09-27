@@ -19,7 +19,7 @@ class AttentionRuntime:
     def __init__(
         self,
         store: AttentionStore,
-        proxy: AdvisorProxy,
+        proxy: AdvisorProxy | None,
         *,
         clock: Callable[[], float],
     ) -> None:
@@ -86,6 +86,7 @@ class AttentionRuntime:
             raise StateConflictError("benchmark-proxy requests have no human deadline")
         if request.deadline_at is None or self.clock() < request.deadline_at:
             raise StateConflictError("request deadline has not elapsed")
+        self.store.record_request_timeout(request_id, timed_out_at=self.clock())
         if request.state is RequestState.PENDING:
             fallback = self.store.transition_request(
                 request_id,
@@ -123,6 +124,8 @@ class AttentionRuntime:
             raise StateConflictError(
                 f"request in state {request.state.value} cannot use AdvisorProxy"
             )
+        if self.proxy is None:
+            raise StateConflictError("AdvisorProxy is not configured for this runtime")
         try:
             packet = self._advisor_packet(request, trace_packet)
             reply = self.proxy.answer(
@@ -178,7 +181,55 @@ class AttentionRuntime:
                 raise StateConflictError(
                     f"trace {request.trace_id!r} does not exist"
                 )
-            return persisted
+            attempt = self.store.get_attempt(request.attempt_id)
+            if attempt is None or (persisted.get("raw_trace_id") is not None
+                                   and attempt["status"] == "running"):
+                raise StateConflictError("Advisor request requires a completed attempt")
+            current_index = attempt["index"]
+            history = []
+            for event in self.store.events():
+                if event["event_type"] != "trace.created":
+                    continue
+                prior = event["payload"]
+                prior_attempt = self.store.get_attempt(prior["attempt_id"])
+                if (prior["run_id"] != request.run_id or prior_attempt is None
+                        or prior_attempt["index"] >= current_index):
+                    continue
+                failure = {
+                    key: value[:300] if isinstance(value, str) else value
+                    for key in ("stage", "error_type", "message", "observed_symptom",
+                                "termination_reason", "classification_source")
+                    if (value := prior.get("failure", {}).get(key)) is not None
+                }
+                history.append((prior_attempt["index"], {
+                    "attempt_index": prior_attempt["index"],
+                    "failure": failure,
+                    "code_sha256": prior.get("code", {}).get("sha256"),
+                    "evidence_refs": [
+                        {"evidence_id": item["evidence_id"], "sha256": item["sha256"]}
+                        for item in prior.get("evidence", [])[:8]
+                    ],
+                    "trace_projection_version": prior.get("projection", {}).get("policy_version"),
+                }))
+            history.sort(key=lambda item: item[0])
+            run = self.store.get_run(request.run_id)
+            if run is None:
+                raise StateConflictError("Advisor request run is missing")
+            conditions = {
+                "suite": run["suite"], "task_id": run["task_id"], "seed": run["seed"],
+                "policy_id": run["policy_id"],
+                "execution_target": run["execution_target"],
+                "assistance_mode": run["assistance_mode"],
+                "budget": {
+                    "assistance_credits": run["budget"]["assistance_credits"],
+                    "language_budget_units": run["budget"]["token_limit"],
+                    "execution_seconds": run["budget"]["execution_seconds"],
+                    "gpu_seconds": run["budget"]["gpu_seconds"],
+                },
+            }
+            return {**persisted,
+                    "experiment": {**conditions, **persisted.get("experiment", {})},
+                    "failure_history": [item for _, item in history[-3:]]}
         packet_id = (
             supplied.trace_id
             if isinstance(supplied, AdvisorTracePacket)

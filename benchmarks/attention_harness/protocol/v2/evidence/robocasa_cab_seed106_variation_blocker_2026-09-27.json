@@ -1,0 +1,118 @@
+{
+  "date": "2026-09-27",
+  "formal_eligible": false,
+  "geometry_diagnostics": {
+    "logs": [
+      {
+        "name": "placement_reasons",
+        "sha256": "d99bad906ed9d434f7693978a3cdd8153a57642b65dc4fdf5276285219926fb7",
+        "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-seed106-placement-reasons.log"
+      },
+      {
+        "name": "sample_range",
+        "sha256": "cafdcd11071009657eafbbe5fae7491f249106e12590dac5435511397c1fadf3",
+        "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-seed106-sample-range.log"
+      },
+      {
+        "name": "region_geometry",
+        "sha256": "72891f04484d0412cf66b197c5b0d9bfdc5739bf952e508d830c28ceb49379fb",
+        "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-seed106-region-geometry.log"
+      },
+      {
+        "name": "center_position_probe",
+        "sha256": "8d61a9ed1cbdc52ab3ee8fab0d49f12cbd22f4376b4662d97e5414d307fb1783",
+        "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-seed106-pos-center-probe.log"
+      },
+      {
+        "name": "boundary_relax_probe",
+        "sha256": "d2455c0b4cd3d702421b2f725d1858be2269e9b1c5e4388b2cdb2070ed36132e",
+        "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-seed106-boundary-relax-probe.log"
+      },
+      {
+        "name": "counter_region_probe",
+        "sha256": "512c284b968f48cc5de5ca04e4634ae1f64885f5baa7000c12609f067c9e5ddd",
+        "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-seed106-counter-region-probe.log"
+      }
+    ],
+    "one_observed_region_m": {
+      "p0": [
+        3.32,
+        -0.53,
+        0.92
+      ],
+      "px": [
+        3.68,
+        -0.53,
+        0.92
+      ],
+      "py": [
+        3.32,
+        -0.23,
+        0.92
+      ]
+    },
+    "one_time_parameter_probes": {
+      "center_position": "still_zero_object_actors",
+      "disable_target_boundary_check": "still_zero_object_actors",
+      "remove_target_counter_reference_and_center": "still_zero_object_actors"
+    },
+    "out_of_region_target_samples": 500001,
+    "target_horizontal_radius_m_first_sample": 0.04696282126674369,
+    "target_overlap_samples": 1,
+    "target_region_valid_samples": 2,
+    "target_samples_total": 500003
+  },
+  "inference": "The upstream RoboCasa kitchen scene exhausted its 10 outer by 10 inner object-placement attempts for seed 106 and left object_actors empty. The Service variation identity then correctly refused to invent an object set.",
+  "isolated_simulator_url": "http://127.0.0.1:6400",
+  "matrix_effect": "The 101-125 RoboCasa development matrix cannot be frozen from this Service state.",
+  "observations": {
+    "ground_truth_request": {
+      "body": {},
+      "method": "POST",
+      "path": "/objects/ground_truth"
+    },
+    "ground_truth_response": {
+      "count": 0,
+      "objects": []
+    },
+    "public_perceive_contains_name_object": true,
+    "public_perceive_object_count": 22,
+    "repeat_count": 2,
+    "reset_http_status": 500,
+    "reset_response": {
+      "status": "error: task has no observable object configuration"
+    },
+    "task_info_language": "pick the garlic from the counter and place it in the cabinet"
+  },
+  "placement_trace": {
+    "command": "Instantiate ManiskillServer for RoboCasa-Pn-P-Counter-To-Cab-v0 at seed 106 with sys.settrace collecting RandomizationError in kitchen.py _load_scene; no source files changed",
+    "log_sha256": "ade1d0975c44774625d50f88b97f95c08b720b7d4b302c1f615d08f3f2d2c421",
+    "log_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-seed106-placement-trace.log",
+    "object_actors_count": 0,
+    "randomization_error_count": 100,
+    "randomization_error_message": "Cannot place all objects ):",
+    "upstream_source_sha256": "efd64ab206581010a8fa54ca4700bf523d66fdb7670d847d1c3258ee57b6d7a9",
+    "upstream_source_uri": "/home/truares/miniconda3/envs/maniskill/lib/python3.11/site-packages/mani_skill/envs/tasks/mobile_manipulation/robocasa/kitchen.py"
+  },
+  "request": {
+    "body": {
+      "discover_variation": true,
+      "seed": 106
+    },
+    "method": "POST",
+    "path": "/reset"
+  },
+  "schema_version": "attentionbench.robocasa-formal-variation-blocker.v1",
+  "seed": 106,
+  "service_identity": {
+    "revision": "4e590158761493414a036f68e0ae26a7e61dc77b",
+    "tree_sha256": "c5c595992b75fc645490f852bbee1015754a8c108a592561035cde8ff35c58ca"
+  },
+  "service_source_root": "/home/truares/桌面/maniskill_sim-attention-variation",
+  "simulator_log": {
+    "sha256": "e8cc93c410acdc6c0f290085388ef8f9ef925849d61f1b8ada683753d590224a",
+    "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_seed106_logs/robocasa-cab-discovery.log"
+  },
+  "suite": "robocasa",
+  "task_id": "counter_to_cab"
+}

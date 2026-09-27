@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AttentionBench · Operations</title><style>html,body{margin:0;min-height:100%;background:#111119}</style></head>
+<body>
+<div id="attentionbench-clear" data-mode="demo" aria-label="AttentionBench UI 交互示意">
+<style>
+#attentionbench-clear{--bg:#111119;--panel:#1d1d29;--panel2:#252531;--line:#3c3a4b;--text:#f5f4f8;--muted:#b3afc0;--orange:#ff8c00;--cyan:#13cce6;--purple:#b975ef;--green:#39e51d;background:var(--bg);color:var(--text);border:1px solid var(--line);font-family:Inter,Arial,sans-serif;width:100%;box-sizing:border-box;overflow:hidden}
+#attentionbench-clear *{box-sizing:border-box}#attentionbench-clear h2,#attentionbench-clear h3,#attentionbench-clear p{margin:0}
+#attentionbench-clear .ribbon{padding:7px 14px;background:#382311;color:#ffc88d;text-align:center;font:600 11px ui-monospace,monospace;letter-spacing:.08em}
+#attentionbench-clear .top{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 20px;border-bottom:1px solid var(--line)}
+#attentionbench-clear .brand{font:600 15px ui-monospace,monospace;letter-spacing:.05em}#attentionbench-clear .brand b{color:var(--orange)}
+#attentionbench-clear .demo{font:600 11px ui-monospace,monospace;color:var(--green)}
+#attentionbench-clear .tabs{display:flex;gap:5px;padding:0 20px;border-bottom:1px solid var(--line)}
+#attentionbench-clear button{cursor:pointer;font:600 12px ui-monospace,monospace}
+#attentionbench-clear .tabs button{border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);padding:13px 18px}
+#attentionbench-clear .tabs button[aria-selected=true]{border-bottom-color:var(--orange);background:var(--panel2);color:var(--text)}
+#attentionbench-clear .view{padding:22px;display:grid;gap:15px}#attentionbench-clear .view[hidden]{display:none}
+#attentionbench-clear .intro-head{display:flex;justify-content:space-between;align-items:end;gap:15px}
+#attentionbench-clear .configure{background:transparent;color:var(--text);border:1px solid var(--line);padding:9px 12px;white-space:nowrap}
+#attentionbench-clear .configure:hover{border-color:var(--orange)}
+#attentionbench-clear .draft[hidden]{display:none}
+#attentionbench-clear .draft-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:12px}
+#attentionbench-clear .draft-grid label{font:600 10px ui-monospace,monospace;color:var(--muted)}
+#attentionbench-clear .draft-grid select,#attentionbench-clear .draft-grid input{display:block;width:100%;margin-top:6px;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--line);font:500 12px ui-monospace,monospace}
+#attentionbench-clear .draft-actions{display:flex;justify-content:flex-end;margin-top:12px}
+#attentionbench-clear .draft-actions button{background:var(--orange);color:#17121b;border:0;padding:9px 12px}
+#attentionbench-clear .kicker{color:var(--orange);font:600 11px ui-monospace,monospace;letter-spacing:.09em;margin-bottom:7px}
+#attentionbench-clear h2{font-size:25px;line-height:1.2;font-weight:550}#attentionbench-clear h3{font-size:17px;font-weight:550}
+#attentionbench-clear .lead{font-size:14px;line-height:1.55;color:var(--muted);margin-top:7px}
+#attentionbench-clear .panel{background:var(--panel);border:1px solid var(--line);padding:16px;min-width:0}
+#attentionbench-clear .panel-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px}
+#attentionbench-clear .panel-title span{font:500 10px ui-monospace,monospace;color:var(--muted)}
+#attentionbench-clear .conditions{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+#attentionbench-clear .condition{background:var(--panel2);padding:12px;border-left:2px solid var(--line)}
+#attentionbench-clear .condition b{display:block;font-size:13px;line-height:1.4;margin-top:8px;font-weight:550}
+#attentionbench-clear .condition small{display:block;font-size:11px;line-height:1.5;color:var(--muted);margin-top:5px}
+#attentionbench-clear .label{font:600 10px ui-monospace,monospace;color:var(--muted);letter-spacing:.04em}
+#attentionbench-clear .reading{background:#332316;border-left:3px solid var(--orange);padding:14px 17px;font-size:15px;line-height:1.5}
+#attentionbench-clear .reading b{color:#ffc387}
+#attentionbench-clear .formula{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#attentionbench-clear .formula>div{background:var(--panel2);padding:12px}
+#attentionbench-clear .formula strong{display:block;font-size:13px;margin:7px 0 3px}
+#attentionbench-clear .formula p{font-size:12px;color:var(--muted);line-height:1.5}
+#attentionbench-clear .tablewrap{overflow-x:auto}
+#attentionbench-clear table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+#attentionbench-clear th{font:600 11px ui-monospace,monospace;color:var(--muted);padding:11px 8px;border-bottom:1px solid var(--line)}
+#attentionbench-clear td{padding:14px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+#attentionbench-clear tr:last-child td{border-bottom:0}
+#attentionbench-clear td strong{font-size:17px;color:var(--orange)}
+#attentionbench-clear .method{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}
+#attentionbench-clear .chartintro{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:13px;color:var(--muted)}
+#attentionbench-clear .chartintro b{color:var(--text)}
+#attentionbench-clear .plot{display:block;width:100%;height:auto;background:#171720;border:1px solid var(--line)}
+#attentionbench-clear .caption{font-size:12px;line-height:1.5;color:var(--muted);margin-top:9px}
+#attentionbench-clear .run-board{padding:0;border-top:2px solid var(--orange)}
+#attentionbench-clear .run-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 17px;border-bottom:1px solid var(--line)}
+#attentionbench-clear .run-identity{min-width:0}#attentionbench-clear .run-identity strong{display:block;font-size:18px;font-weight:600;margin:5px 0 2px}#attentionbench-clear .run-identity small{font:500 11px ui-monospace,monospace;color:var(--muted)}
+#attentionbench-clear .run-head-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+#attentionbench-clear .run-progress{display:flex;align-items:center;gap:8px;font:600 11px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .run-progress b{font-size:18px;color:var(--text)}
+#attentionbench-clear .status-chip{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;padding:5px 7px;border:1px solid var(--line);font:700 9px ui-monospace,monospace;letter-spacing:.04em}
+#attentionbench-clear .status-chip:before{content:"";display:block;width:6px;height:6px;border-radius:50%;background:currentColor}
+#attentionbench-clear .status-chip.running{color:var(--green);background:#223421;border-color:#456341}#attentionbench-clear .status-chip.queued{color:var(--cyan);background:#1b3337;border-color:#38666e}
+#attentionbench-clear .locked{padding:6px 8px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);font:600 10px ui-monospace,monospace;white-space:nowrap}
+#attentionbench-clear .run-grid{display:grid;grid-template-columns:minmax(270px,1.45fr) repeat(3,minmax(0,1fr))}
+#attentionbench-clear .run-module{min-width:0;padding:14px;border-right:1px solid var(--line)}#attentionbench-clear .run-module:last-child{border-right:0}
+#attentionbench-clear .module-heading{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:11px}
+#attentionbench-clear .agent-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px;background:var(--panel2);border:1px solid var(--line);margin-top:6px}
+#attentionbench-clear .agent-icon{display:grid;place-items:center;width:34px;height:34px;background:#382b24;color:#ffb65e;font:700 10px ui-monospace,monospace}#attentionbench-clear .agent-row.eval .agent-icon{background:#20343a;color:var(--cyan)}
+#attentionbench-clear .agent-info{min-width:0}#attentionbench-clear .agent-info b{display:block;font-size:12px;font-weight:650}#attentionbench-clear .agent-info small{display:block;color:var(--muted);font-size:10px;line-height:1.4;margin-top:2px}#attentionbench-clear .model-tag{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:5px;padding:3px 5px;background:var(--bg);color:#dfdce8;font:600 10px ui-monospace,monospace}
+#attentionbench-clear .policy-name{font-size:15px;font-weight:650;margin:3px 0 7px}#attentionbench-clear .policy-desc{color:var(--muted);font-size:11px;line-height:1.55}#attentionbench-clear .policy-rule{display:block;margin-top:12px;padding:7px 8px;background:var(--panel2);color:#e4cadf;font:600 10px ui-monospace,monospace;line-height:1.4}
+#attentionbench-clear .segmented{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border:1px solid var(--line);background:var(--bg);margin:11px 0 8px}#attentionbench-clear .segmented span{display:grid;place-items:center;min-height:32px;padding:5px 3px;color:var(--muted);text-align:center;font:600 10px ui-monospace,monospace;line-height:1.2}#attentionbench-clear .segmented .selected{background:#44301c;color:#ffd49d;box-shadow:inset 0 0 0 1px #96602c}
+#attentionbench-clear .run-module>small{display:block;color:var(--muted);font-size:11px;line-height:1.45}
+#attentionbench-clear .budgets{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+#attentionbench-clear .budget{padding:13px;background:var(--panel);border:1px solid var(--line)}
+#attentionbench-clear .budget.primary{border-top:2px solid var(--orange)}
+#attentionbench-clear .budget strong{display:block;font-size:22px;margin:8px 0 9px;font-weight:550}
+#attentionbench-clear .budget strong small{font-size:12px;color:var(--muted)}
+#attentionbench-clear .budget p{font:500 11px ui-monospace,monospace;color:var(--muted);line-height:1.5}
+#attentionbench-clear .budget-track{display:flex;height:8px;gap:2px;margin-bottom:10px;overflow:hidden;background:#3a3947}#attentionbench-clear .budget-track span{height:100%}#attentionbench-clear .budget-track .used{background:var(--orange)}#attentionbench-clear .budget-track .reserved{background:var(--purple)}#attentionbench-clear .budget-track .free{background:#4a4858}
+#attentionbench-clear .budget-legend{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font:500 10px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .budget-legend span{line-height:1.5}#attentionbench-clear .budget-legend b{display:block;color:var(--text);font-size:11px}#attentionbench-clear .budget-legend i{display:inline-block;width:5px;height:5px;margin-right:4px;background:var(--orange);vertical-align:2px}#attentionbench-clear .budget-legend span:nth-child(2) i{background:var(--purple)}#attentionbench-clear .budget-legend span:nth-child(3) i{background:#626070}
+#attentionbench-clear .columns{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:9px}
+#attentionbench-clear .workitem,#attentionbench-clear .inboxitem{border-bottom:1px solid var(--line);padding:10px 0}
+#attentionbench-clear .workitem:last-child,#attentionbench-clear .inboxitem:last-child{border-bottom:0}
+#attentionbench-clear .workitem strong,#attentionbench-clear .inboxitem strong{font-size:12px}
+#attentionbench-clear .workitem p,#attentionbench-clear .inboxitem p{font-size:11px;line-height:1.5;color:var(--muted);margin-top:5px}
+#attentionbench-clear .state{float:right;color:var(--purple);font:600 10px ui-monospace,monospace}
+#attentionbench-clear .inboxitem{display:block;width:100%;background:none;color:var(--text);border-left:0;border-right:0;border-top:0;text-align:left}
+#attentionbench-clear .inboxitem[aria-pressed=true]{background:var(--panel2);border-left:3px solid var(--orange);padding-left:8px}
+#attentionbench-clear .camera{height:130px;background:linear-gradient(180deg,#858782 0 36%,#b29170 36% 53%,#827b69 53% 100%);position:relative;margin:12px 0}
+#attentionbench-clear .camera:after{content:"";position:absolute;right:20%;bottom:15%;width:25%;height:22%;border-radius:45%;background:#d7d5d0;box-shadow:24px 12px 0 8px #44464d}
+#attentionbench-clear .camera span{position:absolute;z-index:1;top:7px;left:7px;background:#15151bcc;padding:4px;font:600 10px ui-monospace,monospace}
+#attentionbench-clear .stationline{display:flex;justify-content:space-between;margin:7px 0;font-size:11px;color:var(--muted)}
+#attentionbench-clear .stationline b{color:var(--text)}
+#attentionbench-clear .danger{width:100%;margin-top:10px;border:1px solid #a74b5b;color:#ff8495;background:#3b2029;padding:10px}
+#attentionbench-clear .detail p{font-size:12px;line-height:1.6;color:var(--muted)}
+#attentionbench-clear .detail strong{display:block;margin:7px 0;font-size:15px}
+#attentionbench-clear .detail .trace{margin:9px 0;padding:9px;background:var(--panel2);font:500 11px ui-monospace,monospace;line-height:1.8}
+#attentionbench-clear .detail-layout{display:grid;grid-template-columns:1.2fr 1fr;gap:14px}
+#attentionbench-clear .replay{background:var(--panel2);padding:10px;min-width:0}
+#attentionbench-clear .attempt-heading{display:flex;justify-content:space-between;gap:8px;margin:0 0 8px;font:600 10px ui-monospace,monospace;color:var(--muted)}
+#attentionbench-clear .attempt-strip{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+#attentionbench-clear .attempt-strip button,#attentionbench-clear .attempt-strip span{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:7px 9px;font:600 10px ui-monospace,monospace}
+#attentionbench-clear .attempt-strip button{cursor:pointer}
+#attentionbench-clear .attempt-strip button[aria-pressed="true"]{border-color:var(--orange);color:var(--orange)}
+#attentionbench-clear .attempt-strip span{opacity:.58}
+#attentionbench-clear .replay-head{display:flex;justify-content:space-between;gap:8px;font:600 10px ui-monospace,monospace;color:var(--muted);margin-bottom:8px}
+#attentionbench-clear .replay-screen{height:190px;position:relative;overflow:hidden;background:linear-gradient(180deg,#858782 0 36%,#b29170 36% 53%,#827b69 53% 100%)}
+#attentionbench-clear .replay-screen:before{content:"";position:absolute;left:8%;top:7%;width:29%;height:42%;border:6px solid #35313a;background:repeating-linear-gradient(90deg,#d7d5ce 0 31%,#35313a 32% 35%)}
+#attentionbench-clear .replay-arm{position:absolute;right:24%;bottom:16%;width:23%;height:18%;border-radius:45% 45% 25% 25%;background:#e5e3dc;box-shadow:24px 12px 0 8px #44464d;transition:transform .25s}
+#attentionbench-clear .replay-screen[data-frame="1"] .replay-arm{transform:translate(-18px,7px) rotate(-5deg)}
+#attentionbench-clear .replay-screen[data-frame="2"] .replay-arm{transform:translate(-37px,20px) rotate(-15deg)}
+#attentionbench-clear .replay-overlay{position:absolute;left:8px;top:8px;background:#15151bda;padding:5px 7px;color:#fff;font:600 10px ui-monospace,monospace}
+#attentionbench-clear .replay-event{position:absolute;right:8px;bottom:8px;background:#3b2029;color:#ff91a0;padding:5px 7px;font:600 10px ui-monospace,monospace}
+#attentionbench-clear .replay-screen:not([data-frame="2"]) .replay-event{display:none}
+#attentionbench-clear .replay-screen[data-request="approval"] .replay-event{background:#213b27;color:var(--green)}
+#attentionbench-clear .replay-controls{display:flex;align-items:center;gap:9px;margin:10px 0 8px}
+#attentionbench-clear .replay-controls button,#attentionbench-clear .frame-buttons button,#attentionbench-clear .detail-actions button{background:var(--bg);border:1px solid var(--line);color:var(--text);padding:7px 9px}
+#attentionbench-clear .replay-controls input{flex:1;min-width:20px;accent-color:var(--orange)}
+#attentionbench-clear .replay-controls time{font:600 10px ui-monospace,monospace;color:var(--muted)}
+#attentionbench-clear .frame-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+#attentionbench-clear .frame-buttons button{font-size:10px;text-align:left;line-height:1.4}
+#attentionbench-clear .frame-buttons button[aria-pressed="true"]{border-color:var(--orange);color:var(--orange)}
+#attentionbench-clear .replay-note{margin-top:8px!important;font-size:11px!important}
+#attentionbench-clear .detail-actions{display:flex;gap:7px;margin-top:11px}
+#attentionbench-clear .detail-actions[hidden]{display:none}
+#attentionbench-clear .detail-actions button:first-child{background:var(--orange);border-color:var(--orange);color:#17121b}
+#attentionbench-clear .minor{font-size:11px;color:var(--muted)}
+#attentionbench-clear .ab-graph-form{display:flex;align-items:end;gap:8px;margin:14px 0 10px;flex-wrap:wrap}
+#attentionbench-clear .ab-graph-form label{display:grid;gap:5px;color:var(--muted);font:600 10px ui-monospace,monospace;letter-spacing:.06em}
+#attentionbench-clear .ab-graph-form input{min-width:240px;max-width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:9px;font:600 12px ui-monospace,monospace}
+#attentionbench-clear .ab-graph-form button,#attentionbench-clear .ab-session-toolbar button{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:9px 11px}
+#attentionbench-clear .ab-session-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:12px 0}
+#attentionbench-clear .ab-session-toolbar button[aria-pressed=true]{border-color:var(--orange);background:#44301c;color:#ffd49d}
+#attentionbench-clear .ab-filter-divider{width:1px;height:20px;background:var(--line);margin:0 5px}
+#attentionbench-clear .ab-session-group{margin-top:15px}
+#attentionbench-clear .ab-session-group h4{font:700 12px ui-monospace,monospace;color:var(--cyan);margin:0 0 8px}
+#attentionbench-clear .ab-session-group h4 small{color:var(--muted);font-weight:500}
+#attentionbench-clear .ab-session-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:8px}
+#attentionbench-clear .ab-session-card{display:grid;gap:7px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--cyan);color:var(--text);padding:11px;min-width:0}
+#attentionbench-clear .ab-session-card:hover,#attentionbench-clear .ab-dag-nodes button:hover{border-color:var(--orange)}
+#attentionbench-clear .ab-session-card strong{font-size:13px;overflow-wrap:anywhere}
+#attentionbench-clear .ab-work-agent{width:100%;text-align:left;color:var(--text);cursor:pointer}
+#attentionbench-clear .ab-dag-nodes{display:flex;gap:7px;overflow-x:auto;padding:2px 0 12px}
+#attentionbench-clear .ab-dag-dispatch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);background:var(--panel2)}
+#attentionbench-clear .ab-dag-dispatch button{border:1px solid var(--orange);background:#352a23;color:var(--text);padding:9px 12px;cursor:pointer}
+#attentionbench-clear .ab-dag-dispatch button:disabled{opacity:.45;cursor:default}
+#attentionbench-clear .ab-dag-nodes button{display:grid;gap:7px;text-align:left;min-width:150px;max-width:210px;background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:9px}
+#attentionbench-clear .ab-dag-nodes button[aria-pressed=true]{border-color:var(--orange);background:#352a23}
+#attentionbench-clear .ab-dag-nodes button b{font-size:11px;overflow-wrap:anywhere}
+#attentionbench-clear .ab-dag-detail{border-top:1px solid var(--line);padding-top:12px}
+#attentionbench-clear .ab-dag-detail p{color:var(--muted);font-size:12px;line-height:1.5;margin:7px 0 12px}
+#attentionbench-clear .ab-session-dialog{width:min(850px,calc(100vw - 24px));max-height:90vh;background:var(--panel);border:1px solid var(--orange);color:var(--text);padding:0;box-shadow:0 25px 80px #0009}
+#attentionbench-clear .ab-session-dialog::backdrop{background:#09090dc9}
+#attentionbench-clear .ab-session-modal{padding:18px}
+#attentionbench-clear .ab-session-modal .panel-title button{background:var(--panel2);color:var(--text);border:1px solid var(--line);padding:6px 9px}
+#attentionbench-clear .ab-session-modal>.minor{display:block;margin:5px 0;overflow-wrap:anywhere}
+#attentionbench-clear .ab-session-dag-link{margin-top:9px;background:var(--panel2);color:var(--cyan);border:1px solid var(--line);padding:7px 9px}
+#attentionbench-clear .ab-conversation{display:grid;gap:9px;margin-top:15px;max-height:65vh;overflow:auto}
+#attentionbench-clear .ab-message{background:var(--panel2);border-left:3px solid var(--cyan);padding:10px}
+#attentionbench-clear .ab-message.human{border-left-color:var(--orange);background:#332b25}
+#attentionbench-clear .ab-message pre{white-space:pre-wrap;overflow-wrap:anywhere;font:500 12px/1.55 ui-monospace,monospace;margin:7px 0 0;color:var(--text)}
+#attentionbench-clear .ab-response-form{display:grid;gap:8px;padding:11px;background:var(--panel2);border:1px solid var(--line)}
+#attentionbench-clear .ab-response-form label{display:grid;gap:6px;color:var(--muted);font:600 10px ui-monospace,monospace}
+#attentionbench-clear .ab-response-form textarea{width:100%;min-height:76px;resize:vertical;padding:9px;background:var(--bg);color:var(--text);border:1px solid var(--line);font:500 12px/1.5 ui-monospace,monospace}
+#attentionbench-clear .ab-response-form div{display:flex;gap:6px;flex-wrap:wrap}
+#attentionbench-clear .ab-response-form button{background:var(--bg);color:var(--text);border:1px solid var(--line);padding:8px 10px}
+#attentionbench-clear .ab-response-form button:first-child{background:var(--orange);border-color:var(--orange);color:#17121b}
+#attentionbench-clear .ab-response-form button:disabled{opacity:.5;cursor:wait}
+@media(max-width:1100px){#attentionbench-clear .run-grid{grid-template-columns:1.3fr 1fr}#attentionbench-clear .run-module:nth-child(2){border-right:0}#attentionbench-clear .run-module:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+@media(max-width:850px){#attentionbench-clear .conditions,#attentionbench-clear .budgets{grid-template-columns:repeat(2,1fr)}#attentionbench-clear .columns{grid-template-columns:1fr 1fr}#attentionbench-clear .columns>.panel:last-child{grid-column:1/-1}#attentionbench-clear .draft-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){#attentionbench-clear .view{padding:12px}#attentionbench-clear .top{padding:12px}#attentionbench-clear .intro-head{align-items:start;flex-direction:column}#attentionbench-clear .conditions,#attentionbench-clear .formula,#attentionbench-clear .columns,#attentionbench-clear .run-grid{grid-template-columns:1fr}#attentionbench-clear .columns>.panel:last-child{grid-column:auto}#attentionbench-clear .run-module{border-right:0!important;border-bottom:1px solid var(--line)}#attentionbench-clear .run-module:last-child{border-bottom:0}#attentionbench-clear .run-head{align-items:flex-start;flex-direction:column}#attentionbench-clear .run-head-right{justify-content:flex-start}#attentionbench-clear .reading{font-size:13px}#attentionbench-clear .draft-grid{grid-template-columns:repeat(2,1fr)}}
+#attentionbench-clear .draft .setup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+#attentionbench-clear .draft fieldset{min-width:0;margin:0;padding:10px;border:1px solid var(--line)}#attentionbench-clear .draft legend{padding:0 4px;color:var(--muted);font:600 10px ui-monospace,monospace}
+#attentionbench-clear .choice-pair{display:grid;grid-template-columns:1fr 1fr;gap:4px}#attentionbench-clear .choice-pair label{position:relative;display:block;cursor:pointer}#attentionbench-clear .choice-pair input{position:absolute;opacity:0;width:1px;height:1px}#attentionbench-clear .choice-pair span{display:block;padding:9px 5px;border:1px solid var(--line);background:var(--bg);text-align:center;color:var(--muted);font:600 11px ui-monospace,monospace}#attentionbench-clear .choice-pair input:checked+span{border-color:var(--orange);background:#44301c;color:#ffd49d}#attentionbench-clear .choice-pair input:focus-visible+span{outline:2px solid var(--cyan);outline-offset:2px}
+@media(max-width:560px){#attentionbench-clear .draft .setup-row{grid-template-columns:1fr}#attentionbench-clear .budgets{grid-template-columns:1fr 1fr}#attentionbench-clear .agent-row{grid-template-columns:30px minmax(0,1fr) auto}#attentionbench-clear .agent-icon{width:30px;height:30px}}
+@media(max-width:420px){#attentionbench-clear .budgets{grid-template-columns:1fr}}
+#attentionbench-clear .outcome-grid{display:grid;grid-template-columns:.7fr 1.3fr;gap:12px}
+#attentionbench-clear .outcome-run{background:var(--panel2);border-left:3px solid var(--orange);padding:14px}
+#attentionbench-clear .outcome-run strong{display:block;color:var(--orange);font-size:20px;margin:11px 0 8px}
+#attentionbench-clear .outcome-run p{font-size:12px;line-height:1.5;color:var(--muted)}
+#attentionbench-clear .outcome-run small{display:block;font-size:11px;line-height:1.5;color:var(--muted);margin-top:11px}
+#attentionbench-clear .outcome-summary{min-width:0}
+#attentionbench-clear .outcome-row{display:grid;grid-template-columns:1.15fr .95fr 1fr;gap:6px;align-items:center;border-bottom:1px solid var(--line);padding:10px 5px;font-size:12px}
+#attentionbench-clear .outcome-row b{color:var(--orange);font-size:13px}
+#attentionbench-clear .outcome-head{font:600 10px ui-monospace,monospace;color:var(--muted);margin-top:6px}
+#attentionbench-clear .outcome-foot{font-size:11px;line-height:1.5;color:var(--muted);margin-top:9px}
+@media(max-width:680px){#attentionbench-clear .outcome-grid{grid-template-columns:1fr}#attentionbench-clear .outcome-row{font-size:11px}}
+@media(max-width:680px){#attentionbench-clear .detail-layout{grid-template-columns:1fr}}
+#attentionbench-clear .status-chip.blocked{color:#e0a4b1;background:#35232a;border-color:#77505a}#attentionbench-clear .status-chip.pending{color:#ffbb70;background:#3d2c1b;border-color:#856037}#attentionbench-clear .status-chip.answered{color:var(--green);background:#223421;border-color:#456341}
+#attentionbench-clear .outcome-run{border:1px solid var(--line);border-left:3px solid var(--orange);display:flex;flex-direction:column;gap:10px}#attentionbench-clear .outcome-run strong{margin:0}#attentionbench-clear .outcome-top{display:flex;align-items:center;justify-content:space-between;gap:8px}#attentionbench-clear .credit-units{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}#attentionbench-clear .credit-units i{height:12px;background:var(--orange)}#attentionbench-clear .credit-units i.reserved{background:var(--purple)}#attentionbench-clear .credit-units i.free{background:#555363}#attentionbench-clear .outcome-run small{margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+#attentionbench-clear .outcome-row{grid-template-columns:1.1fr 1fr .8fr;padding:10px 7px}#attentionbench-clear .outcome-row:not(.outcome-head){background:var(--panel2);margin-top:5px;border:1px solid var(--line)}#attentionbench-clear .outcome-row:last-of-type{border-left:2px solid var(--orange)}#attentionbench-clear .policy-metric{display:flex;align-items:center;gap:8px;min-width:0}#attentionbench-clear .policy-metric b{min-width:70px;white-space:nowrap}#attentionbench-clear .mini-meter{display:block;flex:1;height:5px;background:#4a4858;min-width:28px}#attentionbench-clear .mini-meter i{display:block;height:100%;background:var(--orange)}#attentionbench-clear .credit-pill{justify-self:start;padding:5px 7px;background:#353044;border:1px solid #5d506d;color:#e7cdf8;font:600 10px ui-monospace,monospace}
+#attentionbench-clear .columns>.panel{display:flex;flex-direction:column}#attentionbench-clear .work-list,#attentionbench-clear .inbox-list{display:grid;gap:7px}#attentionbench-clear .work-card{padding:10px;background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--line)}#attentionbench-clear .work-card.active{border-left-color:var(--green)}#attentionbench-clear .work-card.waiting,#attentionbench-clear .work-card.evaluating{border-left-color:var(--cyan)}#attentionbench-clear .work-card.blocked{border-left-color:#d1778a}
+#attentionbench-clear .card-top{display:flex;align-items:center;justify-content:space-between;gap:7px}#attentionbench-clear .work-card strong{display:block;font-size:12px;margin:7px 0 4px}#attentionbench-clear .work-card p{font-size:11px;line-height:1.4;color:var(--muted)}#attentionbench-clear .work-card .work-meta{display:flex;justify-content:space-between;gap:8px;margin-top:9px;padding-top:7px;border-top:1px solid var(--line);font:600 10px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .work-card .work-meta b{color:var(--text)}
+#attentionbench-clear .inboxitem{display:block;width:100%;padding:10px!important;background:var(--panel2);color:var(--text);border:1px solid var(--line)!important;border-left:3px solid var(--line)!important;text-align:left}#attentionbench-clear .inboxitem[aria-pressed=true]{border-left-color:var(--orange)!important;background:#2d2a31}#attentionbench-clear .inboxitem:hover{border-color:#946536!important}#attentionbench-clear .inboxitem strong{display:block;margin:8px 0 4px;font-size:12px}#attentionbench-clear .inboxitem p{margin:0 0 9px}#attentionbench-clear .request-id{font:700 10px ui-monospace,monospace;color:#ffd097}#attentionbench-clear .inbox-meta{display:flex;gap:5px;flex-wrap:wrap}#attentionbench-clear .inbox-meta span{padding:4px 5px;border:1px solid var(--line);background:var(--bg);font:600 9px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .inboxitem .state{float:none}
+#attentionbench-clear .station-shell{padding:7px;background:var(--bg);border:1px solid var(--line)}#attentionbench-clear .station-shell .camera{margin:0;height:136px}#attentionbench-clear .station-shell .camera:before{content:"REC  ●  CAM 01";position:absolute;z-index:2;right:7px;top:7px;padding:4px 5px;background:#15151bcc;color:#fff;font:700 9px ui-monospace,monospace}#attentionbench-clear .station-data{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}#attentionbench-clear .station-tile{padding:9px;background:var(--panel2);border:1px solid var(--line);min-width:0}#attentionbench-clear .station-tile span{display:block;margin-bottom:6px;font:600 9px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .station-tile b{font:600 11px ui-monospace,monospace;line-height:1.35;overflow-wrap:anywhere}#attentionbench-clear .station-caption{font-size:10px;line-height:1.45;color:var(--muted);margin-top:8px}#attentionbench-clear .danger{margin-top:auto;padding:10px 12px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px}#attentionbench-clear .danger b{font-size:11px}#attentionbench-clear .danger small{font-size:10px;opacity:.85}
+#attentionbench-clear .replay{border:1px solid var(--line)}#attentionbench-clear .evidence-side{display:grid;gap:8px;align-content:start}#attentionbench-clear .request-card,#attentionbench-clear .evidence-card{padding:12px;background:var(--panel2);border:1px solid var(--line)}#attentionbench-clear .request-card strong{margin:8px 0 5px}#attentionbench-clear .detail-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:11px}#attentionbench-clear .detail-meta span{padding:7px;background:var(--bg);border:1px solid var(--line);font:600 9px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .detail-meta b{display:block;color:var(--text);font-size:11px;margin-top:4px;overflow-wrap:anywhere}#attentionbench-clear .evidence-card .label{display:block;margin-bottom:7px}#attentionbench-clear .detail .trace{margin:0;padding:0;background:none}#attentionbench-clear .detail .trace{border-left:2px solid var(--orange);padding-left:10px}#attentionbench-clear .detail .memory-ref{padding:8px;background:var(--bg);border:1px solid var(--line);color:var(--text);font:600 11px ui-monospace,monospace}#attentionbench-clear .detail-actions{margin-top:0}#attentionbench-clear .detail-actions button{flex:1;min-height:34px}#attentionbench-clear .lifecycle{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px}#attentionbench-clear .lifecycle span{padding:6px 4px;text-align:center;background:var(--bg);border-top:2px solid var(--line);font:600 9px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .lifecycle span.done{border-top-color:var(--green);color:#b9e9b2}#attentionbench-clear .lifecycle span.current{border-top-color:var(--orange);color:#ffd097}
+@media(max-width:1100px){#attentionbench-clear .columns{grid-template-columns:1fr 1.15fr}#attentionbench-clear .columns>.panel:last-child{grid-column:1/-1}}
+@media(max-width:850px){#attentionbench-clear .outcome-row{grid-template-columns:1fr 1fr .75fr}}
+@media(max-width:680px){#attentionbench-clear .outcome-row{grid-template-columns:1fr 1fr .7fr}#attentionbench-clear .policy-metric{display:block}#attentionbench-clear .mini-meter{margin-top:5px}}
+@media(max-width:560px){#attentionbench-clear .columns{grid-template-columns:1fr}#attentionbench-clear .columns>.panel:last-child{grid-column:auto}#attentionbench-clear .detail-meta{grid-template-columns:repeat(2,1fr)}#attentionbench-clear .lifecycle{grid-template-columns:repeat(2,1fr)}}
+#attentionbench-clear .work-card .work-meta{align-items:center}#attentionbench-clear .work-card .work-meta b{font-size:10px}#attentionbench-clear .work-object{display:inline-block;margin-top:7px;padding:4px 6px;background:var(--bg);border:1px solid var(--line);color:#e4dbe8;font:600 10px ui-monospace,monospace}
+#attentionbench-clear .work-link{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin-top:9px;padding:7px 8px;background:var(--bg);border:1px solid var(--line);color:#ffd097;text-align:left;font:600 10px ui-monospace,monospace}#attentionbench-clear .work-link:hover,#attentionbench-clear .work-link[aria-pressed="true"]{border-color:var(--orange);background:#3a2d21}#attentionbench-clear .work-link:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+#attentionbench-clear .work-context{margin-top:9px;padding:11px;background:#181820;border:1px solid var(--line)}#attentionbench-clear .work-context-head{display:flex;align-items:center;justify-content:space-between;gap:7px;padding-bottom:8px;border-bottom:1px solid var(--line)}#attentionbench-clear .work-context-title{display:block;font-size:12px;font-weight:650;margin:9px 0 5px}#attentionbench-clear .work-context p{font-size:10px;color:var(--muted);line-height:1.5}#attentionbench-clear .dag-chain{display:flex;align-items:stretch;gap:4px;margin:10px 0;min-width:0}#attentionbench-clear .dag-node{flex:1;min-width:0;padding:6px;background:var(--panel2);border:1px solid var(--line);font:600 9px ui-monospace,monospace;overflow-wrap:anywhere}#attentionbench-clear .dag-node.current{border-color:var(--orange);color:#ffd097}#attentionbench-clear .dag-node b{display:block;color:var(--muted);font-size:9px;margin-top:5px}#attentionbench-clear .dag-arrow{display:grid;place-items:center;color:var(--muted);font:700 12px ui-monospace,monospace}#attentionbench-clear .context-stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:10px 0}#attentionbench-clear .context-stats span{padding:7px;background:var(--panel2);border:1px solid var(--line);font:600 9px ui-monospace,monospace;color:var(--muted)}#attentionbench-clear .context-stats b{display:block;margin-top:4px;font-size:11px;color:var(--text)}
+#attentionbench-clear .inbox-explainer{padding:7px 8px;margin-bottom:9px;background:#33291f;border-left:2px solid var(--orange);font-size:10px;line-height:1.5;color:#dec8ae}#attentionbench-clear .inboxitem .inbox-meta .source-chip{border-color:#765637;color:#f0c48a}
+#attentionbench-clear .work-detail .work-context{margin-top:0}#attentionbench-clear .work-detail .dag-chain{max-width:960px}#attentionbench-clear .work-detail .context-stats{max-width:550px}
+
+#attentionbench-clear[data-mode="live"] .view{display:none}
+#attentionbench-clear[data-mode="live"].ready .view{display:grid}
+#attentionbench-clear .live-run-picker{display:grid;gap:5px;color:var(--muted);font:600 10px ui-monospace,monospace}
+#attentionbench-clear .live-run-picker select{min-width:180px;max-width:330px;padding:8px;background:var(--panel2);color:var(--text);border:1px solid var(--line);font:600 11px ui-monospace,monospace}
+#attentionbench-clear .live-empty-copy{padding:13px;color:var(--muted);font-size:12px;line-height:1.55}
+#attentionbench-clear .live-evidence-empty{display:grid;place-content:center;min-height:168px;margin:10px 0;padding:16px;background:var(--bg);border:1px dashed var(--line);text-align:center}
+#attentionbench-clear .live-evidence-empty strong{font-size:13px;margin:0 0 7px}
+#attentionbench-clear .live-evidence-empty p{max-width:400px;margin:auto;font-size:11px;line-height:1.5;color:var(--muted)}
+#attentionbench-clear .live-evidence-list{display:flex;gap:5px;flex-wrap:wrap}
+#attentionbench-clear .live-evidence-list span{padding:5px 7px;background:var(--bg);border:1px solid var(--line);font:600 10px ui-monospace,monospace;color:var(--muted)}
+#attentionbench-clear .live-readonly-note{padding:9px;border-left:2px solid var(--orange);background:#342a20;color:#dec8ae;font-size:11px;line-height:1.5}
+#attentionbench-clear .danger:disabled{cursor:not-allowed;opacity:.55}
+#attentionbench-clear .detail-meta b{overflow-wrap:anywhere}
+@media(max-width:560px){#attentionbench-clear .live-run-picker{width:100%}#attentionbench-clear .live-run-picker select{max-width:none;width:100%}}
+#attentionbench-clear .ab-replay-gallery{display:grid;gap:10px;margin:12px 0;max-height:480px;overflow:auto}
+#attentionbench-clear .ab-replay-attempt{padding:10px;border:1px solid var(--line);background:var(--bg)}
+#attentionbench-clear .ab-replay-attempt img,#attentionbench-clear .ab-replay-attempt video{display:block;max-width:100%;width:100%;max-height:300px;object-fit:contain;margin-top:8px;background:#080a0d}
+#attentionbench-clear .ab-replay-attempt figure{margin:0}
+#attentionbench-clear .ab-replay-attempt figcaption{padding:4px 0;font-size:10px;color:var(--muted)}
+#attentionbench-clear .ab-station-camera{position:relative;background:#080a0d;min-height:168px;display:grid;place-items:center;overflow:hidden}
+#attentionbench-clear .ab-station-camera img{display:block;width:100%;max-height:290px;object-fit:contain}
+#attentionbench-clear .ab-station-camera span{position:absolute;left:8px;top:8px;background:#080a0dcc;padding:4px 7px;font-size:9px;letter-spacing:.12em;color:var(--orange)}
+</style>
+<div class="ribbon">INTERACTIVE CONCEPT · SAMPLE DATA · NO ROBOT CONNECTED</div>
+<header class="top"><div class="brand">◈ TIDYBOT <b>ATTENTION</b> / BENCH</div><div class="demo">● DEMO</div></header>
+<section class="view" aria-label="AttentionBench 一页工作台">
+  <div class="intro-head"><div><div class="kicker">OPERATIONS / RUN 038</div><h2>Attention workspace<span style="color:var(--orange)">_</span></h2><p class="lead">Agent 自主运行；只有真正升级的请求进入 Attention inbox。</p></div><button class="configure" id="ab-config" type="button">+ 配置下一轮</button></div>
+  <section class="panel draft" id="ab-draft" hidden><div class="panel-title"><h3>下一轮配置 · 草稿</h3><span>当前运行条件已锁定</span></div><div class="setup-row"><fieldset><legend>EXECUTION TARGET</legend><div class="choice-pair"><label><input type="radio" name="next-target" value="Simulation" checked><span>Simulation</span></label><label><input type="radio" name="next-target" value="Real robot"><span>Real robot</span></label></div></fieldset><fieldset><legend>ASSISTANCE MODE</legend><div class="choice-pair"><label><input type="radio" name="next-assistance" value="Benchmark · Proxy" checked><span>Benchmark · Proxy</span></label><label><input type="radio" name="next-assistance" value="Live · Human-first"><span>Live · Human-first</span></label></div></fieldset></div><div class="draft-grid"><label>Attention policy<select><option>Full trace-aware</option><option>Trace-aware hint only</option><option>Budget-matched random escalation</option><option>Retry K then ask</option><option>Reactive help</option><option>Demo first</option><option>Autonomous</option></select></label><label>Dev model<input value="claude-sonnet-4-6"></label><label>Eval model<input value="claude-sonnet-4-6"></label><label>协助额度<input type="number" min="0" value="4"></label><label>Token 上限<input type="number" min="0" value="80000"></label><label>仿真时间 / min<input type="number" min="0" value="60"></label><label>GPU 时间 / min<input type="number" min="0" value="48"></label></div><div class="draft-actions"><button id="ab-save" type="button">保存示意草稿</button></div></section>
+  <section class="panel run-board" aria-label="当前运行配置"><div class="run-head"><div class="run-identity"><span class="label">CURRENT RUN · run_038</span><strong>RoboCasa / counter_to_sink</strong><small>suite RoboCasa · task counter_to_sink · seed 103</small></div><div class="run-head-right"><span class="status-chip running">RUNNING</span><span class="run-progress">ATTEMPT <b>02</b> / 03</span><span class="locked">▣ CONDITIONS LOCKED</span></div></div><div class="run-grid"><div class="run-module"><div class="module-heading"><span class="label">AGENTS · 2</span><span class="minor">角色 · 状态 · 模型</span></div><div class="agent-row"><span class="agent-icon">DEV</span><span class="agent-info"><b>Developer</b><small>Repair grasp approach</small><span class="model-tag">claude-sonnet-4-6</span></span><span class="status-chip running">RUNNING</span></div><div class="agent-row eval"><span class="agent-icon">EVAL</span><span class="agent-info"><b>Evaluator</b><small>Waiting for execution</small><span class="model-tag">claude-sonnet-4-6</span></span><span class="status-chip queued">QUEUED</span></div></div><div class="run-module"><div class="module-heading"><span class="label">ATTENTION POLICY</span><span class="locked">7 POLICIES</span></div><div class="policy-name">Full trace-aware</div><p class="policy-desc">失败证据进入决策；每次 attempt 的片段和 trace 与请求关联。</p><span class="policy-rule">trigger → evidence → decision</span></div><div class="run-module"><div class="module-heading"><span class="label">EXECUTION TARGET</span><span class="locked">LOCKED</span></div><div class="segmented" aria-label="执行目标：Simulation"><span class="selected">Simulation</span><span>Real robot</span></div><small>RoboCasa service · 当前运行不可切换</small></div><div class="run-module"><div class="module-heading"><span class="label">ASSISTANCE MODE</span><span class="locked">LOCKED</span></div><div class="segmented" aria-label="协助模式：Live Human-first"><span>Benchmark<br>Proxy</span><span class="selected">Live<br>Human-first</span></div><small>Human-first · 60 秒后 Proxy fallback</small></div></div></section>
+  <div class="budgets" aria-label="资源预算"><div class="budget primary"><span class="label">ASSISTANCE CREDITS</span><strong>2 <small>/ 4</small></strong><div class="budget-track" aria-label="已用 2，预留 1，剩余 1"><span class="used" style="width:50%"></span><span class="reserved" style="width:25%"></span><span class="free" style="width:25%"></span></div><div class="budget-legend"><span><i></i>已用<b>2</b></span><span><i></i>预留<b>1</b></span><span><i></i>剩余<b>1</b></span></div></div><div class="budget"><span class="label">SIM TIME</span><strong>21.6 <small>/ 60 min</small></strong><div class="budget-track" aria-label="已用 21.6 分钟，预留 6 分钟，剩余 32.4 分钟"><span class="used" style="width:36%"></span><span class="reserved" style="width:10%"></span><span class="free" style="width:54%"></span></div><div class="budget-legend"><span><i></i>已用<b>21.6m</b></span><span><i></i>预留<b>6m</b></span><span><i></i>剩余<b>32.4m</b></span></div></div><div class="budget"><span class="label">TOKENS</span><strong>38.2k <small>/ 80k</small></strong><div class="budget-track" aria-label="已用 38.2k，预留 6k，剩余 35.8k"><span class="used" style="width:47.75%"></span><span class="reserved" style="width:7.5%"></span><span class="free" style="width:44.75%"></span></div><div class="budget-legend"><span><i></i>已用<b>38.2k</b></span><span><i></i>预留<b>6k</b></span><span><i></i>剩余<b>35.8k</b></span></div></div><div class="budget"><span class="label">GPU TIME</span><strong>18.4 <small>/ 48 min</small></strong><div class="budget-track" aria-label="已用 18.4 分钟，预留 4 分钟，剩余 25.6 分钟"><span class="used" style="width:38.33%"></span><span class="reserved" style="width:8.33%"></span><span class="free" style="width:53.34%"></span></div><div class="budget-legend"><span><i></i>已用<b>18.4m</b></span><span><i></i>预留<b>4m</b></span><span><i></i>剩余<b>25.6m</b></span></div></div></div>
+  <section class="panel outcome" aria-label="协助与成功率示意">
+    <div class="panel-title"><h3>Success ↔ assistance</h3><span>当前 run 与多轮基准 · SAMPLE DATA</span></div>
+    <div class="outcome-grid">
+      <div class="outcome-run"><div class="outcome-top"><span class="label">CURRENT RUN / run_038</span><span class="status-chip running">IN PROGRESS</span></div><strong>结果待定</strong><p>执行结束后记录这轮的成功或失败；当前已用 2 / 4 credits。</p><div class="credit-units" role="img" aria-label="协助额度：已用 2，预留 1，剩余 1"><i></i><i></i><i class="reserved"></i><i class="free"></i></div><small>Live · Human-first · exec_4f9a<br>不计入右侧 Benchmark · Proxy 比较</small></div>
+      <div class="outcome-summary"><span class="label">BENCHMARK · PROXY / 相同任务、SEED、模型与资源上限</span><div class="outcome-row outcome-head"><span>Attention policy</span><span>成功 / 25 轮</span><span>平均实际求助 / 轮</span></div><div class="outcome-row"><span>Autonomous</span><span class="policy-metric"><b>11 / 25 · 44%</b><span class="mini-meter"><i style="width:44%"></i></span></span><span class="credit-pill">0 credits</span></div><div class="outcome-row"><span>Reactive help</span><span class="policy-metric"><b>16 / 25 · 64%</b><span class="mini-meter"><i style="width:64%"></i></span></span><span class="credit-pill">1.2 credits</span></div><div class="outcome-row"><span>Full trace-aware</span><span class="policy-metric"><b>19 / 25 · 76%</b><span class="mini-meter"><i style="width:76%"></i></span></span><span class="credit-pill">1.7 credits</span></div><p class="outcome-foot">同样允许最多 4 credits；右栏是实际平均消耗。这里只示意 7 种策略中的 3 种，不是实验成绩。</p></div>
+    </div>
+  </section>
+  <div class="columns"><section class="panel"><div class="panel-title"><h3>Autonomous work</h3><span>WORKSPACE · 3 SAMPLE ITEMS</span></div><div class="work-list"><div class="work-card active"><div class="card-top"><span class="label">SKILL DEVELOPMENT · DEV</span><span class="status-chip running">WRITING</span></div><strong>Repair grasp approach</strong><p>Dev 正在编写 approach-counter；前置技能已完成。</p><span class="work-object">DAG NODE · approach-counter</span><div class="work-meta"><span>DEPENDS ON</span><b>detect-objects · done</b></div><button class="work-link" type="button" data-work-context="dag-dev" aria-pressed="true">查看 DAG 节点与依赖 <span>↗</span></button></div><div class="work-card evaluating"><div class="card-top"><span class="label">SKILL EVALUATION · EVAL</span><span class="status-chip queued">EVALUATING</span></div><strong>Validate camera transform</strong><p>Eval 正在评估另一轮的最新执行记录。</p><span class="work-object">DAG NODE · camera-transform / run_037</span><div class="work-meta"><span>DEPENDENCIES</span><b>NONE · LEAF</b></div><button class="work-link" type="button" data-work-context="dag-eval" aria-pressed="false">查看 DAG 节点与评估 <span>↗</span></button></div><div class="work-card blocked"><div class="card-top"><span class="label">EXPERIMENT · TRIAL</span><span class="status-chip blocked">BLOCKED</span></div><strong>Parallel variation trial</strong><p>需预留 40 min 仿真时间；当前剩余 32.4 min。</p><span class="work-object">TRIAL · trial_014 / run_038</span><div class="work-meta"><span>BLOCKER</span><b>SIM TIME</b></div><button class="work-link" type="button" data-work-context="trial" aria-pressed="false">查看试验与资源 <span>↗</span></button></div></div></section><section class="panel"><div class="panel-title"><h3>Attention inbox</h3><span>ESCALATIONS ONLY</span></div><p class="inbox-explainer">仅展示已生成 request_id 的求助；普通 Dev / Eval 状态和旧版 skill review 不会自动进入这里。</p><div class="inbox-list"><button class="inboxitem" data-request="hint" aria-pressed="true" type="button"><span class="card-top"><span class="request-id">HINT · req_7c2</span><span class="state status-chip pending">PENDING</span></span><strong>Grasp approach is drifting</strong><p>连续偏移，Agent 请求外部提示。</p><span class="inbox-meta"><span>PRIORITY · HIGH</span><span>DEADLINE · 00:42</span><span>ATTEMPT · 02</span><span class="source-chip">AGENT REQUEST</span></span></button><button class="inboxitem" data-request="approval" aria-pressed="false" type="button"><span class="card-top"><span class="request-id">APPROVAL · req_61a</span><span class="state status-chip answered">ANSWERED</span></span><strong>Bounded retry approved</strong><p>有限重试已答复，并关联执行。</p><span class="inbox-meta"><span>PRIORITY · MED</span><span>USED · APPROVED</span><span>EXEC · 4f9a</span><span class="source-chip">AGENT REQUEST</span></span></button></div></section><section class="panel"><div class="panel-title"><h3>Live station</h3><span class="status-chip running">SIM ONLINE</span></div><div class="station-shell"><div class="camera"><span>BASE CAMERA · DEMO</span></div></div><div class="station-data"><div class="station-tile"><span>ROBOT / SIMULATOR</span><b id="ab-robot">Ready · executing</b></div><div class="station-tile"><span>CURRENT EXECUTION</span><b id="ab-exec">exec_4f9a · step 7/12</b></div></div><p class="station-caption">监控独立于 Attention inbox，正常运行无需人在场。</p><button class="danger" id="ab-stop" type="button"><b>■ 紧急中断</b><small>仅示意 · 不连接机器人</small></button></section></div>
+  <section class="panel work-detail"><div class="panel-title"><h3>Work source detail</h3><span>DAG NODE OR TRIAL / RUN · SAMPLE DATA</span></div><div class="work-context" id="ab-work-context" aria-live="polite"><div data-context-pane="dag-dev"><div class="work-context-head"><span class="label">SKILL DAG · NODE DETAIL</span><span class="locked">DEMO GRAPH</span></div><strong class="work-context-title">approach-counter · writing</strong><p>graph: counter-to-sink · 当前 Dev 处理此节点。依赖完成后才能派发；完成后解锁下游。</p><div class="dag-chain"><span class="dag-node">detect-objects<b>DONE · dependency</b></span><span class="dag-arrow">→</span><span class="dag-node current">approach-counter<b>WRITING · current</b></span><span class="dag-arrow">→</span><span class="dag-node">pnp-counter-to-sink<b>PLANNED · downstream</b></span></div></div><div data-context-pane="dag-eval" hidden><div class="work-context-head"><span class="label">SKILL DAG · NODE DETAIL</span><span class="locked">DEMO GRAPH</span></div><strong class="work-context-title">camera-transform · evaluating</strong><p>graph: calibration · run_037 · 叶子技能，没有前置依赖。Eval 正在检查执行证据；尚未生成求助请求。</p><div class="dag-chain"><span class="dag-node current">camera-transform<b>EVALUATING · current</b></span><span class="dag-arrow">→</span><span class="dag-node">camera-ready<b>PLANNED · downstream</b></span></div></div><div data-context-pane="trial" hidden><div class="work-context-head"><span class="label">TRIAL / RUN DETAIL</span><span class="locked">NO DAG NODE</span></div><strong class="work-context-title">trial_014 · waiting for resources</strong><p>这条工作来自试验调度，不要求对应 Skill DAG 节点。资源满足后可继续自动执行。</p><div class="context-stats"><span>SIM TIME REQUIRED<b>40 min</b></span><span>UNRESERVED LEFT<b>32.4 min</b></span></div></div><p>示意关联。正式版使用 graph_id / node_id 或 trial_id / run_id 打开真实详情；当前 live 页面由 Orchestrator 派发 Skill DAG。</p></div></section>
+  <section class="panel detail"><div class="panel-title"><h3>Request detail · Advisor-visible evidence</h3><span>只显示请求证据 · 无 simulator oracle</span></div><div class="detail-layout"><div class="replay"><div class="attempt-heading"><span>EXECUTION ATTEMPTS</span><span id="ab-attempt-count">2 recorded / max 3</span></div><div class="attempt-strip" id="ab-attempt-strip"><button type="button" data-attempt-index="0" aria-pressed="false">01 · failed</button><button type="button" data-attempt-index="1" aria-pressed="true">02 · hint requested</button><span>03 · not started</span></div><div class="replay-head"><span id="ab-clip-id">ATTEMPT 02 · ERROR CLIP</span><span id="ab-clip-duration">BASE CAMERA · 22s</span></div><div class="replay-screen" id="ab-replay-screen" data-frame="0" data-request="hint" role="img" aria-label="示意回放画面：出错前的机器人动作"><div class="replay-arm"></div><span class="replay-overlay" id="ab-replay-overlay">14:24:04 · 执行前</span><span class="replay-event" id="ab-replay-event">⚠ DRIFT OBSERVED</span></div><div class="replay-controls"><button id="ab-play" type="button">▶ 播放</button><input id="ab-scrub" type="range" min="0" max="2" value="0" aria-label="回放关键帧"><time id="ab-replay-time">14:24:04</time></div><div class="frame-buttons"><button type="button" data-frame-index="0" aria-pressed="true">14:24:04<br>观察画面</button><button type="button" data-frame-index="1" aria-pressed="false">14:24:18<br>执行动作</button><button type="button" data-frame-index="2" aria-pressed="false">14:24:26<br>偏移出现</button></div><p class="replay-note">示意回放：正式版加载每次 attempt 已授权的片段，并与对应 trace 使用同一时间轴。</p></div><div class="evidence-side"><div class="request-card"><div class="card-top"><span class="request-id" id="ab-detail-type">HINT · req_7c2</span><span class="status-chip pending" id="ab-detail-state">PENDING</span></div><strong id="ab-detail-title">Grasp approach is drifting</strong><p id="ab-detail-copy">Agent hypothesis: wrist frame may be applied twice during final approach.</p><div class="detail-meta"><span>PRIORITY<b id="ab-detail-priority">HIGH</b></span><span>DEADLINE<b id="ab-detail-deadline">00:42</b></span><span>PERMITTED<b id="ab-detail-permitted">Hint / defer</b></span></div><div class="lifecycle" aria-label="请求生命周期"><span class="current" id="ab-stage-request">请求</span><span id="ab-stage-answer">答复</span><span id="ab-stage-used">采用</span><span id="ab-stage-exec">执行</span></div></div><div class="evidence-card"><span class="label">TRACE · LINKED TO ATTEMPT</span><p class="minor" id="ab-selected-attempt">当前显示 attempt 02 的片段和 trace</p><div class="trace" id="ab-detail-trace">14:24:04 · base camera captured<br>14:24:18 · approach offset commanded<br>14:24:26 · drift observed; safe stop</div></div><div class="evidence-card"><span class="label">RETRIEVED MEMORY</span><p class="memory-ref" id="ab-detail-memory">mem_014 · wrist frame calibration</p></div><div class="evidence-card"><span class="label">RESPONSE / LINKED EXECUTION</span><div class="detail-meta"><span>RESPONSE USED<b id="ab-detail-used">Pending</b></span><span>EXECUTION<b id="ab-detail-execution">—</b></span><span>BOUNDARY<b>Advisor-visible</b></span></div></div><div class="detail-actions" id="ab-actions"><button id="ab-answer" type="button">答复 hint（示意）</button><button id="ab-defer" type="button">延后查看</button></div></div></div></section>
+  <p class="minor" id="ab-message" aria-live="polite">此页仅为交互示意，不连接机器人；预算数据和请求内容均为样例。</p>
+</section>
+<script>
+(function(){
+  var root=document.getElementById('attentionbench-clear');
+  if(root.dataset.mode==='live')return;
+  root.querySelector('#ab-config').addEventListener('click',function(){var draft=root.querySelector('#ab-draft');draft.hidden=!draft.hidden;});
+  root.querySelector('#ab-save').addEventListener('click',function(){var target=root.querySelector('input[name="next-target"]:checked').value;var assistance=root.querySelector('input[name="next-assistance"]:checked').value;root.querySelector('#ab-draft').hidden=true;root.querySelector('#ab-message').textContent='示意草稿已保存：'+target+' · '+assistance+'。正式产品会由服务端在 run 启动时锁定配置。';});
+  root.querySelectorAll('[data-work-context]').forEach(function(button){button.addEventListener('click',function(){var target=button.dataset.workContext;root.querySelectorAll('[data-work-context]').forEach(function(item){item.setAttribute('aria-pressed',String(item===button));});root.querySelectorAll('[data-context-pane]').forEach(function(pane){pane.hidden=pane.dataset.contextPane!==target;});root.querySelector('#ab-work-context').scrollIntoView({behavior:'smooth',block:'nearest'});});});
+  var requests={hint:{type:'HINT · req_7c2',title:'Grasp approach is drifting',copy:'Agent hypothesis: wrist frame may be applied twice during final approach.',priority:'HIGH',deadline:'00:42',permitted:'Hint / defer',memory:'mem_014 · wrist frame calibration'},approval:{type:'APPROVAL · req_61a',title:'Bounded retry approved',copy:'Agent hypothesis: a smaller offset remains inside the workspace envelope.',priority:'MED',deadline:'Closed',permitted:'Review only',memory:'mem_014 · wrist frame calibration'}};
+  var attemptClips={
+    hint:[
+      {label:'01 · failed',duration:'17s',event:'⚠ GRASP MISSED',trace:'14:22:35 · base camera captured<br>14:22:44 · grasp approach commanded<br>14:22:52 · grasp missed; retry planned',frames:[{time:'14:22:35',label:'观察画面',stage:'执行前'},{time:'14:22:44',label:'抓取动作',stage:'接近目标'},{time:'14:22:52',label:'第一次失败',stage:'抓取未成功'}]},
+      {label:'02 · hint requested',duration:'22s',event:'⚠ DRIFT OBSERVED',trace:'14:24:04 · base camera captured<br>14:24:18 · approach offset commanded<br>14:24:26 · drift observed; safe stop',frames:[{time:'14:24:04',label:'观察画面',stage:'执行前'},{time:'14:24:18',label:'执行动作',stage:'接近目标'},{time:'14:24:26',label:'偏移出现',stage:'偏移出现'}]}
+    ],
+    approval:[
+      {label:'01 · approval request',duration:'51s',event:'✓ RETRY STARTED',trace:'14:23:05 · retry proposed<br>14:23:18 · approval answered<br>14:23:56 · exec_4f9a started',frames:[{time:'14:23:05',label:'提出重试',stage:'重试前'},{time:'14:23:18',label:'收到答复',stage:'批准有限重试'},{time:'14:23:56',label:'重新执行',stage:'执行开始'}]}
+    ]
+  };
+  var selectedRequest='hint',selectedAttempt=1,frameIndex=0,replayTimer=null,hintAnswered=false;
+  function stopReplay(){if(replayTimer){clearInterval(replayTimer);replayTimer=null;}root.querySelector('#ab-play').textContent='▶ 播放';}
+  function showFrame(index){
+    frameIndex=index;
+    var frame=attemptClips[selectedRequest][selectedAttempt].frames[index];
+    var screen=root.querySelector('#ab-replay-screen');
+    screen.dataset.frame=String(index);
+    root.querySelector('#ab-scrub').value=String(index);
+    root.querySelector('#ab-replay-overlay').textContent=frame.time+' · '+frame.stage;
+    root.querySelector('#ab-replay-time').textContent=frame.time;
+    root.querySelectorAll('[data-frame-index]').forEach(function(button,i){button.setAttribute('aria-pressed',String(i===index));});
+  }
+  function showAttempt(index){
+    stopReplay();selectedAttempt=index;
+    var clip=attemptClips[selectedRequest][index];
+    root.querySelector('#ab-clip-id').textContent='ATTEMPT '+String(index+1).padStart(2,'0')+' · '+(selectedRequest==='hint'?'ERROR CLIP':'REQUEST CLIP');
+    root.querySelector('#ab-clip-duration').textContent='BASE CAMERA · '+clip.duration;
+    root.querySelector('#ab-replay-event').textContent=clip.event;
+    root.querySelector('#ab-detail-trace').innerHTML=clip.trace;
+    root.querySelector('#ab-selected-attempt').textContent='当前显示 attempt '+String(index+1).padStart(2,'0')+' 的片段和 trace';
+    root.querySelectorAll('[data-attempt-index]').forEach(function(button,i){button.setAttribute('aria-pressed',String(i===index));});
+    root.querySelectorAll('[data-frame-index]').forEach(function(button,i){var frame=clip.frames[i];button.innerHTML=frame.time+'<br>'+frame.label;});
+    showFrame(0);
+  }
+  function showRequest(kind){
+    stopReplay();selectedRequest=kind;
+    var item=requests[kind],available=attemptClips[kind];
+    var answered=kind==='approval'||hintAnswered;
+    root.querySelector('#ab-detail-type').textContent=item.type;
+    var state=root.querySelector('#ab-detail-state');state.textContent=answered?'ANSWERED':'PENDING';state.className='status-chip '+(answered?'answered':'pending');
+    root.querySelector('#ab-detail-title').textContent=item.title;
+    root.querySelector('#ab-detail-copy').textContent=item.copy;
+    root.querySelector('#ab-detail-memory').textContent=item.memory;
+    root.querySelector('#ab-detail-priority').textContent=item.priority;
+    root.querySelector('#ab-detail-deadline').textContent=answered?'Closed':item.deadline;
+    root.querySelector('#ab-detail-permitted').textContent=answered?'Review only':item.permitted;
+    root.querySelector('#ab-detail-used').textContent=kind==='approval'?'Approved':hintAnswered?'Not yet':'Pending';
+    root.querySelector('#ab-detail-execution').textContent=kind==='approval'?'exec_4f9a':'—';
+    ['request','answer','used','exec'].forEach(function(stage,i){root.querySelector('#ab-stage-'+stage).className=kind==='approval'||(hintAnswered&&i<2)?'done':i===(hintAnswered?2:0)?'current':'';});
+    root.querySelector('#ab-replay-screen').dataset.request=kind;
+    root.querySelector('#ab-actions').hidden=kind!=='hint'||hintAnswered;
+    root.querySelector('#ab-attempt-count').textContent=available.length+' recorded / max 3';
+    var strip=root.querySelector('#ab-attempt-strip');
+    strip.innerHTML=available.map(function(clip,i){return '<button type="button" data-attempt-index="'+i+'" aria-pressed="false">'+clip.label+'</button>';}).join('');
+    if(available.length<3){strip.innerHTML+='<span>'+String(available.length+1).padStart(2,'0')+' · not yet available</span>';}
+    showAttempt(available.length-1);
+  }
+  root.querySelectorAll('.inboxitem[data-request]').forEach(function(button){button.addEventListener('click',function(){
+    root.querySelectorAll('.inboxitem[data-request]').forEach(function(item){item.setAttribute('aria-pressed',String(item===button));});
+    showRequest(button.getAttribute('data-request'));
+  });});
+  root.querySelector('#ab-attempt-strip').addEventListener('click',function(event){var button=event.target.closest('[data-attempt-index]');if(button){showAttempt(Number(button.dataset.attemptIndex));}});
+  root.querySelectorAll('[data-frame-index]').forEach(function(button){button.addEventListener('click',function(){stopReplay();showFrame(Number(button.dataset.frameIndex));});});
+  root.querySelector('#ab-scrub').addEventListener('input',function(){stopReplay();showFrame(Number(this.value));});
+  root.querySelector('#ab-play').addEventListener('click',function(){
+    if(replayTimer){stopReplay();return;}
+    if(frameIndex===2)showFrame(0);
+    this.textContent='❚❚ 暂停';
+    replayTimer=setInterval(function(){if(frameIndex>=2){stopReplay();return;}showFrame(frameIndex+1);},950);
+  });
+  root.querySelector('#ab-answer').addEventListener('click',function(){hintAnswered=true;var state=root.querySelector('.inboxitem[data-request="hint"] .state');state.textContent='ANSWERED';state.className='state status-chip answered';root.querySelector('#ab-message').textContent='示意 hint 答复已记录；此页未连接后端，因此尚无采用记录或新执行。';showRequest('hint');});
+  root.querySelector('#ab-defer').addEventListener('click',function(){root.querySelector('#ab-message').textContent='已延后查看；请求 deadline 不变，Agent 可继续安全的自主工作。';});
+  showRequest('hint');
+  root.querySelector('#ab-stop').addEventListener('click',function(){
+    root.querySelector('#ab-robot').textContent='Interrupted · demo only';
+    root.querySelector('#ab-exec').textContent='exec_4f9a · stopped';
+    root.querySelector('#ab-message').textContent='仅修改示意页面，没有向机器人发送中断。';
+  });
+})();
+</script>
+</div>
+
+<script src="./live.js" defer></script>
+</body></html>

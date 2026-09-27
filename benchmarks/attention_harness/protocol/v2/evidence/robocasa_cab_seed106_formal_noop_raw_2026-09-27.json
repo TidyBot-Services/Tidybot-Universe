@@ -1,0 +1,51 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-robocasa-formal-dev/counter_to_cab-seed106-formal-1790463825573029758",
+  "artifacts": {
+    "native_result": {
+      "sha256": "a3350d19ce99022ef58021179446c3df46b918ffa237e6a486bb5b1ad9872075",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-robocasa-formal-dev/counter_to_cab-seed106-formal-1790463825573029758/native_result.json"
+    },
+    "safety": {
+      "sha256": "6ebb2c0ae5cc60f1d75e22145201213e0c59460a21a137d5454a1a68d7e967fd",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-robocasa-formal-dev/counter_to_cab-seed106-formal-1790463825573029758/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "b290cdf9e3caec2d04d6358a9a9a11a507ba8b1025fa0b8b54bbe6fac2dd1049",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-robocasa-formal-dev/counter_to_cab-seed106-formal-1790463825573029758/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "09fec1fbc90d9549cf6f246e2ba20272c305b28fa4ac53c41125ba2bb12e63c9",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-robocasa-formal-dev/counter_to_cab-seed106-formal-1790463825573029758/trace.json"
+    }
+  },
+  "boundary_checked": true,
+  "config_sha256": "d78cfea4fba3a7ebb27a67933bfd04e8ae4917c8929719440647f27a1b7e7d4e",
+  "error": null,
+  "formal_blockers": [
+    "independent sandbox and cancellation acceptance not frozen",
+    "task/seed/config stability matrix not formally accepted"
+  ],
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 106,
+  "service_revision": {
+    "agent": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30",
+    "sim": "4e590158761493414a036f68e0ae26a7e61dc77b",
+    "task": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7"
+  },
+  "status": "completed",
+  "suite": "robocasa",
+  "task_id": "counter_to_cab"
+}

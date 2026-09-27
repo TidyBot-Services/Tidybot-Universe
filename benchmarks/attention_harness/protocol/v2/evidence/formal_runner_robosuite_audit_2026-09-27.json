@@ -1,0 +1,55 @@
+{
+  "schema_version": "attentionbench.formal-runner-audit.v1",
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "development_seed": 101,
+  "conclusion": "无法验收",
+  "formal_episode_executed": false,
+  "formal_eligible": false,
+  "reason": "No concrete Robosuite FormalSuiteRunner is registered. The sim_gt runner is a trusted callback, and the Service has no step cancellation endpoint.",
+  "repository_versions": {
+    "Tidybot-Universe-attention-native": {
+      "branch": "feature/attention-native-robosuite",
+      "head": "bb16e29",
+      "worktree": "modified and untracked files present"
+    },
+    "attention_memory_service": {
+      "branch": "master",
+      "head": "f173300",
+      "worktree": "modified and untracked files present"
+    },
+    "robosuite_sim-service": {
+      "branch": "master",
+      "head": "12bc69a",
+      "worktree": "clean"
+    }
+  },
+  "service_runtime_version": null,
+  "service_started_for_this_audit": false,
+  "executed_commands": [
+    {
+      "command": "~/.cache/tidybot-attention/venv/bin/python -m pytest benchmarks/attention_harness/tests/test_formal_runner_boundary.py -q -k robosuite",
+      "exit_code": 0,
+      "output": "1 passed, 1 deselected in 0.06s",
+      "scope": "FakeRunner contract test only; not a simulator or formal runner test"
+    }
+  ],
+  "formal_test_command": null,
+  "formal_run_artifacts": [],
+  "checks": {
+    "source_and_config_digest": "unverified",
+    "policy_sandbox": "unverified; current sim_gt runner invokes a trusted callback",
+    "overall_deadline_and_action_cancellation": "failed preflight; Service exposes synchronous /v1/step and has no cancellation endpoint",
+    "independent_safety_record": "unverified in a formal attempt; paired development trials can write a safety artifact",
+    "native_success": "unverified in a formal attempt; development runner calls the native evaluator",
+    "trace_and_artifact_hashes": "unverified in a formal attempt"
+  },
+  "missing_code": [
+    "Concrete Robosuite FormalSuiteRunner adapter and registration",
+    "Generated-policy sandbox with independently verified process, credential, file, and network restrictions",
+    "Service-owned cancellable action protocol or isolated per-episode Service process with confirmed termination after deadline",
+    "One deadline covering reset, action, and episode",
+    "Runner-owned safety, native result, trace, and sandbox receipts with verified hashes"
+  ],
+  "next_step": "Implement cancellable Robosuite Service execution first, then the sandboxed formal adapter and seed-101 acceptance probes. Do not substitute the trusted-callback sim_gt runner or mark formal_eligible=true."
+}

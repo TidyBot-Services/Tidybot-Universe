@@ -1,0 +1,508 @@
+[33;1m2026-09-27 06:09:03,204 - mani_skill  - WARNING - tidyverse is not in the task's list of supported robots. Code may not run as intended[0m
+[maniskill] Creating env: task=RoboCasa-Pn-P-Counter-To-Cab-v0, control_mode=whole_body, obs_mode=rgb+depth+segmentation, num_envs=1
+[obj_inside_of] obj=obj obj_pos=[ 3.5591247  -0.42642283  1.0231758 ] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.365433  -1.0873005  0.9915521] fixture_pos=[ 0.19998825 -0.94999927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.19998825 -0.89999927  1.85      ] lower=[-0.05001175 -1.09999927  1.24      ] upper=[ 0.44998825 -0.69999927  2.46      ] inside=False
+[maniskill] Env reset with seed=0 (reconfigure=True)
+[maniskill] Simulation device: cpu
+[viz-debug] all robot links:
+  root: pos=(1.400,-0.950,0.000) q=(-0.000,0.000,0.000,1.000)
+  base_x_link: pos=(1.400,-0.950,0.000) q=(-0.000,0.000,0.000,1.000)
+  base_y_link: pos=(1.400,-0.950,0.000) q=(-0.000,0.000,0.000,1.000)
+  base_link: pos=(1.400,-0.950,0.000) q=(-0.000,0.000,0.000,1.000)
+  panda_link0: pos=(1.400,-0.950,0.472) q=(-0.000,0.000,0.000,1.000)
+  panda_link1: pos=(1.400,-0.950,0.805) q=(-0.000,0.000,0.000,1.000)
+  panda_link2: pos=(1.400,-0.950,0.805) q=(0.270,0.270,-0.653,0.653)
+  panda_link3: pos=(1.623,-0.950,1.029) q=(-0.000,0.382,0.000,0.924)
+  panda_link4: pos=(1.565,-0.950,1.087) q=(0.500,-0.500,0.500,0.500)
+  panda_link5: pos=(1.181,-0.950,1.170) q=(-0.000,-0.707,-0.000,0.707)
+  panda_link6: pos=(1.181,-0.950,1.170) q=(-0.120,0.120,0.697,0.697)
+  panda_link7: pos=(1.098,-0.950,1.199) q=(-0.157,0.377,0.910,-0.065)
+  panda_link8: pos=(1.062,-0.950,1.098) q=(-0.157,0.377,0.910,-0.065)
+  robotiq_arg2f_base_link: pos=(1.062,-0.950,1.098) q=(-0.157,0.377,0.910,-0.065)
+  eef: pos=(1.014,-0.950,0.962) q=(-0.157,0.377,0.910,-0.065)
+  left_outer_knuckle: pos=(1.023,-0.972,1.054) q=(0.065,0.910,-0.377,-0.157)
+  left_inner_knuckle: pos=(1.033,-0.959,1.043) q=(0.065,0.910,-0.377,-0.157)
+  right_outer_knuckle: pos=(1.064,-0.928,1.039) q=(-0.157,0.377,0.910,-0.065)
+  right_inner_knuckle: pos=(1.050,-0.941,1.037) q=(-0.157,0.377,0.910,-0.065)
+  left_outer_finger: pos=(1.004,-0.994,1.065) q=(0.065,0.910,-0.377,-0.157)
+  right_outer_finger: pos=(1.086,-0.906,1.036) q=(-0.157,0.377,0.910,-0.065)
+  left_inner_finger: pos=(0.984,-0.998,1.022) q=(0.065,0.910,-0.377,-0.157)
+  right_inner_finger: pos=(1.075,-0.902,0.990) q=(-0.157,0.377,0.910,-0.065)
+  left_inner_finger_pad: pos=(0.988,-0.983,0.986) q=(0.065,0.910,-0.377,-0.157)
+  right_inner_finger_pad: pos=(1.049,-0.917,0.965) q=(-0.157,0.377,0.910,-0.065)
+[viz] cuRobo OBB visualization created (0.734m x 0.524m, red transparent)
+[planner] base_link home: pos=[1.3999883, -0.94999486, 0.0] q=[-1.8366026e-06, 0.0, 0.0, 1.0]
+[planner] Creating SapienPlanningWorld...
+
+  Planning world contents (ACM mode=strict):
+    Robot links (25): ['scene-0-tidyverse_root', 'scene-0-tidyverse_base_x_link', 'scene-0-tidyverse_base_y_link', 'scene-0-tidyverse_base_link', 'scene-0-tidyverse_panda_link0']...
+    Articulations (24):
+      [PENDING] scene-0_stack_3_left_group_3_0_141 (3 links)
+      [PENDING] scene-0_stack_3_left_group_2_0_138 (3 links)
+      [PENDING] scene-0_top_left_group_0_119 (4 links)
+      [PENDING] scene-0_bottom_left_group_1_0_107 (3 links)
+      [PENDING] scene-0_sink_left_group_0_98 (5 links)
+      [ROBOT] scene-0_tidyverse_1
+      [PENDING] scene-0_cab_1_left_group_0_89 (3 links)
+      [PENDING] scene-0_stovetop_main_group_0_36 (8 links)
+      [PENDING] scene-0_cab_2_left_group_0_93 (3 links)
+      [PENDING] scene-0_stack_1_main_group_1_0_48 (3 links)
+      [PENDING] scene-0_stack_2_left_group_1_0_128 (4 links)
+      [PENDING] scene-0_stack_1_main_group_3_0_54 (3 links)
+      [PENDING] scene-0_stack_1_main_group_4_0_57 (3 links)
+      [PENDING] scene-0_stack_2_main_group_1_0_61 (4 links)
+      [PENDING] scene-0_stack_3_left_group_1_0_134 (4 links)
+      [PENDING] scene-0_stack_1_main_group_2_0_51 (3 links)
+      [PENDING] scene-0_stack_3_main_group_1_0_67 (4 links)
+      [PENDING] scene-0_cab_main_main_group_0_78 (4 links)
+      [PENDING] scene-0_microwave_left_group_0_115 (3 links)
+      [PENDING] scene-0_stack_3_main_group_2_0_71 (3 links)
+      [PENDING] scene-0_fridge_cab_main_group_0_83 (4 links)
+      [PENDING] scene-0_stack_1_left_group_0_123 (3 links)
+      [PENDING] scene-0_bottom_left_group_2_0_110 (3 links)
+      [PENDING] scene-0_stack_3_main_group_3_0_74 (3 links)
+    Static objects (93 total):
+      Targets (always checked): 0
+      Collision-checked (near, <1.5m): 93
+        - fixture_box_stool_3_stool_group  dist=-1.00m
+        - fixture_box_stool_2_stool_group  dist=-1.00m
+        - fixture_box_stool_1_stool_group  dist=-1.00m
+        - fixture_box_knife_block_left_group  dist=-1.00m
+        - fixture_box_paper_towel_left_group  dist=-1.00m
+        - fixture_box_coffee_machine_left_group  dist=-1.00m
+        - fixture_box_stack_3_left_group_3  dist=-1.00m
+        - fixture_box_stack_3_left_group_2  dist=-1.00m
+        - fixture_box_stack_3_left_group_1  dist=-1.00m
+        - fixture_box_stack_3_left_group_base  dist=-1.00m
+        - fixture_box_stack_2_left_group_2  dist=-1.00m
+        - fixture_box_stack_2_left_group_1  dist=-1.00m
+        - fixture_box_micro_housing_left_group  dist=-1.00m
+        - fixture_box_microwave_left_group  dist=-1.00m
+        - fixture_box_oven_left_group  dist=-1.00m
+        - fixture_box_bottom_left_group_1  dist=-1.00m
+        - fixture_box_bottom_left_group_base  dist=-1.00m
+        - fixture_box_stack_2_left_group_base  dist=-1.00m
+        - fixture_box_counter_corner_left_group  dist=-1.00m
+        - fixture_box_sink_left_group  dist=-1.00m
+        - fixture_box_cab_corner_4_left_group  dist=-1.00m
+        - fixture_box_cab_corner_3_left_group  dist=-1.00m
+        - fixture_box_cab_2_left_group  dist=-1.00m
+        - fixture_box_window_group_left_group  dist=-1.00m
+        - fixture_box_oven_housing_left_group  dist=-1.00m
+        - fixture_box_utensil_holder_main_group  dist=-1.00m
+        - scene-0_dishwasher_left_group_0_126  dist=-1.00m
+        - fixture_box_fridge_main_group  dist=-1.00m
+        - scene-0_bottom_left_group_base_0_106  dist=-1.00m
+        - fixture_box_stack_1_main_group_base  dist=-1.00m
+        - fixture_box_cab_1_left_group  dist=-1.00m
+        - scene-0_counter_corner_left_group_0_104  dist=-1.00m
+        - scene-0_window_group_left_group_0_92  dist=-1.00m
+        - fixture_box_counter_1_left_left_group  dist=-1.00m
+        - scene-0_utensil_holder_main_group_0_88  dist=-1.00m
+        - scene-0_shelves_main_group_0_82  dist=-1.00m
+        - scene-0_cab_corner_4_left_group_0_97  dist=-1.00m
+        - scene-0_stack_2_left_group_base_0_127  dist=-1.00m
+        - fixture_box_stack_1_main_group_4  dist=-1.00m
+        - scene-0_floor_room_0_32  dist=-1.00m
+        - scene-0_island_left_group_0_105  dist=-1.00m
+        - scene-0_stool_3_stool_group_0_150  dist=-1.00m
+        - scene-0_distr_counter_0_152  dist=-1.00m
+        - scene-0_stack_2_left_group_2_0_132  dist=-1.00m
+        - fixture_box_dishwasher_left_group  dist=-1.00m
+        - fixture_box_bottom_left_group_2  dist=-1.00m
+        - scene-0_hood_main_group_0_77  dist=-1.00m
+        - scene-0_wall_room_0_26  dist=-1.00m
+        - fixture_box_plant_left_group  dist=-1.00m
+        - fixture_box_stack_1_left_group  dist=-1.00m
+        - scene-0_wall_left_room_0_27  dist=-1.00m
+        - scene-0_counter_corner_main_main_group_0_34  dist=-1.00m
+        - fixture_box_counter_1_right_main_group  dist=-1.00m
+        - scene-0_counter_1_right_main_group_0_44  dist=-1.00m
+        - fixture_box_stack_1_main_group_2  dist=-1.00m
+        - scene-0_stack_2_main_group_2_0_65  dist=-1.00m
+        - scene-0_toaster_main_group_0_87  dist=-1.00m
+        - scene-0_stack_1_main_group_base_0_47  dist=-1.00m
+        - scene-0_stack_3_left_group_base_0_133  dist=-1.00m
+        - scene-0_obj_0_151  dist=-1.00m
+        - fixture_box_hood_main_group  dist=-1.00m
+        - scene-0_oven_left_group_0_113  dist=-1.00m
+        - scene-0_coffee_machine_left_group_0_144  dist=-1.00m
+        - scene-0_cab_corner_3_left_group_0_96  dist=-1.00m
+        - fixture_box_fridge_cab_main_group  dist=-1.00m
+        - scene-0_stack_2_main_group_base_0_60  dist=-1.00m
+        - scene-0_paper_towel_left_group_0_145  dist=-1.00m
+        - scene-0_knife_block_left_group_0_146  dist=-1.00m
+        - scene-0_stool_2_stool_group_0_149  dist=-1.00m
+        - fixture_box_stack_2_main_group_1  dist=-1.00m
+        - scene-0_plant_left_group_0_147  dist=-1.00m
+        - scene-0_counter_main_main_group_0_35  dist=-1.00m
+        - scene-0_stool_1_stool_group_0_148  dist=-1.00m
+        - fixture_box_top_left_group  dist=-1.00m
+        - fixture_box_counter_corner_main_main_group  dist=-1.00m
+        - fixture_box_island_left_group  dist=-1.00m
+        - scene-0_counter_1_left_left_group_0_103  dist=-1.00m
+        - fixture_box_counter_main_main_group  dist=-1.00m
+        - fixture_box_stovetop_main_group  dist=-1.00m
+        - fixture_box_stack_2_main_group_2  dist=-1.00m
+        - fixture_box_stack_1_main_group_3  dist=-1.00m
+        - fixture_box_stack_2_main_group_base  dist=-1.00m
+        - scene-0_fridge_main_group_0_45  dist=-1.00m
+        - fixture_box_fridge_housing_main_group  dist=-1.00m
+        - fixture_box_stack_3_main_group_base  dist=-1.00m
+        - fixture_box_stack_3_main_group_2  dist=-1.00m
+        - fixture_box_stack_1_main_group_1  dist=-1.00m
+        - fixture_box_stack_3_main_group_1  dist=-1.00m
+        - fixture_box_stack_3_main_group_3  dist=-1.00m
+        - fixture_box_cab_main_main_group  dist=-1.00m
+        - scene-0_stack_3_main_group_base_0_66  dist=-1.00m
+        - fixture_box_shelves_main_group  dist=-1.00m
+        - fixture_box_toaster_main_group  dist=-1.00m
+      ACM-relaxed (far): 0
+
+  No initial collisions.
+[planner] Added 57 fixture boxes (cached 57 cuboids for cuRobo)
+[planner] mplib ready
+[curobo] Using in-process planner (set CUROBO_SERVICE_URL to switch)
+[curobo] Loading franka_mobile config...
+Warp DeprecationWarning: The symbol `warp.torch.device_from_torch` will soon be removed from the public API. Use `warp.device_from_torch` instead.
+[curobo] Warming up CUDA kernels...
+[curobo] Loading arm-only config (base joints locked)...
+[curobo] Ready (15.2s, whole_body + arm_only)
+[curobo] Updated collision world: 47 cuboids (skipped 0 overlap, 10 far)
+[curobo] Loaded 57 cuboids (transformed world→local)
+[curobo] Collision world for target: 47 cuboids (excl 0 at target, 0 overlap, 10 far)
+[curobo] Start state collision, retrying with cleared world
+[curobo] Plan OK (2.67s, whole_body): 31 waypoints
+[planner] dummy plan JIT warmup done (2.7s)
+[maniskill] Environment ready (1 env(s))
+[maniskill] HTTP API on port 6400 (env 0: /task/success, /task/info, /plan, /perceive, /reset)
+[maniskill] Entering physics loop (1 env(s), Ctrl+C to stop)
+[obj_inside_of] obj=obj obj_pos=[ 0.365433  -1.0873005  0.9768375] fixture_pos=[ 0.19998825 -0.94999927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.19998825 -0.89999927  1.85      ] lower=[-0.05001175 -1.09999927  1.24      ] upper=[ 0.44998825 -0.69999927  2.46      ] inside=False
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[obj_inside_of] obj=obj obj_pos=[ 0.36547625 -1.087424    0.94969314] fixture_pos=[ 0.19998825 -0.94999927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.19998825 -0.89999927  1.85      ] lower=[-0.05001175 -1.09999927  1.24      ] upper=[ 0.44998825 -0.69999927  2.46      ] inside=False
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0947908] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0800762] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0408355] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0947908] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0800762] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0408355] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.5273314  -0.45294628  0.9985133 ] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[perceive] 21 objects from ['base_camera']: ['hingerightdoor', 'counter_main_main_group_0', 'floor_room_0', 'inner_box', 'window_group_main_group_0', 'wall_room_0', 'condiment_bottle', 'toaster_main_group_0', 'stack_1_right_group_2_0', 'jug']...
+[obj_inside_of] obj=obj obj_pos=[ 3.5276988  -0.45296517  0.99849373] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0334198 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0187052 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  0.97946537] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0334198 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0187052 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  0.97946537] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2617211  -0.45465547  0.95479983] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[perceive] 10 objects from ['wrist_camera']: ['hingerightdoor', 'stack_2_main_group_2_0', 'hingeleftdoor', 'dishwasher_main_group_0', 'inner_box', 'floor_room_0', 'potato', 'counter_main_main_group_0', 'hingedoor', 'object']
+[obj_inside_of] obj=obj obj_pos=[ 2.2624674  -0.45469704  0.9545488 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9912061 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9764915 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35738558 -0.30188155  0.94695294] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9912061 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9764915 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35738558 -0.30188155  0.94695294] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.36005205 -0.29750168  0.9469705 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[perceive] 14 objects from ['base_camera']: ['stack_2_main_group_2_0', 'counter_main_main_group_0', 'floor_room_0', 'spout', 'inner_box', 'cupcake', 'wall_room_0', 'mango', 'outlet_2_room_0', 'hingerightdoor']...
+[obj_inside_of] obj=obj obj_pos=[ 0.36032137 -0.29461205  0.94778836] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1056535  -0.32715645  0.97865164] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1169426  -0.3656045   0.99422455] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.144835   -0.41453293  0.98820746] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1056535  -0.32715645  0.97865164] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1169426  -0.3656045   0.99422455] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.144835   -0.41453293  0.98820746] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1688325  -0.46485248  0.9700461 ] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[perceive] 11 objects from ['wrist_camera']: ['dishwasher_main_group_0', 'floor_room_0', 'hingeleftdoor', 'inner_box', 'counter_main_main_group_0', 'toaster_main_group_0', 'hingerightdoor', 'counter_corner_right_main_group_0', 'hingedoor', 'object']...
+[obj_inside_of] obj=obj obj_pos=[ 3.198715  -0.5186005  0.9679077] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.98311037] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.96839577] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.038794   -2.2653093   0.95553505] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.98311037] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.96839577] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.038794   -2.2653093   0.95553505] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0368543  -2.2654328   0.95641476] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[perceive] 24 objects from ['base_camera']: ['floor_room_0', 'counter_corner_right_group_0', 'counter_1_right_group_0', 'inner_box', 'object', 'door', 'knife_block_right_group_0', 'counter_corner_right_main_group_0', 'fridge_right_group_0', 'counter_2_right_group_0']...
+[obj_inside_of] obj=obj obj_pos=[ 4.036946  -2.2673013  0.9557815] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0947908] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0800762] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0408355] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0334198 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0187052 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  0.97946537] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9912061 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9764915 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35738558 -0.30188155  0.94695294] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.36005205 -0.29750168  0.9469705 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.36032137 -0.29461205  0.94778836] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35872892 -0.2933952   0.9478802 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35699624 -0.29442644  0.9475929 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35657465 -0.29701972  0.94731176] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3578961 -0.2986835  0.9470423] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35840818 -0.29898486  0.9469108 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0947908] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0800762] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0408355] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0947908] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0800762] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0408355] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.5273314  -0.45294628  0.9985133 ] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[perceive] 21 objects from ['base_camera']: ['hingerightdoor', 'counter_main_main_group_0', 'floor_room_0', 'inner_box', 'window_group_main_group_0', 'wall_room_0', 'condiment_bottle', 'toaster_main_group_0', 'stack_1_right_group_2_0', 'jug']...
+[obj_inside_of] obj=obj obj_pos=[ 3.5276988  -0.45296517  0.99849373] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0334198 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0187052 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  0.97946537] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0334198 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0187052 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  0.97946537] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2617211  -0.45465547  0.95479983] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[perceive] 10 objects from ['wrist_camera']: ['hingerightdoor', 'stack_2_main_group_2_0', 'hingeleftdoor', 'dishwasher_main_group_0', 'inner_box', 'floor_room_0', 'potato', 'counter_main_main_group_0', 'hingedoor', 'object']
+[obj_inside_of] obj=obj obj_pos=[ 2.2624674  -0.45469704  0.9545488 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9912061 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9764915 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35738558 -0.30188155  0.94695294] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9912061 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9764915 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35738558 -0.30188155  0.94695294] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.36005205 -0.29750168  0.9469705 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[perceive] 14 objects from ['base_camera']: ['stack_2_main_group_2_0', 'counter_main_main_group_0', 'floor_room_0', 'spout', 'inner_box', 'cupcake', 'wall_room_0', 'mango', 'outlet_2_room_0', 'hingerightdoor']...
+[obj_inside_of] obj=obj obj_pos=[ 0.36032137 -0.29461205  0.94778836] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1056535  -0.32715645  0.97865164] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1169426  -0.3656045   0.99422455] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.144835   -0.41453293  0.98820746] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1056535  -0.32715645  0.97865164] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1169426  -0.3656045   0.99422455] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.144835   -0.41453293  0.98820746] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1688325  -0.46485248  0.9700461 ] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[perceive] 11 objects from ['wrist_camera']: ['dishwasher_main_group_0', 'floor_room_0', 'hingeleftdoor', 'inner_box', 'counter_main_main_group_0', 'toaster_main_group_0', 'hingerightdoor', 'counter_corner_right_main_group_0', 'hingedoor', 'object']...
+[obj_inside_of] obj=obj obj_pos=[ 3.198715  -0.5186005  0.9679077] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.98311037] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.96839577] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.038794   -2.2653093   0.95553505] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.98311037] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.96839577] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.038794   -2.2653093   0.95553505] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0368543  -2.2654328   0.95641476] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[perceive] 24 objects from ['base_camera']: ['floor_room_0', 'counter_corner_right_group_0', 'counter_1_right_group_0', 'inner_box', 'object', 'door', 'knife_block_right_group_0', 'counter_corner_right_main_group_0', 'fridge_right_group_0', 'counter_2_right_group_0']...
+[obj_inside_of] obj=obj obj_pos=[ 4.036946  -2.2673013  0.9557815] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0947908] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0800762] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.527733  -0.4529787  1.0408355] fixture_pos=[ 3.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 3.5  -0.15  1.85] lower=[ 3.25 -0.35  1.24] upper=[3.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0334198 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  1.0187052 ] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 2.2613702  -0.45151395  0.97946537] fixture_pos=[ 2.25 -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 2.25 -0.15  1.85] lower=[ 2.   -0.35  1.24] upper=[2.5  0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9912061 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.3568631  -0.30260304  0.9764915 ] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.35738558 -0.30188155  0.94695294] fixture_pos=[ 0.5  -0.2   1.85] fsize=[0.5  0.4  0.92] shifted_fpos=[ 0.5  -0.15  1.85] lower=[ 0.25 -0.35  1.24] upper=[0.75 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1056535  -0.32715645  0.97865164] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.1169426  -0.3656045   0.99422455] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.144835   -0.41453293  0.98820746] fixture_pos=[ 3.2  -0.2   1.85] fsize=[1.   0.4  0.92] shifted_fpos=[ 3.2  -0.15  1.85] lower=[ 2.95 -0.35  1.24] upper=[3.45 0.05 2.46] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.98311037] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.0375557  -2.2646768   0.96839577] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 4.038794   -2.2653093   0.95553505] fixture_pos=[ 4.19999424 -2.21799927  1.85      ] fsize=[0.5  0.4  0.92] shifted_fpos=[ 4.19999424 -2.16799927  1.85      ] lower=[ 3.94999424 -2.36799927  1.24      ] upper=[ 4.44999424 -1.96799927  2.46      ] inside=False
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[perceive] 21 objects from ['base_camera']: ['inner_box', 'counter_1_main_group_0', 'dishwasher_right_group_0', 'floor_room_0', 'hingeleftdoor', 'stack_1_right_group_2_0', 'counter_corner_right_group_0', 'counter_corner_2_main_group_0', 'paper_towel_right_group_0', 'cab_corner_3_main_group_0']...
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[perceive] 21 objects from ['base_camera']: ['inner_box', 'counter_1_main_group_0', 'dishwasher_right_group_0', 'floor_room_0', 'hingeleftdoor', 'stack_1_right_group_2_0', 'counter_corner_right_group_0', 'counter_corner_2_main_group_0', 'paper_towel_right_group_0', 'cab_corner_3_main_group_0']...
+[perceive] 22 objects from ['base_camera', 'wrist_camera']: ['floor_room_0', 'inner_box', 'stack_4_main_group_base_0', 'counter_1_main_group_0', 'dishwasher_right_group_0', 'island_island_group_0', 'hingeleftdoor', 'stack_1_right_group_2_0', 'counter_1_right_group_0', 'counter_corner_right_group_0']...
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[perceive] 22 objects from ['base_camera', 'wrist_camera']: ['floor_room_0', 'inner_box', 'stack_4_main_group_base_0', 'counter_1_main_group_0', 'dishwasher_right_group_0', 'island_island_group_0', 'hingeleftdoor', 'stack_1_right_group_2_0', 'counter_1_right_group_0', 'counter_corner_right_group_0']...
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+[viz-debug] base_link.pose=(1.400,-0.950) q=(-0.000,0.000,-0.000,1.000) qpos[0:3]=(-0.000,-0.000,-0.000)
+
+[maniskill] Interrupted
+[maniskill] Stopped

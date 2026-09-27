@@ -35,9 +35,11 @@ def persist_episode_trace(
     seed: int,
     policy_id: str,
     developer_model: str,
+    evaluator_model: str | None = None,
     execution_target: str,
     execution_status: str,
     native_success: bool,
+    evaluator_authoritative: bool = True,
     elapsed_seconds: float,
     action_trace: Sequence[Mapping[str, Any]],
     sdk_trace: Sequence[Mapping[str, Any]] = (),
@@ -48,6 +50,7 @@ def persist_episode_trace(
     exit_code: int | None = None,
     stop_reason: str | None = None,
     code_path: Path | None = None,
+    code_sha256: str | None = None,
     runtime: Mapping[str, Any] | None = None,
     hypothesis: str = "",
     attention_eligible: bool = True,
@@ -57,6 +60,7 @@ def persist_episode_trace(
     assistance_mode: AssistanceMode = AssistanceMode.BENCHMARK_PROXY,
     store_path: Path | None = None,
     run_id: str | None = None,
+    attempt_id: str | None = None,
     attempt_index: int = 0,
     finalize_run: bool = True,
     execution_budget_seconds: float | None = None,
@@ -77,10 +81,14 @@ def persist_episode_trace(
         raise ValueError("token counts must be non-negative")
     if attempt_index < 0:
         raise ValueError("attempt_index must be non-negative")
+    if not isinstance(evaluator_authoritative, bool):
+        raise ValueError("evaluator_authoritative must be a boolean")
+    if native_success and not evaluator_authoritative:
+        raise ValueError("success cannot be claimed without a native evaluator verdict")
 
     identity = episode_dir.name
     run_id = run_id or f"run:{identity}"
-    attempt_id = f"attempt:{identity}:{attempt_index}"
+    attempt_id = attempt_id or f"attempt:{identity}:{attempt_index}"
     execution_id = f"execution:{identity}:{attempt_index}"
     raw_trace_id = f"raw-trace:{identity}:{attempt_index}"
     advisor_trace_id = f"trace:{identity}:{attempt_index}"
@@ -114,6 +122,7 @@ def persist_episode_trace(
         seed=seed,
         policy_id=policy_id,
         developer_model=developer_model,
+        evaluator_model=evaluator_model,
         assistance_mode=assistance_mode,
         execution_target=execution_target,
         budget=AssistanceBudget(
@@ -142,6 +151,10 @@ def persist_episode_trace(
         else (TraceVisibility.INTERNAL,)
     )
     code = _code_artifact(code_path, episode_dir) if attention_eligible else {}
+    if attention_eligible and not code and code_sha256 is not None:
+        if len(code_sha256) != 64 or any(char not in "0123456789abcdef" for char in code_sha256):
+            raise ValueError("code_sha256 must be a lowercase SHA-256 digest")
+        code = {"sha256": code_sha256}
     evidence = _evidence_refs(
         episode_dir,
         public_visibility=public_visibility,
@@ -196,8 +209,8 @@ def persist_episode_trace(
             timed_out=timed_out,
             elapsed_seconds=elapsed_seconds,
             native_success=native_success,
-            evaluator_verdict="succeeded" if native_success else "failed",
-            evaluator_authoritative=True,
+            evaluator_verdict=("succeeded" if native_success else "failed") if evaluator_authoritative else None,
+            evaluator_authoritative=evaluator_authoritative,
         ),
         complete=not timed_out,
         metadata={
@@ -208,14 +221,6 @@ def persist_episode_trace(
             "runtime": dict(runtime or {}),
         },
     )
-    advisor_packet = None
-    if failed and attention_eligible:
-        advisor_packet = TracePipeline(store).persist(
-            raw, trace_id=advisor_trace_id
-        )
-    else:
-        store.put_raw_trace(raw)
-
     attempt_status = _attempt_status(
         execution_status=execution_status,
         native_success=native_success,
@@ -229,6 +234,13 @@ def persist_episode_trace(
         artifact_uri=_artifact_uri(episode_dir, "result.json"),
         event_key=f"finish:{attempt_id}",
     )
+    # An Advisor packet only exists after the attempt has a persisted terminal
+    # state. The complete internal ledger is stored before its safe projection.
+    advisor_packet = None
+    if failed and attention_eligible:
+        advisor_packet = TracePipeline(store).persist(raw, trace_id=advisor_trace_id)
+    else:
+        store.put_raw_trace(raw)
     if finalize_run:
         run_status = (
             RunStatus.COMPLETED
@@ -412,6 +424,13 @@ def _evidence_refs(
         "generated_policy.py": ("policy_code", "text/x-python"),
         "policy.py": ("policy_code", "text/x-python"),
     }
+    # Recordings are included only when the runner explicitly writes them
+    # beside the episode artifacts before this trace is projected.
+    for recording in sorted(episode_dir.glob("advisor_replay.*")):
+        if recording.suffix in {".mp4", ".webm"}:
+            public_files[recording.name] = (
+                "advisor_replay", "video/mp4" if recording.suffix == ".mp4" else "video/webm"
+            )
     internal_files = {
         "trace.jsonl": ("action_trace", "application/x-ndjson"),
         "execution.json": ("sandbox_execution", "application/json"),

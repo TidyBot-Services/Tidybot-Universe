@@ -57,10 +57,14 @@ def ask_advisor_and_create_candidate(
         answered = runtime.resolve_benchmark_proxy(request.request_id)
         response = store.get_response(answered.response_id)
         advice = parse_advisor_advice(response["content"], request_type="hint")
+        result["advisor_advice"] = advice.artifact()
+        raw = store.get_raw_trace(link["raw_trace_id"])
+        if raw is None or raw["outcome"].get("evaluator_authoritative") is not True:
+            result["memory_candidate_error"] = "source attempt has no authoritative native evaluator verdict"
+            return
         candidate = MemoryAgent(memory_gateway).ingest_answered_hint(
             request.request_id, memory_id=f"candidate:{link['attempt_id']}",
         )
-        result["advisor_advice"] = advice.artifact()
         result["memory_candidate_id"] = candidate.memory_id
     except Exception as exc:
         current = store.get_request(request.request_id)

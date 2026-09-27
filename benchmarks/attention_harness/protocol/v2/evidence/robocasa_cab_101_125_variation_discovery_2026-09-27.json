@@ -1,0 +1,538 @@
+{
+  "all_discoveries_passed": true,
+  "all_log_hashes_valid": true,
+  "cases": [
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 20,
+      "seed": 101,
+      "variation": {
+        "object_set_id": "objects:5d63e75a74d4c378388f",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 22,
+      "seed": 102,
+      "variation": {
+        "object_set_id": "objects:a8e97ef9ef73678e32a0",
+        "scene_id": "scene:93244621fd1a24b456d5"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 13,
+      "seed": 103,
+      "variation": {
+        "object_set_id": "objects:54d07927270c57550a71",
+        "scene_id": "scene:feaf8e202a88a1bad005"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 22,
+      "seed": 104,
+      "variation": {
+        "object_set_id": "objects:105accc1d874a171227f",
+        "scene_id": "scene:6b34dfcee277f551a83b"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 24,
+      "seed": 105,
+      "variation": {
+        "object_set_id": "objects:bf5af7fb23411bfd86c1",
+        "scene_id": "scene:b328d376a1514e3e6bae"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 24,
+      "seed": 106,
+      "variation": {
+        "object_set_id": "objects:0b191edb63f17a234267",
+        "scene_id": "scene:f41dc77f8caff954a51a"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 29,
+      "seed": 107,
+      "variation": {
+        "object_set_id": "objects:1341c75e9978cca5cd4a",
+        "scene_id": "scene:ce3330173a36455b14fe"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 22,
+      "seed": 108,
+      "variation": {
+        "object_set_id": "objects:60b5cafd4da5efd7acfa",
+        "scene_id": "scene:aae3b337b0f6e336828b"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 16,
+      "seed": 109,
+      "variation": {
+        "object_set_id": "objects:41f05a0e4a17ee24f489",
+        "scene_id": "scene:88fb1073283fce565bc3"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 25,
+      "seed": 110,
+      "variation": {
+        "object_set_id": "objects:ee5f527cce95a9446a55",
+        "scene_id": "scene:9b4eb8ec2e202130b25c"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 25,
+      "seed": 111,
+      "variation": {
+        "object_set_id": "objects:0b052ca295a1b8065a2c",
+        "scene_id": "scene:4f533968e82a2cd9f63c"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 21,
+      "seed": 112,
+      "variation": {
+        "object_set_id": "objects:01fe9594fb0914578d6f",
+        "scene_id": "scene:a496851ca29d37f23d86"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 22,
+      "seed": 113,
+      "variation": {
+        "object_set_id": "objects:2b975e998dba6329bde9",
+        "scene_id": "scene:0f984be703c64782e2f8"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 22,
+      "seed": 114,
+      "variation": {
+        "object_set_id": "objects:5f801396cbe120ea7bcc",
+        "scene_id": "scene:ce137203ca806fa372cf"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 20,
+      "seed": 115,
+      "variation": {
+        "object_set_id": "objects:4872e01df688de57e7cb",
+        "scene_id": "scene:8192c4ad0d25f52afbad"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 22,
+      "seed": 116,
+      "variation": {
+        "object_set_id": "objects:6f9997b0c8ec4ae683c9",
+        "scene_id": "scene:141bcc6efaa9cc845f69"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 24,
+      "seed": 117,
+      "variation": {
+        "object_set_id": "objects:6c35b2bbce15c9059e2d",
+        "scene_id": "scene:a3c9968c43cf9a62f762"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 15,
+      "seed": 118,
+      "variation": {
+        "object_set_id": "objects:0157904cf412c4566a94",
+        "scene_id": "scene:d8b4f9a802dd1389e711"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 20,
+      "seed": 119,
+      "variation": {
+        "object_set_id": "objects:f92ae1ce33c1d28df33f",
+        "scene_id": "scene:8ded45d1abf6ad82f136"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 23,
+      "seed": 120,
+      "variation": {
+        "object_set_id": "objects:ab8e4811fea973a2b81b",
+        "scene_id": "scene:081fd50a66fdd3acca3c"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 14,
+      "seed": 121,
+      "variation": {
+        "object_set_id": "objects:04bec8e201aee3ca1eb9",
+        "scene_id": "scene:5398937253ec8588f5c1"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 24,
+      "seed": 122,
+      "variation": {
+        "object_set_id": "objects:d42a9300d688405028e3",
+        "scene_id": "scene:10b06fc341fd11d667c3"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 19,
+      "seed": 123,
+      "variation": {
+        "object_set_id": "objects:faad8dd6e2e15626d840",
+        "scene_id": "scene:f0eb442a8a1064150cc8"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 18,
+      "seed": 124,
+      "variation": {
+        "object_set_id": "objects:64450c9d48e012c88846",
+        "scene_id": "scene:a777706732ea5071c16e"
+      }
+    },
+    {
+      "cameras": [
+        "base_camera",
+        "wrist_camera"
+      ],
+      "evaluator_object_names": [
+        "obj",
+        "distr_counter"
+      ],
+      "native_success_after_reset": false,
+      "passed": true,
+      "public_object_count": 29,
+      "seed": 125,
+      "variation": {
+        "object_set_id": "objects:04ba7ab86a21dff4f697",
+        "scene_id": "scene:ae06cd05d8283f4657f7"
+      }
+    }
+  ],
+  "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_variation_discovery --task counter_to_cab --config benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_cab_seed101.json --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --task-source-root '/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --seed-start 101 --seed-end 125 --port-offset 1400 --log-dir benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_101_125_service_logs --evidence benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_101_125_variation_discovery_2026-09-27.json",
+  "config_sha256": "313d8dd529c32680469e464f47a16d4d9812ac21c311b265374ce5802e6b71fb",
+  "config_snapshot_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_101_125_discovery_config_snapshot_2026-09-27.json",
+  "config_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_cab_seed101.json",
+  "formal_eligible": false,
+  "logs": {
+    "agent": {
+      "sha256": "5264497962f955439ffcaf796c127f3b84a6b8336db49d07db9cb5520647322f",
+      "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_101_125_service_logs/agent.log"
+    },
+    "simulator": {
+      "sha256": "443d6a832922d437da0bbf0d910c894ad1850b5938191f9f3a1aa2296a925181",
+      "uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/robocasa_cab_101_125_service_logs/simulator.log"
+    }
+  },
+  "schema_version": "attentionbench.robocasa-variation-discovery.v1",
+  "seeds_requested": [
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125
+  ],
+  "service_stop": {
+    "mechanism": "dedicated_simulator_and_agent_process_groups",
+    "reason": "normal_cleanup",
+    "services": {
+      "agent": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 634783,
+        "process_group": 634783,
+        "process_group_gone": true
+      },
+      "simulator": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 633160,
+        "process_group": 633160,
+        "process_group_gone": true
+      }
+    }
+  },
+  "source_identities": {
+    "agent": {
+      "dirty": true,
+      "revision": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30",
+      "tree_sha256": "9c42acdb0ce72cfb72f39dac3ee4e593c23e31d9fdb532c1d757e3fcac04d1b1"
+    },
+    "sim": {
+      "dirty": true,
+      "revision": "4e590158761493414a036f68e0ae26a7e61dc77b",
+      "tree_sha256": "c5c595992b75fc645490f852bbee1015754a8c108a592561035cde8ff35c58ca"
+    },
+    "task": {
+      "dirty": true,
+      "revision": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7",
+      "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756"
+    }
+  },
+  "source_unchanged": true,
+  "task_id": "counter_to_cab"
+}

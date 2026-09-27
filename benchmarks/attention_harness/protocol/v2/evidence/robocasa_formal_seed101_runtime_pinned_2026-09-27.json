@@ -1,0 +1,412 @@
+{
+  "agent_source": {
+    "dirty": true,
+    "revision": "057abfdd2e50b0224ac9685ee5b5dedbb31a4e30",
+    "tree_sha256": "9c42acdb0ce72cfb72f39dac3ee4e593c23e31d9fdb532c1d757e3fcac04d1b1"
+  },
+  "agent_source_root": "/home/truares/文档/Tidybot-Universe/agent_server",
+  "all_seed101_probes_passed": true,
+  "cases": [
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462379095047939",
+      "artifacts": {
+        "native_result": {
+          "sha256": "a3350d19ce99022ef58021179446c3df46b918ffa237e6a486bb5b1ad9872075",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462379095047939/native_result.json"
+        },
+        "safety": {
+          "sha256": "4a3f8b6fcb45579fa9c77dc7f0006cc9539510b473b85bcded936422c43a455e",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462379095047939/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "39111f212ab1fd72a1742f6e16e4591d4482e6d6846ce07da5d1494a1241ab3f",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462379095047939/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "51f27b5de8c1905a5090a83915010d1e95cd3aa99da53fbfd23bd5122d0ffd46",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462379095047939/trace.json"
+        }
+      },
+      "checks": {
+        "action_cancel_receipt": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "harness_source_unchanged": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "run_artifact": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_stopped": true,
+        "status": true,
+        "task_source_attested": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_cli --task counter_to_sink --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/robocasa_noop.py' --approved-policy-sha256 4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json' --approved-config-sha256 fba0858aafc0679fe66649d765e5eaf02036784b695e41354b9be306648f6bab --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --task-source-root '/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --artifact-root '/home/truares/桌面/attentionbench-robocasa-formal-seed101' --overall-deadline-seconds 180",
+      "exit_code": 0,
+      "name": "normal",
+      "native_success": false,
+      "observed_status": "completed",
+      "passed": true,
+      "run_artifact": {
+        "sha256": "d319e7e7f137148f747f1f1aa4c367ff39456db8c494efd15056fd10af2080a7",
+        "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462379095047939/result.json"
+      },
+      "safety_violations": [],
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 588570,
+            "process_group": 588570,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 586005,
+            "process_group": 586005,
+            "process_group_gone": true
+          }
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462429695023026",
+      "artifacts": {
+        "native_result": {
+          "sha256": "8f3ef546201f30fef5de943b8284091af627c9c3163c633815fec932d64ba928",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462429695023026/native_result.json"
+        },
+        "safety": {
+          "sha256": "7129558a5fbeb1e8dd83f3af2151b3c7f2da4a846608781c2dd0dc9e6a26041f",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462429695023026/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "8d9e3c80e5514f1c5b96628204d857006cc87396133595338106511460cf006f",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462429695023026/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "e121404f871966e0d182dcb7c35d7ef94a3cb774522d0ff015ceb56a352841b3",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462429695023026/trace.json"
+        }
+      },
+      "checks": {
+        "action_cancel_receipt": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "harness_source_unchanged": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "run_artifact": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_stopped": true,
+        "status": true,
+        "task_source_attested": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_cli --task counter_to_sink --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/robocasa_spin_timeout.py' --approved-policy-sha256 b35d7a83d9e68d4019dde1472e18d8009295efd9ced5b5ff19818813b923cdc5 --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json' --approved-config-sha256 fba0858aafc0679fe66649d765e5eaf02036784b695e41354b9be306648f6bab --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --task-source-root '/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --artifact-root '/home/truares/桌面/attentionbench-robocasa-formal-seed101' --overall-deadline-seconds 65",
+      "exit_code": 0,
+      "name": "timeout",
+      "native_success": false,
+      "observed_status": "timeout",
+      "passed": true,
+      "run_artifact": {
+        "sha256": "e93f2253723310c78bd11d48dc608286143e658691409de71451c2b20bb13deb",
+        "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462429695023026/result.json"
+      },
+      "safety_violations": [],
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "episode_deadline",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 591875,
+            "process_group": 591875,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 589347,
+            "process_group": 589347,
+            "process_group_gone": true
+          }
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462497097108003",
+      "artifacts": {
+        "native_result": {
+          "sha256": "68b977d5539df937f87d107de603a12f0a06c71d3e707a86ef082a4734ef08db",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462497097108003/native_result.json"
+        },
+        "safety": {
+          "sha256": "24f1c9322047fc0e3ce703c5055256a935e7ce285c459cdc509aed23a986d6af",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462497097108003/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "2486103482f5b7d9aa0444cad092b8902fd81f65f0fa958d3c3199b8a74b97ad",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462497097108003/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "c056d2e51d65e6e3b23eeddba52229e08dd9222e661af15146ed3ff477bd81f8",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462497097108003/trace.json"
+        }
+      },
+      "checks": {
+        "action_cancel_receipt": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "harness_source_unchanged": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "run_artifact": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_stopped": true,
+        "status": true,
+        "task_source_attested": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_cli --task counter_to_sink --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/robocasa_spin_timeout.py' --approved-policy-sha256 b35d7a83d9e68d4019dde1472e18d8009295efd9ced5b5ff19818813b923cdc5 --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json' --approved-config-sha256 fba0858aafc0679fe66649d765e5eaf02036784b695e41354b9be306648f6bab --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --task-source-root '/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --artifact-root '/home/truares/桌面/attentionbench-robocasa-formal-seed101' --overall-deadline-seconds 180 --cancel-after-policy-start-seconds 0.5",
+      "exit_code": 0,
+      "name": "cancel",
+      "native_success": false,
+      "observed_status": "cancelled",
+      "passed": true,
+      "run_artifact": {
+        "sha256": "1db7da6883fe07913d3e87d4d74ea45b1ec8b3041e6a657513b306373c270d3a",
+        "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462497097108003/result.json"
+      },
+      "safety_violations": [],
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "operator_cancel",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 596055,
+            "process_group": 596055,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 593431,
+            "process_group": 593431,
+            "process_group_gone": true
+          }
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462547874076768",
+      "artifacts": {
+        "native_result": {
+          "sha256": "68b977d5539df937f87d107de603a12f0a06c71d3e707a86ef082a4734ef08db",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462547874076768/native_result.json"
+        },
+        "safety": {
+          "sha256": "0774b6d950cc326f36ab7d8c797fe11b49be195b910afa55138d7ccbf3123064",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462547874076768/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "4f9796a66b2b68608633c2c8e0b17f9f33d74b88a92e826ffffe23d31032e86e",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462547874076768/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "629f51fc152251eadd132feefd20c23b7cf4016becf51e8628c3c54a2b924807",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462547874076768/trace.json"
+        }
+      },
+      "checks": {
+        "action_cancel_receipt": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "harness_source_unchanged": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "run_artifact": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_stopped": true,
+        "status": true,
+        "task_source_attested": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_cli --task counter_to_sink --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/robocasa_arm_delta_smoke.py' --approved-policy-sha256 1a4899815a91aec532045e2f070b7cad651590ef14addb49d781d0ed4ccc0665 --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json' --approved-config-sha256 fba0858aafc0679fe66649d765e5eaf02036784b695e41354b9be306648f6bab --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --task-source-root '/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --artifact-root '/home/truares/桌面/attentionbench-robocasa-formal-seed101' --overall-deadline-seconds 180 --cancel-after-policy-start-seconds 1.0",
+      "exit_code": 0,
+      "name": "action_cancel",
+      "native_success": false,
+      "observed_status": "cancelled",
+      "passed": true,
+      "run_artifact": {
+        "sha256": "02ea5054bbc8adcd6b67b77bf5781853a2b8c45b3d9947503119a1f3340aba29",
+        "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462547874076768/result.json"
+      },
+      "safety_violations": [],
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "operator_cancel",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 599478,
+            "process_group": 599478,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 596911,
+            "process_group": 596911,
+            "process_group_gone": true
+          }
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462600091005708",
+      "artifacts": {
+        "native_result": {
+          "sha256": "1407a8bd11336ac9bfbdfd7a6c695923d30a598de0f4aad7325f8a9e9ebfd7b1",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462600091005708/native_result.json"
+        },
+        "safety": {
+          "sha256": "b853c89efefad5475f0b1242d7c10cb1309d800d4aa799673119bfc58e246027",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462600091005708/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "0b22a01b88aea3de629ddc7e639ba08c85605ec3cf1398ba098d800a6da6295b",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462600091005708/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "c7884b826b500b06cfb69132f95af24ef6598f4cd6c1f87b97553f1325bb941c",
+          "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462600091005708/trace.json"
+        }
+      },
+      "checks": {
+        "action_cancel_receipt": true,
+        "approved_digests": true,
+        "artifact_hashes": true,
+        "boundary_checked": true,
+        "formal_ineligible": true,
+        "harness_source_unchanged": true,
+        "independent_safety_source": true,
+        "native_result": true,
+        "reset_attestation": true,
+        "run_artifact": true,
+        "safety": true,
+        "sandbox_receipt": true,
+        "service_stopped": true,
+        "status": true,
+        "task_source_attested": true
+      },
+      "command": "/home/truares/.cache/tidybot-attention/venv/bin/python -m benchmarks.attention_harness.robocasa_native.formal_cli --task counter_to_sink --seed 101 --code '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_safety_reject.py' --approved-policy-sha256 867a001cac3338515594bb73563be5dc56a032120f7d3dbb667c6ad7f884a061 --config '/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json' --approved-config-sha256 fba0858aafc0679fe66649d765e5eaf02036784b695e41354b9be306648f6bab --sim-source-root '/home/truares/桌面/maniskill_sim-attention-variation' --agent-source-root '/home/truares/文档/Tidybot-Universe/agent_server' --task-source-root '/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks' --sim-python /home/truares/miniconda3/envs/maniskill/bin/python --agent-python /home/truares/miniconda3/envs/maniskill/bin/python --artifact-root '/home/truares/桌面/attentionbench-robocasa-formal-seed101' --overall-deadline-seconds 180",
+      "exit_code": 0,
+      "name": "safety_reject",
+      "native_success": false,
+      "observed_status": "failed",
+      "passed": true,
+      "run_artifact": {
+        "sha256": "d11c3774b50dc3aa1e6613aef3cf369743c71f1379fd4c2718bc802c8758e440",
+        "uri": "/home/truares/桌面/attentionbench-robocasa-formal-seed101/counter_to_sink-seed101-formal-1790462600091005708/result.json"
+      },
+      "safety_violations": [
+        "delta_exceeds_limit"
+      ],
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 602868,
+            "process_group": 602868,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 600339,
+            "process_group": 600339,
+            "process_group_gone": true
+          }
+        }
+      },
+      "stderr": ""
+    }
+  ],
+  "config_sha256": "fba0858aafc0679fe66649d765e5eaf02036784b695e41354b9be306648f6bab",
+  "config_uri": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101.json",
+  "formal_eligible": false,
+  "harness_branch": "feature/attention-native-robosuite",
+  "harness_dirty": true,
+  "harness_head": "bb16e29dbde34f200be49af2489303f40ae56f66",
+  "harness_source_sha256": {
+    "formal_runner_boundary.py": "25b1f5b716bc4ab8090a7bef0c51d6afad55ef7578b107be19124c5b6871129a",
+    "robocasa_native/agent_actions.py": "5cf4683c3c1ca17b76b86e2768b95d9282e874697d647af19a1d3867018e88d1",
+    "robocasa_native/client.py": "4b493c6319224553f238ddf97e901d1a10035c492e49e5d700afba574416a618",
+    "robocasa_native/formal_acceptance.py": "81a99d87a8705b46e04a21bb268494c7a40c496715a51b4d6683168dbdf6bc8c",
+    "robocasa_native/formal_cli.py": "4d6e8466b336986c076f45dffe596a16ebd390acf8f3f4e443f026f5a34a5b83",
+    "robocasa_native/formal_runner.py": "f76a0fd4bdaac7a6a3dda8729e04cd46850f7a10eb5c6f5ff25be868a6938747",
+    "robocasa_native/formal_services.py": "5e26c346641df49a8d6093220f1f3df64925ffd4292ecc5a3a3c2a9cc3415b98",
+    "robocasa_native/gt_perception.py": "a5633e9cbc3875f8f132c35d22f037ea0003f8918a25463538debca521a9d64f",
+    "robocasa_native/mobile_sdk.py": "a65c9b9d4364c5712fc96384c9bb546dc218d3167a194108e6bd68045e2d526a",
+    "robocasa_native/safety_monitor.py": "863bc7a854ea351af64da02e47f0008b09bdbbe491a04f3a0175b848c10ad01b",
+    "robosuite_memory/formal_policy_worker.py": "899935a78d8b159f3df1591c22de8a3849f320138e0639ae21d9b76fcb7de236",
+    "robosuite_memory/formal_sandbox.py": "2b57b3b1b5b31e8bc5baadc62778e7053079fc14f858fc252e4ac5513a710493",
+    "sim_gt_attention_run.py": "86a23cc4a53c2c9bf48e28f6c3af09e9eb6c96f4b2fa374f4a929f92d338b005"
+  },
+  "schema_version": "attentionbench.robocasa-formal-acceptance.v1",
+  "seed": 101,
+  "sim_runtime": {
+    "mani_skill_files": {
+      "envs/tasks/mobile_manipulation/robocasa/kitchen.py": "efd64ab206581010a8fa54ca4700bf523d66fdb7670d847d1c3258ee57b6d7a9",
+      "utils/scene_builder/robocasa/utils/object_utils.py": "9748d629476aaee0bb90cdd466a775f91e12e9f391dd05b48b574493ae99fd46",
+      "utils/scene_builder/robocasa/utils/placement_samplers.py": "8a77323c0933735bfe7acc72df9fa772a07e9846dd406bb479e99c8994cc0b12"
+    },
+    "mani_skill_root": "/home/truares/miniconda3/envs/maniskill/lib/python3.11/site-packages/mani_skill",
+    "mani_skill_version": "3.0.0b22",
+    "python_sha256": "f33fe7acf4552a82f53158d00f94fd10a082bb454a1779c3b7f207f7369ef2fe",
+    "python_version": "3.11.15",
+    "task_module_path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks/__init__.py"
+  },
+  "sim_source": {
+    "dirty": true,
+    "revision": "4e590158761493414a036f68e0ae26a7e61dc77b",
+    "tree_sha256": "c5c595992b75fc645490f852bbee1015754a8c108a592561035cde8ff35c58ca"
+  },
+  "sim_source_root": "/home/truares/桌面/maniskill_sim-attention-variation",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "task_source": {
+    "dirty": false,
+    "revision": "a0debd7f68a03aa64b9f6b774323fe22b5c5e1c7",
+    "tree_sha256": "57bdca7a5d12d22a07015ce6101c9568e8af57126e4edffa86790e123658f43a"
+  },
+  "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+}

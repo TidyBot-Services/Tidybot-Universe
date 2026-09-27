@@ -17,6 +17,7 @@ from .core.advisor import AdvisorProxy, AdvisorTransport
 from .core.artifacts import write_run_bundle
 from .core.models import AttentionRequestRecord, RunStatus
 from .core.policies import DecisionAction, PolicyContext, build_policy
+from .core.assessment import assess_trace
 from .core.runtime import AttentionRuntime
 from .core.store import AttentionStore
 from .parcc_advisor import ParccGLMAdvisorTransport, parse_advisor_advice
@@ -79,6 +80,7 @@ def run_advised_parcc_episode(
     guidance: str | None = None
     previous_policy: str | None = None
     consecutive_failures = 0
+    previous_traces: list[dict[str, Any]] = []
 
     for index in range(max_attempts):
         result = attempt_executor(
@@ -115,6 +117,8 @@ def run_advised_parcc_episode(
         if trace is None:
             advisor_error = f"Advisor trace {trace_id} was not persisted"
             break
+        assessment = assess_trace(trace, previous_traces)
+        previous_traces.append(trace)
         decision = policy.decide(
             PolicyContext(
                 run_id=run_id,
@@ -124,6 +128,7 @@ def run_advised_parcc_episode(
                 assistance_remaining=store.budget_status(run_id)["remaining"],
                 evidence_count=len(trace["evidence"]),
                 has_hypothesis=bool(trace.get("hypothesis")),
+                assessment=assessment,
             )
         )
         decisions.append(
@@ -131,9 +136,17 @@ def run_advised_parcc_episode(
                 "after_attempt": index,
                 "action": decision.action.value,
                 "reason": decision.reason,
+                "event_ids": list(decision.event_ids),
+                "evidence_ids": list(decision.evidence_ids),
+                "prior_trace_ids": list(decision.prior_trace_ids),
+                "prior_event_ids": list(decision.prior_event_ids),
+                "assessment": assessment.artifact(),
             }
         )
         guidance = None
+        if decision.action is DecisionAction.STOP:
+            advisor_error = decision.reason
+            break
         if decision.action is DecisionAction.REQUEST:
             request = AttentionRequestRecord(
                 request_id=f"advisor-request:{run_dir.name}:{index}",
