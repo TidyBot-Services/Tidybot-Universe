@@ -13,11 +13,11 @@
 | M1 · 任务入口 | **验收完成（仅 M1 工程入口）**：冻结输入／输出契约和拒绝矩阵，双 suite 的 UI／CLI 同条件 lock 与各一次真实 Service 交接已复核；证据见 [`m1_entry_acceptance.md`](m1_entry_acceptance.md)。`formal_eligible=false`。 |
 | M2 · 生成与批准 | **封闭工程验收完成（仅 M2）**：双真实 Graph 通过有界 HTTPS `parcc/GLM` 各生成一份公开 SDK 候选和 M1 lock；审批前停在 `awaiting_approval`，用户对上列精确 SHA 明示批准后，两套各经正式 Bridge → Service 完成一次开发 seed 101 handoff。审批后重启均不重派；原生任务均失败，不影响此工程门槛。证据见 [`m2_generation_approval_acceptance.md`](m2_generation_approval_acceptance.md)。`formal_eligible=false`。 |
 | M3 · 双模拟器执行 | **修订口径下工程验收完成**：正常执行 12/12、Harness run 4/4、故障路径 7/7、受控 depth 异常隔离 2/2；用户明确批准仅工程层面关闭。原标准的历史 depth 500 根因关口仍未通过、根因未修复；见[原验收](m3_dual_sim_execution_acceptance.md)与[修订验收](m3_dual_sim_execution_revised_acceptance.md)。`formal_eligible=false`。 |
-| M4 · Attention 决策 | 七策略小测试与双模拟器真实 GLM 两次 attempt 已通；**待冻结并验收七策略在两套正式执行入口的完整工程行为**，不以效果成功率作此模块门槛。 |
+| M4 · Attention 决策 | **下一模块，尚未启动封闭验收**。七策略已有决策代码、针对性小测试，双模拟器曾跑通真实 GLM 的两次 attempt；仍须冻结并核对七策略在两套正式入口的完整决策→动作→证据链，包括固定 demo、随机基线预注册、Trace 可见性、Advisor／Memory 边界、预算和立即 Safety 停止。既有局部证据不等于 M4 通过；不以任务成功率作工程门槛。 |
 | M5 · Memory | Robosuite 开发验证已过；RoboCasa 五对 control 0/5、treatment 1/5，且有 Safety 退步，晋升被拒。**M5 未关闭**；下一轮策略与配对必须重新预注册，旧失败不能覆盖。 |
 | M6 · 诊断与展示 | Eval、UI 基本链路已接；**待双 Service 连续 UI 联动与终态／中断时效验收**。真人演练由协作者单列，不暗加进 M6。 |
 
-**M1–M3 已分别按各自工程验收口径关闭；下一模块是 M4。** M3 的旧 depth 500 未解决风险独立跟踪，工程关闭不等于正式实验准入。M4 仍须另冻结验收包，M5／M6 不提前启动。完成六模块后另做**全链集成与正式实验准入**；held-out、七策略效果矩阵和消融属于其后的实验，不能倒填成某个工程模块的完成条件。LIBERO／live-human 为协作者扩展，Deploy 在线发现暂缓，均不混入主线六模块。
+**M1–M3 已分别按各自工程验收口径关闭；下一模块是 M4。** M3 的旧 depth 500 未解决风险独立跟踪，工程关闭不等于正式实验准入。M4 须先冻结双模拟器七策略工程验收包，再验证决策、请求、下一 attempt 输入与证据的一致性；目前只是待办，不是已开始或已通过。M5／M6 不提前启动。完成六模块后另做**全链集成与正式实验准入**；held-out、七策略效果矩阵和消融属于其后的实验，不能倒填成某个工程模块的完成条件。LIBERO／live-human 为协作者扩展，Deploy 在线发现暂缓，均不混入主线六模块。
 
 ## 完整流程，直接标出模块边界
 
