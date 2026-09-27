@@ -1,0 +1,214 @@
+{
+  "checkout": "/home/truares/桌面/attentionbench-week2-clean-checkout",
+  "commit": "dff9e8a74a70ea41dff9936e9c249ed5f47756c4",
+  "formal_eligible": false,
+  "install_log": {
+    "sha256": "dffda7f5e7f8ac65dd5d0f1cff087a845f90268a6821b409c984c13db93118d3",
+    "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927-clean-install-final.log"
+  },
+  "limitation": "One earlier clean-checkout gripper action failed when Service depth normalization returned HTTP 500; independent Safety stopped it. The same frozen inputs then completed on retry, and the final code commit completed no-op and action smokes. Repeated-action stability remains unaccepted.",
+  "runs": {
+    "action_retry": {
+      "artifacts": {
+        "native_result": {
+          "sha256": "1987f11673158f0d6c1cf24c307a98df89a1d788d15690fa59c1a9efbd18573c",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-37be0c14a679/attempts/cube_lift-seed101-formal-1790481892544091359/native_result.json"
+        },
+        "safety": {
+          "sha256": "f26d8b5f6d8bc62cc6273495bd453ffaf5d2d68f8f58b9cf7bb0cf2065dfd6ea",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-37be0c14a679/attempts/cube_lift-seed101-formal-1790481892544091359/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "6050f777fda3bbd2c10db01132904f80d2fca37efc3a6734b23ec1914f29223d",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-37be0c14a679/attempts/cube_lift-seed101-formal-1790481892544091359/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "6afd64fded974f63c2067cdb062e5216d07c7cf233dd420c02cd52653742f06a",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-37be0c14a679/attempts/cube_lift-seed101-formal-1790481892544091359/trace.json"
+        }
+      },
+      "error": null,
+      "execution_commit": "b665b0b473fdb06693aa392963b28e4381465cf1",
+      "native_evaluated": true,
+      "native_success": false,
+      "safety_unsafe_attempts": 0,
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 471250,
+        "process_group": 471250,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "status": "completed",
+      "summary": {
+        "sha256": "ee43dbe3e12293598999090976a736bb1305c4c6720d938d7993e28c6dc2f07b",
+        "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-37be0c14a679/attention_run.json"
+      }
+    },
+    "final_action": {
+      "artifacts": {
+        "native_result": {
+          "sha256": "4dcc7fe1eab954d353228b128c5f54d1686ebe73d5a5ebf729ee69fe4ba9ecf4",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-d5b6b3df5a01/attempts/cube_lift-seed101-formal-1790482143478960950/native_result.json"
+        },
+        "safety": {
+          "sha256": "264922f637fe650f73235e8947592dc631b50aaf5f27848686e707c287ccab9e",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-d5b6b3df5a01/attempts/cube_lift-seed101-formal-1790482143478960950/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "1996771e65c6556b490926aff2345a6e8e84a777ff99f630760be3d1332178fb",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-d5b6b3df5a01/attempts/cube_lift-seed101-formal-1790482143478960950/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "23419dbc65d86de619c687e6ed49e9bfd773c1b9f7a28c57aeb047d3f45938b1",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-d5b6b3df5a01/attempts/cube_lift-seed101-formal-1790482143478960950/trace.json"
+        }
+      },
+      "error": null,
+      "execution_commit": "dff9e8a74a70ea41dff9936e9c249ed5f47756c4",
+      "native_evaluated": true,
+      "native_success": false,
+      "safety_unsafe_attempts": 0,
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 484260,
+        "process_group": 484260,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "status": "completed",
+      "summary": {
+        "sha256": "27096b9b61bb00c8fcc8ddfb9c8c2430d61b313bef9b6b7031e7d9ed1af0af40",
+        "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-d5b6b3df5a01/attention_run.json"
+      }
+    },
+    "final_no_op": {
+      "artifacts": {
+        "native_result": {
+          "sha256": "37a81fcf0451f33e2e652a559396b0231e52d15b80543f916082e9de61dac5a1",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-208b8cb05c70/attempts/cube_lift-seed101-formal-1790482132421348707/native_result.json"
+        },
+        "safety": {
+          "sha256": "887515d7005fe05759e1a7e84aa86fdfb403c3fea8ccf361a77aa7cc38b604dc",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-208b8cb05c70/attempts/cube_lift-seed101-formal-1790482132421348707/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "31b294687898249e4ac794f061dbcd83cb03a54df9ca998e4e446a6fdb6a8389",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-208b8cb05c70/attempts/cube_lift-seed101-formal-1790482132421348707/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "7592bd2bcdd7c778f4fe6fb96a61d6b8308614cf69410ff8d19e217eb3307e38",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-208b8cb05c70/attempts/cube_lift-seed101-formal-1790482132421348707/trace.json"
+        }
+      },
+      "error": null,
+      "execution_commit": "dff9e8a74a70ea41dff9936e9c249ed5f47756c4",
+      "native_evaluated": true,
+      "native_success": false,
+      "safety_unsafe_attempts": 0,
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 483602,
+        "process_group": 483602,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "status": "completed",
+      "summary": {
+        "sha256": "3399eb87e80776fbef3e742a30cb6c7771fef237e77b45e93c6170ea4ac16007",
+        "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-final/attention-robosuite-cube_lift-seed101-208b8cb05c70/attention_run.json"
+      }
+    },
+    "first_action_failure": {
+      "artifacts": {
+        "native_result": {
+          "sha256": "d1d429a9e2c5875bdf06913a1b082ac16469c5164c2b93f0e3bee34cbeadd237",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/native_result.json"
+        },
+        "safety": {
+          "sha256": "d8ef8c628b646a5f6abc9060027545ea52c511b76ff2c3599f4e4b487914062f",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "a7f3465367194619c74ccc67b725aace8568a4baac450182b99312630e16c341",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "82dadb5d69bb5c205cc3c52e63ba3e1a7038455991656f934e33bbb0c18df9e5",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/trace.json"
+        }
+      },
+      "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+      "execution_commit": "b665b0b473fdb06693aa392963b28e4381465cf1",
+      "native_evaluated": true,
+      "native_success": false,
+      "safety_unsafe_attempts": 1,
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 466532,
+        "process_group": 466532,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "status": "failed",
+      "summary": {
+        "sha256": "fdc9234b6e13ee8c2fa4f8bfb3f64f5b971a4df2bb78eae4b76858fc59efc073",
+        "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attention_run.json"
+      }
+    },
+    "no_op": {
+      "artifacts": {
+        "native_result": {
+          "sha256": "8d50564fa90512b51e88a5bf5bfc3b926b2b7824ea00dd6078ac8c30d35686a2",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-7fe729d4afed/attempts/cube_lift-seed101-formal-1790481843729838627/native_result.json"
+        },
+        "safety": {
+          "sha256": "f21f644a93a6b9093934aa70952369f16e013ba767b79664eb09c4caa7ae5b1a",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-7fe729d4afed/attempts/cube_lift-seed101-formal-1790481843729838627/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "0b7002695167abbbffd2c20b4acd6fa78a7deaa4da1db24559fd6bc68a003cf9",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-7fe729d4afed/attempts/cube_lift-seed101-formal-1790481843729838627/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "a1925f853f514f5d857abd75f85e3ed3845cac885ac9f87de6358cec881f5d1f",
+          "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-7fe729d4afed/attempts/cube_lift-seed101-formal-1790481843729838627/trace.json"
+        }
+      },
+      "error": null,
+      "execution_commit": "b665b0b473fdb06693aa392963b28e4381465cf1",
+      "native_evaluated": true,
+      "native_success": false,
+      "safety_unsafe_attempts": 0,
+      "service_stop": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 468597,
+        "process_group": 468597,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-service/robosuite_sim/__init__.py"
+      },
+      "status": "completed",
+      "summary": {
+        "sha256": "a4cb89ef8c12d3789f786bd07382b1cbef679967f351d64c784f9d6d10911781",
+        "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-7fe729d4afed/attention_run.json"
+      }
+    }
+  },
+  "schema_version": "attentionbench.week2-clean-checkout-smoke.v1",
+  "unit_result": "28 passed in 2.50s at final code commit"
+}

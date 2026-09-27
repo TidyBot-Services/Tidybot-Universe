@@ -419,7 +419,7 @@
       }
     }
   },
-  "robocasa_blocker": "No approved effective repair or paired validation plan; candidate remains untrusted.",
+  "robocasa_blocker": "No approved effective repair, validation policy, or frozen paired cases",
   "robocasa_memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-3424637e2688:0",
   "robosuite_independent_use": {
     "attempt_id": "attempt:attention-robosuite-cube_lift-seed103-3a988091d963:1",
