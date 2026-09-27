@@ -97,6 +97,10 @@
           }
         }
       ],
+      "diagnostic_eval": {
+        "sha256": "30826ac6dda2e32770121a33311840b3c442e2995c1fb128e0efe68c155c5fd2",
+        "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-3424637e2688/eval_diagnosis.json"
+      },
       "summary": {
         "sha256": "7056f7067ebacf9c75c9d845c2a16e788cd4102977f5ec0ca0d892871c1bf013",
         "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-3424637e2688/attention_run.json"
@@ -413,6 +417,10 @@
           }
         }
       ],
+      "diagnostic_eval": {
+        "sha256": "e7b2fcb628556178d73e5886a74b70841e4932048e77b60404dffc0b9ecc70bf",
+        "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/robosuite/attention-robosuite-cube_lift-seed101-57b6f65d9f40/eval_diagnosis.json"
+      },
       "summary": {
         "sha256": "e43a230019089247c9e9213ab7f37b7aaa37176dcc4f285a3abb9beb3c18235f",
         "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/robosuite/attention-robosuite-cube_lift-seed101-57b6f65d9f40/attention_run.json"

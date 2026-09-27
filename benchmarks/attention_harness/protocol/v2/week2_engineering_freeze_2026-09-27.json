@@ -66,7 +66,7 @@
     "trajectory_source": "public_sdk"
   },
   "evidence_index": {
-    "sha256": "b8e27875850f98bde9c443d4ef797c8fe2e21f1c5617f40a04bfe32460156efd",
+    "sha256": "e3c39e88de580c3614c8bf6c95386c48a1ca481543b7886d492ad909912abe26",
     "uri": "benchmarks/attention_harness/protocol/v2/evidence/week2_auto_closure_2026-09-27.json"
   },
   "formal_eligible": false,

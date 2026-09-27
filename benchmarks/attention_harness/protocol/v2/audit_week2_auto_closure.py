@@ -11,7 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "skill-agent-setup/claude-code"))
 
+from attention_eval import build_eval_packet
 from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.memory_service import MemoryService
 
@@ -58,7 +60,21 @@ def audit_run(path: Path, *, suite: str, expected_success: bool) -> tuple[dict, 
         audited.append({"attempt_id": formal["attempt_id"], "native_success": attempt["native_success"],
                         "native_source": native["source"], "safety_unsafe_attempts": 0,
                         "artifacts": artifacts, "service_stop": stop})
-    return run, {"summary": ref(saved), "attempts": audited}
+    audit = {"summary": ref(saved), "attempts": audited}
+    eval_path = saved.parent / "eval_diagnosis.json"
+    if eval_path.exists():
+        evaluation = json.loads(eval_path.read_text(encoding="utf-8"))
+        packet = build_eval_packet(saved)
+        expected = hashlib.sha256(json.dumps(
+            packet, ensure_ascii=False, sort_keys=True,
+        ).encode("utf-8")).hexdigest()
+        assert evaluation["input_sha256"] == expected
+        assert evaluation["native_success"] is run["native_success"]
+        assert evaluation["model"] == "parcc/GLM"
+        assert any(item["attention_trace"]["attempt_id"] in evaluation["diagnosis"]
+                   for item in run["attempts"])
+        audit["diagnostic_eval"] = ref(eval_path)
+    return run, audit
 
 
 def main() -> int:
