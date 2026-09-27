@@ -61,11 +61,39 @@ def generate_policy(config: dict[str, Any], *, graph_dir: Path,
     model_client = client or ParccClient(timeout_seconds=75, max_attempts=1)
     messages = [{"role": "user", "content": prompt}]
     usage: dict[str, int] = {}
+    responses: list[dict[str, Any]] = []
+    provider_attempts = 0
+    raw_path = graph_dir / "dev_generation_responses.json"
+
+    def save_responses() -> None:
+        raw_path.write_text(json.dumps({"prompt": prompt, "responses": responses},
+                                       indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+                            encoding="utf-8")
+
     for format_attempt in range(1, 3):
-        response = model_client.chat(
-            model=model, messages=messages,
-            max_tokens=3072, temperature=0.0, reasoning_effort="low",
-        )
+        try:
+            response = model_client.chat(
+                model=model, messages=messages,
+                max_tokens=3072, temperature=0.0, reasoning_effort="low",
+            )
+        except Exception as exc:
+            save_responses()
+            (graph_dir / "dev_generation_failure.json").write_text(json.dumps({
+                "model": model, "format_attempt": format_attempt,
+                "error": f"{type(exc).__name__}: {exc}",
+                "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                "responses_artifact": str(raw_path.resolve()),
+            }, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+            raise
+        attempts = response.attempts
+        if isinstance(attempts, bool) or not isinstance(attempts, int) or attempts != 1:
+            raise ValueError("bounded Dev requires one provider attempt per format call")
+        provider_attempts += attempts
+        responses.append({"format_attempt": format_attempt, "content": response.content,
+                          "usage": response.usage, "provider_attempts": attempts,
+                          "request_id": getattr(response, "request_id", None),
+                          "latency_seconds": getattr(response, "latency_seconds", None)})
+        save_responses()
         for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
             value = response.usage.get(key)
             if isinstance(value, int):
@@ -83,6 +111,12 @@ def generate_policy(config: dict[str, Any], *, graph_dir: Path,
             break
         except GeneratedPolicyError as exc:
             if format_attempt == 2:
+                (graph_dir / "dev_generation_failure.json").write_text(json.dumps({
+                    "model": model, "format_attempt": format_attempt,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                    "responses_artifact": str(raw_path.resolve()),
+                }, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
                 raise
             messages.append({"role": "assistant", "content": response.content})
             messages.append({"role": "user", "content": (
@@ -95,15 +129,17 @@ def generate_policy(config: dict[str, Any], *, graph_dir: Path,
     # A hypothesis exists only when the actual Dev response included this
     # comment. Do not infer a diagnosis from the generated policy.
     match = re.search(r"(?m)^# Hypothesis: (.{1,500})$", code)
-    hypothesis = match.group(1).strip() if match else None
+    hypothesis = match.group(1).strip() if match else "unknown"
     result = {
         "schema_version": "attentionbench.bounded-dev-generation.v1",
         "model": model, "source": str(source),
         "sha256": hashlib.sha256(code.encode("utf-8")).hexdigest(),
         "usage": usage, "format_attempts": format_attempt,
-        "provider_attempts": response.attempts,
+        "provider_attempts": provider_attempts,
         "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
         "hypothesis": hypothesis,
+        "responses_artifact": str(raw_path.resolve()),
+        "responses_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
     }
     (graph_dir / "dev_generation.json").write_text(
         json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True) + "\n",

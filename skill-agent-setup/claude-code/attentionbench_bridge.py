@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -18,6 +19,31 @@ from typing import Any
 
 _POLICY_REF = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*$")
 _SUITES = {"robocasa", "robosuite"}
+_CREDENTIAL = re.compile(rb"sk-[A-Za-z0-9_-]{12,}")
+
+
+def _write_m2_process_evidence(graph_dir: Path, *, stdout: bytes, stderr: bytes,
+                               returncode: int, command_sha256: str) -> None:
+    clean_out, out_count = _CREDENTIAL.subn(b"<redacted-credential>", stdout)
+    clean_err, err_count = _CREDENTIAL.subn(b"<redacted-credential>", stderr)
+    (graph_dir / "bridge_stdout.log").write_bytes(clean_out)
+    (graph_dir / "bridge_stderr.log").write_bytes(clean_err)
+    (graph_dir / "bridge_process.json").write_text(json.dumps({
+        "schema_version": "attentionbench.m2-bridge-process.v1",
+        "command_sha256": command_sha256,
+        "returncode": returncode,
+        "stdout_sha256": hashlib.sha256(clean_out).hexdigest(),
+        "stderr_sha256": hashlib.sha256(clean_err).hexdigest(),
+        "credentials_redacted": bool(out_count or err_count),
+        "formal_eligible": False,
+    }, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _m2_child_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.pop("PARCC_API_KEY", None)
+    env.pop("LITELLM_KEY", None)
+    return env
 
 
 def build_attention_command(config: dict[str, Any], *, repo_root: Path) -> list[str]:
@@ -111,19 +137,45 @@ def build_attention_command(config: dict[str, Any], *, repo_root: Path) -> list[
 async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[str, Any]:
     """Run one v2 dev sequence and return its persisted summary, including failures."""
     cmd = build_attention_command(config, repo_root=repo_root)
+    m2_graph = None
+    m2_command_sha = None
+    if config.get("m2_gate") is True:
+        m2_graph = Path(config["m2_graph_dir"]).resolve()
+        command_record = {
+            "schema_version": "attentionbench.m2-bridge-command.v1",
+            "argv": cmd, "cwd": str(repo_root.resolve()),
+            "approval_record_sha256": config["m2_approval_record_sha256"],
+            "entry_sha256": config["m2_candidate"]["entry_sha256"],
+            "generation_sha256": config["m2_candidate"]["generation_sha256"],
+            "credential_recorded": False, "credential_forwarded_to_harness": False,
+            "formal_eligible": False,
+        }
+        with (m2_graph / "bridge_command.json").open("x", encoding="utf-8") as stream:
+            json.dump(command_record, stream, indent=2, ensure_ascii=False, sort_keys=True)
+            stream.write("\n")
+        m2_command_sha = hashlib.sha256((m2_graph / "bridge_command.json").read_bytes()).hexdigest()
     if config.get("runner_boundary", "trusted_dev") == "trusted_dev":
         _verify_approved_policy(config, repo_root=repo_root)
     timeout = 330 * int(config.get("max_attempts", 3)) + 60
     process = await asyncio.create_subprocess_exec(
         *cmd, cwd=str(repo_root.resolve()),
+        env=_m2_child_env() if m2_graph is not None else None,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
     )
     try:
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
     except asyncio.TimeoutError:
         process.kill()
-        await process.communicate()
+        stdout, stderr = await process.communicate()
+        if m2_graph is not None:
+            _write_m2_process_evidence(m2_graph, stdout=stdout, stderr=stderr,
+                                       returncode=process.returncode,
+                                       command_sha256=m2_command_sha)
         raise TimeoutError("AttentionBench development sequence exceeded its deadline") from None
+    if m2_graph is not None:
+        _write_m2_process_evidence(m2_graph, stdout=stdout, stderr=stderr,
+                                   returncode=process.returncode,
+                                   command_sha256=m2_command_sha)
     if not stdout:
         raise RuntimeError(f"AttentionBench runner produced no summary: {stderr.decode(errors='replace')[-600:]}")
     try:
@@ -161,6 +213,13 @@ async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[
                     or formal.get("run_id") != attempt.get("attention_trace", {}).get("run_id")
                     or formal.get("attempt_id") != attempt.get("attention_trace", {}).get("attempt_id")):
                 raise RuntimeError("formal attempt evidence mismatch")
+    if config.get("m2_gate") is True:
+        from m2_gate import require_approval, validate_handoff
+        approval = require_approval(config, graph_dir=m2_graph, repo_root=repo_root,
+                                    expected=config["m2_candidate"])
+        if approval["record_sha256"] != config["m2_approval_record_sha256"]:
+            raise RuntimeError("M2 approval changed during Bridge execution")
+        validate_handoff(config, result)
     artifact = Path(result.get("artifact_dir", "")) / "attention_run.json"
     if not artifact.is_file() or json.loads(artifact.read_text()) != result:
         raise RuntimeError("AttentionBench persisted artifact does not match runner output")
@@ -170,11 +229,38 @@ async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[
     # Exit 1 is the CLI's expected unsuccessful-task outcome. Other codes fail closed.
     if process.returncode not in (0, 1) or (process.returncode == 0) != result["native_success"]:
         raise RuntimeError(f"AttentionBench runner exit/result mismatch: {process.returncode}")
+    if m2_graph is not None:
+        attempt = result["attempts"][0]
+        (m2_graph / "bridge_verified.json").write_text(json.dumps({
+            "schema_version": "attentionbench.m2-bridge-verified.v1",
+            "command_sha256": m2_command_sha,
+            "approval_record_sha256": config["m2_approval_record_sha256"],
+            "entry_sha256": config["m2_candidate"]["entry_sha256"],
+            "source_sha256": config["m2_candidate"]["source_sha256"],
+            "config_sha256": config["m2_candidate"]["config_sha256"],
+            "artifact": str(artifact),
+            "artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+            "run_id": attempt["attention_trace"]["run_id"],
+            "attempt_id": attempt["attention_trace"]["attempt_id"],
+            "native_success": result["native_success"],
+            "formal_eligible": False,
+        }, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
     return result
 
 
 def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[str]:
     root = repo_root.resolve()
+    m2_approval = None
+    if config.get("m2_gate") is True:
+        from m2_gate import require_approval
+        graph_dir = Path(config["m2_graph_dir"]).resolve()
+        m2_approval = require_approval(
+            config, graph_dir=graph_dir, repo_root=root,
+            expected=config.get("m2_candidate"),
+        )
+        pinned_record = config.get("m2_approval_record_sha256")
+        if pinned_record is not None and pinned_record != m2_approval["record_sha256"]:
+            raise ValueError("M2 approval record changed after dispatch claim")
     if config.get("approved_generated_policy") is not True:
         raise ValueError("formal runner requires explicit post-Dev policy approval")
     source_name = config.get("generated_policy_file")
@@ -209,10 +295,16 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
         raise ValueError("assistance_credits must be 0-10")
     token_limit = config.get("token_limit", 30_000)
     deadline = config.get("overall_deadline_seconds", 300)
+    human_deadline = config.get("human_deadline_seconds", 60)
+    assistance_mode = config.get("assistance_mode", "benchmark_proxy")
     if isinstance(token_limit, bool) or not isinstance(token_limit, int) or not 1 <= token_limit <= 30_000:
         raise ValueError("token_limit must be 1-30000")
     if isinstance(deadline, bool) or not isinstance(deadline, (int, float)) or not 1 <= deadline <= 300:
         raise ValueError("overall_deadline_seconds must be 1-300")
+    if isinstance(human_deadline, bool) or not isinstance(human_deadline, (int, float)) or not 1 <= human_deadline <= 600:
+        raise ValueError("human_deadline_seconds must be 1-600")
+    from benchmarks.attention_harness.attention_modes import AssistanceMode
+    assistance_mode = AssistanceMode(assistance_mode).value
     if not isinstance(config.get("single_glm_call", False), bool):
         raise ValueError("single_glm_call must be boolean")
     cmd = [sys.executable, "-m", "benchmarks.attention_harness.formal_attention_cli",
@@ -222,7 +314,9 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
            "--config", str(formal_config), "--approved-config-sha256", config["approved_config_sha256"],
            "--artifact-root", str(artifact_root), "--store-path", str(store_path),
            "--max-attempts", str(attempts), "--assistance-credits", str(credits),
-           "--token-limit", str(token_limit), "--overall-deadline-seconds", str(deadline)]
+           "--token-limit", str(token_limit), "--overall-deadline-seconds", str(deadline),
+           "--human-deadline-seconds", str(human_deadline),
+           "--assistance-mode", assistance_mode]
     if config.get("single_glm_call") is True:
         cmd.append("--single-glm-call")
     roots = (("robosuite", ("service_source_root",))
@@ -267,6 +361,11 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
                 or generation.get("source") != str(source)):
             raise ValueError("Dev generation receipt differs from approved source")
         cmd.extend(("--dev-generation-artifact", str(path)))
+    if m2_approval is not None:
+        expected_receipt = m2_approval["candidate"]["generation_receipt"]
+        if config.get("dev_generation_artifact") != expected_receipt:
+            raise ValueError("M2 Bridge requires the exact generation receipt")
+        cmd.extend(("--expected-entry-sha256", m2_approval["candidate"]["entry_sha256"]))
     return cmd
 
 def _verify_approved_policy(config: dict[str, Any], *, repo_root: Path) -> None:

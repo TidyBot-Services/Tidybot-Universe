@@ -1,5 +1,7 @@
 # TidyBot AttentionBench — 当前状态
 
+简版计划对照与可编辑系统框图见 [`docs/attentionbench_progress.md`](docs/attentionbench_progress.md)；本文件保留逐项证据索引。
+
 快照日期：2026-09-28。本文是**进度索引，不是验收证据**；新任务应先核对工作树、相关代码及证据。状态只使用：**未开始 → 代码完成 → 小测试通过 → 真实服务跑通 → 正式验收**。较高状态仅适用于该行写明的目标，不能外推为整个 AttentionBench 已完成。“未核实”表示尚未审计，不等于未开始。
 
 ## 项目边界与当前决定
@@ -33,6 +35,14 @@
 - **通过**：UI／正式 CLI 共用 M1 preflight；RoboCasa `counter_to_sink`／`counter_to_cab`、Robosuite `cube_lift`／`cube_stack` 的 `sim_gt` 开发 seed、七策略、预算和期限、批准配置、固定公开 demo 与随机预注册按冻结包核验。非法／held-out／smoke seed、任务／模拟器错配、未知策略、预算越界、缺失或篡改文件及展示后修改均在建 run 前拒绝。CLI 写入 `entry_lock.json` 与批准代码／配置快照，UI 持久 launch 行和正式 runner request／result／原始 trace 保留同一身份，下游还核对预算不被修改。相关测试命令见外部证据 `pytest-m1.command.json`，**127 passed**，无失败。
 - **通过**：两套 suite 各用 seed 101、`autonomous`、1 attempt、0 credit 做正式 CLI 和真实 UI HTTP 启动；同条件的 UI 与 CLI lock SHA 分别为 Robosuite `512796d49f6930f8a5ea8ccff749041abe6f88f2842577a827862be99bbbcd42`、RoboCasa `cf83204db5d8eea543f1f8b8b4196ea534c747b4aaef035427fc373f822107ab`。4 个 run 的配置快照、runner result、trace 与四类产物 SHA 经 `protocol/v2/audit_m1_entry.py` 全部复核。原生任务均失败，CLI exit 1 为任务结果，Service 交接与 lock 审计通过；`formal_eligible=false`。原始命令、stdout／stderr、UI 交互收据、配置、run、Service 日志与版本清单保存于 `/home/truares/桌面/attentionbench-m1-entry-20260928/`。
 - **未通过／外部阻塞：无（仅对本 M1 包）。** M2–M6、held-out、七策略效果矩阵和正式实验准入均保持原状态；下一模块须另冻结 M2 验收包，本轮未处理。
+
+### 2026-09-28 M2 生成、批准与 Bridge 封闭工程验收
+
+**状态：封闭工程验收完成（仅 M2，不是正式实验验收）。** 冻结范围、正反例、跨仓库依赖及逐项结论见 [`docs/m2_generation_approval_acceptance.md`](docs/m2_generation_approval_acceptance.md)。基线 U `1062d7906e434a4088c9d8321d37bda0728b7314` 的 M1 lock 契约未修改；两套旧 M1 配置和代码同条件重算的 lock SHA 仍分别为 Robosuite `512796d49f6930f8a5ea8ccff749041abe6f88f2842577a827862be99bbbcd42`、RoboCasa `cf83204db5d8eea543f1f8b8b4196ea534c747b4aaef035427fc373f822107ab`。新 Dev 源码形成的两份 M1 lock 摘要另见 M2 验收包。
+
+- **已通过代码层／现场生成与拒绝**：新增 M2 输入任务锁、有界 GLM Dev 脱敏回复及用量收据、候选 M1 lock、外部人工审批记录绑定、正式 Bridge 精确 lock SHA 传递和一次派发认领／重启保守恢复。用户密钥仅以临时环境变量传入生成阶段 Graph；先在已验证可访问的 HTTPS 聊天端点做一次 1 provider attempt 的真实 `parcc/GLM` 探针，再由 Robosuite `cube_lift` 与 RoboCasa `counter_to_sink` 各在 seed 101 真实 Graph 生成一份源码。两套均 1 次格式调用／1 次 provider attempt，分别用 380／450 tokens，实际 hypothesis 均为 `unknown`。审批前两套 Graph 均停在 `review`／`awaiting_approval`、无 Harness run；重启 auto-start 各 `spawned=[]`，未批准 Bridge 命令均拒绝。审批前又补 M2 正式结果 lock／run／attempt 回验、Bridge 原始命令和日志收据、Harness 子进程不继承 GLM 密钥、交接后不自动进入 Memory／Eval；双 suite 既有 M1 正式产物只读结构预检通过，不算本次运行。原始进程、脱敏响应、版本及精确 SHA 见 `/home/truares/桌面/attentionbench-m2-20260928/manifest_preapproval.json`。
+- **已通过人工批准／现场双交接／恢复**：用户对上一条列明的双套源码、配置、M1 lock 精确 SHA 回复“批准”，外部审批文件分别绑定该会话来源和 Dev 收据。Robosuite `cube_lift` 与 RoboCasa `counter_to_sink` 各由真实 Graph 经 `formal_attention_cli` 派发一次 seed 101、1 attempt、0 credit；正式 Service result 的 lock、源码／配置 SHA、run／attempt 身份与 Graph 和审批记录一致，四类产物及原始 Service 日志齐全。两次原生结果均失败，CLI exit 1 为任务失败而非交接失败。双 Graph 派发后真实进程重启，auto-start 各 `spawned=[]`，审批身份和唯一 run 不变。只读复核见 `/home/truares/桌面/attentionbench-m2-20260928/audit_final.json`，完整索引见 `manifest_final.json`。RoboCasa 下游 JSON 配置快照因中文路径转义而有不同的文件字节 SHA，但解析内容、正式结果记录的批准原文件 SHA 与 M1 lock 一致；保持原有 M1 序列化契约。
+- **验证与范围**：批准后 M1／M2／Bridge 相关测试 **68 passed**，旧 Graph **84 passed、0 failed**。全 Harness 独立复跑仍为 **345 passed、10 skipped、7 failed**：6 项 `test_memory_v2.py` trusted Memory 上下文及 1 项 `test_robocasa_generated_policy.py` trusted Memory 策略；本轮未修改受测 Harness 文件，原始失败日志保留，不把全 Harness 写成通过。M2 包内无剩余阻塞；`formal_eligible=false`。本轮不推进 M3／M4／Memory／真人／held-out。
 
 | ID | 目标 | 状态 | 证据（仓库代号、路径／本次核查） | 下一步 |
 | --- | --- | --- | --- | --- |

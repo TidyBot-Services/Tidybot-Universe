@@ -22,6 +22,9 @@ from attention_eval import diagnose_attention
 from attentionbench_bridge import run_attention_job
 from attention_memory_dispatch import dispatch_memory_candidates
 from dev_memory_bridge import record_dev_memory_result
+from m2_gate import (candidate as m2_candidate,
+                     require_approval as require_m2_approval,
+                     require_task_lock)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -99,10 +102,23 @@ async def _spawn_attention(skill: str, prompt: str, agent_type: str = "dev",
     async def run() -> None:
         try:
             await orch.ws_broadcast_status(skill, agent_id, "running", "Generating bounded policy")
+            if config.get("m2_gate") is True:
+                require_task_lock(config, graph_dir=orch.GRAPH_DIR, repo_root=REPO_ROOT)
             source = (REPO_ROOT / str(config.get("generated_policy_file", ""))).resolve()
             if config.get("runner_boundary") == "formal" and source.is_file():
                 from attentionbench_bridge import _build_formal_command
-                _build_formal_command(config, repo_root=REPO_ROOT)
+                checked = dict(config)
+                if config.get("m2_gate") is True:
+                    entry = orch._find_entry(skill) or {}
+                    if entry.get("m2_dispatch") is not None:
+                        raise ValueError("M2 dispatch already claimed; review persisted result")
+                    checked.update(m2_graph_dir=str(orch.GRAPH_DIR),
+                                   m2_candidate=entry.get("m2_candidate"),
+                                   dev_generation_artifact=str(orch.GRAPH_DIR / "dev_generation.json"))
+                    require_m2_approval(checked, graph_dir=orch.GRAPH_DIR,
+                                        repo_root=REPO_ROOT, expected=entry.get("m2_candidate"))
+                    orch._update_entry(skill, {"attentionbench": checked})
+                _build_formal_command(checked, repo_root=REPO_ROOT)
                 state.log.append({"text": f"Approved policy {source} ({config['approved_policy_sha256']})",
                                   "role": "dev"})
             else:
@@ -110,6 +126,11 @@ async def _spawn_attention(skill: str, prompt: str, agent_type: str = "dev",
                     generate_policy, config, graph_dir=orch.GRAPH_DIR,
                 )
                 orch._update_entry(skill, {"dev_generation": generated})
+                if config.get("m2_gate") is True:
+                    frozen = m2_candidate(config, graph_dir=orch.GRAPH_DIR,
+                                          repo_root=REPO_ROOT)
+                    orch._update_entry(skill, {"m2_candidate": frozen,
+                                               "m2_stage": "awaiting_approval"})
                 state.log.append({"text": f"Generated policy {generated['source']} ({generated['sha256']})",
                                   "role": "dev"})
             state.status = "done"
@@ -140,6 +161,35 @@ async def _handle_attention_done(state) -> None:
         return
     if state.skill in orch._skills_in_test_loop:
         return
+    if config.get("m2_gate") is True:
+        entry = orch._find_entry(state.skill) or {}
+        if entry.get("m2_stage") == "awaiting_approval":
+            orch._update_entry(state.skill, {"status": "review",
+                                             "attentionbench_error": "M2 awaits explicit human approval"})
+            await orch.broadcast_full_sync()
+            return
+        if entry.get("m2_dispatch") is not None:
+            orch._update_entry(state.skill, {"status": "review",
+                                             "attentionbench_error": "M2 dispatch already claimed"})
+            await orch.broadcast_full_sync()
+            return
+        checked = {**config, "m2_graph_dir": str(orch.GRAPH_DIR),
+                   "m2_candidate": entry.get("m2_candidate"),
+                   "dev_generation_artifact": str(orch.GRAPH_DIR / "dev_generation.json")}
+        try:
+            approval = require_m2_approval(
+                checked, graph_dir=orch.GRAPH_DIR, repo_root=REPO_ROOT,
+                expected=entry.get("m2_candidate"))
+            checked["m2_approval_record_sha256"] = approval["record_sha256"]
+            orch._update_entry(state.skill, {"attentionbench": checked,
+                                             "m2_stage": "dispatching",
+                                             "m2_dispatch": approval})
+            config = checked
+        except Exception as exc:
+            orch._update_entry(state.skill, {"status": "review",
+                                             "attentionbench_error": str(exc)[:600]})
+            await orch.broadcast_full_sync()
+            return
     orch._update_entry(state.skill, {"status": "evaluating"})
     await orch.broadcast_full_sync()
     try:
@@ -163,13 +213,51 @@ async def _handle_attention_done(state) -> None:
         await orch.broadcast_full_sync()
         return
 
-    await _continue_attention_result(state, config, result)
+    try:
+        await _continue_attention_result(state, config, result)
+    except Exception as exc:
+        if config.get("m2_gate") is not True:
+            raise
+        orch._update_entry(state.skill, {"status": "review",
+            "attentionbench_error": f"M2 result handoff blocked: {type(exc).__name__}: {exc}"[:600]})
+        await orch.broadcast_full_sync()
 
 
 async def _continue_attention_result(state, config: dict, result: dict) -> None:
     """Finish a persisted Harness result, including after graph process restart."""
     artifact = Path(result["artifact_dir"]) / "attention_run.json"
     entry = orch._find_entry(state.skill) or {}
+    if config.get("m2_gate") is True:
+        from m2_gate import validate_handoff
+        validate_handoff(config, result)
+        approval = require_m2_approval(
+            config, graph_dir=orch.GRAPH_DIR, repo_root=REPO_ROOT,
+            expected=entry.get("m2_candidate"))
+        dispatch = entry.get("m2_dispatch")
+        if (not isinstance(dispatch, dict)
+                or dispatch.get("record_sha256") != approval["record_sha256"]
+                or config.get("m2_approval_record_sha256") != approval["record_sha256"]):
+            raise ValueError("M2 approval identity changed after dispatch")
+        attempt = result["attempts"][0]
+        run_link = {
+            "artifact": str(artifact), "store": result["store"],
+            "run_id": attempt["attention_trace"]["run_id"],
+            "attempt_ids": [attempt["attention_trace"]["attempt_id"]],
+            "native_success": result["native_success"], "formal_eligible": False,
+            "suite": result["suite"], "task_id": result["task_id"],
+            "seed": result["seed"], "runner_boundary": "formal",
+            "entry_sha256": config["m2_candidate"]["entry_sha256"],
+            "approved_policy_sha256": config["m2_candidate"]["source_sha256"],
+            "approved_config_sha256": config["m2_candidate"]["config_sha256"],
+            "approval_record_sha256": approval["record_sha256"],
+            "bridge_verified": str(orch.GRAPH_DIR / "bridge_verified.json"),
+        }
+        orch._update_entry(state.skill, {
+            "attentionbench_last_run": run_link, "m2_stage": "dispatched",
+            "status": "review", "attentionbench_error": "",
+        })
+        await orch.broadcast_full_sync()
+        return
     exposure = entry.get("dev_memory_exposure")
     if exposure is not None:
         try:
@@ -317,6 +405,13 @@ def install() -> None:
         for entry in orch.skill_entries:
             config = entry.get("attentionbench")
             link = entry.get("attentionbench_last_run")
+            if isinstance(config, dict) and config.get("m2_gate") is True:
+                if entry.get("m2_stage") == "awaiting_approval":
+                    orch._update_entry(entry["name"], {"status": "review"})
+                elif entry.get("m2_dispatch") is not None and not (
+                        isinstance(link, dict) and link.get("artifact")):
+                    orch._update_entry(entry["name"], {"status": "review",
+                        "attentionbench_error": "M2 dispatch interrupted; inspect downstream before retry"})
             if (isinstance(config, dict) and isinstance(link, dict)
                     and config.get("runner_boundary") == "formal"
                     and link.get("artifact")
@@ -344,6 +439,9 @@ async def _recover_attention_result(name: str, config: dict, artifact: Path) -> 
             raise ValueError("recovered Harness result differs from approved graph node")
         from attention_eval import build_eval_packet
         build_eval_packet(artifact)
+        if config.get("m2_gate") is True:
+            from m2_gate import validate_handoff
+            validate_handoff(config, result)
         state = SimpleNamespace(skill=name, agent_type="dev", log=[])
         await _continue_attention_result(state, config, result)
     except Exception as exc:

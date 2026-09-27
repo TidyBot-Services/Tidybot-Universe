@@ -73,9 +73,49 @@ def test_bounded_dev_writes_valid_source_once(tmp_path, monkeypatch):
                                                client=FakeClient())
     assert source.is_file()
     assert generated["usage"]["total_tokens"] == 20
+    assert generated["hypothesis"] == "unknown"
+    assert generated["provider_attempts"] == 1
+    assert Path(generated["responses_artifact"]).is_file()
     assert (tmp_path / "dev_generation.json").is_file()
     with pytest.raises(FileExistsError):
         attention_dev.generate_policy(config, graph_dir=tmp_path, client=FakeClient())
+
+
+def test_bounded_dev_rejects_provider_retry_before_writing_source(tmp_path, monkeypatch):
+    config = _generated_config(tmp_path)
+    source = tmp_path / config["generated_policy_file"]
+    source.unlink()
+    monkeypatch.setattr(attention_dev, "REPO_ROOT", tmp_path)
+
+    class RetryingClient:
+        def chat(self, **kwargs):
+            return SimpleNamespace(content="from robot_sdk import sensors\nsensors.find_objects()",
+                                   usage={"total_tokens": 10}, attempts=2)
+
+    with pytest.raises(ValueError, match="one provider attempt"):
+        attention_dev.generate_policy(config, graph_dir=tmp_path, client=RetryingClient())
+    assert not source.exists()
+
+
+def test_bounded_dev_keeps_two_invalid_model_replies_without_source(tmp_path, monkeypatch):
+    config = _generated_config(tmp_path)
+    source = tmp_path / config["generated_policy_file"]
+    source.unlink()
+    monkeypatch.setattr(attention_dev, "REPO_ROOT", tmp_path)
+
+    class InvalidClient:
+        calls = 0
+
+        def chat(self, **kwargs):
+            self.calls += 1
+            return SimpleNamespace(content="import os", usage={"total_tokens": 3}, attempts=1)
+
+    client = InvalidClient()
+    with pytest.raises(attention_dev.GeneratedPolicyError):
+        attention_dev.generate_policy(config, graph_dir=tmp_path, client=client)
+    assert client.calls == 2 and not source.exists()
+    assert len(json.loads((tmp_path / "dev_generation_responses.json").read_text())["responses"]) == 2
+    assert (tmp_path / "dev_generation_failure.json").is_file()
 
 
 def test_formal_dev_generates_version_but_does_not_approve_it(tmp_path, monkeypatch):
