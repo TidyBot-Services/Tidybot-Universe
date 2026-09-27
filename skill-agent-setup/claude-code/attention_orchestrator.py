@@ -9,10 +9,12 @@ provides diagnostics and cannot turn a failure into a pass.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 
 import agent_orchestrator as orch
 from attention_dev import generate_policy
@@ -161,6 +163,11 @@ async def _handle_attention_done(state) -> None:
         await orch.broadcast_full_sync()
         return
 
+    await _continue_attention_result(state, config, result)
+
+
+async def _continue_attention_result(state, config: dict, result: dict) -> None:
+    """Finish a persisted Harness result, including after graph process restart."""
     artifact = Path(result["artifact_dir"]) / "attention_run.json"
     entry = orch._find_entry(state.skill) or {}
     exposure = entry.get("dev_memory_exposure")
@@ -209,6 +216,50 @@ async def _handle_attention_done(state) -> None:
             )
             run_link["memory_validation_tasks"] = memory_tasks
             orch._update_entry(state.skill, {"attentionbench_last_run": run_link})
+            followup = config.get("independent_use")
+            if (followup is not None and memory_tasks
+                    and all(task["status"] == "trusted" for task in memory_tasks)):
+                from attention_eval import build_eval_packet
+                if (not isinstance(followup, dict)
+                        or followup.get("store_path") not in (None, result["store"])
+                        or followup.get("memory_source_run_file") not in (None, str(artifact))
+                        or followup.get("suite") != result["suite"]
+                        or followup.get("runner_boundary") != "formal"):
+                    raise ValueError("independent-use graph contract differs from validated source")
+                source_sha = hashlib.sha256(artifact.read_bytes()).hexdigest()
+                if followup.get("approved_memory_source_sha256") not in (None, source_sha):
+                    raise ValueError("independent-use source approval changed")
+                followup = {**followup, "store_path": result["store"],
+                            "memory_source_run_file": str(artifact),
+                            "approved_memory_source_sha256": source_sha}
+                previous = (orch._find_entry(state.skill) or {}).get("attentionbench_independent_use")
+                if previous is None:
+                    used = await run_attention_job(followup, repo_root=REPO_ROOT)
+                    used_artifact = Path(used["artifact_dir"]) / "attention_run.json"
+                    orch._update_entry(state.skill, {"attentionbench_independent_use": {
+                        "artifact": str(used_artifact), "native_success": used["native_success"],
+                        "formal_eligible": False, "attempt_ids": [
+                            item["attention_trace"]["attempt_id"] for item in used["attempts"]],
+                    }})
+                else:
+                    used_artifact = Path(previous["artifact"])
+                    used = json.loads(used_artifact.read_text(encoding="utf-8"))
+                    if (used.get("formal_eligible") is not False
+                            or used.get("artifact_dir") != str(used_artifact.parent)
+                            or used.get("store") != result["store"]
+                            or used.get("suite") != followup["suite"]
+                            or used.get("task_id") != followup["task"]
+                            or used.get("seed") != followup["seed"]
+                            or used.get("approved_policy_sha256")
+                               != followup["approved_policy_sha256"]
+                            or used.get("approved_config_sha256")
+                               != followup["approved_config_sha256"]
+                            or used.get("approved_memory_context_sha256")
+                               != followup.get("approved_memory_context_sha256")):
+                        raise ValueError("independent-use receipt differs from approved graph task")
+                build_eval_packet(used_artifact)
+                run_link["independent_use"] = str(used_artifact)
+                orch._update_entry(state.skill, {"attentionbench_last_run": run_link})
         except Exception as exc:
             reason = f"Memory validation scheduling blocked: {type(exc).__name__}: {exc}"[:600]
             orch._update_entry(state.skill, {"status": "review",
@@ -258,6 +309,47 @@ def install() -> None:
     orch._handle_agent_done = _handle_attention_done
     orch._get_system_prompt = _dev_prompt
     orch.spawn_agent = _spawn_attention
+    original_load = orch._load_entries
+
+    def load_with_recovery() -> None:
+        original_load()
+        pending = []
+        for entry in orch.skill_entries:
+            config = entry.get("attentionbench")
+            link = entry.get("attentionbench_last_run")
+            if (isinstance(config, dict) and isinstance(link, dict)
+                    and config.get("runner_boundary") == "formal"
+                    and link.get("artifact")
+                    and ("memory_validation_tasks" not in link
+                         or not entry.get("attentionbench_eval_status"))):
+                orch._update_entry(entry["name"], {"status": "evaluating"})
+                pending.append((entry["name"], config, Path(link["artifact"])))
+        for name, config, artifact in pending:
+            asyncio.create_task(_recover_attention_result(name, config, artifact))
+
+    orch._load_entries = load_with_recovery
+
+
+async def _recover_attention_result(name: str, config: dict, artifact: Path) -> None:
+    try:
+        result = json.loads(artifact.read_text(encoding="utf-8"))
+        if Path(result.get("artifact_dir", "")) / "attention_run.json" != artifact:
+            raise ValueError("recovered Harness artifact identity changed")
+        if (result.get("suite") != config.get("suite")
+                or result.get("task_id") != config.get("task")
+                or result.get("seed") != config.get("seed")
+                or result.get("approved_policy_sha256") != config.get("approved_policy_sha256")
+                or result.get("approved_config_sha256") != config.get("approved_config_sha256")
+                or result.get("formal_eligible") is not False):
+            raise ValueError("recovered Harness result differs from approved graph node")
+        from attention_eval import build_eval_packet
+        build_eval_packet(artifact)
+        state = SimpleNamespace(skill=name, agent_type="dev", log=[])
+        await _continue_attention_result(state, config, result)
+    except Exception as exc:
+        orch._update_entry(name, {"status": "review", "attentionbench_error":
+                                f"Graph recovery blocked: {type(exc).__name__}: {exc}"[:600]})
+        await orch.broadcast_full_sync()
 
 
 if __name__ == "__main__":

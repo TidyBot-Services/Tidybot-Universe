@@ -38,6 +38,20 @@ def test_formal_graph_routes_to_formal_cli_only_after_exact_approval(tmp_path):
     assert command[command.index("--token-limit") + 1] == "3000"
     assert command[command.index("--overall-deadline-seconds") + 1] == "90"
     assert "--single-glm-call" in command
+    source = tmp_path / "source" / "attention_run.json"
+    source.parent.mkdir()
+    source.write_text('{"formal_eligible": false}\n')
+    config["memory_source_run_file"] = str(source)
+    config["approved_memory_source_sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
+    command = build_attention_command(config, repo_root=tmp_path)
+    assert command[command.index("--memory-source-run") + 1] == str(source)
+    assert command[command.index("--approved-memory-source-sha256") + 1] == config[
+        "approved_memory_source_sha256"]
+    source.write_text("{}\n")
+    with pytest.raises(ValueError, match="memory_source_run_file"):
+        build_attention_command(config, repo_root=tmp_path)
+    config.pop("memory_source_run_file")
+    config.pop("approved_memory_source_sha256")
     with pytest.raises(ValueError, match="token_limit"):
         build_attention_command({**config, "token_limit": 30001}, repo_root=tmp_path)
     policy.write_text("from robot_sdk import sensors\nsensors.get_observation()\n")

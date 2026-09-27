@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -180,6 +181,11 @@ class MemoryValidationTask:
                 )
                 state["pairs"][str(seed)] = pair
                 self._write(state, "pair_registered")
+                # Engineering restart probe: pause only after a durable pair
+                # checkpoint, without changing trials or the promotion gate.
+                pause = float(os.environ.get("ATTENTIONBENCH_PAIR_CHECKPOINT_PAUSE", "0"))
+                if pause > 0:
+                    time.sleep(min(pause, 60.0))
             state["impact"] = self.agent.service.impact_report(self.memory_id)
             self._write(state, "gate_pending")
             promoted = self.agent.request_promotion(self.memory_id)

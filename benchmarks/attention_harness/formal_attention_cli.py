@@ -28,6 +28,9 @@ def main() -> int:
     parser.add_argument("--approved-config-sha256", required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--store-path", type=Path)
+    parser.add_argument("--memory-source-run", type=Path,
+                        help="persisted source run whose attempts own trusted Memory evidence")
+    parser.add_argument("--approved-memory-source-sha256")
     parser.add_argument("--summary-path", type=Path,
                         help="write a UI launch result before exiting, including native failure")
     parser.add_argument("--single-glm-call", action="store_true",
@@ -54,6 +57,22 @@ def main() -> int:
     parser.add_argument("--sim-python", type=Path)
     parser.add_argument("--agent-python", type=Path)
     args = parser.parse_args()
+    if (args.memory_source_run is None) != (args.approved_memory_source_sha256 is None):
+        parser.error("Memory source run and approved SHA-256 must be supplied together")
+    memory_evidence_root = None
+    if args.memory_source_run is not None:
+        source = args.memory_source_run.resolve()
+        if (source.name != "attention_run.json" or args.store_path is None
+                or hashlib.sha256(source.read_bytes()).hexdigest()
+                   != args.approved_memory_source_sha256):
+            parser.error("approved Memory source run differs from persisted bytes")
+        source_run = json.loads(source.read_text(encoding="utf-8"))
+        if (source_run.get("store") != str(args.store_path.resolve())
+                or source_run.get("artifact_dir") != str(source.parent)
+                or source_run.get("formal_eligible") is not False
+                or source_run.get("runner_boundary", {}).get("mode") != "formal"):
+            parser.error("Memory source run identity or store differs")
+        memory_evidence_root = source.parent / "attempts"
     if args.attention_policy == "budget_matched_random_escalation" and (
             args.policy_config is None or args.approved_policy_config_sha256 is None):
         parser.error("random escalation requires approved pre-registered policy config")
@@ -108,6 +127,7 @@ def main() -> int:
         config_path=args.config, approved_config_sha256=args.approved_config_sha256,
         runner=runner, overall_deadline_seconds=args.overall_deadline_seconds,
         store_path=args.store_path, max_attempts=args.max_attempts,
+        memory_evidence_root=memory_evidence_root,
         assistance_credits=args.assistance_credits, token_limit=args.token_limit,
         assistance_mode=AssistanceMode(args.assistance_mode),
         human_deadline_seconds=args.human_deadline_seconds,

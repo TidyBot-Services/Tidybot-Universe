@@ -46,6 +46,7 @@ def run_sim_gt_attention(
     approved_demo_sha256: str | None = None,
     advisor_transport: AdvisorTransport | None = None,
     memory_gateway: MemoryService | MemoryServiceClient | None = None,
+    memory_evidence_root: Path | None = None,
     safety_signals: SafetySignals | None = None,
     approval_granted: Callable[[dict[str, Any]], bool] | None = None,
     assistance_mode: AssistanceMode | str = AssistanceMode.BENCHMARK_PROXY,
@@ -149,8 +150,9 @@ def run_sim_gt_attention(
     # Its candidate evidence URIs are relative to that source run's attempts/.
     # Keep the original run layout for fresh stores and resolve the source
     # evidence root only when the store belongs to a different run directory.
-    memory_artifact_root = store_path.parent
-    if runner_boundary_mode == "formal" and store_path.parent.resolve() != run_dir.resolve():
+    memory_artifact_root = memory_evidence_root or store_path.parent
+    if (memory_evidence_root is None and runner_boundary_mode == "formal"
+            and store_path.parent.resolve() != run_dir.resolve()):
         memory_artifact_root = store_path.parent / "attempts"
     memory_gateway = memory_gateway or MemoryService(
         AttentionStore(store_path), artifact_root=memory_artifact_root,

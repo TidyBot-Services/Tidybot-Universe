@@ -239,6 +239,7 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
         cmd.extend(("--" + name.replace("_", "-"), str(path)))
     for file_key, digest_key, flag in (
         ("memory_context_file", "approved_memory_context_sha256", "--memory-context"),
+        ("memory_source_run_file", "approved_memory_source_sha256", "--memory-source-run"),
         ("demo_prior_file", "approved_demo_sha256", "--demo-prior"),
         ("policy_config_file", "approved_policy_config_sha256", "--policy-config"),
     ):
@@ -255,6 +256,8 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
         cmd.extend((flag, str(path)))
         if file_key == "memory_context_file":
             cmd.extend(("--approved-memory-context-sha256", expected))
+        if file_key == "memory_source_run_file":
+            cmd.extend(("--approved-memory-source-sha256", expected))
     if config["attention_policy"] == "demo_first" and "demo_prior_file" not in config:
         raise ValueError("formal demo_first requires an approved demo prior")
     if config.get("dev_generation_artifact") is not None:
