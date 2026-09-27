@@ -1,0 +1,41 @@
+{
+  "artifact_sha256": "fd91390776939fe152f62ca82198b76ed01be85f6ef38adb8a3f8eb1c55106d4",
+  "assistance_credits": 1,
+  "episode_result_uri": "artifact://counter_to_sink-seed101-formal-1790487853081059024/result.json",
+  "evidence_ids": [
+    "evidence:policy.py",
+    "evidence:trace_context.json"
+  ],
+  "human_attention_seconds": 0.0,
+  "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "raw_evidence_refs": [
+    {
+      "evidence_id": "evidence:trace_context.json",
+      "kind": "execution_context",
+      "sha256": "f72dc1d959d7279a6034bb1621abb0decfa2ae466be94cac25d712e73864d424",
+      "uri": "artifact://counter_to_sink-seed101-formal-1790487853081059024/trace_context.json"
+    },
+    {
+      "evidence_id": "evidence:policy.py",
+      "kind": "policy_code",
+      "sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+      "uri": "artifact://counter_to_sink-seed101-formal-1790487853081059024/policy.py"
+    }
+  ],
+  "received_guidance": "Rewrite policy.py to: (1) call sensors.find_objects() and inspect the returned object names/positions to locate the target object on the counter and the sink location; (2) use the SDK's motion primitives (e.g., move the end-effector toward the object's position, close the gripper to grasp, then move to the sink position and release). Use get_observation() (robot0_eef_pos, robot0_gripper_width) to verify approach and grasp success between steps, and iterate until the object is placed. The current code discards the find_objects() results entirely — capture and use them.",
+  "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "responder": "advisor_proxy",
+  "response_content_sha256": "03df57cc9ed54985ad42e713f9b02f74c5dcf2738445e27283d6412ba015a823",
+  "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "schema_version": "attentionbench.memory-provenance.v2",
+  "source_attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "source_developer_model": "formal-generated-policy",
+  "source_execution_target": "robocasa_sim",
+  "source_kind": "advisor_proxy",
+  "source_policy_id": "reactive_help",
+  "source_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+  "source_raw_trace_id": "raw-trace:counter_to_sink-seed101-formal-1790487853081059024:0",
+  "source_run_id": "run:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+  "source_seed": 101,
+  "source_trace_id": "trace:counter_to_sink-seed101-formal-1790487853081059024:0"
+}

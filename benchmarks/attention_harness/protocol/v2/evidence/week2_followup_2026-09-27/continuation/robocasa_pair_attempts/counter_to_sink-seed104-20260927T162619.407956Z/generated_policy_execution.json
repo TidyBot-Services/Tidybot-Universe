@@ -1,0 +1,8 @@
+{
+  "action_cancellation_receipts": [],
+  "boundary": "spawned_process_sdk_rpc",
+  "call_count": 2,
+  "service_cancellation_capability_verified": true,
+  "status": "completed",
+  "timeout_seconds": 240
+}

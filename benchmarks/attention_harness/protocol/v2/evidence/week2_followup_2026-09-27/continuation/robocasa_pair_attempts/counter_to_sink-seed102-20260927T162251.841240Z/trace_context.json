@@ -1,0 +1,10 @@
+{
+  "error": "GeneratedPolicyError: RuntimeError: The target object slipped during lift step 0",
+  "execution_status": "failed",
+  "policy_id": "reactive_help",
+  "seed": 102,
+  "stop_reason": null,
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "timed_out": false
+}

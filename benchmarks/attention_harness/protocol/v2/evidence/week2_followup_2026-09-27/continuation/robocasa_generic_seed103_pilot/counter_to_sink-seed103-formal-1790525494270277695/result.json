@@ -1,0 +1,48 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_generic_seed103_pilot/counter_to_sink-seed103-formal-1790525494270277695",
+  "artifacts": {
+    "native_result": {
+      "sha256": "35342de0a5a1442a6a6f2f67b88d7532cc31520012e39a03ee4f69667139f4c0",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_generic_seed103_pilot/counter_to_sink-seed103-formal-1790525494270277695/native_result.json"
+    },
+    "safety": {
+      "sha256": "1a0aea08964398dc555dfdc47b312320ea83396d6492e54775dcc598497f1c51",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_generic_seed103_pilot/counter_to_sink-seed103-formal-1790525494270277695/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "85cd71a1c4011d27540f39f7f4760d7301072dca1395f9f05f4c48405ba4e62e",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_generic_seed103_pilot/counter_to_sink-seed103-formal-1790525494270277695/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "182b4bb6b27a85d05408e5114983f2ac2a3be32c31be34936d1003e4c998a8d5",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_generic_seed103_pilot/counter_to_sink-seed103-formal-1790525494270277695/trace.json"
+    }
+  },
+  "attempt_id": null,
+  "config_sha256": "f932d85c880d858c84446447da805f035272a1f3c66dba5f660260bd7f6a0be2",
+  "error": null,
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "cc27335b2d028334c7999e1cb55d5f69346a84d10f77a69f78f555050a563d10",
+  "run_id": null,
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 103,
+  "service_revision": {
+    "agent": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+    "sim": "320020a0c94434af31ec02df3413229576490fef",
+    "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+  },
+  "status": "completed",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

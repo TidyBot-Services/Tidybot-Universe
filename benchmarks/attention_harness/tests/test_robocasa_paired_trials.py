@@ -30,7 +30,9 @@ class World:
         if path == "/task/info":
             # A live service reports the language of its current (possibly
             # previous-seed) episode before the next reset.
-            return {"task": "RoboCasa-Pn-P-Counter-To-Sink-v0", "lang": f"place mug in sink: {self.seed}"}
+            prompt = next((case["task_prompt"] for case in _cases()
+                           if case["seed"] == self.seed), f"place mug in sink: {self.seed}")
+            return {"task": "RoboCasa-Pn-P-Counter-To-Sink-v0", "lang": prompt}
         if path == "/reset":
             self.seed = payload["seed"]
             self.success = False

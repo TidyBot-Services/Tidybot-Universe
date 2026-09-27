@@ -1,0 +1,84 @@
+{
+  "action_cancellation_receipts": [],
+  "agent_service": {
+    "revision": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+    "tree_sha256": "9c42acdb0ce72cfb72f39dac3ee4e593c23e31d9fdb532c1d757e3fcac04d1b1"
+  },
+  "attempt_id": null,
+  "config_sha256_after": "cb16abc6b67aa8f08b95bd59f73c849c6963a7b8066419e19b220ed021f0aa04",
+  "deadline_seconds": 240.0,
+  "elapsed_seconds": 74.35814694299916,
+  "probe": {
+    "boundary": "bubblewrap_user_mount_pid_network_namespace",
+    "bubblewrap_executable": "/usr/bin/bwrap",
+    "bubblewrap_version": "bubblewrap 0.6.1",
+    "credential_environment_absent": true,
+    "host_home_visible": false,
+    "host_root_visible": false,
+    "network_reachable": false,
+    "read_only_mounts": [
+      "/usr",
+      "/lib",
+      "/lib64",
+      "/bin",
+      "/worker/worker.py"
+    ],
+    "worker_has_simulator_client": false,
+    "worker_sha256": "899935a78d8b159f3df1591c22de8a3849f320138e0639ae21d9b76fcb7de236"
+  },
+  "run_id": null,
+  "schema_version": "attentionbench.formal-sandbox-receipt.v1",
+  "service_source_unchanged": true,
+  "service_stop": {
+    "mechanism": "dedicated_simulator_and_agent_process_groups",
+    "reason": "normal_cleanup",
+    "services": {
+      "agent": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 2641547,
+        "process_group": 2641547,
+        "process_group_gone": true
+      },
+      "simulator": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 2639023,
+        "process_group": 2639023,
+        "process_group_gone": true
+      }
+    }
+  },
+  "sim_runtime": {
+    "mani_skill_files": {
+      "envs/tasks/mobile_manipulation/robocasa/kitchen.py": "efd64ab206581010a8fa54ca4700bf523d66fdb7670d847d1c3258ee57b6d7a9",
+      "utils/scene_builder/robocasa/fixtures/counter.py": "a02b00e980dff7225f67d359981aca992290419a97b0a1a67a0c4cfc2575c0a2",
+      "utils/scene_builder/robocasa/scene_builder.py": "39b5b2cfa7450edfb107e03af69a4d93d4c42bd4f8abd2b3cc0af17f3a06b3e4",
+      "utils/scene_builder/robocasa/utils/object_utils.py": "9748d629476aaee0bb90cdd466a775f91e12e9f391dd05b48b574493ae99fd46",
+      "utils/scene_builder/robocasa/utils/placement_samplers.py": "8a77323c0933735bfe7acc72df9fa772a07e9846dd406bb479e99c8994cc0b12"
+    },
+    "mani_skill_python_tree_sha256": "d93b88c3b28ed0fb119eeaddda129f72bd2589e41698566fb4ddf21a58525095",
+    "mani_skill_root": "/home/truares/miniconda3/envs/maniskill/lib/python3.11/site-packages/mani_skill",
+    "mani_skill_version": "3.0.0b22",
+    "python_sha256": "f33fe7acf4552a82f53158d00f94fd10a082bb454a1779c3b7f207f7369ef2fe",
+    "python_version": "3.11.15",
+    "task_module_path": "/home/truares/\u6587\u6863/Tidybot-Universe/sims/robocasa_tasks/__init__.py"
+  },
+  "sim_service": {
+    "revision": "320020a0c94434af31ec02df3413229576490fef",
+    "tree_sha256": "d258c4bef061e832e3f1b9128e55fe9468c34177181c39490979f84e94a46df9"
+  },
+  "source_sha256_after": "028b8b1ba3ff5ae64a9605a482a037ff3495fe3a18eb471965c914e6afe2e802",
+  "source_sha256_before": "028b8b1ba3ff5ae64a9605a482a037ff3495fe3a18eb471965c914e6afe2e802",
+  "task_source": {
+    "revision": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756"
+  },
+  "worker": {
+    "call_count": 10,
+    "elapsed_seconds": 25.112343036998936,
+    "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+    "process_exit_code": -15,
+    "status": "failed"
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "advisor_candidate": "original_sources/candidate_memory",
+  "approval_decision": "rejected_for_validation",
+  "candidate_status_after_review": "candidate",
+  "formal_eligible": false,
+  "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "paired_cases_run": 0,
+  "post_promotion_use_test": "not_applicable; no trusted version exists",
+  "probes": [
+    {
+      "artifact_dir": "robocasa_pilot/counter_to_sink-seed101-formal-1790522087646760668",
+      "artifacts": {
+        "native_result": {
+          "matches_runner": true,
+          "sha256": "76adca5a06c8c16cbb46030fcfb866bf2aeecde8538e9ab46d056f585c8840cf"
+        },
+        "safety": {
+          "matches_runner": true,
+          "sha256": "8b1c1932fab79cb0503e38f68540892b9850e268143d969ed71bc913bf91723b"
+        },
+        "sandbox_receipt": {
+          "matches_runner": true,
+          "sha256": "0afcf5b32b7b78354ec98e4e4c35b9da8988a167820a2e9e6fddac23589fcd4f"
+        },
+        "trace": {
+          "matches_runner": true,
+          "sha256": "d469401d6f9cc69ff27017b7eb8ffc7b6b06eef6b14a3fbfb613e68b77731f22"
+        }
+      },
+      "config_sha256": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
+      "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+      "name": "robocasa_pilot",
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "ba7386b605b4b9f3bf15b94dd97a73da54992d67b94f151dc6a0d453cf1d5bf6",
+      "safety_unsafe_attempts": 1,
+      "safety_violations": [
+        {
+          "action": "move_base_delta",
+          "error": "AgentServerActionError: Process exited with code 1",
+          "event_index": 3,
+          "kind": "action_outcome_unknown"
+        }
+      ],
+      "sdk_operations": [
+        [
+          "get_observation",
+          "completed"
+        ],
+        [
+          "find_objects",
+          "completed"
+        ],
+        [
+          "move_delta",
+          "failed"
+        ],
+        [
+          "get_observation",
+          "completed"
+        ]
+      ],
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2456010,
+            "process_group": 2456010,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2453452,
+            "process_group": 2453452,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "failed"
+    },
+    {
+      "artifact_dir": "robocasa_segmented_pilot/counter_to_sink-seed101-formal-1790522324277466678",
+      "artifacts": {
+        "native_result": {
+          "matches_runner": true,
+          "sha256": "76adca5a06c8c16cbb46030fcfb866bf2aeecde8538e9ab46d056f585c8840cf"
+        },
+        "safety": {
+          "matches_runner": true,
+          "sha256": "1cfa7c3d1a54f4b1dccd0c3f28bedccdeb1a90c6736ff51cc37007b5e9f47770"
+        },
+        "sandbox_receipt": {
+          "matches_runner": true,
+          "sha256": "5f83be86440750295648e90adb1f64d4adf78e7b6890d2e178b434ec9d019cfb"
+        },
+        "trace": {
+          "matches_runner": true,
+          "sha256": "0fe61dc7b1a0106357feb6c0c290b22b2d26e15e213434045ee8fdb912271400"
+        }
+      },
+      "config_sha256": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
+      "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+      "name": "robocasa_segmented_pilot",
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "41761a6bdd7ca50274480ef72459534df57405e547dcc11014c1d90c9e9222fa",
+      "safety_unsafe_attempts": 1,
+      "safety_violations": [
+        {
+          "action": "move_base_delta",
+          "error": "AgentServerActionError: Process exited with code 1",
+          "event_index": 3,
+          "kind": "action_outcome_unknown"
+        }
+      ],
+      "sdk_operations": [
+        [
+          "get_observation",
+          "completed"
+        ],
+        [
+          "find_objects",
+          "completed"
+        ],
+        [
+          "move_delta",
+          "failed"
+        ],
+        [
+          "get_observation",
+          "completed"
+        ]
+      ],
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2468651,
+            "process_group": 2468651,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2466045,
+            "process_group": 2466045,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "failed"
+    }
+  ],
+  "promotion_requested": false,
+  "reason": "Both public-SDK policies fail on their first base.move_delta; Agent Server BaseError says timeout waiting for base to reach target pose. Independent Safety stops with action_outcome_unknown, native_success=false. Historical success used an older runtime and cannot attest the current C/A/T combination.",
+  "review_scope": {
+    "perception_mode": "sim_gt",
+    "seed": 101,
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  },
+  "reviewed_policy_files": [
+    {
+      "path": "review_policies/robocasa_mobile_sink_policy.py",
+      "sha256": "ba7386b605b4b9f3bf15b94dd97a73da54992d67b94f151dc6a0d453cf1d5bf6"
+    },
+    {
+      "path": "review_policies/robocasa_mobile_sink_segmented_candidate.py",
+      "sha256": "41761a6bdd7ca50274480ef72459534df57405e547dcc11014c1d90c9e9222fa"
+    }
+  ],
+  "schema_version": "attentionbench.repair-review.v1",
+  "source_attempt": "original_sources/robocasa_source_attempt",
+  "source_package_verified": true,
+  "source_status": "candidate",
+  "validation_plan_recorded": false
+}

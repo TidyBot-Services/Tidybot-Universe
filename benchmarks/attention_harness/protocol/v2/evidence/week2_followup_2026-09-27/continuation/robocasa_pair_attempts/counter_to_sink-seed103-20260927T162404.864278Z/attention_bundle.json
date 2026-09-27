@@ -1,0 +1,2654 @@
+{
+  "events": [
+    {
+      "entity_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "entity_type": "runs",
+      "event_key": "run.created:run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "event_type": "run.created",
+      "payload": {
+        "assistance_mode": "benchmark_proxy",
+        "budget": {
+          "assistance_credits": 0,
+          "execution_seconds": 300.0,
+          "gpu_seconds": 0.0,
+          "token_limit": 30000
+        },
+        "created_at": 1790526244.8639376,
+        "developer_model": "trusted-policy-callback",
+        "evaluator_model": "native_evaluator",
+        "execution_target": "robocasa_sim",
+        "policy_id": "reactive_help",
+        "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+        "schema_version": "attentionbench.core.v1",
+        "seed": 103,
+        "status": "created",
+        "suite": "robocasa",
+        "task_id": "counter_to_sink"
+      },
+      "sequence": 67
+    },
+    {
+      "entity_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "entity_type": "run",
+      "event_key": "start:run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "event_type": "run.running",
+      "payload": {
+        "run": {
+          "assistance_mode": "benchmark_proxy",
+          "budget": {
+            "assistance_credits": 0,
+            "execution_seconds": 300.0,
+            "gpu_seconds": 0.0,
+            "token_limit": 30000
+          },
+          "created_at": 1790526244.8639376,
+          "developer_model": "trusted-policy-callback",
+          "evaluator_model": "native_evaluator",
+          "execution_target": "robocasa_sim",
+          "policy_id": "reactive_help",
+          "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+          "schema_version": "attentionbench.core.v1",
+          "seed": 103,
+          "status": "running",
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        }
+      },
+      "sequence": 68
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "entity_type": "attempts",
+      "event_key": "attempt.created:attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "event_type": "attempt.created",
+      "payload": {
+        "artifact_uri": null,
+        "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "ended_at": null,
+        "index": 0,
+        "native_success": null,
+        "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+        "schema_version": "attentionbench.core.v1",
+        "started_at": 1790526244.8639376,
+        "status": "running"
+      },
+      "sequence": 69
+    },
+    {
+      "entity_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "entity_type": "attempt",
+      "event_key": "finish:attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "event_type": "attempt.failed",
+      "payload": {
+        "attempt": {
+          "artifact_uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+          "ended_at": 1790526247.982123,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790526244.8639376,
+          "status": "failed"
+        }
+      },
+      "sequence": 70
+    },
+    {
+      "entity_id": "raw-trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "entity_type": "raw_traces",
+      "event_key": "raw_trace.created:raw-trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "event_type": "raw_trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "code": {
+          "artifact_uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/policy.py",
+          "content": "\"\"\"Frozen development policy: same code for control and candidate treatment.\"\"\"\nfrom robot_sdk import sensors, base, arm, gripper\n\nif context[\"task_id\"] != \"counter_to_sink\":\n    raise ValueError(\"This policy is only for counter_to_sink\")\n\n# Reproduce the source no-action behavior when no candidate is exposed.\nsensors.find_objects()\nsensors.get_observation()\nif context[\"memory_catalog\"]:\n    memory = context[\"retrieve_memory\"](\"candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0\")\n    if memory[\"version\"] != 1 or \"find_objects\" not in memory[\"guidance\"]:\n        raise RuntimeError(\"Candidate guidance or version changed\")\n    # Keep each base request within the Agent Server's action deadline.\n    for _ in range(2):\n        base.move_delta(0.125, -0.10, frame=\"local\")\n    for _ in range(2):\n        base.move_delta(0.15, -0.075, frame=\"local\")\n    arm.move_delta(0.0, 0.0, 0.0, rotation_delta=(-0.175, 0.165, 0.0))\n    arm.move_delta(0.0, 0.0, 0.0, rotation_delta=(0.0, 0.0, -0.80))\n    target_name = None\n    for phrase, name in ((\"boxed drink\", \"boxed_drink\"), (\"cup\", \"cup\"),\n                         (\"mango\", \"mango\"), (\"onion\", \"onion\"),\n                         (\"rolling pin\", \"rolling_pin\")):\n        if phrase in context[\"language\"]:\n            target_name = name\n    if target_name is None:\n        raise RuntimeError(\"The task prompt is outside approved development variants\")\n    targets = sensors.find_objects([target_name])\n    if len(targets) != 1:\n        raise RuntimeError(\"The target object is not uniquely visible\")\n    target = targets[0][\"position\"]\n    gripper.open()\n    arm.move_to_position(target[0], target[1], target[2] + 0.16)\n    arm.move_to_position(target[0], target[1], target[2] - 0.005)\n    gripper.close()\n    for lift_step in range(4):\n        arm.move_delta(0.0, 0.0, 0.035)\n        if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n            raise RuntimeError(\"The target object slipped during lift step \" + str(lift_step))\n\n    landmarks = sensors.find_objects([\"spout\"])\n    if len(landmarks) != 1:\n        raise RuntimeError(\"Sink spout is not uniquely visible\")\n    spout = landmarks[0][\"position\"]\n    carry_z = target[2] + 0.15\n    arm.move_to_position(target[0] + 0.08, target[1] + 0.15, carry_z)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped during the first transfer\")\n    arm.move_to_position(target[0] + 0.15, target[1] + 0.30, carry_z)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped during the second transfer\")\n    arm.move_to_position(spout[0] - 0.18, spout[1] - 0.19, spout[2] - 0.065)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped before release\")\n    gripper.open()\n",
+          "sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0"
+        },
+        "complete": true,
+        "created_at": 1790526244.8639376,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.task_spec",
+            "evidence_refs": [],
+            "operation": "present_goal",
+            "result": {
+              "goal": "Pick the target object from the counter and place it in the sink.",
+              "language": "pick the mango from the counter and place it in the sink",
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "sequence": 1,
+            "source": "attention_harness.task",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 2,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.933,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_base_pose": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_gripper_width": {
+                "dtype": "float64",
+                "shape": [
+                  1
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 2.538509,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 171.367,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "floor_room_0",
+                  "position": [
+                    0.26829742240488935,
+                    -0.3598299992312101,
+                    -0.490674523103691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "stack_2_main_group_2_0",
+                  "position": [
+                    0.8093567451963464,
+                    -7.868006593071339e-05,
+                    0.2997051185327512
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "inner_box",
+                  "position": [
+                    0.8008246697522368,
+                    0.7592482799931025,
+                    -0.10287713713955753
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "object",
+                  "position": [
+                    1.0749313933802802,
+                    -0.11929159718768224,
+                    0.3753423713038691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "dishwasher_main_group_0",
+                  "position": [
+                    0.8078166512005844,
+                    -0.8237218805135077,
+                    -0.0814519673774337
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "counter_main_main_group_0",
+                  "position": [
+                    1.0675652315057416,
+                    -0.2070513451417009,
+                    0.43611906824630614
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mango",
+                  "position": [
+                    0.9241795978474571,
+                    -0.5462844828836816,
+                    0.49934658664728837
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "egg",
+                  "position": [
+                    1.1508949202922714,
+                    -0.24617206114311993,
+                    0.30335533175372686
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "spout",
+                  "position": [
+                    1.245316858952526,
+                    -0.06338453155346153,
+                    0.6717351455984515
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_room_0",
+                  "position": [
+                    1.400367359483492,
+                    -0.14058084783953204,
+                    0.5797892289554536
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingeleftdoor",
+                  "position": [
+                    0.9835495481205564,
+                    0.2520507878431059,
+                    1.3324034320072473
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingerightdoor",
+                  "position": [
+                    0.987042138843019,
+                    -0.24769201701725208,
+                    1.3348269802335098
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "outlet_2_room_0",
+                  "position": [
+                    1.398149896669214,
+                    -0.7458148082891585,
+                    0.7306593730305677
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_left_room_0",
+                  "position": [
+                    1.0057460628611177,
+                    1.2522556562160323,
+                    0.7356836395430377
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingedoor",
+                  "position": [
+                    0.9835495834123972,
+                    0.7516841937564193,
+                    1.332195201254992
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "paper_towel_main_group_0",
+                  "position": [
+                    1.2455615044083814,
+                    -1.3490050804101914,
+                    0.6214648398997193
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_room_0",
+                  "position": [
+                    1.3957049106295765,
+                    -1.2460906475326354,
+                    0.7304967573967673
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_2_room_0",
+                  "position": [
+                    1.3958726926581044,
+                    -1.3549615341125307,
+                    0.7306230452260633
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 2.709884,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 124.939,
+            "error": null,
+            "event_id": "sdk-4",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "floor_room_0",
+                  "position": [
+                    0.26829742240488935,
+                    -0.3598299992312101,
+                    -0.490674523103691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "stack_2_main_group_2_0",
+                  "position": [
+                    0.8093567451963464,
+                    -7.868006593071339e-05,
+                    0.2997051185327512
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "inner_box",
+                  "position": [
+                    0.8008246697522368,
+                    0.7592482799931025,
+                    -0.10287713713955753
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "object",
+                  "position": [
+                    1.0749313933802802,
+                    -0.11929159718768224,
+                    0.3753423713038691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "dishwasher_main_group_0",
+                  "position": [
+                    0.8078166512005844,
+                    -0.8237218805135077,
+                    -0.0814519673774337
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "counter_main_main_group_0",
+                  "position": [
+                    1.0675652315057416,
+                    -0.2070513451417009,
+                    0.43611906824630614
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mango",
+                  "position": [
+                    0.9237544468243065,
+                    -0.5463100868325542,
+                    0.4993465866440153
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "egg",
+                  "position": [
+                    1.149883917413162,
+                    -0.24585084639260174,
+                    0.3039138334862827
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "spout",
+                  "position": [
+                    1.245316858952526,
+                    -0.06338453155346153,
+                    0.6717351455984515
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_room_0",
+                  "position": [
+                    1.400367359483492,
+                    -0.14058084783953204,
+                    0.5797892289554536
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingeleftdoor",
+                  "position": [
+                    0.9835495481205564,
+                    0.2520507878431059,
+                    1.3324034320072473
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingerightdoor",
+                  "position": [
+                    0.987042138843019,
+                    -0.24769201701725208,
+                    1.3348269802335098
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "outlet_2_room_0",
+                  "position": [
+                    1.398149896669214,
+                    -0.7458148082891585,
+                    0.7306593730305677
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_left_room_0",
+                  "position": [
+                    1.0057460628611177,
+                    1.2522556562160323,
+                    0.7356836395430377
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingedoor",
+                  "position": [
+                    0.9835495834123972,
+                    0.7516841937564193,
+                    1.332195201254992
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "paper_towel_main_group_0",
+                  "position": [
+                    1.2455615044083814,
+                    -1.3490050804101914,
+                    0.6214648398997193
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_room_0",
+                  "position": [
+                    1.3957049106295765,
+                    -1.2460906475326354,
+                    0.7304967573967673
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_2_room_0",
+                  "position": [
+                    1.3958726926581044,
+                    -1.3549615341125307,
+                    0.7306230452260633
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 5,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.061272,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 1.404,
+            "error": null,
+            "event_id": "sdk-5",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_base_pose": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_gripper_width": {
+                "dtype": "float64",
+                "shape": [
+                  1
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 6,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.062956,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 1.521,
+            "error": null,
+            "event_id": "sdk-6",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_base_pose": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_gripper_width": {
+                "dtype": "float64",
+                "shape": [
+                  1
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 7,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.084745,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "action-log",
+            "event_type": "robot.action_log",
+            "evidence_refs": [],
+            "operation": "step_sequence",
+            "result": {
+              "action_count": 0
+            },
+            "sequence": 8,
+            "source": "robot_backend",
+            "status": "completed",
+            "timestamp": 3.084746,
+            "visibility": [
+              "internal"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz",
+              "evidence:policy.py"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 9,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 3.084747,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "native-evaluator",
+            "event_type": "evaluator.result",
+            "evidence_refs": [],
+            "operation": "native_success",
+            "result": {
+              "native_success": false
+            },
+            "sequence": 10,
+            "source": "native_evaluator",
+            "status": "completed",
+            "timestamp": 3.0847480000000003,
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790526247.9981227,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 202
+            },
+            "mime_type": "application/json",
+            "sha256": "ed2151b645aa1fead66fc3465300528848265a7f82243b88cb84cf6e66a74daa",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790526247.982123,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 941
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "1cb2cbff9dc58ee0a79f640ca8c77d09af0437e21699f9fbfc66a12613c63fd1",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790526247.9831228,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 942
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "18caca445882e213997182097d8a9da925255444e25bfb8cc29659f97a1e54c2",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790525698.3614838,
+            "evidence_id": "evidence:policy.py",
+            "kind": "policy_code",
+            "metadata": {
+              "bytes": 2905
+            },
+            "mime_type": "text/x-python",
+            "sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/policy.py",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790526247.982123,
+            "evidence_id": "evidence:trace.jsonl",
+            "kind": "action_trace",
+            "metadata": {
+              "bytes": 0
+            },
+            "mime_type": "application/x-ndjson",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/trace.jsonl",
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "execution_id": "execution:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "failure": null,
+        "hypothesis": "",
+        "memory_refs": [],
+        "metadata": {
+          "policy_id": "reactive_help",
+          "runtime": {
+            "memory_context": {
+              "camera_config_id": "camera:base+wrist",
+              "camera_names": [
+                "base_camera",
+                "wrist_camera"
+              ],
+              "object_set_id": "objects:a7d4f086836e78c38004",
+              "perception_mode": "sim_gt",
+              "scene_id": "scene:feaf8e202a88a1bad005",
+              "suite": "robocasa",
+              "task_id": "counter_to_sink",
+              "task_prompt": "pick the mango from the counter and place it in the sink",
+              "task_variant_id": "task:mango"
+            },
+            "memory_exposure": "none",
+            "memory_ids": [],
+            "perception_mode": "sim_gt",
+            "policy_execution_mode": "sandboxed_generated",
+            "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+            "score_namespace": "v2/gt_perception_attentionbench",
+            "validation_config_sha256": "8513c77e5939ae690aefb1c26f55af110718919d79b928697b7f794e9c307900",
+            "validation_variation": {
+              "camera_config_id": "camera:base+wrist",
+              "camera_names": [
+                "base_camera",
+                "wrist_camera"
+              ],
+              "object_set_id": "objects:a7d4f086836e78c38004",
+              "scene_id": "scene:feaf8e202a88a1bad005",
+              "task_prompt": "pick the mango from the counter and place it in the sink",
+              "task_variant_id": "task:mango"
+            }
+          },
+          "seed": 103,
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "outcome": {
+          "elapsed_seconds": 3.1181853320013033,
+          "evaluator_authoritative": true,
+          "evaluator_verdict": "failed",
+          "exit_code": null,
+          "native_success": false,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "raw_trace_id": "raw-trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+        "schema_version": "attentionbench.raw-execution-trace.v1"
+      },
+      "sequence": 71
+    },
+    {
+      "entity_id": "trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "entity_type": "traces",
+      "event_key": "trace.created:trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "event_type": "trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "code": {
+          "artifact_uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/policy.py",
+          "content": "\"\"\"Frozen development policy: same code for control and candidate treatment.\"\"\"\nfrom robot_sdk import sensors, base, arm, gripper\n\nif context[\"task_id\"] != \"counter_to_sink\":\n    raise ValueError(\"This policy is only for counter_to_sink\")\n\n# Reproduce the source no-action behavior when no candidate is exposed.\nsensors.find_objects()\nsensors.get_observation()\nif context[\"memory_catalog\"]:\n    memory = context[\"retrieve_memory\"](\"candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0\")\n    if memory[\"version\"] != 1 or \"find_objects\" not in memory[\"guidance\"]:\n        raise RuntimeError(\"Candidate guidance or version changed\")\n    # Keep each base request within the Agent Server's action deadline.\n    for _ in range(2):\n        base.move_delta(0.125, -0.10, frame=\"local\")\n    for _ in range(2):\n        base.move_delta(0.15, -0.075, frame=\"local\")\n    arm.move_delta(0.0, 0.0, 0.0, rotation_delta=(-0.175, 0.165, 0.0))\n    arm.move_delta(0.0, 0.0, 0.0, rotation_delta=(0.0, 0.0, -0.80))\n    target_name = None\n    for phrase, name in ((\"boxed drink\", \"boxed_drink\"), (\"cup\", \"cup\"),\n                         (\"mango\", \"mango\"), (\"onion\", \"onion\"),\n                         (\"rolling pin\", \"rolling_pin\")):\n        if phrase in context[\"language\"]:\n            target_name = name\n    if target_name is None:\n        raise RuntimeError(\"The task prompt is outside approved development variants\")\n    targets = sensors.find_objects([target_name])\n    if len(targets) != 1:\n        raise RuntimeError(\"The target object is not uniquely visible\")\n    target = targets[0][\"position\"]\n    gripper.open()\n    arm.move_to_position(target[0], target[1], target[2] + 0.16)\n    arm.move_to_position(target[0], target[1], target[2] - 0.005)\n    gripper.close()\n    for lift_step in range(4):\n        arm.move_delta(0.0, 0.0, 0.035)\n        if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n            raise RuntimeError(\"The target object slipped during lift step \" + str(lift_step))\n\n    landmarks = sensors.find_objects([\"spout\"])\n    if len(landmarks) != 1:\n        raise RuntimeError(\"Sink spout is not uniquely visible\")\n    spout = landmarks[0][\"position\"]\n    carry_z = target[2] + 0.15\n    arm.move_to_position(target[0] + 0.08, target[1] + 0.15, carry_z)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped during the first transfer\")\n    arm.move_to_position(target[0] + 0.15, target[1] + 0.30, carry_z)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped during the second transfer\")\n    arm.move_to_position(spout[0] - 0.18, spout[1] - 0.19, spout[2] - 0.065)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped before release\")\n    gripper.open()\n",
+          "sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0"
+        },
+        "created_at": 1790526244.8639376,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "attention.task_spec",
+            "evidence_refs": [],
+            "operation": "present_goal",
+            "result": {
+              "goal": "Pick the target object from the counter and place it in the sink.",
+              "language": "pick the mango from the counter and place it in the sink",
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "sequence": 1,
+            "source": "attention_harness.task",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "perception_mode": "sim_gt",
+              "task_id": "counter_to_sink"
+            },
+            "duration_ms": null,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "attention.memory_catalog",
+            "evidence_refs": [],
+            "operation": "list_available",
+            "result": {
+              "memory_ids": []
+            },
+            "sequence": 2,
+            "source": "attention_harness.memory",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.933,
+            "error": null,
+            "event_id": "sdk-2",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_base_pose": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_gripper_width": {
+                "dtype": "float64",
+                "shape": [
+                  1
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 3,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 2.538509,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 171.367,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "floor_room_0",
+                  "position": [
+                    0.26829742240488935,
+                    -0.3598299992312101,
+                    -0.490674523103691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "stack_2_main_group_2_0",
+                  "position": [
+                    0.8093567451963464,
+                    -7.868006593071339e-05,
+                    0.2997051185327512
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "inner_box",
+                  "position": [
+                    0.8008246697522368,
+                    0.7592482799931025,
+                    -0.10287713713955753
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "object",
+                  "position": [
+                    1.0749313933802802,
+                    -0.11929159718768224,
+                    0.3753423713038691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "dishwasher_main_group_0",
+                  "position": [
+                    0.8078166512005844,
+                    -0.8237218805135077,
+                    -0.0814519673774337
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "counter_main_main_group_0",
+                  "position": [
+                    1.0675652315057416,
+                    -0.2070513451417009,
+                    0.43611906824630614
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mango",
+                  "position": [
+                    0.9241795978474571,
+                    -0.5462844828836816,
+                    0.49934658664728837
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "egg",
+                  "position": [
+                    1.1508949202922714,
+                    -0.24617206114311993,
+                    0.30335533175372686
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "spout",
+                  "position": [
+                    1.245316858952526,
+                    -0.06338453155346153,
+                    0.6717351455984515
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_room_0",
+                  "position": [
+                    1.400367359483492,
+                    -0.14058084783953204,
+                    0.5797892289554536
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingeleftdoor",
+                  "position": [
+                    0.9835495481205564,
+                    0.2520507878431059,
+                    1.3324034320072473
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingerightdoor",
+                  "position": [
+                    0.987042138843019,
+                    -0.24769201701725208,
+                    1.3348269802335098
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "outlet_2_room_0",
+                  "position": [
+                    1.398149896669214,
+                    -0.7458148082891585,
+                    0.7306593730305677
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_left_room_0",
+                  "position": [
+                    1.0057460628611177,
+                    1.2522556562160323,
+                    0.7356836395430377
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingedoor",
+                  "position": [
+                    0.9835495834123972,
+                    0.7516841937564193,
+                    1.332195201254992
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "paper_towel_main_group_0",
+                  "position": [
+                    1.2455615044083814,
+                    -1.3490050804101914,
+                    0.6214648398997193
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_room_0",
+                  "position": [
+                    1.3957049106295765,
+                    -1.2460906475326354,
+                    0.7304967573967673
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_2_room_0",
+                  "position": [
+                    1.3958726926581044,
+                    -1.3549615341125307,
+                    0.7306230452260633
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 2.709884,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 124.939,
+            "error": null,
+            "event_id": "sdk-4",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {
+              "objects": [
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "floor_room_0",
+                  "position": [
+                    0.26829742240488935,
+                    -0.3598299992312101,
+                    -0.490674523103691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "stack_2_main_group_2_0",
+                  "position": [
+                    0.8093567451963464,
+                    -7.868006593071339e-05,
+                    0.2997051185327512
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "inner_box",
+                  "position": [
+                    0.8008246697522368,
+                    0.7592482799931025,
+                    -0.10287713713955753
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "object",
+                  "position": [
+                    1.0749313933802802,
+                    -0.11929159718768224,
+                    0.3753423713038691
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "dishwasher_main_group_0",
+                  "position": [
+                    0.8078166512005844,
+                    -0.8237218805135077,
+                    -0.0814519673774337
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "counter_main_main_group_0",
+                  "position": [
+                    1.0675652315057416,
+                    -0.2070513451417009,
+                    0.43611906824630614
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "mango",
+                  "position": [
+                    0.9237544468243065,
+                    -0.5463100868325542,
+                    0.4993465866440153
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "egg",
+                  "position": [
+                    1.149883917413162,
+                    -0.24585084639260174,
+                    0.3039138334862827
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "spout",
+                  "position": [
+                    1.245316858952526,
+                    -0.06338453155346153,
+                    0.6717351455984515
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_room_0",
+                  "position": [
+                    1.400367359483492,
+                    -0.14058084783953204,
+                    0.5797892289554536
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingeleftdoor",
+                  "position": [
+                    0.9835495481205564,
+                    0.2520507878431059,
+                    1.3324034320072473
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingerightdoor",
+                  "position": [
+                    0.987042138843019,
+                    -0.24769201701725208,
+                    1.3348269802335098
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "outlet_2_room_0",
+                  "position": [
+                    1.398149896669214,
+                    -0.7458148082891585,
+                    0.7306593730305677
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "wall_left_room_0",
+                  "position": [
+                    1.0057460628611177,
+                    1.2522556562160323,
+                    0.7356836395430377
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "hingedoor",
+                  "position": [
+                    0.9835495834123972,
+                    0.7516841937564193,
+                    1.332195201254992
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "paper_towel_main_group_0",
+                  "position": [
+                    1.2455615044083814,
+                    -1.3490050804101914,
+                    0.6214648398997193
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_room_0",
+                  "position": [
+                    1.3957049106295765,
+                    -1.2460906475326354,
+                    0.7304967573967673
+                  ],
+                  "source": "sim_gt"
+                },
+                {
+                  "confidence": 1.0,
+                  "frame": "arm_base",
+                  "name": "light_switch_2_room_0",
+                  "position": [
+                    1.3958726926581044,
+                    -1.3549615341125307,
+                    0.7306230452260633
+                  ],
+                  "source": "sim_gt"
+                }
+              ],
+              "perception_mode": "sim_gt"
+            },
+            "sequence": 5,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.061272,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 1.404,
+            "error": null,
+            "event_id": "sdk-5",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_base_pose": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_gripper_width": {
+                "dtype": "float64",
+                "shape": [
+                  1
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 6,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.062956,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 1.521,
+            "error": null,
+            "event_id": "sdk-6",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "robot0_base_pose": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_gripper_width": {
+                "dtype": "float64",
+                "shape": [
+                  1
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              }
+            },
+            "sequence": 7,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 3.084745,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "execution finished but the task goal was not verified",
+              "type": "TaskOutcomeFailure"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:initial_observation.npz",
+              "evidence:final_observation.npz",
+              "evidence:policy.py"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "completed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 9,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 3.084747,
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790526247.9831228,
+            "evidence_id": "evidence:final_observation.npz",
+            "kind": "final_observation",
+            "metadata": {
+              "bytes": 942
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "18caca445882e213997182097d8a9da925255444e25bfb8cc29659f97a1e54c2",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/final_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790526247.982123,
+            "evidence_id": "evidence:initial_observation.npz",
+            "kind": "initial_observation",
+            "metadata": {
+              "bytes": 941
+            },
+            "mime_type": "application/x-npz",
+            "sha256": "1cb2cbff9dc58ee0a79f640ca8c77d09af0437e21699f9fbfc66a12613c63fd1",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/initial_observation.npz",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790525698.3614838,
+            "evidence_id": "evidence:policy.py",
+            "kind": "policy_code",
+            "metadata": {
+              "bytes": 2905
+            },
+            "mime_type": "text/x-python",
+            "sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/policy.py",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790526247.9981227,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 202
+            },
+            "mime_type": "application/json",
+            "sha256": "ed2151b645aa1fead66fc3465300528848265a7f82243b88cb84cf6e66a74daa",
+            "source_event_id": null,
+            "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "execution_id": "execution:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "experiment": {
+          "config_sha256": null,
+          "policy_id": "reactive_help",
+          "scheduler_config_sha256": null,
+          "seed": 103,
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        },
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 0.5,
+          "consecutive_failures": 1,
+          "error_type": "TaskOutcomeFailure",
+          "first_failed_event_id": "execution-finished",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-6",
+          "message": "execution finished but the task goal was not verified",
+          "observed_symptom": "execution finished but the task goal was not verified",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "unknown",
+          "termination_reason": null
+        },
+        "hypothesis": "",
+        "hypothesis_status": "unknown",
+        "memory_refs": [],
+        "outcome": {
+          "elapsed_seconds": 3.1181853320013033,
+          "exit_code": null,
+          "status": "completed",
+          "stop_reason": null,
+          "timed_out": false
+        },
+        "projection": {
+          "included_event_count": 9,
+          "included_evidence_count": 4,
+          "omitted_event_count": 2,
+          "omitted_evidence_count": 1,
+          "policy_version": "attentionbench.advisor-visibility.v1",
+          "projection_sha256": "fafcca96a072b7ac5979dee7d852ff572bd683e29a88ef09dfe68c3a0485efbe",
+          "redacted_field_count": 3,
+          "source_complete": true,
+          "source_sha256": "7f4e88cced5a7378d4824b5ccf56209f25950983754724378a366f280897c33a"
+        },
+        "raw_trace_id": "raw-trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+        "schema_version": "attentionbench.advisor-trace-packet.v1",
+        "trace_id": "trace:counter_to_sink-seed103-20260927T162404.864278Z:0"
+      },
+      "sequence": 72
+    },
+    {
+      "entity_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "entity_type": "run",
+      "event_key": "finish:run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "event_type": "run.failed",
+      "payload": {
+        "run": {
+          "assistance_mode": "benchmark_proxy",
+          "budget": {
+            "assistance_credits": 0,
+            "execution_seconds": 300.0,
+            "gpu_seconds": 0.0,
+            "token_limit": 30000
+          },
+          "created_at": 1790526244.8639376,
+          "developer_model": "trusted-policy-callback",
+          "evaluator_model": "native_evaluator",
+          "execution_target": "robocasa_sim",
+          "policy_id": "reactive_help",
+          "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+          "schema_version": "attentionbench.core.v1",
+          "seed": 103,
+          "status": "failed",
+          "suite": "robocasa",
+          "task_id": "counter_to_sink"
+        }
+      },
+      "sequence": 73
+    },
+    {
+      "entity_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "entity_type": "resource_usage",
+      "event_key": "resource-event:resources:attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "event_type": "resources.consumed",
+      "payload": {
+        "execution_seconds": 3.1181853320013033,
+        "gpu_seconds": 0.0,
+        "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+        "tokens": 0
+      },
+      "sequence": 74
+    }
+  ],
+  "projection": {
+    "attention_inbox": [],
+    "autonomous_work": {
+      "attempts": [
+        {
+          "artifact_uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/result.json",
+          "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+          "ended_at": 1790526247.982123,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790526244.8639376,
+          "status": "failed"
+        }
+      ]
+    },
+    "live_station": {
+      "emergency_interrupt_available": true,
+      "execution_target": "robocasa_sim",
+      "status": "failed"
+    },
+    "request_detail": {
+      "memories": [],
+      "responses": [],
+      "traces": [
+        {
+          "agent_state": "blocked_after_failure",
+          "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+          "code": {
+            "artifact_uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/policy.py",
+            "content": "\"\"\"Frozen development policy: same code for control and candidate treatment.\"\"\"\nfrom robot_sdk import sensors, base, arm, gripper\n\nif context[\"task_id\"] != \"counter_to_sink\":\n    raise ValueError(\"This policy is only for counter_to_sink\")\n\n# Reproduce the source no-action behavior when no candidate is exposed.\nsensors.find_objects()\nsensors.get_observation()\nif context[\"memory_catalog\"]:\n    memory = context[\"retrieve_memory\"](\"candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0\")\n    if memory[\"version\"] != 1 or \"find_objects\" not in memory[\"guidance\"]:\n        raise RuntimeError(\"Candidate guidance or version changed\")\n    # Keep each base request within the Agent Server's action deadline.\n    for _ in range(2):\n        base.move_delta(0.125, -0.10, frame=\"local\")\n    for _ in range(2):\n        base.move_delta(0.15, -0.075, frame=\"local\")\n    arm.move_delta(0.0, 0.0, 0.0, rotation_delta=(-0.175, 0.165, 0.0))\n    arm.move_delta(0.0, 0.0, 0.0, rotation_delta=(0.0, 0.0, -0.80))\n    target_name = None\n    for phrase, name in ((\"boxed drink\", \"boxed_drink\"), (\"cup\", \"cup\"),\n                         (\"mango\", \"mango\"), (\"onion\", \"onion\"),\n                         (\"rolling pin\", \"rolling_pin\")):\n        if phrase in context[\"language\"]:\n            target_name = name\n    if target_name is None:\n        raise RuntimeError(\"The task prompt is outside approved development variants\")\n    targets = sensors.find_objects([target_name])\n    if len(targets) != 1:\n        raise RuntimeError(\"The target object is not uniquely visible\")\n    target = targets[0][\"position\"]\n    gripper.open()\n    arm.move_to_position(target[0], target[1], target[2] + 0.16)\n    arm.move_to_position(target[0], target[1], target[2] - 0.005)\n    gripper.close()\n    for lift_step in range(4):\n        arm.move_delta(0.0, 0.0, 0.035)\n        if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n            raise RuntimeError(\"The target object slipped during lift step \" + str(lift_step))\n\n    landmarks = sensors.find_objects([\"spout\"])\n    if len(landmarks) != 1:\n        raise RuntimeError(\"Sink spout is not uniquely visible\")\n    spout = landmarks[0][\"position\"]\n    carry_z = target[2] + 0.15\n    arm.move_to_position(target[0] + 0.08, target[1] + 0.15, carry_z)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped during the first transfer\")\n    arm.move_to_position(target[0] + 0.15, target[1] + 0.30, carry_z)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped during the second transfer\")\n    arm.move_to_position(spout[0] - 0.18, spout[1] - 0.19, spout[2] - 0.065)\n    if sensors.get_observation()[\"robot0_gripper_width\"][0] < 0.005:\n        raise RuntimeError(\"The target object slipped before release\")\n    gripper.open()\n",
+            "sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0"
+          },
+          "created_at": 1790526244.8639376,
+          "events": [
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "execution-started",
+              "event_type": "execution.started",
+              "evidence_refs": [],
+              "operation": "run_policy",
+              "result": {},
+              "sequence": 0,
+              "source": "attention_harness",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-0",
+              "event_type": "attention.task_spec",
+              "evidence_refs": [],
+              "operation": "present_goal",
+              "result": {
+                "goal": "Pick the target object from the counter and place it in the sink.",
+                "language": "pick the mango from the counter and place it in the sink",
+                "perception_mode": "sim_gt",
+                "task_id": "counter_to_sink"
+              },
+              "sequence": 1,
+              "source": "attention_harness.task",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "perception_mode": "sim_gt",
+                "task_id": "counter_to_sink"
+              },
+              "duration_ms": null,
+              "error": null,
+              "event_id": "sdk-1",
+              "event_type": "attention.memory_catalog",
+              "evidence_refs": [],
+              "operation": "list_available",
+              "result": {
+                "memory_ids": []
+              },
+              "sequence": 2,
+              "source": "attention_harness.memory",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.933,
+              "error": null,
+              "event_id": "sdk-2",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_base_pose": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_gripper_width": {
+                  "dtype": "float64",
+                  "shape": [
+                    1
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                }
+              },
+              "sequence": 3,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 2.538509,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 171.367,
+              "error": null,
+              "event_id": "sdk-3",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {
+                "objects": [
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "floor_room_0",
+                    "position": [
+                      0.26829742240488935,
+                      -0.3598299992312101,
+                      -0.490674523103691
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "stack_2_main_group_2_0",
+                    "position": [
+                      0.8093567451963464,
+                      -7.868006593071339e-05,
+                      0.2997051185327512
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "inner_box",
+                    "position": [
+                      0.8008246697522368,
+                      0.7592482799931025,
+                      -0.10287713713955753
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "object",
+                    "position": [
+                      1.0749313933802802,
+                      -0.11929159718768224,
+                      0.3753423713038691
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "dishwasher_main_group_0",
+                    "position": [
+                      0.8078166512005844,
+                      -0.8237218805135077,
+                      -0.0814519673774337
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "counter_main_main_group_0",
+                    "position": [
+                      1.0675652315057416,
+                      -0.2070513451417009,
+                      0.43611906824630614
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "mango",
+                    "position": [
+                      0.9241795978474571,
+                      -0.5462844828836816,
+                      0.49934658664728837
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "egg",
+                    "position": [
+                      1.1508949202922714,
+                      -0.24617206114311993,
+                      0.30335533175372686
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "spout",
+                    "position": [
+                      1.245316858952526,
+                      -0.06338453155346153,
+                      0.6717351455984515
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "wall_room_0",
+                    "position": [
+                      1.400367359483492,
+                      -0.14058084783953204,
+                      0.5797892289554536
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "hingeleftdoor",
+                    "position": [
+                      0.9835495481205564,
+                      0.2520507878431059,
+                      1.3324034320072473
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "hingerightdoor",
+                    "position": [
+                      0.987042138843019,
+                      -0.24769201701725208,
+                      1.3348269802335098
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "outlet_2_room_0",
+                    "position": [
+                      1.398149896669214,
+                      -0.7458148082891585,
+                      0.7306593730305677
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "wall_left_room_0",
+                    "position": [
+                      1.0057460628611177,
+                      1.2522556562160323,
+                      0.7356836395430377
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "hingedoor",
+                    "position": [
+                      0.9835495834123972,
+                      0.7516841937564193,
+                      1.332195201254992
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "paper_towel_main_group_0",
+                    "position": [
+                      1.2455615044083814,
+                      -1.3490050804101914,
+                      0.6214648398997193
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "light_switch_room_0",
+                    "position": [
+                      1.3957049106295765,
+                      -1.2460906475326354,
+                      0.7304967573967673
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "light_switch_2_room_0",
+                    "position": [
+                      1.3958726926581044,
+                      -1.3549615341125307,
+                      0.7306230452260633
+                    ],
+                    "source": "sim_gt"
+                  }
+                ],
+                "perception_mode": "sim_gt"
+              },
+              "sequence": 4,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 2.709884,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 124.939,
+              "error": null,
+              "event_id": "sdk-4",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {
+                "objects": [
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "floor_room_0",
+                    "position": [
+                      0.26829742240488935,
+                      -0.3598299992312101,
+                      -0.490674523103691
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "stack_2_main_group_2_0",
+                    "position": [
+                      0.8093567451963464,
+                      -7.868006593071339e-05,
+                      0.2997051185327512
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "inner_box",
+                    "position": [
+                      0.8008246697522368,
+                      0.7592482799931025,
+                      -0.10287713713955753
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "object",
+                    "position": [
+                      1.0749313933802802,
+                      -0.11929159718768224,
+                      0.3753423713038691
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "dishwasher_main_group_0",
+                    "position": [
+                      0.8078166512005844,
+                      -0.8237218805135077,
+                      -0.0814519673774337
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "counter_main_main_group_0",
+                    "position": [
+                      1.0675652315057416,
+                      -0.2070513451417009,
+                      0.43611906824630614
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "mango",
+                    "position": [
+                      0.9237544468243065,
+                      -0.5463100868325542,
+                      0.4993465866440153
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "egg",
+                    "position": [
+                      1.149883917413162,
+                      -0.24585084639260174,
+                      0.3039138334862827
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "spout",
+                    "position": [
+                      1.245316858952526,
+                      -0.06338453155346153,
+                      0.6717351455984515
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "wall_room_0",
+                    "position": [
+                      1.400367359483492,
+                      -0.14058084783953204,
+                      0.5797892289554536
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "hingeleftdoor",
+                    "position": [
+                      0.9835495481205564,
+                      0.2520507878431059,
+                      1.3324034320072473
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "hingerightdoor",
+                    "position": [
+                      0.987042138843019,
+                      -0.24769201701725208,
+                      1.3348269802335098
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "outlet_2_room_0",
+                    "position": [
+                      1.398149896669214,
+                      -0.7458148082891585,
+                      0.7306593730305677
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "wall_left_room_0",
+                    "position": [
+                      1.0057460628611177,
+                      1.2522556562160323,
+                      0.7356836395430377
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "hingedoor",
+                    "position": [
+                      0.9835495834123972,
+                      0.7516841937564193,
+                      1.332195201254992
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "paper_towel_main_group_0",
+                    "position": [
+                      1.2455615044083814,
+                      -1.3490050804101914,
+                      0.6214648398997193
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "light_switch_room_0",
+                    "position": [
+                      1.3957049106295765,
+                      -1.2460906475326354,
+                      0.7304967573967673
+                    ],
+                    "source": "sim_gt"
+                  },
+                  {
+                    "confidence": 1.0,
+                    "frame": "arm_base",
+                    "name": "light_switch_2_room_0",
+                    "position": [
+                      1.3958726926581044,
+                      -1.3549615341125307,
+                      0.7306230452260633
+                    ],
+                    "source": "sim_gt"
+                  }
+                ],
+                "perception_mode": "sim_gt"
+              },
+              "sequence": 5,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 3.061272,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 1.404,
+              "error": null,
+              "event_id": "sdk-5",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_base_pose": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_gripper_width": {
+                  "dtype": "float64",
+                  "shape": [
+                    1
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                }
+              },
+              "sequence": 6,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 3.062956,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 1.521,
+              "error": null,
+              "event_id": "sdk-6",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "robot0_base_pose": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_gripper_width": {
+                  "dtype": "float64",
+                  "shape": [
+                    1
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                }
+              },
+              "sequence": 7,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 3.084745,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": {
+                "message": "execution finished but the task goal was not verified",
+                "type": "TaskOutcomeFailure"
+              },
+              "event_id": "execution-finished",
+              "event_type": "execution.finished",
+              "evidence_refs": [
+                "evidence:trace_context.json",
+                "evidence:initial_observation.npz",
+                "evidence:final_observation.npz",
+                "evidence:policy.py"
+              ],
+              "operation": "run_policy",
+              "result": {
+                "execution_status": "completed",
+                "exit_code": null,
+                "stderr_tail": "",
+                "stdout_tail": "",
+                "timed_out": false
+              },
+              "sequence": 9,
+              "source": "attention_harness",
+              "status": "failed",
+              "timestamp": 3.084747,
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "created_at": 1790526247.9831228,
+              "evidence_id": "evidence:final_observation.npz",
+              "kind": "final_observation",
+              "metadata": {
+                "bytes": 942
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "18caca445882e213997182097d8a9da925255444e25bfb8cc29659f97a1e54c2",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/final_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790526247.982123,
+              "evidence_id": "evidence:initial_observation.npz",
+              "kind": "initial_observation",
+              "metadata": {
+                "bytes": 941
+              },
+              "mime_type": "application/x-npz",
+              "sha256": "1cb2cbff9dc58ee0a79f640ca8c77d09af0437e21699f9fbfc66a12613c63fd1",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/initial_observation.npz",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790525698.3614838,
+              "evidence_id": "evidence:policy.py",
+              "kind": "policy_code",
+              "metadata": {
+                "bytes": 2905
+              },
+              "mime_type": "text/x-python",
+              "sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/policy.py",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790526247.9981227,
+              "evidence_id": "evidence:trace_context.json",
+              "kind": "execution_context",
+              "metadata": {
+                "bytes": 202
+              },
+              "mime_type": "application/json",
+              "sha256": "ed2151b645aa1fead66fc3465300528848265a7f82243b88cb84cf6e66a74daa",
+              "source_event_id": null,
+              "uri": "artifact://counter_to_sink-seed103-20260927T162404.864278Z/trace_context.json",
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "execution_id": "execution:counter_to_sink-seed103-20260927T162404.864278Z:0",
+          "experiment": {
+            "config_sha256": null,
+            "policy_id": "reactive_help",
+            "scheduler_config_sha256": null,
+            "seed": 103,
+            "suite": "robocasa",
+            "task_id": "counter_to_sink"
+          },
+          "failure": {
+            "classification_source": "deterministic_event_rules",
+            "confidence": 0.5,
+            "consecutive_failures": 1,
+            "error_type": "TaskOutcomeFailure",
+            "first_failed_event_id": "execution-finished",
+            "inferred_cause": null,
+            "last_successful_event_id": "sdk-6",
+            "message": "execution finished but the task goal was not verified",
+            "observed_symptom": "execution finished but the task goal was not verified",
+            "retryable": null,
+            "safety_relevant": false,
+            "stage": "unknown",
+            "termination_reason": null
+          },
+          "hypothesis": "",
+          "hypothesis_status": "unknown",
+          "memory_refs": [],
+          "outcome": {
+            "elapsed_seconds": 3.1181853320013033,
+            "exit_code": null,
+            "status": "completed",
+            "stop_reason": null,
+            "timed_out": false
+          },
+          "projection": {
+            "included_event_count": 9,
+            "included_evidence_count": 4,
+            "omitted_event_count": 2,
+            "omitted_evidence_count": 1,
+            "policy_version": "attentionbench.advisor-visibility.v1",
+            "projection_sha256": "fafcca96a072b7ac5979dee7d852ff572bd683e29a88ef09dfe68c3a0485efbe",
+            "redacted_field_count": 3,
+            "source_complete": true,
+            "source_sha256": "7f4e88cced5a7378d4824b5ccf56209f25950983754724378a366f280897c33a"
+          },
+          "raw_trace_id": "raw-trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+          "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+          "schema_version": "attentionbench.advisor-trace-packet.v1",
+          "trace_id": "trace:counter_to_sink-seed103-20260927T162404.864278Z:0"
+        }
+      ]
+    },
+    "resource_budget": {
+      "assistance": {
+        "limit": 0,
+        "remaining": 0,
+        "reserved": 0,
+        "used": 0
+      },
+      "execution_seconds": {
+        "limit": 300.0,
+        "remaining": 296.8818146679987,
+        "used": 3.1181853320013033
+      },
+      "gpu_seconds": {
+        "limit": 0.0,
+        "remaining": 0.0,
+        "used": 0.0
+      },
+      "tokens": {
+        "limit": 30000,
+        "remaining": 30000,
+        "used": 0
+      }
+    },
+    "run_context": {
+      "assistance_mode": "benchmark_proxy",
+      "execution_target": "robocasa_sim",
+      "locked": true,
+      "policy_id": "reactive_help",
+      "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink"
+    },
+    "schema_version": "attentionbench.ui-projection.v1"
+  },
+  "run": {
+    "assistance_mode": "benchmark_proxy",
+    "budget": {
+      "assistance_credits": 0,
+      "execution_seconds": 300.0,
+      "gpu_seconds": 0.0,
+      "token_limit": 30000
+    },
+    "created_at": 1790526244.8639376,
+    "developer_model": "trusted-policy-callback",
+    "evaluator_model": "native_evaluator",
+    "execution_target": "robocasa_sim",
+    "policy_id": "reactive_help",
+    "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+    "schema_version": "attentionbench.core.v1",
+    "seed": 103,
+    "status": "failed",
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  },
+  "schema_version": "attentionbench.run-bundle.v1"
+}

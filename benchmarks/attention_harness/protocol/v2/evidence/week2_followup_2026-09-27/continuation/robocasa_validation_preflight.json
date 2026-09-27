@@ -1,0 +1,128 @@
+{
+  "freeze_sha256": "d84ac3f307f98d94b91f2a50564ac3a9d1a1274392dd12d950190bb673e8be63",
+  "paired_order": [
+    [
+      101,
+      false,
+      true
+    ],
+    [
+      102,
+      false,
+      true
+    ],
+    [
+      103,
+      false,
+      true
+    ],
+    [
+      104,
+      false,
+      true
+    ],
+    [
+      105,
+      false,
+      true
+    ]
+  ],
+  "preflight": {
+    "completed_seeds": [],
+    "frozen_plan": false,
+    "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+    "perception_mode": "sim_gt",
+    "policy_changed_since_source": true,
+    "remaining_seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "simulator_executed": false,
+    "source_evidence_verified": true,
+    "source_policy_id": "reactive_help",
+    "source_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+    "suite": "robocasa",
+    "task_id": "counter_to_sink",
+    "total_seeds": 5,
+    "validation_policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0"
+  },
+  "recorded_plan": {
+    "assistance_credits": 0,
+    "cases": [
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6",
+        "seed": 101,
+        "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+        "task_variant_id": "task:boxed_drink"
+      },
+      {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+        "scene_id": "scene:93244621fd1a24b456d5",
+        "seed": 102,
+        "task_prompt": "pick the cup from the counter and place it in the sink",
+        "task_variant_id": "task:cup"
+      },
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:a7d4f086836e78c38004",
+        "scene_id": "scene:feaf8e202a88a1bad005",
+        "seed": 103,
+        "task_prompt": "pick the mango from the counter and place it in the sink",
+        "task_variant_id": "task:mango"
+      },
+      {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:a61c8884dc61c3aeccc8",
+        "scene_id": "scene:6b34dfcee277f551a83b",
+        "seed": 104,
+        "task_prompt": "pick the onion from the counter and place it in the sink",
+        "task_variant_id": "task:onion"
+      },
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+        "scene_id": "scene:b328d376a1514e3e6bae",
+        "seed": 105,
+        "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+        "task_variant_id": "task:rolling_pin"
+      }
+    ],
+    "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+    "perception_mode": "sim_gt",
+    "policy_id": "reactive_help",
+    "schema_version": "attentionbench.memory-validation-plan.v2",
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  }
+}

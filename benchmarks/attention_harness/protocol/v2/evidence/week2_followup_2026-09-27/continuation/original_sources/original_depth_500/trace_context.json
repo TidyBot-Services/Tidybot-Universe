@@ -1,0 +1,10 @@
+{
+  "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+  "execution_status": "failed",
+  "policy_id": "autonomous",
+  "seed": 101,
+  "stop_reason": "failed",
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "timed_out": false
+}

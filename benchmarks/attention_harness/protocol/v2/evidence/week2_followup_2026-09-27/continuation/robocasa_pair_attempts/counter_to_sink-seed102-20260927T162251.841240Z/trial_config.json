@@ -1,0 +1,40 @@
+{
+  "action_backend": "benchmarks.attention_harness.robocasa_native.agent_actions.AgentServerActionBackend",
+  "agent_url": "http://127.0.0.1:8880",
+  "arm": "treatment",
+  "assistance_credits": 0,
+  "attempt_id": "attempt:counter_to_sink-seed102-20260927T162251.841240Z:0",
+  "config_sha256": "e6406a5197862db7138459b2fdc6f7fa11fdc9cd0fde317c2878452df57cca90",
+  "environment_id": "RoboCasa-Pn-P-Counter-To-Sink-v0",
+  "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "perception_mode": "sim_gt",
+  "policy_execution_mode": "sandboxed_generated",
+  "policy_id": "reactive_help",
+  "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+  "raw_trace_id": "raw-trace:counter_to_sink-seed102-20260927T162251.841240Z:0",
+  "result": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z/result.json",
+  "run_id": "run:counter_to_sink-seed102-20260927T162251.841240Z",
+  "safety_artifact": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z/safety_monitor.json",
+  "safety_limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "schema_version": "attentionbench.paired-trial-config.v1",
+  "seed": 102,
+  "sim_url": "http://127.0.0.1:6300",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "timeout_seconds": 240,
+  "variation": {
+    "camera_config_id": "camera:base",
+    "camera_names": [
+      "base_camera"
+    ],
+    "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+    "scene_id": "scene:93244621fd1a24b456d5",
+    "task_prompt": "pick the cup from the counter and place it in the sink",
+    "task_variant_id": "task:cup"
+  }
+}

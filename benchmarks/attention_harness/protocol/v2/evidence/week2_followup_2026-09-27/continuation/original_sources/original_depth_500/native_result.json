@@ -1,0 +1,10 @@
+{
+  "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+  "evaluated": true,
+  "native_success": false,
+  "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+  "schema_version": "attentionbench.formal-native-result.v1",
+  "service_native_success": false,
+  "source": "robosuite_sim/v1/success",
+  "status": "failed"
+}

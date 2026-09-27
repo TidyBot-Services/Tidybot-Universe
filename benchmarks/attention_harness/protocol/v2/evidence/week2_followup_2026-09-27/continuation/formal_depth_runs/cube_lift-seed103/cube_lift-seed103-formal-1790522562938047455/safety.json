@@ -1,0 +1,158 @@
+{
+  "attempt_id": "cube_lift-seed103-formal-1790522562938047455",
+  "coverage": "command_envelope_and_proprioception; no_collision_telemetry",
+  "events": [
+    {
+      "eef_position_m": [
+        -0.10702369629991183,
+        0.016350881361999265,
+        1.0011657484002978
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.1070236963030093,
+        0.0163508813959307,
+        1.001165748399205
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.1070236963030093,
+        0.0163508813959307,
+        1.001165748399205
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630270546,
+        0.01635088139705312,
+        1.0011657483993934
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630270546,
+        0.01635088139705312,
+        1.0011657483993934
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630233761,
+        0.016350881395519695,
+        1.0011657483995682
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630233761,
+        0.016350881395519695,
+        1.0011657483995682
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630212806,
+        0.016350881394634045,
+        1.0011657483996679
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630212806,
+        0.016350881394634045,
+        1.0011657483996679
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630200773,
+        0.016350881394094477,
+        1.001165748399724
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630200773,
+        0.016350881394094477,
+        1.001165748399724
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630194106,
+        0.01635088139380047,
+        1.0011657483997558
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630194106,
+        0.01635088139380047,
+        1.0011657483997558
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.10702369630194106,
+        0.01635088139380047,
+        1.0011657483997558
+      ],
+      "kind": "state_sample"
+    }
+  ],
+  "limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "schema_version": "attentionbench.safety-monitor.v1",
+  "source": "independent_safety_monitor",
+  "unsafe_attempts": 0,
+  "violations": []
+}

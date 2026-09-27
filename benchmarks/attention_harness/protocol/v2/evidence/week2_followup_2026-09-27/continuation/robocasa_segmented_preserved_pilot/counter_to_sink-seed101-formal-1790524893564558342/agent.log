@@ -1,0 +1,211 @@
+2026-09-28 00:02:18,038 INFO robot_profile: Loaded robot profile 'full' from /home/truares/文档/Tidybot-Universe/agent_server/profiles/full.yaml (disabled: [])
+2026-09-28 00:02:18,038 INFO agent_server: Robot profile: full (disabled capabilities: none)
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:226: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:330: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+INFO:     Started server process [2611033]
+INFO:     Waiting for application startup.
+2026-09-28 00:02:18,086 INFO agent_server: Starting hardware server (dry_run=False)
+2026-09-28 00:02:18,296 INFO backends.base: BaseBackend: connected to localhost:50800
+2026-09-28 00:02:18,309 INFO franka_protocol.client: Connected to server at localhost
+2026-09-28 00:02:18,309 INFO backends.franka: FrankaBackend: connected to localhost
+2026-09-28 00:02:18,311 INFO gripper_protocol.client: Connected to localhost
+2026-09-28 00:02:18,311 INFO backends.gripper: GripperBackend: connected to localhost
+2026-09-28 00:02:18,312 INFO backends.mocap: MocapBackend: connected to tcp://localhost:6390
+2026-09-28 00:02:18,813 WARNING backends.mocap: MocapBackend: no message within 500ms, mocap may not be publishing
+2026-09-28 00:02:18,813 INFO system_logger.logger: [SystemLogger] Started recording (interval=0.1s)
+2026-09-28 00:02:18,813 INFO safety_monitor: SafetyMonitor started
+2026-09-28 00:02:18,813 INFO arm_monitor: ArmMonitor started (grace=3.0s, cooldown=30.0s)
+2026-09-28 00:02:18,813 INFO agent_server: API key auth DISABLED (no keys configured)
+2026-09-28 00:02:18,813 INFO agent_server: Hardware server ready on 127.0.0.1:8880
+2026-09-28 00:02:18,814 WARNING safety_monitor: SafetyMonitor: mocap lost — auto-rewind disabled (re-enable when mocap is tracking)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8880 (Press CTRL+C to quit)
+2026-09-28 00:02:22,098 INFO routes.code_routes: Job 92e52990-1b0c-45 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:22,098 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:22,098 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:92e52990-1b0c-45 (84c0875e-4fb8-46c0-a387-5253065e1327)
+2026-09-28 00:02:22,098 INFO execution_recorder: ExecutionRecorder: started for 5160a501-e672-48 (0 cameras, state=True)
+2026-09-28 00:02:22,098 INFO code_executor: Executing code (ID: 5160a501-e672-48): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000222_5160a501-e672-48.py
+2026-09-28 00:02:23,715 INFO code_executor: Execution 5160a501-e672-48 finished: ExecutionStatus.COMPLETED (duration: 1.62s, exit_code: 0)
+2026-09-28 00:02:23,716 INFO execution_recorder: ExecutionRecorder: stopped for 5160a501-e672-48 (0 frames, 17 state samples, 1.6s)
+2026-09-28 00:02:23,716 INFO execution_recorder: ExecutionRecorder: cleaned up f2234d3a-b339-43
+2026-09-28 00:02:23,716 INFO routes.code_routes: Job 92e52990-1b0c-45 finished: completed (execution 5160a501-e672-48)
+2026-09-28 00:02:23,816 INFO routes.code_routes: Job 6c12643c-cf30-4b submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:23,817 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:23,817 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:6c12643c-cf30-4b (b8459713-1ed5-40e8-bfc6-6a2b92f8e8fa)
+2026-09-28 00:02:23,817 INFO execution_recorder: ExecutionRecorder: started for 38bbf979-9b36-4f (0 cameras, state=True)
+2026-09-28 00:02:23,817 INFO code_executor: Executing code (ID: 38bbf979-9b36-4f): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000223_38bbf979-9b36-4f.py
+2026-09-28 00:02:25,433 INFO code_executor: Execution 38bbf979-9b36-4f finished: ExecutionStatus.COMPLETED (duration: 1.62s, exit_code: 0)
+2026-09-28 00:02:25,434 INFO execution_recorder: ExecutionRecorder: stopped for 38bbf979-9b36-4f (0 frames, 17 state samples, 1.6s)
+2026-09-28 00:02:25,434 INFO execution_recorder: ExecutionRecorder: cleaned up 23452492-04a0-46
+2026-09-28 00:02:25,434 INFO routes.code_routes: Job 6c12643c-cf30-4b finished: completed (execution 38bbf979-9b36-4f)
+2026-09-28 00:02:25,534 INFO routes.code_routes: Job 200c1e68-6072-4e submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:25,534 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:25,534 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:200c1e68-6072-4e (9d44dfe4-9f6d-4954-babd-2a174128a0bd)
+2026-09-28 00:02:25,535 INFO execution_recorder: ExecutionRecorder: started for 9d2035f6-a28a-49 (0 cameras, state=True)
+2026-09-28 00:02:25,535 INFO code_executor: Executing code (ID: 9d2035f6-a28a-49): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000225_9d2035f6-a28a-49.py
+2026-09-28 00:02:27,252 INFO code_executor: Execution 9d2035f6-a28a-49 finished: ExecutionStatus.COMPLETED (duration: 1.72s, exit_code: 0)
+2026-09-28 00:02:27,252 INFO execution_recorder: ExecutionRecorder: stopped for 9d2035f6-a28a-49 (0 frames, 18 state samples, 1.7s)
+2026-09-28 00:02:27,253 INFO execution_recorder: ExecutionRecorder: cleaned up eb621b16-f0d5-40
+2026-09-28 00:02:27,253 INFO routes.code_routes: Job 200c1e68-6072-4e finished: completed (execution 9d2035f6-a28a-49)
+2026-09-28 00:02:27,257 INFO routes.code_routes: Job 9ef932b2-b276-4c submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:27,257 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:27,257 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:9ef932b2-b276-4c (c0bd9569-4119-4f28-ad77-86bd1fb98f5c)
+2026-09-28 00:02:27,257 INFO execution_recorder: ExecutionRecorder: started for ce7378f6-f605-4b (0 cameras, state=True)
+2026-09-28 00:02:27,258 INFO code_executor: Executing code (ID: ce7378f6-f605-4b): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000227_ce7378f6-f605-4b.py
+2026-09-28 00:02:28,974 INFO code_executor: Execution ce7378f6-f605-4b finished: ExecutionStatus.COMPLETED (duration: 1.72s, exit_code: 0)
+2026-09-28 00:02:28,975 INFO execution_recorder: ExecutionRecorder: stopped for ce7378f6-f605-4b (0 frames, 18 state samples, 1.7s)
+2026-09-28 00:02:28,975 INFO execution_recorder: ExecutionRecorder: cleaned up 4bda73c5-a95e-4d
+2026-09-28 00:02:28,975 INFO routes.code_routes: Job 9ef932b2-b276-4c finished: completed (execution ce7378f6-f605-4b)
+2026-09-28 00:02:28,977 INFO routes.code_routes: Job de5022a4-ac1c-45 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:28,977 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:28,977 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:de5022a4-ac1c-45 (cefa7d5c-5ccf-4286-8f5a-c3451e493590)
+2026-09-28 00:02:28,977 INFO execution_recorder: ExecutionRecorder: started for d7024d6c-f28b-41 (0 cameras, state=True)
+2026-09-28 00:02:28,977 INFO code_executor: Executing code (ID: d7024d6c-f28b-41): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000228_d7024d6c-f28b-41.py
+2026-09-28 00:02:30,594 INFO code_executor: Execution d7024d6c-f28b-41 finished: ExecutionStatus.COMPLETED (duration: 1.62s, exit_code: 0)
+2026-09-28 00:02:30,594 INFO execution_recorder: ExecutionRecorder: stopped for d7024d6c-f28b-41 (0 frames, 17 state samples, 1.6s)
+2026-09-28 00:02:30,595 INFO execution_recorder: ExecutionRecorder: cleaned up d61cc65b-4a8d-4a
+2026-09-28 00:02:30,595 INFO routes.code_routes: Job de5022a4-ac1c-45 finished: completed (execution d7024d6c-f28b-41)
+2026-09-28 00:02:30,693 INFO routes.code_routes: Job 8c2666cb-9346-47 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:30,693 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:30,693 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:8c2666cb-9346-47 (a4987253-98a9-4b62-ae06-02ebbad57c7b)
+2026-09-28 00:02:30,694 INFO execution_recorder: ExecutionRecorder: started for 76d83bbc-2f6e-4a (0 cameras, state=True)
+2026-09-28 00:02:30,694 INFO code_executor: Executing code (ID: 76d83bbc-2f6e-4a): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000230_76d83bbc-2f6e-4a.py
+2026-09-28 00:02:34,413 INFO code_executor: Execution 76d83bbc-2f6e-4a finished: ExecutionStatus.COMPLETED (duration: 3.72s, exit_code: 0)
+2026-09-28 00:02:34,413 INFO execution_recorder: ExecutionRecorder: stopped for 76d83bbc-2f6e-4a (0 frames, 38 state samples, 3.7s)
+2026-09-28 00:02:34,414 INFO execution_recorder: ExecutionRecorder: cleaned up d7dbbf93-cf29-42
+2026-09-28 00:02:34,414 INFO routes.code_routes: Job 8c2666cb-9346-47 finished: completed (execution 76d83bbc-2f6e-4a)
+2026-09-28 00:02:34,448 INFO routes.code_routes: Job e57c9bb5-92c9-47 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:34,448 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:34,448 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:e57c9bb5-92c9-47 (8eb3022b-d9da-4f23-8bc3-581b12376eea)
+2026-09-28 00:02:34,448 INFO execution_recorder: ExecutionRecorder: started for 7fa3b807-db19-4b (0 cameras, state=True)
+2026-09-28 00:02:34,448 INFO code_executor: Executing code (ID: 7fa3b807-db19-4b): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000234_7fa3b807-db19-4b.py
+2026-09-28 00:02:35,714 INFO code_executor: Execution 7fa3b807-db19-4b finished: ExecutionStatus.COMPLETED (duration: 1.27s, exit_code: 0)
+2026-09-28 00:02:35,715 INFO execution_recorder: ExecutionRecorder: stopped for 7fa3b807-db19-4b (0 frames, 13 state samples, 1.3s)
+2026-09-28 00:02:35,715 INFO execution_recorder: ExecutionRecorder: cleaned up f5f4e31d-0ac0-4e
+2026-09-28 00:02:35,715 INFO routes.code_routes: Job e57c9bb5-92c9-47 finished: completed (execution 7fa3b807-db19-4b)
+2026-09-28 00:02:35,764 INFO routes.code_routes: Job ae901bd0-40af-42 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:35,764 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:35,764 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:ae901bd0-40af-42 (6a14669a-3288-400b-8d7b-f7dd1673cd2e)
+2026-09-28 00:02:35,764 INFO execution_recorder: ExecutionRecorder: started for 7792d3b6-d1e3-49 (0 cameras, state=True)
+2026-09-28 00:02:35,764 INFO code_executor: Executing code (ID: 7792d3b6-d1e3-49): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000235_7792d3b6-d1e3-49.py
+2026-09-28 00:02:40,034 INFO code_executor: Execution 7792d3b6-d1e3-49 finished: ExecutionStatus.COMPLETED (duration: 4.27s, exit_code: 0)
+2026-09-28 00:02:40,034 INFO execution_recorder: ExecutionRecorder: stopped for 7792d3b6-d1e3-49 (0 frames, 43 state samples, 4.3s)
+2026-09-28 00:02:40,035 INFO execution_recorder: ExecutionRecorder: cleaned up 6b2ec57e-3d11-46
+2026-09-28 00:02:40,035 INFO routes.code_routes: Job ae901bd0-40af-42 finished: completed (execution 7792d3b6-d1e3-49)
+2026-09-28 00:02:40,101 INFO routes.code_routes: Job d1c04a3a-adec-4a submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:40,101 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:40,101 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:d1c04a3a-adec-4a (f100c4af-5cfc-4cfe-91aa-2867d30d90ce)
+2026-09-28 00:02:40,101 INFO execution_recorder: ExecutionRecorder: started for a9441673-e7e4-45 (0 cameras, state=True)
+2026-09-28 00:02:40,101 INFO code_executor: Executing code (ID: a9441673-e7e4-45): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000240_a9441673-e7e4-45.py
+2026-09-28 00:02:42,819 INFO code_executor: Execution a9441673-e7e4-45 finished: ExecutionStatus.COMPLETED (duration: 2.72s, exit_code: 0)
+2026-09-28 00:02:42,820 INFO execution_recorder: ExecutionRecorder: stopped for a9441673-e7e4-45 (0 frames, 28 state samples, 2.7s)
+2026-09-28 00:02:42,820 INFO execution_recorder: ExecutionRecorder: cleaned up fc21211a-e76e-4e
+2026-09-28 00:02:42,820 INFO routes.code_routes: Job d1c04a3a-adec-4a finished: completed (execution a9441673-e7e4-45)
+2026-09-28 00:02:42,825 INFO routes.code_routes: Job 5eacfa3e-c3da-44 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:42,825 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:42,825 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:5eacfa3e-c3da-44 (8ae67cf0-cc31-4847-9930-3e704afea234)
+2026-09-28 00:02:42,826 INFO execution_recorder: ExecutionRecorder: started for 9aa7e203-f620-43 (0 cameras, state=True)
+2026-09-28 00:02:42,826 INFO code_executor: Executing code (ID: 9aa7e203-f620-43): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000242_9aa7e203-f620-43.py
+2026-09-28 00:02:44,943 INFO code_executor: Execution 9aa7e203-f620-43 finished: ExecutionStatus.COMPLETED (duration: 2.12s, exit_code: 0)
+2026-09-28 00:02:44,943 INFO execution_recorder: ExecutionRecorder: stopped for 9aa7e203-f620-43 (0 frames, 22 state samples, 2.1s)
+2026-09-28 00:02:44,944 INFO execution_recorder: ExecutionRecorder: cleaned up 9eba8a38-37f3-4c
+2026-09-28 00:02:44,944 INFO routes.code_routes: Job 5eacfa3e-c3da-44 finished: completed (execution 9aa7e203-f620-43)
+2026-09-28 00:02:44,946 INFO routes.code_routes: Job b2a48eee-5ace-4a submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:44,946 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:44,946 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:b2a48eee-5ace-4a (8ed47c4d-c33e-4f82-9292-289e0bef757c)
+2026-09-28 00:02:44,946 INFO execution_recorder: ExecutionRecorder: started for 6a5682c4-8803-48 (0 cameras, state=True)
+2026-09-28 00:02:44,946 INFO code_executor: Executing code (ID: 6a5682c4-8803-48): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000244_6a5682c4-8803-48.py
+2026-09-28 00:02:46,512 INFO code_executor: Execution 6a5682c4-8803-48 finished: ExecutionStatus.COMPLETED (duration: 1.57s, exit_code: 0)
+2026-09-28 00:02:46,512 INFO execution_recorder: ExecutionRecorder: stopped for 6a5682c4-8803-48 (0 frames, 16 state samples, 1.6s)
+2026-09-28 00:02:46,513 INFO execution_recorder: ExecutionRecorder: cleaned up 3e185fba-02cb-43
+2026-09-28 00:02:46,513 INFO routes.code_routes: Job b2a48eee-5ace-4a finished: completed (execution 6a5682c4-8803-48)
+2026-09-28 00:02:46,564 INFO routes.code_routes: Job 6523dc03-3894-40 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:46,564 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:46,564 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:6523dc03-3894-40 (7b48183c-3a1b-469e-b7c2-5f01bb6f9ce5)
+2026-09-28 00:02:46,565 INFO execution_recorder: ExecutionRecorder: started for 2cede66a-ddaa-4c (0 cameras, state=True)
+2026-09-28 00:02:46,565 INFO code_executor: Executing code (ID: 2cede66a-ddaa-4c): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000246_2cede66a-ddaa-4c.py
+2026-09-28 00:02:48,132 INFO code_executor: Execution 2cede66a-ddaa-4c finished: ExecutionStatus.COMPLETED (duration: 1.57s, exit_code: 0)
+2026-09-28 00:02:48,132 INFO execution_recorder: ExecutionRecorder: stopped for 2cede66a-ddaa-4c (0 frames, 16 state samples, 1.6s)
+2026-09-28 00:02:48,132 INFO execution_recorder: ExecutionRecorder: cleaned up 433e04f1-a6db-45
+2026-09-28 00:02:48,132 INFO routes.code_routes: Job 6523dc03-3894-40 finished: completed (execution 2cede66a-ddaa-4c)
+2026-09-28 00:02:48,183 INFO routes.code_routes: Job a8a61d94-b0f1-4d submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:48,183 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:48,183 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:a8a61d94-b0f1-4d (4606220a-482c-4608-8964-1245faf14668)
+2026-09-28 00:02:48,184 INFO execution_recorder: ExecutionRecorder: started for e4d7d8a9-8957-4b (0 cameras, state=True)
+2026-09-28 00:02:48,184 INFO code_executor: Executing code (ID: e4d7d8a9-8957-4b): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000248_e4d7d8a9-8957-4b.py
+2026-09-28 00:02:49,750 INFO code_executor: Execution e4d7d8a9-8957-4b finished: ExecutionStatus.COMPLETED (duration: 1.57s, exit_code: 0)
+2026-09-28 00:02:49,750 INFO execution_recorder: ExecutionRecorder: stopped for e4d7d8a9-8957-4b (0 frames, 16 state samples, 1.6s)
+2026-09-28 00:02:49,751 INFO execution_recorder: ExecutionRecorder: cleaned up 992abaa1-f05b-4f
+2026-09-28 00:02:49,751 INFO routes.code_routes: Job a8a61d94-b0f1-4d finished: completed (execution e4d7d8a9-8957-4b)
+2026-09-28 00:02:49,802 INFO routes.code_routes: Job c555b291-f21f-4e submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:49,802 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:49,802 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:c555b291-f21f-4e (ee288fdc-5b65-41e0-89e6-dbed5225c16f)
+2026-09-28 00:02:49,802 INFO execution_recorder: ExecutionRecorder: started for ffdded10-6ad6-4d (0 cameras, state=True)
+2026-09-28 00:02:49,802 INFO code_executor: Executing code (ID: ffdded10-6ad6-4d): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000249_ffdded10-6ad6-4d.py
+2026-09-28 00:02:51,368 INFO code_executor: Execution ffdded10-6ad6-4d finished: ExecutionStatus.COMPLETED (duration: 1.57s, exit_code: 0)
+2026-09-28 00:02:51,368 INFO execution_recorder: ExecutionRecorder: stopped for ffdded10-6ad6-4d (0 frames, 16 state samples, 1.6s)
+2026-09-28 00:02:51,369 INFO execution_recorder: ExecutionRecorder: cleaned up 286e78af-78f2-4d
+2026-09-28 00:02:51,369 INFO routes.code_routes: Job c555b291-f21f-4e finished: completed (execution ffdded10-6ad6-4d)
+2026-09-28 00:02:51,502 INFO routes.code_routes: Job e47b67ef-ddfd-4b submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:51,503 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:51,503 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:e47b67ef-ddfd-4b (96f6fb97-f62a-4015-a287-44943b927fc7)
+2026-09-28 00:02:51,503 INFO execution_recorder: ExecutionRecorder: started for 80dec592-b868-49 (0 cameras, state=True)
+2026-09-28 00:02:51,503 INFO code_executor: Executing code (ID: 80dec592-b868-49): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000251_80dec592-b868-49.py
+2026-09-28 00:02:54,321 INFO code_executor: Execution 80dec592-b868-49 finished: ExecutionStatus.COMPLETED (duration: 2.82s, exit_code: 0)
+2026-09-28 00:02:54,321 INFO execution_recorder: ExecutionRecorder: stopped for 80dec592-b868-49 (0 frames, 29 state samples, 2.8s)
+2026-09-28 00:02:54,322 INFO execution_recorder: ExecutionRecorder: cleaned up 3840c1ce-b5ee-4c
+2026-09-28 00:02:54,322 INFO routes.code_routes: Job e47b67ef-ddfd-4b finished: completed (execution 80dec592-b868-49)
+2026-09-28 00:02:54,329 INFO routes.code_routes: Job 716864e4-2d15-45 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:54,329 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:54,329 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:716864e4-2d15-45 (c86a579d-02c5-4336-8b7e-b2f109d2e380)
+2026-09-28 00:02:54,329 INFO execution_recorder: ExecutionRecorder: started for acc5fe46-ff2a-4a (0 cameras, state=True)
+2026-09-28 00:02:54,330 INFO code_executor: Executing code (ID: acc5fe46-ff2a-4a): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000254_acc5fe46-ff2a-4a.py
+2026-09-28 00:02:57,048 INFO code_executor: Execution acc5fe46-ff2a-4a finished: ExecutionStatus.COMPLETED (duration: 2.72s, exit_code: 0)
+2026-09-28 00:02:57,048 INFO execution_recorder: ExecutionRecorder: stopped for acc5fe46-ff2a-4a (0 frames, 28 state samples, 2.7s)
+2026-09-28 00:02:57,049 INFO execution_recorder: ExecutionRecorder: cleaned up 5fe3c9f8-30aa-45
+2026-09-28 00:02:57,049 INFO routes.code_routes: Job 716864e4-2d15-45 finished: completed (execution acc5fe46-ff2a-4a)
+2026-09-28 00:02:57,055 INFO routes.code_routes: Job f6ea7077-8651-48 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:02:57,055 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:02:57,055 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:f6ea7077-8651-48 (4a44ec1f-f7a4-4733-bd90-145eb1689840)
+2026-09-28 00:02:57,055 INFO execution_recorder: ExecutionRecorder: started for 40da6037-f73c-41 (0 cameras, state=True)
+2026-09-28 00:02:57,055 INFO code_executor: Executing code (ID: 40da6037-f73c-41): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000257_40da6037-f73c-41.py
+2026-09-28 00:03:00,474 INFO code_executor: Execution 40da6037-f73c-41 finished: ExecutionStatus.COMPLETED (duration: 3.42s, exit_code: 0)
+2026-09-28 00:03:00,474 INFO execution_recorder: ExecutionRecorder: stopped for 40da6037-f73c-41 (0 frames, 35 state samples, 3.4s)
+2026-09-28 00:03:00,475 INFO execution_recorder: ExecutionRecorder: cleaned up b1452cb9-3e11-46
+2026-09-28 00:03:00,475 INFO routes.code_routes: Job f6ea7077-8651-48 finished: completed (execution 40da6037-f73c-41)
+2026-09-28 00:03:00,487 INFO routes.code_routes: Job 24bec474-f15b-42 submitted by formal-counter_to_sink-seed101-formal-1790524893564558342 (position 1)
+2026-09-28 00:03:00,487 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-28 00:03:00,487 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524893564558342:24bec474-f15b-42 (e47eec05-cac4-4d94-b7fe-6bcd7e5b8cd3)
+2026-09-28 00:03:00,487 INFO execution_recorder: ExecutionRecorder: started for c48947ea-5d10-4c (0 cameras, state=True)
+2026-09-28 00:03:00,487 INFO code_executor: Executing code (ID: c48947ea-5d10-4c): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260928_000300_c48947ea-5d10-4c.py
+2026-09-28 00:03:01,753 INFO code_executor: Execution c48947ea-5d10-4c finished: ExecutionStatus.COMPLETED (duration: 1.27s, exit_code: 0)
+2026-09-28 00:03:01,754 INFO execution_recorder: ExecutionRecorder: stopped for c48947ea-5d10-4c (0 frames, 13 state samples, 1.3s)
+2026-09-28 00:03:01,754 INFO execution_recorder: ExecutionRecorder: cleaned up b4e9fcb0-0259-49
+2026-09-28 00:03:01,754 INFO routes.code_routes: Job 24bec474-f15b-42 finished: completed (execution c48947ea-5d10-4c)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-28 00:03:01,971 INFO agent_server: Shutting down hardware server
+2026-09-28 00:03:01,971 INFO arm_monitor: ArmMonitor stopped
+2026-09-28 00:03:01,971 INFO safety_monitor: SafetyMonitor stopped
+2026-09-28 00:03:01,971 INFO system_logger.logger: [SystemLogger] Stopped recording (1/15 samples, 1 waypoints)
+2026-09-28 00:03:01,971 INFO backends.mocap: MocapBackend: disconnected
+2026-09-28 00:03:01,971 INFO backends.cameras: CameraBackend: disconnected
+2026-09-28 00:03:01,971 INFO gripper_protocol.client: Disconnected
+2026-09-28 00:03:01,971 INFO backends.gripper: GripperBackend: disconnected
+2026-09-28 00:03:01,972 INFO franka_protocol.client: Disconnected
+2026-09-28 00:03:01,972 INFO backends.franka: FrankaBackend: disconnected
+2026-09-28 00:03:02,014 INFO backends.base: BaseBackend: disconnected
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2611033]

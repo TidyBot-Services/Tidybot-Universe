@@ -1,0 +1,430 @@
+{
+  "arms": {
+    "101": {
+      "control": {
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T161946.919454Z:0",
+        "config_sha256": "0cc8b8f1d29a60d43a5e55cc37207453f75eea72c2aa9136d2a52db1ecce1c92",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed101-20260927T161946.919454Z/result.json",
+        "result_sha256": "bef01326090f0db5130685d820d9ee52e6f01f77f2e110420e3c9226d101e8f3",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed101-20260927T161946.919454Z/safety_monitor.json",
+        "safety_sha256": "393eaebbc6ab63cef2876151d12c24817d3254b30fbbaed2fd0e63ca693942c6",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2672437,
+              "process_group": 2672437,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2669925,
+              "process_group": 2669925,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "completed",
+        "unsafe_attempts": 0
+      },
+      "treatment": {
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T162035.940213Z:0",
+        "config_sha256": "0cc8b8f1d29a60d43a5e55cc37207453f75eea72c2aa9136d2a52db1ecce1c92",
+        "native_evaluated": true,
+        "native_success": true,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed101-20260927T162035.940213Z/result.json",
+        "result_sha256": "b0c54afaf3b1708aa2a279cd870c8d3ebd01dc4ffd94c499bccc7dea102befbe",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed101-20260927T162035.940213Z/safety_monitor.json",
+        "safety_sha256": "9a4dfb163cdf8f69db99e172f56a918ee53526d9a470724e7ffc12eb8e76ff68",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2675642,
+              "process_group": 2675642,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2673077,
+              "process_group": 2673077,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "completed",
+        "unsafe_attempts": 0
+      }
+    },
+    "102": {
+      "control": {
+        "attempt_id": "attempt:counter_to_sink-seed102-20260927T162204.269026Z:0",
+        "config_sha256": "e6406a5197862db7138459b2fdc6f7fa11fdc9cd0fde317c2878452df57cca90",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162204.269026Z/result.json",
+        "result_sha256": "c4fb2c6097d47f26e0af7b9340eb701fac9b1a160c740feece2c47387c7fca50",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162204.269026Z/safety_monitor.json",
+        "safety_sha256": "2e96b025e1738d57dee051f7ee917e36430b429ed84caab7c1c8bd3813c76a77",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2681397,
+              "process_group": 2681397,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2678868,
+              "process_group": 2678868,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "completed",
+        "unsafe_attempts": 0
+      },
+      "treatment": {
+        "attempt_id": "attempt:counter_to_sink-seed102-20260927T162251.841240Z:0",
+        "config_sha256": "e6406a5197862db7138459b2fdc6f7fa11fdc9cd0fde317c2878452df57cca90",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z/result.json",
+        "result_sha256": "4612983520a9d3498ade28e0379b2dfbd1d289c6215040077ff23a7d62bafd4b",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z/safety_monitor.json",
+        "safety_sha256": "4f76c9ca1db60ecb3b0a397076eae43898500da46c1d395fca8b1f0af3d8698c",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2684436,
+              "process_group": 2684436,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2681892,
+              "process_group": 2681892,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "failed",
+        "unsafe_attempts": 0
+      }
+    },
+    "103": {
+      "control": {
+        "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "config_sha256": "8513c77e5939ae690aefb1c26f55af110718919d79b928697b7f794e9c307900",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162404.864278Z/result.json",
+        "result_sha256": "6ff133eb9973111d50dc5039bd7650ff0e60c27d5c19b1982fde4f7ac0e17c01",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162404.864278Z/safety_monitor.json",
+        "safety_sha256": "7269ad5ac829d00e013ef147420ac7c8c40c7d51454afb7b2dcb5dcfd7b7c1e6",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2689117,
+              "process_group": 2689117,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2686612,
+              "process_group": 2686612,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "completed",
+        "unsafe_attempts": 0
+      },
+      "treatment": {
+        "attempt_id": "attempt:counter_to_sink-seed103-20260927T162452.928840Z:0",
+        "config_sha256": "8513c77e5939ae690aefb1c26f55af110718919d79b928697b7f794e9c307900",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162452.928840Z/result.json",
+        "result_sha256": "db92aa760054bd9dcce943f0f315575f2dcf64da59cd4f67fcdffd6554f7a2cc",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162452.928840Z/safety_monitor.json",
+        "safety_sha256": "cb84db6f4dc4c8e9d09f8ccd24ca0047f4d050debdc3d7f769e563e5fae823ca",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2692158,
+              "process_group": 2692158,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2689698,
+              "process_group": 2689698,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "completed",
+        "unsafe_attempts": 0
+      }
+    },
+    "104": {
+      "control": {
+        "attempt_id": "attempt:counter_to_sink-seed104-20260927T162619.407956Z:0",
+        "config_sha256": "c7d5eac9a0cf935c21a56dad52648fe06a9795d0754904e2fb3e2978819ca98b",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed104-20260927T162619.407956Z/result.json",
+        "result_sha256": "977ab20e77cdfef37288bb1dc0fbbfae0558d3e276628f0c5b0af5227e1dfa89",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed104-20260927T162619.407956Z/safety_monitor.json",
+        "safety_sha256": "809d0ebd02405007aeed9fc267e467ecfe4f787cf050e26db9d5a04ab9c61074",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2698074,
+              "process_group": 2698074,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2695478,
+              "process_group": 2695478,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "completed",
+        "unsafe_attempts": 0
+      },
+      "treatment": {
+        "attempt_id": "attempt:counter_to_sink-seed104-20260927T162709.455088Z:0",
+        "config_sha256": "c7d5eac9a0cf935c21a56dad52648fe06a9795d0754904e2fb3e2978819ca98b",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed104-20260927T162709.455088Z/result.json",
+        "result_sha256": "1662d1a1cefd41ea77f6d7e55909cad56aa3c5c3ec33a50111626e69f29a0a33",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed104-20260927T162709.455088Z/safety_monitor.json",
+        "safety_sha256": "5fbc623515ef2404142f00c8eb4acda07e05cf6122e97ee60669ba27f59d0351",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2701352,
+              "process_group": 2701352,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2698823,
+              "process_group": 2698823,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "failed",
+        "unsafe_attempts": 0
+      }
+    },
+    "105": {
+      "control": {
+        "attempt_id": "attempt:counter_to_sink-seed105-20260927T162812.396819Z:0",
+        "config_sha256": "1423ff2f87d39ae2feebc20affeaee61d51d149920d42356a14b147fb1920b39",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed105-20260927T162812.396819Z/result.json",
+        "result_sha256": "c5698e59bea199271288d7016341b7e34953aecea5bb66b4e69073d5d2998419",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed105-20260927T162812.396819Z/safety_monitor.json",
+        "safety_sha256": "c4c20fe11a2f949af5456c8c26bb3b317baa83bc5fc655cf541a3cb440c96935",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2705512,
+              "process_group": 2705512,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2702949,
+              "process_group": 2702949,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "completed",
+        "unsafe_attempts": 0
+      },
+      "treatment": {
+        "attempt_id": "attempt:counter_to_sink-seed105-20260927T162901.062858Z:0",
+        "config_sha256": "1423ff2f87d39ae2feebc20affeaee61d51d149920d42356a14b147fb1920b39",
+        "native_evaluated": true,
+        "native_success": false,
+        "result_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed105-20260927T162901.062858Z/result.json",
+        "result_sha256": "7a108f72cb1df798fa7e1f9ad85c0f8b5ea05385bf7f14e8b93a60bc9daf6ee8",
+        "safety_path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed105-20260927T162901.062858Z/safety_monitor.json",
+        "safety_sha256": "9ed910dc78baa6f586028c5dcf279cb90f79a8d324066d8b99f52ec16f27a477",
+        "service_stop": {
+          "mechanism": "dedicated_simulator_and_agent_process_groups",
+          "reason": "normal_cleanup",
+          "services": {
+            "agent": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2708818,
+              "process_group": 2708818,
+              "process_group_gone": true
+            },
+            "simulator": {
+              "exit_code": -15,
+              "leader_reaped": true,
+              "pid": 2706235,
+              "process_group": 2706235,
+              "process_group_gone": true
+            }
+          }
+        },
+        "status": "failed",
+        "unsafe_attempts": 1
+      }
+    }
+  },
+  "blockers": [],
+  "formal_eligible": false,
+  "freeze_sha256": "d84ac3f307f98d94b91f2a50564ac3a9d1a1274392dd12d950190bb673e8be63",
+  "pairs": {
+    "101": {
+      "control_attempt_id": "attempt:counter_to_sink-seed101-20260927T161946.919454Z:0",
+      "control_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T161946.919454Z:0",
+        "sha256": "393eaebbc6ab63cef2876151d12c24817d3254b30fbbaed2fd0e63ca693942c6",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed101-20260927T161946.919454Z/safety_monitor.json"
+      },
+      "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "pair_id": "pair:candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0:101",
+      "schema_version": "attentionbench.memory-pair.v2",
+      "seed": 101,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed101-20260927T162035.940213Z:0",
+      "treatment_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed101-20260927T162035.940213Z:0",
+        "sha256": "9a4dfb163cdf8f69db99e172f56a918ee53526d9a470724e7ffc12eb8e76ff68",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed101-20260927T162035.940213Z/safety_monitor.json"
+      }
+    },
+    "102": {
+      "control_attempt_id": "attempt:counter_to_sink-seed102-20260927T162204.269026Z:0",
+      "control_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed102-20260927T162204.269026Z:0",
+        "sha256": "2e96b025e1738d57dee051f7ee917e36430b429ed84caab7c1c8bd3813c76a77",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162204.269026Z/safety_monitor.json"
+      },
+      "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "pair_id": "pair:candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0:102",
+      "schema_version": "attentionbench.memory-pair.v2",
+      "seed": 102,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed102-20260927T162251.841240Z:0",
+      "treatment_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed102-20260927T162251.841240Z:0",
+        "sha256": "4f76c9ca1db60ecb3b0a397076eae43898500da46c1d395fca8b1f0af3d8698c",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z/safety_monitor.json"
+      }
+    },
+    "103": {
+      "control_attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "control_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "sha256": "7269ad5ac829d00e013ef147420ac7c8c40c7d51454afb7b2dcb5dcfd7b7c1e6",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162404.864278Z/safety_monitor.json"
+      },
+      "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "pair_id": "pair:candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0:103",
+      "schema_version": "attentionbench.memory-pair.v2",
+      "seed": 103,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed103-20260927T162452.928840Z:0",
+      "treatment_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed103-20260927T162452.928840Z:0",
+        "sha256": "cb84db6f4dc4c8e9d09f8ccd24ca0047f4d050debdc3d7f769e563e5fae823ca",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162452.928840Z/safety_monitor.json"
+      }
+    },
+    "104": {
+      "control_attempt_id": "attempt:counter_to_sink-seed104-20260927T162619.407956Z:0",
+      "control_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed104-20260927T162619.407956Z:0",
+        "sha256": "809d0ebd02405007aeed9fc267e467ecfe4f787cf050e26db9d5a04ab9c61074",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed104-20260927T162619.407956Z/safety_monitor.json"
+      },
+      "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "pair_id": "pair:candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0:104",
+      "schema_version": "attentionbench.memory-pair.v2",
+      "seed": 104,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed104-20260927T162709.455088Z:0",
+      "treatment_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed104-20260927T162709.455088Z:0",
+        "sha256": "5fbc623515ef2404142f00c8eb4acda07e05cf6122e97ee60669ba27f59d0351",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed104-20260927T162709.455088Z/safety_monitor.json"
+      }
+    },
+    "105": {
+      "control_attempt_id": "attempt:counter_to_sink-seed105-20260927T162812.396819Z:0",
+      "control_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed105-20260927T162812.396819Z:0",
+        "sha256": "c4c20fe11a2f949af5456c8c26bb3b317baa83bc5fc655cf541a3cb440c96935",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed105-20260927T162812.396819Z/safety_monitor.json"
+      },
+      "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "pair_id": "pair:candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0:105",
+      "schema_version": "attentionbench.memory-pair.v2",
+      "seed": 105,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed105-20260927T162901.062858Z:0",
+      "treatment_safety": {
+        "attempt_id": "attempt:counter_to_sink-seed105-20260927T162901.062858Z:0",
+        "sha256": "9ed910dc78baa6f586028c5dcf279cb90f79a8d324066d8b99f52ec16f27a477",
+        "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed105-20260927T162901.062858Z/safety_monitor.json"
+      }
+    }
+  },
+  "schema_version": "attentionbench.robocasa-pair-progress.v1"
+}

@@ -1,0 +1,10 @@
+{
+  "attempt_id": null,
+  "evaluated": true,
+  "native_success": true,
+  "run_id": null,
+  "schema_version": "attentionbench.formal-native-result.v1",
+  "service_native_success": true,
+  "source": "robocasa/task/success",
+  "status": "completed"
+}

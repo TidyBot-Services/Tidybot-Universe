@@ -1,0 +1,48 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_segmented_rebind_pilot/counter_to_sink-seed101-formal-1790524251311615280",
+  "artifacts": {
+    "native_result": {
+      "sha256": "76adca5a06c8c16cbb46030fcfb866bf2aeecde8538e9ab46d056f585c8840cf",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_segmented_rebind_pilot/counter_to_sink-seed101-formal-1790524251311615280/native_result.json"
+    },
+    "safety": {
+      "sha256": "45bc9b09b58b57070e313eae23508e9b5ca9ca64473a1bdf6d95f47e486ab5d0",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_segmented_rebind_pilot/counter_to_sink-seed101-formal-1790524251311615280/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "af56c07ab3ea88f827820e30feb6a891b183929104e9b24b0285cedad3f83e8f",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_segmented_rebind_pilot/counter_to_sink-seed101-formal-1790524251311615280/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "eda7535933285efc42d9c3bb57cd4aa790bad6b0c94868749c683348e7b360a3",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_segmented_rebind_pilot/counter_to_sink-seed101-formal-1790524251311615280/trace.json"
+    }
+  },
+  "attempt_id": null,
+  "config_sha256": "04c5e91bbabf0fb0e97888f48a11eee31d78744af35f29afda37edf30c24e682",
+  "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "41761a6bdd7ca50274480ef72459534df57405e547dcc11014c1d90c9e9222fa",
+  "run_id": null,
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 101,
+  "service_revision": {
+    "agent": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+    "sim": "320020a0c94434af31ec02df3413229576490fef",
+    "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+  },
+  "status": "failed",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

@@ -1,0 +1,256 @@
+Unknown attribute "D" in /robot[@name='tidyverse']/joint[@name='panda_joint1']/dynamics
+Unknown attribute "K" in /robot[@name='tidyverse']/joint[@name='panda_joint1']/dynamics
+Unknown attribute "mu_coulomb" in /robot[@name='tidyverse']/joint[@name='panda_joint1']/dynamics
+Unknown attribute "mu_viscous" in /robot[@name='tidyverse']/joint[@name='panda_joint1']/dynamics
+Unknown attribute "D" in /robot[@name='tidyverse']/joint[@name='panda_joint2']/dynamics
+Unknown attribute "K" in /robot[@name='tidyverse']/joint[@name='panda_joint2']/dynamics
+Unknown attribute "mu_coulomb" in /robot[@name='tidyverse']/joint[@name='panda_joint2']/dynamics
+Unknown attribute "mu_viscous" in /robot[@name='tidyverse']/joint[@name='panda_joint2']/dynamics
+Unknown attribute "D" in /robot[@name='tidyverse']/joint[@name='panda_joint3']/dynamics
+Unknown attribute "K" in /robot[@name='tidyverse']/joint[@name='panda_joint3']/dynamics
+Unknown attribute "mu_coulomb" in /robot[@name='tidyverse']/joint[@name='panda_joint3']/dynamics
+Unknown attribute "mu_viscous" in /robot[@name='tidyverse']/joint[@name='panda_joint3']/dynamics
+Unknown attribute "D" in /robot[@name='tidyverse']/joint[@name='panda_joint4']/dynamics
+Unknown attribute "K" in /robot[@name='tidyverse']/joint[@name='panda_joint4']/dynamics
+Unknown attribute "mu_coulomb" in /robot[@name='tidyverse']/joint[@name='panda_joint4']/dynamics
+Unknown attribute "mu_viscous" in /robot[@name='tidyverse']/joint[@name='panda_joint4']/dynamics
+Unknown attribute "D" in /robot[@name='tidyverse']/joint[@name='panda_joint5']/dynamics
+Unknown attribute "K" in /robot[@name='tidyverse']/joint[@name='panda_joint5']/dynamics
+Unknown attribute "mu_coulomb" in /robot[@name='tidyverse']/joint[@name='panda_joint5']/dynamics
+Unknown attribute "mu_viscous" in /robot[@name='tidyverse']/joint[@name='panda_joint5']/dynamics
+Unknown attribute "D" in /robot[@name='tidyverse']/joint[@name='panda_joint6']/dynamics
+Unknown attribute "K" in /robot[@name='tidyverse']/joint[@name='panda_joint6']/dynamics
+Unknown attribute "mu_coulomb" in /robot[@name='tidyverse']/joint[@name='panda_joint6']/dynamics
+Unknown attribute "mu_viscous" in /robot[@name='tidyverse']/joint[@name='panda_joint6']/dynamics
+Unknown attribute "D" in /robot[@name='tidyverse']/joint[@name='panda_joint7']/dynamics
+Unknown attribute "K" in /robot[@name='tidyverse']/joint[@name='panda_joint7']/dynamics
+Unknown attribute "mu_coulomb" in /robot[@name='tidyverse']/joint[@name='panda_joint7']/dynamics
+Unknown attribute "mu_viscous" in /robot[@name='tidyverse']/joint[@name='panda_joint7']/dynamics
+[33;1m2026-09-28 00:19:05,359 - mani_skill  - WARNING - tidyverse is not in the task's list of supported robots. Code may not run as intended[0m
+[franka-bridge] IK solver loaded from /home/truares/文档/maniskill-tidyverse/arm_franka_maniskill_service/franka_server/tidyverse_arm_only.urdf
+[maniskill] Creating env: task=RoboCasa-Pn-P-Counter-To-Sink-v0, control_mode=whole_body, obs_mode=rgb+depth+segmentation, num_envs=1
+Could not place objects. Trying again with new objects
+Could not place objects. Trying again with new objects
+[obj_inside_of] obj=obj obj_pos=[ 3.9280279 -1.8760474  1.0890545] fixture_pos=[ 4.09999816 -1.1997989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 4.09999816 -1.1497989   0.96125   ] lower=[ 3.84999816 -1.3497989   0.68750001] upper=[ 4.34999816 -0.9497989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.5072005 -2.75566    1.0069567] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[maniskill] Env reset with seed=0 (reconfigure=True)
+[maniskill] Simulation device: cpu
+[viz-debug] all robot links:
+  root: pos=(1.400,-2.200,0.000) q=(-0.000,0.000,0.000,1.000)
+  base_x_link: pos=(1.400,-2.200,0.000) q=(-0.000,0.000,0.000,1.000)
+  base_y_link: pos=(1.400,-2.200,0.000) q=(-0.000,0.000,0.000,1.000)
+  base_link: pos=(1.400,-2.200,0.000) q=(-0.000,0.000,0.000,1.000)
+  panda_link0: pos=(1.400,-2.200,0.472) q=(-0.000,0.000,0.000,1.000)
+  panda_link1: pos=(1.400,-2.200,0.805) q=(-0.000,0.000,0.000,1.000)
+  panda_link2: pos=(1.400,-2.200,0.805) q=(0.270,0.270,-0.653,0.653)
+  panda_link3: pos=(1.623,-2.200,1.029) q=(-0.000,0.382,0.000,0.924)
+  panda_link4: pos=(1.565,-2.200,1.087) q=(0.500,-0.500,0.500,0.500)
+  panda_link5: pos=(1.181,-2.200,1.170) q=(-0.000,-0.707,-0.000,0.707)
+  panda_link6: pos=(1.181,-2.200,1.170) q=(-0.120,0.120,0.697,0.697)
+  panda_link7: pos=(1.098,-2.200,1.199) q=(-0.157,0.377,0.910,-0.065)
+  panda_link8: pos=(1.062,-2.200,1.098) q=(-0.157,0.377,0.910,-0.065)
+  robotiq_arg2f_base_link: pos=(1.062,-2.200,1.098) q=(-0.157,0.377,0.910,-0.065)
+  eef: pos=(1.014,-2.200,0.962) q=(-0.157,0.377,0.910,-0.065)
+  left_outer_knuckle: pos=(1.023,-2.222,1.054) q=(0.065,0.910,-0.377,-0.157)
+  left_inner_knuckle: pos=(1.033,-2.209,1.043) q=(0.065,0.910,-0.377,-0.157)
+  right_outer_knuckle: pos=(1.064,-2.178,1.039) q=(-0.157,0.377,0.910,-0.065)
+  right_inner_knuckle: pos=(1.050,-2.191,1.037) q=(-0.157,0.377,0.910,-0.065)
+  left_outer_finger: pos=(1.004,-2.244,1.065) q=(0.065,0.910,-0.377,-0.157)
+  right_outer_finger: pos=(1.086,-2.156,1.036) q=(-0.157,0.377,0.910,-0.065)
+  left_inner_finger: pos=(0.984,-2.248,1.022) q=(0.065,0.910,-0.377,-0.157)
+  right_inner_finger: pos=(1.075,-2.152,0.990) q=(-0.157,0.377,0.910,-0.065)
+  left_inner_finger_pad: pos=(0.988,-2.233,0.986) q=(0.065,0.910,-0.377,-0.157)
+  right_inner_finger_pad: pos=(1.049,-2.167,0.965) q=(-0.157,0.377,0.910,-0.065)
+[viz] cuRobo OBB visualization created (0.734m x 0.524m, red transparent)
+[planner] base_link home: pos=[1.3999928, -2.1999948, 0.0] q=[-1.8366026e-06, 0.0, 0.0, 1.0]
+[planner] Creating SapienPlanningWorld...
+
+  Planning world contents (ACM mode=strict):
+    Robot links (25): ['scene-0-tidyverse_root', 'scene-0-tidyverse_base_x_link', 'scene-0-tidyverse_base_y_link', 'scene-0-tidyverse_base_link', 'scene-0-tidyverse_panda_link0']...
+    Articulations (24):
+      [PENDING] scene-0_stack_3_left_group_3_0_141 (3 links)
+      [PENDING] scene-0_stack_3_left_group_2_0_138 (3 links)
+      [PENDING] scene-0_top_left_group_0_119 (4 links)
+      [PENDING] scene-0_bottom_left_group_1_0_107 (3 links)
+      [PENDING] scene-0_sink_left_group_0_98 (5 links)
+      [ROBOT] scene-0_tidyverse_1
+      [PENDING] scene-0_cab_1_left_group_0_89 (3 links)
+      [PENDING] scene-0_stovetop_main_group_0_36 (8 links)
+      [PENDING] scene-0_cab_2_left_group_0_93 (3 links)
+      [PENDING] scene-0_stack_1_main_group_1_0_48 (3 links)
+      [PENDING] scene-0_stack_2_left_group_1_0_128 (4 links)
+      [PENDING] scene-0_stack_1_main_group_3_0_54 (3 links)
+      [PENDING] scene-0_stack_1_main_group_4_0_57 (3 links)
+      [PENDING] scene-0_stack_2_main_group_1_0_61 (4 links)
+      [PENDING] scene-0_stack_3_left_group_1_0_134 (4 links)
+      [PENDING] scene-0_stack_1_main_group_2_0_51 (3 links)
+      [PENDING] scene-0_stack_3_main_group_1_0_67 (4 links)
+      [PENDING] scene-0_cab_main_main_group_0_78 (4 links)
+      [PENDING] scene-0_microwave_left_group_0_115 (3 links)
+      [PENDING] scene-0_stack_3_main_group_2_0_71 (3 links)
+      [PENDING] scene-0_fridge_cab_main_group_0_83 (4 links)
+      [PENDING] scene-0_stack_1_left_group_0_123 (3 links)
+      [PENDING] scene-0_bottom_left_group_2_0_110 (3 links)
+      [PENDING] scene-0_stack_3_main_group_3_0_74 (3 links)
+    Static objects (94 total):
+      Targets (always checked): 0
+      Collision-checked (near, <1.5m): 94
+        - fixture_box_stool_3_stool_group  dist=-1.00m
+        - fixture_box_stool_2_stool_group  dist=-1.00m
+        - fixture_box_stool_1_stool_group  dist=-1.00m
+        - fixture_box_knife_block_left_group  dist=-1.00m
+        - fixture_box_paper_towel_left_group  dist=-1.00m
+        - fixture_box_coffee_machine_left_group  dist=-1.00m
+        - fixture_box_stack_3_left_group_3  dist=-1.00m
+        - fixture_box_stack_3_left_group_2  dist=-1.00m
+        - fixture_box_stack_3_left_group_1  dist=-1.00m
+        - fixture_box_stack_3_left_group_base  dist=-1.00m
+        - fixture_box_stack_2_left_group_2  dist=-1.00m
+        - fixture_box_stack_2_left_group_1  dist=-1.00m
+        - fixture_box_micro_housing_left_group  dist=-1.00m
+        - fixture_box_microwave_left_group  dist=-1.00m
+        - fixture_box_oven_left_group  dist=-1.00m
+        - fixture_box_bottom_left_group_1  dist=-1.00m
+        - fixture_box_bottom_left_group_base  dist=-1.00m
+        - fixture_box_stack_2_left_group_base  dist=-1.00m
+        - fixture_box_counter_corner_left_group  dist=-1.00m
+        - fixture_box_sink_left_group  dist=-1.00m
+        - fixture_box_cab_corner_4_left_group  dist=-1.00m
+        - fixture_box_cab_corner_3_left_group  dist=-1.00m
+        - fixture_box_cab_2_left_group  dist=-1.00m
+        - fixture_box_window_group_left_group  dist=-1.00m
+        - fixture_box_oven_housing_left_group  dist=-1.00m
+        - fixture_box_utensil_holder_main_group  dist=-1.00m
+        - fixture_box_toaster_main_group  dist=-1.00m
+        - scene-0_dishwasher_left_group_0_126  dist=-1.00m
+        - fixture_box_fridge_main_group  dist=-1.00m
+        - scene-0_bottom_left_group_base_0_106  dist=-1.00m
+        - fixture_box_stack_1_main_group_base  dist=-1.00m
+        - fixture_box_cab_1_left_group  dist=-1.00m
+        - scene-0_counter_corner_left_group_0_104  dist=-1.00m
+        - scene-0_window_group_left_group_0_92  dist=-1.00m
+        - fixture_box_counter_1_left_left_group  dist=-1.00m
+        - scene-0_utensil_holder_main_group_0_88  dist=-1.00m
+        - scene-0_shelves_main_group_0_82  dist=-1.00m
+        - scene-0_cab_corner_4_left_group_0_97  dist=-1.00m
+        - scene-0_stack_2_left_group_base_0_127  dist=-1.00m
+        - fixture_box_stack_1_main_group_4  dist=-1.00m
+        - scene-0_floor_room_0_32  dist=-1.00m
+        - scene-0_island_left_group_0_105  dist=-1.00m
+        - scene-0_stool_3_stool_group_0_150  dist=-1.00m
+        - scene-0_distr_counter_0_152  dist=-1.00m
+        - scene-0_stack_2_left_group_2_0_132  dist=-1.00m
+        - fixture_box_dishwasher_left_group  dist=-1.00m
+        - fixture_box_bottom_left_group_2  dist=-1.00m
+        - scene-0_hood_main_group_0_77  dist=-1.00m
+        - scene-0_wall_room_0_26  dist=-1.00m
+        - fixture_box_plant_left_group  dist=-1.00m
+        - fixture_box_stack_1_left_group  dist=-1.00m
+        - scene-0_wall_left_room_0_27  dist=-1.00m
+        - scene-0_counter_corner_main_main_group_0_34  dist=-1.00m
+        - scene-0_distr_sink_0_153  dist=-1.00m
+        - fixture_box_counter_1_right_main_group  dist=-1.00m
+        - scene-0_counter_1_right_main_group_0_44  dist=-1.00m
+        - fixture_box_stack_1_main_group_2  dist=-1.00m
+        - scene-0_stack_2_main_group_2_0_65  dist=-1.00m
+        - scene-0_toaster_main_group_0_87  dist=-1.00m
+        - scene-0_stack_1_main_group_base_0_47  dist=-1.00m
+        - scene-0_oven_left_group_0_113  dist=-1.00m
+        - scene-0_coffee_machine_left_group_0_144  dist=-1.00m
+        - scene-0_cab_corner_3_left_group_0_96  dist=-1.00m
+        - fixture_box_fridge_cab_main_group  dist=-1.00m
+        - scene-0_stack_2_main_group_base_0_60  dist=-1.00m
+        - scene-0_obj_0_151  dist=-1.00m
+        - fixture_box_hood_main_group  dist=-1.00m
+        - scene-0_stack_3_left_group_base_0_133  dist=-1.00m
+        - scene-0_paper_towel_left_group_0_145  dist=-1.00m
+        - scene-0_knife_block_left_group_0_146  dist=-1.00m
+        - scene-0_stool_2_stool_group_0_149  dist=-1.00m
+        - fixture_box_stack_2_main_group_1  dist=-1.00m
+        - scene-0_plant_left_group_0_147  dist=-1.00m
+        - scene-0_counter_main_main_group_0_35  dist=-1.00m
+        - scene-0_stool_1_stool_group_0_148  dist=-1.00m
+        - fixture_box_top_left_group  dist=-1.00m
+        - fixture_box_counter_corner_main_main_group  dist=-1.00m
+        - fixture_box_island_left_group  dist=-1.00m
+        - scene-0_counter_1_left_left_group_0_103  dist=-1.00m
+        - fixture_box_counter_main_main_group  dist=-1.00m
+        - fixture_box_stovetop_main_group  dist=-1.00m
+        - fixture_box_stack_2_main_group_2  dist=-1.00m
+        - fixture_box_stack_1_main_group_3  dist=-1.00m
+        - fixture_box_stack_2_main_group_base  dist=-1.00m
+        - scene-0_fridge_main_group_0_45  dist=-1.00m
+        - fixture_box_fridge_housing_main_group  dist=-1.00m
+        - fixture_box_stack_3_main_group_base  dist=-1.00m
+        - fixture_box_stack_3_main_group_2  dist=-1.00m
+        - fixture_box_stack_1_main_group_1  dist=-1.00m
+        - fixture_box_stack_3_main_group_1  dist=-1.00m
+        - fixture_box_stack_3_main_group_3  dist=-1.00m
+        - fixture_box_cab_main_main_group  dist=-1.00m
+        - scene-0_stack_3_main_group_base_0_66  dist=-1.00m
+        - fixture_box_shelves_main_group  dist=-1.00m
+      ACM-relaxed (far): 0
+
+  No initial collisions.
+[planner] Added 57 fixture boxes (cached 57 cuboids for cuRobo)
+[planner] mplib ready
+[curobo] Using in-process planner (set CUROBO_SERVICE_URL to switch)
+[curobo] Loading franka_mobile config...
+Warp DeprecationWarning: The symbol `warp.torch.device_from_torch` will soon be removed from the public API. Use `warp.device_from_torch` instead.
+[curobo] Warming up CUDA kernels...
+[curobo] Loading arm-only config (base joints locked)...
+[curobo] Ready (15.3s, whole_body + arm_only)
+[curobo] Updated collision world: 54 cuboids (skipped 0 overlap, 3 far)
+[curobo] Loaded 57 cuboids (transformed world→local)
+[curobo] Collision world for target: 54 cuboids (excl 0 at target, 0 overlap, 3 far)
+[curobo] Plan OK (2.61s, whole_body): 31 waypoints
+[planner] dummy plan JIT warmup done (2.6s)
+[maniskill] Environment ready (1 env(s))
+[franka-bridge] State PUB on 6356, CMD REP on 6355, Stream SUB on 6357
+[gripper-bridge] State PUB on 6371, CMD REP on 6370
+[base-bridge] Using world-frame poses (no local conversion)
+[maniskill] Started 3 bridge(s)
+[base-bridge] RPC server listening on port 50800 (env 0)
+[maniskill] HTTP API on port 6300 (env 0: /task/success, /task/info, /plan, /perceive, /reset)
+[maniskill] Entering physics loop (1 env(s), Ctrl+C to stop)
+[obj_inside_of] obj=obj obj_pos=[ 0.5072005 -2.75566    0.9922421] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[viz-debug] base_link.pose=(1.400,-2.200) q=(-0.000,-0.000,0.000,1.000) qpos[0:3]=(0.000,0.000,0.000)
+[obj_inside_of] obj=obj obj_pos=[ 0.507529  -2.7553966  0.9647855] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.5072301 -2.7556841  0.9647163] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.5073308 -2.755629   0.9647054] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.5073328 -2.7556305  0.9647035] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733274 -2.7556305   0.96470356] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.5073327  -2.7556307   0.96470356] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733286 -2.7556305   0.96470356] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 0.50733256 -2.7556307   0.9647036 ] fixture_pos=[ 0.29999284 -2.1999989   0.96125   ] fsize=[0.91666663 0.55       0.24749999] shifted_fpos=[ 0.29999284 -2.1499989   0.96125   ] lower=[ 0.04999284 -2.3499989   0.68750001] upper=[ 0.54999284 -1.9499989   1.23499999] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.81386   -1.8014078  1.0059942] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.81386   -1.8014078  0.9912789] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8137684 -1.8013942  0.9700311] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8137684 -1.8013942  0.9700311] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138626  -1.801398    0.97000045] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.813861  -1.8013978  0.9700001] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[perceive] 26 objects from ['base_camera', 'wrist_camera']: ['floor_room_0', 'inner_box', 'stack_1_right_group_2_0', 'counter_1_right_group_0', 'counter_main_main_group_0', 'object', 'boxed_drink', 'toaster_main_group_0', 'dishwasher_right_group_0', 'counter_corner_2_right_group_0']...
+[obj_inside_of] obj=obj obj_pos=[ 3.813861  -1.8013976  0.97     ] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.813858  -1.8013964  0.9700002] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138583 -1.8013964  0.9700003] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138585 -1.8013964  0.9700003] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138645 -1.8013995  0.9700012] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[perceive] 26 objects from ['base_camera', 'wrist_camera']: ['floor_room_0', 'inner_box', 'stack_1_right_group_2_0', 'counter_1_right_group_0', 'counter_main_main_group_0', 'object', 'boxed_drink', 'toaster_main_group_0', 'dishwasher_right_group_0', 'counter_corner_2_right_group_0']...
+[obj_inside_of] obj=obj obj_pos=[ 3.8138645 -1.8013995  0.9700012] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138645 -1.8013995  0.9700012] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138645 -1.8013995  0.9700012] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138645 -1.8013995  0.9700012] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138645 -1.8013995  0.9700012] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False
+[obj_inside_of] obj=obj obj_pos=[ 3.8138645 -1.8013995  0.9700012] fixture_pos=[ 4.09914677 -1.19979889  0.97534056] fsize=[0.85139319 0.55       0.21540247] shifted_fpos=[ 4.09914677 -1.14979889  0.97534056] lower=[ 3.84914677 -1.34979889  0.71763932] upper=[ 4.34914677 -0.94979889  1.23304179] inside=False

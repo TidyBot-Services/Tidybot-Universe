@@ -1,0 +1,543 @@
+{
+  "attempt_id": null,
+  "attention_input": {},
+  "camera_attestation": [
+    "base_camera",
+    "wrist_camera"
+  ],
+  "config_sha256": "cb16abc6b67aa8f08b95bd59f73c849c6963a7b8066419e19b220ed021f0aa04",
+  "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+  "final_observation_sha256": "3139b96a36c428cd956be2dd7c8620bd8d0bc13faff33a780044fa7b9fe50839",
+  "initial_observation_sha256": "af86b4f6d5bec8b24fdade1d07b644a09b36b7bbc4decf369d36332f3f9b6b52",
+  "language_attestation": "pick the cup from the counter and place it in the sink",
+  "policy_sha256": "028b8b1ba3ff5ae64a9605a482a037ff3495fe3a18eb471965c914e6afe2e802",
+  "reset_attestation": {
+    "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+    "scene_id": "scene:93244621fd1a24b456d5"
+  },
+  "run_id": null,
+  "schema_version": "attentionbench.formal-trace.v1",
+  "sdk_events": [
+    {
+      "arguments": {},
+      "duration_ms": 0.967,
+      "error": null,
+      "event_id": "sdk-0",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "robot0_base_pose": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_gripper_width": {
+          "dtype": "float64",
+          "shape": [
+            1
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 0,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.002278
+    },
+    {
+      "arguments": {
+        "camera_names": null,
+        "target_names": null
+      },
+      "duration_ms": 122.425,
+      "error": null,
+      "event_id": "sdk-1",
+      "event_type": "sdk.perception",
+      "operation": "find_objects",
+      "result": [
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "stack_2_main_group_2_0",
+          "position": [
+            0.8089152152264028,
+            0.002182908508793673,
+            0.2950592148100363
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "floor_room_0",
+          "position": [
+            0.8906168506445685,
+            -0.005209677970254129,
+            -0.4888922959550597
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "inner_box",
+          "position": [
+            0.798829440503287,
+            0.7540677422810605,
+            0.10517225132993989
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "dishwasher_main_group_0",
+          "position": [
+            0.7806903159841789,
+            -0.82251759544473,
+            -0.0047864769400147045
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "object",
+          "position": [
+            1.0954027274176363,
+            0.004873641600833222,
+            0.39519657919963663
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "counter_main_main_group_0",
+          "position": [
+            1.06756522888491,
+            -0.24597420484018293,
+            0.4361190681287574
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "jam",
+          "position": [
+            1.1319845096199053,
+            -0.1797760193135815,
+            0.31106287566867263
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "cup",
+          "position": [
+            0.9207441986688069,
+            -0.7133511219265878,
+            0.5083179880958221
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "spout",
+          "position": [
+            1.245316858952526,
+            -0.06338453155346153,
+            0.6717351455984515
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "wall_room_0",
+          "position": [
+            1.4003673599992812,
+            -0.14176794614685354,
+            0.5797892289518685
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "liquor",
+          "position": [
+            1.3021322733585563,
+            0.7117394946041062,
+            0.556337966917658
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "paper_towel_main_group_0",
+          "position": [
+            1.2421258879404902,
+            -0.8936969897225793,
+            0.6258834801220855
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "hingeleftdoor",
+          "position": [
+            0.9835495481205564,
+            0.2520507878431059,
+            1.3324034320072473
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "hingerightdoor",
+          "position": [
+            0.987042138843019,
+            -0.24769201701725208,
+            1.3348269802335098
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "outlet_2_room_0",
+          "position": [
+            1.398149896669214,
+            -0.7458148082891585,
+            0.7306593730305677
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "wall_left_room_0",
+          "position": [
+            1.0057460628611177,
+            1.2522556562160323,
+            0.7356836395430377
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "hingedoor",
+          "position": [
+            0.9835495834123972,
+            0.7516841937564193,
+            1.332195201254992
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "light_switch_room_0",
+          "position": [
+            1.3957049106295765,
+            -1.2460906475326354,
+            0.7304967573967673
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "light_switch_2_room_0",
+          "position": [
+            1.3958726926581044,
+            -1.3549615341125307,
+            0.7306230452260633
+          ],
+          "source": "sim_gt"
+        }
+      ],
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 1,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.124763
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.125,
+        "dy": -0.1,
+        "frame": "local"
+      },
+      "duration_ms": 1622.042,
+      "error": null,
+      "event_id": "sdk-2",
+      "event_type": "sdk.base_command",
+      "operation": "move_delta",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 2,
+      "source": "robot_sdk.base",
+      "status": "completed",
+      "timestamp": 1.764493
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.125,
+        "dy": -0.1,
+        "frame": "local"
+      },
+      "duration_ms": 1816.842,
+      "error": null,
+      "event_id": "sdk-3",
+      "event_type": "sdk.base_command",
+      "operation": "move_delta",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 3,
+      "source": "robot_sdk.base",
+      "status": "completed",
+      "timestamp": 3.581478
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.15,
+        "dy": -0.075,
+        "frame": "local"
+      },
+      "duration_ms": 1715.867,
+      "error": null,
+      "event_id": "sdk-4",
+      "event_type": "sdk.base_command",
+      "operation": "move_delta",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 4,
+      "source": "robot_sdk.base",
+      "status": "completed",
+      "timestamp": 5.297479
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.15,
+        "dy": -0.075,
+        "frame": "local"
+      },
+      "duration_ms": 1818.774,
+      "error": null,
+      "event_id": "sdk-5",
+      "event_type": "sdk.base_command",
+      "operation": "move_delta",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 5,
+      "source": "robot_sdk.base",
+      "status": "completed",
+      "timestamp": 7.116417
+    },
+    {
+      "arguments": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "dz": 0.0,
+        "rotation_delta": [
+          -0.175,
+          0.165,
+          0.0
+        ]
+      },
+      "duration_ms": 1718.537,
+      "error": null,
+      "event_id": "sdk-6",
+      "event_type": "sdk.arm_command",
+      "operation": "move_delta",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 6,
+      "source": "robot_sdk.arm",
+      "status": "completed",
+      "timestamp": 8.835097
+    },
+    {
+      "arguments": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "dz": 0.0,
+        "rotation_delta": [
+          0.0,
+          0.0,
+          -0.8
+        ]
+      },
+      "duration_ms": 3737.04,
+      "error": null,
+      "event_id": "sdk-7",
+      "event_type": "sdk.arm_command",
+      "operation": "move_delta",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 7,
+      "source": "robot_sdk.arm",
+      "status": "completed",
+      "timestamp": 12.572352
+    },
+    {
+      "arguments": {
+        "camera_names": null,
+        "target_names": [
+          "cup"
+        ]
+      },
+      "duration_ms": 50.948,
+      "error": null,
+      "event_id": "sdk-8",
+      "event_type": "sdk.perception",
+      "operation": "find_objects",
+      "result": [
+        {
+          "confidence": 1.0,
+          "frame": "arm_base",
+          "name": "cup",
+          "position": [
+            0.3785096043241849,
+            -0.37162978467490476,
+            0.5070519712895416
+          ],
+          "source": "sim_gt"
+        }
+      ],
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 8,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 12.623431
+    },
+    {
+      "arguments": {
+        "settle_steps": 10
+      },
+      "duration_ms": 1314.784,
+      "error": null,
+      "event_id": "sdk-9",
+      "event_type": "sdk.gripper_command",
+      "operation": "open",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 9,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 13.938377
+    },
+    {
+      "arguments": {
+        "max_steps": 100,
+        "tolerance": 0.004,
+        "x": 0.3785096043241849,
+        "y": -0.37162978467490476,
+        "z": 0.6670519712895416
+      },
+      "duration_ms": 5244.681,
+      "error": null,
+      "event_id": "sdk-10",
+      "event_type": "sdk.arm_command",
+      "operation": "move_to_position",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 10,
+      "source": "robot_sdk.arm",
+      "status": "completed",
+      "timestamp": 19.183217
+    },
+    {
+      "arguments": {
+        "max_steps": 100,
+        "tolerance": 0.004,
+        "x": 0.3785096043241849,
+        "y": -0.37162978467490476,
+        "z": 0.47205197128954157
+      },
+      "duration_ms": 6053.433,
+      "error": {
+        "message": "independent safety monitor: action_outcome_unknown",
+        "type": "SafetyViolation"
+      },
+      "event_id": "sdk-11",
+      "event_type": "sdk.arm_command",
+      "operation": "move_to_position",
+      "result": {},
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 11,
+      "source": "robot_sdk.arm",
+      "status": "failed",
+      "timestamp": 25.236776
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.605,
+      "error": null,
+      "event_id": "sdk-12",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "robot0_base_pose": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_gripper_width": {
+          "dtype": "float64",
+          "shape": [
+            1
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 12,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 25.238667
+    }
+  ],
+  "seed": 102,
+  "status": "failed",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

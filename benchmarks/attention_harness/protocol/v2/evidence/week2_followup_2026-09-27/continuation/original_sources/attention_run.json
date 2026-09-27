@@ -1,0 +1,267 @@
+{
+  "approved_config_path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101_week2.json",
+  "approved_config_sha256": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
+  "approved_memory_context_sha256": null,
+  "approved_policy_path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/policies/robocasa_noop.py",
+  "approved_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+  "artifact_dir": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+  "assistance_mode": "benchmark_proxy",
+  "attempts": [
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024",
+      "attention_trace": {
+        "advisor_trace_id": "trace:counter_to_sink-seed101-formal-1790487853081059024:0",
+        "attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+        "bundle": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/attention_bundle.json",
+        "execution_id": "execution:counter_to_sink-seed101-formal-1790487853081059024:0",
+        "raw_trace_id": "raw-trace:counter_to_sink-seed101-formal-1790487853081059024:0",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+        "schema_version": "attentionbench.episode-trace-link.v1",
+        "store": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention_memory.sqlite3"
+      },
+      "formal_runner_result": {
+        "artifact_dir": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024",
+        "artifacts": {
+          "native_result": {
+            "sha256": "cff2a2bac7aa76342a910cf0afda6c7733304f6d6c7da00e0196dc88e14ca099",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/native_result.json"
+          },
+          "safety": {
+            "sha256": "4829de2ddcaf186925b375997d45a0359962759d537db0f32051861a2d2fbfa9",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/safety.json"
+          },
+          "sandbox_receipt": {
+            "sha256": "b8d998e99c2ff766a9adb938ccbc11cc6539bebacdbd7366640329aa2cf809b8",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/sandbox_receipt.json"
+          },
+          "trace": {
+            "sha256": "a1ec86bb14b4feae249303b3e8525a0f41b963d509dc1bac32ebdea52ddd5a3d",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/trace.json"
+          }
+        },
+        "attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+        "boundary_checked": true,
+        "config_sha256": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
+        "error": null,
+        "formal_blockers": [
+          "independent sandbox and cancellation acceptance not frozen",
+          "task/seed/config stability matrix not formally accepted"
+        ],
+        "formal_eligible": false,
+        "native_evaluator": {
+          "evaluated": true,
+          "native_success": false
+        },
+        "native_success": false,
+        "policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+        "sandbox": {
+          "action_cancellation_verified": true,
+          "deadline_enforced": true,
+          "process_isolated": true,
+          "sdk_rpc_only": true
+        },
+        "schema_version": "attentionbench.formal-runner-result.v1",
+        "seed": 101,
+        "service_revision": {
+          "agent": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+          "sim": "993e1759730792a12b8afe2c18efda7f69776540",
+          "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+        },
+        "status": "completed",
+        "suite": "robocasa",
+        "task_id": "counter_to_sink"
+      },
+      "memory_ids": [],
+      "native_success": false,
+      "safety_artifact": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/safety.json",
+      "status": "completed"
+    },
+    {
+      "artifact_dir": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404",
+      "attention_trace": {
+        "advisor_trace_id": "trace:counter_to_sink-seed101-formal-1790487908796947404:1",
+        "attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:1",
+        "bundle": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404/attention_bundle.json",
+        "execution_id": "execution:counter_to_sink-seed101-formal-1790487908796947404:1",
+        "raw_trace_id": "raw-trace:counter_to_sink-seed101-formal-1790487908796947404:1",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+        "schema_version": "attentionbench.episode-trace-link.v1",
+        "store": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention_memory.sqlite3"
+      },
+      "formal_runner_result": {
+        "artifact_dir": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404",
+        "artifacts": {
+          "native_result": {
+            "sha256": "e175b114a8f6defca3f64e586d0477ac822707c347205ba79052b2c1b03b60dd",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404/native_result.json"
+          },
+          "safety": {
+            "sha256": "71d673d6b779e81d27cf5de0129fdf6a3a09ec28754f58ca33f3d582368fd656",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404/safety.json"
+          },
+          "sandbox_receipt": {
+            "sha256": "ebda389935306d27349c706a8c880d3eb9590efac77aec04d837bf54777c6d13",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404/sandbox_receipt.json"
+          },
+          "trace": {
+            "sha256": "b7862933a79897f2f490058ebc227c3f43749dde01ee419a8f38068bf2224cd7",
+            "uri": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404/trace.json"
+          }
+        },
+        "attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:1",
+        "boundary_checked": true,
+        "config_sha256": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
+        "error": null,
+        "formal_blockers": [
+          "independent sandbox and cancellation acceptance not frozen",
+          "task/seed/config stability matrix not formally accepted"
+        ],
+        "formal_eligible": false,
+        "native_evaluator": {
+          "evaluated": true,
+          "native_success": false
+        },
+        "native_success": false,
+        "policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+        "run_id": "run:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+        "sandbox": {
+          "action_cancellation_verified": true,
+          "deadline_enforced": true,
+          "process_isolated": true,
+          "sdk_rpc_only": true
+        },
+        "schema_version": "attentionbench.formal-runner-result.v1",
+        "seed": 101,
+        "service_revision": {
+          "agent": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+          "sim": "993e1759730792a12b8afe2c18efda7f69776540",
+          "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+        },
+        "status": "completed",
+        "suite": "robocasa",
+        "task_id": "counter_to_sink"
+      },
+      "memory_ids": [],
+      "native_success": false,
+      "safety_artifact": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487908796947404/safety.json",
+      "status": "completed"
+    }
+  ],
+  "decisions": [
+    {
+      "action": "request",
+      "after_attempt": 0,
+      "assessment": {
+        "code_changed": null,
+        "code_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+        "event_ids": [
+          "execution-finished"
+        ],
+        "evidence_ids": [
+          "evidence:policy.py",
+          "evidence:trace_context.json"
+        ],
+        "evidence_sufficient": false,
+        "failure_type": "unknown",
+        "hypothesis_unverified": false,
+        "locally_repairable": false,
+        "prior_code_sha256": null,
+        "prior_event_ids": [],
+        "prior_trace_ids": [],
+        "progress": false,
+        "repeated_failure": false,
+        "risk": "normal",
+        "schema_version": "attentionbench.trace-assessment.v1",
+        "trace_id": "trace:counter_to_sink-seed101-formal-1790487853081059024:0"
+      },
+      "decision_source": "projected_public_trace",
+      "event_ids": [],
+      "evidence_ids": [],
+      "monitor_signals": {},
+      "prior_event_ids": [],
+      "prior_trace_ids": [],
+      "priority": "normal",
+      "reason": "request_after_each_failure",
+      "request_type": "hint",
+      "safety_artifact": null,
+      "trusted_memory_ids": []
+    }
+  ],
+  "demo_receipt": null,
+  "dev_hypothesis": {
+    "content": null,
+    "evidence": null,
+    "status": "unknown"
+  },
+  "formal_blockers": [
+    "development runner has not passed formal acceptance"
+  ],
+  "formal_eligible": false,
+  "memory_context": null,
+  "native_success": false,
+  "perception_mode": "sim_gt",
+  "policy_config": {},
+  "policy_id": "reactive_help",
+  "random_preregistration": null,
+  "requests": [
+    {
+      "advice": {
+        "caution": "Do not attempt to read hidden physics state, actor IDs, or evaluator internals; rely only on find_objects() object names/positions and get_observation() robot state. Note the 180-second execution budget — plan a simple, direct pick-and-place rather than exploratory loops.",
+        "confidence": 0.95,
+        "diagnosis": "The policy is effectively a no-op: it calls sensors.find_objects() twice and reads observations, but never issues any motion, grasp, or place actions. The run finished in ~0.4s of SDK activity with no manipulation performed, so the counter_to_sink goal (pick object from counter, place in sink) was never attempted. This is a policy-logic gap, not a perception or environment failure.",
+        "guidance": "Rewrite policy.py to: (1) call sensors.find_objects() and inspect the returned object names/positions to locate the target object on the counter and the sink location; (2) use the SDK's motion primitives (e.g., move the end-effector toward the object's position, close the gripper to grasp, then move to the sink position and release). Use get_observation() (robot0_eef_pos, robot0_gripper_width) to verify approach and grasp success between steps, and iterate until the object is placed. The current code discards the find_objects() results entirely — capture and use them.",
+        "request_type": "hint",
+        "schema_version": "attentionbench.advisor-advice.v1"
+      },
+      "cached": false,
+      "candidate_memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "failure_slot": 0,
+      "request_id": "attention-request:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "responder": "advisor_proxy",
+      "response_id": "proxy-response:attention-request:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "token_usage": {
+        "completion_tokens": 327,
+        "prompt_tokens": 1770,
+        "total_tokens": 2097
+      }
+    }
+  ],
+  "resource_usage": {
+    "assistance_credits": 1,
+    "tokens": 2097
+  },
+  "runner_boundary": {
+    "formal_runner_registered": true,
+    "generated_code_sandboxed": true,
+    "mode": "formal",
+    "overall_deadline_certified": true
+  },
+  "safety_signals": [
+    {},
+    {}
+  ],
+  "scheduler_config": {
+    "assistance_credits": 1,
+    "assistance_mode": "benchmark_proxy",
+    "attention_policy": "reactive_help",
+    "demo_prior_sha256": null,
+    "max_attempts": 2,
+    "memory_context": null,
+    "overall_deadline_seconds": 90.0,
+    "policy_config": {},
+    "policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+    "seed": 101,
+    "sim_config_sha256": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
+    "suite": "robocasa",
+    "task_id": "counter_to_sink",
+    "token_limit": 3000
+  },
+  "scheduler_config_sha256": "523007dad99c585825926df336f97c0a5d9d5765fee078af3b488d30aa613eeb",
+  "schema_version": "attentionbench.sim-gt-attention-run.v1",
+  "seed": 101,
+  "stopped_reason": null,
+  "store": "/home/truares/桌面/attentionbench-week2-graph-live-20260927/robocasa/attention_memory.sqlite3",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

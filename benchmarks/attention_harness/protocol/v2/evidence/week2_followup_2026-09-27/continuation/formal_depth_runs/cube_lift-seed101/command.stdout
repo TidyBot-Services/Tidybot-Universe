@@ -1,0 +1,49 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549",
+  "artifacts": {
+    "native_result": {
+      "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/native_result.json"
+    },
+    "safety": {
+      "sha256": "9886fcf6eeb92cece50bae69aebb328f2859020e622b0fdcdda8489be6654add",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "ddce9286901449a1e57a3e8f90cb256df647442f267f31fa439f94bd095d6e6f",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "2568f0adf6c6951a7e25d466427a53275c7a82786ebc242f7d6b0359c7ff2eb6",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/trace.json"
+    }
+  },
+  "attempt_id": null,
+  "boundary_checked": true,
+  "config_sha256": "a35bab9cf02f84394bdd674641215e52a6f3a15b4bf4bc52232d7783242c40bd",
+  "error": null,
+  "formal_blockers": [
+    "independent sandbox and cancellation acceptance not frozen",
+    "task/seed/config stability matrix not formally accepted"
+  ],
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "run_id": null,
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 101,
+  "service_revision": "8fb89e8ee7722e37e13530fb019aabd64d5367ba",
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

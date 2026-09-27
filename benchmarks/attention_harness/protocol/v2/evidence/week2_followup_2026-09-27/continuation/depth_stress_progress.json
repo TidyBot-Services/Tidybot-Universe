@@ -1,0 +1,3532 @@
+[
+  {
+    "task": "cube_lift",
+    "seed": 101,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "84b55bffca00ac287f04ca3cf563fb532ff5972343705b66cdd47f5b4dc2f365",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "82df2014d5d3a37e32c714847da83f60447da0d9bf58af9a291b622ecc74f5ac",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "64696d5cf4409f45dafb5b9e0b42877c3841af2736d5b30a4877c0ae1babe31c",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "daa0c5fbf73e9d1a36426d251ea97fcf0a9502cdf57a0f515d960b8c2edb3142",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5f50edcd15ddac9d53a76f81a556c6397b84a083c8be64062e8c2e3a7cb7aa96",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "20c78e8bf3ce8251661be24715eb0a97c57cbeb8f40aa07c9b88c56796efd29c",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3c7df674ee7153cccdbc33472955aeac4278bdc340a43db2dc43224672c4b740",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "280801b6a766860b3020fe01dcb0fae2e3c16bed923850de5c0d0d6eb8adb9b6",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "59a0a51b98f8a4d7daef6133df7f1cfd5bcca8986983f3988d7f8debf4268801",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c97b360994cb52e901dcdc8f4fc9aa952318be231766323938be23c717163df9",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "1f6c0e07d56445ee0de8e32c8b34b495dd5439a49c38a5aa9890c6a51b6ede4d",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "42781fa740b37e1a41bb8b7d47178a95bea891e2164c9872bd15b8c7ec80c030",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d0a4d973ac1b2b47ba7642182e4e343ad64696f4bf1661c1b41ca224db825461",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7bd4820cce973760ce1d2e152efa33b714b4ba06e46d559c2204cba16c04622b",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7684d603cccecb6015bea953194a036c10782d2f2c22f75cc9943d18751af5c2",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "cb73afda77527e9770d2b0b7844f11e302fd066eff865f0c0940198369aa0bfb",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a35fcc000a94efa0c91a3e3b98c04c38704a40524313f4d2bc5fcf2079c985a8",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "02ff1a83322b837159f2d506f5b85f92ba47ede2ae9a382653ffe9965027a998",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a35fcc000a94efa0c91a3e3b98c04c38704a40524313f4d2bc5fcf2079c985a8",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "02ff1a83322b837159f2d506f5b85f92ba47ede2ae9a382653ffe9965027a998",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_lift",
+    "seed": 102,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "2384d198d666abc676fdc4e9059edbf02b0215d7fed40c07a058fdbd3bb0e863",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "b77ce8c70ad7bfbe123ce1dfd808fb197d78ec40ce2b6b5d2525c934613eb2c5",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7ff0c7a7a6f43d68740e9f1579d849aa8a9f711529b9b49c4746501b6e0f4730",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9296484f8885a0c6a65537fc89336c441689ef6688cd77cc9c678158273e83d4",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "43f2a4278e80bc4adb516b8f36621803ffb6a9d1eae7d5aeacb470ad1d6b9b67",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "43b169cc2021c7f7facfbb815e9b8b3e458088e6c4fc8c878de4e3348fe6617b",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "2f911329b06335926cf81d5ce0818723c5b6d6b02c7cd555d20b317961a25151",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "388ce6a7f3cb2b70d75353e2a67e922e91b96b24a64cb1d7f068dd9a4e1dacb2",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "387c4ae35489ce0390ec8ee8d0ec1325f69798672e255e51c745c453f0d12446",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7967de8922e9f9f480dbcdea923580342d78b085d30128dc8f873be528142478",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "903eeaacfbd00adeed3f3e88e6cbb074d0a5349c217374c916a93b2f9b142da5",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6825786615a6afe5af9c0a32ed5127ecb1ed8553b63d56edacb0ea7e7ec8159e",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c8308fc5570c3443e7e80bba756ea44a1ef47e21c15d4d833ff70b0592e5df78",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d504a79434d00fabb865855fb26cc428b2d937cec4844138b51169cf6b75c371",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c1e551742ea2eb37dfbbda59b0074876142bb22d128ffecc10de2d257a9b280e",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "52f46989f0c850d2bcc32c5f71aa4d281cfda62864f6770edddbd10c58f40aaf",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "23cf07bd3f223ca75e03df4ed3a8e543c9f4975fce76592e6edfeb2bea2fea4a",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "f6a63e2852b923dc80ea42ba768c517cee7d59fd827e67bb383f967aa2c65436",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "23cf07bd3f223ca75e03df4ed3a8e543c9f4975fce76592e6edfeb2bea2fea4a",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "f6a63e2852b923dc80ea42ba768c517cee7d59fd827e67bb383f967aa2c65436",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_lift",
+    "seed": 103,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0224f9c7007bf4c3afd4442a8ab87b572d2ce9879239bdc9fd5f2a35eac7a661",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "86377adb8d4778d6dd2e767f5d6efa9ab6d800c3644c46820b3c1ede2ad0f273",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c440f77a64991dd77a849d978da9da10efd02362784c5565ad3be5ca2c504ba0",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c7a15555de594ad27a6cf26a80c176f340c1bb3018bfa03a18495d75ce989f54",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e6d94e4dd49874f3ef1fdc8cf7156f65c225b9c0c6334cb807028e25b3deb992",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "646138510a1cc00c99d850bf615f92685043eeaf58982064ff16249edc2f9ec0",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "13e45edeedde5d23b00b829a3e7ddd7b5a84ce627a3778e204484410d5ab95e4",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0459fed97ab6b54b1c36a0875fdabcd3a48fa7b9561ba294fc6d973b3d1b3b63",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7fa6ce85bae8497f6de2398e1d1f31f4a100302fff04ead3225080e1d8f41356",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e4996b18b9cd40f00504b383879bfda8a264a3372a714fb8fe146e243009bae5",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "2be69d004e7c24345d4e24c90623a9b5099625c467554f0b01618c4b82dca339",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "767f533efb53a32021e852e04c82cb1ee6bbbe90cf82c85bfe1803c4d0745ab1",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "40bec1361b432b4dbcdb7a4f5c3331c85e20040c66127ea5f5e0b3e253dd095a",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c7aca77c4a82c471e792a4c32b62ba1379c49ac0a20657e6274c536b6a5f3265",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3484164ea5394e81cdb29052fe10321e18d607abfc4517fc857a91a4628fc768",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "03bee54b84f1b93193072da054e1440917a12990522d21bb0032d7b30e0bc1c7",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5cb538afd70dee080dff3821d64a48b9dc87e9d4e3fb0d01f0b363127e2c1f33",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9d4e49e499aa981d41b2955e8206d890723a1a0acf677e1dca28e5a0e1406c74",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6456bfc95a191b702834ce984012ed0b14e63a218b158a4f7f59b7b8af95d8ee",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9d4e49e499aa981d41b2955e8206d890723a1a0acf677e1dca28e5a0e1406c74",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_lift",
+    "seed": 104,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "aca236e4a0d65221f57d59534ce11770109045cd82bbb0eecc62ceaa1fb1010c",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "aa049e64a75eefa57288f597cec23833d00046dcc7aa174af021078f993c95be",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "57f59bba62605c7777f39c75923a6f1c268ecd19ca1393a9d1da6feea683b5ba",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c95f314adaabc3328a13ebe63f5e4e26bfe0547f3f3abb2dc6587873da71372f",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "ba3e86a1893e402f3cf31ed9e4f53d9693eebf948873c316ec571fff29f01fcd",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6a21374959319b61bcc6b5d69d8a2d160849d152b8d8964982d02916af830f88",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0e527c51f7a1c25ab912aef1d1744bf5299c8f1180d25a7173f5cbc9d80ecb8d",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "eaf199372d2c382a08aa49b981eed105307c6ef42d7678f8d91abb2652a95eff",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "4dd79925ebf828378b660c6b499ac70a1b117ffb009219085fb762091d17faca",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "b2f02766d9b9cc2f5da4e5dff4f6c54d5cc084e74200475ad1b275d8e80782a3",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3d8337f5328478566eb6ec9d0de167968207e9545d40c4b523566213ce72caae",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "fd5f2ec019ca447ccdd0ecbd10635fd4e496a6dbd403ad6cb7a8fde7ef28f5a5",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "f0914359d111c412abcf74e4af644424699a779ac0fdeebac37847c52579f2bd",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d3ac2e0fb01a1291794bc1d6a0052723edb8b34aab3bea9796b021ef2ade0253",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "8a33a850b16e665249a448f1d6519e2c70955e24efa9066ffc0468aefecedbe8",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7bf7bfeb15b5673d07882697ad1ad2b2b759f3c7e70485584177ef677efb4a8e",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0e0a1bed3c5054bf8477bd86366ac9460454b16936b89d16f4d18f6a7008f3f8",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c8e4fc53209585beaa69dfbfa823bdf4787a6c9680b4875292f112fc6375dc9f",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3e4158f918fa9e27bbad493fbb10a3c448dff28a350c11fa77b876533a998037",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c8e4fc53209585beaa69dfbfa823bdf4787a6c9680b4875292f112fc6375dc9f",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_lift",
+    "seed": 105,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d0485d62444a20506945836cfa965b35d745e433fddd3276a510dd550471e250",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "bba5d74f5d680235f77c1d5ae319792d9225c0f389e9ed3b948b3c7ae31d660a",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "ed832ed084d2790e59d650349444dfe6e71e56641ce744ab85c2294a9c952281",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0ffc064e2974f85faf1a5057cf8fd94a6a7d2a7c79f95ae890b79317aefa3ae9",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "b5c5958e39f7e1039ce06d21dc56a500c610c176f1d42df896e060e3066412b1",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "bcc830c892ae962d8d8ae3a250a87c09c2b605742464d5b641d55553e405793c",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "98951f0664af1b02e931ad5f3c2f4d035771f9b8eaa767590945cd291aa4ecae",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "90fb523db0fa8878b19e810e36f11a2dca635e0df893805a3195ec10efa99525",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "626500c91473de6a47518ba60122515d6fcef389bc59ba17d45069680f0ad6f9",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0076393df87b1e0b40c8c611fdd07e13dc405f74f910e22885aeeac15e042f19",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5d7d74e728621a42f8ba392f8c6463a734da8ad8443ea414bf1757bb1b26b905",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "45705b6c092715eb65da480dd59d86b0bbf71d6f625dd6dee24454749a719a37",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d6eb685a53ad9f6ebd5f8c6c87250d007b6ec0aa48b99584788323ed3c0f74cb",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5770ba4a6a8d99578269c9c97aa18711c6f4d8e36a67a0a7f66dec649bb708c3",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3b4f5fc094a90fd55e04cd2209e5bb6a455243c04db17982ffb1931e913867a1",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "341a13fe18e9122bd8c012f10b08af77b7c708762cb680dd101c65e90a07d134",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d26897a603698840f9b7deef399338c639ecf90298defc8c5194b4c28e26a87c",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "95a60888f694cfd0f73fd80e556d4cf4fc9ef64cd351d3099281d0c5a94d8e1d",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d26897a603698840f9b7deef399338c639ecf90298defc8c5194b4c28e26a87c",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "95a60888f694cfd0f73fd80e556d4cf4fc9ef64cd351d3099281d0c5a94d8e1d",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 101,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "eee4f894f68b0eb4dc1ea0708321dad46d94d776622dc9d4f321b304ff79baaf",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6b70ac5c66dd70127203079c0242b751a0b4437b023e5e687353ff3e6be8c7e1",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "f3b8dc05a6e1880f946e1f769560a0d47db53666bc04e07a40225ab17a82bd70",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e898bfa8f162053e6eefc9044aa2acf4f7cfd081c6166d966de9b02793516285",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "aed3e79d01e5720029895fe43ec61ee71b16b5014bc9a82aa89a07bdb79a4bed",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d4044b971f16b08271f311b59a425bc64a18a40f3f51ad858ec77f51c725b171",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "8c5e1a109c2153d1aad1db76cdacc8bf0b4eff013faf0c320a43139a95fbbcd1",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "28fa93bc6976328021a51a9cd0ae34441a7f0670393689c3f5364bf25538c426",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "99b82959421bc77912bd9dbdf7fae485406b4da02b6d78598d69f3873c1ccab1",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3838d1e2ffc2f41b1c1b3215b3208a8c9bb401d11347e618319a5e3d34d5ba3b",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a592f5f6a6bce453b84fea734f6af8c3d5e6661bd101e776a57e0ea3477bca74",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "272575eaeb6e4114dafe62ed9a17ae6b3297b10849df67667c7c3ffe88eb223f",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e26e7ae3cd00d1b1a4b9c0446185167184943de8b675bc0fe8266513e0fedc89",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "865c86f1d92a57ef3ec0514bab1e8e9acd2b42a9b48a67768595b741e2f243c1",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "64bc35ae899980c396feec6aabe6e1544e75e71b81d0445cbc7b6b645eedbe1a",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a5412ad648106bafbd6f3366c0e2b4f0b143c81c84ef4331f100fd6e5f8d75ae",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "86c433845ba8313ddb55600d863777aff1ace18de722ae1adc92fdbf52de3d48",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a669f124d18be06d5282a04bade93adfc52a4ec8dac95701b56211d800c0a7a5",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "86c433845ba8313ddb55600d863777aff1ace18de722ae1adc92fdbf52de3d48",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a669f124d18be06d5282a04bade93adfc52a4ec8dac95701b56211d800c0a7a5",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 102,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "35e33238977a79785325ca107fbcb9ef75257639e6d3877c1e05bb0c417d19a2",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e9f9ee8fe32bc1fec2af6255a79aa0af49b2748593fa980bec3c095515ae77c0",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "1fe434f9933f4d1b40b26e2f9154d9ea7dff7d783706786c9c9c5355fbdd5bd9",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7a3bc839ab4aec83bb4017b73623b037849e4e4039adb938a8894d4f1af9a7c0",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d3183f7ba268c04357aca7b41d32dd9f598e7d2f7494a362e5c11dff887af975",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "68ef2c37628f544085d34acd9ca78e0a84d6edb43b0ed4a8057eea7e12dc698c",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "aef554ee2d80c0f5b2b3393881f6c5f7c49eac0b7a4a0505bfdf2bca58a8e605",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "1de1cad682b1e78c97ac0e322e1b6b15c8c85a1365839782e4bbc154d900ef02",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e632d7bc079c3f9721258e120c439eeb01e869829067576ba14dcb067c1ba218",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "8ddec77ed9547ca1c186a4b27925739239e4963dd43b1f3064ad8c2f3c61f8a4",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a7e6f81c46069b754c6bd60246c63dee87c67a1e7c0975f1d3afadaaf96aa72a",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "75fe54ff8d2442b0dc106e00f2bdf546a8a90f0ecdc9297d6e87ba7b28072bfe",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a4cb46b34a7235ed2d216013433ec1bb978ce3548fcd1e28d57a6dfc9080a384",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6e5ab8ef2f98a2e0c206ec25fba2f5a68c922fb75a5798a7a5e300e577319b4d",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "71bbd178183334b3960d7b4d40ea0871c86f9ef84bb5c2103e694932601a4e61",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "b2aef8bb982f720388a186e4824a0bbaa1822e5ee433a2123ceb396808896ae5",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e4a4414ef1e5b09e961a3126f42454dbaad636950a37804510a0dda700a2a6ea",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d2f0ff79025a1d92a815e10ef165d175f760abe2c3d1fc5c375b134b071f2759",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e4a4414ef1e5b09e961a3126f42454dbaad636950a37804510a0dda700a2a6ea",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d2f0ff79025a1d92a815e10ef165d175f760abe2c3d1fc5c375b134b071f2759",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 103,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7d6e423f70184551d04cacf3320cc51d9e8d67dc1979e181675a8c56f1c30985",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "68386dbdad62f92482222913048bec840818aa4d1ad8f1400dd3c283a4546291",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e6189560366e82ae12b10884b5a6164b887c356693ceab3132862279f9a0477c",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "17759b2945fa4c8d9c06ab696d41feb910416c974c577038f08c4428f14f191b",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3ad26913c493948dbf8a3fe17468194b40f69fbffd6ca4fd9681041eba00bfb0",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "46438fdc25e80bc01bfacebffb12c80d4803d0ed8e4555c14a3b2f8690ee1234",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5c34d61502c629b4dd897d599db2b0fbee45d927c0a71bbdcc7e70c3024214ef",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "632ec5a6034cd96e11fc38e13fc35020a2e55a244346fa280a949ab6c1da1883",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "21eb8b8d97e0a5b5a79b06655e0038b3da3c52a16179e5e52bdf114048d21c12",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9158124f51e9770ef324f94fe6370c1dc5dab539a640575ad2db94cb0ec7784b",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a026945596d5c8f59467698afc0b38205c4196ff9d2fcb4b8d8126080221c9a7",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "64e49e1e8d165ddd02b4f539594da64c567d90b75e9d5044964bd89d07ec4b04",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "53d71791c69512484e82fd56885c0a4cdffd64c3dcda68eeed9444dc9cf50cd0",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "fe9228ee54a80b7d17d6a0aa29a1ecf231eb04b7187c13db3dc5d252df3995e2",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "72080c24024d23419ac6643ddfed1f6b1be145e71fe3076947127a9513cbb5ae",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e4a1018a859e666874a6e6ad2176d04dd64539717c4df772d0ed53c45b9ae7ca",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e0e58eb65d34bcafc12bc7093cb869548ead2e1d4d2afab17ee12eb381ba0e19",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "11fbf8d830c6f73f661ef4c2d9ac0171c9737e69848232f71372ee7c06cc04c4",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e0e58eb65d34bcafc12bc7093cb869548ead2e1d4d2afab17ee12eb381ba0e19",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "11fbf8d830c6f73f661ef4c2d9ac0171c9737e69848232f71372ee7c06cc04c4",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 104,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9e220239181e26ce2030ae64984398440ea4a9c1ea4b27a6729e88e6247bfee5",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d1ec45b3b6cbf2bf096661e313152cccf2367b7090a7092f85dc5500ee141428",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "03910f4974e87ec2dc9ad58b721d05b2b08146dab1bdfb5a06f595ddf63e3fd8",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5ffe23f174fa0021b1469b4726db14a96d613c0baec230faf307156d6a235fce",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "8fa646ee03d98063b710b84a3c38e32dd7ee124e6a68071082e35565f0f0a5cd",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "a85415e1d23b4fdbdc65ce18c6e6a4f854e5418b8af0595952307ddee0124ad5",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "49c31d5970e8253bd9c3115aa3d75bf5a0bb40a3ba325ccd258c5aaa7d4118da",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "80b433c43718ff12bd7a9b6e44b07a687fd27eade088dc6c1d854595ba89f3db",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d1f1dacd7910a818a3e6ec46a4d1ffa3f46026290a747269943076063c228f36",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "f90542500acca59f8aba734ef8d8404d63afffe64dac7f97de813ad3c2302932",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6c92456d4a9fe9f0f233a918d500756dccd23187382706570af9eaef8e57c47d",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "f8a1021097655a3f15af4a2df5a0b71f5c0b81c880d93b294d64c061e8fe3453",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0de59a1e7ad13ca01107cc010cfe568679e2468697ed0ed7273810318b2e4c10",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "8bb3f8eda6fc7051c8e5f1ddcf0d069a7bbde395d977c0a0834d2c875ab6bb87",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "cc13b9d813c5c9a7ddbb5211900288d4a436fa48cc70bf2d0377ea5b170034ed",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7f2a8aee608ca27e46fda2044dbdf6f1a0eabad4ebd2e41de94e82ae78e6ed9c",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "2b2b80e0a13287c680396a048272fe4111a6ad8a413b827619617a8394df93e5",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9f350822d4b78652ca132efb6e69fe91fb29f90c1185e601b399a72968debd2e",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "2b2b80e0a13287c680396a048272fe4111a6ad8a413b827619617a8394df93e5",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9f350822d4b78652ca132efb6e69fe91fb29f90c1185e601b399a72968debd2e",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 105,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "8c53e854c47b66bd207021052549b49b2b17ddfa9f88646a6750b02f68131379",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6a6872e3cad043bae83310e403825639e222f35b37ae26cdbdbf0aebee56a483",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d91b61890e06012fba36971e72efc729169e07eac41cc83945a58d6f8baafa02",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "1ab6d716c392d0213aee187ef8c7e318fb0f58fe21cc1e2dbc968c1f652e14bc",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5b1d208a6a435f782cf4ecddcf85a553649d4951adf440e3a8cea0bbc79e9d0a",
+        "native_success": false
+      },
+      {
+        "index": 5,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "74f28d3a8cbf93c6b099f4f1204190a13a339431d069c7684e113e9df9365c53",
+        "native_success": false
+      },
+      {
+        "index": 6,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d8b38a050da056c064658ae3b34606eb7649e58bd9b89ebccfd81ff88b0872fc",
+        "native_success": false
+      },
+      {
+        "index": 7,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7904e922ec2892fe71bf09013804afe52878a66b8bff94a64107f46105de0a04",
+        "native_success": false
+      },
+      {
+        "index": 8,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "420ce46f7f0a465de6fc6360b4c72ea7b0e5a1c6ada158ec24eb9ae80a321e46",
+        "native_success": false
+      },
+      {
+        "index": 9,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e2e0aee910926e3beaa86b166c786217214ce5691126683dab290dc8c7cf6481",
+        "native_success": false
+      },
+      {
+        "index": 10,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "dad45e32f52c46c30fb5fa4b37643bec19e855598228d9c9cdf396d8b7029587",
+        "native_success": false
+      },
+      {
+        "index": 11,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "cb51203b2a4142fca5fe82ce78b0689930ce6e9348c5c2f7d61abd5e31c4824c",
+        "native_success": false
+      },
+      {
+        "index": 12,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "8c80906442c21044e08ea294c039c64b93abcc2875d8dfe3c324866e5eed097e",
+        "native_success": false
+      },
+      {
+        "index": 13,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "054a79adbbd97f7503b45c58cf05c9dbc5eefc64b722714404ab4992a3731a22",
+        "native_success": false
+      },
+      {
+        "index": 14,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5d7b47934438d2da190b5257c27d8459f6b9a5cdb8f323bd20c4d1276ead8359",
+        "native_success": false
+      },
+      {
+        "index": 15,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "2caf280c9838788839d53a82b3b29f08e99ff2cbd6376d1bcead90ee01b05f38",
+        "native_success": false
+      },
+      {
+        "index": 16,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d41d53f621a2ef6f4a9b76fde7d56a20664339734f6621d227168140478512f1",
+        "native_success": false
+      },
+      {
+        "index": 17,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "16c5106d946e59776cc82a36902e02207ccec57a89c9540c5a9175381f7b3ad1",
+        "native_success": false
+      },
+      {
+        "index": 18,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "ec6d24fed5426dea33703e4f99870e86c9adcae71347ad5196519ef27b4d8bee",
+        "native_success": false
+      },
+      {
+        "index": 19,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "16c5106d946e59776cc82a36902e02207ccec57a89c9540c5a9175381f7b3ad1",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  }
+]

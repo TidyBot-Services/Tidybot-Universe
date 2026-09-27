@@ -1,0 +1,551 @@
+{
+  "candidate_status": "candidate",
+  "formal_eligible": false,
+  "freeze_sha256": "d84ac3f307f98d94b91f2a50564ac3a9d1a1274392dd12d950190bb673e8be63",
+  "impact": {
+    "both_failed_assistance_credits_saved": 0,
+    "both_success_assistance_credits_saved": 0,
+    "control_successes": 0,
+    "control_unsafe_attempts": 0,
+    "counterexamples": [
+      {
+        "control_attempt_id": "attempt:counter_to_sink-seed102-20260927T162204.269026Z:0",
+        "control_native_success": false,
+        "control_unsafe_attempts": 0,
+        "reason": "treatment_failed",
+        "seed": 102,
+        "treatment_attempt_id": "attempt:counter_to_sink-seed102-20260927T162251.841240Z:0",
+        "treatment_native_success": false,
+        "treatment_unsafe_attempts": 0,
+        "variation": {
+          "camera_config_id": "camera:base",
+          "camera_names": [
+            "base_camera"
+          ],
+          "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+          "scene_id": "scene:93244621fd1a24b456d5",
+          "task_prompt": "pick the cup from the counter and place it in the sink",
+          "task_variant_id": "task:cup"
+        }
+      },
+      {
+        "control_attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+        "control_native_success": false,
+        "control_unsafe_attempts": 0,
+        "reason": "treatment_failed",
+        "seed": 103,
+        "treatment_attempt_id": "attempt:counter_to_sink-seed103-20260927T162452.928840Z:0",
+        "treatment_native_success": false,
+        "treatment_unsafe_attempts": 0,
+        "variation": {
+          "camera_config_id": "camera:base+wrist",
+          "camera_names": [
+            "base_camera",
+            "wrist_camera"
+          ],
+          "object_set_id": "objects:a7d4f086836e78c38004",
+          "scene_id": "scene:feaf8e202a88a1bad005",
+          "task_prompt": "pick the mango from the counter and place it in the sink",
+          "task_variant_id": "task:mango"
+        }
+      },
+      {
+        "control_attempt_id": "attempt:counter_to_sink-seed104-20260927T162619.407956Z:0",
+        "control_native_success": false,
+        "control_unsafe_attempts": 0,
+        "reason": "treatment_failed",
+        "seed": 104,
+        "treatment_attempt_id": "attempt:counter_to_sink-seed104-20260927T162709.455088Z:0",
+        "treatment_native_success": false,
+        "treatment_unsafe_attempts": 0,
+        "variation": {
+          "camera_config_id": "camera:base",
+          "camera_names": [
+            "base_camera"
+          ],
+          "object_set_id": "objects:a61c8884dc61c3aeccc8",
+          "scene_id": "scene:6b34dfcee277f551a83b",
+          "task_prompt": "pick the onion from the counter and place it in the sink",
+          "task_variant_id": "task:onion"
+        }
+      },
+      {
+        "control_attempt_id": "attempt:counter_to_sink-seed105-20260927T162812.396819Z:0",
+        "control_native_success": false,
+        "control_unsafe_attempts": 0,
+        "reason": "treatment_failed",
+        "seed": 105,
+        "treatment_attempt_id": "attempt:counter_to_sink-seed105-20260927T162901.062858Z:0",
+        "treatment_native_success": false,
+        "treatment_unsafe_attempts": 1,
+        "variation": {
+          "camera_config_id": "camera:base+wrist",
+          "camera_names": [
+            "base_camera",
+            "wrist_camera"
+          ],
+          "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+          "scene_id": "scene:b328d376a1514e3e6bae",
+          "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+          "task_variant_id": "task:rolling_pin"
+        }
+      }
+    ],
+    "empirical_confidence": 0.2,
+    "future_assistance_credits_saved": 0,
+    "gpu_seconds_saved": 0.0,
+    "human_seconds_per_success_gain": null,
+    "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+    "paired_dev_seeds": 5,
+    "policy_changed_since_source": true,
+    "robot_seconds_saved": -154.77990305600542,
+    "safety_regressions": [
+      {
+        "control_attempt_id": "attempt:counter_to_sink-seed105-20260927T162812.396819Z:0",
+        "control_unsafe_attempts": 0,
+        "seed": 105,
+        "treatment_attempt_id": "attempt:counter_to_sink-seed105-20260927T162901.062858Z:0",
+        "treatment_unsafe_attempts": 1,
+        "variation": {
+          "camera_config_id": "camera:base+wrist",
+          "camera_names": [
+            "base_camera",
+            "wrist_camera"
+          ],
+          "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+          "scene_id": "scene:b328d376a1514e3e6bae",
+          "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+          "task_variant_id": "task:rolling_pin"
+        }
+      }
+    ],
+    "source_human_attention_seconds": 0.0,
+    "source_kind": "advisor_proxy",
+    "source_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+    "success_gain": 1,
+    "success_rate_gain": 0.2,
+    "supporting_successes": [
+      {
+        "assistance_credits_saved": 0,
+        "control_attempt_id": "attempt:counter_to_sink-seed101-20260927T161946.919454Z:0",
+        "reason": "success_gain",
+        "seed": 101,
+        "treatment_attempt_id": "attempt:counter_to_sink-seed101-20260927T162035.940213Z:0",
+        "variation": {
+          "camera_config_id": "camera:base+wrist",
+          "camera_names": [
+            "base_camera",
+            "wrist_camera"
+          ],
+          "object_set_id": "objects:cda92955890a16bc8537",
+          "scene_id": "scene:29f6ddc71995db3e0fd6",
+          "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+          "task_variant_id": "task:boxed_drink"
+        }
+      }
+    ],
+    "tokens_saved": 0,
+    "treatment_success_rate_95ci": {
+      "interpretation": "binomial reference only; frozen variation cases are not assumed IID",
+      "level": 0.95,
+      "lower": 0.03622410863243014,
+      "method": "wilson_score",
+      "n": 5,
+      "upper": 0.6244653702374747
+    },
+    "treatment_successes": 1,
+    "treatment_unsafe_attempts": 1,
+    "validated_scope": [
+      {
+        "camera_config_id": "camera:base+wrist",
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6",
+        "task_variant_id": "task:boxed_drink"
+      }
+    ],
+    "validation_policy_hashes": [
+      "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0"
+    ]
+  },
+  "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "rows": [
+    {
+      "actual_candidate_retrieval_events": 0,
+      "arm": "control",
+      "config_sha256": "0cc8b8f1d29a60d43a5e55cc37207453f75eea72c2aa9136d2a52db1ecce1c92",
+      "error": null,
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed101-20260927T161946.919454Z",
+      "result_sha256": "bef01326090f0db5130685d820d9ee52e6f01f77f2e110420e3c9226d101e8f3",
+      "safety_sha256": "393eaebbc6ab63cef2876151d12c24817d3254b30fbbaed2fd0e63ca693942c6",
+      "safety_violations": [],
+      "seed": 101,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2672437,
+            "process_group": 2672437,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2669925,
+            "process_group": 2669925,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "completed",
+      "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 1,
+      "arm": "treatment",
+      "config_sha256": "0cc8b8f1d29a60d43a5e55cc37207453f75eea72c2aa9136d2a52db1ecce1c92",
+      "error": null,
+      "native_evaluated": true,
+      "native_success": true,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed101-20260927T162035.940213Z",
+      "result_sha256": "b0c54afaf3b1708aa2a279cd870c8d3ebd01dc4ffd94c499bccc7dea102befbe",
+      "safety_sha256": "9a4dfb163cdf8f69db99e172f56a918ee53526d9a470724e7ffc12eb8e76ff68",
+      "safety_violations": [],
+      "seed": 101,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2675642,
+            "process_group": 2675642,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2673077,
+            "process_group": 2673077,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "completed",
+      "trace_sha256": "7d70aa3cfe00d5146ce126d951eaac91f69790421f82f4428254b25feb47df47",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 0,
+      "arm": "control",
+      "config_sha256": "e6406a5197862db7138459b2fdc6f7fa11fdc9cd0fde317c2878452df57cca90",
+      "error": null,
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed102-20260927T162204.269026Z",
+      "result_sha256": "c4fb2c6097d47f26e0af7b9340eb701fac9b1a160c740feece2c47387c7fca50",
+      "safety_sha256": "2e96b025e1738d57dee051f7ee917e36430b429ed84caab7c1c8bd3813c76a77",
+      "safety_violations": [],
+      "seed": 102,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2681397,
+            "process_group": 2681397,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2678868,
+            "process_group": 2678868,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "completed",
+      "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 1,
+      "arm": "treatment",
+      "config_sha256": "e6406a5197862db7138459b2fdc6f7fa11fdc9cd0fde317c2878452df57cca90",
+      "error": "GeneratedPolicyError: RuntimeError: The target object slipped during lift step 0",
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z",
+      "result_sha256": "4612983520a9d3498ade28e0379b2dfbd1d289c6215040077ff23a7d62bafd4b",
+      "safety_sha256": "4f76c9ca1db60ecb3b0a397076eae43898500da46c1d395fca8b1f0af3d8698c",
+      "safety_violations": [],
+      "seed": 102,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2684436,
+            "process_group": 2684436,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2681892,
+            "process_group": 2681892,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "failed",
+      "trace_sha256": "dfac634ab2514d9d0aad4dc2d4569ac3b9b7c97ed97420036c348f0f28a9b1f1",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 0,
+      "arm": "control",
+      "config_sha256": "8513c77e5939ae690aefb1c26f55af110718919d79b928697b7f794e9c307900",
+      "error": null,
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed103-20260927T162404.864278Z",
+      "result_sha256": "6ff133eb9973111d50dc5039bd7650ff0e60c27d5c19b1982fde4f7ac0e17c01",
+      "safety_sha256": "7269ad5ac829d00e013ef147420ac7c8c40c7d51454afb7b2dcb5dcfd7b7c1e6",
+      "safety_violations": [],
+      "seed": 103,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2689117,
+            "process_group": 2689117,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2686612,
+            "process_group": 2686612,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "completed",
+      "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 1,
+      "arm": "treatment",
+      "config_sha256": "8513c77e5939ae690aefb1c26f55af110718919d79b928697b7f794e9c307900",
+      "error": null,
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed103-20260927T162452.928840Z",
+      "result_sha256": "db92aa760054bd9dcce943f0f315575f2dcf64da59cd4f67fcdffd6554f7a2cc",
+      "safety_sha256": "cb84db6f4dc4c8e9d09f8ccd24ca0047f4d050debdc3d7f769e563e5fae823ca",
+      "safety_violations": [],
+      "seed": 103,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2692158,
+            "process_group": 2692158,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2689698,
+            "process_group": 2689698,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "completed",
+      "trace_sha256": "7d70aa3cfe00d5146ce126d951eaac91f69790421f82f4428254b25feb47df47",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 0,
+      "arm": "control",
+      "config_sha256": "c7d5eac9a0cf935c21a56dad52648fe06a9795d0754904e2fb3e2978819ca98b",
+      "error": null,
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed104-20260927T162619.407956Z",
+      "result_sha256": "977ab20e77cdfef37288bb1dc0fbbfae0558d3e276628f0c5b0af5227e1dfa89",
+      "safety_sha256": "809d0ebd02405007aeed9fc267e467ecfe4f787cf050e26db9d5a04ab9c61074",
+      "safety_violations": [],
+      "seed": 104,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2698074,
+            "process_group": 2698074,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2695478,
+            "process_group": 2695478,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "completed",
+      "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 1,
+      "arm": "treatment",
+      "config_sha256": "c7d5eac9a0cf935c21a56dad52648fe06a9795d0754904e2fb3e2978819ca98b",
+      "error": "GeneratedPolicyError: RuntimeError: The target object is not uniquely visible",
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed104-20260927T162709.455088Z",
+      "result_sha256": "1662d1a1cefd41ea77f6d7e55909cad56aa3c5c3ec33a50111626e69f29a0a33",
+      "safety_sha256": "5fbc623515ef2404142f00c8eb4acda07e05cf6122e97ee60669ba27f59d0351",
+      "safety_violations": [],
+      "seed": 104,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2701352,
+            "process_group": 2701352,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2698823,
+            "process_group": 2698823,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "failed",
+      "trace_sha256": "c88699c2d4e8ebe16ec034e646b6c185de6f0e587a591fe0ade5da7643e9fd6e",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 0,
+      "arm": "control",
+      "config_sha256": "1423ff2f87d39ae2feebc20affeaee61d51d149920d42356a14b147fb1920b39",
+      "error": null,
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed105-20260927T162812.396819Z",
+      "result_sha256": "c5698e59bea199271288d7016341b7e34953aecea5bb66b4e69073d5d2998419",
+      "safety_sha256": "c4c20fe11a2f949af5456c8c26bb3b317baa83bc5fc655cf541a3cb440c96935",
+      "safety_violations": [],
+      "seed": 105,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2705512,
+            "process_group": 2705512,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2702949,
+            "process_group": 2702949,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "completed",
+      "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unsafe_attempts": 0
+    },
+    {
+      "actual_candidate_retrieval_events": 1,
+      "arm": "treatment",
+      "config_sha256": "1423ff2f87d39ae2feebc20affeaee61d51d149920d42356a14b147fb1920b39",
+      "error": "GeneratedPolicyError: RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+      "native_evaluated": true,
+      "native_success": false,
+      "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+      "relative_dir": "robocasa_pair_attempts/counter_to_sink-seed105-20260927T162901.062858Z",
+      "result_sha256": "7a108f72cb1df798fa7e1f9ad85c0f8b5ea05385bf7f14e8b93a60bc9daf6ee8",
+      "safety_sha256": "9ed910dc78baa6f586028c5dcf279cb90f79a8d324066d8b99f52ec16f27a477",
+      "safety_violations": [
+        {
+          "action": "move_arm_to_position",
+          "error": "AgentServerActionError: Process exited with code 1; sdk_arm_nonconvergence_error_m=0.1108; action outcome remains uncertain (partial motion possible)",
+          "event_index": 38,
+          "kind": "action_outcome_unknown"
+        }
+      ],
+      "seed": 105,
+      "service_stop": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2708818,
+            "process_group": 2708818,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 2706235,
+            "process_group": 2706235,
+            "process_group_gone": true
+          }
+        }
+      },
+      "status": "failed",
+      "trace_sha256": "a4150ebca7cd943a4ad61e5730580dbaecaaeab7e0b40477f1f4536921ebb00b",
+      "unsafe_attempts": 1
+    }
+  ],
+  "schema_version": "attentionbench.robocasa-pair-audit.v1"
+}

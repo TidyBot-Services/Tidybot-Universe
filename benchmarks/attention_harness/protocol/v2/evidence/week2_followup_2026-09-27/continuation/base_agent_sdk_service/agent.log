@@ -1,0 +1,62 @@
+2026-09-27 23:38:21,643 INFO robot_profile: Loaded robot profile 'full' from /home/truares/文档/Tidybot-Universe/agent_server/profiles/full.yaml (disabled: [])
+2026-09-27 23:38:21,644 INFO agent_server: Robot profile: full (disabled capabilities: none)
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:226: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:330: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+INFO:     Started server process [2528416]
+INFO:     Waiting for application startup.
+2026-09-27 23:38:21,692 INFO agent_server: Starting hardware server (dry_run=False)
+2026-09-27 23:38:21,902 INFO backends.base: BaseBackend: connected to localhost:50800
+2026-09-27 23:38:21,910 INFO franka_protocol.client: Connected to server at localhost
+2026-09-27 23:38:21,910 INFO backends.franka: FrankaBackend: connected to localhost
+2026-09-27 23:38:21,912 INFO gripper_protocol.client: Connected to localhost
+2026-09-27 23:38:21,912 INFO backends.gripper: GripperBackend: connected to localhost
+2026-09-27 23:38:21,913 INFO backends.mocap: MocapBackend: connected to tcp://localhost:6390
+2026-09-27 23:38:22,413 WARNING backends.mocap: MocapBackend: no message within 500ms, mocap may not be publishing
+2026-09-27 23:38:22,413 INFO system_logger.logger: [SystemLogger] Started recording (interval=0.1s)
+2026-09-27 23:38:22,414 INFO safety_monitor: SafetyMonitor started
+2026-09-27 23:38:22,414 INFO arm_monitor: ArmMonitor started (grace=3.0s, cooldown=30.0s)
+2026-09-27 23:38:22,414 INFO agent_server: API key auth DISABLED (no keys configured)
+2026-09-27 23:38:22,414 INFO agent_server: Hardware server ready on 127.0.0.1:8880
+2026-09-27 23:38:22,414 WARNING safety_monitor: SafetyMonitor: mocap lost — auto-rewind disabled (re-enable when mocap is tracking)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8880 (Press CTRL+C to quit)
+2026-09-27 23:38:22,625 INFO routes.code_routes: Job 291e04c1-765d-46 submitted by attentionbench-base-diagnostic (position 1)
+2026-09-27 23:38:22,626 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:38:22,626 INFO lease: Lease granted to job:attentionbench-base-diagnostic:291e04c1-765d-46 (9467e8e9-6e1d-4dd0-b200-ec798ea52b08)
+2026-09-27 23:38:22,626 INFO execution_recorder: ExecutionRecorder: started for 1acf1580-410e-41 (0 cameras, state=True)
+2026-09-27 23:38:22,626 INFO code_executor: Executing code (ID: 1acf1580-410e-41): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_233822_1acf1580-410e-41.py
+2026-09-27 23:38:24,344 INFO code_executor: Execution 1acf1580-410e-41 finished: ExecutionStatus.COMPLETED (duration: 1.72s, exit_code: 0)
+2026-09-27 23:38:24,345 INFO execution_recorder: ExecutionRecorder: stopped for 1acf1580-410e-41 (0 frames, 18 state samples, 1.7s)
+2026-09-27 23:38:24,345 INFO execution_recorder: ExecutionRecorder: cleaned up 51c5aed6-4235-4e
+2026-09-27 23:38:24,345 INFO routes.code_routes: Job 291e04c1-765d-46 finished: completed (execution 1acf1580-410e-41)
+2026-09-27 23:38:24,345 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:38:24,345 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:38:24,345 INFO gripper_protocol.client: Opening...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-27 23:38:24,617 INFO agent_server: Shutting down hardware server
+2026-09-27 23:38:24,617 INFO arm_monitor: ArmMonitor stopped
+2026-09-27 23:38:24,617 INFO safety_monitor: SafetyMonitor stopped
+2026-09-27 23:38:24,617 INFO system_logger.logger: [SystemLogger] Stopped recording (3/20 samples, 3 waypoints)
+2026-09-27 23:38:24,617 INFO lease: Reset to home cancelled
+2026-09-27 23:38:24,618 INFO backends.mocap: MocapBackend: disconnected
+2026-09-27 23:38:24,618 INFO backends.cameras: CameraBackend: disconnected
+2026-09-27 23:38:24,618 INFO gripper_protocol.client: Disconnected
+2026-09-27 23:38:24,618 INFO backends.gripper: GripperBackend: disconnected
+2026-09-27 23:38:24,630 INFO franka_protocol.client: Disconnected
+2026-09-27 23:38:24,630 INFO backends.franka: FrankaBackend: disconnected
+2026-09-27 23:38:24,672 INFO backends.base: BaseBackend: disconnected
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2528416]

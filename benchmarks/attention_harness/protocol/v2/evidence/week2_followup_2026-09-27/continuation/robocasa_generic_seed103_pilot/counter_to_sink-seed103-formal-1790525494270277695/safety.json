@@ -1,0 +1,419 @@
+{
+  "attempt_id": "counter_to_sink-seed103-formal-1790525494270277695",
+  "coverage": "command_envelope_and_proprioception; no_collision_telemetry",
+  "events": [
+    {
+      "eef_position_m": [
+        0.38643690848553053,
+        9.874011967399292e-08,
+        0.4893769650896244
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.38643690848553053,
+        9.874011967399292e-08,
+        0.4893769650896244
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.125,
+        -0.1
+      ],
+      "frame": "local",
+      "kind": "move_base_delta",
+      "rotation_rad": 0.0
+    },
+    {
+      "eef_position_m": [
+        0.3865337452603607,
+        -0.0002191828833393931,
+        0.48904472341382044
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.125,
+        -0.1
+      ],
+      "frame": "local",
+      "kind": "move_base_delta",
+      "rotation_rad": 0.0
+    },
+    {
+      "eef_position_m": [
+        0.38652149486668796,
+        -0.00019179002811875998,
+        0.48909196217218526
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.15,
+        -0.075
+      ],
+      "frame": "local",
+      "kind": "move_base_delta",
+      "rotation_rad": 0.0
+    },
+    {
+      "eef_position_m": [
+        0.3865539147169295,
+        -0.0001708142937762492,
+        0.48898386704471364
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.15,
+        -0.075
+      ],
+      "frame": "local",
+      "kind": "move_base_delta",
+      "rotation_rad": 0.0
+    },
+    {
+      "eef_position_m": [
+        0.38655801538994955,
+        -0.00017759678635802728,
+        0.4889634234149907
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kind": "move_arm_delta",
+      "rotation_delta": [
+        -0.175,
+        0.165,
+        0.0
+      ]
+    },
+    {
+      "eef_position_m": [
+        0.38683493741281405,
+        0.0003710497094892101,
+        0.48781222182986084
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kind": "move_arm_delta",
+      "rotation_delta": [
+        0.0,
+        0.0,
+        -0.8
+      ]
+    },
+    {
+      "eef_position_m": [
+        0.3870221500289507,
+        -0.0001859944182608813,
+        0.48737945933226245
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 10
+    },
+    {
+      "eef_position_m": [
+        0.38702255201017804,
+        -0.00018639829932192765,
+        0.48737830119947967
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "kind": "move_arm_to_position",
+      "max_steps": 100,
+      "target_m": [
+        0.3915490997587669,
+        -0.20024258368758763,
+        0.6589319648115726
+      ],
+      "tolerance_m": 0.004
+    },
+    {
+      "eef_position_m": [
+        0.3916893784465942,
+        -0.19932329743431373,
+        0.6568871106770688
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "kind": "move_arm_to_position",
+      "max_steps": 100,
+      "target_m": [
+        0.3915490997587669,
+        -0.20024258368758763,
+        0.49393196481157253
+      ],
+      "tolerance_m": 0.004
+    },
+    {
+      "eef_position_m": [
+        0.39203402631226436,
+        -0.20026549286835943,
+        0.4957008375044136
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 10
+    },
+    {
+      "eef_position_m": [
+        0.3925716180432566,
+        -0.2010425438099545,
+        0.49873736534073665
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.0,
+        0.0,
+        0.035
+      ],
+      "kind": "move_arm_delta",
+      "rotation_delta": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "eef_position_m": [
+        0.3941189701988374,
+        -0.20146200540625825,
+        0.528176845707031
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.3941189701988374,
+        -0.20146200540625825,
+        0.528176845707031
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.0,
+        0.0,
+        0.035
+      ],
+      "kind": "move_arm_delta",
+      "rotation_delta": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "eef_position_m": [
+        0.39554693172055394,
+        -0.20189023378079982,
+        0.5622303460668537
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.39554693172055394,
+        -0.20189023378079982,
+        0.5622303460668537
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.0,
+        0.0,
+        0.035
+      ],
+      "kind": "move_arm_delta",
+      "rotation_delta": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "eef_position_m": [
+        0.39693506373068704,
+        -0.2023165741887206,
+        0.5962400397895368
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.39693506373068704,
+        -0.2023165741887206,
+        0.5962400397895368
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "delta_m": [
+        0.0,
+        0.0,
+        0.035
+      ],
+      "kind": "move_arm_delta",
+      "rotation_delta": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "eef_position_m": [
+        0.39801996893321223,
+        -0.20261640017182306,
+        0.6298407268705525
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.39801996893321223,
+        -0.20261640017182306,
+        0.6298407268705525
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "kind": "move_arm_to_position",
+      "max_steps": 100,
+      "target_m": [
+        0.4715490997587669,
+        -0.05024258368758763,
+        0.6489319648115726
+      ],
+      "tolerance_m": 0.004
+    },
+    {
+      "eef_position_m": [
+        0.4677135755008526,
+        -0.05581955908487491,
+        0.6574844742949998
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.4677135755008526,
+        -0.05581955908487491,
+        0.6574844742949998
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "kind": "move_arm_to_position",
+      "max_steps": 100,
+      "target_m": [
+        0.5415490997587669,
+        0.09975741631241236,
+        0.6489319648115726
+      ],
+      "tolerance_m": 0.004
+    },
+    {
+      "eef_position_m": [
+        0.5278975373660845,
+        0.09678595398487189,
+        0.6750475802036533
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.5278975373660845,
+        0.09678595398487189,
+        0.6750475802036533
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "kind": "move_arm_to_position",
+      "max_steps": 100,
+      "target_m": [
+        0.5254140682628465,
+        0.0891612444750789,
+        0.6039169180786121
+      ],
+      "tolerance_m": 0.004
+    },
+    {
+      "eef_position_m": [
+        0.5227691503914296,
+        0.1001869004341512,
+        0.6198402579396436
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.5227691503914296,
+        0.1001869004341512,
+        0.6198402579396436
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 10
+    },
+    {
+      "eef_position_m": [
+        0.5209527472681366,
+        0.09772276267190393,
+        0.6147903770093422
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        0.5209527472681366,
+        0.09772276267190393,
+        0.6147903770093422
+      ],
+      "kind": "state_sample"
+    }
+  ],
+  "limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "schema_version": "attentionbench.safety-monitor.v1",
+  "source": "independent_safety_monitor",
+  "unsafe_attempts": 0,
+  "violations": []
+}

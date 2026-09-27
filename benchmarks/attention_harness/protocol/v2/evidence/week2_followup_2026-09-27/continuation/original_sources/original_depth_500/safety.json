@@ -1,0 +1,45 @@
+{
+  "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+  "coverage": "command_envelope_and_proprioception; no_collision_telemetry",
+  "events": [
+    {
+      "eef_position_m": [
+        -0.08729491400209909,
+        -0.0005081564041468054,
+        1.026696572709489
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.08729491400209909,
+        -0.0005081564041468054,
+        1.026696572709489
+      ],
+      "kind": "state_sample"
+    }
+  ],
+  "limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+  "schema_version": "attentionbench.safety-monitor.v1",
+  "source": "independent_safety_monitor",
+  "unsafe_attempts": 1,
+  "violations": [
+    {
+      "action": "set_gripper",
+      "error": "ServiceError: service returned HTTP 500: {\"error\":\"ValueError: normalized depth must lie in [0, 1]\",\"traceback\":\"Traceback (most recent call last):\\n  File \\\"/home/truares/\\u684c\\u9762/robosuite_sim-service/robosuite_sim/server.py\\\", line 224, in _dispatch\\n    value = route(request) if request or self.command == \\\"POST\\\" else route()\\n  File \\\"/home/truares/\\u684c\\u9762/robosuite_sim-service/robosuite_sim/server.py\\\", line 116, in step\\n    observation, reward, done, info = backend.step(decode_array(request[\\\"action\\\"]))\\n  File \\\"/home/truares/\\u684c\\u9762/robosuite_sim-service/robosuite_sim/backend.py\\\", line 132, in step\\n    public = self._public_observation(raw)\\n  File \\\"/home/truares/\\u684c\\u9762/robosuite_sim-service/robosuite_sim/backend.py\\\", line 210, in _public_observation\\n    self._metric_depth(self._env.sim, np.flipud(public[depth_key])),\\n  File \\\"/home/truares/\\u684c\\u9762/robosuite_sim-service/robosuite_sim/backend.py\\\", line 234, in _metric_depth\\n    raise ValueError(\\\"normalized depth must lie in [0, 1]\\\")\\nValueError: normalized depth must lie in [0, 1]\\n\"}",
+      "event_index": 2,
+      "kind": "action_outcome_unknown"
+    }
+  ]
+}

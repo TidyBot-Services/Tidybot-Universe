@@ -1,5 +1,7 @@
 # AttentionBench Week 2 工程后续归档（2026-09-27）
 
+2026-09-28 的修复、预冻结五对开发配对、拒绝晋升和额外 200 次 depth 动作见 [`continuation/REPORT.md`](continuation/REPORT.md)。下文为 2026-09-27 当时的快照，候选的“无 plan／pairs”状态已由续档更新。
+
 本目录只记录开发 smoke；所有结果 `formal_eligible=false`。未运行 held-out seed、七策略正式矩阵或正式成绩。迁移后以本目录为根读取相对路径；JSON 中的原绝对路径仅用于追溯初始机器，`archive_manifest.json` 给出本目录每个文件的 SHA-256。
 
 ## 版本与冻结边界

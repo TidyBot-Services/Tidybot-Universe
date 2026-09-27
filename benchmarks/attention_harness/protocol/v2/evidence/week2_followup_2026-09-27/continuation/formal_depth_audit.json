@@ -1,0 +1,326 @@
+[
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549",
+    "artifact_hashes": {
+      "native_result": {
+        "matches_runner": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_runner": true,
+        "sha256": "9886fcf6eeb92cece50bae69aebb328f2859020e622b0fdcdda8489be6654add"
+      },
+      "sandbox_receipt": {
+        "matches_runner": true,
+        "sha256": "ddce9286901449a1e57a3e8f90cb256df647442f267f31fa439f94bd095d6e6f"
+      },
+      "trace": {
+        "matches_runner": true,
+        "sha256": "2568f0adf6c6951a7e25d466427a53275c7a82786ebc242f7d6b0359c7ff2eb6"
+      }
+    },
+    "config_matches_freeze": true,
+    "error": null,
+    "formal_eligible": false,
+    "native_evaluated": true,
+    "native_matches_runner": true,
+    "native_success": false,
+    "policy_matches_freeze": true,
+    "safety_unsafe_attempts": 0,
+    "safety_violations": [],
+    "sdk_actions": [
+      "open",
+      "close",
+      "open",
+      "close",
+      "open",
+      "close"
+    ],
+    "seed": 101,
+    "service_reaped": true,
+    "service_revision_matches_freeze": true,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2478574,
+      "process_group": 2478574,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift",
+    "trace_status_matches_runner": true
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361",
+    "artifact_hashes": {
+      "native_result": {
+        "matches_runner": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_runner": true,
+        "sha256": "9877645598073444b08333bd63508383f5486b5bfa877c9fedba8f8fb3749462"
+      },
+      "sandbox_receipt": {
+        "matches_runner": true,
+        "sha256": "257fad81756f3be8d06d711f8b37c9a4f690280e5ae1a3c96c0c8d325a482ea4"
+      },
+      "trace": {
+        "matches_runner": true,
+        "sha256": "237fa45256dab36f70aa719299dd0e1b09678939281658ee5d8ebb794957025e"
+      }
+    },
+    "config_matches_freeze": true,
+    "error": null,
+    "formal_eligible": false,
+    "native_evaluated": true,
+    "native_matches_runner": true,
+    "native_success": false,
+    "policy_matches_freeze": true,
+    "safety_unsafe_attempts": 0,
+    "safety_violations": [],
+    "sdk_actions": [
+      "open",
+      "close",
+      "open",
+      "close",
+      "open",
+      "close"
+    ],
+    "seed": 102,
+    "service_reaped": true,
+    "service_revision_matches_freeze": true,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2478778,
+      "process_group": 2478778,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift",
+    "trace_status_matches_runner": true
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed103/cube_lift-seed103-formal-1790522562938047455",
+    "artifact_hashes": {
+      "native_result": {
+        "matches_runner": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_runner": true,
+        "sha256": "38cc394a0f686628a2674a58fb37e9672cd843e3273697def60dcb704533178e"
+      },
+      "sandbox_receipt": {
+        "matches_runner": true,
+        "sha256": "d8295be37d2245ffbbb9acf78da84b6c38a8b3aacb0183a560aa26ae5285d947"
+      },
+      "trace": {
+        "matches_runner": true,
+        "sha256": "5da14fd04893858c61e64fdb924a5e594a138ca444a55f254ad3abb84a8cbcb0"
+      }
+    },
+    "config_matches_freeze": true,
+    "error": null,
+    "formal_eligible": false,
+    "native_evaluated": true,
+    "native_matches_runner": true,
+    "native_success": false,
+    "policy_matches_freeze": true,
+    "safety_unsafe_attempts": 0,
+    "safety_violations": [],
+    "sdk_actions": [
+      "open",
+      "close",
+      "open",
+      "close",
+      "open",
+      "close"
+    ],
+    "seed": 103,
+    "service_reaped": true,
+    "service_revision_matches_freeze": true,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479022,
+      "process_group": 2479022,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift",
+    "trace_status_matches_runner": true
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed101/cube_stack-seed101-formal-1790522565266813489",
+    "artifact_hashes": {
+      "native_result": {
+        "matches_runner": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_runner": true,
+        "sha256": "e8244fa32202ea307264ac1e62a0d31989a7b2442ca0b64440d4220f0e0f9b51"
+      },
+      "sandbox_receipt": {
+        "matches_runner": true,
+        "sha256": "3c14d4d5b61d2f994ec713813431c95496a2fdaf80d4423a3fa1a69592da0eea"
+      },
+      "trace": {
+        "matches_runner": true,
+        "sha256": "8bfedb481650723f2ba662a19425e0536762ddf62941d62c2979910e7d31c391"
+      }
+    },
+    "config_matches_freeze": true,
+    "error": null,
+    "formal_eligible": false,
+    "native_evaluated": true,
+    "native_matches_runner": true,
+    "native_success": false,
+    "policy_matches_freeze": true,
+    "safety_unsafe_attempts": 0,
+    "safety_violations": [],
+    "sdk_actions": [
+      "open",
+      "close",
+      "open",
+      "close",
+      "open",
+      "close"
+    ],
+    "seed": 101,
+    "service_reaped": true,
+    "service_revision_matches_freeze": true,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479249,
+      "process_group": 2479249,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack",
+    "trace_status_matches_runner": true
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed102/cube_stack-seed102-formal-1790522567573634208",
+    "artifact_hashes": {
+      "native_result": {
+        "matches_runner": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_runner": true,
+        "sha256": "ab4709abc0524a45083631830f1fa4c470eb507d90c9cca443e33bdb9e502b31"
+      },
+      "sandbox_receipt": {
+        "matches_runner": true,
+        "sha256": "f33b5cfac1de8ea894e440d8a6e10a02dde9e59e30f343be162cc5215abb0507"
+      },
+      "trace": {
+        "matches_runner": true,
+        "sha256": "390cf987154b98a88231f1a2c352e0c067412f166b6843af4f0dd3945db40cd5"
+      }
+    },
+    "config_matches_freeze": true,
+    "error": null,
+    "formal_eligible": false,
+    "native_evaluated": true,
+    "native_matches_runner": true,
+    "native_success": false,
+    "policy_matches_freeze": true,
+    "safety_unsafe_attempts": 0,
+    "safety_violations": [],
+    "sdk_actions": [
+      "open",
+      "close",
+      "open",
+      "close",
+      "open",
+      "close"
+    ],
+    "seed": 102,
+    "service_reaped": true,
+    "service_revision_matches_freeze": true,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479448,
+      "process_group": 2479448,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack",
+    "trace_status_matches_runner": true
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed103/cube_stack-seed103-formal-1790522569888796695",
+    "artifact_hashes": {
+      "native_result": {
+        "matches_runner": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_runner": true,
+        "sha256": "9cc35c64d094e00b3d9128726f2a33b77b932efaa4eb26c81fc10d64efac3a4a"
+      },
+      "sandbox_receipt": {
+        "matches_runner": true,
+        "sha256": "1619a16cc3f2074dfde49cb00b109f7fdd9e5c1635561e474726ea8e6d386914"
+      },
+      "trace": {
+        "matches_runner": true,
+        "sha256": "2603460fad486bf9745663ef191aad5ba3911597bb6b7c7922701f71aa3327f2"
+      }
+    },
+    "config_matches_freeze": true,
+    "error": null,
+    "formal_eligible": false,
+    "native_evaluated": true,
+    "native_matches_runner": true,
+    "native_success": false,
+    "policy_matches_freeze": true,
+    "safety_unsafe_attempts": 0,
+    "safety_violations": [],
+    "sdk_actions": [
+      "open",
+      "close",
+      "open",
+      "close",
+      "open",
+      "close"
+    ],
+    "seed": 103,
+    "service_reaped": true,
+    "service_revision_matches_freeze": true,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479632,
+      "process_group": 2479632,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack",
+    "trace_status_matches_runner": true
+  }
+]

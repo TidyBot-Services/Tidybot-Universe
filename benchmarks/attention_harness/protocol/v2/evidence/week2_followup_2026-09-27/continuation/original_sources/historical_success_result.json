@@ -1,0 +1,49 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-v2-robocasa-mobile-dev/counter_to_sink-seed101-20260924T164622.879733Z",
+  "attention_trace": {
+    "advisor_trace_id": null,
+    "attempt_id": "attempt:counter_to_sink-seed101-20260924T164622.879733Z:0",
+    "bundle": "/home/truares/\u684c\u9762/attentionbench-v2-robocasa-mobile-dev/counter_to_sink-seed101-20260924T164622.879733Z/attention_bundle.json",
+    "execution_id": "execution:counter_to_sink-seed101-20260924T164622.879733Z:0",
+    "raw_trace_id": "raw-trace:counter_to_sink-seed101-20260924T164622.879733Z:0",
+    "run_id": "run:counter_to_sink-seed101-20260924T164622.879733Z",
+    "schema_version": "attentionbench.episode-trace-link.v1",
+    "store": "/home/truares/\u684c\u9762/attentionbench-v2-robocasa-mobile-dev/attention_memory.sqlite3"
+  },
+  "elapsed_seconds": 38.908393612997315,
+  "error": null,
+  "execution_target": "robocasa_sim",
+  "formal_blockers": [
+    "generated-policy timeout/cancellation acceptance matrix not frozen across tasks",
+    "frozen development-seed stability gate not passed"
+  ],
+  "formal_eligible": false,
+  "generated_policy": {
+    "action_cancellation_receipts": [],
+    "boundary": "spawned_process_sdk_rpc",
+    "call_count": 25,
+    "service_cancellation_capability_verified": true,
+    "status": "completed",
+    "timeout_seconds": 300.0
+  },
+  "hypothesis": "",
+  "initial_object_count": 26,
+  "memory_ids": [],
+  "native_success": true,
+  "no_op_success": false,
+  "perception_mode": "sim_gt",
+  "policy_execution_mode": "sandboxed_generated",
+  "policy_id": "robocasa_mobile_sink_policy",
+  "policy_sha256": "ba7386b605b4b9f3bf15b94dd97a73da54992d67b94f151dc6a0d453cf1d5bf6",
+  "prior_attempt_count": 0,
+  "runtime_variation": null,
+  "schema_version": "attentionbench.robocasa-sim-gt-episode.v2",
+  "score_namespace": "v2/gt_perception_attentionbench",
+  "seed": 101,
+  "status": "completed",
+  "task_id": "counter_to_sink",
+  "timed_out": false,
+  "trusted_policy_callback": false,
+  "validation_config_sha256": null,
+  "validation_variation": null
+}

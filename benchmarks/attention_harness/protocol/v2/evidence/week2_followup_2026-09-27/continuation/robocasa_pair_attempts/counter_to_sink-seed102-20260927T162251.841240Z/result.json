@@ -1,0 +1,64 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z",
+  "attention_trace": {
+    "advisor_trace_id": "trace:counter_to_sink-seed102-20260927T162251.841240Z:0",
+    "attempt_id": "attempt:counter_to_sink-seed102-20260927T162251.841240Z:0",
+    "bundle": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed102-20260927T162251.841240Z/attention_bundle.json",
+    "execution_id": "execution:counter_to_sink-seed102-20260927T162251.841240Z:0",
+    "raw_trace_id": "raw-trace:counter_to_sink-seed102-20260927T162251.841240Z:0",
+    "run_id": "run:counter_to_sink-seed102-20260927T162251.841240Z",
+    "schema_version": "attentionbench.episode-trace-link.v1",
+    "store": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention_memory.sqlite3"
+  },
+  "available_memory_ids": [
+    "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0"
+  ],
+  "elapsed_seconds": 28.00091732099827,
+  "error": "GeneratedPolicyError: RuntimeError: The target object slipped during lift step 0",
+  "execution_target": "robocasa_sim",
+  "formal_blockers": [
+    "generated-policy timeout/cancellation acceptance matrix not frozen across tasks",
+    "frozen development-seed stability gate not passed"
+  ],
+  "formal_eligible": false,
+  "generated_policy": {
+    "action_cancellation_receipts": [],
+    "boundary": "spawned_process_sdk_rpc",
+    "call_count": null,
+    "service_cancellation_capability_verified": true,
+    "status": "failed",
+    "timeout_seconds": 240
+  },
+  "hypothesis": "",
+  "initial_object_count": 19,
+  "media_capture": null,
+  "memory_ids": [
+    "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0"
+  ],
+  "native_success": false,
+  "no_op_success": false,
+  "perception_mode": "sim_gt",
+  "policy_execution_mode": "sandboxed_generated",
+  "policy_id": "reactive_help",
+  "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+  "prior_attempt_count": 0,
+  "runtime_variation": null,
+  "schema_version": "attentionbench.robocasa-sim-gt-episode.v2",
+  "score_namespace": "v2/gt_perception_attentionbench",
+  "seed": 102,
+  "status": "failed",
+  "task_id": "counter_to_sink",
+  "timed_out": false,
+  "trusted_policy_callback": false,
+  "validation_config_sha256": "e6406a5197862db7138459b2fdc6f7fa11fdc9cd0fde317c2878452df57cca90",
+  "validation_variation": {
+    "camera_config_id": "camera:base",
+    "camera_names": [
+      "base_camera"
+    ],
+    "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+    "scene_id": "scene:93244621fd1a24b456d5",
+    "task_prompt": "pick the cup from the counter and place it in the sink",
+    "task_variant_id": "task:cup"
+  }
+}

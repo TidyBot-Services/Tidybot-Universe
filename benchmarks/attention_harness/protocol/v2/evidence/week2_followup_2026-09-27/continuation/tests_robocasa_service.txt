@@ -1,0 +1,1 @@
+test_reconfigure_rebinds_state_and_action_to_new_robot: passed

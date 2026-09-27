@@ -1,0 +1,590 @@
+[
+  {
+    "task": "cube_lift",
+    "seed": 101,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "84b55bffca00ac287f04ca3cf563fb532ff5972343705b66cdd47f5b4dc2f365",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "82df2014d5d3a37e32c714847da83f60447da0d9bf58af9a291b622ecc74f5ac",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "64696d5cf4409f45dafb5b9e0b42877c3841af2736d5b30a4877c0ae1babe31c",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "daa0c5fbf73e9d1a36426d251ea97fcf0a9502cdf57a0f515d960b8c2edb3142",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "5f50edcd15ddac9d53a76f81a556c6397b84a083c8be64062e8c2e3a7cb7aa96",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_lift",
+    "seed": 102,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "2384d198d666abc676fdc4e9059edbf02b0215d7fed40c07a058fdbd3bb0e863",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "b77ce8c70ad7bfbe123ce1dfd808fb197d78ec40ce2b6b5d2525c934613eb2c5",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7ff0c7a7a6f43d68740e9f1579d849aa8a9f711529b9b49c4746501b6e0f4730",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "9296484f8885a0c6a65537fc89336c441689ef6688cd77cc9c678158273e83d4",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "43f2a4278e80bc4adb516b8f36621803ffb6a9d1eae7d5aeacb470ad1d6b9b67",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_lift",
+    "seed": 103,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "0224f9c7007bf4c3afd4442a8ab87b572d2ce9879239bdc9fd5f2a35eac7a661",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "86377adb8d4778d6dd2e767f5d6efa9ab6d800c3644c46820b3c1ede2ad0f273",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c440f77a64991dd77a849d978da9da10efd02362784c5565ad3be5ca2c504ba0",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "c7a15555de594ad27a6cf26a80c176f340c1bb3018bfa03a18495d75ce989f54",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e6d94e4dd49874f3ef1fdc8cf7156f65c225b9c0c6334cb807028e25b3deb992",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 101,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "eee4f894f68b0eb4dc1ea0708321dad46d94d776622dc9d4f321b304ff79baaf",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "6b70ac5c66dd70127203079c0242b751a0b4437b023e5e687353ff3e6be8c7e1",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "f3b8dc05a6e1880f946e1f769560a0d47db53666bc04e07a40225ab17a82bd70",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e898bfa8f162053e6eefc9044aa2acf4f7cfd081c6166d966de9b02793516285",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "aed3e79d01e5720029895fe43ec61ee71b16b5014bc9a82aa89a07bdb79a4bed",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 102,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "35e33238977a79785325ca107fbcb9ef75257639e6d3877c1e05bb0c417d19a2",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e9f9ee8fe32bc1fec2af6255a79aa0af49b2748593fa980bec3c095515ae77c0",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "1fe434f9933f4d1b40b26e2f9154d9ea7dff7d783706786c9c9c5355fbdd5bd9",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7a3bc839ab4aec83bb4017b73623b037849e4e4039adb938a8894d4f1af9a7c0",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "d3183f7ba268c04357aca7b41d32dd9f598e7d2f7494a362e5c11dff887af975",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  },
+  {
+    "task": "cube_stack",
+    "seed": 103,
+    "steps": [
+      {
+        "index": 0,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "7d6e423f70184551d04cacf3320cc51d9e8d67dc1979e181675a8c56f1c30985",
+        "native_success": false
+      },
+      {
+        "index": 1,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "68386dbdad62f92482222913048bec840818aa4d1ad8f1400dd3c283a4546291",
+        "native_success": false
+      },
+      {
+        "index": 2,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "e6189560366e82ae12b10884b5a6164b887c356693ceab3132862279f9a0477c",
+        "native_success": false
+      },
+      {
+        "index": 3,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "17759b2945fa4c8d9c06ab696d41feb910416c974c577038f08c4428f14f191b",
+        "native_success": false
+      },
+      {
+        "index": 4,
+        "action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "depth_min_m": 0.5509448647499084,
+        "depth_max_m": 2.7081689834594727,
+        "depth_finite": true,
+        "depth_sha256": "3ad26913c493948dbf8a3fe17468194b40f69fbffd6ca4fd9681041eba00bfb0",
+        "native_success": false
+      }
+    ],
+    "formal_eligible": false,
+    "versions": {
+      "robosuite": "1.5.1",
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4"
+    },
+    "status": "completed"
+  }
+]

@@ -1,0 +1,204 @@
+2026-09-27 23:51:35,369 INFO robot_profile: Loaded robot profile 'full' from /home/truares/文档/Tidybot-Universe/agent_server/profiles/full.yaml (disabled: [])
+2026-09-27 23:51:35,369 INFO agent_server: Robot profile: full (disabled capabilities: none)
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:226: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/home/truares/文档/Tidybot-Universe/agent_server/server.py:330: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+INFO:     Started server process [2574229]
+INFO:     Waiting for application startup.
+2026-09-27 23:51:35,421 INFO agent_server: Starting hardware server (dry_run=False)
+2026-09-27 23:51:35,628 INFO backends.base: BaseBackend: connected to localhost:50800
+2026-09-27 23:51:35,636 INFO franka_protocol.client: Connected to server at localhost
+2026-09-27 23:51:35,636 INFO backends.franka: FrankaBackend: connected to localhost
+2026-09-27 23:51:35,638 INFO gripper_protocol.client: Connected to localhost
+2026-09-27 23:51:35,638 INFO backends.gripper: GripperBackend: connected to localhost
+2026-09-27 23:51:35,639 INFO backends.mocap: MocapBackend: connected to tcp://localhost:6390
+2026-09-27 23:51:36,140 WARNING backends.mocap: MocapBackend: no message within 500ms, mocap may not be publishing
+2026-09-27 23:51:36,140 INFO system_logger.logger: [SystemLogger] Started recording (interval=0.1s)
+2026-09-27 23:51:36,140 INFO safety_monitor: SafetyMonitor started
+2026-09-27 23:51:36,140 INFO arm_monitor: ArmMonitor started (grace=3.0s, cooldown=30.0s)
+2026-09-27 23:51:36,140 INFO agent_server: API key auth DISABLED (no keys configured)
+2026-09-27 23:51:36,140 INFO agent_server: Hardware server ready on 127.0.0.1:8880
+2026-09-27 23:51:36,141 WARNING safety_monitor: SafetyMonitor: mocap lost — auto-rewind disabled (re-enable when mocap is tracking)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8880 (Press CTRL+C to quit)
+2026-09-27 23:51:39,388 INFO routes.code_routes: Job f6fbbd8c-25ff-45 submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:51:39,388 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:39,388 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:f6fbbd8c-25ff-45 (430f8a93-fe29-4b9a-ab5e-cc781a60db32)
+2026-09-27 23:51:39,388 INFO execution_recorder: ExecutionRecorder: started for 55e2c3e4-aa28-4d (0 cameras, state=True)
+2026-09-27 23:51:39,389 INFO code_executor: Executing code (ID: 55e2c3e4-aa28-4d): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235139_55e2c3e4-aa28-4d.py
+2026-09-27 23:51:41,107 INFO code_executor: Execution 55e2c3e4-aa28-4d finished: ExecutionStatus.COMPLETED (duration: 1.72s, exit_code: 0)
+2026-09-27 23:51:41,107 INFO execution_recorder: ExecutionRecorder: stopped for 55e2c3e4-aa28-4d (0 frames, 18 state samples, 1.7s)
+2026-09-27 23:51:41,108 INFO execution_recorder: ExecutionRecorder: cleaned up cbd2fb65-977b-46
+2026-09-27 23:51:41,108 INFO routes.code_routes: Job f6fbbd8c-25ff-45 finished: completed (execution 55e2c3e4-aa28-4d)
+2026-09-27 23:51:41,108 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:51:41,108 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:51:41,108 INFO gripper_protocol.client: Opening...
+2026-09-27 23:51:41,110 INFO routes.code_routes: Job a21b08ab-4463-42 submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:51:41,460 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Opened gripper
+2026-09-27 23:51:41,461 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Arm already at home (max_delta=0.0004 rad)
+2026-09-27 23:51:41,461 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging base to (0.000, 0.000, 0.000) (pos_thr=0.050m, theta_thr=0.087rad, timeout=10.0s)
+2026-09-27 23:51:42,062 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Base home reached (err: x=0.0455 y=0.0367 theta=0.0008)
+2026-09-27 23:51:42,062 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home complete
+2026-09-27 23:51:42,062 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:42,098 INFO agent_server: Sim scene soft-reset via http://localhost:6300/reset
+2026-09-27 23:51:42,099 INFO lease: Reset to home complete
+2026-09-27 23:51:42,111 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:42,111 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:a21b08ab-4463-42 (96b15d36-571b-431c-8d42-59b9378b8b5b)
+2026-09-27 23:51:42,111 INFO execution_recorder: ExecutionRecorder: started for 3a61de65-4648-4e (0 cameras, state=True)
+2026-09-27 23:51:42,111 INFO code_executor: Executing code (ID: 3a61de65-4648-4e): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235142_3a61de65-4648-4e.py
+2026-09-27 23:51:43,728 INFO code_executor: Execution 3a61de65-4648-4e finished: ExecutionStatus.COMPLETED (duration: 1.62s, exit_code: 0)
+2026-09-27 23:51:43,728 INFO execution_recorder: ExecutionRecorder: stopped for 3a61de65-4648-4e (0 frames, 17 state samples, 1.6s)
+2026-09-27 23:51:43,729 INFO execution_recorder: ExecutionRecorder: cleaned up da262e1b-4843-44
+2026-09-27 23:51:43,729 INFO routes.code_routes: Job a21b08ab-4463-42 finished: completed (execution 3a61de65-4648-4e)
+2026-09-27 23:51:43,729 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:51:43,729 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:51:43,729 INFO gripper_protocol.client: Opening...
+2026-09-27 23:51:43,733 INFO routes.code_routes: Job 953a3ee5-7d32-4d submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:51:44,080 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Opened gripper
+2026-09-27 23:51:44,080 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Arm already at home (max_delta=0.0004 rad)
+2026-09-27 23:51:44,080 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging base to (0.000, 0.000, 0.000) (pos_thr=0.050m, theta_thr=0.087rad, timeout=10.0s)
+2026-09-27 23:51:44,783 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Base home reached (err: x=0.0397 y=0.0320 theta=0.0006)
+2026-09-27 23:51:44,783 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home complete
+2026-09-27 23:51:44,783 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:44,797 INFO agent_server: Sim scene soft-reset via http://localhost:6300/reset
+2026-09-27 23:51:44,797 INFO lease: Reset to home complete
+2026-09-27 23:51:45,233 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:45,233 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:953a3ee5-7d32-4d (80578c5c-1860-46d5-a247-2855be121f78)
+2026-09-27 23:51:45,233 INFO execution_recorder: ExecutionRecorder: started for f4ecbb8b-6a40-41 (0 cameras, state=True)
+2026-09-27 23:51:45,233 INFO code_executor: Executing code (ID: f4ecbb8b-6a40-41): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235145_f4ecbb8b-6a40-41.py
+2026-09-27 23:51:46,950 INFO code_executor: Execution f4ecbb8b-6a40-41 finished: ExecutionStatus.COMPLETED (duration: 1.72s, exit_code: 0)
+2026-09-27 23:51:46,950 INFO execution_recorder: ExecutionRecorder: stopped for f4ecbb8b-6a40-41 (0 frames, 18 state samples, 1.7s)
+2026-09-27 23:51:46,951 INFO execution_recorder: ExecutionRecorder: cleaned up 5e707646-d53a-48
+2026-09-27 23:51:46,951 INFO routes.code_routes: Job 953a3ee5-7d32-4d finished: completed (execution f4ecbb8b-6a40-41)
+2026-09-27 23:51:46,951 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:51:46,951 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:51:46,951 INFO gripper_protocol.client: Opening...
+2026-09-27 23:51:46,961 INFO routes.code_routes: Job 076d0809-8781-40 submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:51:47,301 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Opened gripper
+2026-09-27 23:51:47,302 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Arm already at home (max_delta=0.0004 rad)
+2026-09-27 23:51:47,302 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging base to (0.000, 0.000, 0.000) (pos_thr=0.050m, theta_thr=0.087rad, timeout=10.0s)
+2026-09-27 23:51:48,007 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Base home reached (err: x=0.0420 y=0.0211 theta=0.0003)
+2026-09-27 23:51:48,007 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home complete
+2026-09-27 23:51:48,007 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:48,059 INFO agent_server: Sim scene soft-reset via http://localhost:6300/reset
+2026-09-27 23:51:48,059 INFO lease: Reset to home complete
+2026-09-27 23:51:48,462 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:48,462 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:076d0809-8781-40 (70b60d30-9a5e-412d-a7bc-993064974f08)
+2026-09-27 23:51:48,462 INFO execution_recorder: ExecutionRecorder: started for f2234d3a-b339-43 (0 cameras, state=True)
+2026-09-27 23:51:48,463 INFO code_executor: Executing code (ID: f2234d3a-b339-43): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235148_f2234d3a-b339-43.py
+2026-09-27 23:51:50,079 INFO code_executor: Execution f2234d3a-b339-43 finished: ExecutionStatus.COMPLETED (duration: 1.62s, exit_code: 0)
+2026-09-27 23:51:50,080 INFO execution_recorder: ExecutionRecorder: stopped for f2234d3a-b339-43 (0 frames, 17 state samples, 1.6s)
+2026-09-27 23:51:50,080 INFO execution_recorder: ExecutionRecorder: cleaned up ce3d4801-5f45-48
+2026-09-27 23:51:50,080 INFO routes.code_routes: Job 076d0809-8781-40 finished: completed (execution f2234d3a-b339-43)
+2026-09-27 23:51:50,080 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:51:50,080 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:51:50,080 INFO gripper_protocol.client: Opening...
+2026-09-27 23:51:50,089 INFO routes.code_routes: Job 537be0bf-f97d-41 submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:51:50,431 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Opened gripper
+2026-09-27 23:51:50,431 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Arm already at home (max_delta=0.0005 rad)
+2026-09-27 23:51:50,431 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging base to (0.000, 0.000, 0.000) (pos_thr=0.050m, theta_thr=0.087rad, timeout=10.0s)
+2026-09-27 23:51:51,134 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Base home reached (err: x=0.0476 y=0.0240 theta=0.0004)
+2026-09-27 23:51:51,134 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home complete
+2026-09-27 23:51:51,134 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:51,148 INFO agent_server: Sim scene soft-reset via http://localhost:6300/reset
+2026-09-27 23:51:51,149 INFO lease: Reset to home complete
+2026-09-27 23:51:51,589 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:51,589 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:537be0bf-f97d-41 (605df1fc-03fa-47ee-96c2-e88e3f165071)
+2026-09-27 23:51:51,589 INFO execution_recorder: ExecutionRecorder: started for 23452492-04a0-46 (0 cameras, state=True)
+2026-09-27 23:51:51,589 INFO code_executor: Executing code (ID: 23452492-04a0-46): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235151_23452492-04a0-46.py
+2026-09-27 23:51:53,206 INFO code_executor: Execution 23452492-04a0-46 finished: ExecutionStatus.COMPLETED (duration: 1.62s, exit_code: 0)
+2026-09-27 23:51:53,206 INFO execution_recorder: ExecutionRecorder: stopped for 23452492-04a0-46 (0 frames, 17 state samples, 1.6s)
+2026-09-27 23:51:53,207 INFO execution_recorder: ExecutionRecorder: cleaned up 6c074787-d560-43
+2026-09-27 23:51:53,207 INFO routes.code_routes: Job 537be0bf-f97d-41 finished: completed (execution 23452492-04a0-46)
+2026-09-27 23:51:53,207 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:51:53,207 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:51:53,207 INFO gripper_protocol.client: Opening...
+2026-09-27 23:51:53,214 INFO routes.code_routes: Job 80178406-f18e-49 submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:51:53,559 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Opened gripper
+2026-09-27 23:51:53,559 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging arm to home (max_delta=0.155 rad, duration=2.0s)
+2026-09-27 23:51:55,468 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Arm home reached (max_err=0.0021 rad)
+2026-09-27 23:51:55,468 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging base to (0.000, 0.000, 0.000) (pos_thr=0.050m, theta_thr=0.087rad, timeout=10.0s)
+2026-09-27 23:51:55,468 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Base home reached (err: x=0.0003 y=0.0002 theta=0.0000)
+2026-09-27 23:51:55,468 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home complete
+2026-09-27 23:51:55,468 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:55,476 INFO agent_server: Sim scene soft-reset via http://localhost:6300/reset
+2026-09-27 23:51:55,476 INFO lease: Reset to home complete
+2026-09-27 23:51:55,715 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:51:55,715 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:80178406-f18e-49 (9335c080-c74b-4456-9a10-ea935780e620)
+2026-09-27 23:51:55,715 INFO execution_recorder: ExecutionRecorder: started for eb621b16-f0d5-40 (0 cameras, state=True)
+2026-09-27 23:51:55,715 INFO code_executor: Executing code (ID: eb621b16-f0d5-40): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235155_eb621b16-f0d5-40.py
+2026-09-27 23:51:59,434 INFO code_executor: Execution eb621b16-f0d5-40 finished: ExecutionStatus.COMPLETED (duration: 3.72s, exit_code: 0)
+2026-09-27 23:51:59,435 INFO execution_recorder: ExecutionRecorder: stopped for eb621b16-f0d5-40 (0 frames, 38 state samples, 3.7s)
+2026-09-27 23:51:59,435 INFO execution_recorder: ExecutionRecorder: cleaned up 7a706a2d-7836-44
+2026-09-27 23:51:59,435 INFO routes.code_routes: Job 80178406-f18e-49 finished: completed (execution eb621b16-f0d5-40)
+2026-09-27 23:51:59,435 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:51:59,435 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:51:59,435 INFO gripper_protocol.client: Opening...
+2026-09-27 23:51:59,483 INFO routes.code_routes: Job 0f74e5d9-5279-4e submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:51:59,786 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Opened gripper
+2026-09-27 23:51:59,786 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging arm to home (max_delta=0.741 rad, duration=5.9s)
+2026-09-27 23:52:05,425 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Arm home reached (max_err=0.0015 rad)
+2026-09-27 23:52:05,425 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging base to (0.000, 0.000, 0.000) (pos_thr=0.050m, theta_thr=0.087rad, timeout=10.0s)
+2026-09-27 23:52:05,425 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Base home reached (err: x=0.0000 y=0.0001 theta=0.0000)
+2026-09-27 23:52:05,425 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home complete
+2026-09-27 23:52:05,425 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:52:05,435 INFO agent_server: Sim scene soft-reset via http://localhost:6300/reset
+2026-09-27 23:52:05,435 INFO lease: Reset to home complete
+2026-09-27 23:52:05,483 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:52:05,483 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:0f74e5d9-5279-4e (552db300-057f-4b5c-a713-6b4dafdb9d28)
+2026-09-27 23:52:05,483 INFO execution_recorder: ExecutionRecorder: started for 4bda73c5-a95e-4d (0 cameras, state=True)
+2026-09-27 23:52:05,483 INFO code_executor: Executing code (ID: 4bda73c5-a95e-4d): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235205_4bda73c5-a95e-4d.py
+2026-09-27 23:52:06,749 INFO code_executor: Execution 4bda73c5-a95e-4d finished: ExecutionStatus.COMPLETED (duration: 1.27s, exit_code: 0)
+2026-09-27 23:52:06,749 INFO execution_recorder: ExecutionRecorder: stopped for 4bda73c5-a95e-4d (0 frames, 13 state samples, 1.3s)
+2026-09-27 23:52:06,750 INFO execution_recorder: ExecutionRecorder: cleaned up b8841230-215e-49
+2026-09-27 23:52:06,750 INFO routes.code_routes: Job 0f74e5d9-5279-4e finished: completed (execution 4bda73c5-a95e-4d)
+2026-09-27 23:52:06,750 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:52:06,750 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:52:06,750 INFO gripper_protocol.client: Opening...
+2026-09-27 23:52:06,851 INFO routes.code_routes: Job 3611a5f5-b6bd-4b submitted by formal-counter_to_sink-seed101-formal-1790524251311615280 (position 1)
+2026-09-27 23:52:07,101 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Opened gripper
+2026-09-27 23:52:07,101 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Arm already at home (max_delta=0.0000 rad)
+2026-09-27 23:52:07,101 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Converging base to (0.000, 0.000, 0.000) (pos_thr=0.050m, theta_thr=0.087rad, timeout=10.0s)
+2026-09-27 23:52:07,101 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Base home reached (err: x=0.0000 y=0.0000 theta=0.0000)
+2026-09-27 23:52:07,101 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home complete
+2026-09-27 23:52:07,101 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:52:07,117 INFO agent_server: Sim scene soft-reset via http://localhost:6300/reset
+2026-09-27 23:52:07,117 INFO lease: Reset to home complete
+2026-09-27 23:52:07,351 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-27 23:52:07,351 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790524251311615280:3611a5f5-b6bd-4b (3b701f1d-74ca-49d7-b105-e3e8e9ccb03c)
+2026-09-27 23:52:07,352 INFO execution_recorder: ExecutionRecorder: started for d61cc65b-4a8d-4a (0 cameras, state=True)
+2026-09-27 23:52:07,352 INFO code_executor: Executing code (ID: d61cc65b-4a8d-4a): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260927_235207_d61cc65b-4a8d-4a.py
+2026-09-27 23:52:18,931 INFO code_executor: Execution d61cc65b-4a8d-4a finished: ExecutionStatus.FAILED (duration: 11.58s, exit_code: 1)
+2026-09-27 23:52:18,931 INFO execution_recorder: ExecutionRecorder: stopped for d61cc65b-4a8d-4a (0 frames, 116 state samples, 11.6s)
+2026-09-27 23:52:18,931 INFO execution_recorder: ExecutionRecorder: cleaned up c9d8460d-f1e5-49
+2026-09-27 23:52:18,931 INFO routes.code_routes: Job 3611a5f5-b6bd-4b finished: failed (execution d61cc65b-4a8d-4a)
+2026-09-27 23:52:18,931 INFO lease: Lease ended — resetting robot to home (reason: released, rewind: False)
+2026-09-27 23:52:18,931 INFO system_logger.rewind_orchestrator: [RewindOrchestrator] Go home triggered (no rewind)
+2026-09-27 23:52:18,932 INFO gripper_protocol.client: Opening...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-27 23:52:19,091 INFO agent_server: Shutting down hardware server
+2026-09-27 23:52:19,091 INFO arm_monitor: ArmMonitor stopped
+2026-09-27 23:52:19,091 INFO safety_monitor: SafetyMonitor stopped
+2026-09-27 23:52:19,091 INFO system_logger.logger: [SystemLogger] Stopped recording (22/118 samples, 22 waypoints)
+2026-09-27 23:52:19,092 INFO lease: Reset to home cancelled
+2026-09-27 23:52:19,092 INFO backends.mocap: MocapBackend: disconnected
+2026-09-27 23:52:19,092 INFO backends.cameras: CameraBackend: disconnected
+2026-09-27 23:52:19,092 INFO gripper_protocol.client: Disconnected
+2026-09-27 23:52:19,092 INFO backends.gripper: GripperBackend: disconnected
+2026-09-27 23:52:19,096 INFO franka_protocol.client: Disconnected
+2026-09-27 23:52:19,096 INFO backends.franka: FrankaBackend: disconnected
+2026-09-27 23:52:19,137 INFO backends.base: BaseBackend: disconnected
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2574229]

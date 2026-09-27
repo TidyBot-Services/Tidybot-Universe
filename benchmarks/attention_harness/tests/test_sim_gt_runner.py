@@ -24,14 +24,18 @@ class FakeWorld:
 
     def __init__(self):
         self.calls = []
+        self.seed = None
 
     def transport(self, method, url, payload, timeout):
         path = "/" + url.split("/", 3)[-1]
         self.calls.append((method, path))
         if path == "/task/info":
-            return {"task": "RoboCasa-Pn-P-Counter-To-Sink-v0", "lang": "place mug in sink"}
+            prompt = ("move the mug into the sink" if self.seed is not None and self.seed % 2
+                      else "place mug in sink")
+            return {"task": "RoboCasa-Pn-P-Counter-To-Sink-v0", "lang": prompt}
         if path == "/reset":
             self.success = False
+            self.seed = payload["seed"]
             result = {"status": "ok"}
             if "variation" in payload:
                 result["applied_variation"] = payload["variation"]

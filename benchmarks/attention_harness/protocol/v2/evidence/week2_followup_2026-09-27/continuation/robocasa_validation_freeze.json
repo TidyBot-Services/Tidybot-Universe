@@ -1,0 +1,153 @@
+{
+  "budgets": {
+    "agent_job_timeout_seconds": 90,
+    "assistance_credits_per_arm": 0,
+    "max_sdk_calls": 200,
+    "policy_wall_seconds_per_arm": 240,
+    "service_deadline_seconds_per_arm": 300,
+    "total_arms": 10
+  },
+  "case_configs": {
+    "101": {
+      "path": "formal_robocasa_counter_to_sink_seed101_rebind.json",
+      "sha256": "04c5e91bbabf0fb0e97888f48a11eee31d78744af35f29afda37edf30c24e682"
+    },
+    "102": {
+      "path": "formal_robocasa_counter_to_sink_seed102_rebind.json",
+      "sha256": "cb16abc6b67aa8f08b95bd59f73c849c6963a7b8066419e19b220ed021f0aa04"
+    },
+    "103": {
+      "path": "formal_robocasa_counter_to_sink_seed103_rebind.json",
+      "sha256": "f932d85c880d858c84446447da805f035272a1f3c66dba5f660260bd7f6a0be2"
+    },
+    "104": {
+      "path": "formal_robocasa_counter_to_sink_seed104_rebind.json",
+      "sha256": "cd0f517b0bbd42b5962a0fb6559589ed14e9a01ff100ac0f882d84338b339fec"
+    },
+    "105": {
+      "path": "formal_robocasa_counter_to_sink_seed105_rebind.json",
+      "sha256": "b98b4eabeef48b15c2c82fa1594faa02c6575c610c7080682bead8dcccc92906"
+    }
+  },
+  "decision": "approved_for_development_validation_only",
+  "formal_eligible": false,
+  "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "order": "for each seed in ascending order, control then treatment; never replace a failed case",
+  "policy": {
+    "control": "no candidate exposure; reproduce source no-action baseline",
+    "path": "robocasa_candidate_validation_policy.py",
+    "policy_id": "reactive_help",
+    "sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+    "treatment": "candidate_validation; explicit retrieve_memory(id) event"
+  },
+  "safety_limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "schema_version": "attentionbench.robocasa-memory-validation-freeze.v1",
+  "scope": {
+    "cases": [
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6",
+        "seed": 101,
+        "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+        "task_variant_id": "task:boxed_drink"
+      },
+      {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+        "scene_id": "scene:93244621fd1a24b456d5",
+        "seed": 102,
+        "task_prompt": "pick the cup from the counter and place it in the sink",
+        "task_variant_id": "task:cup"
+      },
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:a7d4f086836e78c38004",
+        "scene_id": "scene:feaf8e202a88a1bad005",
+        "seed": 103,
+        "task_prompt": "pick the mango from the counter and place it in the sink",
+        "task_variant_id": "task:mango"
+      },
+      {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:a61c8884dc61c3aeccc8",
+        "scene_id": "scene:6b34dfcee277f551a83b",
+        "seed": 104,
+        "task_prompt": "pick the onion from the counter and place it in the sink",
+        "task_variant_id": "task:onion"
+      },
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+        "scene_id": "scene:b328d376a1514e3e6bae",
+        "seed": 105,
+        "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+        "task_variant_id": "task:rolling_pin"
+      }
+    ],
+    "perception_mode": "sim_gt",
+    "retrieval_scope_after_promotion": "only successful case tuples",
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  },
+  "seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "service_versions": {
+    "agent_server": {
+      "dirty": false,
+      "revision": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+      "tree_sha256": "9c42acdb0ce72cfb72f39dac3ee4e593c23e31d9fdb532c1d757e3fcac04d1b1"
+    },
+    "memory": {
+      "dirty": false,
+      "revision": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f",
+      "tree_sha256": "349fef71fe51ef9708c4935843390ef435039236cf1275976a783ba596fbf3e5"
+    },
+    "robocasa_service": {
+      "dirty": false,
+      "revision": "320020a0c94434af31ec02df3413229576490fef",
+      "tree_sha256": "d258c4bef061e832e3f1b9128e55fe9468c34177181c39490979f84e94a46df9"
+    },
+    "task_source": {
+      "dirty": false,
+      "revision": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+      "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756"
+    },
+    "universe": {
+      "dirty": false,
+      "revision": "381b764fa21e42048904dfae0621dc2462f9768b",
+      "tree_sha256": "1f72ef87ea290c5985a82d4e5695f364a18bdc0ebcedd6414ff6fee9bfce5cdf"
+    }
+  },
+  "source_evidence_verified": true,
+  "source_status": "candidate",
+  "source_store": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention_memory.sqlite3"
+}

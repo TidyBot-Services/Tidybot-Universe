@@ -1,0 +1,57 @@
+{
+  "action": "alternating gripper -1.0,+1.0; remaining dims zero",
+  "actions_per_case": 20,
+  "camera": "agentview",
+  "cases": [
+    [
+      "cube_lift",
+      101
+    ],
+    [
+      "cube_lift",
+      102
+    ],
+    [
+      "cube_lift",
+      103
+    ],
+    [
+      "cube_lift",
+      104
+    ],
+    [
+      "cube_lift",
+      105
+    ],
+    [
+      "cube_stack",
+      101
+    ],
+    [
+      "cube_stack",
+      102
+    ],
+    [
+      "cube_stack",
+      103
+    ],
+    [
+      "cube_stack",
+      104
+    ],
+    [
+      "cube_stack",
+      105
+    ]
+  ],
+  "formal_eligible": false,
+  "horizon": 500,
+  "purpose": "capture the next invalid normalized depth frame without weakening strict rejection",
+  "schema_version": "attentionbench.depth-stress-freeze.v1",
+  "script_sha256": "21b05a94a4c789711d69aa48dd5d88a33289798599a9718422d0f3a26d2755b6",
+  "service_revision": "8fb89e8ee7722e37e13530fb019aabd64d5367ba",
+  "size": [
+    64,
+    64
+  ]
+}

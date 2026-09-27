@@ -1,0 +1,61 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162404.864278Z",
+  "attention_trace": {
+    "advisor_trace_id": "trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+    "attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+    "bundle": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robocasa_pair_attempts/counter_to_sink-seed103-20260927T162404.864278Z/attention_bundle.json",
+    "execution_id": "execution:counter_to_sink-seed103-20260927T162404.864278Z:0",
+    "raw_trace_id": "raw-trace:counter_to_sink-seed103-20260927T162404.864278Z:0",
+    "run_id": "run:counter_to_sink-seed103-20260927T162404.864278Z",
+    "schema_version": "attentionbench.episode-trace-link.v1",
+    "store": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention_memory.sqlite3"
+  },
+  "available_memory_ids": [],
+  "elapsed_seconds": 3.1181853320013033,
+  "error": null,
+  "execution_target": "robocasa_sim",
+  "formal_blockers": [
+    "generated-policy timeout/cancellation acceptance matrix not frozen across tasks",
+    "frozen development-seed stability gate not passed"
+  ],
+  "formal_eligible": false,
+  "generated_policy": {
+    "action_cancellation_receipts": [],
+    "boundary": "spawned_process_sdk_rpc",
+    "call_count": 2,
+    "service_cancellation_capability_verified": true,
+    "status": "completed",
+    "timeout_seconds": 240
+  },
+  "hypothesis": "",
+  "initial_object_count": 18,
+  "media_capture": null,
+  "memory_ids": [],
+  "native_success": false,
+  "no_op_success": false,
+  "perception_mode": "sim_gt",
+  "policy_execution_mode": "sandboxed_generated",
+  "policy_id": "reactive_help",
+  "policy_sha256": "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0",
+  "prior_attempt_count": 0,
+  "runtime_variation": null,
+  "schema_version": "attentionbench.robocasa-sim-gt-episode.v2",
+  "score_namespace": "v2/gt_perception_attentionbench",
+  "seed": 103,
+  "status": "completed",
+  "task_id": "counter_to_sink",
+  "timed_out": false,
+  "trusted_policy_callback": false,
+  "validation_config_sha256": "8513c77e5939ae690aefb1c26f55af110718919d79b928697b7f794e9c307900",
+  "validation_variation": {
+    "camera_config_id": "camera:base+wrist",
+    "camera_names": [
+      "base_camera",
+      "wrist_camera"
+    ],
+    "object_set_id": "objects:a7d4f086836e78c38004",
+    "scene_id": "scene:feaf8e202a88a1bad005",
+    "task_prompt": "pick the mango from the counter and place it in the sink",
+    "task_variant_id": "task:mango"
+  }
+}
