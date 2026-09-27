@@ -1,0 +1,49 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed101/cube_lift-seed101-formal-1790527864588034453",
+  "artifacts": {
+    "native_result": {
+      "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed101/cube_lift-seed101-formal-1790527864588034453/native_result.json"
+    },
+    "safety": {
+      "sha256": "81130e904d194b086947c8af8c2d2f8294b924e116c53da30c4b7ad2ad24d66c",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed101/cube_lift-seed101-formal-1790527864588034453/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "2dfd2cbbf0cea83d8c44ad69fc1a6f903ade971c9ea96c6fb5afc3b2ccfdf557",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed101/cube_lift-seed101-formal-1790527864588034453/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "bb8b8c00d817cdd6bbf4562b88e6c044716788acb9c649cb2ce028e5c99630c8",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed101/cube_lift-seed101-formal-1790527864588034453/trace.json"
+    }
+  },
+  "attempt_id": null,
+  "boundary_checked": true,
+  "config_sha256": "31ff175cfea8fb7e07097bb78f8293c457b62270ebc5143f3719b3a10adae98a",
+  "error": null,
+  "formal_blockers": [
+    "independent sandbox and cancellation acceptance not frozen",
+    "task/seed/config stability matrix not formally accepted"
+  ],
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "run_id": null,
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 101,
+  "service_revision": "081cd57ec9383895dc150050ca5d05c24628e7fa",
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

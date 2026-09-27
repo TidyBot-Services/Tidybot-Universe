@@ -55,6 +55,13 @@ assert all(step["depth_finite"] and step["depth_sha256"]
            for case in depth for step in case["steps"])
 depth_stop = load(ROOT / "depth_stress_service_stop.json")
 assert depth_stop["leader_reaped"] and depth_stop["process_group_gone"]
+capture = load(ROOT / "depth_capture_audit.json")
+assert capture["fresh_process_replays"] == 20
+assert len(capture["formal_rows"]) == 6
+assert capture["original_root_cause_confirmed"] is False
+assert all(row["artifact_hashes_match"] and row["service_reaped"]
+           and row["unsafe_attempts"] == 0 for row in capture["formal_rows"])
 
 print(json.dumps({"verified": True, "paired_arms": 10, "depth_steps": 200,
+                  "fresh_process_replays": 20, "capture_formal_cases": 6,
                   "candidate_status": "candidate", "formal_eligible": False}))

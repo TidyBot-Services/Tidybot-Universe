@@ -1,0 +1,54 @@
+{
+  "budget": {
+    "assistance_credits": 0,
+    "overall_deadline_seconds_per_case": 120
+  },
+  "cases": [
+    {
+      "config": "depth_capture_formal_configs/cube_lift-seed101.json",
+      "config_sha256": "31ff175cfea8fb7e07097bb78f8293c457b62270ebc5143f3719b3a10adae98a",
+      "seed": 101,
+      "task": "cube_lift"
+    },
+    {
+      "config": "depth_capture_formal_configs/cube_lift-seed102.json",
+      "config_sha256": "484878c18e5a8956260982d05ef8eeab6ab46da075f7c68b3acbecade85c242d",
+      "seed": 102,
+      "task": "cube_lift"
+    },
+    {
+      "config": "depth_capture_formal_configs/cube_lift-seed103.json",
+      "config_sha256": "1a0953f5c5311e3e69f2ddee99781e0f912b6add87847e0b8c5321c320e7ff1d",
+      "seed": 103,
+      "task": "cube_lift"
+    },
+    {
+      "config": "depth_capture_formal_configs/cube_stack-seed101.json",
+      "config_sha256": "baf6b6bbc739c03e06e14670793f3130a5dec399bace0dec0c18b0b205a8688e",
+      "seed": 101,
+      "task": "cube_stack"
+    },
+    {
+      "config": "depth_capture_formal_configs/cube_stack-seed102.json",
+      "config_sha256": "90ce75ca3a8e76ae4cd693e52591cee49dccd44af139af75bdd4c51e5d5624bf",
+      "seed": 102,
+      "task": "cube_stack"
+    },
+    {
+      "config": "depth_capture_formal_configs/cube_stack-seed103.json",
+      "config_sha256": "10dc9c1e75041484966d036aaf1a5fa26a92c5859942d0c2549ac71417cbc28d",
+      "seed": 103,
+      "task": "cube_stack"
+    }
+  ],
+  "formal_eligible": false,
+  "interpreter": "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+  "order": "cube_lift then cube_stack; seed 101,102,103; three gripper open-close pairs each",
+  "policy": "benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/robosuite_depth_repeat_smoke.py",
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "purpose": "regression smoke for strict depth capture and Safety, not benchmark score",
+  "schema_version": "attentionbench.depth-capture-formal-smoke.v1",
+  "script_sha256": "809e08b26016ba3ed821c75f26159af6a24ac59e8e1a999a9a1cb27281fb15c1",
+  "service_revision": "081cd57ec9383895dc150050ca5d05c24628e7fa",
+  "universe_revision": "2cff9e662ff48564b5e4c7e97dcc9dd57b9fa2d4"
+}

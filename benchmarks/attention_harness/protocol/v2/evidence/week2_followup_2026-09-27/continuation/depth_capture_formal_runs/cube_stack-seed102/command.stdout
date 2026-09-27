@@ -1,0 +1,49 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed102/cube_stack-seed102-formal-1790527873964786371",
+  "artifacts": {
+    "native_result": {
+      "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed102/cube_stack-seed102-formal-1790527873964786371/native_result.json"
+    },
+    "safety": {
+      "sha256": "470e1eccd3aaec64d171cc46fbb9ececbf7b6b1c6d2b5edd6fc66a8d88a63479",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed102/cube_stack-seed102-formal-1790527873964786371/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "cb676be356101b4febd4341aecbf02f2908c11ee11121d1f097ca2ed39ab598e",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed102/cube_stack-seed102-formal-1790527873964786371/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "864d5f59dadcbd3ca032d9764990e087ad5f5ad37260e52baf0f7812a254049a",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed102/cube_stack-seed102-formal-1790527873964786371/trace.json"
+    }
+  },
+  "attempt_id": null,
+  "boundary_checked": true,
+  "config_sha256": "90ce75ca3a8e76ae4cd693e52591cee49dccd44af139af75bdd4c51e5d5624bf",
+  "error": null,
+  "formal_blockers": [
+    "independent sandbox and cancellation acceptance not frozen",
+    "task/seed/config stability matrix not formally accepted"
+  ],
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "run_id": null,
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 102,
+  "service_revision": "081cd57ec9383895dc150050ca5d05c24628e7fa",
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_stack"
+}

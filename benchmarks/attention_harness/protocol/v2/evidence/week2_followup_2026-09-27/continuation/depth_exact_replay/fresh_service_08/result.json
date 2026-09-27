@@ -1,0 +1,38 @@
+{
+  "action": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "formal_eligible": false,
+  "index": 8,
+  "initial_depth_sha256": "2d81e4dc368569fc3e62b5569aaf6bac766d74222c44d58f6c92118f6902875a",
+  "initial_native_success": false,
+  "native_success": false,
+  "perception_counts": [
+    1,
+    1
+  ],
+  "seed": 101,
+  "service_stop": {
+    "exit_code": -15,
+    "leader_reaped": true,
+    "pid": 2769909,
+    "process_group_gone": true
+  },
+  "status": "completed",
+  "step_depth_finite": true,
+  "step_depth_max_m": 2.7081689834594727,
+  "step_depth_min_m": 0.5509448647499084,
+  "step_depth_sha256": "84b55bffca00ac287f04ca3cf563fb532ff5972343705b66cdd47f5b4dc2f365",
+  "task": "cube_lift",
+  "versions": {
+    "mujoco": "3.3.0",
+    "numpy": "1.26.4",
+    "robosuite": "1.5.1"
+  }
+}

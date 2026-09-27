@@ -1,0 +1,44 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed103/cube_stack-seed103-formal-1790527876302015899",
+  "artifacts": {
+    "native_result": {
+      "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed103/cube_stack-seed103-formal-1790527876302015899/native_result.json"
+    },
+    "safety": {
+      "sha256": "bda4025c3289c6933e21e0ba10f17440db8d3df2da9141aa0d9089529778f539",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed103/cube_stack-seed103-formal-1790527876302015899/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "25733bce084c07fa5c31a30be6643876fd80c5d1b2dcb8eb63432be5ba808072",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed103/cube_stack-seed103-formal-1790527876302015899/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "6bcdca7b9150eea290dc1c27f9e2f4b011c43bb6ca3fa602e8998aa6146a7aac",
+      "uri": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed103/cube_stack-seed103-formal-1790527876302015899/trace.json"
+    }
+  },
+  "attempt_id": null,
+  "config_sha256": "10dc9c1e75041484966d036aaf1a5fa26a92c5859942d0c2549ac71417cbc28d",
+  "error": null,
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "run_id": null,
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 103,
+  "service_revision": "081cd57ec9383895dc150050ca5d05c24628e7fa",
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_stack"
+}

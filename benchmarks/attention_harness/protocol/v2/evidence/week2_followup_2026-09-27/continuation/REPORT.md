@@ -2,11 +2,15 @@
 
 本目录接续上级 `REPORT.md`。所有试验均为开发工程 smoke，`formal_eligible=false`；未使用 held-out seed，未运行七策略正式效果矩阵。相对文件 SHA 由上级 `archive_manifest.json` 固定；原始 JSON 中的绝对路径是当时的执行收据，迁移后用相对路径及 `verify_continuation.py` 核对。四份含过期 cancel token 的本地调试 JSON 未收入归档，其余原始失败、服务日志和权威库快照保留。
 
+2026-09-28 进一步调查见下文“原始动作逐次重放与异常帧保存”。该轮没有捕获异常，不能据此宣称旧 depth 500 已修复。
+
 ## 工作树、版本与冻结
 
 开始时 U 为 `feature/attention-native-robosuite` @ `1a7c16f`，M 为 `feature/attentionbench-week2-sync-20260927` @ `24d4146`，C 为同名分支 @ `993e175`，R 为 `feature/attentionbench-week2-depth-diagnostics` @ `8fb89e8`，均干净。A Agent Server @ `4cf4daa`、T RoboCasa task source @ `b18bbf1` 也干净。开始时 v1 freeze 自检仍有历史 8 个文件 SHA 不符，详见上级 `freeze_verify.txt`；没有改写冻结清单。
 
 本轮修复后配对实际绑定 U `381b764fa21e42048904dfae0621dc2462f9768b`、M `24d414638ad2cdd6557f09f042e8b6ef2b597b0f`、C `320020a0c94434af31ec02df3413229576490fef`、A `4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b`、T `b18bbf1585c42e370ae45ababdddad700cc2c71d`，五份源码树均由 `robocasa_validation_freeze.json` 的 SHA attestation 证明干净。C Runtime 为 Python 3.11.15、ManiSkill 3.0.0b22，Python 与 ManiSkill 源码树 SHA 在五份 `formal_robocasa_counter_to_sink_seed*_rebind.json`。R 继续绑定 `8fb89e8ee7722e37e13530fb019aabd64d5367ba`，运行包 `robosuite 1.5.1`、`mujoco 3.3.0`、`numpy 1.26.4`。
+
+上述首轮 depth 诊断绑定 R `8fb89e8`；后续原始帧保存与正式边界重测绑定 R `081cd57ec9383895dc150050ca5d05c24628e7fa` 和 U `2cff9e662ff48564b5e4c7e97dcc9dd57b9fa2d4`。两轮均使用相同的 Robosuite／MuJoCo／NumPy 版本，未改冻结的 v1 manifest。
 
 ## RoboCasa 候选：找到可运行策略，但未达 Memory 晋升门槛
 
@@ -32,7 +36,17 @@
 
 原始 500 帧没有保存，旧 Service 仅留下 normalized depth 超出 `[0,1]` 的异常文本（上级 `original_sources/original_depth_500/`）。R `8fb89e8` 已在严格拒绝时记录 dtype、shape、帧 SHA、finite 极值／数量及首个坏像素，仍拒绝越界、NaN、无穷值；未放宽 Safety 停止。原来上级的两任务 × seed 101–103 × 6 次正式 runner 动作：6/6 原生判定、Safety 0、四类产物 SHA 和 Service 回收均核对。
 
+旧版 `12bc69a` 的报错条件仅是 `np.any(normalized < 0.0) or np.any(normalized > 1.0)`。因此这次报错**必然至少有一个值满足上下界比较**；仅有 NaN、没有越界值的帧不会触发这条旧错误。有限微小／较大越界与正负无穷值仍无法区分，且 NaN 也可能同时存在。
+
 再冻结 `depth_stress_freeze.json`（SHA `9fac57bc…`）：`cube_lift`、`cube_stack` 各 seed 101–105，64×64 `agentview`，horizon 500，每例交替夹爪动作 20 次，共 200 次真实 HTTP step。`depth_stress_progress.json` 保存每一步原生判断、深度有限性／极值／SHA；10/10 完成，无异常帧，`depth_stress_service_stop.json` 记录回收。此额外 HTTP 压力探针不含独立 Safety artifact；独立 Safety、四类 SHA 的边界证据仍以上述六例正式 runner smoke 为准。由于异常没有重现，无法在微小数值越界、无效帧或其他原因间作出确定判断，也**未进行根因修复**。下一次 500 应先保留新增诊断字段对应的原始异常帧，再针对确证原因修改，重跑固定的正式边界与重复动作配置。
+
+## 原始动作逐次重放与异常帧保存（2026-09-28）
+
+旧 500 的原始 `policy.py` 在 seed 101、64×64 `agentview` reset 后读取两次 GT，再执行一次 `gripper.open(settle_steps=1)`。`depth_exact_replay_freeze.json`（SHA `00d23647bf8ace7d57d985542fd29b4cffded35bfb2f7ddba2361198a15b25f7`）预先固定同一任务／seed／动作、原始 `attentionbench-week2-clean-venv` Python、R `8fb89e8`、每次新 Service 进程，共 20 次。`replay_exact_depth_500.py` 执行后 20/20 完成，原生均 false；初始 depth SHA 只有 1 个值，动作后 depth SHA 也只有 1 个值；每次 Service leader 和进程组均回收。逐次 HTTP、原生、depth SHA／极值、原始服务日志和回收收据在 `depth_exact_replay/`。它支持“在该固定组合下未复现”，不证明旧错误是数值微越界还是无效帧。
+
+R `081cd57ec9383895dc150050ca5d05c24628e7fa` 在原严格拒绝路径上增加首个异常值的类型，并在 `TIDYBOT_INVALID_DEPTH_DIR` 已配置时原样保存 `.npy` 深度帧及文件 SHA；无法写文件时仍拒绝异常帧。U `2cff9e662ff48564b5e4c7e97dcc9dd57b9fa2d4` 将该目录指定为正式 attempt 下的 `invalid_depth_frames/`。合成坏帧单测证明轻微正越界与负越界／NaN 均仍被拒绝，原始 dtype／值能回读，R 5 tests 通过；U 正式 Service 相关 6 tests 通过。此改动是**证据保存能力**，并未确证或修复旧 500 的成因。
+
+在这两个提交上，`depth_capture_formal_freeze.json`（SHA `46c7895d70b48525d192c8489fc92e6d79ba7dc5e1b7ff6a9d9fb42d28b8a24b`）预先固定两任务 × 开发 seed 101–103、每例 3 对开关夹爪动作、64×64 相机、120 秒、0 求助及策略／配置 SHA。`run_depth_capture_formal.py` 六例均 completed，原生 evaluated=true／success=false，独立 Safety 0 unsafe，四类产物 SHA 与收据一致，进程组回收；`depth_capture_formal_runs/` 为原件。`audit_depth_capture.py` 重新核对 20 次独立进程重放与 6 次正式边界 smoke，输出 `depth_capture_audit.json`。无异常帧产生，`invalid_depth_frames/` 为空。因此根因分类与针对性根因修复仍未达到验收标准。
 
 ## 命令与复核
 
@@ -42,6 +56,9 @@
 /home/truares/.cache/tidybot-attention/venv/bin/python continuation/run_robocasa_pairs.py
 /home/truares/.cache/tidybot-attention/venv/bin/python continuation/audit_robocasa_pairs.py
 /home/truares/.cache/tidybot-attention/venv/bin/python continuation/depth_stress_probe.py
+/home/truares/桌面/attentionbench-week2-clean-venv/bin/python continuation/replay_exact_depth_500.py
+/home/truares/桌面/attentionbench-week2-clean-venv/bin/python continuation/run_depth_capture_formal.py
+python continuation/audit_depth_capture.py
 python continuation/verify_continuation.py
 python archive_manifest.py verify
 ```

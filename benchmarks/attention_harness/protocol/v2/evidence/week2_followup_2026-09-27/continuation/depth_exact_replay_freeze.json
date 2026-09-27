@@ -1,0 +1,26 @@
+{
+  "action": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -1
+  ],
+  "camera": "agentview",
+  "formal_eligible": false,
+  "horizon": 500,
+  "interpreter": "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+  "purpose": "reproduce original first gripper.open after two read-only GT perceptions",
+  "repetitions": 20,
+  "schema_version": "attentionbench.depth-exact-fresh-process-replay.v1",
+  "script_sha256": "988f341dbfbfc7d474dbb37c4779aa70993b9da7673f758a1b23e305179caeb1",
+  "seed": 101,
+  "service_revision": "8fb89e8ee7722e37e13530fb019aabd64d5367ba",
+  "size": [
+    64,
+    64
+  ],
+  "task": "cube_lift"
+}

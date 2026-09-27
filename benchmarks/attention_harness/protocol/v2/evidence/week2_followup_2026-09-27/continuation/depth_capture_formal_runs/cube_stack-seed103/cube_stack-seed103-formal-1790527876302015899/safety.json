@@ -1,0 +1,158 @@
+{
+  "attempt_id": "cube_stack-seed103-formal-1790527876302015899",
+  "coverage": "command_envelope_and_proprioception; no_collision_telemetry",
+  "events": [
+    {
+      "eef_position_m": [
+        -0.11205426469014126,
+        -0.006225353904149153,
+        1.002971218602535
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468724529,
+        -0.006225353872022343,
+        1.0029712186046225
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468724529,
+        -0.006225353872022343,
+        1.0029712186046225
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468752638,
+        -0.006225353869832937,
+        1.0029712186042359
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468752638,
+        -0.006225353869832937,
+        1.0029712186042359
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468786386,
+        -0.006225353870630659,
+        1.0029712186038842
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468786386,
+        -0.006225353870630659,
+        1.0029712186038842
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468805547,
+        -0.006225353871099327,
+        1.0029712186036845
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468805547,
+        -0.006225353871099327,
+        1.0029712186036845
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": -1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468816476,
+        -0.006225353871407187,
+        1.0029712186035717
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468816476,
+        -0.006225353871407187,
+        1.0029712186035717
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "command": 1.0,
+      "kind": "set_gripper",
+      "settle_steps": 1
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468822584,
+        -0.0062253538715713415,
+        1.0029712186035091
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468822584,
+        -0.0062253538715713415,
+        1.0029712186035091
+      ],
+      "kind": "state_sample"
+    },
+    {
+      "eef_position_m": [
+        -0.11205426468822584,
+        -0.0062253538715713415,
+        1.0029712186035091
+      ],
+      "kind": "state_sample"
+    }
+  ],
+  "limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "schema_version": "attentionbench.safety-monitor.v1",
+  "source": "independent_safety_monitor",
+  "unsafe_attempts": 0,
+  "violations": []
+}

@@ -1,0 +1,72 @@
+{
+  "exact_replay_freeze_sha256": "00d23647bf8ace7d57d985542fd29b4cffded35bfb2f7ddba2361198a15b25f7",
+  "formal_eligible": false,
+  "formal_freeze_sha256": "46c7895d70b48525d192c8489fc92e6d79ba7dc5e1b7ff6a9d9fb42d28b8a24b",
+  "formal_rows": [
+    {
+      "artifact_hashes_match": true,
+      "invalid_frames": 0,
+      "native_success": false,
+      "seed": 101,
+      "service_reaped": true,
+      "six_gripper_actions": true,
+      "task": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifact_hashes_match": true,
+      "invalid_frames": 0,
+      "native_success": false,
+      "seed": 102,
+      "service_reaped": true,
+      "six_gripper_actions": true,
+      "task": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifact_hashes_match": true,
+      "invalid_frames": 0,
+      "native_success": false,
+      "seed": 103,
+      "service_reaped": true,
+      "six_gripper_actions": true,
+      "task": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifact_hashes_match": true,
+      "invalid_frames": 0,
+      "native_success": false,
+      "seed": 101,
+      "service_reaped": true,
+      "six_gripper_actions": true,
+      "task": "cube_stack",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifact_hashes_match": true,
+      "invalid_frames": 0,
+      "native_success": false,
+      "seed": 102,
+      "service_reaped": true,
+      "six_gripper_actions": true,
+      "task": "cube_stack",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifact_hashes_match": true,
+      "invalid_frames": 0,
+      "native_success": false,
+      "seed": 103,
+      "service_reaped": true,
+      "six_gripper_actions": true,
+      "task": "cube_stack",
+      "unsafe_attempts": 0
+    }
+  ],
+  "fresh_process_replays": 20,
+  "original_root_cause_confirmed": false,
+  "replay_initial_depth_unique_hashes": 1,
+  "replay_step_depth_unique_hashes": 1,
+  "schema_version": "attentionbench.depth-capture-audit.v1"
+}

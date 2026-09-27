@@ -1,0 +1,410 @@
+[
+  {
+    "artifact_dir": "depth_capture_formal_runs/cube_lift-seed101/cube_lift-seed101-formal-1790527864588034453",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "sha256": "81130e904d194b086947c8af8c2d2f8294b924e116c53da30c4b7ad2ad24d66c"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "sha256": "2dfd2cbbf0cea83d8c44ad69fc1a6f903ade971c9ea96c6fb5afc3b2ccfdf557"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "sha256": "bb8b8c00d817cdd6bbf4562b88e6c044716788acb9c649cb2ce028e5c99630c8"
+      }
+    },
+    "command": [
+      "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_lift",
+      "--seed",
+      "101",
+      "--code",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_configs/cube_lift-seed101.json",
+      "--approved-config-sha256",
+      "31ff175cfea8fb7e07097bb78f8293c457b62270ebc5143f3719b3a10adae98a",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed101",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "31ff175cfea8fb7e07097bb78f8293c457b62270ebc5143f3719b3a10adae98a",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "invalid_frame_files": [],
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "native_matches_artifact": true,
+    "safety_unsafe_attempts": 0,
+    "seed": 101,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2780685,
+      "process_group": 2780685,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift"
+  },
+  {
+    "artifact_dir": "depth_capture_formal_runs/cube_lift-seed102/cube_lift-seed102-formal-1790527866924216723",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "sha256": "ebf979cd3f8120467d048940a9ca712c0f6e5c566be90008129a8307770fab1b"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "sha256": "ab86d7a60eece696a810ad59586cc88327b423aa6ae9da2072f27ecaf1a2f197"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "sha256": "0fd1c62dfb472514e6fade6a9102af77f69315519ca4ab312ee9f94651a18d9b"
+      }
+    },
+    "command": [
+      "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_lift",
+      "--seed",
+      "102",
+      "--code",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_configs/cube_lift-seed102.json",
+      "--approved-config-sha256",
+      "484878c18e5a8956260982d05ef8eeab6ab46da075f7c68b3acbecade85c242d",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed102",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "484878c18e5a8956260982d05ef8eeab6ab46da075f7c68b3acbecade85c242d",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "invalid_frame_files": [],
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "native_matches_artifact": true,
+    "safety_unsafe_attempts": 0,
+    "seed": 102,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2780903,
+      "process_group": 2780903,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift"
+  },
+  {
+    "artifact_dir": "depth_capture_formal_runs/cube_lift-seed103/cube_lift-seed103-formal-1790527869263930493",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "sha256": "38b66c8497a434469422a48fe69bd36400064b57b9242cc798f3b12af6f70318"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "sha256": "39d3a6330c952837d8566663402fba7a3ae44273f3193ac9fda7a881c416750b"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "sha256": "493a14769298e05cc7032735f03ff3478dcad16e55cc52ee56a2ef92c0aa746b"
+      }
+    },
+    "command": [
+      "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_lift",
+      "--seed",
+      "103",
+      "--code",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_configs/cube_lift-seed103.json",
+      "--approved-config-sha256",
+      "1a0953f5c5311e3e69f2ddee99781e0f912b6add87847e0b8c5321c320e7ff1d",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_lift-seed103",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "1a0953f5c5311e3e69f2ddee99781e0f912b6add87847e0b8c5321c320e7ff1d",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "invalid_frame_files": [],
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "native_matches_artifact": true,
+    "safety_unsafe_attempts": 0,
+    "seed": 103,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2781100,
+      "process_group": 2781100,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift"
+  },
+  {
+    "artifact_dir": "depth_capture_formal_runs/cube_stack-seed101/cube_stack-seed101-formal-1790527871612826646",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "sha256": "8d2748804642daab0e750a7a7ad45bf26ec027a8744dd6dcb2727154997173b5"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "sha256": "85c4e2bc29989d258bd6410d9addb4782527800973757d8a85ad4f614ccf384a"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "sha256": "94ef3fc176d807795e9d6879de4983bfa78595c7b2e199d0ae35d5fd5628e96f"
+      }
+    },
+    "command": [
+      "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_stack",
+      "--seed",
+      "101",
+      "--code",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_configs/cube_stack-seed101.json",
+      "--approved-config-sha256",
+      "baf6b6bbc739c03e06e14670793f3130a5dec399bace0dec0c18b0b205a8688e",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed101",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "baf6b6bbc739c03e06e14670793f3130a5dec399bace0dec0c18b0b205a8688e",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "invalid_frame_files": [],
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "native_matches_artifact": true,
+    "safety_unsafe_attempts": 0,
+    "seed": 101,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2781309,
+      "process_group": 2781309,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack"
+  },
+  {
+    "artifact_dir": "depth_capture_formal_runs/cube_stack-seed102/cube_stack-seed102-formal-1790527873964786371",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "sha256": "470e1eccd3aaec64d171cc46fbb9ececbf7b6b1c6d2b5edd6fc66a8d88a63479"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "sha256": "cb676be356101b4febd4341aecbf02f2908c11ee11121d1f097ca2ed39ab598e"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "sha256": "864d5f59dadcbd3ca032d9764990e087ad5f5ad37260e52baf0f7812a254049a"
+      }
+    },
+    "command": [
+      "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_stack",
+      "--seed",
+      "102",
+      "--code",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_configs/cube_stack-seed102.json",
+      "--approved-config-sha256",
+      "90ce75ca3a8e76ae4cd693e52591cee49dccd44af139af75bdd4c51e5d5624bf",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed102",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "90ce75ca3a8e76ae4cd693e52591cee49dccd44af139af75bdd4c51e5d5624bf",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "invalid_frame_files": [],
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "native_matches_artifact": true,
+    "safety_unsafe_attempts": 0,
+    "seed": 102,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2781507,
+      "process_group": 2781507,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack"
+  },
+  {
+    "artifact_dir": "depth_capture_formal_runs/cube_stack-seed103/cube_stack-seed103-formal-1790527876302015899",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "sha256": "bda4025c3289c6933e21e0ba10f17440db8d3df2da9141aa0d9089529778f539"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "sha256": "25733bce084c07fa5c31a30be6643876fd80c5d1b2dcb8eb63432be5ba808072"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "sha256": "6bcdca7b9150eea290dc1c27f9e2f4b011c43bb6ca3fa602e8998aa6146a7aac"
+      }
+    },
+    "command": [
+      "/home/truares/\u684c\u9762/attentionbench-week2-clean-venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_stack",
+      "--seed",
+      "103",
+      "--code",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_configs/cube_stack-seed103.json",
+      "--approved-config-sha256",
+      "10dc9c1e75041484966d036aaf1a5fa26a92c5859942d0c2549ac71417cbc28d",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/evidence/week2_followup_2026-09-27/continuation/depth_capture_formal_runs/cube_stack-seed103",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "10dc9c1e75041484966d036aaf1a5fa26a92c5859942d0c2549ac71417cbc28d",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "invalid_frame_files": [],
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "native_matches_artifact": true,
+    "safety_unsafe_attempts": 0,
+    "seed": 103,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2781726,
+      "process_group": 2781726,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack"
+  }
+]

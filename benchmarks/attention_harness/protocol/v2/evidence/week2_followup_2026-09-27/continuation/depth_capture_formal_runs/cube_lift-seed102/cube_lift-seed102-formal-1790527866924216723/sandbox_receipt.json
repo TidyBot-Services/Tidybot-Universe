@@ -1,0 +1,47 @@
+{
+  "attempt_id": null,
+  "config_sha256_after": "484878c18e5a8956260982d05ef8eeab6ab46da075f7c68b3acbecade85c242d",
+  "deadline_seconds": 120.0,
+  "elapsed_seconds": 2.215636512002675,
+  "probe": {
+    "boundary": "bubblewrap_user_mount_pid_network_namespace",
+    "bubblewrap_executable": "/usr/bin/bwrap",
+    "bubblewrap_version": "bubblewrap 0.6.1",
+    "credential_environment_absent": true,
+    "host_home_visible": false,
+    "host_root_visible": false,
+    "network_reachable": false,
+    "read_only_mounts": [
+      "/usr",
+      "/lib",
+      "/lib64",
+      "/bin",
+      "/worker/worker.py"
+    ],
+    "worker_has_simulator_client": false,
+    "worker_sha256": "899935a78d8b159f3df1591c22de8a3849f320138e0639ae21d9b76fcb7de236"
+  },
+  "run_id": null,
+  "schema_version": "attentionbench.formal-sandbox-receipt.v1",
+  "service_revision": "081cd57ec9383895dc150050ca5d05c24628e7fa",
+  "service_source_unchanged": true,
+  "service_stop": {
+    "exit_code": -15,
+    "leader_reaped": true,
+    "mechanism": "dedicated_service_process_group_termination",
+    "pid": 2780903,
+    "process_group": 2780903,
+    "process_group_gone": true,
+    "reason": "normal_cleanup",
+    "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+  },
+  "source_sha256_after": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "source_sha256_before": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "worker": {
+    "call_count": 12,
+    "elapsed_seconds": 0.11856717099726666,
+    "error": null,
+    "process_exit_code": 0,
+    "status": "completed"
+  }
+}
