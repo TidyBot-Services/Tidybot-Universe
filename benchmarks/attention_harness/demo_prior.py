@@ -12,7 +12,7 @@ SCHEMA = "attentionbench.public-demo.v1"
 
 
 def verify_demo_prior(raw: str, *, suite: str, task_id: str,
-                      approved_sha256: str, snapshot_dir: Path) -> tuple[str, dict[str, Any]]:
+                      approved_sha256: str, snapshot_dir: Path | None = None) -> tuple[str, dict[str, Any]]:
     """Return only approved public SDK material and its immutable receipt."""
     if hashlib.sha256(raw.encode()).hexdigest() != approved_sha256:
         raise ValueError("demo manifest differs from approved SHA-256")
@@ -35,8 +35,9 @@ def verify_demo_prior(raw: str, *, suite: str, task_id: str,
         raise ValueError("demo requires public video or action trajectory")
     projected = []
     kinds = set()
-    snapshot_dir.mkdir(parents=True, exist_ok=False)
-    (snapshot_dir / "approved_manifest.json").write_text(raw, encoding="utf-8")
+    if snapshot_dir is not None:
+        snapshot_dir.mkdir(parents=True, exist_ok=False)
+        (snapshot_dir / "approved_manifest.json").write_text(raw, encoding="utf-8")
     for asset in assets:
         if (not isinstance(asset, dict) or set(asset) != {"kind", "path", "sha256", "source"}
                 or asset["kind"] not in {"public_video", "action_trajectory"}
@@ -52,11 +53,13 @@ def verify_demo_prior(raw: str, *, suite: str, task_id: str,
         data = path.read_bytes()
         if hashlib.sha256(data).hexdigest() != asset["sha256"]:
             raise ValueError("demo asset differs from approved SHA-256")
-        fixed_path = snapshot_dir / ("video" + path.suffix if asset["kind"] == "public_video"
-                                     else "actions.json")
-        fixed_path.write_bytes(data)
-        if hashlib.sha256(fixed_path.read_bytes()).hexdigest() != asset["sha256"]:
-            raise ValueError("demo snapshot SHA-256 mismatch")
+        fixed_path = path
+        if snapshot_dir is not None:
+            fixed_path = snapshot_dir / ("video" + path.suffix if asset["kind"] == "public_video"
+                                         else "actions.json")
+            fixed_path.write_bytes(data)
+            if hashlib.sha256(fixed_path.read_bytes()).hexdigest() != asset["sha256"]:
+                raise ValueError("demo snapshot SHA-256 mismatch")
         item = {"kind": asset["kind"], "path": str(fixed_path.resolve()),
                 "sha256": asset["sha256"]}
         if asset["kind"] == "action_trajectory":

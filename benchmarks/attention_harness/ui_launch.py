@@ -13,6 +13,7 @@ from uuid import uuid4
 from .attention_modes import AssistanceMode
 from .core.policies import POLICY_IDS
 from .core.store import AttentionStore
+from .formal_entry import inspect_formal_entry
 from .seed_guard import validate_seed
 
 
@@ -66,7 +67,8 @@ def load_catalog(path: Path) -> list[dict[str, Any]]:
                 or isinstance(approved.get("seed"), bool)
                 or not isinstance(approved.get("seed"), int)):
             raise ValueError("run profile disagrees with approved simulator config")
-        validate_seed(approved["seed"], allow_heldout=False)
+        if validate_seed(approved["seed"], allow_heldout=False) != "dev":
+            raise ValueError("run profile requires a development seed")
         profile["seed"] = approved["seed"]
     return profiles
 
@@ -131,6 +133,23 @@ def launch_formal_run(
     if "random_policy_config" in profile and hashlib.sha256(
         Path(profile["random_policy_config"]).read_bytes()).hexdigest() != profile["approved_random_policy_config_sha256"]:
         raise ValueError("approved random policy config changed before launch")
+    entry_lock, _ = inspect_formal_entry(
+        suite=profile["suite"], task_id=profile["task"], seed=seed,
+        policy_id=policy, code=Path(profile["code"]),
+        approved_policy_sha256=profile["approved_policy_sha256"],
+        config=Path(profile["config"]),
+        approved_config_sha256=profile["approved_config_sha256"],
+        max_attempts=selection["max_attempts"],
+        assistance_credits=selection["assistance_credits"],
+        token_limit=selection["token_limit"], assistance_mode=mode,
+        human_deadline_seconds=deadline, overall_deadline_seconds=overall,
+        demo_prior=Path(profile["demo_prior"]) if policy == "demo_first" else None,
+        approved_demo_sha256=profile.get("approved_demo_sha256") if policy == "demo_first" else None,
+        policy_config=Path(profile["random_policy_config"])
+            if policy == "budget_matched_random_escalation" else None,
+        approved_policy_config_sha256=profile.get("approved_random_policy_config_sha256")
+            if policy == "budget_matched_random_escalation" else None,
+    )
     launch_id = f"launch:{uuid4().hex}"
     cmd = [sys.executable, "-m", "benchmarks.attention_harness.formal_attention_cli",
            "--suite", profile["suite"], "--task", profile["task"],
@@ -138,6 +157,7 @@ def launch_formal_run(
            "--code", profile["code"], "--approved-policy-sha256", profile["approved_policy_sha256"],
            "--config", profile["config"], "--approved-config-sha256", profile["approved_config_sha256"],
            "--artifact-root", str(artifact_root.resolve()), "--store-path", str(store.path.resolve()),
+           "--expected-entry-sha256", entry_lock["sha256"],
            "--max-attempts", str(selection["max_attempts"]),
            "--assistance-credits", str(selection["assistance_credits"]),
            "--token-limit", str(selection["token_limit"]),
@@ -162,6 +182,7 @@ def launch_formal_run(
                   "--store-path", str(store.path.resolve()), "--launch-id", launch_id,
                   "--summary-path", str(summary_path.resolve()), "--", *cmd]
     locked = {**selection, "suite": profile["suite"], "task": profile["task"],
+              "entry_lock": entry_lock,
               "approved_policy_sha256": profile["approved_policy_sha256"],
               "approved_config_sha256": profile["approved_config_sha256"],
               "approved_demo_sha256": profile.get("approved_demo_sha256") if policy == "demo_first" else None,

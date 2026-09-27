@@ -5,11 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 from pathlib import Path
+from uuid import uuid4
 
 from .attention_modes import AssistanceMode
 from .core.policies import POLICY_IDS
 from .formal_attention_run import run_formal_attention
+from .formal_entry import inspect_formal_entry
 from .parcc_client import ParccClient
 from .robocasa_native.formal_runner import RobocasaFormalSuiteRunner
 from .robosuite_memory.formal_runner import RobosuiteFormalSuiteRunner
@@ -44,6 +47,8 @@ def main() -> int:
     parser.add_argument("--overall-deadline-seconds", type=float, default=300.0)
     parser.add_argument("--policy-config", type=Path)
     parser.add_argument("--approved-policy-config-sha256")
+    parser.add_argument("--expected-entry-sha256",
+                        help="UI lock digest; reject if files or selected conditions changed")
     parser.add_argument("--demo-prior", type=Path)
     parser.add_argument("--approved-demo-sha256")
     parser.add_argument("--memory-context", type=Path)
@@ -73,18 +78,6 @@ def main() -> int:
                 or source_run.get("runner_boundary", {}).get("mode") != "formal"):
             parser.error("Memory source run identity or store differs")
         memory_evidence_root = source.parent / "attempts"
-    if args.attention_policy == "budget_matched_random_escalation" and (
-            args.policy_config is None or args.approved_policy_config_sha256 is None):
-        parser.error("random escalation requires approved pre-registered policy config")
-    if args.approved_policy_config_sha256 is not None and args.policy_config is None:
-        parser.error("approved policy config digest requires --policy-config")
-    policy_config = None
-    if args.policy_config is not None:
-        policy_config_bytes = args.policy_config.read_bytes()
-        if (args.approved_policy_config_sha256 is not None and
-                hashlib.sha256(policy_config_bytes).hexdigest() != args.approved_policy_config_sha256):
-            parser.error("policy config differs from approved SHA-256")
-        policy_config = json.loads(policy_config_bytes)
     if (args.memory_context is None) != (args.approved_memory_context_sha256 is None):
         parser.error("formal Memory context and approved digest must be supplied together")
     if args.memory_context is not None:
@@ -120,11 +113,45 @@ def main() -> int:
             task_source_root=args.task_source_root,
             sim_python=args.sim_python, agent_python=args.agent_python,
         )
+    try:
+        entry_lock, policy_config = inspect_formal_entry(
+            suite=args.suite, task_id=args.task, seed=args.seed,
+            policy_id=args.attention_policy, code=args.code,
+            approved_policy_sha256=args.approved_policy_sha256,
+            config=args.config, approved_config_sha256=args.approved_config_sha256,
+            max_attempts=args.max_attempts, assistance_credits=args.assistance_credits,
+            token_limit=args.token_limit, assistance_mode=args.assistance_mode,
+            human_deadline_seconds=args.human_deadline_seconds,
+            overall_deadline_seconds=args.overall_deadline_seconds,
+            demo_prior=args.demo_prior, approved_demo_sha256=args.approved_demo_sha256,
+            policy_config=args.policy_config,
+            approved_policy_config_sha256=args.approved_policy_config_sha256,
+        )
+        if (args.expected_entry_sha256 is not None
+                and entry_lock["sha256"] != args.expected_entry_sha256):
+            raise ValueError("formal entry changed since UI lock")
+    except (ValueError, TypeError, PermissionError, OSError) as error:
+        parser.error(str(error))
+    # Snapshot source bytes before any Attention run is created. The formal
+    # runners read these approved snapshots, not mutable operator paths.
+    lock_dir = args.artifact_root / "entry-locks" / uuid4().hex
+    lock_dir.mkdir(parents=True, exist_ok=False)
+    locked_code = lock_dir / "policy.py"
+    locked_config = lock_dir / "sim_config.json"
+    locked_code.write_bytes(args.code.read_bytes())
+    locked_config.write_bytes(args.config.read_bytes())
+    if (hashlib.sha256(locked_code.read_bytes()).hexdigest() != args.approved_policy_sha256
+            or hashlib.sha256(locked_config.read_bytes()).hexdigest() != args.approved_config_sha256):
+        shutil.rmtree(lock_dir)
+        parser.error("approved source changed during entry snapshot")
+    (lock_dir / "entry_lock.json").write_text(
+        json.dumps(entry_lock, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
     result = run_formal_attention(
         suite=args.suite, task_id=args.task, seed=args.seed,
         artifact_root=args.artifact_root, policy_id=args.attention_policy,
-        policy_code_path=args.code, approved_policy_sha256=args.approved_policy_sha256,
-        config_path=args.config, approved_config_sha256=args.approved_config_sha256,
+        policy_code_path=locked_code, approved_policy_sha256=args.approved_policy_sha256,
+        config_path=locked_config, approved_config_sha256=args.approved_config_sha256,
         runner=runner, overall_deadline_seconds=args.overall_deadline_seconds,
         store_path=args.store_path, max_attempts=args.max_attempts,
         memory_evidence_root=memory_evidence_root,
@@ -141,6 +168,8 @@ def main() -> int:
         advisor_transport=(lambda request: SimGTGLMAdvisorTransport(
             ParccClient(timeout_seconds=90, max_attempts=1), format_attempts=1)(request)
             if args.single_glm_call else None),
+        entry_lock=entry_lock,
+        approved_policy_config_sha256=args.approved_policy_config_sha256,
     )
     if args.summary_path is not None:
         args.summary_path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n")

@@ -34,6 +34,8 @@ def run_formal_attention(
     approved_memory_context_sha256: str | None = None,
     dev_hypothesis: str | None = None,
     dev_hypothesis_evidence: dict[str, str] | None = None,
+    entry_lock: dict[str, Any] | None = None,
+    approved_policy_config_sha256: str | None = None,
     **scheduler_options: Any,
 ) -> dict[str, Any]:
     """Use one approved source/config version for every scheduled attempt."""
@@ -46,6 +48,27 @@ def run_formal_attention(
         artifact_root=artifact_root, overall_deadline_seconds=overall_deadline_seconds,
     )
     template.validate()
+    if entry_lock is not None:
+        lock = dict(entry_lock)
+        digest = lock.pop("sha256", None)
+        actual = hashlib.sha256(json.dumps(lock, sort_keys=True, ensure_ascii=False,
+            separators=(",", ":")).encode("utf-8")).hexdigest()
+        mode = scheduler_options.get("assistance_mode", "benchmark_proxy")
+        mode = getattr(mode, "value", mode)
+        expected = {"max_attempts": scheduler_options.get("max_attempts", 3),
+                    "assistance_credits": scheduler_options.get("assistance_credits", 1),
+                    "token_limit": scheduler_options.get("token_limit", 30_000),
+                    "assistance_mode": mode,
+                    "human_deadline_seconds": float(scheduler_options.get("human_deadline_seconds", 60)),
+                    "overall_deadline_seconds": float(overall_deadline_seconds),
+                    "approved_demo_sha256": scheduler_options.get("approved_demo_sha256"),
+                    "approved_policy_config_sha256": approved_policy_config_sha256}
+        if (digest != actual or lock.get("suite") != suite or lock.get("task_id") != task_id
+                or lock.get("seed") != seed or lock.get("attention_policy") != policy_id
+                or lock.get("approved_config_sha256") != approved_config_sha256
+                or lock.get("approved_policy_sha256") != approved_policy_sha256
+                or any(lock.get(key) != value for key, value in expected.items())):
+            raise ValueError("formal entry lock identity mismatch")
     if dev_hypothesis is not None and (not isinstance(dev_hypothesis, str)
                                       or not dev_hypothesis.strip()
                                       or len(dev_hypothesis) > 2000):
@@ -64,6 +87,7 @@ def run_formal_attention(
                               if scheduler_options.get("demo_prior") else None),
         "memory_context": memory_context,
         "overall_deadline_seconds": overall_deadline_seconds,
+        "entry_sha256": entry_lock["sha256"] if entry_lock else None,
     }
     scheduler_config_sha256 = hashlib.sha256(json.dumps(
         scheduler_config, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
@@ -139,6 +163,8 @@ def run_formal_attention(
             overall_deadline_seconds=overall_deadline_seconds,
             run_id=run_id, attempt_id=attempt_id,
             attention_input=attention_input,
+            entry_sha256=entry_lock["sha256"] if entry_lock else None,
+            entry_lock=dict(entry_lock) if entry_lock else None,
         )
         try:
             formal = run_with_formal_boundary(request, runner=runner)
@@ -184,6 +210,7 @@ def run_formal_attention(
                      "runner_boundary": "formal", "policy_sha256": approved_policy_sha256,
                      "config_sha256": approved_config_sha256,
                      "scheduler_config_sha256": scheduler_config_sha256,
+                     "entry_sha256": entry_lock["sha256"] if entry_lock else None,
                      "dev_hypothesis_evidence_sha256": (dev_hypothesis_evidence or {}).get("sha256"),
                      "formal_artifacts": formal["artifacts"], "attention_input": attention_input,
                      "memory_ids": selected, "memory_context": memory_context,
@@ -231,6 +258,7 @@ def run_formal_attention(
     summary["approved_policy_path"] = str(policy_code_path.resolve())
     summary["approved_config_path"] = str(config_path.resolve())
     summary["scheduler_config"] = scheduler_config
+    summary["entry_lock"] = entry_lock
     summary["scheduler_config_sha256"] = scheduler_config_sha256
     summary["memory_context"] = memory_context
     summary["approved_memory_context_sha256"] = approved_memory_context_sha256

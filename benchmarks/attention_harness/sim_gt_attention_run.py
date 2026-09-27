@@ -105,6 +105,11 @@ def run_sim_gt_attention(
         config.setdefault("total_failure_slots", max_attempts - 1)
         config.setdefault("seed", seed)
     policy = build_policy(policy_id, **config)
+    # Validate the whole public demo, including referenced assets, before a run
+    # directory or store can be mistaken for an accepted launch.
+    if demo_prior is not None:
+        verify_demo_prior(demo_prior, suite=suite, task_id=task_id,
+                          approved_sha256=approved_demo_sha256)
     run_dir = artifact_root / f"attention-{suite}-{task_id}-seed{seed}-{uuid4().hex[:12]}"
     run_dir.mkdir(parents=True, exist_ok=False)
     public_demo, demo_receipt = (

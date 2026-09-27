@@ -146,7 +146,7 @@ def test_ui_launch_locks_selection_and_rejects_other_targets(tmp_path):
     code = tmp_path / "policy.py"
     code.write_text("pass\n")
     config = tmp_path / "config.json"
-    config.write_text(json.dumps({"suite": "robosuite", "task_id": "cube_lift", "seed": 101}))
+    config.write_bytes((Path(__file__).resolve().parents[1] / "protocol/v2/formal_robosuite_cube_lift_seed101.json").read_bytes())
     service = tmp_path / "service"
     service.mkdir()
     catalog = tmp_path / "catalog.json"

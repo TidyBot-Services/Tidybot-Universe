@@ -26,6 +26,14 @@
 
 ## 里程碑索引
 
+### 2026-09-28 M1 任务入口封闭验收
+
+**状态：正式验收（仅 M1 工程入口包）。** 冻结包、支持范围、正反例和 M1／后续模块边界见 [`docs/m1_entry_acceptance.md`](docs/m1_entry_acceptance.md)。当前 U `feature/attention-native-robosuite` @ `104089ace258f0446cae310546203938e81ecf68`，本地有本轮改动；本轮开始前已有 `STATUS.md` 修改和两份未跟踪 docs 文件，均保留。R `081cd57ec9383895dc150050ca5d05c24628e7fa`、C `320020a0c94434af31ec02df3413229576490fef`、A `4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b`、T `b18bbf1585c42e370ae45ababdddad700cc2c71d` 分别核对。
+
+- **通过**：UI／正式 CLI 共用 M1 preflight；RoboCasa `counter_to_sink`／`counter_to_cab`、Robosuite `cube_lift`／`cube_stack` 的 `sim_gt` 开发 seed、七策略、预算和期限、批准配置、固定公开 demo 与随机预注册按冻结包核验。非法／held-out／smoke seed、任务／模拟器错配、未知策略、预算越界、缺失或篡改文件及展示后修改均在建 run 前拒绝。CLI 写入 `entry_lock.json` 与批准代码／配置快照，UI 持久 launch 行和正式 runner request／result／原始 trace 保留同一身份，下游还核对预算不被修改。相关测试命令见外部证据 `pytest-m1.command.json`，**127 passed**，无失败。
+- **通过**：两套 suite 各用 seed 101、`autonomous`、1 attempt、0 credit 做正式 CLI 和真实 UI HTTP 启动；同条件的 UI 与 CLI lock SHA 分别为 Robosuite `512796d49f6930f8a5ea8ccff749041abe6f88f2842577a827862be99bbbcd42`、RoboCasa `cf83204db5d8eea543f1f8b8b4196ea534c747b4aaef035427fc373f822107ab`。4 个 run 的配置快照、runner result、trace 与四类产物 SHA 经 `protocol/v2/audit_m1_entry.py` 全部复核。原生任务均失败，CLI exit 1 为任务结果，Service 交接与 lock 审计通过；`formal_eligible=false`。原始命令、stdout／stderr、UI 交互收据、配置、run、Service 日志与版本清单保存于 `/home/truares/桌面/attentionbench-m1-entry-20260928/`。
+- **未通过／外部阻塞：无（仅对本 M1 包）。** M2–M6、held-out、七策略效果矩阵和正式实验准入均保持原状态；下一模块须另冻结 M2 验收包，本轮未处理。
+
 | ID | 目标 | 状态 | 证据（仓库代号、路径／本次核查） | 下一步 |
 | --- | --- | --- | --- | --- |
 | W1-H1 | Robosuite 脱离 ASPIRE 的 v1 双任务 harness／开发集冻结 | 真实服务跑通 | U `benchmarks/attention_harness/protocol/v1/freeze_manifest.json`：`cube_lift`、`cube_stack` 各 25/25；D6 evaluator parity 30/30。是历史开发证据，非本次服务复跑。 | 保持 v1 freeze 不变；不要将其当作 v2 七策略成绩。 |

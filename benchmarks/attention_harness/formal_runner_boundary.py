@@ -33,6 +33,8 @@ class FormalRunRequest:
     run_id: str | None = None
     attempt_id: str | None = None
     attention_input: dict[str, Any] | None = None
+    entry_sha256: str | None = None
+    entry_lock: dict[str, Any] | None = None
 
     def validate(self) -> None:
         if (self.run_id is None) != (self.attempt_id is None):
@@ -41,6 +43,21 @@ class FormalRunRequest:
                                         or not self.attempt_id.startswith("attempt:")):
             raise ValueError("invalid formal Attention identity")
         public_attention_input(self.attention_input)
+        if self.entry_sha256 is not None and (len(self.entry_sha256) != 64 or
+                any(c not in "0123456789abcdef" for c in self.entry_sha256)):
+            raise ValueError("invalid formal entry digest")
+        if self.entry_lock is not None:
+            lock = dict(self.entry_lock)
+            digest = lock.pop("sha256", None)
+            actual = hashlib.sha256(json.dumps(lock, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":")).encode("utf-8")).hexdigest()
+            if (digest != actual or digest != self.entry_sha256
+                    or lock.get("suite") != self.suite or lock.get("task_id") != self.task_id
+                    or lock.get("seed") != self.seed
+                    or lock.get("approved_config_sha256") != self.config_sha256
+                    or lock.get("approved_policy_sha256") != self.policy_sha256
+                    or lock.get("overall_deadline_seconds") != self.overall_deadline_seconds):
+                raise ValueError("formal request entry lock mismatch")
         if self.suite not in {"robocasa", "robosuite"}:
             raise ValueError("formal runner requires a primary simulator suite")
         if not self.task_id or isinstance(self.seed, bool) or not isinstance(self.seed, int):
@@ -87,6 +104,8 @@ def run_with_formal_boundary(
     ):
         if result.get(key) != expected:
             raise RuntimeError(f"formal runner result disagrees on {key}")
+    if request.entry_lock is not None and result.get("entry_lock") != request.entry_lock:
+        raise RuntimeError("formal runner did not preserve entry lock")
     if request.run_id is not None:
         for key in ("run_id", "attempt_id"):
             if result.get(key) != getattr(request, key):
@@ -122,6 +141,8 @@ def run_with_formal_boundary(
                 raise RuntimeError(f"formal runner {name} status mismatch")
             if name == "native_result" and artifact.get("native_success") is not result["native_success"]:
                 raise RuntimeError("formal runner native result mismatch")
+            if name == "trace" and request.entry_lock is not None and artifact.get("entry_lock") != request.entry_lock:
+                raise RuntimeError("formal runner trace entry lock mismatch")
             for key in ("suite", "task_id", "seed", "policy_sha256", "config_sha256"):
                 if name == "trace" and artifact.get(key) != getattr(request, key):
                     raise RuntimeError(f"formal runner trace disagrees on {key}")
