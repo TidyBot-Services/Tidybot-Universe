@@ -1,0 +1,85 @@
+{
+  "archive": {
+    "file_count": 858,
+    "sha256": "a8342b98b9b2910d62acad092b653de9c7b5fe7cba3b0ea8b83eeb5a3bf1d8f3",
+    "subjects": {
+      "depth_failure_safety": "prior_auto_smoke/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/safety.json",
+      "graph_audit": "graph_live/graph_live_audit.json",
+      "memory_effect_index": "memory_effect/archive_manifest.json",
+      "repeated_action": "graph_live/repeated-action-clean/smoke_receipt.json",
+      "restart_checkpoint": "graph_live/restart_checkpoint.json",
+      "robocasa_graph": "graph_live/graph-robocasa/graph.json",
+      "robosuite_graph": "graph_live/graph-robosuite-restart/graph.json"
+    },
+    "uri": "benchmarks/attention_harness/protocol/v2/evidence/week2_engineering_raw_2026-09-27.tar.gz",
+    "verification_receipt_sha256": "948d10c33b204d43e937075098c293365108a961d081e2908662e71c7ec87324",
+    "verification_receipt_uri": "benchmarks/attention_harness/protocol/v2/evidence/week2_archive_relocation_verify_2026-09-27.json",
+    "verifier_uri": "benchmarks/attention_harness/protocol/v2/week2_evidence_archive.py"
+  },
+  "formal_eligible": false,
+  "formal_experiment_accepted": false,
+  "graph_process": {
+    "completed_pairs_reexecuted": false,
+    "entrypoint": "skill-agent-setup/claude-code/attention_orchestrator.py",
+    "independent_use_native_success": true,
+    "restart_after_first_pair": true,
+    "robocasa": "graph_live/graph-robocasa/graph.json",
+    "robocasa_status": "awaiting_approved_repair",
+    "robosuite": "graph_live/graph-robosuite-restart/graph.json"
+  },
+  "repository_versions": {
+    "agent_server": {
+      "branch": "feature/attentionbench-week2-sync-20260927",
+      "commit": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b"
+    },
+    "maniskill_service": {
+      "branch": "feature/attentionbench-week2-sync-20260927",
+      "commit": "993e1759730792a12b8afe2c18efda7f69776540"
+    },
+    "memory_service": {
+      "branch": "feature/attentionbench-week2-sync-20260927",
+      "commit": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f"
+    },
+    "robocasa_tasks": {
+      "branch": "feature/attentionbench-week2-sync-20260927",
+      "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+    },
+    "robosuite_service": {
+      "branch": "master",
+      "commit": "12bc69afe83c8398988be3eee637f91c14e9bf19"
+    },
+    "universe_code": {
+      "branch": "feature/attention-native-robosuite",
+      "commit": "86c904aff294c5d07d3a194e18847c8c275c2f72"
+    }
+  },
+  "results": {
+    "depth_500_classification": "Robosuite Service depth conversion rejected an out-of-range normalized depth after a gripper step; raw extrema were not logged, so numerical overshoot versus an invalid frame remains unresolved",
+    "gripper_actions_per_smoke": 3,
+    "repeated_gripper_smokes": 3,
+    "robocasa_promoted": false,
+    "robocasa_seed": 101,
+    "robosuite_control_successes": 0,
+    "robosuite_independent_seed": 103,
+    "robosuite_paired_dev_seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "robosuite_treatment_successes": 5
+  },
+  "schema_version": "attentionbench.week2-graph-live-index.v1",
+  "scope_limits": [
+    "development seeds only",
+    "no formal seven-policy matrix or held-out",
+    "no human, LIBERO, or real robot",
+    "depth out-of-range frame extrema unavailable; nine repeat actions do not establish general stability"
+  ],
+  "tests": {
+    "harness_and_bridge": "336 passed, 10 skipped",
+    "legacy_orchestrator": "84 passed, 0 failed",
+    "memory_service": "22 passed"
+  }
+}

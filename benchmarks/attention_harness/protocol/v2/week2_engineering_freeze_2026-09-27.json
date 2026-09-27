@@ -65,6 +65,13 @@
     "online_requests_after_demo": false,
     "trajectory_source": "public_sdk"
   },
+  "depth_http_500": {
+    "classification": "Robosuite Service rejects out-of-range normalized depth during post-gripper observation; raw extrema absent, so numeric overshoot versus invalid frame unresolved",
+    "clean_checkout_repeat_smoke": "3 runs x 3 gripper commands at seed 101; all native failures, Safety 0 unsafe, Service reaped",
+    "general_stability_accepted": false,
+    "independent_safety": "action_outcome_unknown",
+    "service_commit": "12bc69afe83c8398988be3eee637f91c14e9bf19"
+  },
   "evidence_index": {
     "sha256": "e3c39e88de580c3614c8bf6c95386c48a1ca481543b7886d492ad909912abe26",
     "uri": "benchmarks/attention_harness/protocol/v2/evidence/week2_auto_closure_2026-09-27.json"
@@ -72,11 +79,33 @@
   "formal_eligible": false,
   "formal_experiment_accepted": false,
   "freeze_date": "2026-09-27",
+  "graph_live_acceptance": {
+    "formal_eligible": false,
+    "robocasa_memory_status": "awaiting_approved_repair",
+    "robocasa_promotion": false,
+    "robocasa_source_seed": 101,
+    "robosuite_independent_native_success": true,
+    "robosuite_independent_use_seed": 103,
+    "robosuite_pairs": "control 0/5, treatment 5/5",
+    "robosuite_restart": "after seed 101 pair checkpoint, recovery without completed-pair replay",
+    "robosuite_source_seed": 101,
+    "robosuite_validation_seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ]
+  },
+  "graph_live_evidence_index": {
+    "sha256": "8404666ee1eabe8a4b0aae9b309b3155def44ed58a0a0c97b578ecdfb62d27db",
+    "uri": "benchmarks/attention_harness/protocol/v2/evidence/week2_graph_live_2026-09-27.json"
+  },
   "limits": [
-    "engineering seed-only, no seven-policy effect matrix",
-    "RoboCasa repair and Memory promotion remain blocked",
+    "engineering development seeds only; no seven-policy effect matrix",
+    "RoboCasa lacks approved effective repair and remains awaiting_approved_repair",
     "no held-out seed, human, LIBERO, real robot, or formal score",
-    "Fresh install action smoke had one depth-normalization HTTP 500 and an independent Safety stop; same fixed checkout retry completed, so repeated-action stability remains unaccepted."
+    "depth HTTP 500 classified to Service depth conversion; raw extrema were not retained, and nine passing repeated actions do not establish general stability"
   ],
   "memory_gate": {
     "minimum_distinct_paired_dev_seeds": 5,
@@ -118,6 +147,12 @@
     "target_immutable_after_start": true,
     "total_failure_slots": "max_attempts - 1"
   },
+  "relocatable_raw_archive": {
+    "file_count": 858,
+    "sha256": "a8342b98b9b2910d62acad092b653de9c7b5fe7cba3b0ea8b83eeb5a3bf1d8f3",
+    "uri": "benchmarks/attention_harness/protocol/v2/evidence/week2_engineering_raw_2026-09-27.tar.gz",
+    "verification_receipt_uri": "benchmarks/attention_harness/protocol/v2/evidence/week2_archive_relocation_verify_2026-09-27.json"
+  },
   "repository_versions": {
     "agent_server": {
       "branch": "feature/attentionbench-week2-sync-20260927",
@@ -146,7 +181,7 @@
     },
     "universe_code": {
       "branch": "feature/attention-native-robosuite",
-      "commit": "dff9e8a74a70ea41dff9936e9c249ed5f47756c4",
+      "commit": "86c904aff294c5d07d3a194e18847c8c275c2f72",
       "path": "/home/truares/桌面/Tidybot-Universe-attention-native"
     }
   },
@@ -166,9 +201,11 @@
     "benchmarks/attention_harness/advisor_proxy.py": "8d754f2778dd55397268aed30c463fa983d9ce31b7162c89fd2c7657bcfadf90",
     "benchmarks/attention_harness/core/policies.py": "663d89605a141da13b1d2d5c868f8396d27827db63351c7296958f005e6136d0",
     "benchmarks/attention_harness/demo_prior.py": "78d435a2654af1f0691676e7cc85c23745bab80575e32ab7714700d2390e686f",
+    "benchmarks/attention_harness/formal_attention_cli.py": "5a313055e27b01ee14d01543b7e10d6193e9dca7e902c28e7181bf197d4ef66d",
     "benchmarks/attention_harness/formal_attention_run.py": "992e96f2eadc451aee2b79575a48369d2840f80dd410dcbb5982edb6d9a58a0b",
     "benchmarks/attention_harness/formal_runner_boundary.py": "84cd8890dce220a22f4d96b8260918f28cecd1424f7dd593644359512bf4b593",
-    "benchmarks/attention_harness/memory_validation_task.py": "325de3910e8e98604e23a29749b9ae4b6cf3b582178861cebb9a1384a82a0526",
+    "benchmarks/attention_harness/memory_validation_task.py": "95bb76ffd1ba0f627cf6b29e9d1e8f911003dd4d4839d5a53d490e2bbffe7e48",
+    "benchmarks/attention_harness/protocol/v2/audit_week2_graph_live.py": "9edf1a20b9bc54b4d5784494b0574d26df55d239befdde0ea5442b21ec368ca0",
     "benchmarks/attention_harness/protocol/v2/formal_robocasa_counter_to_sink_seed101_week2.json": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
     "benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed101.json": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
     "benchmarks/attention_harness/protocol/v2/formal_robosuite_cube_lift_seed103_memory.json": "5c9d5eb070ad9b52819564605ebdf57ebeb30e80d4fa729a8553f33dc91ab284",
@@ -178,19 +215,22 @@
     "benchmarks/attention_harness/protocol/v2/policies/formal_robosuite_normal.py": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
     "benchmarks/attention_harness/protocol/v2/policies/robocasa_noop.py": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
     "benchmarks/attention_harness/protocol/v2/policies/robosuite_memory_validation.py": "0c72c388c6256a37fd8b9246f9f5629a1105bb76b491e025041c6dee806265ae",
+    "benchmarks/attention_harness/protocol/v2/policies/robosuite_repeat_gripper_smoke.py": "5f55f5193442856da4eb968fe3daaebf70fea00b778d62416705300c62c161fa",
     "benchmarks/attention_harness/protocol/v2/robosuite_memory_cases_101_105.json": "04beb79a1dd5d427174ba61cfbb2cb5fca16f0ac1f8ffdc4c2db67ff560deb24",
     "benchmarks/attention_harness/protocol/v2/robosuite_memory_context_seed103.json": "201bf6c9451d4e3ed27ddab5029c6a6db86da2d3b91a9e3a144aed070379596c",
     "benchmarks/attention_harness/protocol/v2/robosuite_memory_validation_profile.json": "bbf04b0b4e141ccc93df4ba5cd3575d8a1f1faffa4ec953acc3e256113b69052",
+    "benchmarks/attention_harness/protocol/v2/week2_evidence_archive.py": "00e300a5935f2df51fa70dcb507e3e62ffcf66f9ba4d441ef962a1b159b12cc2",
     "benchmarks/attention_harness/requirements-orchestrator.txt": "2ada187348b36848ba1230be97559f53f8afa055b5d19db659fd02feb364f069",
     "benchmarks/attention_harness/seed_guard.py": "41c04562aa0cf7989a9ef53d39311ad9b8e2ed73893ab528817d76da46e69676",
     "benchmarks/attention_harness/setup_env.sh": "a0826122b248c1f4482b4d0ac1f282b8d6d6bcb404db7562837328d1e9fef2c8",
-    "benchmarks/attention_harness/sim_gt_attention_run.py": "ec8391dcba91b489b3ad4b37c13648a5972159da238da25412bbcf459d0be45d",
+    "benchmarks/attention_harness/sim_gt_attention_run.py": "4ba2d51e6fb5f022730591af7f649133da52d673ee4271e49b22a56c24228b15",
     "benchmarks/attention_harness/v2_advisor.py": "534c78fe0200c4e76a2c6f14e6697ff59de80c3e59ad8ed8af4b367c4ef4cb12",
     "skill-agent-setup/claude-code/attention_memory_dispatch.py": "227fc6e4452453eee929b594a70dbec59ccf4b0a96e075a099275409f963b782",
-    "skill-agent-setup/claude-code/attention_orchestrator.py": "afd1c1181f325390abeb9151489067f17895053529223d6cd2ebe71973f5f1b4",
-    "skill-agent-setup/claude-code/attentionbench_bridge.py": "0855686b82500480d1099e062fa066454feb8ad00eac5b28ad9fe7744d176091"
+    "skill-agent-setup/claude-code/attention_orchestrator.py": "ac117ba66c8c75461e08ef644b68015293f25f0d281ecf63c2724f5bb1dd9972",
+    "skill-agent-setup/claude-code/attentionbench_bridge.py": "702237674872998adac1693c9d3a8b1af2a64307fa9b59ea85c8fecbe4124d30",
+    "skill-agent-setup/claude-code/tests/test_attention_formal_approval.py": "42a1214e6546b44d60bf333fa23d1cf5e00b315a380bedb032ce3f3e9ddffb9c"
   },
-  "stage": "engineering_mainchain",
+  "stage": "engineering_graph_live_closed",
   "tasks": {
     "engineering_smoke": [
       "robosuite/cube_lift/101",
