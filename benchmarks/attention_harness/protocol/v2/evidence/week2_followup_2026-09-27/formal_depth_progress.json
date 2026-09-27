@@ -1,0 +1,428 @@
+[
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/native_result.json",
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/safety.json",
+        "sha256": "9886fcf6eeb92cece50bae69aebb328f2859020e622b0fdcdda8489be6654add"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/sandbox_receipt.json",
+        "sha256": "ddce9286901449a1e57a3e8f90cb256df647442f267f31fa439f94bd095d6e6f"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101/cube_lift-seed101-formal-1790522558192271549/trace.json",
+        "sha256": "2568f0adf6c6951a7e25d466427a53275c7a82786ebc242f7d6b0359c7ff2eb6"
+      }
+    },
+    "audit_error": "KeyError: 'native_success'",
+    "command": [
+      "/home/truares/.cache/tidybot-attention/venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_lift",
+      "--seed",
+      "101",
+      "--code",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_lift-seed101.json",
+      "--approved-config-sha256",
+      "a35bab9cf02f84394bdd674641215e52a6f3a15b4bf4bc52232d7783242c40bd",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed101",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "a35bab9cf02f84394bdd674641215e52a6f3a15b4bf4bc52232d7783242c40bd",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "safety_unsafe_attempts": 0,
+    "seed": 101,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2478574,
+      "process_group": 2478574,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift"
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/native_result.json",
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/safety.json",
+        "sha256": "9877645598073444b08333bd63508383f5486b5bfa877c9fedba8f8fb3749462"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/sandbox_receipt.json",
+        "sha256": "257fad81756f3be8d06d711f8b37c9a4f690280e5ae1a3c96c0c8d325a482ea4"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/trace.json",
+        "sha256": "237fa45256dab36f70aa719299dd0e1b09678939281658ee5d8ebb794957025e"
+      }
+    },
+    "audit_error": "KeyError: 'native_success'",
+    "command": [
+      "/home/truares/.cache/tidybot-attention/venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_lift",
+      "--seed",
+      "102",
+      "--code",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_lift-seed102.json",
+      "--approved-config-sha256",
+      "b930b2a4344832eb58284797c8086434e9a399a3a653646285abc567628cba97",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "b930b2a4344832eb58284797c8086434e9a399a3a653646285abc567628cba97",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "safety_unsafe_attempts": 0,
+    "seed": 102,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2478778,
+      "process_group": 2478778,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift"
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed103/cube_lift-seed103-formal-1790522562938047455",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed103/cube_lift-seed103-formal-1790522562938047455/native_result.json",
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed103/cube_lift-seed103-formal-1790522562938047455/safety.json",
+        "sha256": "38cc394a0f686628a2674a58fb37e9672cd843e3273697def60dcb704533178e"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed103/cube_lift-seed103-formal-1790522562938047455/sandbox_receipt.json",
+        "sha256": "d8295be37d2245ffbbb9acf78da84b6c38a8b3aacb0183a560aa26ae5285d947"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed103/cube_lift-seed103-formal-1790522562938047455/trace.json",
+        "sha256": "5da14fd04893858c61e64fdb924a5e594a138ca444a55f254ad3abb84a8cbcb0"
+      }
+    },
+    "audit_error": "KeyError: 'native_success'",
+    "command": [
+      "/home/truares/.cache/tidybot-attention/venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_lift",
+      "--seed",
+      "103",
+      "--code",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_lift-seed103.json",
+      "--approved-config-sha256",
+      "30f649859d0257accbf3625cf187624f9d3c7cd6709c4118c61f10689737f20c",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed103",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "30f649859d0257accbf3625cf187624f9d3c7cd6709c4118c61f10689737f20c",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "safety_unsafe_attempts": 0,
+    "seed": 103,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479022,
+      "process_group": 2479022,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_lift"
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed101/cube_stack-seed101-formal-1790522565266813489",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed101/cube_stack-seed101-formal-1790522565266813489/native_result.json",
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed101/cube_stack-seed101-formal-1790522565266813489/safety.json",
+        "sha256": "e8244fa32202ea307264ac1e62a0d31989a7b2442ca0b64440d4220f0e0f9b51"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed101/cube_stack-seed101-formal-1790522565266813489/sandbox_receipt.json",
+        "sha256": "3c14d4d5b61d2f994ec713813431c95496a2fdaf80d4423a3fa1a69592da0eea"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed101/cube_stack-seed101-formal-1790522565266813489/trace.json",
+        "sha256": "8bfedb481650723f2ba662a19425e0536762ddf62941d62c2979910e7d31c391"
+      }
+    },
+    "audit_error": "KeyError: 'native_success'",
+    "command": [
+      "/home/truares/.cache/tidybot-attention/venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_stack",
+      "--seed",
+      "101",
+      "--code",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_stack-seed101.json",
+      "--approved-config-sha256",
+      "bffc563a3a6b63e59290a9590d8b15e84a6e9667e1c546de0369919875b70354",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed101",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "bffc563a3a6b63e59290a9590d8b15e84a6e9667e1c546de0369919875b70354",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "safety_unsafe_attempts": 0,
+    "seed": 101,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479249,
+      "process_group": 2479249,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack"
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed102/cube_stack-seed102-formal-1790522567573634208",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed102/cube_stack-seed102-formal-1790522567573634208/native_result.json",
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed102/cube_stack-seed102-formal-1790522567573634208/safety.json",
+        "sha256": "ab4709abc0524a45083631830f1fa4c470eb507d90c9cca443e33bdb9e502b31"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed102/cube_stack-seed102-formal-1790522567573634208/sandbox_receipt.json",
+        "sha256": "f33b5cfac1de8ea894e440d8a6e10a02dde9e59e30f343be162cc5215abb0507"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed102/cube_stack-seed102-formal-1790522567573634208/trace.json",
+        "sha256": "390cf987154b98a88231f1a2c352e0c067412f166b6843af4f0dd3945db40cd5"
+      }
+    },
+    "audit_error": "KeyError: 'native_success'",
+    "command": [
+      "/home/truares/.cache/tidybot-attention/venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_stack",
+      "--seed",
+      "102",
+      "--code",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_stack-seed102.json",
+      "--approved-config-sha256",
+      "f4d1fd3a61153901c60d86af9d52076816383a38dcf81640c781bed921b4be52",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed102",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "f4d1fd3a61153901c60d86af9d52076816383a38dcf81640c781bed921b4be52",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "safety_unsafe_attempts": 0,
+    "seed": 102,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479448,
+      "process_group": 2479448,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack"
+  },
+  {
+    "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed103/cube_stack-seed103-formal-1790522569888796695",
+    "artifacts": {
+      "native_result": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed103/cube_stack-seed103-formal-1790522569888796695/native_result.json",
+        "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e"
+      },
+      "safety": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed103/cube_stack-seed103-formal-1790522569888796695/safety.json",
+        "sha256": "9cc35c64d094e00b3d9128726f2a33b77b932efaa4eb26c81fc10d64efac3a4a"
+      },
+      "sandbox_receipt": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed103/cube_stack-seed103-formal-1790522569888796695/sandbox_receipt.json",
+        "sha256": "1619a16cc3f2074dfde49cb00b109f7fdd9e5c1635561e474726ea8e6d386914"
+      },
+      "trace": {
+        "matches_receipt": true,
+        "path": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed103/cube_stack-seed103-formal-1790522569888796695/trace.json",
+        "sha256": "2603460fad486bf9745663ef191aad5ba3911597bb6b7c7922701f71aa3327f2"
+      }
+    },
+    "audit_error": "KeyError: 'native_success'",
+    "command": [
+      "/home/truares/.cache/tidybot-attention/venv/bin/python",
+      "-m",
+      "benchmarks.attention_harness.robosuite_memory.formal_cli",
+      "--task",
+      "cube_stack",
+      "--seed",
+      "103",
+      "--code",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_depth_repeat_smoke.py",
+      "--approved-policy-sha256",
+      "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+      "--config",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_stack-seed103.json",
+      "--approved-config-sha256",
+      "f0abc428df0ef2de13c63dc83036489b64d6d20509efb510d73ae4ad5f99c0cf",
+      "--service-source-root",
+      "/home/truares/\u684c\u9762/robosuite_sim-service",
+      "--artifact-root",
+      "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_stack-seed103",
+      "--overall-deadline-seconds",
+      "120"
+    ],
+    "config_sha256": "f0abc428df0ef2de13c63dc83036489b64d6d20509efb510d73ae4ad5f99c0cf",
+    "error": null,
+    "exit_code": 0,
+    "formal_eligible": false,
+    "native_evaluator": {
+      "evaluated": true,
+      "native_success": false
+    },
+    "safety_unsafe_attempts": 0,
+    "seed": 103,
+    "service_stop": {
+      "exit_code": -15,
+      "leader_reaped": true,
+      "mechanism": "dedicated_service_process_group_termination",
+      "pid": 2479632,
+      "process_group": 2479632,
+      "process_group_gone": true,
+      "reason": "normal_cleanup",
+      "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+    },
+    "status": "completed",
+    "task": "cube_stack"
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "applicability": {
+    "perception_mode": "sim_gt",
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  },
+  "artifact_kind": "text_hint",
+  "core_record_sha256": "a38a3e575cb9618a279523d971c6012feffeba61e7c1e152530b80da4c8b9f05",
+  "created_at": 1790487908.7534933,
+  "files": {
+    "knowledge/guidance.md": "d734049259b00845114d08c44d1a2249e3e28e0bc120e98de2ac6f01567073d8",
+    "knowledge/repair.md": "61063874fcfc5a88abd6a2a197191fff5b8b9f7293ebb535e6e56a9fbfac5edd",
+    "lifecycle.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source/provenance.json": "7c3d11eedfc928cb3154db5fe743b1364ff14bdfc6da7854e96ff07ea6c702fe",
+    "usage.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "validation/impact.json": "e3faff08079e903ae36c40a4f5789538c9f917a19a6a0e85601eee2715d2d713",
+    "validation/pairs.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "validation/plan.json": "dbb391e64eab7c843a0ff0a3dcf18143504a3153cda252e609d13217d14f533f",
+    "validation/scope.json": "45bd7a6f67cb2ba3c291351badc3730426b4bf6550bc12b28fd9bdd7ba93c7bd"
+  },
+  "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "schema_version": "attentionbench.memory-package.v2",
+  "source_kind": "advisor_proxy",
+  "status": "candidate",
+  "version": 1
+}

@@ -1,0 +1,16 @@
+{
+  "attempts": 1,
+  "diagnosis": "**Earliest observed problem:** Both attempts failed the native evaluator (native_success: false) despite the agent completing only minimal activity — two perception calls and two sensor reads with no manipulation actions logged before evaluation. The agent never attempted the counter_to_sink task behavior.\n\n**Actionable next repair:** Investigate why the agent's policy produced no task actions (no grasp/move/place events) after perception — likely a policy or action-issuance failure between perception and execution. Debug the trace.json to find where the action pipeline stalled, and fix the action-generation step so the agent actually manipulates the object.\n\n**Citations:**\n- attempt_id: `attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0`\n- event_id: `formal-native-result` (evaluator.result, native_success = false)\n\n**Caveat:** The packet lacks trace contents, so the precise failure point (e.g., empty action list vs. perception returning no objects) cannot be confirmed from this evidence alone.",
+  "input_sha256": "4a1e43b94e6a2ee827541386e37fd77f981fd8a9c79777312f655c39352de401",
+  "model": "parcc/GLM",
+  "native_success": false,
+  "schema_version": "attentionbench.diagnostic-eval.v1",
+  "usage": {
+    "completion_tokens": 219,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1925,
+    "total_tokens": 2144
+  }
+}

@@ -1,0 +1,1194 @@
+{
+  "events": [
+    {
+      "entity_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+      "entity_type": "runs",
+      "event_key": "run.created:run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+      "event_type": "run.created",
+      "payload": {
+        "assistance_mode": "benchmark_proxy",
+        "budget": {
+          "assistance_credits": 0,
+          "execution_seconds": 60.0,
+          "gpu_seconds": 0.0,
+          "token_limit": 1000
+        },
+        "created_at": 1790481803.9960501,
+        "developer_model": "formal-generated-policy",
+        "evaluator_model": "native_evaluator",
+        "execution_target": "robosuite_sim",
+        "policy_id": "autonomous",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+        "schema_version": "attentionbench.core.v1",
+        "seed": 101,
+        "status": "created",
+        "suite": "robosuite",
+        "task_id": "cube_lift"
+      },
+      "sequence": 1
+    },
+    {
+      "entity_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+      "entity_type": "run",
+      "event_key": "start:run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+      "event_type": "run.running",
+      "payload": {
+        "run": {
+          "assistance_mode": "benchmark_proxy",
+          "budget": {
+            "assistance_credits": 0,
+            "execution_seconds": 60.0,
+            "gpu_seconds": 0.0,
+            "token_limit": 1000
+          },
+          "created_at": 1790481803.9960501,
+          "developer_model": "formal-generated-policy",
+          "evaluator_model": "native_evaluator",
+          "execution_target": "robosuite_sim",
+          "policy_id": "autonomous",
+          "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+          "schema_version": "attentionbench.core.v1",
+          "seed": 101,
+          "status": "running",
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        }
+      },
+      "sequence": 2
+    },
+    {
+      "entity_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+      "entity_type": "attempts",
+      "event_key": "attempt.created:attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+      "event_type": "attempt.created",
+      "payload": {
+        "artifact_uri": null,
+        "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+        "ended_at": null,
+        "index": 0,
+        "native_success": null,
+        "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+        "schema_version": "attentionbench.core.v1",
+        "started_at": 1790481804.027027,
+        "status": "running"
+      },
+      "sequence": 3
+    },
+    {
+      "entity_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+      "entity_type": "attempt",
+      "event_key": "finish:attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+      "event_type": "attempt.failed",
+      "payload": {
+        "attempt": {
+          "artifact_uri": "artifact://cube_lift-seed101-formal-1790481804027982384/result.json",
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+          "ended_at": 1790481811.9192014,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790481804.027027,
+          "status": "failed"
+        }
+      },
+      "sequence": 4
+    },
+    {
+      "entity_id": "raw-trace:cube_lift-seed101-formal-1790481804027982384:0",
+      "entity_type": "raw_traces",
+      "event_key": "raw_trace.created:raw-trace:cube_lift-seed101-formal-1790481804027982384:0",
+      "event_type": "raw_trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+        "code": {
+          "artifact_uri": "artifact://cube_lift-seed101-formal-1790481804027982384/policy.py",
+          "content": "from robot_sdk import sensors, gripper\n\nobjects = sensors.find_objects()\ngripper.open(settle_steps=1)\n",
+          "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa"
+        },
+        "complete": true,
+        "created_at": 1790481804.027027,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.428,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {},
+            "sequence": 1,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000488,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.706,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {},
+            "sequence": 2,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.020095,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "settle_steps": 1
+            },
+            "duration_ms": 4332.437,
+            "error": {
+              "message": "independent safety monitor: action_outcome_unknown",
+              "type": "SafetyViolation"
+            },
+            "event_id": "sdk-2",
+            "event_type": "sdk.gripper_command",
+            "evidence_refs": [],
+            "operation": "open",
+            "result": {},
+            "sequence": 3,
+            "source": "robot_sdk.gripper",
+            "status": "failed",
+            "timestamp": 4.352673,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.132,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "agentview_depth": {
+                "dtype": "float32",
+                "shape": [
+                  64,
+                  64,
+                  1
+                ]
+              },
+              "agentview_image": {
+                "dtype": "uint8",
+                "shape": [
+                  64,
+                  64,
+                  3
+                ]
+              },
+              "agentview_intrinsics": {
+                "dtype": "float64",
+                "shape": [
+                  3,
+                  3
+                ]
+              },
+              "agentview_pose_mat": {
+                "dtype": "float64",
+                "shape": [
+                  4,
+                  4
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_quat": {
+                "dtype": "float64",
+                "shape": [
+                  4
+                ]
+              },
+              "robot0_eef_quat_site": {
+                "dtype": "float32",
+                "shape": [
+                  4
+                ]
+              },
+              "robot0_gripper_qpos": {
+                "dtype": "float64",
+                "shape": [
+                  2
+                ]
+              },
+              "robot0_gripper_qvel": {
+                "dtype": "float64",
+                "shape": [
+                  2
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_joint_pos_cos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_joint_pos_sin": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_joint_vel": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_proprio-state": {
+                "dtype": "float64",
+                "shape": [
+                  43
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 4.354143,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "action-log",
+            "event_type": "robot.action_log",
+            "evidence_refs": [],
+            "operation": "step_sequence",
+            "result": {
+              "action_count": 0
+            },
+            "sequence": 5,
+            "source": "robot_backend",
+            "status": "completed",
+            "timestamp": 4.354144,
+            "visibility": [
+              "internal"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "SafetyViolation: independent safety monitor: action_outcome_unknown",
+              "type": "RuntimeError"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:policy.py"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "failed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 6,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 4.354145,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "native-evaluator",
+            "event_type": "evaluator.result",
+            "evidence_refs": [],
+            "operation": "native_success",
+            "result": {
+              "native_success": false
+            },
+            "sequence": 7,
+            "source": "native_evaluator",
+            "status": "completed",
+            "timestamp": 4.354146,
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790481811.9252012,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 274
+            },
+            "mime_type": "application/json",
+            "sha256": "23f444390ba09a558e08e8c9e0572a3ee23c2c84c7976c9a0ebab327476bb8fb",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-formal-1790481804027982384/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790481668.7212887,
+            "evidence_id": "evidence:policy.py",
+            "kind": "policy_code",
+            "metadata": {
+              "bytes": 102
+            },
+            "mime_type": "text/x-python",
+            "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-formal-1790481804027982384/policy.py",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790481804.8113468,
+            "evidence_id": "evidence:service.log",
+            "kind": "service_log",
+            "metadata": {
+              "bytes": 1077
+            },
+            "mime_type": "text/plain",
+            "sha256": "895aa8ddd15261c3d6429981aa570e412e764fd0238e4b2c1c783956f9858b74",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-formal-1790481804027982384/service.log",
+            "visibility": [
+              "internal"
+            ]
+          }
+        ],
+        "execution_id": "execution:cube_lift-seed101-formal-1790481804027982384:0",
+        "failure": null,
+        "hypothesis": "",
+        "memory_refs": [],
+        "metadata": {
+          "policy_id": "autonomous",
+          "runtime": {
+            "attention_input": {},
+            "config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+            "dev_hypothesis_evidence_sha256": null,
+            "formal_artifacts": {
+              "native_result": {
+                "sha256": "d1d429a9e2c5875bdf06913a1b082ac16469c5164c2b93f0e3bee34cbeadd237",
+                "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/native_result.json"
+              },
+              "safety": {
+                "sha256": "d8ef8c628b646a5f6abc9060027545ea52c511b76ff2c3599f4e4b487914062f",
+                "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/safety.json"
+              },
+              "sandbox_receipt": {
+                "sha256": "a7f3465367194619c74ccc67b725aace8568a4baac450182b99312630e16c341",
+                "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/sandbox_receipt.json"
+              },
+              "trace": {
+                "sha256": "82dadb5d69bb5c205cc3c52e63ba3e1a7038455991656f934e33bbb0c18df9e5",
+                "uri": "/home/truares/桌面/attentionbench-week2-auto-smoke-20260927/clean-checkout/attention-robosuite-cube_lift-seed101-1cde894ef24b/attempts/cube_lift-seed101-formal-1790481804027982384/trace.json"
+              }
+            },
+            "memory_context": null,
+            "memory_exposure": "none",
+            "memory_ids": [],
+            "perception_mode": "sim_gt",
+            "policy_sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+            "runner_boundary": "formal",
+            "scheduler_config_sha256": "d021fcf40a45b7feb462a40ec15979f7a0454ea44f8b7eaf270fb92f2622775d",
+            "score_namespace": "v2/gt_perception_attentionbench"
+          },
+          "seed": 101,
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        },
+        "outcome": {
+          "elapsed_seconds": 7.892174456999783,
+          "evaluator_authoritative": true,
+          "evaluator_verdict": "failed",
+          "exit_code": null,
+          "native_success": false,
+          "status": "failed",
+          "stop_reason": "failed",
+          "timed_out": false
+        },
+        "raw_trace_id": "raw-trace:cube_lift-seed101-formal-1790481804027982384:0",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+        "schema_version": "attentionbench.raw-execution-trace.v1"
+      },
+      "sequence": 5
+    },
+    {
+      "entity_id": "trace:cube_lift-seed101-formal-1790481804027982384:0",
+      "entity_type": "traces",
+      "event_key": "trace.created:trace:cube_lift-seed101-formal-1790481804027982384:0",
+      "event_type": "trace.created",
+      "payload": {
+        "agent_state": "blocked_after_failure",
+        "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+        "code": {
+          "artifact_uri": "artifact://cube_lift-seed101-formal-1790481804027982384/policy.py",
+          "content": "from robot_sdk import sensors, gripper\n\nobjects = sensors.find_objects()\ngripper.open(settle_steps=1)\n",
+          "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa"
+        },
+        "created_at": 1790481804.027027,
+        "events": [
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": null,
+            "event_id": "execution-started",
+            "event_type": "execution.started",
+            "evidence_refs": [],
+            "operation": "run_policy",
+            "result": {},
+            "sequence": 0,
+            "source": "attention_harness",
+            "status": "completed",
+            "timestamp": 0.0,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.428,
+            "error": null,
+            "event_id": "sdk-0",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {},
+            "sequence": 1,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.000488,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "camera_names": null,
+              "target_names": null
+            },
+            "duration_ms": 0.706,
+            "error": null,
+            "event_id": "sdk-1",
+            "event_type": "sdk.perception",
+            "evidence_refs": [],
+            "operation": "find_objects",
+            "result": {},
+            "sequence": 2,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 0.020095,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {
+              "settle_steps": 1
+            },
+            "duration_ms": 4332.437,
+            "error": {
+              "message": "independent safety monitor: action_outcome_unknown",
+              "type": "SafetyViolation"
+            },
+            "event_id": "sdk-2",
+            "event_type": "sdk.gripper_command",
+            "evidence_refs": [],
+            "operation": "open",
+            "result": {},
+            "sequence": 3,
+            "source": "robot_sdk.gripper",
+            "status": "failed",
+            "timestamp": 4.352673,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": 0.132,
+            "error": null,
+            "event_id": "sdk-3",
+            "event_type": "sdk.sensor_read",
+            "evidence_refs": [],
+            "operation": "get_observation",
+            "result": {
+              "agentview_depth": {
+                "dtype": "float32",
+                "shape": [
+                  64,
+                  64,
+                  1
+                ]
+              },
+              "agentview_image": {
+                "dtype": "uint8",
+                "shape": [
+                  64,
+                  64,
+                  3
+                ]
+              },
+              "agentview_intrinsics": {
+                "dtype": "float64",
+                "shape": [
+                  3,
+                  3
+                ]
+              },
+              "agentview_pose_mat": {
+                "dtype": "float64",
+                "shape": [
+                  4,
+                  4
+                ]
+              },
+              "robot0_eef_pos": {
+                "dtype": "float64",
+                "shape": [
+                  3
+                ]
+              },
+              "robot0_eef_quat": {
+                "dtype": "float64",
+                "shape": [
+                  4
+                ]
+              },
+              "robot0_eef_quat_site": {
+                "dtype": "float32",
+                "shape": [
+                  4
+                ]
+              },
+              "robot0_gripper_qpos": {
+                "dtype": "float64",
+                "shape": [
+                  2
+                ]
+              },
+              "robot0_gripper_qvel": {
+                "dtype": "float64",
+                "shape": [
+                  2
+                ]
+              },
+              "robot0_joint_pos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_joint_pos_cos": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_joint_pos_sin": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_joint_vel": {
+                "dtype": "float64",
+                "shape": [
+                  7
+                ]
+              },
+              "robot0_proprio-state": {
+                "dtype": "float64",
+                "shape": [
+                  43
+                ]
+              }
+            },
+            "sequence": 4,
+            "source": "robot_sdk.sensors",
+            "status": "completed",
+            "timestamp": 4.354143,
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "arguments": {},
+            "duration_ms": null,
+            "error": {
+              "message": "SafetyViolation: independent safety monitor: action_outcome_unknown",
+              "type": "RuntimeError"
+            },
+            "event_id": "execution-finished",
+            "event_type": "execution.finished",
+            "evidence_refs": [
+              "evidence:trace_context.json",
+              "evidence:policy.py"
+            ],
+            "operation": "run_policy",
+            "result": {
+              "execution_status": "failed",
+              "exit_code": null,
+              "stderr_tail": "",
+              "stdout_tail": "",
+              "timed_out": false
+            },
+            "sequence": 6,
+            "source": "attention_harness",
+            "status": "failed",
+            "timestamp": 4.354145,
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "created_at": 1790481668.7212887,
+            "evidence_id": "evidence:policy.py",
+            "kind": "policy_code",
+            "metadata": {
+              "bytes": 102
+            },
+            "mime_type": "text/x-python",
+            "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-formal-1790481804027982384/policy.py",
+            "visibility": [
+              "advisor"
+            ]
+          },
+          {
+            "created_at": 1790481811.9252012,
+            "evidence_id": "evidence:trace_context.json",
+            "kind": "execution_context",
+            "metadata": {
+              "bytes": 274
+            },
+            "mime_type": "application/json",
+            "sha256": "23f444390ba09a558e08e8c9e0572a3ee23c2c84c7976c9a0ebab327476bb8fb",
+            "source_event_id": null,
+            "uri": "artifact://cube_lift-seed101-formal-1790481804027982384/trace_context.json",
+            "visibility": [
+              "advisor"
+            ]
+          }
+        ],
+        "execution_id": "execution:cube_lift-seed101-formal-1790481804027982384:0",
+        "experiment": {
+          "config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+          "policy_id": "autonomous",
+          "scheduler_config_sha256": "d021fcf40a45b7feb462a40ec15979f7a0454ea44f8b7eaf270fb92f2622775d",
+          "seed": 101,
+          "suite": "robosuite",
+          "task_id": "cube_lift"
+        },
+        "failure": {
+          "classification_source": "deterministic_event_rules",
+          "confidence": 1.0,
+          "consecutive_failures": 1,
+          "error_type": "SafetyViolation",
+          "first_failed_event_id": "sdk-2",
+          "inferred_cause": null,
+          "last_successful_event_id": "sdk-1",
+          "message": "independent safety monitor: action_outcome_unknown",
+          "observed_symptom": "independent safety monitor: action_outcome_unknown",
+          "retryable": null,
+          "safety_relevant": false,
+          "stage": "safety_interrupt",
+          "termination_reason": null
+        },
+        "hypothesis": "",
+        "hypothesis_status": "unknown",
+        "memory_refs": [],
+        "outcome": {
+          "elapsed_seconds": 7.892174456999783,
+          "exit_code": null,
+          "status": "failed",
+          "stop_reason": "failed",
+          "timed_out": false
+        },
+        "projection": {
+          "included_event_count": 6,
+          "included_evidence_count": 2,
+          "omitted_event_count": 2,
+          "omitted_evidence_count": 1,
+          "policy_version": "attentionbench.advisor-visibility.v1",
+          "projection_sha256": "8fde3df1a1db0efa9494d3903f0c5c48e42378848f4be074d2b75cd029950e27",
+          "redacted_field_count": 3,
+          "source_complete": true,
+          "source_sha256": "872f52f7ac66b92b06050a01899680e21d8c166456184ebefae921f27f8883ed"
+        },
+        "raw_trace_id": "raw-trace:cube_lift-seed101-formal-1790481804027982384:0",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+        "schema_version": "attentionbench.advisor-trace-packet.v1",
+        "trace_id": "trace:cube_lift-seed101-formal-1790481804027982384:0"
+      },
+      "sequence": 6
+    },
+    {
+      "entity_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+      "entity_type": "resource_usage",
+      "event_key": "resource-event:resources:attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+      "event_type": "resources.consumed",
+      "payload": {
+        "execution_seconds": 7.892174456999783,
+        "gpu_seconds": 0.0,
+        "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+        "tokens": 0
+      },
+      "sequence": 7
+    }
+  ],
+  "projection": {
+    "attention_inbox": [],
+    "autonomous_work": {
+      "attempts": [
+        {
+          "artifact_uri": "artifact://cube_lift-seed101-formal-1790481804027982384/result.json",
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+          "ended_at": 1790481811.9192014,
+          "index": 0,
+          "native_success": false,
+          "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+          "schema_version": "attentionbench.core.v1",
+          "started_at": 1790481804.027027,
+          "status": "failed"
+        }
+      ]
+    },
+    "live_station": {
+      "emergency_interrupt_available": true,
+      "execution_target": "robosuite_sim",
+      "status": "running"
+    },
+    "request_detail": {
+      "memories": [],
+      "responses": [],
+      "traces": [
+        {
+          "agent_state": "blocked_after_failure",
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1cde894ef24b:0",
+          "code": {
+            "artifact_uri": "artifact://cube_lift-seed101-formal-1790481804027982384/policy.py",
+            "content": "from robot_sdk import sensors, gripper\n\nobjects = sensors.find_objects()\ngripper.open(settle_steps=1)\n",
+            "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa"
+          },
+          "created_at": 1790481804.027027,
+          "events": [
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": null,
+              "event_id": "execution-started",
+              "event_type": "execution.started",
+              "evidence_refs": [],
+              "operation": "run_policy",
+              "result": {},
+              "sequence": 0,
+              "source": "attention_harness",
+              "status": "completed",
+              "timestamp": 0.0,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 0.428,
+              "error": null,
+              "event_id": "sdk-0",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {},
+              "sequence": 1,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.000488,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "camera_names": null,
+                "target_names": null
+              },
+              "duration_ms": 0.706,
+              "error": null,
+              "event_id": "sdk-1",
+              "event_type": "sdk.perception",
+              "evidence_refs": [],
+              "operation": "find_objects",
+              "result": {},
+              "sequence": 2,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 0.020095,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {
+                "settle_steps": 1
+              },
+              "duration_ms": 4332.437,
+              "error": {
+                "message": "independent safety monitor: action_outcome_unknown",
+                "type": "SafetyViolation"
+              },
+              "event_id": "sdk-2",
+              "event_type": "sdk.gripper_command",
+              "evidence_refs": [],
+              "operation": "open",
+              "result": {},
+              "sequence": 3,
+              "source": "robot_sdk.gripper",
+              "status": "failed",
+              "timestamp": 4.352673,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": 0.132,
+              "error": null,
+              "event_id": "sdk-3",
+              "event_type": "sdk.sensor_read",
+              "evidence_refs": [],
+              "operation": "get_observation",
+              "result": {
+                "agentview_depth": {
+                  "dtype": "float32",
+                  "shape": [
+                    64,
+                    64,
+                    1
+                  ]
+                },
+                "agentview_image": {
+                  "dtype": "uint8",
+                  "shape": [
+                    64,
+                    64,
+                    3
+                  ]
+                },
+                "agentview_intrinsics": {
+                  "dtype": "float64",
+                  "shape": [
+                    3,
+                    3
+                  ]
+                },
+                "agentview_pose_mat": {
+                  "dtype": "float64",
+                  "shape": [
+                    4,
+                    4
+                  ]
+                },
+                "robot0_eef_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    3
+                  ]
+                },
+                "robot0_eef_quat": {
+                  "dtype": "float64",
+                  "shape": [
+                    4
+                  ]
+                },
+                "robot0_eef_quat_site": {
+                  "dtype": "float32",
+                  "shape": [
+                    4
+                  ]
+                },
+                "robot0_gripper_qpos": {
+                  "dtype": "float64",
+                  "shape": [
+                    2
+                  ]
+                },
+                "robot0_gripper_qvel": {
+                  "dtype": "float64",
+                  "shape": [
+                    2
+                  ]
+                },
+                "robot0_joint_pos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                },
+                "robot0_joint_pos_cos": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                },
+                "robot0_joint_pos_sin": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                },
+                "robot0_joint_vel": {
+                  "dtype": "float64",
+                  "shape": [
+                    7
+                  ]
+                },
+                "robot0_proprio-state": {
+                  "dtype": "float64",
+                  "shape": [
+                    43
+                  ]
+                }
+              },
+              "sequence": 4,
+              "source": "robot_sdk.sensors",
+              "status": "completed",
+              "timestamp": 4.354143,
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "arguments": {},
+              "duration_ms": null,
+              "error": {
+                "message": "SafetyViolation: independent safety monitor: action_outcome_unknown",
+                "type": "RuntimeError"
+              },
+              "event_id": "execution-finished",
+              "event_type": "execution.finished",
+              "evidence_refs": [
+                "evidence:trace_context.json",
+                "evidence:policy.py"
+              ],
+              "operation": "run_policy",
+              "result": {
+                "execution_status": "failed",
+                "exit_code": null,
+                "stderr_tail": "",
+                "stdout_tail": "",
+                "timed_out": false
+              },
+              "sequence": 6,
+              "source": "attention_harness",
+              "status": "failed",
+              "timestamp": 4.354145,
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "created_at": 1790481668.7212887,
+              "evidence_id": "evidence:policy.py",
+              "kind": "policy_code",
+              "metadata": {
+                "bytes": 102
+              },
+              "mime_type": "text/x-python",
+              "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-formal-1790481804027982384/policy.py",
+              "visibility": [
+                "advisor"
+              ]
+            },
+            {
+              "created_at": 1790481811.9252012,
+              "evidence_id": "evidence:trace_context.json",
+              "kind": "execution_context",
+              "metadata": {
+                "bytes": 274
+              },
+              "mime_type": "application/json",
+              "sha256": "23f444390ba09a558e08e8c9e0572a3ee23c2c84c7976c9a0ebab327476bb8fb",
+              "source_event_id": null,
+              "uri": "artifact://cube_lift-seed101-formal-1790481804027982384/trace_context.json",
+              "visibility": [
+                "advisor"
+              ]
+            }
+          ],
+          "execution_id": "execution:cube_lift-seed101-formal-1790481804027982384:0",
+          "experiment": {
+            "config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+            "policy_id": "autonomous",
+            "scheduler_config_sha256": "d021fcf40a45b7feb462a40ec15979f7a0454ea44f8b7eaf270fb92f2622775d",
+            "seed": 101,
+            "suite": "robosuite",
+            "task_id": "cube_lift"
+          },
+          "failure": {
+            "classification_source": "deterministic_event_rules",
+            "confidence": 1.0,
+            "consecutive_failures": 1,
+            "error_type": "SafetyViolation",
+            "first_failed_event_id": "sdk-2",
+            "inferred_cause": null,
+            "last_successful_event_id": "sdk-1",
+            "message": "independent safety monitor: action_outcome_unknown",
+            "observed_symptom": "independent safety monitor: action_outcome_unknown",
+            "retryable": null,
+            "safety_relevant": false,
+            "stage": "safety_interrupt",
+            "termination_reason": null
+          },
+          "hypothesis": "",
+          "hypothesis_status": "unknown",
+          "memory_refs": [],
+          "outcome": {
+            "elapsed_seconds": 7.892174456999783,
+            "exit_code": null,
+            "status": "failed",
+            "stop_reason": "failed",
+            "timed_out": false
+          },
+          "projection": {
+            "included_event_count": 6,
+            "included_evidence_count": 2,
+            "omitted_event_count": 2,
+            "omitted_evidence_count": 1,
+            "policy_version": "attentionbench.advisor-visibility.v1",
+            "projection_sha256": "8fde3df1a1db0efa9494d3903f0c5c48e42378848f4be074d2b75cd029950e27",
+            "redacted_field_count": 3,
+            "source_complete": true,
+            "source_sha256": "872f52f7ac66b92b06050a01899680e21d8c166456184ebefae921f27f8883ed"
+          },
+          "raw_trace_id": "raw-trace:cube_lift-seed101-formal-1790481804027982384:0",
+          "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+          "schema_version": "attentionbench.advisor-trace-packet.v1",
+          "trace_id": "trace:cube_lift-seed101-formal-1790481804027982384:0"
+        }
+      ]
+    },
+    "resource_budget": {
+      "assistance": {
+        "limit": 0,
+        "remaining": 0,
+        "reserved": 0,
+        "used": 0
+      },
+      "execution_seconds": {
+        "limit": 60.0,
+        "remaining": 52.10782554300022,
+        "used": 7.892174456999783
+      },
+      "gpu_seconds": {
+        "limit": 0.0,
+        "remaining": 0.0,
+        "used": 0.0
+      },
+      "tokens": {
+        "limit": 1000,
+        "remaining": 1000,
+        "used": 0
+      }
+    },
+    "run_context": {
+      "assistance_mode": "benchmark_proxy",
+      "execution_target": "robosuite_sim",
+      "locked": true,
+      "policy_id": "autonomous",
+      "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+      "suite": "robosuite",
+      "task_id": "cube_lift"
+    },
+    "schema_version": "attentionbench.ui-projection.v1"
+  },
+  "run": {
+    "assistance_mode": "benchmark_proxy",
+    "budget": {
+      "assistance_credits": 0,
+      "execution_seconds": 60.0,
+      "gpu_seconds": 0.0,
+      "token_limit": 1000
+    },
+    "created_at": 1790481803.9960501,
+    "developer_model": "formal-generated-policy",
+    "evaluator_model": "native_evaluator",
+    "execution_target": "robosuite_sim",
+    "policy_id": "autonomous",
+    "run_id": "run:attention-robosuite-cube_lift-seed101-1cde894ef24b",
+    "schema_version": "attentionbench.core.v1",
+    "seed": 101,
+    "status": "running",
+    "suite": "robosuite",
+    "task_id": "cube_lift"
+  },
+  "schema_version": "attentionbench.run-bundle.v1"
+}

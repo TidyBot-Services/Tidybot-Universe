@@ -1,0 +1,16 @@
+{"operation": "move_delta", "status": "completed", "step": 4}
+{"operation": "move_delta", "status": "completed", "step": 5}
+{"operation": "move_delta", "status": "completed", "step": 6}
+{"operation": "move_delta", "status": "completed", "step": 7}
+{"operation": "open", "status": "completed", "step": 9}
+{"operation": "move_to_position", "status": "completed", "step": 10}
+{"operation": "move_to_position", "status": "completed", "step": 11}
+{"operation": "close", "status": "completed", "step": 12}
+{"operation": "move_delta", "status": "completed", "step": 13}
+{"operation": "move_delta", "status": "completed", "step": 15}
+{"operation": "move_delta", "status": "completed", "step": 17}
+{"operation": "move_delta", "status": "completed", "step": 19}
+{"operation": "move_to_position", "status": "completed", "step": 22}
+{"operation": "move_to_position", "status": "completed", "step": 24}
+{"operation": "move_to_position", "status": "completed", "step": 26}
+{"operation": "open", "status": "completed", "step": 28}

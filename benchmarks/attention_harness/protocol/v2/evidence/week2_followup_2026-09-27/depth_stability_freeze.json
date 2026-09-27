@@ -1,0 +1,52 @@
+{
+  "budget": {
+    "assistance_credits": 0,
+    "overall_deadline_seconds_per_case": 120
+  },
+  "configs": [
+    {
+      "config": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_lift-seed101.json",
+      "seed": 101,
+      "sha256": "a35bab9cf02f84394bdd674641215e52a6f3a15b4bf4bc52232d7783242c40bd",
+      "task": "cube_lift"
+    },
+    {
+      "config": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_lift-seed102.json",
+      "seed": 102,
+      "sha256": "b930b2a4344832eb58284797c8086434e9a399a3a653646285abc567628cba97",
+      "task": "cube_lift"
+    },
+    {
+      "config": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_lift-seed103.json",
+      "seed": 103,
+      "sha256": "30f649859d0257accbf3625cf187624f9d3c7cd6709c4118c61f10689737f20c",
+      "task": "cube_lift"
+    },
+    {
+      "config": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_stack-seed101.json",
+      "seed": 101,
+      "sha256": "bffc563a3a6b63e59290a9590d8b15e84a6e9667e1c546de0369919875b70354",
+      "task": "cube_stack"
+    },
+    {
+      "config": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_stack-seed102.json",
+      "seed": 102,
+      "sha256": "f4d1fd3a61153901c60d86af9d52076816383a38dcf81640c781bed921b4be52",
+      "task": "cube_stack"
+    },
+    {
+      "config": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_stability_configs/cube_stack-seed103.json",
+      "seed": 103,
+      "sha256": "f0abc428df0ef2de13c63dc83036489b64d6d20509efb510d73ae4ad5f99c0cf",
+      "task": "cube_stack"
+    }
+  ],
+  "formal_eligible": false,
+  "order": "cube_lift then cube_stack; seeds 101, 102, 103 ascending; 3 open-close pairs each",
+  "policy": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/robosuite_depth_repeat_smoke.py",
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "purpose": "bounded HTTP/formal-runner repeated-action stability, not formal scores",
+  "schema_version": "attentionbench.depth-engineering-freeze.v1",
+  "service_revision": "8fb89e8ee7722e37e13530fb019aabd64d5367ba",
+  "universe_revision": "c3c53de620d5878103a9353fd75717d031d33e4f"
+}

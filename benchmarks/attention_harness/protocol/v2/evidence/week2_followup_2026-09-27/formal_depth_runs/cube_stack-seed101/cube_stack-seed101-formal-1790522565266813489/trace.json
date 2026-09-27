@@ -1,0 +1,984 @@
+{
+  "attempt_id": null,
+  "attention_input": {},
+  "backend_steps": [
+    {
+      "action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "done": false,
+      "observation_sha256": "02c2a68e8af56cc69b2d9f2069473d1973177dae8a8ba6db6c94918f42159262",
+      "reward": 0.0,
+      "step": 0
+    },
+    {
+      "action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "done": false,
+      "observation_sha256": "ff7a3031b2870d10b29c7e84e751e63ff0554193ae8f8c98ba2d60ca2ef26998",
+      "reward": 0.0,
+      "step": 1
+    },
+    {
+      "action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "done": false,
+      "observation_sha256": "2f3a0a883366b379cb836602fe6bc5874672cd225e464a388e50b7553418f454",
+      "reward": 0.0,
+      "step": 2
+    },
+    {
+      "action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "done": false,
+      "observation_sha256": "94b8ea91fab4f86f5f120b1870ab5b5486a60271bbebc6e6efa1d7124d2f9693",
+      "reward": 0.0,
+      "step": 3
+    },
+    {
+      "action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "done": false,
+      "observation_sha256": "b38589be193607061a7e925df737ca754599d11acf7c1700d64da5fc7eb3e164",
+      "reward": 0.0,
+      "step": 4
+    },
+    {
+      "action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "done": false,
+      "observation_sha256": "4f4f8d0fc75da17a6ce1af676381b9b36b1c2e99b9b6653fb3f976e2ea84507e",
+      "reward": 0.0,
+      "step": 5
+    }
+  ],
+  "config_sha256": "bffc563a3a6b63e59290a9590d8b15e84a6e9667e1c546de0369919875b70354",
+  "error": null,
+  "final_observation_sha256": "c437a7bf51cd9647ab75ac1ce1fda600f53d63c0a06c7cd29c9e99cee4e3cdf9",
+  "initial_observation_sha256": "2bdb977b37f7f964a7f269960388d61d91ff5dfd7996b6353f3c185b197935bb",
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "reset_attestation": {
+    "object_set_id": "objects:b6eeaab0878b89727bf5",
+    "scene_id": "scene:5773610116bbe9bd33d0"
+  },
+  "run_id": null,
+  "schema_version": "attentionbench.formal-trace.v1",
+  "sdk_events": [
+    {
+      "arguments": {
+        "camera_names": null,
+        "target_names": null
+      },
+      "duration_ms": 0.354,
+      "error": null,
+      "event_id": "sdk-0",
+      "event_type": "sdk.perception",
+      "operation": "find_objects",
+      "result": [
+        {
+          "confidence": 1.0,
+          "frame": "robosuite_world",
+          "name": "cubeA",
+          "position": [
+            0.0744773155859151,
+            -0.04282341410963829,
+            0.8300000000000001
+          ],
+          "source": "sim_gt"
+        },
+        {
+          "confidence": 1.0,
+          "frame": "robosuite_world",
+          "name": "cubeB",
+          "position": [
+            0.01656774756659496,
+            0.03663884116601886,
+            0.8350000000000001
+          ],
+          "source": "sim_gt"
+        }
+      ],
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 0,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.00041
+    },
+    {
+      "arguments": {
+        "settle_steps": 1
+      },
+      "duration_ms": 26.868,
+      "error": null,
+      "event_id": "sdk-1",
+      "event_type": "sdk.gripper_command",
+      "operation": "open",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 1,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 0.039885
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.056,
+      "error": null,
+      "event_id": "sdk-2",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 2,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.040057
+    },
+    {
+      "arguments": {
+        "settle_steps": 1
+      },
+      "duration_ms": 5.731,
+      "error": null,
+      "event_id": "sdk-3",
+      "event_type": "sdk.gripper_command",
+      "operation": "close",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 3,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 0.056549
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.062,
+      "error": null,
+      "event_id": "sdk-4",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 4,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.056777
+    },
+    {
+      "arguments": {
+        "settle_steps": 1
+      },
+      "duration_ms": 5.222,
+      "error": null,
+      "event_id": "sdk-5",
+      "event_type": "sdk.gripper_command",
+      "operation": "open",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 5,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 0.068532
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.058,
+      "error": null,
+      "event_id": "sdk-6",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 6,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.068725
+    },
+    {
+      "arguments": {
+        "settle_steps": 1
+      },
+      "duration_ms": 5.186,
+      "error": null,
+      "event_id": "sdk-7",
+      "event_type": "sdk.gripper_command",
+      "operation": "close",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 7,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 0.080288
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.063,
+      "error": null,
+      "event_id": "sdk-8",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 8,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.080494
+    },
+    {
+      "arguments": {
+        "settle_steps": 1
+      },
+      "duration_ms": 4.868,
+      "error": null,
+      "event_id": "sdk-9",
+      "event_type": "sdk.gripper_command",
+      "operation": "open",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 9,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 0.091729
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.059,
+      "error": null,
+      "event_id": "sdk-10",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 10,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.091926
+    },
+    {
+      "arguments": {
+        "settle_steps": 1
+      },
+      "duration_ms": 4.986,
+      "error": null,
+      "event_id": "sdk-11",
+      "event_type": "sdk.gripper_command",
+      "operation": "close",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 11,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 0.103226
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.062,
+      "error": null,
+      "event_id": "sdk-12",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 12,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.10345
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.083,
+      "error": null,
+      "event_id": "sdk-13",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 13,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.11311
+    }
+  ],
+  "seed": 101,
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_stack"
+}

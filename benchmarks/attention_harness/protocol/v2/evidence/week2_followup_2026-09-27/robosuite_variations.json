@@ -1,0 +1,95 @@
+{
+  "cases": [
+    {
+      "task": "cube_lift",
+      "seed": 101,
+      "variation": {
+        "scene_id": "scene:095974d95f12b5c458fb",
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214"
+      },
+      "versions": {
+        "robosuite": "1.5.1",
+        "mujoco": "3.3.0",
+        "numpy": "1.26.4"
+      },
+      "native_at_reset": false
+    },
+    {
+      "task": "cube_lift",
+      "seed": 102,
+      "variation": {
+        "scene_id": "scene:0a4563fb4cba099d4ca9",
+        "object_set_id": "objects:bbdd455629c4c264753c"
+      },
+      "versions": {
+        "robosuite": "1.5.1",
+        "mujoco": "3.3.0",
+        "numpy": "1.26.4"
+      },
+      "native_at_reset": false
+    },
+    {
+      "task": "cube_lift",
+      "seed": 103,
+      "variation": {
+        "scene_id": "scene:36e4b2483e89af66a7e6",
+        "object_set_id": "objects:6dac406b2c845d381cdc"
+      },
+      "versions": {
+        "robosuite": "1.5.1",
+        "mujoco": "3.3.0",
+        "numpy": "1.26.4"
+      },
+      "native_at_reset": false
+    },
+    {
+      "task": "cube_stack",
+      "seed": 101,
+      "variation": {
+        "scene_id": "scene:5773610116bbe9bd33d0",
+        "object_set_id": "objects:b6eeaab0878b89727bf5"
+      },
+      "versions": {
+        "robosuite": "1.5.1",
+        "mujoco": "3.3.0",
+        "numpy": "1.26.4"
+      },
+      "native_at_reset": false
+    },
+    {
+      "task": "cube_stack",
+      "seed": 102,
+      "variation": {
+        "scene_id": "scene:6b9015a991be3d97a870",
+        "object_set_id": "objects:db23649def4f69f2a080"
+      },
+      "versions": {
+        "robosuite": "1.5.1",
+        "mujoco": "3.3.0",
+        "numpy": "1.26.4"
+      },
+      "native_at_reset": false
+    },
+    {
+      "task": "cube_stack",
+      "seed": 103,
+      "variation": {
+        "scene_id": "scene:4219b69f840295bbf9f2",
+        "object_set_id": "objects:e46508685175216529b6"
+      },
+      "versions": {
+        "robosuite": "1.5.1",
+        "mujoco": "3.3.0",
+        "numpy": "1.26.4"
+      },
+      "native_at_reset": false
+    }
+  ],
+  "service_stop": {
+    "pid": 2474671,
+    "exit_code": -15,
+    "leader_reaped": true,
+    "process_group_gone": true
+  },
+  "formal_eligible": false
+}

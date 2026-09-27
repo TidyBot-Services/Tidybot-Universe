@@ -1,0 +1,44 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361",
+  "artifacts": {
+    "native_result": {
+      "sha256": "fc1d21172477d14661606e82552a2d083b4fbf644621c04a9814848e21be304e",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/native_result.json"
+    },
+    "safety": {
+      "sha256": "9877645598073444b08333bd63508383f5486b5bfa877c9fedba8f8fb3749462",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "257fad81756f3be8d06d711f8b37c9a4f690280e5ae1a3c96c0c8d325a482ea4",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "237fa45256dab36f70aa719299dd0e1b09678939281658ee5d8ebb794957025e",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-followup-20260927/formal_depth_runs/cube_lift-seed102/cube_lift-seed102-formal-1790522560573047361/trace.json"
+    }
+  },
+  "attempt_id": null,
+  "config_sha256": "b930b2a4344832eb58284797c8086434e9a399a3a653646285abc567628cba97",
+  "error": null,
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "2e85213c8d4c79aa97f67760de9bd04d068341c4ceed9e258f51ce401f0edd81",
+  "run_id": null,
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 102,
+  "service_revision": "8fb89e8ee7722e37e13530fb019aabd64d5367ba",
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}
