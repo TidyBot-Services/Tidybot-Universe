@@ -289,6 +289,8 @@ def run_robocasa_sim_gt_episode(
             raise RuntimeError(f"RoboCasa reset failed: {reset}")
         if selected_variation is not None and reset.get("applied_variation") != reset_payload["variation"]:
             raise RuntimeError("RoboCasa service did not attest the planned variation")
+        if selected_variation is not None and service.assert_task()["lang"] != selected_variation["task_prompt"]:
+            raise RuntimeError("RoboCasa service did not attest the planned task prompt")
         no_op_success = service.native_success()
         if no_op_success:
             raise RuntimeError("native success is true immediately after reset")
