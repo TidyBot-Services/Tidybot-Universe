@@ -16,7 +16,7 @@
 
 | 代号 | 仓库／checkout | 分支、HEAD、工作树 | 调用关系与注意事项 |
 | --- | --- | --- | --- |
-| U | `Tidybot-Universe-attention-native` | `feature/attention-native-robosuite`；RoboCasa 开发配对运行绑定 `381b764`，本文件后续索引提交以当前 HEAD 为准 | 当前 AttentionHarness、SDK 客户端和实验协议；不是另一个 `Tidybot-Universe` checkout。 |
+| U | `Tidybot-Universe-attention-native` | `feature/attention-native-robosuite` @ `e1b76bdaf475c54c0847ac57e9dc24f98efc2c6c`；本轮仅新增 M3 验收／状态文档，工作树未提交 | 当前 AttentionHarness、SDK 客户端和实验协议；不是另一个 `Tidybot-Universe` checkout。旧 RoboCasa 开发配对证据绑定 `381b764`，不得当成本轮版本。 |
 | M | `attention_memory_service` | `feature/attentionbench-week2-sync-20260927` @ `24d4146`，已推送 | U 的 v2 runner 导入此独立包；`setup_env.sh` 默认从相邻 checkout 可编辑安装并检查 Dev-use API，不再默默安装旧版提交。 |
 | R | `robosuite_sim-service` | 起始 `master` @ `12bc69a`；本次诊断分支 `feature/attentionbench-week2-depth-diagnostics` @ `081cd57`，干净、未推送 | U 的环境脚本固定安装此独立 Service；新提交在严格拒绝时另可保存异常原始帧，旧版真实证据仍绑定 `12bc69a`。 |
 | C | `maniskill_sim-attention-variation` | `feature/attentionbench-week2-sync-20260927` @ `320020a`，本地干净 | RoboCasa 底层 Service；reset reconfigure 后重新绑定 robot，开发配对和真实单步均绑定此版本。 |
@@ -43,6 +43,17 @@
 - **已通过代码层／现场生成与拒绝**：新增 M2 输入任务锁、有界 GLM Dev 脱敏回复及用量收据、候选 M1 lock、外部人工审批记录绑定、正式 Bridge 精确 lock SHA 传递和一次派发认领／重启保守恢复。用户密钥仅以临时环境变量传入生成阶段 Graph；先在已验证可访问的 HTTPS 聊天端点做一次 1 provider attempt 的真实 `parcc/GLM` 探针，再由 Robosuite `cube_lift` 与 RoboCasa `counter_to_sink` 各在 seed 101 真实 Graph 生成一份源码。两套均 1 次格式调用／1 次 provider attempt，分别用 380／450 tokens，实际 hypothesis 均为 `unknown`。审批前两套 Graph 均停在 `review`／`awaiting_approval`、无 Harness run；重启 auto-start 各 `spawned=[]`，未批准 Bridge 命令均拒绝。审批前又补 M2 正式结果 lock／run／attempt 回验、Bridge 原始命令和日志收据、Harness 子进程不继承 GLM 密钥、交接后不自动进入 Memory／Eval；双 suite 既有 M1 正式产物只读结构预检通过，不算本次运行。原始进程、脱敏响应、版本及精确 SHA 见 `/home/truares/桌面/attentionbench-m2-20260928/manifest_preapproval.json`。
 - **已通过人工批准／现场双交接／恢复**：用户对上一条列明的双套源码、配置、M1 lock 精确 SHA 回复“批准”，外部审批文件分别绑定该会话来源和 Dev 收据。Robosuite `cube_lift` 与 RoboCasa `counter_to_sink` 各由真实 Graph 经 `formal_attention_cli` 派发一次 seed 101、1 attempt、0 credit；正式 Service result 的 lock、源码／配置 SHA、run／attempt 身份与 Graph 和审批记录一致，四类产物及原始 Service 日志齐全。两次原生结果均失败，CLI exit 1 为任务失败而非交接失败。双 Graph 派发后真实进程重启，auto-start 各 `spawned=[]`，审批身份和唯一 run 不变。只读复核见 `/home/truares/桌面/attentionbench-m2-20260928/audit_final.json`，完整索引见 `manifest_final.json`。RoboCasa 下游 JSON 配置快照因中文路径转义而有不同的文件字节 SHA，但解析内容、正式结果记录的批准原文件 SHA 与 M1 lock 一致；保持原有 M1 序列化契约。
 - **验证与范围**：批准后 M1／M2／Bridge 相关测试 **68 passed**，旧 Graph **84 passed、0 failed**。全 Harness 独立复跑仍为 **345 passed、10 skipped、7 failed**：6 项 `test_memory_v2.py` trusted Memory 上下文及 1 项 `test_robocasa_generated_policy.py` trusted Memory 策略；本轮未修改受测 Harness 文件，原始失败日志保留，不把全 Harness 写成通过。M2 包内无剩余阻塞；`formal_eligible=false`。本轮不推进 M3／M4／Memory／真人／held-out。
+
+### 2026-09-28 M3 双模拟器执行冻结工程验收
+
+**结论：M3 未通过，不封闭；`formal_eligible=false`。** 固定范围和通过条件见 [`docs/m3_dual_sim_execution_acceptance.md`](docs/m3_dual_sim_execution_acceptance.md)，原始证据在 `/home/truares/桌面/attentionbench-m3-20260928/`。U 基线 `e1b76bd`，R `081cd57`，C `320020a`，A `4cf4daa`，T `b18bbf1`；本轮分别核对 HEAD，R／C／A／T 工作树干净。初版冻结 manifest 错把 RoboCasa seed 101 的任务语言复制给 102／103；sink seed 102 被正确地在动作前拒绝。旧失败原件保留，真实 Service 重新发现各 seed 语言后只修订四份配置并从头重跑；修订版 `freeze.json` SHA `e8ce4278ef3ac1f8c26e2dbe48e3d76da623447a9ce14f2a7b61bebb65edd141`。
+
+- **已通过的包内工程关口**：两套冻结任务（RoboCasa `counter_to_sink`／`counter_to_cab`，Robosuite `cube_lift`／`cube_stack`）各开发 seed 101–103 的正式 Runner 正常矩阵 **12/12**；四任务经 `formal_attention_cli` 建 run、正式边界分派及 run／attempt／entry lock 跨层回验 **4/4**；两套 timeout／cancel／Safety reject 与 RoboCasa Agent job cancel 故障矩阵 **7/7**。每例核对任务／seed／场景对象／语言相机、配置／代码／Service SHA、Shared SDK 动作、原生 evaluator、独立 Safety、Raw Trace、四类产物 SHA 与 Service／Agent 进程组回收；错 suite runner 在调用前拒绝。正常运行原生任务均失败，不作为本阶段策略成功率门槛。逐例 `normal_progress.json`、`harness_progress.json`、`fault_progress.json`、`audit_final.json`、Service 日志和四类产物见证据目录。审计时回查全部进程组 ID 且独立扫描无遗留进程。旧 M1 双 lock SHA 重算不变，相关 M1／Formal Runner **65 passed**、M2 gate／Bridge **22 passed**、R Service **5 passed**；原始命令／输出和 536 文件 SHA 索引 `raw_index.json` 均保存。
+- **未通过的原 depth 根因关口**：历史 `cube_lift` seed 101 首次 `gripper.open(settle_steps=1)` 后，R `_metric_depth` 抛错，HTTP 500 使独立 Safety 记录 `action_outcome_unknown`。核对旧 R `12bc69a` 守卫可确认至少一个 normalized depth 值满足 `<0` 或 `>1`；单独 NaN 不会触发，有限越界值与无穷值仍不能区分。旧异常帧不存在，具体数值、像素和上游渲染／时序成因均未知；见 `depth_investigation.json`。R `081cd57` 的 `.npy` 异常帧捕获及严格拒绝小测试通过；本轮 Robosuite 两任务 × 三 seed 的 36 次重复动作及旧序列 20 次新 Service 进程精确重放均未复现，0 异常帧，所有进程组回收。**这不是根因修复证据**。再现时须先保存异常帧／诊断／日志和 SHA，针对确证成因修复并重跑冻结正常、故障与重复动作矩阵。
+
+### 2026-09-28 M3 修订口径工程关闭（用户明确批准）
+
+用户在本对话原文批准：“批准按修订口径仅关闭 M3 工程模块，保留 depth 500 未解决风险”。[修订版验收](docs/m3_dual_sim_execution_revised_acceptance.md)保留原包旧 D 未通过结论，并增加受控异常隔离 D'：两次独立真实正式 Runner／Service 注入（有限值 `>1`、NaN）均保存原始帧与诊断，HTTP 500 导致独立 Safety `action_outcome_unknown`、attempt failed／`native_success=false`，四类产物 SHA 与进程组回收核对通过。原 A／B／C 分别为 12/12、4/4、7/7，E 回归通过。批准前只读审计见 `/home/truares/桌面/attentionbench-m3-revised-20260928/revised_engineering_audit.json`，原审计及 536 文件索引不覆盖，新增 44 文件索引独立保存。**M3 仅工程验收完成；旧 depth 500 根因未知、未修复，`formal_eligible=false`。** M4 可另行冻结，未批准正式实验或 held-out。
 
 | ID | 目标 | 状态 | 证据（仓库代号、路径／本次核查） | 下一步 |
 | --- | --- | --- | --- | --- |
