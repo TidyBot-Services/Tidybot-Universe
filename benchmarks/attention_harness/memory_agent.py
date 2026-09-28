@@ -42,6 +42,7 @@ class TrialEvidence:
     attempt_id: str
     safety_artifact: Path
     config_sha256: str
+    service_stop_artifact: Path | None = None
 
 
 class TrialExecutor(Protocol):

@@ -314,6 +314,19 @@ restart and are skipped on a resumed validation run. The opt-in
 the durable `memory_validation_task.py`; each arm has a hashed receipt and
 the Service alone decides promotion. A candidate without an approved repair
 remains `awaiting_approved_repair`, as in the RoboCasa engineering smoke.
+An approved RoboCasa recipe uses the same durable task with a sandboxed
+generated policy and a fresh, attested RoboCasa Service plus Agent Server for
+each arm. Its approval names `candidate_memory_id` when a new candidate was
+derived from the same verified source request, exact `cases_file` and
+`policy_file` SHA-256 values, all three source identities and the simulator
+runtime identity, `port_offset`, zero assistance credits, the 200 SDK-call
+limit, at most 90/240/300 seconds for Agent job/policy/Service, and Safety
+limits no looser than 0.25/0.5 m. The task checks source request and attempt
+lineage, freezes the plan before actions, and records each arm's result, raw
+trace, bundle, trial config, Safety and dual-Service stop receipt with SHA-256.
+An arm begun without a durable receipt is blocked on restart rather than
+replayed; a per-task process lock also serializes concurrent dispatchers.
+This route does not change the Memory Service promotion gate.
 Paired validation remains a separate development-only executor; the task
 source and later trusted-use attempts run through the formal Harness boundary.
 No branch of this route falls back to `trusted_dev` for a formal attempt.
