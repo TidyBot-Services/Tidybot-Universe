@@ -33,4 +33,10 @@
 
 对同一开发 seed 113 的后续三次小 pilot 也未形成稳定修复：以公开夹爪宽度在抬升前检查，第一次合爪后 can 不再可见；先松爪、上移 0.07 m 再观测仍不可见。把 can 首次抓取点提高到旧成功重抓高度后，公开位置显示 can 在 counter 附近位移但未抬起，末态夹爪仍近乎全闭。三次独立 Safety 均为 0，原生均失败。`robocasa-can-crosspilot-audit.json`（SHA-256 `f25a9b60b97cce5e014fc676a458531c42cdc60a73f49d139f02e6bf95ffc5fc`）并列五次策略 SHA、公开 can 位置序列、夹爪末态、原生 evaluator、Safety 和来源文件 SHA：偶发非零夹爪宽或单次可见抬升不能替代原生成功与跨次稳定性。当前不再沿这个局部抓取偏移继续试探。
 
+## 重置稳定性与跨模块接口观察
+
+在 seed 113 上，另做了两次独立 Service 启动、每次两次只读重置和公开 `/perceive`；没有策略动作，原生初态均失败，动作 Safety 不适用。四次返回完全相同的 `scene_id`／`object_set_id`、can 世界坐标及尺寸，双 Service 都正常停止。`robocasa-seed113-reset-stability/audit.json` SHA-256 `e363a58791063f1ad41f86ab4b8d4aab810c3d6c2f2c168fa48f2e64f8137b28` 列出逐次原件及代码 SHA。这排除了本次受控检查中的重置变体漂移，但不能证明动作物理必然确定；前述抓持差异仍是当前策略鲁棒性不足的证据。
+
+同一公开 Service `/perceive` 返回 `size_x`／`size_y`／`size_z`、长宽比和 fixture context；当前生成策略调用的 GT 感知适配器仅暴露 `name`／`position`／`confidence`／`source`／`frame`，实际 Trace 与代码一致。缺少尺寸使 M5 策略无法直接按物体大小设定抓取点，是已关闭感知接口的一项跨模块限制，**尚未证明是这些失败的根因**。本轮只记录限制，没有改 M1–M4 契约或独立 Service。若后续修复必须扩展该接口，应作为跨模块阻塞显式处理。
+
 逐臂原始 result／Trace／bundle／trial config／Safety、双 Service 停止收据及 SHA 列于 `/home/truares/桌面/attentionbench-m5-20260928/robocasa-diagnostic-pilots-audit.json`（SHA-256 `735b8651e8a1b0cb7222cb02a61dd833b27acf1f5782e115ed4a08e961871905`）。旧配对审计 SHA `73ba8ea00a50bd8334b0a6cebfc715ca1239d5e785c6b2504deb49540d63ba6`、新候选旧审计 SHA `942069e9cacfe4c55997df6a998038ce3a53d81b212b511793e1f675553d36ef` 均不变。
