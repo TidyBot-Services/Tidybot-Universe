@@ -42,3 +42,13 @@
 同一公开 Service `/perceive` 返回 `size_x`／`size_y`／`size_z`、长宽比和 fixture context；当前生成策略调用的 GT 感知适配器仅暴露 `name`／`position`／`confidence`／`source`／`frame`，实际 Trace 与代码一致。缺少尺寸使 M5 策略无法直接按物体大小设定抓取点，是已关闭感知接口的一项跨模块限制，**尚未证明是这些失败的根因**。本轮只记录限制，没有改 M1–M4 契约或独立 Service。若后续修复必须扩展该接口，应作为跨模块阻塞显式处理。
 
 逐臂原始 result／Trace／bundle／trial config／Safety、双 Service 停止收据及 SHA 列于 `/home/truares/桌面/attentionbench-m5-20260928/robocasa-diagnostic-pilots-audit.json`（SHA-256 `735b8651e8a1b0cb7222cb02a61dd833b27acf1f5782e115ed4a08e961871905`）。旧配对审计 SHA `73ba8ea00a50bd8334b0a6cebfc715ca1239d5e785c6b2504deb49540d63ba6`、新候选旧审计 SHA `942069e9cacfe4c55997df6a998038ce3a53d81b212b511793e1f675553d36ef` 均不变。
+
+## 两版有界收口 pilot（2026-09-28）
+
+本次从 11:44 至 12:04（UTC+8）只冻结两版公开 SDK 策略，均使用旧候选的**隔离权威库副本**进行未配对 treatment pilot，不向旧权威库登记新 pair 或请求晋升。冻结包与逐臂原件分别位于 `robocasa-bounded-close-v1/`、`robocasa-bounded-close-v2/`；所有工程运行 `formal_eligible=false`，预算与独立 Safety 限制未放宽。两版结果不相互拼接。
+
+第一版策略 SHA-256 `a7558d38d0a3ebc82804c723be85d9789f1d3fa0b11a45bb126128c2598bb18b`，结果前冻结文件 SHA-256 `b1d40dc795e252f9b7f9140ab2e1171518f3d983261a1978fad2b70ad79fc5cb`，预定 seed 101–105 原生成功至少 4/5 且逐臂／总量 Safety 均为 0。五臂均运行：101 boxed drink、103 mango、104 onion、105 rolling pin 原生成功，102 cup 公开观测仍未确认抬升而原生失败；五臂独立 Safety 均为 0。逐臂 result、Trace、bundle、trial config、Safety、双 Service 停止收据及 SHA 复核在 `robocasa-bounded-close-v1/audit.json`，SHA-256 `82c66158dfcc5f618b360b4e7454e9a3dd9ac4f0077e33795c74ab9366dd8dc4`。此版覆盖已知五种物体，但不支持预留 106–110 的不同物体，不能据此启动十臂配对。
+
+第二版扩展了目标识别与一次基于新公开坐标的有界重抓，针对底盘对齐时丢失 spout 增加了落点估计；策略 SHA-256 `1d304b7d658a044418b88dcd4d0991f52552cb203af23f30923f8901cf1e0e78`，冻结 SHA-256 `34021a3242bdc68c5e07325359d104e8f9c161e61871a0116d9e6ccb52028327`。预定先跑 111–115 五种新物体，须至少 3/5 原生成功且 Safety 全零；只有第一阶段通过，才以**同一策略 SHA**复跑 101–105 并要求至少 4/5 成功、Safety 全零。111 eggplant 在动作前安全弃权；112 onion 原生成功／Safety 0；113 can 的公开高度从约 0.503 m 到 0.638 m，说明曾抬升，但底盘对齐过程中 spout 退出当前相机，策略在循环内安全终止、原生失败／Safety 0。114 peach 的首次臂接近目标 `(0.516,0.327,0.647)` 未收敛，公开末端从约 `(0.387,0.000,0.487)` 部分移动到 `(0.489,0.257,0.611)`；Agent job 约 7.92 秒后 exit 1，残差 0.0825 m。独立 Safety 事件 17 为 `action_outcome_unknown`／1，原生失败。此反例使零 Safety 关口不可能成立，故停止，115 及第二阶段 101–105 均**未运行**。逐臂原件与 SHA 见 `robocasa-bounded-close-v2/audit.json`，SHA-256 `7e5719c85011bf2259c2ed9cae2fe22e9a7dbcf11b4c8c56d1d1d6d4b9b84cf1`。
+
+本次根因分类：102 的杯子抓持、113 的可见地标保持与落点估计、114 的不可达接近动作均为当前策略阻塞；114 有真实部分运动，不能把失败动作视为未执行。先前发现的 GT 适配器未暴露物体尺寸是已关闭接口限制，但尚不能证明其为这几臂的直接根因；Agent Server 正常报告非收敛并回收双 Service，尚无独立证据确认 Service 故障。旧两版配对审计及各自 Safety 反例保持不变。隔离 pilot 的 seed 101 与 112 重启返回原收据 SHA，未重放动作；第二版 Safety 退步后没有新候选、第三轮十臂配对、晋升或独立正式使用。M5 的 RoboCasa B／C 关口仍未通过，不进入 M6。
