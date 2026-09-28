@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 
+import pytest
+
 from benchmarks.attention_harness.memory_agent import MemoryAgent, TrialEvidence
 from benchmarks.attention_harness.memory_service import MemoryService
 from benchmarks.attention_harness.memory_validation_task import MemoryValidationTask
@@ -108,6 +110,26 @@ def test_validation_task_keeps_failed_repair_as_candidate(tmp_path):
     assert result["impact"]["treatment_successes"] == 0
     assert service.get_memory(task.memory_id).status.value == "candidate"
     assert task.run()["status"] == "blocked"
+    assert len(calls) == 10
+
+
+def test_blocked_restart_checks_frozen_policy_without_replaying_arms(tmp_path):
+    task, _, calls = _task(tmp_path, success=False)
+    assert task.run()["status"] == "blocked"
+    assert len(calls) == 10
+    task.validation_policy.write_text("# changed after approval\n")
+    with pytest.raises(ValueError, match="approved validation policy SHA-256 changed"):
+        task.run()
+    assert len(calls) == 10
+
+
+def test_blocked_restart_checks_formal_source_artifact_without_replaying_arms(tmp_path):
+    task, _, calls = _task(tmp_path, success=False)
+    assert task.run()["status"] == "blocked"
+    assert len(calls) == 10
+    (tmp_path / "formal-trace.json").write_text('{"changed":true}')
+    with pytest.raises(ValueError, match="formal source trace SHA-256 changed"):
+        task.run()
     assert len(calls) == 10
 
 

@@ -170,6 +170,9 @@ class MemoryValidationTask:
                 for receipt in arms.values():
                     self._read_receipt(receipt)
             if state.get("status") == "blocked":
+                # A blocked task still refers to the frozen source and approved
+                # policy. Do not silently reuse it after either has changed.
+                self._check_inputs()
                 return state
         else:
             state = {"schema_version": "attentionbench.memory-validation-task.v1",
