@@ -25,7 +25,7 @@
 
 关口 C 必须保存冻结配置／版本／实际 argv、`attention_run.json`、SQLite 与原始 Trace、每个决策和 request/response 状态、Advisor payload 的可见性核对、token／逻辑求助费用、Safety、正式 trace／safety／sandbox_receipt／native_result 原始文件及 SHA。摘要和索引必须能重新计算哈希，不以口头报告代替。关闭条件为 A–D 全通过，且状态页与模块进度页仅引用本包实际证据。
 
-## 本轮执行及结论
+## 首轮执行及结论（原件保留）
 
 原始证据目录：`/home/truares/桌面/attentionbench-m4-20260928/`；`manifest.json` 保存版本和完整 argv，`raw_index.json` 保存 149 个原始文件的 SHA-256，`fixture-audit.json` 和 `online-audit.json` 由 `protocol/v2/audit_m4.py` 重算四类正式产物、独立 Safety、原始 Trace、请求状态／回复使用、下一执行输入和服务进程组回收。审计自身的 `passed` 只表示已经产生的文件完整，不能代替在线闭环关口。
 
@@ -37,3 +37,15 @@
 | D | M1／正式链／trace／策略／M4 定向 **95 passed**；全 Harness **371 passed、10 skipped、7 failed**，7 项仍是 M3 已记录的 6 个 `test_memory_v2.py` trusted context 和 1 个 RoboCasa generated trusted-use 旧失败。`git diff --check` 通过。M1–M3 的锁、审批与正式产物契约未修改。 |
 
 首次使用旧 Robosuite 配置的真实运行被正式边界正确拒绝，原 `result.json`／stderr 保留；RoboCasa 首次手输批准 policy SHA 错字由 M1 preflight 在建 run 前拒绝，stderr 保留。这两项不混入通过计数。M3 历史 depth 500 根因继续未解。**M4 未关闭，所有工程结果 `formal_eligible=false`；需在新的明示预算／配置冻结下补双套各一次成功在线 GLM 回复进入下一正式 attempt 的证据，再重审关口 C。**
+
+## 线上关口 C 补验与最终工程结论
+
+首轮两次 `URLError: timed out` 的原件和 149 文件索引保持不变。补验前核对：客户端实际端点为 `https://litellm.parcc.upenn.edu/v1/chat/completions`，凭据由外部 wrapper 临时传入 Harness、未写入命令或证据；正式 CLI 使用 90 秒客户端超时、`--single-glm-call` 将格式尝试及 provider HTTP 尝试各限为 1。先前同机 DNS 可解析但 TCP 443 超时，故不能把首轮失败直接归因于模型推理。恢复后同一 Harness 环境完成 TCP／TLS，并以不生成模型回复的带凭据 `/v1/models` GET 收到 HTTP 200。连通收据 SHA-256 `dedaa9fc7d5a79b1161d881335ef64f4594afe765afa1ae71652470161c8a144`。
+
+新冻结配置位于 `/home/truares/桌面/attentionbench-m4-c-recheck-20260928/freeze.json`，SHA-256 `bfeac6af70090eacbdedde80382f369a9487733e4729a86c79ae4f110d6a812d`：双套各 1 次运行、最多 2 attempts／1 求助／1 次 GLM provider HTTP 调用、每请求最多 1024 输出 tokens、每 run 8000 token；客户端超时 90 秒、正式 Runner 每 attempt 截止 120 秒、每套外部墙钟上限 360 秒。它只授权本次补验的至多 2 次新 provider 调用，不改写首轮冻结上限或失败证据。实际 argv、代码与依赖 HEAD、批准 policy／config SHA 和新配置 SHA 见 `launch_plan.json`，SHA-256 `1ac9e871f9488abb64e910070b23471ed889ab24a3a78aad1d9b2c013c8a79ef`；U `7e2e8e4`，R `081cd57`、C `320020a`、A `4cf4daa`、T `b18bbf1`、M `24d4146`，执行前均干净。
+
+补验原始证据目录 `/home/truares/桌面/attentionbench-m4-online-c-20260928/`。RoboCasa `counter_to_sink` 与 Robosuite `cube_lift` 均在 seed 101、`sim_gt`、`reactive_help` 下各完成 **2 次真实正式 Runner attempt、1 次未缓存真实 `parcc/GLM` 回复、1 次求助**。首个失败 attempt 的持久 Advisor 可见 Trace 重建出的请求 cache key 与持久回复一致；回复分别使用 2172／2210 总 tokens（其中输出 397／322，均 ≤1024），SQLite 和 summary 记账一致。两套第二次 attempt 的正式 trace `attention_input.advisor_guidance` 均等于该回复 guidance，且 `response.used` 与 `response.execution_linked` 指向第二次 execution。逐套运行／attempt／entry lock／批准 policy 与 config SHA 一致；四类原始 `trace`、`safety`、`sandbox_receipt`、`native_result` SHA 全部匹配，独立 Safety 均为 0 unsafe，原生 evaluator 均明确 `evaluated=true`、`native_success=false`，各次 Service 进程组均回收。原生失败不影响本工程关口。双套各只发生 1 次 provider 调用，未缓存，未超新冻结上限；`formal_eligible=false`。
+
+`gate_c_audit.py` 从原始 JSON／SQLite 重建可见请求、投影 SHA、回复采用、token／求助预算、身份、原生判断、四产物及回收；从本 worktree 设置 `PYTHONPATH` 后以 Harness venv Python 执行该脚本并传入新证据目录即可重算。`gate_c_audit.json` **passed**，SHA-256 `d25aaa61f2a093d049a68a54b277e8e36702512a8f9692fef32b661f8c1be159`。逐文件 `raw_index.json` 覆盖 **100 个文件**，SHA-256 `5e813fc8fbdcd84ada6f9759d4889b026bfb9c96b6cef8df9da85232795d5fce`；新证据目录逐文件扫描未发现传入凭据字节。A／B／D 的首轮 95 项与双套测试回复闭环已先只读复核，旧 149 文件索引全部匹配；仅因本次 CLI deadline 参数从 90 改为 120 秒，补跑受影响的正式入口／正式链／M4 测试 **82 passed**，无受测代码或批准文件改动。
+
+**结论：A／B／C／D 均达到本包工程验收条件，M4 Attention 决策工程模块关闭；`formal_eligible=false`。** 首轮在线失败仍是历史失败，测试回复仍仅是工程测试证据。另一个 Universe 工作树 `/home/truares/桌面/Tidybot-Universe-attention-native` 仍在 `7c6890f`；本 `attention-m4` 分支尚未整合，未合并。M3 depth 500 根因风险继续保留；本结论不准入正式效果矩阵、held-out、真人，也不表示已启动 M5／M6。
