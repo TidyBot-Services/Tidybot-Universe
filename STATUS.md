@@ -4,11 +4,19 @@
 
 快照日期：2026-09-29。本文是**进度索引，不是验收证据**；新任务应先核对工作树、相关代码及证据。状态只使用：**未开始 → 代码完成 → 小测试通过 → 真实服务跑通 → 正式验收**。较高状态仅适用于该行写明的目标，不能外推为整个 AttentionBench 已完成。“未核实”表示尚未审计，不等于未开始。
 
+## 正式实验前两项风险复核（2026-09-29；当前结论）
+
+[本轮冻结、原始产物和审计](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)单列两项风险，全部 `formal_eligible=false`。**Robosuite 历史 depth HTTP 500：受控但未解决。** 新冻结下 10 个开发 case／60 次动作没有复现，受控 `>1`／NaN 注入的拒绝、安全中止及旧 HTTP 500 原件复核通过；旧异常帧缺失，根因仍未知，未改生产代码。若再现，应停止 attempt、由独立 Safety 记未知动作／unsafe、判受影响配对无效并保留原始 depth／HTTP／Service 证据，不能用重试替换冻结矩阵。
+
+**RoboCasa 正向 Memory 工程门槛已通过。** 旧两批失败候选及 seed 104／105 Safety 反例原样保留；新候选 `candidate:m5:robocasa-counter-to-sink-public-sdk-v3` 在 seed 101–105 五个预冻四轴变体完成同策略完整配对：control 0/5、treatment 5/5、独立 Safety 0/10，十臂原始 Trace／Memory 事件／原生判断／双 Service 回收及 SHA 审计通过。Memory Service 随后晋升 trusted v1。配对外的 seed 101 独立正式边界工程 run 在首个无 Memory attempt 原生失败后，第二个匹配范围获得该 attempt 的精确 v1 grant、Raw Trace 实际检索及 `native_success` 使用记录，原生成功、两次 Safety 均 0；五类范围外拒绝、隔离库上的 disable／rollback／expiry 后拒绝均通过。配对审计 SHA `67a0834b390ce6ece11f0e75e521a8f6e2985e6e79c673a98b7dbba6ae82b7dd`；独立使用审计 SHA `8828e45c78bdc07a795005b738c2c823412306aeefc5f6fe54245ac8e4408058`。未用 held-out seed、未跑七策略正式效果矩阵；不据此宣称正式实验准入。
+
+**下一关口：正式实验准入，尚未验收。** 先提交本轮仍未提交的风险记录，再独立冻结并审计 v2 `sim_gt` 的开发集稳定性（五 seed 链路与每任务 25/25 原生成功门槛）、七策略矩阵／基线／预算／指标及各仓库版本；对 depth 500 未知根因和无效配对规则作明确准入裁决。准入前不运行 held-out 或正式效果矩阵，`formal_eligible=false`。简表见 [`docs/attentionbench_progress.md`](docs/attentionbench_progress.md)。
+
 ## M1–M6 跨模块全链工程验收（2026-09-29；v7 通过）
 
 [v7 冻结、版本分离、双套真实 Graph、审批及逐项审计](docs/m1_m6_cross_module_v7_acceptance.md)完成。U `feature/attention-native-robosuite` 冻结基线 `f0d9093`；独立 M／R／C／A／T 为 `24d4146`／`081cd57`／`320020a`／`4cf4daa`／`b18bbf1`。冻结策略 `full_trace_aware_attention_planner`、RoboCasa `counter_to_sink` seed 101、Robosuite `cube_lift` seed 103；每套最多两份候选／两次正式 run，每 run 四次 attempt、一 credit、4096 tokens、300 秒。候选 B 的源码、配置、生成收据和入口 SHA 经用户精确批准后，仅派发一次新的 Robosuite 正式 run。真实 Advisor 2785＋670＝3455 tokens，随后获批回复在 attempt 2 采用；trusted v1 在适用范围内向 attempt 3 颁授权并记录实际使用。RoboCasa 原有同版 run 只读复核，未晋升候选 grant/use 均为零。双套原生结果、独立 Safety、四类产物 SHA、Service 回收、Eval、持久 UI Trace 和重启去重通过；隔离身份／哈希错配与中断 dispatch 均明确拒绝或记录。最终 **58/58 passed**，`candidate_b_completed_audit.json` SHA-256 `892cf1c0ddc574734285fa2357caa3ad496099bd0a21fff1cfd2672c75d6aedd`，340 件索引 `sha256-index-final.json` SHA-256 `288dce9f270c86555dd316c137d352cffea2cf55a8926c34b56b4a6d3d98957a`；外部证据根 `/home/truares/桌面/attentionbench-m1-m6-cross-v7-20260929/`。
 
-**状态：正式验收（仅跨模块工程链路）。** 首版 Advisor 3226 > 3000、v5 冻结后 Eval 修复、v6 错误目标 Dev 候选和 v7 Robosuite A 首次成功但未触发 Advisor／Memory、UI Trace 缺失，均按版本保留原始失败／未覆盖结论；不与选定的 v7 B run 拼接。M1–M6 原模块门槛不重开，M3 历史 depth 500 根因风险仍未解决。没有运行 held-out、正式七策略效果矩阵、真人或 LIBERO；所有运行 `formal_eligible=false`，RoboCasa 正向 Memory 效果及正式实验准入仍未验证。
+**状态：正式验收（仅跨模块工程链路）。** 首版 Advisor 3226 > 3000、v5 冻结后 Eval 修复、v6 错误目标 Dev 候选和 v7 Robosuite A 首次成功但未触发 Advisor／Memory、UI Trace 缺失，均按版本保留原始失败／未覆盖结论；不与选定的 v7 B run 拼接。M1–M6 原模块门槛不重开，M3 历史 depth 500 根因风险仍未解决。该 v7 冻结运行未覆盖后续 RoboCasa v3 正向验证；没有运行 held-out、正式七策略效果矩阵、真人或 LIBERO；所有运行 `formal_eligible=false`，正式实验准入仍未验证。
 
 ## M6 Eval 诊断与 UI 展示／操作（2026-09-29；封闭工程验收完成）
 

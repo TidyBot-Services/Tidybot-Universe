@@ -14,14 +14,27 @@
 | M2 · 生成与批准 | **封闭工程验收完成（仅 M2）**：双真实 Graph 通过有界 HTTPS `parcc/GLM` 各生成一份公开 SDK 候选和 M1 lock；审批前停在 `awaiting_approval`，用户对上列精确 SHA 明示批准后，两套各经正式 Bridge → Service 完成一次开发 seed 101 handoff。审批后重启均不重派；原生任务均失败，不影响此工程门槛。证据见 [`m2_generation_approval_acceptance.md`](m2_generation_approval_acceptance.md)。`formal_eligible=false`。 |
 | M3 · 双模拟器执行 | **修订口径下工程验收完成**：正常执行 12/12、Harness run 4/4、故障路径 7/7、受控 depth 异常隔离 2/2；用户明确批准仅工程层面关闭。原标准的历史 depth 500 根因关口仍未通过、根因未修复；见[原验收](m3_dual_sim_execution_acceptance.md)与[修订验收](m3_dual_sim_execution_revised_acceptance.md)。`formal_eligible=false`。 |
 | M4 · Attention 决策 | **封闭工程验收完成（仅 M4）**：[冻结包](m4_attention_decision_acceptance.md)的 A／B／D 双套七策略定向测试 **95 passed**、测试回复闭环各 2 attempts；独立新冻结下，线上 C 的 RoboCasa／Robosuite 各完成 2 次真实正式 Runner attempt、1 次未缓存 GLM 回复并在第二次采用，原始证据与 SHA 审计通过。首轮两次超时原件保留。`formal_eligible=false`。 |
-| M5 · Memory | **修订口径下工程完成**：[原冻结包、修订条款、阶段性失败和最终补验](m5_memory_acceptance.md)。Robosuite 正向：有效配对／Service 晋升，独立正式 run 的限定检索、v1 授权、使用和原生成功。RoboCasa 负向：旧、新失败配对与 Safety 反例保留，候选未晋升；独立正式 run 不把它作为 trusted 检索或授权。Dev Graph 从未改写正式来源自动派发，复用既有十个双 Service 臂；隔离检查点又从两份旧臂收据恢复相同 pair，重启无新臂，篡改 pair／Safety 被拒。**RoboCasa 正向 Memory 效果未验证**。`formal_eligible=false`。 |
+| M5 · Memory | **修订口径下工程完成**：[原冻结包、修订条款、阶段性失败和最终补验](m5_memory_acceptance.md)。Robosuite 正向：有效配对／Service 晋升，独立正式 run 的限定检索、v1 授权、使用和原生成功。RoboCasa 旧两批失败配对与 Safety 反例保留，旧候选未晋升；随后新 v3 候选在五个开发 seed 的完整配对中 control 0/5、treatment 5/5、Safety 0/10，通过原门槛并由 Service 晋升 trusted v1。配对外独立正式边界工程 run 核对限定检索、精确 v1 grant、Trace 使用、原生成功及范围外／生命周期拒绝；[本轮风险审计](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)。既有 Dev Graph 派发与重启复用结论不变。`formal_eligible=false`。 |
 | M6 · 诊断与展示 | **封闭工程验收完成（仅 M6）**：[冻结包、阶段失败及 v4 最终复核](m6_eval_ui_acceptance.md)。双套正式 Runner 产物经 Eval 验身份、SHA、原生结果、独立 Safety 和 Service 回收；真实 `parcc/GLM` 诊断引用同 attempt／事件。UI 展示持久预算、请求、公开 RGB、Trace、诊断和原生结果，UI／Graph 重启可恢复；双套真实 Service 的运行中中断分别在 2.53／0.20 秒确认并回收。故障矩阵及未授权原始证据拒绝通过。历史失败收据保留，`formal_eligible=false`。 |
 
-**M1–M6 已分别按各自工程验收口径关闭；完成六模块不等于全链正式实验准入。** M5 修订工程基线为 `bd8146e`；其 RoboCasa 失败配对和未晋升结论保持，**RoboCasa 正向 Memory 效果未验证**为独立待办。M3 的旧 depth 500 根因风险独立跟踪。M6 只关闭 Eval 诊断与 UI 展示／操作工程链路；历史失败与修复复验均见[验收包](m6_eval_ui_acceptance.md)。正式实验准入、held-out、七策略效果矩阵和消融属于后续阶段，不能倒填成某个工程模块的完成条件。LIBERO／live-human 为协作者扩展，Deploy 在线发现暂缓，均不混入主线六模块。
+**M1–M6 已分别按各自工程验收口径关闭；完成六模块不等于全链正式实验准入。** M5 修订工程基线为 `bd8146e`；其旧 RoboCasa 失败配对和未晋升结论保持，新 v3 正向工程验证见上表。M3 的旧 depth 500 根因风险独立跟踪。M6 只关闭 Eval 诊断与 UI 展示／操作工程链路；历史失败与修复复验均见[验收包](m6_eval_ui_acceptance.md)。正式实验准入、held-out、七策略效果矩阵和消融属于后续阶段，不能倒填成某个工程模块的完成条件。LIBERO／live-human 为协作者扩展，Deploy 在线发现暂缓，均不混入主线六模块。
 
 ### M1–M6 跨模块工程链路（2026-09-29）
 
-**v7 同版工程验收通过，58/58 项。** [冻结、真实 Graph 与选定双模拟器 run 的证据](m1_m6_cross_module_v7_acceptance.md)覆盖 Dev 来源与用户 SHA 批准、Bridge、正式 Runner、`full_trace_aware_attention_planner`、真实 Advisor、限定 trusted Memory v1、Eval／UI、独立 Safety、原生结果、四类产物、Service 回收及重启去重。Robosuite 候选 A 首次成功而未触发 Advisor／Memory，失败／未覆盖审计单独保留；冻结额度内经另一次精确批准的候选 B 独立 run 完成该链。RoboCasa 同版 run 未重跑、未晋升候选仍不授权。此结论仅为工程验收；`formal_eligible=false`，M3 历史 depth 500 根因风险与 RoboCasa 正向 Memory 效果继续单列，正式效果研究仍未执行。
+**v7 同版工程验收通过，58/58 项。** [冻结、真实 Graph 与选定双模拟器 run 的证据](m1_m6_cross_module_v7_acceptance.md)覆盖 Dev 来源与用户 SHA 批准、Bridge、正式 Runner、`full_trace_aware_attention_planner`、真实 Advisor、限定 trusted Memory v1、Eval／UI、独立 Safety、原生结果、四类产物、Service 回收及重启去重。Robosuite 候选 A 首次成功而未触发 Advisor／Memory，失败／未覆盖审计单独保留；冻结额度内经另一次精确批准的候选 B 独立 run 完成该链。**该 v7 快照**的 RoboCasa run 未重跑、当时未晋升的候选仍不授权；后续 v3 正向工程验证是独立证据，不倒填 v7。此结论仅为工程验收；`formal_eligible=false`，M3 历史 depth 500 根因风险继续单列，正式效果研究仍未执行。
+
+### 当前关口：正式实验准入（尚未验收）
+
+这是六模块及跨模块工程验收之后的**独立关口**，不是 M1–M6 的返工。下一轮先核对并提交尚未提交的 [depth／Memory 风险记录](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)，再在新运行前冻结 v2 `sim_gt` 的任务、开发／held-out 划分、策略与七种 Attention 条件、demo／随机基线、预算、指标、Service 版本和异常配对处理。当前代码及工程产物仍标记 `formal_eligible=false`；不得因跨模块 58/58 通过而自动改为正式成绩。
+
+| 准入项 | 当前事实与下一步 |
+| --- | --- |
+| 开发集稳定性 | [v2 协议](../benchmarks/attention_harness/protocol/v2/README.md)要求先完成两任务五开发 seed 链路检查，再达到各任务冻结开发集 25/25 原生成功；现有跨模块验收是选定开发 seed 的工程链路，不替代此门槛。独立核对缺口并只在预定开发预算内补验；v1 的旧成绩不可混入 v2 `sim_gt`。 |
+| RoboCasa Memory | 新 v3 候选五对 control 0/5、treatment 5/5，Safety 0/10，Service 晋升 trusted v1；配对外独立工程 run 验证精确授权、使用及原生成功。旧失败候选与 Safety 反例保留。此项已有**开发工程证据**，不是 held-out 效果。 |
+| Robosuite depth 500 | 十个开发 case／60 次动作未复现；历史坏帧缺失，根因仍未知，状态为**受控但未解决**。独立准入审计须决定现有“立即停 attempt、未知动作记 unsafe、受影响配对无效并保留原件”的规则是否足以控制正式实验偏差；不得将未复现写成已修复。 |
+| 正式矩阵与资格 | 七策略正式效果矩阵、消融和 held-out 均未启动。先冻结完整协议并通过独立准入审计，才能启用有版本锁定的正式资格；未通过则保持 `formal_eligible=false`，不使用 held-out 调试。 |
+
+本关口尚未冻结验收包或执行新的准入测试；上表是已知事实与待验事项，不是准入通过结论。工作树中的风险文档修改尚未提交，不把桌面证据目录的清理误记为实验进度。
 
 ## 完整流程，直接标出模块边界
 
