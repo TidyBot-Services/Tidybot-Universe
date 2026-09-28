@@ -4,13 +4,23 @@
 
 快照日期：2026-09-28。本文是**进度索引，不是验收证据**；新任务应先核对工作树、相关代码及证据。状态只使用：**未开始 → 代码完成 → 小测试通过 → 真实服务跑通 → 正式验收**。较高状态仅适用于该行写明的目标，不能外推为整个 AttentionBench 已完成。“未核实”表示尚未审计，不等于未开始。
 
-## 当前 M5 Memory 关口（2026-09-28；未关闭）
+## M5 Memory 关口（2026-09-28；原失败记录与修订工程补验）
 
 Universe `feature/attention-native-robosuite` 已用双亲 merge `0e29a7d` 整合 `attention-m4` 的已验收代码与文档，父提交 `7c6890f`、`dc06af9`，未触碰 main/master。M5 代码提交 `820a5e5`、`24975b5`、新 RoboCasa 候选策略 `10c5e8d`；独立 Memory Service `24d4146`、Robosuite Service `081cd57`、RoboCasa Service `320020a`、Agent Server `4cf4daa`、task source `b18bbf1`。冻结范围／预算／门槛／证据和逐项结论见 [`docs/m5_memory_acceptance.md`](docs/m5_memory_acceptance.md)，所有本轮运行 `formal_eligible=false`。
 
 - **旧七项回归**：原 M4 `harness-full.log` 7 failed 原件不变；修正 FakeWorld seed 107 的 prompt 与变体不一致后，七项 7/7、全 Harness **382 passed、10 skipped**。`/home/truares/桌面/attentionbench-m5-20260928/seven-audit.json` 逐例记录 5 对 fixture、Trace、答复、Safety、原生结果和 673 个产物 SHA。确定性 fixture 不替代真实 RoboCasa 配对。
 - **Robosuite 整合版本实证**：旧 858 文件归档与 0/5→5/5、trusted v1 历史证据只读复核；隔离权威库的当前正式 seed 103 两次 Runner attempt 首败后检索匹配 Memory，Service 颁精确 v1 grant，第二次实际使用且原生成功。独立 Safety 0、四类 SHA 匹配；范围外拒绝，隔离副本上 expiry／disable／rollback 拒绝检索和新授权；未重复配对或晋升。第一次错置源证据根、第二次发现 Harness 误丢可信候选的失败原件均保留。最终审计 `/home/truares/桌面/attentionbench-m5-20260928/robosuite-current-v3/audit.json` SHA-256 `59a4baaba6c957ca47abbf9df80aea8f2fa654929274230b5c122987c2e0d2fe`。
 - **RoboCasa 阻塞**：旧 767 文件续档、10 个 arm、0/5 对 1/5、seed 105 Safety 退步及拒绝晋升均复核，旧候选仍 candidate v1。新候选 `candidate:m5:robocasa-counter-to-sink-public-sdk-v2` 先冻策略／版本／五组四轴变体／预算（`freeze.json` SHA `b678836230eb9eee26c243ea5ddbe28c566b077efcb2509e2d0ec05f26225680`），再在隔离库跑完十个真实 arm：仍 0/5 对 1/5，seed 104 出现一次独立 Safety 退步；Service 拒绝晋升，状态 candidate v1。重启仅复用十份臂收据。逐臂审计 `robocasa-new-v2/audit.json` SHA `942069e9cacfe4c55997df6a998038ce3a53d81b212b511793e1f675553d36ef`，176 文件索引 SHA `b1053b95f23fe67295dc8f1095f4a1787e119e82f138cb9a119fa520bbbc44cf`，证据根 `/home/truares/桌面/attentionbench-m5-20260928/`。自动 Dev dispatch 对 RoboCasa 验证配置仍直接 blocked；RoboCasa 独立正式使用缺乏合法 trusted 版本。**M5 部分完成且被明确阻塞，不关闭、不进入 M6**。
+
+### M5 修订口径首轮核验（2026-09-28；当时仍开放）
+
+原冻结包和上述当时未通过结论保留；新增 [修订验收条款与逐项结果](docs/m5_memory_acceptance.md)。U 基线 `c7580cd` 干净；独立 M `24d4146`、R `081cd57`、C `320020a`、A `4cf4daa`、T `b18bbf1` 均干净。**R1 Robosuite 正向通过**：沿用有效五对与 Service trusted v1，整合版本独立正式 run 复核限定检索、精确 grant、使用、原生成功、范围外和生命周期拒绝。**R2 RoboCasa 负向通过**：旧 767 文件和新 176 文件索引复核，失败配对与 Safety 反例未动；新候选仍 candidate v1。隔离库独立正式 seed 101 两次 attempt 均原生失败、Safety 0、双 Service 回收，无 trusted 检索／授权，强制授权被拒，grant/use 均 0；不是 RoboCasa 效果成功。**R3 未过**：代码已接通自动派发；真实双 Service 单臂及重启收据、派生隔离 fixture 的五对复用分别通过，但缺未改写正式来源自动派发直接执行真实双 Service 臂并重启复用的同链路收据。**R4 已覆盖项通过**：来源和批准文件 SHA、防篡改、独立 Safety／原生判断、范围外／expiry／disable／rollback、Memory Service 22 passed、相关 30 passed、Harness 387 passed／10 skipped。修订审计 `/home/truares/桌面/attentionbench-m5-revised-20260928/revised-audit.json` SHA `a677f6d3db2e509c5ad0a5fe0d73f8cc2fb7cecd591e14fa79dd050e85368ff3`，104 文件索引 SHA `5f306ef83cc9c0f6a6c0bf516c34be386f6af9db82e0af6526511778f9e6751d`。**M5 仍开放，不标“修订口径下工程完成”。** 独立待办：**RoboCasa 正向 Memory 效果未验证**。本轮不新增配对臂、不进入 M6／held-out／正式效果矩阵，`formal_eligible=false`。
+
+### M5 修订工程补验完成（2026-09-28；当前结论）
+
+上述首轮 R3 缺口已用**未改写正式来源的私有逐字节副本**补验：原来源 SHA `3f4ced4fd046b059e60c27b67ab36be1dd30a6d4c8d47b61bdb2b34df31e90f3`，Graph 恢复入口读取获批配置并自动调用生产派发；五对旧 pair 与十份双 Service 原始臂的 attempt／Safety／原生结果／回收收据逐项对齐。独立进程重启后 Graph 和派发收据不变，0 新臂、0 新配对；Service 继续因 seed 105 Safety 退步拒绝晋升。另在隔离库模拟 seed 105 pair 未登记但两份旧真实臂收据已落盘：Graph 从收据恢复字节相同的 pair，attempt 数保持 14，重启再复用，0 新臂。blocked 重启现复核 pair payload 和 Safety 摘要；隔离篡改两者均拒绝。当前 Graph 诊断 Eval 使用标记 fixture，不参与 Memory 判定；不声称本轮 Graph 新启动了双 Service 臂。R3 审计 `/home/truares/桌面/attentionbench-m5-revised-20260928/exact-source-overlay/r3-exact-audit.json` SHA `4cafd58946d0a747bd4c91aedb477d59d42c1aee8610dfa5604c3bdf381e34c3`，臂收据恢复审计 `arm-receipt-resume/audit.json` SHA `3b206a968ced48edd4185cc17f3a9fb1626ace5b20de0b80a9d1892c5811eb86`。全 Harness **388 passed、10 skipped**，Graph **25 passed**，配对完整性 **31 passed**，Memory Service **22 passed**；纳入两次补验的最终审计 `/home/truares/桌面/attentionbench-m5-revised-20260928/revised-final-audit-v2.json` SHA `010e65e6bb0717b26d9506a688f48207c70ad030c7f84415005805f30b359de0`。
+
+**M5：修订口径下工程完成。** R1 Robosuite 正向、R2 RoboCasa 负向、R3 自动派发／既有双 Service 臂／重启复用、R4 完整性与回归均通过。最终独立索引 `/home/truares/桌面/attentionbench-m5-revised-20260928/revised-final-index-v2.json` 覆盖 433 件证据及当前代码 SHA，SHA-256 `c8aca0969aa8b250d689df79dc43a31bbee4639f1717014a13d7c036e509e995`，逐文件复核通过。原 RoboCasa 晋升门槛和新旧未通过结论保持；**RoboCasa 正向 Memory 效果未验证**为独立待办。所有工程运行 `formal_eligible=false`；不进入 M6、held-out 或正式效果矩阵。
 
 ## 项目边界与当前决定
 

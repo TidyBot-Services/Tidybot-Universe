@@ -133,6 +133,22 @@ def test_blocked_restart_checks_formal_source_artifact_without_replaying_arms(tm
     assert len(calls) == 10
 
 
+def test_blocked_restart_rejects_changed_registered_safety_without_replaying_arms(tmp_path):
+    task, _, calls = _task(tmp_path, success=False)
+    state = task.run()
+    assert state["status"] == "blocked" and len(calls) == 10
+    # Simulate a task imported from Service-owned completed pairs, where the
+    # local arm receipts were not written by this scheduler instance.
+    state["arms"] = {}
+    task.state_path.write_text(json.dumps(state))
+    safety = state["pairs"][str(task.cases[0]["seed"])]["control_safety"]
+    with open(safety["uri"], "a", encoding="utf-8") as stream:
+        stream.write("\n")
+    with pytest.raises(Exception, match="safety evidence changed after registration"):
+        task.run()
+    assert len(calls) == 10
+
+
 def test_validation_task_refuses_to_replay_uncertain_arm(tmp_path):
     task, service, calls = _task(tmp_path)
     original = task.executor

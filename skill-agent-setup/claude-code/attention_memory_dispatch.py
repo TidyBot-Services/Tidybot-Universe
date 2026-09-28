@@ -211,9 +211,17 @@ def dispatch_memory_candidates(config: dict, result: dict, *, repo_root: Path = 
                 for arms in earlier.get("arms", {}).values():
                     for receipt in arms.values():
                         MemoryValidationTask._read_receipt(receipt)
+                service = MemoryService(Path(result["store"]),
+                                        artifact_root=Path(result["artifact_dir"]) / "attempts")
+                current_pairs = {
+                    str(item["seed"]): item for item in service.list_pairs(memory_id)
+                }
+                if earlier.get("pairs") != current_pairs:
+                    raise ValueError("saved validation pairs differ from Memory Service")
+                current_impact = service.impact_report(memory_id) if current_pairs else None
+                if earlier.get("impact") is not None and current_impact != earlier["impact"]:
+                    raise ValueError("saved validation impact differs from Memory Service")
                 if earlier["status"] == "trusted":
-                    service = MemoryService(Path(result["store"]),
-                                            artifact_root=Path(result["artifact_dir"]) / "attempts")
                     if service.get_memory(memory_id).status.value != "trusted":
                         raise ValueError("trusted task receipt disagrees with Memory Service")
                 records.append({"memory_id": memory_id, "state_path": str(state_path),

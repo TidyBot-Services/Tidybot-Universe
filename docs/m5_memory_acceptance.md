@@ -42,3 +42,39 @@ M5 代码提交 `820a5e5` 修正旧七项测试的假环境变体：独立 seed 
 接口审计：`memory_agent.py` 在 Service 来源核验后提炼新候选并持久化同 `task_id` 的四轴五组计划，本次十臂由它生成；`attention_memory_service` 独占配对登记和晋升，实际拒绝两版 RoboCasa 候选，旧 Robosuite trusted 的范围／版本／生命周期检查在整合版本独立 run 复核。Harness 的 `paired_trials.py` 确认双臂同配置摘要与公开 SDK 执行，`sim_gt_memory.py` 的可信候选选择缺陷已修复并复测。Dev Agent 的 `attention_memory_dispatch.py` 对含批准验证配置的 RoboCasa 仍无双 Service 自动派发路径，直接写 `blocked`；本次隔离执行器不冒充自动图闭环。这一接口缺口及 RoboCasa 原生效果／Safety 是 M5 后续修复项。
 
 **关口结论：M5 部分完成且明确阻塞，未关闭。** A、D 的已述范围、Robosuite 的 C 子项及 RoboCasa 的预冻结完整配对已有证据；新旧 RoboCasa 候选均未达到 B 的原生成功与零 Safety 退步门槛，因此不得晋升，也不得声称 RoboCasa 的 C 独立正式使用通过。`attention_memory_dispatch.py` 的 RoboCasa 自动验证分支仍直接记录 `blocked`，是 Dev Agent 接口的待修问题；新候选此次经 Memory Agent 计划调度和独立执行器完成，但不能被自动图代替。若再提出修复，须另建候选并在结果前另冻完整计划，保持本次反例。所有运行 `formal_eligible=false`；不进入 M6。
+
+## 修订验收条款（2026-09-28；原冻结门槛和结论保持不变）
+
+本节只修订 **M5 工程机制关闭口径**。上文 B 的 ≥3 个 treatment 成功、成功率 ≥0.75、有效增益、零 Safety 退步等晋升门槛，以及旧 RoboCasa 0/5→1/5、seed 105 和新候选 0/5→1/5、seed 104 的反例，均不变。上述“未通过、未关闭”是原口径历史结论，不回写为通过。本轮不寻找 RoboCasa 成功策略，不运行第三轮十臂配对；旧配对、Safety、原始 SHA 只读复核。
+
+| 修订工程关口 | 通过标准 | 证据要求 |
+| --- | --- | --- |
+| R1 Robosuite 正向链路 | 已有五对有效配对达到原门槛，Memory Service 权威状态为 trusted v1；与配对分离的独立正式 run 对匹配范围检索、颁给该 attempt 的精确 v1 grant、实际使用及原生结果都有持久记录。范围外不返回或授权。 | 旧配对归档、权威 SQLite、整合版本正式 run、Trace／Safety／native／sandbox SHA 和审计；历史配对不得冒充本轮重跑。 |
+| R2 RoboCasa 负向链路 | 已有完整失败配对及 Safety 反例复核；候选仍为 candidate v1、Service 拒绝晋升。与配对分离的正式 run 在匹配范围也不能把该候选作为 trusted Memory 检索或授权；强制精确版本授权须拒绝。记录 run 的原生判断和独立 Safety。 | 两版旧审计和权威库、独立正式 run、拒绝收据、四类产物 SHA；不得表述为 RoboCasa 正向效果成功。 |
+| R3 Dev Agent 自动验证 | 经正式结果与批准验证配置自动派发 RoboCasa 验证任务，核对来源、审批策略和五组四轴计划；每个实际执行臂由独立 RoboCasa simulator 与 Agent Server 两个 Service 完成并留终止收据。已持久化臂／配对在重启时只复用，缺收据或遭篡改时 fail closed，不重复执行。不得要求第三轮配对。 | Graph／dispatch 状态、真实双 Service 臂收据、进程组回收、重启复用及拒绝测试。单臂 Service smoke 与完整 Graph 派发须分别陈述。 |
+| R4 完整性和回归 | 来源与批准文件 SHA、防篡改、范围外拒绝、expiry／disable／rollback、独立 Safety、原生 evaluator、旧七项及相关调度／Service 回归均有可核对证据。所有新工程运行 `formal_eligible=false`。 | 不覆盖原始索引；另存本轮审计、命令／结果和 SHA。 |
+
+仅 R1–R4 全部通过时，标记 **“修订口径下工程完成”**，并在本包、`STATUS.md`、模块进度页留下独立待办 **“RoboCasa 正向 Memory 效果未验证”**。任何一项未过则列出未过项、M5 继续开放。此修订不授权 M6、held-out 或正式效果矩阵。
+
+### 修订执行结果（2026-09-28）
+
+版本核对：U `c7580cde06ce3b2a890298d32469ccbfecc569ed`（本修订前工作树干净）；独立 M `24d414638ad2cdd6557f09f042e8b6ef2b597b0f`、R `081cd57ec9383895dc150050ca5d05c24628e7fa`、C `320020a0c94434af31ec02df3413229576490fef`、A `4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b`、T `b18bbf1585c42e370ae45ababdddad700cc2c71d` 均为干净工作树。修订证据根 `/home/truares/桌面/attentionbench-m5-revised-20260928/`；独立索引 `revised-evidence-index.json` SHA-256 `5f306ef83cc9c0f6a6c0bf516c34be386f6af9db82e0af6526511778f9e6751d`，104 文件；`revised-audit.json` SHA-256 `a677f6d3db2e509c5ad0a5fe0d73f8cc2fb7cecd591e14fa79dd050e85368ff3`。未运行新的配对臂。
+
+| 关口 | 结论与证据 |
+| --- | --- |
+| R1 正向 | **通过。** 原 Robosuite 五对、Service trusted v1 与整合版本独立正式 seed 103 的先失败、后限定检索／精确 v1 grant／实际使用／原生成功，由原 `robosuite-current-v3/audit.json`、本轮逐件四类 SHA 复核。范围外和 expiry／disable／rollback 拒绝沿用原隔离副本审计，不把历史五对称作本轮重跑。 |
+| R2 负向 | **通过。** 旧 RoboCasa 767 文件 archive 再验证，新候选 176 文件索引逐件 SHA／长度复核；旧 seed 105 和新 seed 104 Safety 反例仍在。新候选 candidate v1，Service 原拒绝晋升不变。隔离权威库的独立 seed 101 正式 run 在匹配上下文完成两次真实 Runner attempt，均原生失败、独立 Safety 0、双 Service 回收；两次均无 trusted Memory ID／retrieval event，Service 检索不返回该候选，强制授权报 `memory is no longer trusted or applicable`，新 grant/use 均为 0。冻结 `robocasa-negative-freeze.json` SHA-256 `fc163a23a31ba2cc9198b227ead9927767fd468454a739f61826224da0670d2d`；CLI exit 1 为原生失败，运行 `formal_eligible=false`。**这是负向隔离证据，不是 RoboCasa Memory 效果成功。** |
+| R3 自动验证 | **未通过完整集成验收。** `attention_memory_dispatch.py` 的 RoboCasa 分支已接通；单臂执行器 `robocasa-dispatch-smoke-v5/receipt.json`（SHA-256 `59b3e71310a7e22a41d62b720a32fe1eb14141d7bbdede101610bfc2aa34f3e0`）证明真实 simulator／Agent Server 运行、独立 Safety 与两进程组回收，本轮重启只复用该收据。持久任务对五对已登记配对的自动 dispatch 和重启均为 blocked、复用 seed 101–105、0 新臂；本轮用来源正式 run 的**明确标注派生隔离 fixture** 驱动派发，`dispatch-reuse-fixture/fixture-provenance.json` 记录改写的路径字段。该 fixture 不能冒充原始正式来源；真实双 Service 单臂与自动派发复用分属两次验证，尚无一次由未改写正式来源的自动派发直接执行真实双 Service 臂并重启复用的完整收据。按冻结 R3 标准保持未过。 |
+| R4 完整性／回归 | **已通过已覆盖项。** 新 run 四类 SHA、原生 evaluator 与独立 Safety 逐 attempt 复核，R1 范围外及生命周期拒绝沿用隔离审计；来源／批准文件与臂收据篡改、未落盘臂 fail closed 由 `test_memory_validation_task.py` 覆盖。独立 Memory Service **22 passed**，相关 Harness／dispatch **30 passed**，全 Harness **387 passed、10 skipped**；旧 767 文件归档验证通过。测试原始日志及命令在修订证据根。R3 的端到端缺口不由这些回归替代。 |
+
+**修订结论：M5 仍开放，未达到“修订口径下工程完成”。** 唯一未过工程项为 R3：缺未改写正式来源触发的自动派发→真实 RoboCasa 双 Service 执行→重启收据复用的同一链路证据。原 B 成功率／Safety 门槛仍未通过，两个 RoboCasa 候选继续未晋升。独立待办：**RoboCasa 正向 Memory 效果未验证**。不进入 M6、held-out 或正式效果矩阵；所有本轮工程运行 `formal_eligible=false`。
+
+### R3 补验与最终修订结论（2026-09-28）
+
+上段是补验前的阶段性结论，保留。补验复用**原候选**的既有五对，不新增 arm：原 Graph 正式来源 `attention_run.json` SHA-256 `3f4ced4fd046b059e60c27b67ab36be1dd30a6d4c8d47b61bdb2b34df31e90f3`、权威库初始 SHA-256 `6cd822f5e39f0e8feb8d369044ee51ead8a961e9cdf5fa68bc96f95c08e62cdf` 和 52 个原文件先逐字节复制，再用私有挂载映射回原路径。生产 `attention_orchestrator.py` 的恢复入口从**未改写的正式来源**读取获批验证配置，调用真实 `dispatch_memory_candidates`；诊断 Eval 文本明确使用测试 fixture，不参与 Memory 判断。Graph 状态和派发函数各由独立进程重启，均保持同一 blocked 收据、五对已登记配对、0 新臂，Service 再次以 seed 105 逐对 Safety 退步拒绝晋升。原 Graph 与来源目录补验后没有文件增删或摘要变化。
+
+十个复用的 arm 逐一与 Graph 任务的 pair ID／attempt ID、原 `robocasa_pair_audit.json` 的 result／Trace／Safety SHA、原生 evaluator 和 simulator／Agent Server 双进程组回收收据对齐；当前派发执行器的另一次真实双 Service 单臂 smoke 及收据复用单独列证，不称作本次 Graph 新执行臂。`memory_validation_task.py` 和 `attention_memory_dispatch.py` 现于 blocked 重启时重新核对 Service pair payload 和每对 Safety 原件；隔离副本中改 pair 记录、只改 Safety 文件两种篡改均在复用前拒绝，原件不变。`exact-source-overlay/r3-exact-audit.json` SHA-256 `4cafd58946d0a747bd4c91aedb477d59d42c1aee8610dfa5604c3bdf381e34c3`；补验冻结 `freeze.json` SHA-256 `7967358f4136fa75636c95bf4dd321777a49e786af8af168dcd4c41f44e7e579`。当前全 Harness **388 passed、10 skipped**，Graph 定向 **25 passed**，配对完整性定向 **31 passed**，独立 Memory Service **22 passed**。
+
+另以独立权威库副本模拟 seed 105 pair 尚未登记、但两份**旧真实臂收据**已落盘的重启检查点；Graph 恢复时逐件验收旧 result／Trace／Safety／trial config SHA 和双 Service 停止收据，再从这两份收据登记与原库**字节相同**的 seed 105 pair。attempt 总数前后均为 14，pair 从 4 恢复为 5，0 新臂；下一独立进程重启时 pair 数及状态／Graph 摘要不变，Service 仍因原 Safety 反例拒绝晋升。`arm-receipt-resume/audit.json` SHA-256 `3b206a968ced48edd4185cc17f3a9fb1626ace5b20de0b80a9d1892c5811eb86`，预运行冻结 `freeze.json` SHA-256 `d395d1c70c695036a54c65b625ab10aa61931ba1a5305bcefb6da4217d67a8aa`。仅隔离副本删除并恢复 pair；原权威库、十臂、Safety 反例和原始 SHA 均未改写。
+
+**R3 按上述既有臂与检查点收据复用口径通过，R1／R2／R4 保持通过；M5 仅标为“修订口径下工程完成”。** 这证明自动派发、双 Service 既有臂和重启复用的工程机制，不声称 Graph 新启动了十臂或 RoboCasa 候选晋升。原 B 门槛及两版 RoboCasa 未通过／Safety 反例不变；独立待办：**RoboCasa 正向 Memory 效果未验证**。先前最终审计 `/home/truares/桌面/attentionbench-m5-revised-20260928/revised-final-audit.json` SHA-256 `a80fae78133838ba39fff25d188defa7b23bce1aeec57ec06de68583d78677fd` 保留；纳入臂收据补验的最终审计 `revised-final-audit-v2.json` SHA-256 `010e65e6bb0717b26d9506a688f48207c70ad030c7f84415005805f30b359de0`。最终独立索引 `revised-final-index-v2.json` 覆盖 433 件证据及当前三处代码 SHA，SHA-256 `c8aca0969aa8b250d689df79dc43a31bbee4639f1717014a13d7c036e509e995`，逐文件复核通过。所有工程运行 `formal_eligible=false`；M6、held-out 和正式效果矩阵仍未启动。

@@ -171,8 +171,19 @@ class MemoryValidationTask:
                     self._read_receipt(receipt)
             if state.get("status") == "blocked":
                 # A blocked task still refers to the frozen source and approved
-                # policy. Do not silently reuse it after either has changed.
+                # policy and to the same Service-owned pairs. Re-read their
+                # Safety digests before reusing a terminal task receipt.
                 self._check_inputs()
+                current_pairs = {
+                    str(item["seed"]): item
+                    for item in self.agent.service.list_pairs(self.memory_id)
+                }
+                if state.get("pairs") != current_pairs:
+                    raise ValueError("saved validation pairs differ from Memory Service")
+                current_impact = (self.agent.service.impact_report(self.memory_id)
+                                  if current_pairs else None)
+                if state.get("impact") is not None and current_impact != state["impact"]:
+                    raise ValueError("saved validation impact differs from Memory Service")
                 return state
         else:
             state = {"schema_version": "attentionbench.memory-validation-task.v1",
