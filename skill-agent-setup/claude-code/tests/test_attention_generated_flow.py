@@ -81,6 +81,32 @@ def test_bounded_dev_writes_valid_source_once(tmp_path, monkeypatch):
         attention_dev.generate_policy(config, graph_dir=tmp_path, client=FakeClient())
 
 
+def test_counter_to_sink_dev_prompt_uses_locked_target(tmp_path, monkeypatch):
+    config = _generated_config(tmp_path)
+    config.update(suite="robocasa", task="counter_to_sink",
+                  formal_config_file="benchmarks/attention_harness/protocol/v2/locked.json")
+    sim_config = tmp_path / config["formal_config_file"]
+    sim_config.write_text(json.dumps({
+        "task_prompt": "pick the boxed drink from the counter and place it in the sink"
+    }))
+    (tmp_path / config["generated_policy_file"]).unlink()
+    monkeypatch.setattr(attention_dev, "REPO_ROOT", tmp_path)
+
+    class FakeClient:
+        def chat(self, **kwargs):
+            prompt = kwargs["messages"][0]["content"]
+            assert "`boxed_drink`" in prompt
+            assert "`yogurt`" not in prompt
+            assert "literal `sink` entry may be absent" in prompt
+            return SimpleNamespace(
+                content="from robot_sdk import sensors\nsensors.find_objects()",
+                usage={"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
+                attempts=1,
+            )
+
+    attention_dev.generate_policy(config, graph_dir=tmp_path, client=FakeClient())
+
+
 def test_bounded_dev_rejects_provider_retry_before_writing_source(tmp_path, monkeypatch):
     config = _generated_config(tmp_path)
     source = tmp_path / config["generated_policy_file"]

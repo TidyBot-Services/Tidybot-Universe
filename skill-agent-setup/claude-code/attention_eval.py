@@ -172,7 +172,10 @@ def _formal_attempt_packet(run_dir: Path, run: dict[str, Any],
         "outcome": {"status": trace.get("status"), "native_success": native["native_success"],
                     "evaluated": native.get("evaluated")},
         "events": events,
-        "formal_artifact_refs": artifacts,
+        # The paths were verified above; the model only needs stable digests.
+        # Repeating four long absolute paths per attempt can exhaust the
+        # bounded Eval packet for an otherwise valid multi-attempt run.
+        "formal_artifact_refs": {name: ref["sha256"] for name, ref in artifacts.items()},
         "safety_unsafe_attempts": values["safety"].get("unsafe_attempts"),
         "sandbox_service_stop": values["sandbox_receipt"].get("service_stop"),
         "native_evaluator_source": native.get("source"),

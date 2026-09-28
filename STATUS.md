@@ -4,6 +4,12 @@
 
 快照日期：2026-09-29。本文是**进度索引，不是验收证据**；新任务应先核对工作树、相关代码及证据。状态只使用：**未开始 → 代码完成 → 小测试通过 → 真实服务跑通 → 正式验收**。较高状态仅适用于该行写明的目标，不能外推为整个 AttentionBench 已完成。“未核实”表示尚未审计，不等于未开始。
 
+## M1–M6 跨模块全链工程验收（2026-09-29；v7 通过）
+
+[v7 冻结、版本分离、双套真实 Graph、审批及逐项审计](docs/m1_m6_cross_module_v7_acceptance.md)完成。U `feature/attention-native-robosuite` 冻结基线 `f0d9093`；独立 M／R／C／A／T 为 `24d4146`／`081cd57`／`320020a`／`4cf4daa`／`b18bbf1`。冻结策略 `full_trace_aware_attention_planner`、RoboCasa `counter_to_sink` seed 101、Robosuite `cube_lift` seed 103；每套最多两份候选／两次正式 run，每 run 四次 attempt、一 credit、4096 tokens、300 秒。候选 B 的源码、配置、生成收据和入口 SHA 经用户精确批准后，仅派发一次新的 Robosuite 正式 run。真实 Advisor 2785＋670＝3455 tokens，随后获批回复在 attempt 2 采用；trusted v1 在适用范围内向 attempt 3 颁授权并记录实际使用。RoboCasa 原有同版 run 只读复核，未晋升候选 grant/use 均为零。双套原生结果、独立 Safety、四类产物 SHA、Service 回收、Eval、持久 UI Trace 和重启去重通过；隔离身份／哈希错配与中断 dispatch 均明确拒绝或记录。最终 **58/58 passed**，`candidate_b_completed_audit.json` SHA-256 `892cf1c0ddc574734285fa2357caa3ad496099bd0a21fff1cfd2672c75d6aedd`，340 件索引 `sha256-index-final.json` SHA-256 `288dce9f270c86555dd316c137d352cffea2cf55a8926c34b56b4a6d3d98957a`；外部证据根 `/home/truares/桌面/attentionbench-m1-m6-cross-v7-20260929/`。
+
+**状态：正式验收（仅跨模块工程链路）。** 首版 Advisor 3226 > 3000、v5 冻结后 Eval 修复、v6 错误目标 Dev 候选和 v7 Robosuite A 首次成功但未触发 Advisor／Memory、UI Trace 缺失，均按版本保留原始失败／未覆盖结论；不与选定的 v7 B run 拼接。M1–M6 原模块门槛不重开，M3 历史 depth 500 根因风险仍未解决。没有运行 held-out、正式七策略效果矩阵、真人或 LIBERO；所有运行 `formal_eligible=false`，RoboCasa 正向 Memory 效果及正式实验准入仍未验证。
+
 ## M6 Eval 诊断与 UI 展示／操作（2026-09-29；封闭工程验收完成）
 
 [冻结验收包、阶段失败、版本化复验与最终逐项结论](docs/m6_eval_ui_acceptance.md)均已记录。Universe 当前 `feature/attention-native-robosuite`，M1–M5 既有结论及独立 Memory／Robosuite／RoboCasa／Agent／task source 版本 `24d4146`／`081cd57`／`320020a`／`4cf4daa`／`b18bbf1` 未改。双套已批准 seed 101 开发运行经正式 Runner 四类产物与 Eval 身份、SHA、原生结果、独立 Safety 和 Service 回收校验；真实 `parcc/GLM` 诊断各引用同一 attempt／事件，原生策略均失败而工程链准确。UI 持续投影预算、请求、公开 RGB、Trace、诊断和最终原生结果；UI／Graph 从持久证据重启恢复。未授权原始证据、路径与 SHA 篡改拒绝。

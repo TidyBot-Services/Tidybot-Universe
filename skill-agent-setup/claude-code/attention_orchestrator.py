@@ -228,8 +228,12 @@ async def _continue_attention_result(state, config: dict, result: dict) -> None:
     artifact = Path(result["artifact_dir"]) / "attention_run.json"
     entry = orch._find_entry(state.skill) or {}
     if config.get("m2_gate") is True:
-        from m2_gate import validate_handoff
-        validate_handoff(config, result)
+        if config.get("m1_m6_crosschain") is True:
+            from crosschain_gate import validate_crosschain_handoff
+            validate_crosschain_handoff(config, result)
+        else:
+            from m2_gate import validate_handoff
+            validate_handoff(config, result)
         approval = require_m2_approval(
             config, graph_dir=orch.GRAPH_DIR, repo_root=REPO_ROOT,
             expected=entry.get("m2_candidate"))
@@ -242,7 +246,7 @@ async def _continue_attention_result(state, config: dict, result: dict) -> None:
         run_link = {
             "artifact": str(artifact), "store": result["store"],
             "run_id": attempt["attention_trace"]["run_id"],
-            "attempt_ids": [attempt["attention_trace"]["attempt_id"]],
+            "attempt_ids": [row["attention_trace"]["attempt_id"] for row in result["attempts"]],
             "native_success": result["native_success"], "formal_eligible": False,
             "suite": result["suite"], "task_id": result["task_id"],
             "seed": result["seed"], "runner_boundary": "formal",
@@ -257,7 +261,8 @@ async def _continue_attention_result(state, config: dict, result: dict) -> None:
             "status": "review", "attentionbench_error": "",
         })
         await orch.broadcast_full_sync()
-        return
+        if config.get("m1_m6_crosschain") is not True:
+            return
     exposure = entry.get("dev_memory_exposure")
     if exposure is not None:
         try:
@@ -294,6 +299,12 @@ async def _continue_attention_result(state, config: dict, result: dict) -> None:
                                for memory_id in item.get("memory_ids", [])],
             "decision_count": len(result.get("decisions", [])),
     }
+    if config.get("m1_m6_crosschain") is True:
+        run_link.update({
+            "entry_sha256": config["m2_candidate"]["entry_sha256"],
+            "approval_record_sha256": config["m2_approval_record_sha256"],
+            "bridge_verified": str(orch.GRAPH_DIR / "bridge_verified.json"),
+        })
     orch._update_entry(state.skill, {
         "attentionbench_last_run": run_link, "attentionbench_error": "",
     })
@@ -450,8 +461,12 @@ async def _recover_attention_result(name: str, config: dict, artifact: Path) -> 
         from attention_eval import build_eval_packet
         build_eval_packet(artifact)
         if config.get("m2_gate") is True:
-            from m2_gate import validate_handoff
-            validate_handoff(config, result)
+            if config.get("m1_m6_crosschain") is True:
+                from crosschain_gate import validate_crosschain_handoff
+                validate_crosschain_handoff(config, result)
+            else:
+                from m2_gate import validate_handoff
+                validate_handoff(config, result)
         state = SimpleNamespace(skill=name, agent_type="dev", log=[])
         await _continue_attention_result(state, config, result)
     except Exception as exc:

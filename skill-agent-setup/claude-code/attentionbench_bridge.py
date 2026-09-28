@@ -39,10 +39,11 @@ def _write_m2_process_evidence(graph_dir: Path, *, stdout: bytes, stderr: bytes,
     }, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _m2_child_env() -> dict[str, str]:
+def _m2_child_env(*, crosschain: bool = False) -> dict[str, str]:
     env = os.environ.copy()
-    env.pop("PARCC_API_KEY", None)
-    env.pop("LITELLM_KEY", None)
+    if not crosschain:
+        env.pop("PARCC_API_KEY", None)
+        env.pop("LITELLM_KEY", None)
     return env
 
 
@@ -147,7 +148,8 @@ async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[
             "approval_record_sha256": config["m2_approval_record_sha256"],
             "entry_sha256": config["m2_candidate"]["entry_sha256"],
             "generation_sha256": config["m2_candidate"]["generation_sha256"],
-            "credential_recorded": False, "credential_forwarded_to_harness": False,
+            "credential_recorded": False,
+            "credential_forwarded_to_harness": config.get("m1_m6_crosschain") is True,
             "formal_eligible": False,
         }
         with (m2_graph / "bridge_command.json").open("x", encoding="utf-8") as stream:
@@ -159,7 +161,8 @@ async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[
     timeout = 330 * int(config.get("max_attempts", 3)) + 60
     process = await asyncio.create_subprocess_exec(
         *cmd, cwd=str(repo_root.resolve()),
-        env=_m2_child_env() if m2_graph is not None else None,
+        env=_m2_child_env(crosschain=config.get("m1_m6_crosschain") is True)
+        if m2_graph is not None else None,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
     )
     try:
@@ -219,7 +222,11 @@ async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[
                                     expected=config["m2_candidate"])
         if approval["record_sha256"] != config["m2_approval_record_sha256"]:
             raise RuntimeError("M2 approval changed during Bridge execution")
-        validate_handoff(config, result)
+        if config.get("m1_m6_crosschain") is True:
+            from crosschain_gate import validate_crosschain_handoff
+            validate_crosschain_handoff(config, result)
+        else:
+            validate_handoff(config, result)
     artifact = Path(result.get("artifact_dir", "")) / "attention_run.json"
     if not artifact.is_file() or json.loads(artifact.read_text()) != result:
         raise RuntimeError("AttentionBench persisted artifact does not match runner output")
@@ -231,7 +238,7 @@ async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[
         raise RuntimeError(f"AttentionBench runner exit/result mismatch: {process.returncode}")
     if m2_graph is not None:
         attempt = result["attempts"][0]
-        (m2_graph / "bridge_verified.json").write_text(json.dumps({
+        verified = {
             "schema_version": "attentionbench.m2-bridge-verified.v1",
             "command_sha256": m2_command_sha,
             "approval_record_sha256": config["m2_approval_record_sha256"],
@@ -244,7 +251,12 @@ async def run_attention_job(config: dict[str, Any], *, repo_root: Path) -> dict[
             "attempt_id": attempt["attention_trace"]["attempt_id"],
             "native_success": result["native_success"],
             "formal_eligible": False,
-        }, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+        }
+        if config.get("m1_m6_crosschain") is True:
+            verified["attempt_ids"] = [row["attention_trace"]["attempt_id"]
+                                       for row in result["attempts"]]
+        (m2_graph / "bridge_verified.json").write_text(json.dumps(
+            verified, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
     return result
 
 
@@ -319,6 +331,10 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
            "--assistance-mode", assistance_mode]
     if config.get("single_glm_call") is True:
         cmd.append("--single-glm-call")
+    if config.get("public_lift_progress_check") is True:
+        if config.get("m1_m6_crosschain") is not True or config["suite"] != "robosuite":
+            raise ValueError("public lift progress check requires Robosuite crosschain")
+        cmd.append("--public-lift-progress-check")
     roots = (("robosuite", ("service_source_root",))
              if config["suite"] == "robosuite" else
              ("robocasa", ("sim_source_root", "agent_source_root", "task_source_root",

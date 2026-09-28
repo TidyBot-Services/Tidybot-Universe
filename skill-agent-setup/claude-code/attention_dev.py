@@ -30,12 +30,31 @@ def generate_policy(config: dict[str, Any], *, graph_dir: Path,
     task = config.get("task")
     if task not in {"cube_lift", "cube_stack", "counter_to_sink", "counter_to_cab"}:
         raise ValueError("unsupported smoke task")
+    profile = config.get("dev_prompt_profile")
+    if profile not in {None, "contextual_public_diagnostics_v2", "top_level_public_progress_v3",
+                       "minimal_public_progress_v4", "bounded_for_loop_v5"}:
+        raise ValueError("unsupported bounded Dev prompt profile")
+    sink_task_hint = ""
+    if task == "counter_to_sink":
+        config_name = config.get("formal_config_file")
+        if not isinstance(config_name, str):
+            raise ValueError("counter_to_sink Dev requires a locked simulator config")
+        sim_config = json.loads((REPO_ROOT / config_name).read_text(encoding="utf-8"))
+        task_prompt = sim_config.get("task_prompt")
+        match = re.fullmatch(r"pick the ([a-z ]+) from the counter and place it in the sink",
+                             task_prompt or "")
+        if not match:
+            raise ValueError("counter_to_sink locked task prompt is unsupported")
+        target_name = match.group(1).replace(" ", "_")
+        sink_task_hint = (
+            f"The locked task prompt is `{task_prompt}`. Look for the target GT name "
+            f"`{target_name}` in sensors.find_objects(); do not substitute another object. "
+            "A literal `sink` entry may be absent from the public object list, so do not "
+            "make finding it a prerequisite for a conservative grasp attempt. Never "
+            "invent a destination pose if none is publicly available. "
+        )
     task_hint = (
-        "For counter_to_sink, the task target name varies by scene and may be `yogurt`; "
-        "do not assume `boxed_drink`. First open the gripper, then inspect "
-        "sensors.find_objects() and attempt a conservative approach to the target if found. "
-        "Do not claim task completion without moving the object. "
-        if task == "counter_to_sink" else
+        sink_task_hint if task == "counter_to_sink" else
         "For counter_to_cab, the target object is `condiment_bottle`; locate it with "
         "sensors.find_objects(['condiment_bottle']) and open the gripper before attempting "
         "a conservative approach. Do not claim task completion without moving the object. "
@@ -50,14 +69,60 @@ def generate_policy(config: dict[str, Any], *, graph_dir: Path,
         "gripper.open(), gripper.close(). `find_objects()` returns a list of "
         "dicts with name and position=[x,y,z] (if no target, do nothing). "
         "For cube_lift, locate cube, open the gripper, move above the cube, "
-        "move down near it, close, then raise. Use at most six SDK calls. "
+        f"move down near it, close, then raise. Use at most {'nine' if profile else 'six'} SDK calls. "
         + task_hint +
         "Use exact `obj.get('name') == 'cube'` matching; do not call `.lower()` "
         "or any method other than `.get()`. No other imports, files, network, "
-        "evaluator access, loops, helpers, or private state. Do not use hidden object pose. "
+        f"evaluator access, {'unbounded loops' if profile == 'bounded_for_loop_v5' else 'loops'}, helpers, or private state. Do not use hidden object pose. "
         "If you have a specific hypothesis about a possible failure, add one "
         "`# Hypothesis: ...` source comment; otherwise omit it."
+        + (" The public `context` dict may contain `advisor_guidance` or "
+           "`memory_guidance` on later attempts. Use `.get()` to read these "
+           "and make a bounded, goal-directed repair when present. After "
+           "receiving guidance, use the public SDK to verify the attempted "
+           "manipulation; if a public observation demonstrates a concrete "
+           "failure, report that observed failure explicitly instead of "
+           "silently finishing. Never fabricate a failure, force a simulator "
+           "error, or read the native evaluator."
+           if profile == "contextual_public_diagnostics_v2" else "")
+        + (" For cube_lift, after raising, call sensors.find_objects() once more "
+           "to record the public final cube position. Keep the whole strategy "
+           "as top-level statements, not a function. Return code only."
+           if profile == "minimal_public_progress_v4" else "")
+        + (" For cube_lift, after raising, call sensors.find_objects() once more "
+           "to record the public final cube position. Use a bounded `for` loop "
+           "to find the cube. The restricted worker has no `next()` builtin; "
+           "do not call `next()` or `print()`. Keep code at top level, not "
+           "inside a function. Return only source code."
+           if profile == "bounded_for_loop_v5" else "")
     )
+    if profile == "top_level_public_progress_v3":
+        task_step = (
+            "Find the cube from public sensors.find_objects(), open the gripper, "
+            "move above it, descend, close, and lift. If context.get('advisor_guidance') "
+            "is present, call sensors.find_objects() once more after lifting so the "
+            "public before/after cube positions are recorded. "
+            if task == "cube_lift" else
+            "Find the visible task object from public sensors.find_objects() and "
+            "attempt a conservative grasp and transport toward the sink. "
+        )
+        prompt = (
+            "Return exactly one executable TOP-LEVEL Python source file for "
+            f"{config['suite']} {task}. The FIRST line must be "
+            "`from robot_sdk import sensors, arm, gripper`. Do not define a "
+            "function or class. Do not return Markdown fences, explanations, "
+            "comments after the code, or sample output. The source is executed "
+            "directly, with the public `context` dict already present. "
+            "Use only sensors.find_objects(), arm.move_to_position(x,y,z), "
+            "gripper.open(), gripper.close(), dict.get(), bounded for/if, and "
+            "basic arithmetic. At most nine SDK calls. No other imports, "
+            "files, network, evaluator access, hidden state, print, raise, or "
+            "try/except. `advisor_guidance` is public text and `memory_guidance` "
+            "is a dict of public text; do not parse either as coordinates. "
+            + task_step +
+            "Make a genuine task attempt; never manufacture a failure. "
+            "Output source code only."
+        )
     model_client = client or ParccClient(timeout_seconds=75, max_attempts=1)
     messages = [{"role": "user", "content": prompt}]
     usage: dict[str, int] = {}

@@ -22,6 +22,7 @@ from .core.store import AttentionStore
 from .episode_trace import persist_episode_trace
 from .formal_runner_boundary import FormalRunRequest, FormalSuiteRunner, run_with_formal_boundary
 from .policy_input import public_attention_input
+from .public_progress import public_lift_progress_event
 from .sim_gt_attention_run import run_sim_gt_attention
 
 
@@ -36,6 +37,7 @@ def run_formal_attention(
     dev_hypothesis_evidence: dict[str, str] | None = None,
     entry_lock: dict[str, Any] | None = None,
     approved_policy_config_sha256: str | None = None,
+    public_lift_progress_check: bool = False,
     **scheduler_options: Any,
 ) -> dict[str, Any]:
     """Use one approved source/config version for every scheduled attempt."""
@@ -192,6 +194,12 @@ def run_formal_attention(
         sdk_events = trace.get("sdk_events")
         if not isinstance(sdk_events, list):
             raise RuntimeError("formal trace has no SDK event ledger")
+        if public_lift_progress_check:
+            if suite != "robosuite" or policy_id != "full_trace_aware_attention_planner":
+                raise ValueError("public lift progress check requires the Robosuite full planner")
+            progress = public_lift_progress_event(sdk_events, attention_input=attention_input)
+            if progress is not None:
+                sdk_events = [*sdk_events, progress]
         sdk_events = [
             {"timestamp": grant["used_at"], "source": "attention_harness.memory",
              "event_type": "attention.memory_retrieval", "operation": "retrieve",

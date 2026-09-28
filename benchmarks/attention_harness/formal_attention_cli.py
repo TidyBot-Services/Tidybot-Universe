@@ -38,6 +38,8 @@ def main() -> int:
                         help="write a UI launch result before exiting, including native failure")
     parser.add_argument("--single-glm-call", action="store_true",
                         help="allow at most one provider HTTP call per Advisor request")
+    parser.add_argument("--public-lift-progress-check", action="store_true",
+                        help="project public SDK before/after lift evidence after guidance")
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--assistance-credits", type=int, default=1)
     parser.add_argument("--token-limit", type=int, default=30000)
@@ -163,6 +165,7 @@ def main() -> int:
         approved_demo_sha256=args.approved_demo_sha256,
         memory_context=None if args.memory_context is None else json.loads(args.memory_context.read_text()),
         approved_memory_context_sha256=args.approved_memory_context_sha256,
+        public_lift_progress_check=args.public_lift_progress_check,
         dev_hypothesis=dev_hypothesis,
         dev_hypothesis_evidence=dev_hypothesis_evidence,
         advisor_transport=(lambda request: SimGTGLMAdvisorTransport(
