@@ -22,6 +22,8 @@ TASK = "counter_to_sink"
 
 
 def _case(seed):
+    # Independent seed 107 reuses the validated odd-group scope (103); the
+    # fake service attests its prompt from the actual run seed after reset.
     group = seed % 2
     return {
         "seed": seed,
@@ -243,7 +245,7 @@ def test_trusted_use_records_evaluator_outage_without_validation_credit(tmp_path
         policy_id="eval-outage-policy", perception_mode="sim_gt",
         client=RobocasaSimClient(TASK, transport=world.transport),
         store_path=shared, memory_gateway=service,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
         advisor_transport=_advisor, assistance_credits=1,
         advisor_sleeper=lambda seconds: None,
     )
@@ -276,7 +278,7 @@ def test_operator_disable_between_catalog_and_use_blocks_guidance(tmp_path):
         policy_id="disabled-during-run", perception_mode="sim_gt",
         client=RobocasaSimClient(TASK, transport=world.transport),
         store_path=shared, memory_gateway=service,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
     )
     assert denied and result["memory_ids"] == []
     assert service.get_memory(memory_id).status is MemoryStatus.DISABLED
@@ -313,7 +315,7 @@ def test_operator_lifecycle_change_between_catalog_and_use_blocks_guidance(
         policy_id=f"{operator_action}-during-run", perception_mode="sim_gt",
         client=RobocasaSimClient(TASK, transport=world.transport),
         store_path=shared, memory_gateway=service,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
     )
     assert denied and result["memory_ids"] == []
     assert service.get_memory(memory_id).status.value == expected_status
@@ -335,7 +337,7 @@ def test_use_before_operator_disable_still_records_outcome(tmp_path):
         policy_id="revoked-after-use", perception_mode="sim_gt",
         client=RobocasaSimClient(TASK, transport=world.transport),
         store_path=shared, memory_gateway=service,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
     )
     assert seen == [1] and result["memory_ids"] == [memory_id]
     assert service.get_memory(memory_id).status is MemoryStatus.DISABLED
@@ -396,7 +398,7 @@ def test_candidate_provenance_and_five_paired_runs_gate_promotion(tmp_path):
         policy_id="passive-policy", perception_mode="sim_gt",
         client=RobocasaSimClient(TASK, transport=FakeWorld().transport),
         store_path=shared,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
     )
     assert available[0]["memory_id"] == memory_id
     assert "guidance" not in available[0]
@@ -421,7 +423,7 @@ def test_candidate_provenance_and_five_paired_runs_gate_promotion(tmp_path):
         policy_id="reuse-policy", perception_mode="sim_gt",
         client=RobocasaSimClient(TASK, transport=FakeWorld().transport),
         store_path=shared,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
     )
     assert reused["memory_ids"] == [memory_id]
     assert seen[0]["memory_id"] == memory_id
@@ -441,7 +443,7 @@ def test_candidate_provenance_and_five_paired_runs_gate_promotion(tmp_path):
         policy_id="timeout-policy", perception_mode="sim_gt",
         client=RobocasaSimClient(TASK, transport=FakeWorld().transport),
         store_path=shared,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
     )
     assert timed_out["status"] == "timeout"
     assert store.list_memory_uses(memory_id)[-1]["outcome"] == "timeout"
@@ -465,7 +467,7 @@ def test_candidate_provenance_and_five_paired_runs_gate_promotion(tmp_path):
     service = MemoryService(shared)
     context = {
         "suite": "robocasa", "task_id": TASK, "perception_mode": "sim_gt",
-        **{key: value for key, value in _case(102).items() if key != "seed"},
+        **{key: value for key, value in _case(103).items() if key != "seed"},
     }
     source_file.write_bytes(b"tampered after promotion")
     with pytest.raises(StateConflictError, match="digest changed"):

@@ -84,7 +84,7 @@ def test_generated_policy_uses_trusted_memory_with_service_grant(tmp_path: Path)
         policy_id="generated-memory-use", perception_mode="sim_gt",
         client=RobocasaSimClient("counter_to_sink", transport=world.transport),
         store_path=shared, memory_gateway=service, timeout_seconds=10.0,
-        runtime_variation={key: value for key, value in _case(102).items() if key != "seed"},
+        runtime_variation={key: value for key, value in _case(103).items() if key != "seed"},
     )
     assert result["native_success"] is True
     assert result["memory_ids"] == [memory_id]
