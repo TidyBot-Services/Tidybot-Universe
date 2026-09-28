@@ -29,6 +29,7 @@ from .memory_agent import MemoryAgent
 from .parcc_advisor import parse_advisor_advice
 from .policy_input import public_attention_input
 from .seed_guard import validate_seed
+from .service_recovery import service_stop_confirmed
 from .v2_advisor import SimGTAdvisorProxy, SimGTGLMAdvisorTransport
 
 
@@ -467,8 +468,40 @@ def run_sim_gt_attention(
     if interrupted():
         stopped_reason = "emergency_interrupt"
     if stopped_reason == "emergency_interrupt":
-        control_store.acknowledge_interrupt(unified_run_id, state="stopped",
-                                            event_key=f"stop:{unified_run_id}")
+        stop, receipt_sha, attempt_id = None, None, None
+        if attempts and runner_boundary_mode == "formal":
+            last = attempts[-1]
+            attempt_id = (last.get("attention_trace") or {}).get("attempt_id")
+            ref = ((last.get("formal_runner_result") or {}).get("artifacts") or {}).get("sandbox_receipt") or {}
+            if isinstance(ref.get("uri"), str):
+                receipt_bytes = Path(ref["uri"]).read_bytes()
+                receipt_sha = hashlib.sha256(receipt_bytes).hexdigest()
+                if receipt_sha != ref.get("sha256"):
+                    raise ValueError("interrupt Service receipt digest mismatch")
+                receipt = json.loads(receipt_bytes)
+                if receipt.get("run_id") != unified_run_id or receipt.get("attempt_id") != attempt_id:
+                    raise ValueError("interrupt Service receipt identity mismatch")
+                stop = receipt.get("service_stop")
+        if runner_boundary_mode == "formal" and attempts:
+            last_formal = attempts[-1].get("formal_runner_result") or {}
+            if (attempts[-1].get("status") != "cancelled"
+                    or last_formal.get("status") != "cancelled"):
+                ack_state = "too_late"
+                stopped_reason = "interrupt_too_late"
+            elif stop is None or stop.get("reason") != "operator_cancel":
+                ack_state = "stop_unconfirmed"
+            else:
+                ack_state = "stopped" if service_stop_confirmed(stop, suite) else "stop_unconfirmed"
+        else:
+            ack_state = "stopped" if runner_boundary_mode != "formal" or not attempts else "stop_unconfirmed"
+        confirmed = time.time()
+        control_store.acknowledge_interrupt(
+            unified_run_id,
+            state=ack_state,
+            event_key=f"stop:{unified_run_id}", confirmed_at=confirmed,
+            attempt_id=attempt_id, service_stop=stop,
+            service_receipt_sha256=receipt_sha,
+        )
     control_store.transition_run(
         unified_run_id,
         RunStatus.CANCELLED if stopped_reason == "emergency_interrupt"

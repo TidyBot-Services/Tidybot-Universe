@@ -29,6 +29,8 @@ from .ui_summary import comparison_summary
 from .ui_media import (authorized_evidence_path, encoded_observation_frame,
                        render_evidence, robocasa_camera_frame)
 from .ui_launch import load_catalog, public_options, launch_formal_run
+from .ui_eval import eval_snapshot
+from .public_station import read_public_station, read_public_frame, save_public_frame
 
 
 UI_DIR = Path(__file__).with_name("ui")
@@ -186,6 +188,11 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         }
         for key, value in budgets.items()
     }
+    public_station = read_public_station(
+        artifact_root, run_id, run["suite"],
+        {item["attempt_id"] for item in projection["autonomous_work"]["attempts"]},
+        allow_pending=run["status"] == "running",
+    ) if artifact_root is not None else None
     return {
         "schema_version": "attentionbench.dashboard.v1",
         "run": {
@@ -216,6 +223,7 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         "request_lifecycle": lifecycle,
         "station": {**projection["live_station"],
                     "camera_url": f"/api/station/frame?run={quote(run_id, safe='')}" if (
+                        public_station is not None or
                         (robosuite_url and run["suite"] == "robosuite") or
                         (robocasa_camera_ws and run["suite"] == "robocasa")
                     ) else None,
@@ -224,6 +232,8 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         "work_source": "attempts_and_persisted_work_events",
         "media_source": "advisor_artifacts" if artifact_root is not None else None,
         "comparison": comparison_summary(store, run_id),
+        "eval": eval_snapshot(artifact_root, run_id, run, store.path)
+                if artifact_root is not None else {"status": "unavailable"},
     }
 
 
@@ -301,14 +311,45 @@ def create_server(
                 self._json({"runs": list_runs(store), "launches": store.list_launches()})
             elif path == "/api/run-options" and store is not None:
                 self._json(public_options(profiles))
-            elif path == "/api/station/frame" and store is not None and (robosuite_url or robocasa_camera_ws):
+            elif path == "/api/station/frame" and store is not None:
                 try:
                     run_id = parse_qs(urlsplit(self.path).query).get("run", [""])[0]
                     run = store.get_run(run_id)
                     if run is None:
                         self._json({"error": "run not found"}, HTTPStatus.NOT_FOUND)
                         return
-                    if run["suite"] == "robosuite" and robosuite_url:
+                    attempts = AttentionProjection(store).snapshot(run_id)["autonomous_work"]["attempts"]
+                    public_station = read_public_station(
+                        artifact_root, run_id, run["suite"],
+                        {item["attempt_id"] for item in attempts},
+                        allow_pending=run["status"] == "running",
+                    ) if artifact_root is not None else None
+                    if public_station is not None and artifact_root is not None:
+                        run_dir = artifact_root / run_id.removeprefix("run:")
+                        cached = read_public_frame(run_dir, run["suite"])
+                        if run["status"] != "running":
+                            if cached is None:
+                                raise ValueError("no archived public RGB frame")
+                            self._send(*cached)
+                        else:
+                            try:
+                                if run["suite"] == "robosuite":
+                                    with urlopen(public_station["origin"] + "/v1/observation", timeout=3) as response:
+                                        frame = encoded_observation_frame(
+                                            json.load(response), public_station.get("camera_name"))
+                                    mime = "image/png"
+                                else:
+                                    frame = robocasa_camera_frame(
+                                        public_station["origin"],
+                                        device_id=public_station["device_id"])
+                                    mime = "image/jpeg"
+                                save_public_frame(run_dir, suite=run["suite"], frame=frame)
+                                self._send(frame, mime)
+                            except Exception:
+                                if cached is None:
+                                    raise
+                                self._send(*cached)
+                    elif run["suite"] == "robosuite" and robosuite_url:
                         with urlopen(robosuite_url.rstrip("/") + "/v1/observation", timeout=3) as response:
                             frame = encoded_observation_frame(json.load(response), camera_name)
                         self._send(frame, "image/png")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,8 @@ from benchmarks.attention_harness.formal_attention_run import run_formal_attenti
 from demo_fixture import approved_demo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "skill-agent-setup/claude-code"))
-from attention_eval import build_eval_packet, diagnose_attention
+from attention_eval import build_eval_packet, diagnose_attention, record_eval_failure
+from benchmarks.attention_harness.ui_eval import eval_snapshot
 
 
 class FakeFormalRunner:
@@ -42,7 +44,12 @@ class FakeFormalRunner:
                           "status": "completed", "timestamp": 1.0}], **identity},
             "safety": {"source": "independent_safety_monitor", "unsafe_attempts": 0,
                        **identity},
-            "sandbox_receipt": {"elapsed_seconds": 0.1, **identity},
+            "sandbox_receipt": {"elapsed_seconds": 0.1, "service_stop": (
+                {"reason": "normal_cleanup", "leader_reaped": True, "process_group_gone": True}
+                if self.suite == "robosuite" else
+                {"reason": "normal_cleanup", "services": {
+                    "simulator": {"leader_reaped": True, "process_group_gone": True},
+                    "agent": {"leader_reaped": True, "process_group_gone": True}}}), **identity},
             "native_result": {"status": "completed", "native_success": False,
                               "evaluated": True, **identity},
         }
@@ -65,6 +72,61 @@ class FakeFormalRunner:
         }
         (episode / "result.json").write_text(json.dumps(result))
         return result
+
+
+def test_interrupt_after_formal_completion_is_reported_too_late(tmp_path):
+    class LateRequestRunner(FakeFormalRunner):
+        def execute(self, request):
+            result = super().execute(request)
+            store = AttentionStore(request.artifact_root.parent / "attention.sqlite3")
+            store.request_interrupt(request.run_id, event_key="late-request",
+                                    requested_at=time.time())
+            return result
+
+    code = tmp_path / "policy.py"
+    code.write_text("pass\n")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    summary = run_formal_attention(
+        suite="robosuite", task_id="cube_lift", seed=101,
+        artifact_root=tmp_path / "runs", policy_id="autonomous",
+        policy_code_path=code,
+        approved_policy_sha256=hashlib.sha256(code.read_bytes()).hexdigest(),
+        config_path=config,
+        approved_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+        runner=LateRequestRunner("robosuite"), max_attempts=1, assistance_credits=0,
+    )
+    run_id = f"run:{Path(summary['artifact_dir']).name}"
+    store = AttentionStore(Path(summary["store"]))
+    ack = store.interrupt_status(run_id)
+    assert ack["state"] == "too_late" and "confirmed_at" not in ack
+    assert ack["service_stop"]["reason"] == "normal_cleanup"
+    assert summary["stopped_reason"] == "interrupt_too_late"
+    assert store.get_run(run_id)["status"] == "failed"
+    assert build_eval_packet(Path(summary["artifact_dir"]) / "attention_run.json")[
+        "stopped_reason"] == "interrupt_too_late"
+
+
+def test_eval_rejects_false_formal_interrupt_completion(tmp_path):
+    code = tmp_path / "policy.py"
+    code.write_text("pass\n")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    summary = run_formal_attention(
+        suite="robosuite", task_id="cube_lift", seed=101,
+        artifact_root=tmp_path / "runs", policy_id="autonomous",
+        policy_code_path=code,
+        approved_policy_sha256=hashlib.sha256(code.read_bytes()).hexdigest(),
+        config_path=config,
+        approved_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+        runner=FakeFormalRunner("robosuite"), max_attempts=1, assistance_credits=0,
+    )
+    artifact = Path(summary["artifact_dir"]) / "attention_run.json"
+    run = json.loads(artifact.read_text())
+    run["stopped_reason"] = "emergency_interrupt"
+    artifact.write_text(json.dumps(run))
+    with pytest.raises(ValueError, match="interrupt differs"):
+        build_eval_packet(artifact)
 
 
 @pytest.mark.parametrize("suite,task", [("robocasa", "counter_to_sink"),
@@ -164,6 +226,66 @@ def test_diagnostic_eval_consumes_formal_artifacts(tmp_path):
                                 client=EvalClient())
     assert result["native_success"] is False
     assert Path(result["artifact"]).is_file()
+
+
+def test_eval_checks_fourth_attempt_and_service_recovery_semantics(tmp_path):
+    code = tmp_path / "policy.py"
+    code.write_text("pass\n")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    summary = run_formal_attention(
+        suite="robosuite", task_id="cube_lift", seed=101, artifact_root=tmp_path / "runs",
+        policy_id="reactive_help", policy_code_path=code,
+        approved_policy_sha256=hashlib.sha256(code.read_bytes()).hexdigest(),
+        config_path=config, approved_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+        runner=FakeFormalRunner("robosuite"), max_attempts=1, assistance_credits=0,
+    )
+    artifact = Path(summary["artifact_dir"]) / "attention_run.json"
+    receipt_ref = summary["attempts"][0]["formal_runner_result"]["artifacts"]["sandbox_receipt"]
+    receipt_path = Path(receipt_ref["uri"])
+    receipt = json.loads(receipt_path.read_text())
+    receipt["service_stop"] = {"leader_reaped": False, "process_group_gone": False}
+    receipt_path.write_text(json.dumps(receipt))
+    receipt_ref["sha256"] = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+    artifact.write_text(json.dumps(summary))
+    with pytest.raises(ValueError, match="Service recovery"):
+        build_eval_packet(artifact)
+    receipt["service_stop"] = {"leader_reaped": True, "process_group_gone": True}
+    receipt_path.write_text(json.dumps(receipt))
+    receipt_ref["sha256"] = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+    summary["attempts"].extend([summary["attempts"][0]] * 2)
+    summary["attempts"].append({"attention_trace": {"run_id": "wrong", "attempt_id": "attempt:four"}})
+    artifact.write_text(json.dumps(summary))
+    with pytest.raises(ValueError, match="identity or approval"):
+        build_eval_packet(artifact)
+
+
+def test_failed_diagnostic_receipt_is_ui_visible_without_changing_native_result(tmp_path):
+    code = tmp_path / "policy.py"
+    code.write_text("pass\n")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    summary = run_formal_attention(
+        suite="robosuite", task_id="cube_lift", seed=101, artifact_root=tmp_path / "runs",
+        policy_id="reactive_help", policy_code_path=code,
+        approved_policy_sha256=hashlib.sha256(code.read_bytes()).hexdigest(),
+        config_path=config, approved_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+        runner=FakeFormalRunner("robosuite"), max_attempts=1, assistance_credits=0,
+    )
+    artifact = Path(summary["artifact_dir"]) / "attention_run.json"
+    receipt = record_eval_failure(artifact, TimeoutError("diagnostic deadline"))
+    assert receipt["status"] == "failed"
+    run_id = f"run:{Path(summary['artifact_dir']).name}"
+    visible = eval_snapshot(tmp_path / "runs", run_id,
+                            {"suite": "robosuite", "task_id": "cube_lift", "seed": 101,
+                             "status": "failed"}, Path(summary["store"]))
+    assert visible["status"] == "failed" and visible["native_success"] is False
+    assert "artifacts" not in visible and "trace" not in visible
+    receipt["native_success"] = True
+    (artifact.parent / "eval_diagnosis.json").write_text(json.dumps(receipt))
+    assert eval_snapshot(tmp_path / "runs", run_id,
+                         {"suite": "robosuite", "task_id": "cube_lift", "seed": 101,
+                          "status": "failed"}, Path(summary["store"]))["status"] == "evidence_invalid"
 
 
 def test_formal_scheduler_links_advisor_response_to_next_formal_attempt(tmp_path):

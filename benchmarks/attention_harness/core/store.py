@@ -159,8 +159,12 @@ class AttentionStore:
             )
             return payload
 
-    def acknowledge_interrupt(self, run_id: str, *, state: str, event_key: str) -> dict[str, Any]:
-        if state not in {"stopped", "stop_unconfirmed"}:
+    def acknowledge_interrupt(self, run_id: str, *, state: str, event_key: str,
+                              confirmed_at: float | None = None,
+                              attempt_id: str | None = None,
+                              service_stop: dict[str, Any] | None = None,
+                              service_receipt_sha256: str | None = None) -> dict[str, Any]:
+        if state not in {"stopped", "stop_unconfirmed", "too_late"}:
             raise ValueError("invalid interrupt acknowledgement")
         with self._transaction() as connection:
             current = self._interrupt_status_in(connection, run_id)
@@ -169,6 +173,26 @@ class AttentionStore:
             if current["state"] != "requested":
                 return current
             payload = {**current, "state": state}
+            if confirmed_at is not None:
+                if state == "too_late":
+                    payload["resolved_at"] = confirmed_at
+                    payload["resolution_seconds"] = max(0.0, confirmed_at - current["requested_at"])
+                else:
+                    payload["confirmed_at"] = confirmed_at
+                    payload["confirmation_seconds"] = max(0.0, confirmed_at - current["requested_at"])
+            if attempt_id is not None:
+                payload["attempt_id"] = attempt_id
+            if service_stop is not None:
+                payload["service_stop"] = {key: service_stop.get(key) for key in
+                                           ("reason", "leader_reaped", "process_group_gone")}
+                if isinstance(service_stop.get("services"), dict):
+                    payload["service_stop"]["services"] = {
+                        name: {key: item.get(key) for key in ("leader_reaped", "process_group_gone")}
+                        for name, item in service_stop["services"].items()
+                        if name in {"simulator", "agent"} and isinstance(item, dict)
+                    }
+            if service_receipt_sha256 is not None:
+                payload["service_receipt_sha256"] = service_receipt_sha256
             connection.execute(
                 "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
                 "VALUES (?, 'control', ?, 'control.interrupt_acknowledged', ?)",

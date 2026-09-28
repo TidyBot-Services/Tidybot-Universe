@@ -38,6 +38,19 @@ def main() -> int:
             reason = f"invalid runner summary: {error}"[:300]
     if summary is None and reason is None:
         reason = f"runner exited {exit_code} without a formal run summary"
+    if summary is not None:
+        artifact = Path(summary["artifact_dir"]) / "attention_run.json"
+        eval_dir = Path(__file__).resolve().parents[2] / "skill-agent-setup" / "claude-code"
+        if str(eval_dir) not in sys.path:
+            sys.path.insert(0, str(eval_dir))
+        from attention_eval import diagnose_attention, record_eval_failure
+        try:
+            diagnose_attention(artifact)
+        except Exception as error:
+            try:
+                record_eval_failure(artifact, error)
+            except (OSError, ValueError):
+                pass
     AttentionStore(args.store_path).record_launch_terminal(
         args.launch_id, exit_code=exit_code, summary=summary, reason=reason)
     return exit_code

@@ -15,7 +15,7 @@ ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT))
 
-from attention_eval import build_eval_packet, diagnose_attention  # noqa: E402
+from attention_eval import build_eval_packet, diagnose_attention, load_eval_receipt  # noqa: E402
 import attention_dev  # noqa: E402
 from attentionbench_bridge import build_attention_command  # noqa: E402
 
@@ -157,6 +157,7 @@ def _eval_artifact(tmp_path: Path) -> Path:
     artifact = tmp_path / "attention_run.json"
     artifact.write_text(json.dumps({
         "schema_version": "attentionbench.sim-gt-attention-run.v1",
+        "artifact_dir": str(tmp_path), "formal_eligible": False,
         "suite": "robosuite", "task_id": "cube_lift", "seed": 101,
         "native_success": False, "attempts": [{
             "status": "completed", "native_success": False,
@@ -183,6 +184,13 @@ def test_eval_receives_bounded_evidence_and_persists_diagnosis(tmp_path):
     result = diagnose_attention(artifact, client=FakeClient())
     assert "action-log" in result["diagnosis"]
     assert Path(result["artifact"]).is_file()
+    assert load_eval_receipt(artifact)["diagnosis"] == result["diagnosis"]
+    receipt_path = artifact.parent / "eval_diagnosis.json"
+    receipt = json.loads(receipt_path.read_text())
+    receipt["input_sha256"] = "0" * 64
+    receipt_path.write_text(json.dumps(receipt))
+    with pytest.raises(ValueError, match="persisted Eval receipt differs"):
+        load_eval_receipt(artifact)
 
 
 def test_eval_rejects_trace_path_escape(tmp_path):

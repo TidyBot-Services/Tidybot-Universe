@@ -18,7 +18,7 @@ from types import SimpleNamespace
 
 import agent_orchestrator as orch
 from attention_dev import generate_policy
-from attention_eval import diagnose_attention
+from attention_eval import diagnose_attention, record_eval_failure, load_eval_receipt
 from attentionbench_bridge import run_attention_job
 from attention_memory_dispatch import dispatch_memory_candidates
 from dev_memory_bridge import record_dev_memory_result
@@ -358,11 +358,21 @@ async def _continue_attention_result(state, config: dict, result: dict) -> None:
         state.skill, f"Native outcome: {result['native_success']}; artifact: {artifact}", "test",
     )
     try:
-        diagnosis = await _diagnose_attention(state.skill, artifact)
-        eval_status = "completed"
+        previous_eval = await asyncio.to_thread(load_eval_receipt, artifact)
+        if previous_eval is None:
+            diagnosis = await _diagnose_attention(state.skill, artifact)
+            eval_status = "completed"
+        else:
+            eval_status = previous_eval["status"]
+            diagnosis = (previous_eval["diagnosis"] if eval_status == "completed"
+                         else previous_eval["error"])
     except Exception as exc:
         diagnosis = f"Diagnostic Eval Agent unavailable: {type(exc).__name__}: {exc}"
         eval_status = "failed"
+        try:
+            await asyncio.to_thread(record_eval_failure, artifact, exc)
+        except (ValueError, OSError):
+            pass  # Invalid Runner evidence is already surfaced as a Graph failure.
     eval_artifact = artifact.parent / "eval_diagnosis.json"
     if eval_artifact.is_file():
         run_link["eval_diagnosis"] = str(eval_artifact)

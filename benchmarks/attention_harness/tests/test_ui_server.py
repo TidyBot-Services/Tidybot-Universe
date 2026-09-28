@@ -27,6 +27,8 @@ from benchmarks.attention_harness.ui_server import (
 )
 from benchmarks.attention_harness.ui_media import (AdvisorCameraRecorder, rgb_png,
                                                     robocasa_camera_frame)
+from benchmarks.attention_harness.public_station import (publish_public_station,
+                                                         read_public_station, read_public_frame)
 
 
 def test_defer_and_cancel_survive_ui_restart(tmp_path) -> None:
@@ -448,6 +450,79 @@ def test_advisor_camera_evidence_and_live_public_frame_are_served(tmp_path) -> N
     finally:
         server.shutdown(); server.server_close(); thread.join(timeout=2)
         camera.shutdown(); camera.server_close(); camera_thread.join(timeout=2)
+
+
+def test_run_bound_public_camera_survives_ui_restart_and_rejects_tampering(tmp_path) -> None:
+    run_id, attempt_id = "run:attention-public-test", "attempt:attention-public-test:0"
+    run, attempt, _, _ = records()
+    store = AttentionStore(tmp_path / "attention.sqlite3")
+    store.create_run(replace(run, run_id=run_id))
+    store.create_attempt(replace(attempt, run_id=run_id, attempt_id=attempt_id))
+    store.transition_run(run_id, RunStatus.RUNNING, event_key="public-start")
+    rgb = np.zeros((3, 4, 3), dtype=np.uint8)
+    rgb[:, :, 1] = 210
+
+    class Camera(BaseHTTPRequestHandler):
+        def do_GET(self):
+            payload = json.dumps({"observation": {"agentview_image": {
+                "dtype": "uint8", "shape": list(rgb.shape),
+                "data": base64.b64encode(rgb.tobytes()).decode(),
+            }, "oracle_state": {"dtype": "int64", "shape": [1], "data": "AAAA"}}}).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *_args):
+            pass
+
+    camera = ThreadingHTTPServer(("127.0.0.1", 0), Camera)
+    camera_thread = threading.Thread(target=camera.serve_forever, daemon=True)
+    camera_thread.start()
+    run_dir = tmp_path / "attention-public-test"
+    publish_public_station(run_dir=run_dir, run_id=run_id, attempt_id=attempt_id,
+                           suite="robosuite", origin=f"http://127.0.0.1:{camera.server_port}",
+                           camera_name="agentview")
+
+    def read_ui():
+        server = create_server(store=AttentionStore(store.path), port=0, artifact_root=tmp_path)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = f"http://127.0.0.1:{server.server_port}"
+        try:
+            with urlopen(base + "/api/runs/" + run_id) as response:
+                snapshot = json.load(response)
+            assert snapshot["station"]["camera_url"]
+            with urlopen(base + snapshot["station"]["camera_url"]) as response:
+                return response.read()
+        finally:
+            server.shutdown(); server.server_close(); thread.join(timeout=2)
+
+    try:
+        first = read_ui()
+        assert first.startswith(b"\x89PNG")
+        camera.shutdown(); camera.server_close(); camera_thread.join(timeout=2)
+        store.transition_run(run_id, RunStatus.FAILED, event_key="public-finish")
+        assert read_ui() == first
+        (run_dir / "public_frame.png").write_bytes(b"tampered")
+        with pytest.raises(HTTPError) as failure:
+            read_ui()
+        assert failure.value.code == 502
+        station = run_dir / "public_station.json"
+        station_copy = tmp_path / "station-copy.json"
+        station_copy.write_bytes(station.read_bytes())
+        station.unlink()
+        station.symlink_to(station_copy)
+        assert read_public_station(tmp_path, run_id, "robosuite", {attempt_id}) is None
+        receipt = run_dir / "public_frame_receipt.json"
+        receipt_copy = tmp_path / "receipt-copy.json"
+        receipt_copy.write_bytes(receipt.read_bytes())
+        receipt.unlink()
+        receipt.symlink_to(receipt_copy)
+        assert read_public_frame(run_dir, "robosuite") is None
+    finally:
+        if camera_thread.is_alive():
+            camera.shutdown(); camera.server_close(); camera_thread.join(timeout=2)
 
 
 def test_public_camera_recorder_produces_playable_attempt_video(tmp_path) -> None:

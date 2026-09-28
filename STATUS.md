@@ -2,7 +2,15 @@
 
 简版计划对照与可编辑系统框图见 [`docs/attentionbench_progress.md`](docs/attentionbench_progress.md)；本文件保留逐项证据索引。
 
-快照日期：2026-09-28。本文是**进度索引，不是验收证据**；新任务应先核对工作树、相关代码及证据。状态只使用：**未开始 → 代码完成 → 小测试通过 → 真实服务跑通 → 正式验收**。较高状态仅适用于该行写明的目标，不能外推为整个 AttentionBench 已完成。“未核实”表示尚未审计，不等于未开始。
+快照日期：2026-09-29。本文是**进度索引，不是验收证据**；新任务应先核对工作树、相关代码及证据。状态只使用：**未开始 → 代码完成 → 小测试通过 → 真实服务跑通 → 正式验收**。较高状态仅适用于该行写明的目标，不能外推为整个 AttentionBench 已完成。“未核实”表示尚未审计，不等于未开始。
+
+## M6 Eval 诊断与 UI 展示／操作（2026-09-29；封闭工程验收完成）
+
+[冻结验收包、阶段失败、版本化复验与最终逐项结论](docs/m6_eval_ui_acceptance.md)均已记录。Universe 当前 `feature/attention-native-robosuite`，M1–M5 既有结论及独立 Memory／Robosuite／RoboCasa／Agent／task source 版本 `24d4146`／`081cd57`／`320020a`／`4cf4daa`／`b18bbf1` 未改。双套已批准 seed 101 开发运行经正式 Runner 四类产物与 Eval 身份、SHA、原生结果、独立 Safety 和 Service 回收校验；真实 `parcc/GLM` 诊断各引用同一 attempt／事件，原生策略均失败而工程链准确。UI 持续投影预算、请求、公开 RGB、Trace、诊断和最终原生结果；UI／Graph 从持久证据重启恢复。未授权原始证据、路径与 SHA 篡改拒绝。
+
+双套运行中 UI 中断均有持久请求、正式 Runner `cancelled`、Service `operator_cancel`、同 run／attempt 收据及完整回收：RoboCasa 2.53 秒、Robosuite 0.20 秒确认／回收上界，均满足 30／60 秒。Robosuite v3 “正式执行已完成却旧 UI 显示停止”的假阳性原件保留；现已改记 `too_late`，Eval 拒绝历史不一致产物。故障矩阵 **11 passed**；Harness **394 passed、10 skipped**；Graph **46 passed**；独立 pipeline **84 passed、0 failed**。最终逐项机器复核 `/home/truares/桌面/attentionbench-m6-20260929/repair-v4/m6_closure_audit.json` SHA-256 `fb60f98c585714a0079062c100da21c8bc0950152f54c524572f51ba3a5521bb`，259 文件索引 `sha256-index-m6-closure.json` SHA-256 `905e2b6af9ce6a520408a3062015e8ccb55beb1ce27c198bda91567ad03666a4`；E1/E2/U1/U2/I1/F1 均通过，所有工程运行 `formal_eligible=false`。
+
+**M6 仅按本包工程口径关闭。** 不涉及真人演练、LIBERO、真实机器人、RoboCasa 正向 Memory 效果、held-out、七策略正式效果矩阵或全链正式实验准入。下文 M5 与早期模块的“下一模块尚未启动”描述是其各自日期的历史快照，不覆盖本节当前结论。
 
 ## M5 Memory 关口（2026-09-28；原失败记录与修订工程补验）
 

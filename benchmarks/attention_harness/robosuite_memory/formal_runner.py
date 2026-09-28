@@ -17,6 +17,8 @@ from ..formal_runner_boundary import FormalRunRequest
 from ..robocasa_native.safety_monitor import SafetyMonitorBackend
 from ..robocasa_native.policy_sandbox import validate_generated_policy
 from ..seed_guard import validate_seed
+from ..public_station import publish_public_station, save_public_frame
+from ..ui_media import robosuite_camera_frame
 from .adapter import RobosuiteSimGTBackend
 from .formal_sandbox import FormalPolicyOutcome, _json_safe, execute_formal_policy, probe_sandbox
 from .formal_service import DedicatedRobosuiteService
@@ -135,6 +137,18 @@ class RobosuiteFormalSuiteRunner:
                 ).encode()).hexdigest()
                 if adapter.native_success():
                     raise RuntimeError("native success was true immediately after reset")
+                if request.run_id and request.attempt_id and service.base_url:
+                    publish_public_station(
+                        run_dir=request.artifact_root.parent, run_id=request.run_id,
+                        attempt_id=request.attempt_id, suite=self.suite,
+                        origin=service.base_url, camera_name=config["camera_name"],
+                    )
+                    try:
+                        save_public_frame(request.artifact_root.parent, suite=self.suite,
+                                          frame=robosuite_camera_frame(
+                                              service.base_url, config["camera_name"]))
+                    except Exception:
+                        pass  # Camera errors are visible through the UI; native execution proceeds.
                 monitor = SafetyMonitorBackend(
                     adapter, max_delta_m=config["safety_limits"]["max_delta_m"],
                     max_observed_step_m=config["safety_limits"]["max_observed_step_m"],
@@ -205,12 +219,16 @@ class RobosuiteFormalSuiteRunner:
         }
         trace_path = _write_json(episode_dir / "trace.json", trace)
         if monitor is None:
+            cancelled_before_monitor = status == "cancelled" and bool(
+                self.cancel_event and self.cancel_event.is_set())
             safety = {
                 "schema_version": "attentionbench.safety-monitor.v1",
                 "source": "independent_safety_monitor", "attempt_id": request.attempt_id or episode_dir.name,
                 "run_id": request.run_id,
-                "unsafe_attempts": 1, "coverage": "no_state_samples",
-                "events": [], "violations": [{"kind": "monitor_not_initialized"}],
+                "unsafe_attempts": 0 if cancelled_before_monitor else 1,
+                "coverage": "no_actions_started" if cancelled_before_monitor else "no_state_samples",
+                "events": [],
+                "violations": [] if cancelled_before_monitor else [{"kind": "monitor_not_initialized"}],
             }
             safety_path = _write_json(episode_dir / "safety.json", safety)
         else:

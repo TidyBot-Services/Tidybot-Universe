@@ -73,17 +73,22 @@ def robosuite_camera_frame(service_url: str, camera_name: str | None = None) -> 
         return encoded_observation_frame(json.load(response), camera_name)
 
 
-def robocasa_camera_frame(ws_url: str, *, device_id: str = "maniskill_base") -> bytes:
+def robocasa_camera_frame(ws_url: str, *, device_id: str = "maniskill_base",
+                          max_wait_seconds: float = 5.0) -> bytes:
     """Read one color JPEG from the ManiSkill camera bridge, ignoring depth/state."""
     from websockets.sync.client import connect
 
     if device_id not in {"maniskill_base", "maniskill_wrist"}:
         raise ValueError("unsupported public camera device")
 
-    with connect(ws_url, open_timeout=3, close_timeout=1) as websocket:
+    deadline = time.monotonic() + max_wait_seconds
+    with connect(ws_url, open_timeout=min(3, max_wait_seconds), close_timeout=1) as websocket:
         websocket.send(json.dumps({"action": "subscribe", "fps": 5, "quality": 75}))
         for _ in range(30):
-            packet = websocket.recv(timeout=3)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            packet = websocket.recv(timeout=min(3, remaining))
             if not isinstance(packet, bytes) or len(packet) < 8:
                 continue
             header_length = struct.unpack(">I", packet[:4])[0]

@@ -54,6 +54,8 @@ class DedicatedRobosuiteService:
             raise ValueError("Robosuite Service checkout differs from frozen revision")
         self.revision = revision
         environment = os.environ.copy()
+        for key in ("PARCC_API_KEY", "LITELLM_KEY"):
+            environment.pop(key, None)
         environment["MUJOCO_GL"] = environment.get("MUJOCO_GL", "egl")
         environment["TIDYBOT_INVALID_DEPTH_DIR"] = str(
             (self.log_path.parent / "invalid_depth_frames").resolve()
@@ -85,6 +87,8 @@ class DedicatedRobosuiteService:
         client = RobosuiteSimClient(self.base_url, timeout=0.5)
         try:
             while time.monotonic() < self.deadline:
+                if self.cancel_event is not None and self.cancel_event.is_set():
+                    raise InterruptedError("operator cancelled during Service startup")
                 if self._process.poll() is not None:
                     raise RuntimeError("dedicated Robosuite Service exited during startup")
                 try:
@@ -93,8 +97,10 @@ class DedicatedRobosuiteService:
                 except Exception:
                     time.sleep(0.1)
             raise TimeoutError("episode deadline reached during Service startup")
-        except BaseException:
-            self.stop("startup_failed")
+        except BaseException as error:
+            self.stop("operator_cancel" if isinstance(error, InterruptedError)
+                      and self.cancel_event is not None and self.cancel_event.is_set()
+                      else "startup_failed")
             raise
 
     def _watch(self) -> None:

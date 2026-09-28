@@ -168,21 +168,26 @@ class DedicatedRobocasaServices:
         # a healthy response from somebody else's process is not attestation.
         for port in (5500 + self.port_offset, 8080 + self.port_offset,
                      5555 + self.port_offset, 5570 + self.port_offset,
+                     5580 + self.port_offset,
                      50000 + self.port_offset):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 if sock.connect_ex(("127.0.0.1", port)) == 0:
                     raise RuntimeError(f"formal RoboCasa port {port} is already occupied")
         self.log_dir.mkdir(parents=True, exist_ok=True)
         sim_env = os.environ.copy()
+        for key in ("PARCC_API_KEY", "LITELLM_KEY"):
+            sim_env.pop(key, None)
         sim_env["PYTHONPATH"] = str(self.sim_source_root)
         sim_env.setdefault("MUJOCO_GL", "egl")
         agent_env = os.environ.copy()
+        for key in ("PARCC_API_KEY", "LITELLM_KEY"):
+            agent_env.pop(key, None)
         agent_env["PYTHONPATH"] = str(self.agent_source_root)
         try:
             self._spawn("simulator", [
                 str(self.sim_python), "-m", "maniskill_server", "--task",
                 get_robocasa_task(self.task_id).environment_id,
-                "--port-offset", str(self.port_offset), "--no-camera-bridge",
+                "--port-offset", str(self.port_offset),
                 "--no-mocap-bridge",
             ], root=self.sim_source_root, env=sim_env)
             client = RobocasaSimClient(self.task_id, base_url=self.sim_url)
@@ -199,8 +204,10 @@ class DedicatedRobocasaServices:
             self._watchdog = threading.Thread(target=self._watch, daemon=True)
             self._watchdog.start()
             return self
-        except BaseException:
-            self.stop("startup_failed")
+        except BaseException as error:
+            self.stop("operator_cancel" if isinstance(error, InterruptedError)
+                      and self.cancel_event is not None and self.cancel_event.is_set()
+                      else "startup_failed")
             raise
 
     def _watch(self) -> None:

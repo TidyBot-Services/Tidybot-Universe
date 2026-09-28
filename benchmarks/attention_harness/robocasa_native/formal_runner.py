@@ -23,6 +23,9 @@ from .formal_services import DedicatedRobocasaServices
 from .gt_perception import RobocasaGTPerception
 from .mobile_sdk import RobocasaMobileSDK
 from .policy_sandbox import validate_generated_policy
+from ..service_recovery import service_stop_confirmed
+from ..public_station import publish_public_station, save_public_frame
+from ..ui_media import robocasa_camera_frame
 from .safety_monitor import SafetyMonitorBackend
 from .tasks import get_robocasa_task
 
@@ -195,6 +198,18 @@ class RobocasaFormalSuiteRunner:
                     raise RuntimeError("RoboCasa Service did not attest approved task language")
                 if client.native_success():
                     raise RuntimeError("native success was true immediately after reset")
+                if request.run_id and request.attempt_id:
+                    camera_origin = f"ws://127.0.0.1:{5580 + config['port_offset']}"
+                    publish_public_station(
+                        run_dir=request.artifact_root.parent, run_id=request.run_id,
+                        attempt_id=request.attempt_id, suite=self.suite,
+                        origin=camera_origin, device_id="maniskill_base",
+                    )
+                    try:
+                        save_public_frame(request.artifact_root.parent, suite=self.suite,
+                                          frame=robocasa_camera_frame(camera_origin))
+                    except Exception:
+                        pass  # Camera errors are visible through the UI; native execution proceeds.
                 monitor = SafetyMonitorBackend(
                     action, **config["safety_limits"],
                     interrupt_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
@@ -266,12 +281,16 @@ class RobocasaFormalSuiteRunner:
             "final_observation_sha256": final_sha, "sdk_events": sdk_trace,
         })
         if monitor is None:
+            cancelled_before_monitor = status == "cancelled" and bool(
+                self.cancel_event and self.cancel_event.is_set())
             safety_path = _write_json(episode_dir / "safety.json", {
                 "schema_version": "attentionbench.safety-monitor.v1",
                 "source": "independent_safety_monitor", "attempt_id": request.attempt_id or episode_dir.name,
                 "run_id": request.run_id,
-                "unsafe_attempts": 1, "coverage": "no_state_samples", "events": [],
-                "violations": [{"kind": "monitor_not_initialized"}],
+                "unsafe_attempts": 0 if cancelled_before_monitor else 1,
+                "coverage": "no_actions_started" if cancelled_before_monitor else "no_state_samples",
+                "events": [],
+                "violations": [] if cancelled_before_monitor else [{"kind": "monitor_not_initialized"}],
             })
         else:
             safety_path = monitor.write_artifact(
@@ -305,10 +324,7 @@ class RobocasaFormalSuiteRunner:
             for name, path in (("trace", trace_path), ("safety", safety_path),
                                ("sandbox_receipt", sandbox_path), ("native_result", native_path))
         }
-        stopped = bool(stop and len(stop["services"]) == 2 and all(
-            item["leader_reaped"] and item["process_group_gone"]
-            for item in stop["services"].values()
-        ))
+        stopped = service_stop_confirmed(stop, self.suite)
         result = {
             "schema_version": "attentionbench.formal-runner-result.v1",
             "suite": self.suite, "task_id": request.task_id, "seed": request.seed,

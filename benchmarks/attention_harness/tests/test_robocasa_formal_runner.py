@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import threading
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,7 +13,9 @@ from types import SimpleNamespace
 import pytest
 
 from benchmarks.attention_harness.formal_runner_boundary import FormalRunRequest
-from benchmarks.attention_harness.robocasa_native.formal_runner import _config
+from benchmarks.attention_harness.robocasa_native.formal_runner import _config, RobocasaFormalSuiteRunner
+from benchmarks.attention_harness.formal_runner_boundary import run_with_formal_boundary
+from benchmarks.attention_harness.service_recovery import service_stop_confirmed
 from benchmarks.attention_harness.robosuite_memory.formal_sandbox import execute_formal_policy
 
 
@@ -82,3 +85,42 @@ def test_robocasa_formal_worker_base_calls_use_parent_sdk(tmp_path):
     assert outcome.status == "completed"
     assert outcome.call_count == 1
     assert calls == [(0.1, 0.0, 0.0, "local")]
+
+
+def test_cancel_during_service_startup_preserves_formal_receipts(tmp_path, monkeypatch):
+    import benchmarks.attention_harness.robocasa_native.formal_runner as module
+
+    config = json.loads((Path(__file__).parents[1] /
+                         "protocol/v2/formal_robocasa_counter_to_sink_seed101.json").read_text())
+    request = _request(tmp_path, config)
+    request = FormalRunRequest(**{**request.__dict__,
+                                  "run_id": "run:attention-test", "attempt_id": "attempt:test:0"})
+    cancel = threading.Event()
+    cancel.set()
+    stop = {"reason": "operator_cancel", "services": {
+        "simulator": {"leader_reaped": True, "process_group_gone": True}}}
+
+    class StartupCancelled:
+        def __init__(self, **kwargs):
+            self.stop_receipt = stop
+
+        def __enter__(self):
+            raise InterruptedError("operator cancelled during Service startup")
+
+        def source_unchanged(self):
+            return True
+
+    monkeypatch.setattr(module, "DedicatedRobocasaServices", StartupCancelled)
+    monkeypatch.setattr(module, "probe_sandbox", lambda: {
+        "host_home_visible": False, "worker_has_simulator_client": False})
+    runner = RobocasaFormalSuiteRunner(sim_source_root=tmp_path,
+                                      agent_source_root=tmp_path, task_source_root=tmp_path,
+                                      sim_python=Path("/usr/bin/python3"),
+                                      agent_python=Path("/usr/bin/python3"), cancel_event=cancel)
+    result = run_with_formal_boundary(request, runner=runner)
+    assert result["status"] == "cancelled"
+    assert result["native_success"] is False
+    assert service_stop_confirmed(stop, "robocasa")
+    safety = json.loads(Path(result["artifacts"]["safety"]["uri"]).read_text())
+    assert safety["unsafe_attempts"] == 0
+    assert safety["coverage"] == "no_actions_started"
