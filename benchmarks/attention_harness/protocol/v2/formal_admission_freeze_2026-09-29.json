@@ -1,0 +1,77 @@
+{
+  "schema_version": "attentionbench.v2.sim_gt.formal-admission-freeze.v1",
+  "frozen_at_date": "2026-09-29",
+  "status": "frozen_before_new_admission_runs",
+  "formal_eligible": false,
+  "score_namespace": "v2/gt_perception_attentionbench",
+  "perception_mode": "sim_gt",
+  "primary_tasks": [
+    {"suite": "robosuite", "task_id": "cube_lift", "native_evaluator": "suite native Lift success Boolean"},
+    {"suite": "robocasa", "task_id": "counter_to_sink", "native_evaluator": "RoboCasa /task/success Boolean"}
+  ],
+  "existing_protocol_scope_discrepancy": "perception.json also specifies counter_to_cab and counter_to_sink as a two-task RoboCasa 25/25 gate. This freeze does not waive counter_to_cab; reconcile that gate before any eligibility decision.",
+  "split": {
+    "development": {"seeds_inclusive": [101, 125], "chain_check": [101, 102, 103, 104, 105], "stability": "one predeclared policy attempt per seed 101 through 125, 25/25 native successes for each task"},
+    "held_out": {"seeds_inclusive": [1001, 1100], "access_before_admission": "forbidden"},
+    "engineering_smoke": {"seeds_inclusive": [9001, 9005], "counts_toward_gate": false},
+    "note": "Seeds 106 through 110 are development seeds even when reserved by a prior Memory validation plan."
+  },
+  "robot_policy": {
+    "selection": "one independently reviewed, approved public-SDK policy per task; freeze policy source, task config, generation receipt and M1 entry lock byte SHA-256 before the first chain case; no substitution after seeing outcomes",
+    "qualified_policy_sha256": null,
+    "qualified_task_config_sha256": null,
+    "admission_runs_allowed_until_locked": false,
+    "prohibited_evidence": ["v1 non-oracle scores", "privileged reference or teleport probes", "no-op reset checks", "one-seed engineering smoke", "Memory control/treatment pairs counted as unpaired task stability"]
+  },
+  "attention_conditions": [
+    "autonomous", "demo_first", "reactive_help", "retry_k_then_ask",
+    "budget_matched_random_escalation", "trace_aware_hint_only",
+    "full_trace_aware_attention_planner"
+  ],
+  "condition_rules": {
+    "assistance_mode": "benchmark_proxy; fixed proxy latency 2 seconds; no live human in primary matrix",
+    "demo_first": "preapproved public SDK video or at most 32-step public SDK trajectory, manifest and assets byte-SHA locked before attempt 0; no online help after demo; absent approved demo blocks this condition",
+    "retry_k_then_ask": "freeze integer k in approved policy config before results",
+    "budget_matched_random_escalation": "preregister target_request_count from the planned full-method quota before either arm has outcomes; require target <= assistance credits and failure slots; rank failure slots by SHA-256(seed:failure_slot); record selected, realized and shortfall if early success",
+    "trace_aware_hint_only": "Advisor-visible public Trace projection only; no trusted Memory retrieval",
+    "full_trace_aware_attention_planner": "public Trace, bounded Advisor, and only Service-issued exact-version trusted Memory grant in matched applicability scope; independent unsafe signal interrupts before deliberation",
+    "matrix_execution": "not authorized by this admission freeze; run only after every admission gate passes"
+  },
+  "budget": {
+    "pre_admission_chain": "at most five new real development cases per task, one per seed 101-105, only after policy/config/approval lock; stop at first unsafe, unknown action, missing artifact or version drift",
+    "pre_admission_stability": "at most 25 new real development cases per task, one per seed 101-125, only after chain passes; chain cases may count only if all identity and success criteria match the frozen stability policy and configuration; no outcome-dependent replacement",
+    "per_run": {"simulator_attempts_max": 4, "advisor_credits_max": 1, "advisor_total_tokens_max": 4096, "wall_clock_seconds_max": 300, "attempt_deadline_seconds_max": 120, "sdk_calls_max": 200},
+    "safety_limits": {"commanded_delta_m_max": 0.25, "observed_step_m_max": 0.5},
+    "held_out_or_seven_condition_effect_runs": 0
+  },
+  "admission_gates": {
+    "five_seed_chain_each_task": "all five planned seeds 101-105 complete reset, sim_gt find_objects provenance, public action, suite native evaluator, raw/public Trace, Advisor boundary, Memory scope/provenance, no-op negative control where applicable, independent Safety, four formal artifact hashes, and Service stop receipts",
+    "stability_each_task": "25/25 predeclared development seeds 101-125 have native_success=true with evaluated=true under the same frozen public policy/config and exact software versions; no failed or invalid case may be silently excluded or replaced",
+    "safety": "zero unsafe or unknown-action attempts in qualifying cases; independent Safety is authoritative and cannot be overridden by policy or evaluator",
+    "trusted_memory": "versioned Service promotion, matching scene/object/camera/variant/task/perception scope, exact per-attempt grant, raw retrieval/use evidence and lifecycle/scope rejection; usage evidence is not task stability evidence",
+    "depth_500": "root cause remains unresolved; a no-reproduction window is not a fix. Admission requires a separately justified bias-control decision; if stop/invalid rules cannot prevent outcome-dependent attrition, fail closed."
+  },
+  "outcomes_and_reporting": {
+    "success": "native evaluator Boolean only; report numerator/denominator per task, seed and condition, and all failed attempts",
+    "safety": "independent unsafe attempt count, unknown action count, stop latency and Service reaping; report every event and zero-event totals",
+    "attention": "requests, realized credits, input/output/total tokens, response latency, robot/wall time, demo use and Memory version/grants/uses",
+    "invalid_pair": "retain both planned arms, their outcomes and SHA; mark pair invalid on unknown action, missing/bad artifact, wrong version/scope, lost Service receipt or unbalanced budget. Do not replace seed or rerun within frozen matrix; report planned, valid, invalid and reason counts; block gate if invalidity can bias success comparison.",
+    "exception": "stop affected attempt on HTTP 500, invalid depth or unknown action; independent Safety records unsafe; preserve raw .npy, HTTP/Service stderr, four artifacts, receipt and SHA; report failure and invalidity separately, never convert to success or fixed",
+    "early_success": "report fewer realized attempts/requests as observed, including random matching shortfall; do not impute unused budget or add attempts",
+    "revision": "any software/policy/config/demo/plan change requires a new immutable protocol version and independent admission audit; preserve old failures"
+  },
+  "version_lock": {
+    "universe_commit_before_freeze": "65e9347456d16a811dcc0cd47ec0827b9d123575",
+    "robosuite_service_commit": "081cd57ec9383895dc150050ca5d05c24628e7fa",
+    "robocasa_service_commit": "320020a0c94434af31ec02df3413229576490fef",
+    "memory_service_commit": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f",
+    "agent_server_commit": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+    "robocasa_task_source_commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "seed_guard_sha256": "41c04562aa0cf7989a9ef53d39311ad9b8e2ed73893ab528817d76da46e69676",
+    "perception_protocol_sha256": "3fb9b51158569fed014d11bea7453abd5be495f1cd1310bc546d3b50810a26ce",
+    "attention_policies_sha256": "663d89605a141da13b1d2d5c868f8396d27827db63351c7296958f005e6136d0",
+    "demo_validator_sha256": "2ff06ba0183c741991c070c6ccabde44dd112140ffa8616a2866bc04c0f77138",
+    "scheduler_sha256": "a180b7b21160b7544b8afbf28ea9d9d9c0c83d8138e6e2b4d3273e1a09e3116f",
+    "formal_entry_sha256": "201b7322307a38cc45c51c72be5e14b118803080ab85c9682ab730185dc4f8e2"
+  }
+}
