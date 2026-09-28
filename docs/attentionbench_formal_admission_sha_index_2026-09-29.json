@@ -1,5 +1,5 @@
 {
-  "schema_version": "attentionbench.v2.formal-admission-audit-index.v1",
+  "schema_version": "attentionbench.v2.formal-admission-audit-index.v2",
   "formal_eligible": false,
   "new_simulator_runs": 0,
   "files": [
@@ -20,18 +20,18 @@
     },
     {
       "path": "/home/truares/桌面/Tidybot-Universe-attention-native/docs/attentionbench_formal_admission_audit_2026-09-29.md",
-      "size": 8175,
-      "sha256": "107f885ff2b5565afb01eda2184171b9831af6607411968f5541c5545c9603f0"
+      "size": 9014,
+      "sha256": "1a239b4ba8e1ddab312dcd82511d801e41186e4eb644506634db65a962711954"
     },
     {
       "path": "/home/truares/桌面/Tidybot-Universe-attention-native/docs/attentionbench_progress.md",
-      "size": 10333,
-      "sha256": "c774ac7b2c21b8f5cf21b711aa0de0eb55006838076f23739a2f174137dbeb6c"
+      "size": 10794,
+      "sha256": "4d811def9ee5cdb3b1f433ba316a168375ccbdef06de67cca5a8a7e826bcee5a"
     },
     {
       "path": "/home/truares/桌面/Tidybot-Universe-attention-native/STATUS.md",
-      "size": 78223,
-      "sha256": "7c5d7d145d25874f35a7292f923185091076b50d50cd416d837d8a26f3f56f5b"
+      "size": 78722,
+      "sha256": "1266beffbe70cab4461f60aaf5fad208f475a817a15707242a7dca7a7303407c"
     },
     {
       "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md",
@@ -77,6 +77,26 @@
       "path": "/home/truares/桌面/attentionbench-m5-20260928/robosuite-current-v3/audit.json",
       "size": 1922,
       "sha256": "59a4baaba6c957ca47abbf9df80aea8f2fa654929274230b5c122987c2e0d2fe"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_1_2026-09-29.json",
+      "size": 11360,
+      "sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/docs/attentionbench_formal_admission_change_log_2026-09-29.md",
+      "size": 2803,
+      "sha256": "4776588ddfaabcfb59cd68e4834c67fcf1f74ca6b36a90ebfa0e8cd9f2c82b9c"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/README.md",
+      "size": 34331,
+      "sha256": "8f7737b5166974fc00d1548303b433c907da183618ea86391ccb6eecab2f4553"
     }
-  ]
+  ],
+  "revision": {
+    "previous_index_sha256": "fa0087a6e243870ebd1d78f7e36b40e3ff95d8b9caf39e1899604d37cda7b894",
+    "previous_audit_sha256": "107f885ff2b5565afb01eda2184171b9831af6607411968f5541c5545c9603f0",
+    "reason": "Index the v2.1 protocol, change record and updated current admission audit while preserving the original freeze and perception files."
+  }
 }

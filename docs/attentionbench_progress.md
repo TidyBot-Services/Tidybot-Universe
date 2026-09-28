@@ -25,14 +25,14 @@
 
 ### 当前关口：正式实验准入（审计未通过）
 
-这是六模块及跨模块工程验收之后的**独立关口**，不是 M1–M6 的返工。[风险记录](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)已复核提交；[v2 `sim_gt` 正式协议](../benchmarks/attention_harness/protocol/v2/formal_admission_freeze_2026-09-29.json)在任何新运行前冻结。[逐项审计](attentionbench_formal_admission_audit_2026-09-29.md)裁决为**未通过**，`formal_eligible=false`。
+这是六模块及跨模块工程验收之后的**独立关口**，不是 M1–M6 的返工。[风险记录](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)已复核提交；[原 v2 冻结协议](../benchmarks/attention_harness/protocol/v2/formal_admission_freeze_2026-09-29.json)保留，[v2.1 修订协议](../benchmarks/attention_harness/protocol/v2/formal_admission_v2_1_2026-09-29.json)与[变更记录](attentionbench_formal_admission_change_log_2026-09-29.md)明确本轮主实验的范围和门槛。[逐项审计](attentionbench_formal_admission_audit_2026-09-29.md)当前裁决仍为**未通过**，`formal_eligible=false`。
 
 | 准入项 | 当前事实与下一步 |
 | --- | --- |
-| 开发集稳定性 | **未通过**：选定开发 seed 的工程链与五 seed Memory 配对均不等于双任务五 seed 完整正式链；各任务 25/25 原生成功原件缺失。合格策略／配置 SHA 尚未批准锁定，本轮零新运行，冻结开发额度未消耗。v1 成绩不混入。 |
+| 完整链与策略档案 | **未通过**：选定开发 seed 的工程链与五 seed Memory 配对均不等于两主线任务各 101–105 的完整正式链；同一锁定基础策略／配置下各任务 101–125 的逐 seed 成功、失败及无效原因档案尚缺。v2.1 不设 25/25 原生成功门槛。策略／配置 SHA 尚未批准锁定，本轮零新运行；v1 成绩不混入。 |
 | RoboCasa Memory | 新 v3 候选五对 control 0/5、treatment 5/5，Safety 0/10，Service 晋升 trusted v1；配对外独立工程 run 验证精确授权、使用及原生成功。旧失败候选与 Safety 反例保留。此项已有**开发工程证据**，不是 held-out 效果。 |
 | Robosuite depth 500 | **未通过**：十个开发 case／60 次动作未复现，历史坏帧缺失，根因仍未知。停跑、记 unsafe、配对无效和留证不能排除动作相关的选择性缺失，故本次不准入；未复现不等于已修复。 |
-| 任务范围与资格 | **阻塞**：既有 `perception.json` 还规定 RoboCasa `counter_to_cab`／`counter_to_sink` 各 25/25；需与跨 suite 主线双任务调和，不能默免。七策略正式矩阵、消融和 held-out 均未启动，`formal_eligible=false`。 |
+| 任务范围与资格 | **范围已明确，资格仍阻塞**：v2.1 对本轮主实验明确取代旧 `perception.json` 的 RoboCasa 双任务 25/25 条款；只含 Robosuite `cube_lift` 和 RoboCasa `counter_to_sink`。`counter_to_cab` 实现与历史证据保留，不作本轮准入或七策略矩阵任务。策略证据及 depth 500 仍未过，七策略正式矩阵、消融和 held-out 均未启动，`formal_eligible=false`。 |
 
 本关口协议和审计均已留档；未启动新的准入模拟器运行。准入失败不改变 M1–M6 已通过的工程结论。
 

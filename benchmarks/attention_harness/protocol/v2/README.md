@@ -18,10 +18,15 @@ applicability retain provenance. Native success and evaluator debug are
 evaluation-only. Neither the legacy v1 non-oracle score nor real-robot vision
 success rates may be pooled with the v2 simulator GT score.
 
-The RoboCasa and Robosuite GT tracks are not frozen or held-out eligible yet. First complete
-the two-task, five-development-seed chain check; then meet 25/25 native
-successes per task on the frozen development split. Privileged teleport
-probes do not count as policy successes.
+The current primary GT experiment remains ineligible for held-out runs. The
+[v2.1 admission protocol](formal_admission_v2_1_2026-09-29.json) includes only
+Robosuite `cube_lift` and RoboCasa `counter_to_sink`: complete the five-seed
+chain check for each, then report every outcome in a frozen-policy 101–125
+profile without a minimum native-success threshold. It explicitly supersedes
+the older `perception.json` RoboCasa two-task 25/25 gate for this primary
+experiment. `counter_to_cab` code and historical evidence remain available,
+but it is outside this admission gate and seven-condition matrix. Privileged
+teleport probes do not count as base-policy outcomes.
 
 The current Trace/Advisor closure records a terminal attempt before creating
 Raw Trace and its Advisor-safe projection. The packet explicitly marks absent
@@ -349,8 +354,9 @@ to apply its gate and may fail even when all trials execute. This command is
 development-only, not a formal score. The in-memory fake-world smoke test
 proves candidate-to-promotion behavior. A live RoboCasa no-op smoke completed
 five control/treatment pairs with both camera views and correctly refused
-promotion; successful policy trials and the two-task 25/25 stability gate
-remain pending. The monitor defaults to a 0.25 m commanded
+promotion; successful policy trials and the historical two-task 25/25 gate
+were pending at the time of that smoke. The current primary-experiment gate is
+defined in the v2.1 admission protocol above. The monitor defaults to a 0.25 m commanded
 delta and a 0.5 m observed step; both limits are CLI-configurable, recorded in
 each trial configuration, and must remain identical within each pair.
 For a RoboCasa candidate sourced from generated code, replace `--policy` with
