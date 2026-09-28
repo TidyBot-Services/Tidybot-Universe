@@ -10,7 +10,7 @@
 
 **RoboCasa 正向 Memory 工程门槛已通过。** 旧两批失败候选及 seed 104／105 Safety 反例原样保留；新候选 `candidate:m5:robocasa-counter-to-sink-public-sdk-v3` 在 seed 101–105 五个预冻四轴变体完成同策略完整配对：control 0/5、treatment 5/5、独立 Safety 0/10，十臂原始 Trace／Memory 事件／原生判断／双 Service 回收及 SHA 审计通过。Memory Service 随后晋升 trusted v1。配对外的 seed 101 独立正式边界工程 run 在首个无 Memory attempt 原生失败后，第二个匹配范围获得该 attempt 的精确 v1 grant、Raw Trace 实际检索及 `native_success` 使用记录，原生成功、两次 Safety 均 0；五类范围外拒绝、隔离库上的 disable／rollback／expiry 后拒绝均通过。配对审计 SHA `67a0834b390ce6ece11f0e75e521a8f6e2985e6e79c673a98b7dbba6ae82b7dd`；独立使用审计 SHA `8828e45c78bdc07a795005b738c2c823412306aeefc5f6fe54245ac8e4408058`。未用 held-out seed、未跑七策略正式效果矩阵；不据此宣称正式实验准入。
 
-**下一关口：正式实验准入，尚未验收。** 先提交本轮仍未提交的风险记录，再独立冻结并审计 v2 `sim_gt` 的开发集稳定性（五 seed 链路与每任务 25/25 原生成功门槛）、七策略矩阵／基线／预算／指标及各仓库版本；对 depth 500 未知根因和无效配对规则作明确准入裁决。准入前不运行 held-out 或正式效果矩阵，`formal_eligible=false`。简表见 [`docs/attentionbench_progress.md`](docs/attentionbench_progress.md)。
+**正式实验准入审计：未通过。** 风险记录已复核并提交为 `65e9347`；[v2 `sim_gt` 协议](benchmarks/attention_harness/protocol/v2/formal_admission_freeze_2026-09-29.json)在新运行前冻结，SHA-256 `59bf8b0c7e22112ade57702888ea1e71ec38482f996e9c6244a287f5304e5939`。[逐项准入审计、命令及原件 SHA](docs/attentionbench_formal_admission_audit_2026-09-29.md)确认跨模块工程 58/58 和 RoboCasa trusted Memory 限定使用通过；双任务五 seed 正式链、各 25/25 原生成功仍缺合格证据，`counter_to_cab` 既有协议关口与主线双任务范围尚需调和。Robosuite depth 500 根因未知，现有停跑／无效配对规则不足以排除策略相关缺失偏差，**不准入**。无新准入运行、无 held-out 或正式效果矩阵，`formal_eligible=false`。
 
 ## M1–M6 跨模块全链工程验收（2026-09-29；v7 通过）
 

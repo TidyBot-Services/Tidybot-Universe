@@ -23,18 +23,18 @@
 
 **v7 同版工程验收通过，58/58 项。** [冻结、真实 Graph 与选定双模拟器 run 的证据](m1_m6_cross_module_v7_acceptance.md)覆盖 Dev 来源与用户 SHA 批准、Bridge、正式 Runner、`full_trace_aware_attention_planner`、真实 Advisor、限定 trusted Memory v1、Eval／UI、独立 Safety、原生结果、四类产物、Service 回收及重启去重。Robosuite 候选 A 首次成功而未触发 Advisor／Memory，失败／未覆盖审计单独保留；冻结额度内经另一次精确批准的候选 B 独立 run 完成该链。**该 v7 快照**的 RoboCasa run 未重跑、当时未晋升的候选仍不授权；后续 v3 正向工程验证是独立证据，不倒填 v7。此结论仅为工程验收；`formal_eligible=false`，M3 历史 depth 500 根因风险继续单列，正式效果研究仍未执行。
 
-### 当前关口：正式实验准入（尚未验收）
+### 当前关口：正式实验准入（审计未通过）
 
-这是六模块及跨模块工程验收之后的**独立关口**，不是 M1–M6 的返工。下一轮先核对并提交尚未提交的 [depth／Memory 风险记录](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)，再在新运行前冻结 v2 `sim_gt` 的任务、开发／held-out 划分、策略与七种 Attention 条件、demo／随机基线、预算、指标、Service 版本和异常配对处理。当前代码及工程产物仍标记 `formal_eligible=false`；不得因跨模块 58/58 通过而自动改为正式成绩。
+这是六模块及跨模块工程验收之后的**独立关口**，不是 M1–M6 的返工。[风险记录](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)已复核提交；[v2 `sim_gt` 正式协议](../benchmarks/attention_harness/protocol/v2/formal_admission_freeze_2026-09-29.json)在任何新运行前冻结。[逐项审计](attentionbench_formal_admission_audit_2026-09-29.md)裁决为**未通过**，`formal_eligible=false`。
 
 | 准入项 | 当前事实与下一步 |
 | --- | --- |
-| 开发集稳定性 | [v2 协议](../benchmarks/attention_harness/protocol/v2/README.md)要求先完成两任务五开发 seed 链路检查，再达到各任务冻结开发集 25/25 原生成功；现有跨模块验收是选定开发 seed 的工程链路，不替代此门槛。独立核对缺口并只在预定开发预算内补验；v1 的旧成绩不可混入 v2 `sim_gt`。 |
+| 开发集稳定性 | **未通过**：选定开发 seed 的工程链与五 seed Memory 配对均不等于双任务五 seed 完整正式链；各任务 25/25 原生成功原件缺失。合格策略／配置 SHA 尚未批准锁定，本轮零新运行，冻结开发额度未消耗。v1 成绩不混入。 |
 | RoboCasa Memory | 新 v3 候选五对 control 0/5、treatment 5/5，Safety 0/10，Service 晋升 trusted v1；配对外独立工程 run 验证精确授权、使用及原生成功。旧失败候选与 Safety 反例保留。此项已有**开发工程证据**，不是 held-out 效果。 |
-| Robosuite depth 500 | 十个开发 case／60 次动作未复现；历史坏帧缺失，根因仍未知，状态为**受控但未解决**。独立准入审计须决定现有“立即停 attempt、未知动作记 unsafe、受影响配对无效并保留原件”的规则是否足以控制正式实验偏差；不得将未复现写成已修复。 |
-| 正式矩阵与资格 | 七策略正式效果矩阵、消融和 held-out 均未启动。先冻结完整协议并通过独立准入审计，才能启用有版本锁定的正式资格；未通过则保持 `formal_eligible=false`，不使用 held-out 调试。 |
+| Robosuite depth 500 | **未通过**：十个开发 case／60 次动作未复现，历史坏帧缺失，根因仍未知。停跑、记 unsafe、配对无效和留证不能排除动作相关的选择性缺失，故本次不准入；未复现不等于已修复。 |
+| 任务范围与资格 | **阻塞**：既有 `perception.json` 还规定 RoboCasa `counter_to_cab`／`counter_to_sink` 各 25/25；需与跨 suite 主线双任务调和，不能默免。七策略正式矩阵、消融和 held-out 均未启动，`formal_eligible=false`。 |
 
-本关口尚未冻结验收包或执行新的准入测试；上表是已知事实与待验事项，不是准入通过结论。工作树中的风险文档修改尚未提交，不把桌面证据目录的清理误记为实验进度。
+本关口协议和审计均已留档；未启动新的准入模拟器运行。准入失败不改变 M1–M6 已通过的工程结论。
 
 ## 完整流程，直接标出模块边界
 

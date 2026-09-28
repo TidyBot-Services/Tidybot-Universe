@@ -1,0 +1,82 @@
+{
+  "schema_version": "attentionbench.v2.formal-admission-audit-index.v1",
+  "formal_eligible": false,
+  "new_simulator_runs": 0,
+  "files": [
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_freeze_2026-09-29.json",
+      "size": 7824,
+      "sha256": "59bf8b0c7e22112ade57702888ea1e71ec38482f996e9c6244a287f5304e5939"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/perception.json",
+      "size": 2897,
+      "sha256": "3fb9b51158569fed014d11bea7453abd5be495f1cd1310bc546d3b50810a26ce"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/seed_guard.py",
+      "size": 1071,
+      "sha256": "41c04562aa0cf7989a9ef53d39311ad9b8e2ed73893ab528817d76da46e69676"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/docs/attentionbench_formal_admission_audit_2026-09-29.md",
+      "size": 8175,
+      "sha256": "107f885ff2b5565afb01eda2184171b9831af6607411968f5541c5545c9603f0"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/docs/attentionbench_progress.md",
+      "size": 10333,
+      "sha256": "c774ac7b2c21b8f5cf21b711aa0de0eb55006838076f23739a2f174137dbeb6c"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/STATUS.md",
+      "size": 78223,
+      "sha256": "7c5d7d145d25874f35a7292f923185091076b50d50cd416d837d8a26f3f56f5b"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md",
+      "size": 8482,
+      "sha256": "9b8152de53618f4fbcd2047c67e83e714a8f6a48e4a4fd1359b7a6c4e056dd47"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/sha_index_v2.json",
+      "size": 163818,
+      "sha256": "e34ea495eca9492411361faf6e43d1ff20f11fcf160952a0e96f61209ac3d99d"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/depth_audit.json",
+      "size": 7796,
+      "sha256": "124823ef6e8c1f2d9da1a596a0e7998645523653ef6b9ce2dafff079b1c2a12d"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/robocasa-memory-v3/pair_audit.json",
+      "size": 14996,
+      "sha256": "67a0834b390ce6ece11f0e75e521a8f6e2985e6e79c673a98b7dbba6ae82b7dd"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/robocasa-memory-v3/promotion_receipt.json",
+      "size": 6237,
+      "sha256": "edcadea3e7942cd23399c0e9a2bbc05d0bdfd98c6c9399cbdea4e350366e53ac"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/robocasa-memory-v3/postpromotion/audit.json",
+      "size": 8638,
+      "sha256": "8828e45c78bdc07a795005b738c2c823412306aeefc5f6fe54245ac8e4408058"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-m1-m6-cross-v7-20260929/sha256-index-final.json",
+      "size": 73485,
+      "sha256": "288dce9f270c86555dd316c137d352cffea2cf55a8926c34b56b4a6d3d98957a"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-m1-m6-cross-v7-20260929/candidate_b_completed_audit.json",
+      "size": 19649,
+      "sha256": "892cf1c0ddc574734285fa2357caa3ad496099bd0a21fff1cfd2672c75d6aedd"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-m5-20260928/robosuite-current-v3/audit.json",
+      "size": 1922,
+      "sha256": "59a4baaba6c957ca47abbf9df80aea8f2fa654929274230b5c122987c2e0d2fe"
+    }
+  ]
+}
