@@ -22,6 +22,10 @@ Universe `feature/attention-native-robosuite` 已用双亲 merge `0e29a7d` 整�
 
 **M5：修订口径下工程完成。** R1 Robosuite 正向、R2 RoboCasa 负向、R3 自动派发／既有双 Service 臂／重启复用、R4 完整性与回归均通过。最终独立索引 `/home/truares/桌面/attentionbench-m5-revised-20260928/revised-final-index-v2.json` 覆盖 433 件证据及当前代码 SHA，SHA-256 `c8aca0969aa8b250d689df79dc43a31bbee4639f1717014a13d7c036e509e995`，逐文件复核通过。原 RoboCasa 晋升门槛和新旧未通过结论保持；**RoboCasa 正向 Memory 效果未验证**为独立待办。所有工程运行 `formal_eligible=false`；不进入 M6、held-out 或正式效果矩阵。
 
+### 2026-09-29 M5 提交与 M6 交接
+
+M5 上述修订工程代码、测试与进度记录已提交至 Universe `feature/attention-native-robosuite` 的 `bd8146e`，未合并 main/master。提交前 `git diff --check` 通过；原审计 `revised-final-audit-v2.json` 与 433 文件索引的 SHA-256 复核匹配。归档日志记录 Harness **388 passed、10 skipped**、Graph **25 passed**、配对完整性 **31 passed**、Memory Service **22 passed**；本次提交前尝试定向重跑时，默认 Python 与 `tidybot` 环境均缺少 `pytest`，故不把它记为新的测试通过。M5 仍仅是**修订口径下工程完成**，RoboCasa 正向效果独立待办未变。下一模块为 M6 诊断与展示，尚未启动；须先冻结其验收包及依赖版本，不把 M5 的历史“本轮不进入 M6”解释为 M6 已验收。正式实验准入、held-out、七策略效果矩阵、真人和 LIBERO 均不在本次交接范围，工程运行继续 `formal_eligible=false`。
+
 ## 项目边界与当前决定
 
 - 研究目标：在固定算力、机器人时间和求助预算下，比较何时／如何请求帮助；最终看 success–attention frontier。原始目标见用户的 AttentionBench Introduction 与 Timeline；本表只记录代码现状。
