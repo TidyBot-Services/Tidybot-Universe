@@ -4,6 +4,14 @@
 
 快照日期：2026-09-28。本文是**进度索引，不是验收证据**；新任务应先核对工作树、相关代码及证据。状态只使用：**未开始 → 代码完成 → 小测试通过 → 真实服务跑通 → 正式验收**。较高状态仅适用于该行写明的目标，不能外推为整个 AttentionBench 已完成。“未核实”表示尚未审计，不等于未开始。
 
+## 当前 M5 Memory 关口（2026-09-28；未关闭）
+
+Universe `feature/attention-native-robosuite` 已用双亲 merge `0e29a7d` 整合 `attention-m4` 的已验收代码与文档，父提交 `7c6890f`、`dc06af9`，未触碰 main/master。M5 代码提交 `820a5e5`、`24975b5`；独立 Memory Service `24d4146`、Robosuite Service `081cd57`、RoboCasa Service `320020a`、Agent Server `4cf4daa`、task source `b18bbf1`。冻结范围／预算／门槛／证据和逐项结论见 [`docs/m5_memory_acceptance.md`](docs/m5_memory_acceptance.md)，所有本轮运行 `formal_eligible=false`。
+
+- **旧七项回归**：原 M4 `harness-full.log` 7 failed 原件不变；修正 FakeWorld seed 107 的 prompt 与变体不一致后，七项 7/7、全 Harness **382 passed、10 skipped**。`/home/truares/桌面/attentionbench-m5-20260928/seven-audit.json` 逐例记录 5 对 fixture、Trace、答复、Safety、原生结果和 673 个产物 SHA。确定性 fixture 不替代真实 RoboCasa 配对。
+- **Robosuite 整合版本实证**：旧 858 文件归档与 0/5→5/5、trusted v1 历史证据只读复核；隔离权威库的当前正式 seed 103 两次 Runner attempt 首败后检索匹配 Memory，Service 颁精确 v1 grant，第二次实际使用且原生成功。独立 Safety 0、四类 SHA 匹配；范围外拒绝，隔离副本上 expiry／disable／rollback 拒绝检索和新授权；未重复配对或晋升。第一次错置源证据根、第二次发现 Harness 误丢可信候选的失败原件均保留。最终审计 `/home/truares/桌面/attentionbench-m5-20260928/robosuite-current-v3/audit.json` SHA-256 `59a4baaba6c957ca47abbf9df80aea8f2fa654929274230b5c122987c2e0d2fe`。
+- **RoboCasa 阻塞**：旧 767 文件续档、10 个 arm、control 0/5 对 treatment 1/5、seed 105 Safety 退步和 Memory Service 晋升拒绝均复核，旧候选仍 candidate v1；没有新的有效策略、新候选 ID、结果前冻结的五 seed 全配对及双套独立正式使用。自动 Dev dispatch 对 RoboCasa 验证配置仍直接 blocked，需在新候选前接通受控双 Service executor。**M5 部分完成且被明确阻塞，不关闭、不进入 M6**。
+
 ## 项目边界与当前决定
 
 - 研究目标：在固定算力、机器人时间和求助预算下，比较何时／如何请求帮助；最终看 success–attention frontier。原始目标见用户的 AttentionBench Introduction 与 Timeline；本表只记录代码现状。

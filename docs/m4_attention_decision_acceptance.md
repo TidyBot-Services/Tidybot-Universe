@@ -49,3 +49,5 @@
 `gate_c_audit.py` 从原始 JSON／SQLite 重建可见请求、投影 SHA、回复采用、token／求助预算、身份、原生判断、四产物及回收；从本 worktree 设置 `PYTHONPATH` 后以 Harness venv Python 执行该脚本并传入新证据目录即可重算。`gate_c_audit.json` **passed**，SHA-256 `d25aaa61f2a093d049a68a54b277e8e36702512a8f9692fef32b661f8c1be159`。逐文件 `raw_index.json` 覆盖 **100 个文件**，SHA-256 `5e813fc8fbdcd84ada6f9759d4889b026bfb9c96b6cef8df9da85232795d5fce`；新证据目录逐文件扫描未发现传入凭据字节。A／B／D 的首轮 95 项与双套测试回复闭环已先只读复核，旧 149 文件索引全部匹配；仅因本次 CLI deadline 参数从 90 改为 120 秒，补跑受影响的正式入口／正式链／M4 测试 **82 passed**，无受测代码或批准文件改动。
 
 **结论：A／B／C／D 均达到本包工程验收条件，M4 Attention 决策工程模块关闭；`formal_eligible=false`。** 首轮在线失败仍是历史失败，测试回复仍仅是工程测试证据。另一个 Universe 工作树 `/home/truares/桌面/Tidybot-Universe-attention-native` 仍在 `7c6890f`；本 `attention-m4` 分支尚未整合，未合并。M3 depth 500 根因风险继续保留；本结论不准入正式效果矩阵、held-out、真人，也不表示已启动 M5／M6。
+
+整合追记（2026-09-28）：上段“尚未整合”描述的是 M4 关闭当时的状态。现已在 `feature/attention-native-robosuite` 以双亲提交 `0e29a7d` 合并 `attention-m4`；M5 关口另见 [`m5_memory_acceptance.md`](m5_memory_acceptance.md)，不改写本 M4 原始结论与预算。
