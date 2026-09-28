@@ -55,6 +55,14 @@
 
 用户在本对话原文批准：“批准按修订口径仅关闭 M3 工程模块，保留 depth 500 未解决风险”。[修订版验收](docs/m3_dual_sim_execution_revised_acceptance.md)保留原包旧 D 未通过结论，并增加受控异常隔离 D'：两次独立真实正式 Runner／Service 注入（有限值 `>1`、NaN）均保存原始帧与诊断，HTTP 500 导致独立 Safety `action_outcome_unknown`、attempt failed／`native_success=false`，四类产物 SHA 与进程组回收核对通过。原 A／B／C 分别为 12/12、4/4、7/7，E 回归通过。批准前只读审计见 `/home/truares/桌面/attentionbench-m3-revised-20260928/revised_engineering_audit.json`，原审计及 536 文件索引不覆盖，新增 44 文件索引独立保存。**M3 仅工程验收完成；旧 depth 500 根因未知、未修复，`formal_eligible=false`。** M4 可另行冻结，未批准正式实验或 held-out。
 
+### 2026-09-28 M4 Attention 决策封闭工程验收
+
+**首轮结论：M4 当时尚未通过，`formal_eligible=false`。** 从 U `31b02ac850826f32290d2be98aff0f7af479fd3b` 建立独立 worktree，先行审计并冻结 [`docs/m4_attention_decision_acceptance.md`](docs/m4_attention_decision_acceptance.md)。R `081cd57`、C `320020a`、A `4cf4daa`、T `b18bbf1`、M `24d4146` 均核对干净。修正正式路径的 `hint_only` Memory 可用性探测、未完成 attempt 的独立 unsafe 记录及零 token 时在线请求阻断；正式 Memory 选择核对完整批准范围。双套七策略多 attempt、approval／Memory grant、拒绝、oracle 与 Safety 定向回归 **95 passed**；全 Harness **371 passed、10 skipped、7 failed**，七项均为此前已记录的 Memory 旧失败，未写成全套通过。
+
+双套各自用明确标记的确定性测试回复跑完两次真实正式 Runner attempt、一次请求／答复及下一次执行，`fixture-audit.json` 对四类 SHA、Trace、Safety、进程回收与回复采用复核通过。首轮冻结预算内 RoboCasa／Robosuite 各一次真实 GLM provider 调用均超时：各有一个真实正式 attempt 和取消的持久请求，**当时无在线回复、无第二 attempt，在线关口 0/2 未通过**；0 求助额度、0 token 入账，无静默回退。旧 Robosuite 配置版本不符和一次手输 policy SHA 错字均在边界拒绝，原件保留。版本、精确命令、原始产物、SQLite、审计和 149 文件 SHA 索引见 `/home/truares/桌面/attentionbench-m4-20260928/`。M1–M3 契约不变，M3 depth 500 历史风险继续保留；该轮未推进 M5／M6、held-out、真人或七策略正式效果矩阵。
+
+**补验结论：M4 工程验收现已关闭，`formal_eligible=false`。** 上述两次超时仍保留为首轮失败原件；同机复查确认此前卡在 PARCC 主机 TCP 443、凭据传递和端点设置正确，不能直接判为模型推理故障。连通恢复后，非生成式带凭据探针完成 TCP／TLS／HTTP 200；另行冻结每套最多 2 attempts／1 求助／1 provider 调用、1024 输出 tokens、90 秒客户端超时、120 秒每 attempt 和 360 秒每套外部墙钟上限，配置 SHA `bfeac6af70090eacbdedde80382f369a9487733e4729a86c79ae4f110d6a812d`。新双套正式运行各完成 2 attempts、1 次未缓存真实 GLM 回复并在第二次采用；RoboCasa 总 2172 tokens，Robosuite 总 2210 tokens，各用 1 求助。原始可见 Trace 的请求 cache key、SQLite 请求／回复与预算、运行身份、独立 Safety、原生 evaluator、四类产物 SHA 和 Service 回收经 `gate_c_audit.json` 全部复核通过，审计 SHA `d25aaa61f2a093d049a68a54b277e8e36702512a8f9692fef32b661f8c1be159`。新原始证据、完整 argv／版本、100 文件索引在 `/home/truares/桌面/attentionbench-m4-online-c-20260928/`，索引 SHA `5e813fc8fbdcd84ada6f9759d4889b026bfb9c96b6cef8df9da85232795d5fce`。A／B／D 原件只读复核，CLI deadline 参数受影响的定向测试另跑 **82 passed**；未改受测代码或批准 policy／config。另一个 Universe 工作树 `/home/truares/桌面/Tidybot-Universe-attention-native` 仍在 `7c6890f`，本 M4 分支尚未整合、未合并。M3 depth 500 历史风险不变；本阶段未启动 M5／M6、held-out、真人或七策略正式效果矩阵。
+
 | ID | 目标 | 状态 | 证据（仓库代号、路径／本次核查） | 下一步 |
 | --- | --- | --- | --- | --- |
 | W1-H1 | Robosuite 脱离 ASPIRE 的 v1 双任务 harness／开发集冻结 | 真实服务跑通 | U `benchmarks/attention_harness/protocol/v1/freeze_manifest.json`：`cube_lift`、`cube_stack` 各 25/25；D6 evaluator parity 30/30。是历史开发证据，非本次服务复跑。 | 保持 v1 freeze 不变；不要将其当作 v2 七策略成绩。 |
