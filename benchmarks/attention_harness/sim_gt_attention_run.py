@@ -305,8 +305,12 @@ def run_sim_gt_attention(
             memory = memory_gateway.get_memory(memory_id)
             expected_scope = (memory_applicability_context or
                               {"suite": suite, "task_id": task_id, "perception_mode": "sim_gt"})
+            # The Service verifies the concrete scene/object/camera/prompt
+            # against the frozen plan. Candidate applicability records the
+            # stable suite/task/mode identity, not those per-seed fields.
             if (getattr(memory.status, "value", memory.status) == MemoryStatus.TRUSTED.value and
-                all(memory.applicability.get(key) == value for key, value in expected_scope.items())):
+                all(memory.applicability.get(key) == expected_scope.get(key)
+                    for key in ("suite", "task_id", "perception_mode"))):
                 trusted_memory_ids.append(memory_id)
         decision = policy.decide(PolicyContext(
             run_id=link["run_id"], attempt_index=index,

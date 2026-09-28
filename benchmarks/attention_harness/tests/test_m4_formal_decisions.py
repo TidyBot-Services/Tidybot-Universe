@@ -244,7 +244,8 @@ def test_full_uses_only_granted_applicable_memory(tmp_path, suite, task):
     memory = MemoryRecord(
         memory_id="memory:approved", version=2, source_trace_id="trace:source",
         guidance="use the visible grasp correction", candidate_repair="grasp",
-        applicability=context, evidence_refs=("evidence:source",), created_at=1,
+        applicability={key: context[key] for key in ("suite", "task_id", "perception_mode")},
+        evidence_refs=("evidence:source",), created_at=1,
         status=MemoryStatus.TRUSTED,
     )
 
