@@ -47,6 +47,7 @@ def run_sim_gt_attention(
     advisor_transport: AdvisorTransport | None = None,
     memory_gateway: MemoryService | MemoryServiceClient | None = None,
     memory_evidence_root: Path | None = None,
+    memory_applicability_context: dict[str, Any] | None = None,
     safety_signals: SafetySignals | None = None,
     approval_granted: Callable[[dict[str, Any]], bool] | None = None,
     assistance_mode: AssistanceMode | str = AssistanceMode.BENCHMARK_PROXY,
@@ -250,12 +251,6 @@ def run_sim_gt_attention(
         if result.get("safety_unsafe") is True:
             signals["unsafe"] = True
         monitored_attempts.append(signals)
-        if runner_boundary_mode == "formal" and (
-            result.get("status") != "completed"
-            or result.get("formal_runner_result", {}).get("native_evaluator", {}).get("evaluated") is not True
-        ):
-            stopped_reason = "formal_attempt_incomplete_or_evaluator_unavailable"
-            break
         if signals.get("unsafe"):
             decisions.append({
                 "after_attempt": index, "action": DecisionAction.STOP.value,
@@ -264,6 +259,12 @@ def run_sim_gt_attention(
                 "monitor_signals": dict(signals),
             })
             stopped_reason = "independent_safety_stop"
+            break
+        if runner_boundary_mode == "formal" and (
+            result.get("status") != "completed"
+            or result.get("formal_runner_result", {}).get("native_evaluator", {}).get("evaluated") is not True
+        ):
+            stopped_reason = "formal_attempt_incomplete_or_evaluator_unavailable"
             break
         if result["native_success"] and (signals.get("unsafe") or signals.get("approval_required")):
             stopped_reason = "successful_attempt_failed_independent_safety_gate"
@@ -302,9 +303,10 @@ def run_sim_gt_attention(
             if memory_id in already_used_memory_ids:
                 continue
             memory = memory_gateway.get_memory(memory_id)
+            expected_scope = (memory_applicability_context or
+                              {"suite": suite, "task_id": task_id, "perception_mode": "sim_gt"})
             if (getattr(memory.status, "value", memory.status) == MemoryStatus.TRUSTED.value and
-                all(memory.applicability.get(key) == value for key, value in
-                    {"suite": suite, "task_id": task_id, "perception_mode": "sim_gt"}.items())):
+                all(memory.applicability.get(key) == value for key, value in expected_scope.items())):
                 trusted_memory_ids.append(memory_id)
         decision = policy.decide(PolicyContext(
             run_id=link["run_id"], attempt_index=index,
@@ -349,6 +351,9 @@ def run_sim_gt_attention(
                 "assessment": assessment.artifact() if assessment else None,
             }, ensure_ascii=False, default=str)[:4000]
         elif decision.action is DecisionAction.REQUEST:
+            if control_store.resource_status(unified_run_id)["tokens"]["remaining"] <= 0:
+                stopped_reason = "advisor_token_budget_exhausted"
+                break
             request = AttentionRequestRecord(
                 request_id=f"attention-request:{run_dir.name}:{index}",
                 run_id=link["run_id"], attempt_id=link["attempt_id"], trace_id=trace_id,

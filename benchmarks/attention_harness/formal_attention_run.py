@@ -120,8 +120,12 @@ def run_formal_attention(
                     or "attempt_bound_use_grants" not in health.get("capabilities", [])
                     or gateway.store_id() != memory_store_id(attempt["store_path"])):
                 raise RuntimeError("formal Memory Service schema or store identity mismatch")
-        available = gateway.retrieve(memory_context, now=time.time()) if memory_context else []
+        # Hint-only has no Memory read path, including the availability probe.
+        available = (gateway.retrieve(memory_context, now=time.time())
+                     if memory_context and policy_id != "trace_aware_hint_only" else [])
         selected = attention_input.get("memory_ids_to_use", [])
+        if selected and policy_id == "trace_aware_hint_only":
+            raise RuntimeError("hint-only Attention cannot select Memory")
         if selected and memory_context is None:
             raise RuntimeError("formal Memory use requires an approved applicability context")
         by_id = {item.memory_id: item for item in available}
@@ -251,6 +255,7 @@ def run_formal_attention(
         suite=suite, task_id=task_id, seed=seed, artifact_root=artifact_root,
         policy_id=policy_id, attempt_executor=execute,
         runner_boundary_mode="formal", attempt_budget_seconds=overall_deadline_seconds,
+        memory_applicability_context=memory_context,
         **scheduler_options,
     )
     summary["approved_policy_sha256"] = approved_policy_sha256
