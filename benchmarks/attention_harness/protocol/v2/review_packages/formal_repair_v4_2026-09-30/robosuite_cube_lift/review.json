@@ -1,0 +1,14 @@
+{
+  "approval_status": "pending_one_package_review",
+  "config_count": 25,
+  "native_success_minimum": null,
+  "old_invalids_reused": false,
+  "policy_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+  "schema_version": "attentionbench.formal-base-repair-review.v4",
+  "seed_range": [
+    101,
+    125
+  ],
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

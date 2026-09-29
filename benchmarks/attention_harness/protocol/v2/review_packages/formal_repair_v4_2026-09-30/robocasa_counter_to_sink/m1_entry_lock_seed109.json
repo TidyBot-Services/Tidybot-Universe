@@ -1,0 +1,20 @@
+{
+  "approved_config_sha256": "0a9279dcbc3670731f88f378a1c290f00ab5aa11d3544a519acb4d7e70acd6ea",
+  "approved_demo_sha256": null,
+  "approved_policy_config_sha256": null,
+  "approved_policy_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+  "assistance_credits": 1,
+  "assistance_mode": "benchmark_proxy",
+  "attention_policy": "autonomous",
+  "execution_target": "robocasa_sim",
+  "human_deadline_seconds": 30.0,
+  "max_attempts": 4,
+  "overall_deadline_seconds": 300.0,
+  "perception_mode": "sim_gt",
+  "schema_version": "attentionbench.formal-entry-lock.v1",
+  "seed": 109,
+  "sha256": "23d84a740a127a2df0aaf03d17dc07163ea2105cdf55d9093b2ac083024e5711",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "token_limit": 4096
+}
