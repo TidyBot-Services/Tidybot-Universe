@@ -1,0 +1,48 @@
+{
+  "agent_service": {
+    "revision": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+    "tree_sha256": "c0bc46f6b48463c04d8019375dfaa0b126dd9a7f684b0e5d59cc79a0530aa4a2"
+  },
+  "camera_names": [
+    "base_camera",
+    "wrist_camera"
+  ],
+  "object_set_id": "objects:b83d27818b002eebf602",
+  "perception_mode": "sim_gt",
+  "port_offset": 800,
+  "safety_limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "scene_id": "scene:d8b4f9a802dd1389e711",
+  "schema_version": "attentionbench.robocasa-formal-config.v3",
+  "seed": 118,
+  "sim_runtime": {
+    "mani_skill_files": {
+      "envs/tasks/mobile_manipulation/robocasa/kitchen.py": "efd64ab206581010a8fa54ca4700bf523d66fdb7670d847d1c3258ee57b6d7a9",
+      "utils/scene_builder/robocasa/fixtures/counter.py": "a02b00e980dff7225f67d359981aca992290419a97b0a1a67a0c4cfc2575c0a2",
+      "utils/scene_builder/robocasa/scene_builder.py": "39b5b2cfa7450edfb107e03af69a4d93d4c42bd4f8abd2b3cc0af17f3a06b3e4",
+      "utils/scene_builder/robocasa/utils/object_utils.py": "9748d629476aaee0bb90cdd466a775f91e12e9f391dd05b48b574493ae99fd46",
+      "utils/scene_builder/robocasa/utils/placement_samplers.py": "8a77323c0933735bfe7acc72df9fa772a07e9846dd406bb479e99c8994cc0b12"
+    },
+    "mani_skill_python_tree_sha256": "d93b88c3b28ed0fb119eeaddda129f72bd2589e41698566fb4ddf21a58525095",
+    "mani_skill_root": "/home/truares/miniconda3/envs/maniskill/lib/python3.11/site-packages/mani_skill",
+    "mani_skill_version": "3.0.0b22",
+    "python_sha256": "f33fe7acf4552a82f53158d00f94fd10a082bb454a1779c3b7f207f7369ef2fe",
+    "python_version": "3.11.15",
+    "task_module_path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks/__init__.py"
+  },
+  "sim_service": {
+    "revision": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+    "tree_sha256": "10b03283ca6d7c069e2d81e2841d772da1b70bfeb8c2735b114105c17fa97698"
+  },
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "task_prompt": "pick the orange from the counter and place it in the sink",
+  "task_source": {
+    "revision": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756"
+  }
+}
