@@ -1,0 +1,23 @@
+{
+  "schema_version": "attentionbench.formal-admission.v2.3-candidate",
+  "status": "candidate_for_one_package_review",
+  "base_protocol": "formal_admission_v2_2_2026-09-29.json",
+  "base_protocol_sha256": "e3d4fcb1c6e37a16e5131b60cbfa3ba92b3fd71b92042267cbdae52ae364d385",
+  "unchanged_rules": "All v2.2 clauses not explicitly amended remain binding, including seed splits, Safety authority, invalid reporting, version locks, attempt limits, and prohibition on held-out and seven-condition effect runs before admission.",
+  "depth_500": {
+    "historical_root_cause": "unknown: the original invalid normalized-depth raw frame was not archived",
+    "candidate_runtime": "One observation-only rerender after a post-action invalid frame; archive both raw frames and their SHA, require unchanged simulation time and qpos, emit a formal Trace recovery receipt; persistent or unauditable invalid depth remains HTTP 500 and independent Safety action_outcome_unknown.",
+    "bias_control_design_audit_sha256": "c2efc0ba6ea0e198d78c72d1058716d23b562d3abb8808c29aa197ad7841e6b1",
+    "required_release_gate": "Before computing or releasing any seven-condition effect, an independent auditor must pin the plan SHA before actions, verify the complete predeclared task×seed×condition grid and every slot's native Boolean, identity, four artifacts, Service stop and Safety zero, and run attrition_gate.py on the final ledger. Any missing, duplicate, invalid, replaced, or unreviewed depth-recovered slot blocks effect comparison for the entire frozen matrix. Do not condition an estimate on valid slots, rerun based on outcome, impute, or silently replace.",
+    "attrition_gate_sha256": "452aeff9c67327d7928a9ce5659ad94ebb2fe5bd1245c6bbc5f57d79d189c513",
+    "operational_gate": false,
+    "reason_operational_gate_false": "No new qualifying chain or profile has run and no seven-condition matrix is authorized; the conditional bias-control design is not a measured effect or an empirical root-cause finding."
+  },
+  "repair_sequence": [
+    "independent one-package review of exact clean software versions, approved policies, configs, receipts, task feasibility, Safety and depth-bias design",
+    "two-task five-seed 101-105 chain on predeclared immutable entries; any invalid stops",
+    "101-125 50-slot fixed-base profile with one record per planned slot, evaluated successes and failures, no silent replacement",
+    "independent admission audit; any failed gate preserves evidence and leaves formal_eligible=false"
+  ],
+  "scope": "Candidate protocol and engineering evidence only; held-out and seven-condition effect cases remain zero."
+}
