@@ -17,6 +17,7 @@ import numpy as np
 
 from tidybot_sdk import RobotBackend
 from ..core.control import EmergencyInterrupt, raise_if_interrupted
+from .agent_actions import ReadOnlyArmPlanRejected
 
 
 class SafetyViolation(RuntimeError):
@@ -83,6 +84,12 @@ class SafetyMonitorBackend:
             value = callback()
             raise_if_interrupted(self.interrupt_check)
         except EmergencyInterrupt:
+            raise
+        except ReadOnlyArmPlanRejected:
+            # The adapter verified a typed SDK rejection before trajectory
+            # execution. Re-sample state and let the policy record a native
+            # failure; a completed partial move never takes this path.
+            self.observe()
             raise
         except TimeoutError as exc:
             self.violations.append({

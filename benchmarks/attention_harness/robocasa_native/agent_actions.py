@@ -24,10 +24,20 @@ _ARM_NONCONVERGENCE = re.compile(
     r"\(error=([0-9]+(?:\.[0-9]+)?) m\)"
 )
 _WB_FAILURE = re.compile(r"robot_sdk\.wb\.WholeBodyError: ([^\r\n]{1,160})")
+_NO_MOTION_PLAN_REJECTION = re.compile(
+    r"robot_sdk\.wb\.PlanningRejectedWithoutMotion: Planning failed: curobo_no_trajectory(?:\r?\n|$)"
+)
 
 
 class AgentServerActionError(RuntimeError):
     pass
+
+
+class ReadOnlyArmPlanRejected(RuntimeError):
+    """A one-call SDK job rejected planning before trajectory execution."""
+
+    def __init__(self):
+        super().__init__("read_only_arm_plan_rejected")
 
 
 class AgentServerActionBackend:
@@ -230,7 +240,8 @@ class AgentServerActionBackend:
         self._submit(
             "from robot_sdk import wb\n"
             + ("wb.move_to_pose(x={!r}, y={!r}, z={!r}, quat={!r}, "
-               "mask='arm_only', timeout=30.0)\n").format(*planner_target, ee_quat)
+               "mask='arm_only', timeout=30.0)\n").format(*planner_target, ee_quat),
+            allow_pre_execution_rejection=True,
         )
         actual = self.observe()["robot0_eef_pos"]
         error = float(np.linalg.norm(actual - np.asarray(target, dtype=np.float64)))
@@ -310,7 +321,7 @@ class AgentServerActionBackend:
                 *values, frame)
         )
 
-    def _submit(self, code: str) -> None:
+    def _submit(self, code: str, *, allow_pre_execution_rejection: bool = False) -> None:
         raise_if_interrupted(self._interrupt_check)
         self.assert_cancellation_available()
         remaining = self._remaining_seconds()
@@ -347,6 +358,18 @@ class AgentServerActionBackend:
                     continue
                 result = job.get("result") or {}
                 if job["status"] != "completed" or result.get("exit_code") != 0:
+                    # This exception is only used for the first planned arm
+                    # job, whose submitted code contains a single SDK call.
+                    # The SDK raises it before _execute_trajectory. Require
+                    # both the typed traceback and absence of its execution
+                    # marker; all ambiguous failures stay unknown to Safety.
+                    if (allow_pre_execution_rejection and job["status"] == "failed"
+                            and isinstance(result, dict) and result.get("exit_code") == 1):
+                        stderr, stdout = result.get("stderr"), result.get("stdout")
+                        if (isinstance(stderr, str) and isinstance(stdout, str)
+                                and _NO_MOTION_PLAN_REJECTION.search(stderr)
+                                and "[wb] Executing trajectory" not in stdout):
+                            raise ReadOnlyArmPlanRejected()
                     raise AgentServerActionError(_job_failure_detail(job_id, job, result))
                 return
         except TimeoutError:

@@ -7,6 +7,7 @@ import pytest
 from benchmarks.attention_harness.robocasa_native.agent_actions import (
     AgentServerActionBackend,
     AgentServerActionError,
+    ReadOnlyArmPlanRejected,
 )
 from benchmarks.attention_harness.robocasa_native.safety_monitor import (
     SafetyMonitorBackend,
@@ -127,6 +128,53 @@ def test_failed_planned_approach_stops_at_independent_safety():
         monitor.move_arm_to_position(0.56, 0.2, 0.3, tolerance=0.004, max_steps=100)
     assert monitor.violations[0]["kind"] == "action_outcome_unknown"
     assert sum(path == "/code/submit" for _, path, _ in transport.calls) == 1
+
+
+def test_typed_pre_execution_plan_rejection_is_verified_and_safety_clean():
+    class ReplannedNoTrajectory(AgentTransport):
+        def __call__(self, method, url, payload, timeout):
+            if url.endswith("/robot/frame"):
+                return {"arm_base_world_pos": [0.0, 0.0, 0.0],
+                        "arm_base_world_quat": [1.0, 0.0, 0.0, 0.0],
+                        "ee_world_quat": [1.0, 0.0, 0.0, 0.0]}
+            if url.endswith("/code/jobs/job-1"):
+                return {"status": "failed", "result": {"exit_code": 1,
+                    "stdout": "[SDK] Whole-body API initialized\n",
+                    "stderr": "Traceback\nrobot_sdk.wb.PlanningRejectedWithoutMotion: "
+                              "Planning failed: curobo_no_trajectory\n"}}
+            return super().__call__(method, url, payload, timeout)
+
+    monitor = SafetyMonitorBackend(AgentServerActionBackend(
+        simulator_attested=True, sim_url="http://127.0.0.1:6400",
+        transport=ReplannedNoTrajectory(),
+    ))
+    with pytest.raises(ReadOnlyArmPlanRejected, match="read_only_arm_plan_rejected"):
+        monitor.move_arm_to_position(0.56, 0.2, 0.3, tolerance=0.004, max_steps=100)
+    assert monitor.violations == []
+    assert len([event for event in monitor.events if event["kind"] == "state_sample"]) >= 2
+
+
+def test_plan_rejection_marker_after_execution_remains_unknown():
+    class AmbiguousJob(AgentTransport):
+        def __call__(self, method, url, payload, timeout):
+            if url.endswith("/robot/frame"):
+                return {"arm_base_world_pos": [0.0, 0.0, 0.0],
+                        "arm_base_world_quat": [1.0, 0.0, 0.0, 0.0],
+                        "ee_world_quat": [1.0, 0.0, 0.0, 0.0]}
+            if url.endswith("/code/jobs/job-1"):
+                return {"status": "failed", "result": {"exit_code": 1,
+                    "stdout": "[wb] Executing trajectory (36 waypoints)\n",
+                    "stderr": "robot_sdk.wb.PlanningRejectedWithoutMotion: "
+                              "Planning failed: curobo_no_trajectory\n"}}
+            return super().__call__(method, url, payload, timeout)
+
+    monitor = SafetyMonitorBackend(AgentServerActionBackend(
+        simulator_attested=True, sim_url="http://127.0.0.1:6400",
+        transport=AmbiguousJob(),
+    ))
+    with pytest.raises(SafetyViolation, match="action_outcome_unknown"):
+        monitor.move_arm_to_position(0.56, 0.2, 0.3, tolerance=0.004, max_steps=100)
+    assert monitor.violations[0]["kind"] == "action_outcome_unknown"
 
 
 def test_read_only_arm_plan_rejection_submits_no_motion_and_keeps_safety_clean():
