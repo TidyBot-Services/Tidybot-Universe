@@ -47,6 +47,10 @@ def main() -> int:
                         default=AssistanceMode.BENCHMARK_PROXY.value)
     parser.add_argument("--human-deadline-seconds", type=float, default=60.0)
     parser.add_argument("--overall-deadline-seconds", type=float, default=300.0)
+    parser.add_argument("--attempt-deadline-seconds", type=float,
+                        help="v2.1 chain guard: at most 120 seconds per simulator attempt")
+    parser.add_argument("--whole-case-wall-seconds", type=float,
+                        help="v2.1 chain guard: at most 300 seconds for the whole case")
     parser.add_argument("--policy-config", type=Path)
     parser.add_argument("--approved-policy-config-sha256")
     parser.add_argument("--expected-entry-sha256",
@@ -64,6 +68,16 @@ def main() -> int:
     parser.add_argument("--sim-python", type=Path)
     parser.add_argument("--agent-python", type=Path)
     args = parser.parse_args()
+    if (args.attempt_deadline_seconds is None) != (args.whole_case_wall_seconds is None):
+        parser.error("attempt and whole-case deadlines must be supplied together")
+    if args.attempt_deadline_seconds is not None and (
+        args.attention_policy != "autonomous"
+        or not 0 < args.attempt_deadline_seconds <= 120
+        or not 0 < args.whole_case_wall_seconds <= 300
+        or args.whole_case_wall_seconds != args.overall_deadline_seconds
+        or args.max_attempts > 4
+    ):
+        parser.error("v2.1 chain deadlines or Attention policy disagree with approved limits")
     if (args.memory_source_run is None) != (args.approved_memory_source_sha256 is None):
         parser.error("Memory source run and approved SHA-256 must be supplied together")
     memory_evidence_root = None
@@ -173,6 +187,8 @@ def main() -> int:
             if args.single_glm_call else None),
         entry_lock=entry_lock,
         approved_policy_config_sha256=args.approved_policy_config_sha256,
+        formal_attempt_deadline_seconds=args.attempt_deadline_seconds,
+        formal_run_wall_seconds=args.whole_case_wall_seconds,
     )
     if args.summary_path is not None:
         args.summary_path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n")

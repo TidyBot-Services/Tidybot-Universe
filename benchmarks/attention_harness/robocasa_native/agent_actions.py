@@ -23,6 +23,7 @@ _ARM_NONCONVERGENCE = re.compile(
     r"robot_sdk\.arm\.ArmError: Timeout: arm did not converge "
     r"\(error=([0-9]+(?:\.[0-9]+)?) m\)"
 )
+_WB_FAILURE = re.compile(r"robot_sdk\.wb\.WholeBodyError: ([^\r\n]{1,160})")
 
 
 class AgentServerActionError(RuntimeError):
@@ -40,6 +41,7 @@ class AgentServerActionBackend:
         holder: str = "attentionbench-sim-gt",
         timeout_seconds: float = 90.0,
         poll_seconds: float = 0.25,
+        sim_url: str | None = None,
         transport: JsonTransport | None = None,
     ) -> None:
         # The current agent_server /health endpoint does not attest whether
@@ -51,6 +53,9 @@ class AgentServerActionBackend:
         if timeout_seconds <= 0 or poll_seconds <= 0:
             raise ValueError("action timeout and poll interval must be positive")
         self.base_url = base_url.rstrip("/")
+        if sim_url is not None and not sim_url.startswith("http://127.0.0.1:"):
+            raise ValueError("planned arm execution requires a loopback simulator URL")
+        self.sim_url = None if sim_url is None else sim_url.rstrip("/")
         self.holder = holder
         self.timeout_seconds = timeout_seconds
         self.poll_seconds = poll_seconds
@@ -58,6 +63,8 @@ class AgentServerActionBackend:
         self._cancellation_checked = False
         self._episode_deadline: float | None = None
         self.cancellation_receipts: list[dict[str, str]] = []
+        self.planned_motion_receipts: list[dict[str, Any]] = []
+        self.plan_query_receipts: list[dict[str, Any]] = []
         self._interrupt_check: Callable[[], bool] | None = None
 
     def set_interrupt_check(self, check: Callable[[], bool]) -> None:
@@ -116,12 +123,170 @@ class AgentServerActionBackend:
         )
 
     def move_arm_to_position(self, x, y, z, *, tolerance, max_steps):
-        del tolerance, max_steps  # The existing ArmAPI owns convergence.
+        del max_steps  # The existing Agent Server owns its trajectory cadence.
         values = [_finite(value) for value in (x, y, z)]
+        if self.sim_url is not None:
+            current = self.observe()["robot0_eef_pos"]
+            if self._requires_planned_move(values, current):
+                self._move_arm_to_position_planned(values, tolerance=_finite(tolerance))
+                return
         self._submit(
             "from robot_sdk import arm\n"
             + "arm.move_to_pose(x={!r}, y={!r}, z={!r})\n".format(*values)
         )
+
+    @staticmethod
+    def _requires_planned_move(target: list[float], current: np.ndarray) -> bool:
+        # Both counter descent and long lateral approach can stall the
+        # Cartesian controller. Seeds 110 and 111 hit the latter path.
+        planar_distance = float(np.linalg.norm(
+            np.asarray(target[:2]) - current[:2]))
+        return target[2] < float(current[2]) - 0.04 or planar_distance > 0.10
+
+    def plan_arm_to_position(self, x, y, z) -> dict[str, Any]:
+        """Query the simulator planner without submitting an Agent motion job."""
+        if self.sim_url is None:
+            raise AgentServerActionError("simulator-only arm planning is unavailable")
+        target = [_finite(value) for value in (x, y, z)]
+        current = self.observe()["robot0_eef_pos"]
+        if not self._requires_planned_move(target, current):
+            result = {"planning_required": False, "reachable": True,
+                      "status": "cartesian_controller"}
+            self.plan_query_receipts.append({"target_arm_base_m": target, **result})
+            return result
+        _, ee_quat, requested_world, offset, planner_target = self._planner_pose(target)
+        remaining = self._remaining_seconds()
+        if remaining <= 0:
+            raise TimeoutError("RoboCasa episode deadline reached before arm plan query")
+        plan = self._transport(
+            "POST", self.sim_url + "/plan",
+            {"target_pose": planner_target, "target_quat": ee_quat,
+             "mask": "arm_only"}, min(60.0, remaining),
+        )
+        if not isinstance(plan, dict) or not isinstance(plan.get("status"), str):
+            raise AgentServerActionError("simulator returned an invalid arm plan result")
+        status = plan["status"]
+        count = plan.get("waypoint_count")
+        if status == "success":
+            if not isinstance(count, int) or count < 1 or not isinstance(
+                plan.get("trajectory"), list
+            ) or len(plan["trajectory"]) != count:
+                raise AgentServerActionError("simulator returned an incomplete arm plan")
+        elif status != "curobo_no_trajectory" or count != 0:
+            raise AgentServerActionError(f"arm plan query failed: {status}")
+        result = {"planning_required": True, "reachable": status == "success",
+                  "status": status}
+        self.plan_query_receipts.append({
+            "target_arm_base_m": target,
+            "requested_eef_world_m": requested_world,
+            "planner_ee_link_world_m": planner_target,
+            "tool_offset_world_m": offset,
+            **result,
+        })
+        return result
+
+    def _planner_pose(
+        self, target: list[float],
+    ) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
+        assert self.sim_url is not None
+        remaining = self._remaining_seconds()
+        if remaining <= 0:
+            raise TimeoutError("RoboCasa episode deadline reached before arm planning")
+        frame = self._transport("GET", self.sim_url + "/robot/frame", None,
+                                min(10.0, remaining))
+        if not isinstance(frame, dict):
+            raise AgentServerActionError("simulator returned an invalid robot frame")
+        arm_base = _finite_vector(frame.get("arm_base_world_pos"), 3)
+        arm_quat = _finite_vector(frame.get("arm_base_world_quat"), 4)
+        ee_quat = _finite_vector(frame.get("ee_world_quat"), 4)
+        if abs(sum(value * value for value in arm_quat) - 1.0) > 0.02 or abs(
+            sum(value * value for value in ee_quat) - 1.0
+        ) > 0.02:
+            raise AgentServerActionError("simulator returned a non-unit robot quaternion")
+        requested_world = [a + b for a, b in zip(
+            arm_base, _rotate_vector(arm_quat, target))]
+        # cuRobo's ee_link is 0.100 m from panda_hand; public eef is 0.145 m.
+        offset = _rotate_vector(ee_quat, [0.0, 0.0, 0.045])
+        planner_target = [a - b for a, b in zip(requested_world, offset)]
+        # The cuRobo URDF rotates panda_hand / ee_link -45 degrees around Z
+        # from panda_link8. The simulator's public eef has no such rotation.
+        # Without this conversion each planned action rotates the public eef
+        # about +45 degrees and changes the next tool-offset direction.
+        half_angle = math.pi / 8.0
+        planner_quat = _quat_multiply(
+            ee_quat, [math.cos(half_angle), 0.0, 0.0, -math.sin(half_angle)]
+        )
+        return arm_quat, planner_quat, requested_world, offset, planner_target
+
+    def _move_arm_to_position_planned(self, target: list[float], *, tolerance: float) -> None:
+        if tolerance <= 0:
+            raise ValueError("arm target tolerance must be positive")
+        assert self.sim_url is not None
+        _, ee_quat, requested_world, offset, planner_target = self._planner_pose(target)
+        receipt = {"target_arm_base_m": target, "requested_eef_world_m": requested_world,
+                   "planner_ee_link_world_m": planner_target,
+                   "tool_offset_world_m": offset, "tolerance_m": tolerance}
+        self.planned_motion_receipts.append(receipt)
+        self._submit(
+            "from robot_sdk import wb\n"
+            + ("wb.move_to_pose(x={!r}, y={!r}, z={!r}, quat={!r}, "
+               "mask='arm_only', timeout=30.0)\n").format(*planner_target, ee_quat)
+        )
+        actual = self.observe()["robot0_eef_pos"]
+        error = float(np.linalg.norm(actual - np.asarray(target, dtype=np.float64)))
+        receipt["initial_residual_m"] = error
+        receipt["correction_attempted"] = False
+        receipt["corrections"] = []
+        for _ in range(3):
+            if not tolerance < error <= 0.02:
+                break
+            # A successful joint plan can stop short in public EEF space.
+            # Replan by the measured small endpoint gap. Stop if a correction
+            # stops improving; keep a hard cap on extra arm jobs.
+            receipt["correction_attempted"] = True
+            previous_error = error
+            # The public target is in the arm-base frame. The base can move
+            # during execution, so the old world target is no longer valid.
+            # Re-read the frame before planning the small residual move.
+            corrected_arm_quat, corrected_ee_quat, corrected_requested_world, corrected_offset, refreshed_planner_target = (
+                self._planner_pose(target)
+            )
+            residual_world = _rotate_vector(
+                corrected_arm_quat,
+                (np.asarray(target, dtype=np.float64) - actual).tolist(),
+            )
+            # The fresh arm-base pose already maps the requested local target
+            # into the current world frame. Adding the entire measured gap a
+            # second time sent the archived correction past that target.
+            corrected_planner_target = refreshed_planner_target
+            receipt["correction_world_m"] = [
+                b - a for a, b in zip(planner_target, corrected_planner_target)
+            ]
+            receipt["residual_world_m"] = residual_world
+            receipt["corrected_requested_eef_world_m"] = corrected_requested_world
+            receipt["corrected_tool_offset_world_m"] = corrected_offset
+            receipt["corrected_planner_ee_link_world_m"] = corrected_planner_target
+            self._submit(
+                "from robot_sdk import wb\n"
+                + ("wb.move_to_pose(x={!r}, y={!r}, z={!r}, quat={!r}, "
+                   "mask='arm_only', timeout=30.0)\n").format(
+                       *corrected_planner_target, corrected_ee_quat
+                   )
+            )
+            actual = self.observe()["robot0_eef_pos"]
+            error = float(np.linalg.norm(actual - np.asarray(target, dtype=np.float64)))
+            receipt["corrections"].append({
+                "target_ee_link_world_m": corrected_planner_target,
+                "residual_m": error,
+            })
+            if error >= previous_error - 0.0005:
+                break
+        receipt["actual_eef_arm_base_m"] = actual.tolist()
+        receipt["residual_m"] = error
+        if error > tolerance:
+            raise AgentServerActionError(
+                f"planned arm residual {error:.6f} m exceeds tolerance {tolerance:.6f} m"
+            )
 
     def set_gripper(self, command, *, settle_steps):
         if command not in (-1.0, 1.0) or settle_steps < 1:
@@ -265,6 +430,12 @@ def _job_failure_detail(job_id: str, job: dict[str, Any], result: dict[str, Any]
                 f"{reason}; sdk_arm_nonconvergence_error_m={match.group(1)}; "
                 "action outcome remains uncertain (partial motion possible)"
             )
+        match = _WB_FAILURE.search(stderr)
+        if match:
+            return (
+                f"{reason}; sdk_whole_body_error={match.group(1)}; "
+                "action outcome remains uncertain (partial motion possible)"
+            )
     return reason
 
 
@@ -275,3 +446,34 @@ def _finite(value: Any) -> float:
     if not math.isfinite(converted):
         raise ValueError("action coordinates must be finite numbers")
     return converted
+
+
+def _finite_vector(value: Any, size: int) -> list[float]:
+    if not isinstance(value, list) or len(value) != size:
+        raise AgentServerActionError("simulator returned an invalid robot frame vector")
+    try:
+        return [_finite(item) for item in value]
+    except ValueError as exc:
+        raise AgentServerActionError("simulator returned a non-finite robot frame") from exc
+
+
+def _rotate_vector(quat: list[float], vector: list[float]) -> list[float]:
+    """Rotate a 3-vector by a unit wxyz quaternion without an extra dependency."""
+    w, x, y, z = quat
+    vx, vy, vz = vector
+    cross = (y * vz - z * vy, z * vx - x * vz, x * vy - y * vx)
+    cross2 = (y * cross[2] - z * cross[1],
+              z * cross[0] - x * cross[2],
+              x * cross[1] - y * cross[0])
+    return [value + 2.0 * (w * first + second)
+            for value, first, second in zip(vector, cross, cross2)]
+
+
+def _quat_multiply(a: list[float], b: list[float]) -> list[float]:
+    """Multiply two wxyz quaternions."""
+    w1, x1, y1, z1 = a
+    w2, x2, y2, z2 = b
+    return [w1*w2 - x1*x2 - y1*y2 - z1*z2,
+            w1*x2 + x1*w2 + y1*z2 - z1*y2,
+            w1*y2 - x1*z2 + y1*w2 + z1*x2,
+            w1*z2 + x1*y2 - y1*x2 + z1*w2]

@@ -120,6 +120,38 @@ class SafetyMonitorBackend:
             {"target_m": [x, y, z], "tolerance_m": tolerance, "max_steps": max_steps},
         )
 
+    def plan_arm_to_position(self, x, y, z) -> dict[str, Any]:
+        """Observe around a read-only simulator plan query before arm motion."""
+        values = (x, y, z)
+        if not all(isinstance(item, (int, float)) and not isinstance(item, bool)
+                   and math.isfinite(item) for item in values):
+            self._violate("invalid_plan_query")
+        raise_if_interrupted(self.interrupt_check)
+        before = self.observe()["robot0_eef_pos"]
+        callback = getattr(self.backend, "plan_arm_to_position", None)
+        if not callable(callback):
+            self._violate("planner_query_unavailable")
+        try:
+            result = callback(x, y, z)
+        except EmergencyInterrupt:
+            raise
+        except Exception as exc:
+            self._violate("planner_query_unavailable", error=f"{type(exc).__name__}: {exc}")
+        after = self.observe()["robot0_eef_pos"]
+        drift = float(np.linalg.norm(after - before))
+        if drift > 0.004:
+            self._violate("motion_during_plan_query", drift_m=drift)
+        if (not isinstance(result, dict)
+                or type(result.get("reachable")) is not bool
+                or type(result.get("planning_required")) is not bool
+                or not isinstance(result.get("status"), str)):
+            self._violate("invalid_plan_query_result")
+        self.events.append({"kind": "arm_plan_query", "target_m": list(values),
+                            "reachable": result["reachable"],
+                            "planning_required": result["planning_required"],
+                            "status": result["status"], "eef_drift_m": drift})
+        return result
+
     def set_gripper(self, command, *, settle_steps):
         if command not in (-1.0, 1.0) or settle_steps < 1:
             self._violate("invalid_gripper_command")

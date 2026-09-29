@@ -138,6 +138,8 @@ class RobosuiteRobotBackend:
                 "reward": result.reward,
                 "done": result.done,
                 "observation_sha256": observation_fingerprint(public),
+                **({"depth_recovery": result.info["depth_recovery"]}
+                   if "depth_recovery" in result.info else {}),
             }
         )
         return ActionResult(public, result.reward, result.done, dict(result.info))

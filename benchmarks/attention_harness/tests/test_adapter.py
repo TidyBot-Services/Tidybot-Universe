@@ -12,6 +12,7 @@ class FakeClient:
         self.closed = False
         self.last_action = None
         self.success = False
+        self.step_info = {"backend": "fake"}
 
     @staticmethod
     def _observation():
@@ -32,7 +33,7 @@ class FakeClient:
 
     def step(self, action):
         self.last_action = np.asarray(action)
-        return ClientStep(self._observation(), 0.0, False, {"backend": "fake"})
+        return ClientStep(self._observation(), 0.0, False, dict(self.step_info))
 
     def observe(self):
         return self._observation()
@@ -78,6 +79,17 @@ def test_action_validation_and_clipping() -> None:
         adapter.step(np.zeros(6))
     with pytest.raises(ValueError, match="finite"):
         adapter.step(np.full(7, np.nan))
+
+
+def test_depth_recovery_receipt_reaches_independent_trace() -> None:
+    adapter, client = make_adapter()
+    adapter.reset(101)
+    receipt = {"first_frame_sha256": "a" * 64, "repeat_frame_sha256": "b" * 64,
+               "simulation_time_unchanged": True, "qpos_unchanged": True}
+    client.step_info = {"depth_recovery": receipt,
+                        "depth_recovered_without_physics_step": True}
+    adapter.step(np.zeros(7))
+    assert adapter.trace[0]["depth_recovery"] == receipt
 
 
 def test_reference_trace_native_evaluator_and_close_are_delegated() -> None:

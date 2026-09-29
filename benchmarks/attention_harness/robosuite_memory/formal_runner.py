@@ -95,7 +95,7 @@ class RobosuiteFormalSuiteRunner:
         code = request.policy_code_path.read_text(encoding="utf-8")
         validate_generated_policy(code)
         started = time.monotonic()
-        deadline = started + request.overall_deadline_seconds
+        deadline = started + request.effective_attempt_deadline_seconds
         episode_dir = request.artifact_root / (
             f"{request.task_id}-seed{request.seed}-formal-{time.time_ns()}"
         )
@@ -245,7 +245,7 @@ class RobosuiteFormalSuiteRunner:
             "source_sha256_before": request.policy_sha256,
             "source_sha256_after": _digest(request.policy_code_path),
             "config_sha256_after": _digest(request.config_path),
-            "deadline_seconds": request.overall_deadline_seconds,
+            "deadline_seconds": request.effective_attempt_deadline_seconds,
             "run_id": request.run_id, "attempt_id": request.attempt_id,
             "elapsed_seconds": time.monotonic() - started,
         }

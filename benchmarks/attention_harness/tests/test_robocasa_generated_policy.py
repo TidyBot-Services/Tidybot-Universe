@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from benchmarks.attention_harness.robocasa_native.policy_sandbox import (
     GeneratedPolicyError, GeneratedPolicyTimeout, execute_generated_policy,
     validate_generated_policy,
 )
+from benchmarks.attention_harness.robosuite_memory.formal_sandbox import execute_formal_policy
 from benchmarks.attention_harness.tests.test_memory_v2 import _case, _trusted_for_revocation_test
 from benchmarks.attention_harness.robocasa_native.client import RobocasaSimClient
 from benchmarks.attention_harness.robocasa_native.agent_actions import AgentServerActionBackend
@@ -49,6 +51,8 @@ def test_generated_policy_worker_rpc_and_timeout():
     assert sdk.gripper.calls == 1
     with pytest.raises(GeneratedPolicyError):
         validate_generated_policy("import os\nos.system('true')")
+    with pytest.raises(GeneratedPolicyError, match="class definitions"):
+        validate_generated_policy("from robot_sdk import arm\nclass PlanRejected(Exception): pass\n")
     with pytest.raises(GeneratedPolicyTimeout):
         execute_generated_policy(
             code="from robot_sdk import gripper\nwhile True: pass\n",
@@ -66,6 +70,38 @@ def test_generated_policy_worker_rpc_and_timeout():
     )
     assert result.call_count == 2
     assert retrieved == ["known"]
+
+
+def test_formal_worker_returns_read_only_arm_plan_without_motion(tmp_path: Path):
+    class Arm:
+        def __init__(self):
+            self.queries = 0
+            self.motions = 0
+
+        def plan_to_position(self, x, y, z):
+            self.queries += 1
+            return {"planning_required": True, "reachable": False,
+                    "status": "curobo_no_trajectory"}
+
+        def move_to_position(self, *args, **kwargs):
+            self.motions += 1
+
+    class SDK:
+        def __init__(self):
+            self.arm = Arm()
+
+    sdk = SDK()
+    outcome = execute_formal_policy(
+        code=("from robot_sdk import arm\n"
+              "plan = arm.plan_to_position(0.56, 0.2, 0.3)\n"
+              "if plan['reachable']: arm.move_to_position(0.56, 0.2, 0.3)\n"),
+        sdk=sdk, context={}, deadline=time.monotonic() + 5,
+        stderr_path=tmp_path / "policy.stderr",
+    )
+    assert outcome.status == "completed"
+    assert outcome.call_count == 1
+    assert sdk.arm.queries == 1
+    assert sdk.arm.motions == 0
 
 
 def test_generated_policy_uses_trusted_memory_with_service_grant(tmp_path: Path):

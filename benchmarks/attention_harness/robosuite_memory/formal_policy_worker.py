@@ -14,7 +14,7 @@ import types
 
 OPERATIONS = {
     "sensors": {"get_observation", "find_objects", "pixel_to_world"},
-    "arm": {"move_delta", "move_to_position"},
+    "arm": {"move_delta", "move_to_position", "plan_to_position"},
     "gripper": {"open", "close"},
     "base": {"move_delta"},
 }

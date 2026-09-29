@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -54,6 +55,8 @@ def run_sim_gt_attention(
     assistance_mode: AssistanceMode | str = AssistanceMode.BENCHMARK_PROXY,
     human_deadline_seconds: float | None = None,
     attempt_budget_seconds: float = 300.0,
+    total_execution_seconds: float | None = None,
+    whole_case_deadline_monotonic: float | None = None,
     runner_boundary_mode: str = "trusted_dev",
     sleeper: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.time,
@@ -79,6 +82,20 @@ def run_sim_gt_attention(
         raise ValueError("human deadline must be positive and at most 600 seconds")
     if isinstance(attempt_budget_seconds, bool) or not isinstance(attempt_budget_seconds, (int, float)) or not 1 <= attempt_budget_seconds <= 1800:
         raise ValueError("attempt execution budget must be 1–1800 seconds")
+    if total_execution_seconds is not None and (
+        isinstance(total_execution_seconds, bool)
+        or not isinstance(total_execution_seconds, (int, float))
+        or not math.isfinite(total_execution_seconds)
+        or total_execution_seconds <= 0
+    ):
+        raise ValueError("total execution budget must be finite and positive")
+    if whole_case_deadline_monotonic is not None and (
+        isinstance(whole_case_deadline_monotonic, bool)
+        or not isinstance(whole_case_deadline_monotonic, (int, float))
+        or not math.isfinite(whole_case_deadline_monotonic)
+        or whole_case_deadline_monotonic <= monotonic()
+    ):
+        raise ValueError("whole-case deadline must be finite and in the future")
     validate_seed(seed, allow_heldout=False)
     if any(isinstance(x, bool) or not isinstance(x, int) or x < 0
            for x in (max_attempts, assistance_credits, token_limit)) or max_attempts < 1:
@@ -147,12 +164,16 @@ def run_sim_gt_attention(
         execution_target=f"{suite}_sim",
         budget=AssistanceBudget(assistance_credits=assistance_credits,
                                 token_limit=token_limit,
-                                execution_seconds=float(attempt_budget_seconds) * max_attempts),
+                                execution_seconds=(float(total_execution_seconds)
+                                                   if total_execution_seconds is not None
+                                                   else float(attempt_budget_seconds) * max_attempts)),
         created_at=clock(),
     ))
     control_store.transition_run(unified_run_id, RunStatus.RUNNING,
                                  event_key=f"start:{unified_run_id}")
     interrupted = lambda: (control_store.interrupt_status(unified_run_id) or {}).get("state") == "requested"
+    wall_expired = lambda: (whole_case_deadline_monotonic is not None
+                            and monotonic() >= whole_case_deadline_monotonic)
     # A later formal run may reuse the source run's authoritative SQLite store.
     # Its candidate evidence URIs are relative to that source run's attempts/.
     # Keep the original run layout for fresh stores and resolve the source
@@ -185,6 +206,9 @@ def run_sim_gt_attention(
             decisions.append({"before_attempt": 0, "action": "use_demo", "reason": initial.reason,
                               "demo_manifest_sha256": demo_receipt["manifest_sha256"]})
     for index in range(max_attempts):
+        if wall_expired():
+            stopped_reason = "whole_case_deadline"
+            break
         if interrupted():
             stopped_reason = "emergency_interrupt"
             break
@@ -208,8 +232,10 @@ def run_sim_gt_attention(
                 attention_run_id=unified_run_id,
                 attention_attempt_index=index,
                 attention_finalize_run=False,
-                attention_run_budget_seconds=attempt_budget_seconds * max_attempts,
-                interrupt_check=interrupted,
+                attention_run_budget_seconds=(total_execution_seconds
+                                             if total_execution_seconds is not None
+                                             else attempt_budget_seconds * max_attempts),
+                interrupt_check=lambda: interrupted() or wall_expired(),
             )
         except Exception as exc:
             reason = f"{type(exc).__name__}: {exc}"[:300]
@@ -260,6 +286,9 @@ def run_sim_gt_attention(
                 "monitor_signals": dict(signals),
             })
             stopped_reason = "independent_safety_stop"
+            break
+        if wall_expired():
+            stopped_reason = "whole_case_deadline"
             break
         if runner_boundary_mode == "formal" and (
             result.get("status") != "completed"

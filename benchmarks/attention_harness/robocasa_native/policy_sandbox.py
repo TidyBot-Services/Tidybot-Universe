@@ -21,7 +21,7 @@ from ..sandbox_worker import SAFE_BUILTINS
 
 ALLOWED_CALLS = {
     "sensors": {"get_observation", "find_objects", "pixel_to_world"},
-    "arm": {"move_delta", "move_to_position"},
+    "arm": {"move_delta", "move_to_position", "plan_to_position"},
     "gripper": {"open", "close"},
     "base": {"move_delta"},
 }
@@ -40,6 +40,9 @@ class GeneratedPolicyTimeout(TimeoutError):
 
 
 class _Validator(ast.NodeVisitor):
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        raise GeneratedPolicyError("class definitions are unavailable in the policy sandbox")
+
     def visit_Import(self, node: ast.Import) -> None:
         raise GeneratedPolicyError("plain imports are forbidden")
 
