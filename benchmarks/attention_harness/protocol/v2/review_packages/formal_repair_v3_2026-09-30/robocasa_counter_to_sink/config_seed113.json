@@ -1,0 +1,48 @@
+{
+  "agent_service": {
+    "revision": "b6792de3b3deb91a5e455febe98a6b9f9683da15",
+    "tree_sha256": "2e3db6160365aee2ea8f92ed9600ca82839f994895047a169dbd9226ef5e9b93"
+  },
+  "camera_names": [
+    "base_camera",
+    "wrist_camera"
+  ],
+  "object_set_id": "objects:8542c9f6a49bd059b0a5",
+  "perception_mode": "sim_gt",
+  "port_offset": 800,
+  "safety_limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "scene_id": "scene:0f984be703c64782e2f8",
+  "schema_version": "attentionbench.robocasa-formal-config.v3",
+  "seed": 113,
+  "sim_runtime": {
+    "mani_skill_files": {
+      "envs/tasks/mobile_manipulation/robocasa/kitchen.py": "efd64ab206581010a8fa54ca4700bf523d66fdb7670d847d1c3258ee57b6d7a9",
+      "utils/scene_builder/robocasa/fixtures/counter.py": "a02b00e980dff7225f67d359981aca992290419a97b0a1a67a0c4cfc2575c0a2",
+      "utils/scene_builder/robocasa/scene_builder.py": "39b5b2cfa7450edfb107e03af69a4d93d4c42bd4f8abd2b3cc0af17f3a06b3e4",
+      "utils/scene_builder/robocasa/utils/object_utils.py": "9748d629476aaee0bb90cdd466a775f91e12e9f391dd05b48b574493ae99fd46",
+      "utils/scene_builder/robocasa/utils/placement_samplers.py": "8a77323c0933735bfe7acc72df9fa772a07e9846dd406bb479e99c8994cc0b12"
+    },
+    "mani_skill_python_tree_sha256": "d93b88c3b28ed0fb119eeaddda129f72bd2589e41698566fb4ddf21a58525095",
+    "mani_skill_root": "/home/truares/miniconda3/envs/maniskill/lib/python3.11/site-packages/mani_skill",
+    "mani_skill_version": "3.0.0b22",
+    "python_sha256": "f33fe7acf4552a82f53158d00f94fd10a082bb454a1779c3b7f207f7369ef2fe",
+    "python_version": "3.11.15",
+    "task_module_path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks/__init__.py"
+  },
+  "sim_service": {
+    "revision": "98f0d375d168310a4b9ac8d718682110d22c00fd",
+    "tree_sha256": "0369531ebcf04ab53d3ed273e40fa3ebfc4ac2c93aea6b485a92a8f3f0ae6135"
+  },
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "task_prompt": "pick the can from the counter and place it in the sink",
+  "task_source": {
+    "revision": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "counts_for_chain_or_profile": false,
+  "formal_eligible": false,
+  "hard_stop": "Any Safety unknown, identity/artifact mismatch, missing native Boolean, or unresolved depth issue stops progression.",
+  "heldout_runs": 0,
+  "native_success_minimum": null,
+  "old_50_unchanged": true,
+  "order": [
+    "review_package",
+    "two_task_5_seed_chain",
+    "50_slot_profile",
+    "independent_admission"
+  ],
+  "schema_version": "attentionbench.formal-base-repair-package-decision.v3",
+  "seven_condition_effect_runs": 0,
+  "status": "pending_independent_one_package_review"
+}

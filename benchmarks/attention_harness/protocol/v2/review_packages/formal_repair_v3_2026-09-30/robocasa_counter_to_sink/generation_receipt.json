@@ -1,0 +1,11 @@
+{
+  "counts_for_chain_or_profile": false,
+  "engineering_evidence": {
+    "depth_bias_design_audit_sha256": "c2efc0ba6ea0e198d78c72d1058716d23b562d3abb8808c29aa197ad7841e6b1",
+    "robocasa_six_blocker_audit_sha256": "ea1e02cf251bfdfa2cc0eb16aa24781f58589f3245a620566b7022dc1f903876"
+  },
+  "hypothesis": "Public fixed-base policy with exact target instance and fail-closed action outcomes.",
+  "schema_version": "attentionbench.formal-base-repair-generation-receipt.v3",
+  "sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-repair-v3/benchmarks/attention_harness/protocol/v2/review_packages/formal_repair_v3_2026-09-30/robocasa_counter_to_sink/policy.py"
+}
