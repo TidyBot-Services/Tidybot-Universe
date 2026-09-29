@@ -38,6 +38,21 @@ def advisor_reply(request):
     })
 
 
+def test_whole_case_deadline_stops_before_any_simulator_attempt(tmp_path):
+    ticks = iter((0.0, 1.0))
+    result = run_sim_gt_attention(
+        suite="robosuite", task_id="cube_lift", seed=101,
+        artifact_root=tmp_path, policy_id="autonomous",
+        attempt_executor=lambda **_: pytest.fail("simulator attempt should not start"),
+        max_attempts=4, assistance_credits=0, token_limit=4096,
+        attempt_budget_seconds=120, total_execution_seconds=300,
+        whole_case_deadline_monotonic=0.5, monotonic=lambda: next(ticks),
+        runner_boundary_mode="formal",
+    )
+    assert result["stopped_reason"] == "whole_case_deadline"
+    assert result["attempts"] == []
+
+
 def test_live_human_hint_reaches_next_attempt_and_records_execution(tmp_path):
     store_path = tmp_path / "attention.sqlite3"
     store = AttentionStore(store_path)

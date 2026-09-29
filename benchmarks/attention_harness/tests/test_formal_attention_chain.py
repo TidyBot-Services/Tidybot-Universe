@@ -44,7 +44,9 @@ class FakeFormalRunner:
                           "status": "completed", "timestamp": 1.0}], **identity},
             "safety": {"source": "independent_safety_monitor", "unsafe_attempts": 0,
                        **identity},
-            "sandbox_receipt": {"elapsed_seconds": 0.1, "service_stop": (
+            "sandbox_receipt": {"elapsed_seconds": 0.1,
+                                "deadline_seconds": request.effective_attempt_deadline_seconds,
+                                "service_stop": (
                 {"reason": "normal_cleanup", "leader_reaped": True, "process_group_gone": True}
                 if self.suite == "robosuite" else
                 {"reason": "normal_cleanup", "services": {
@@ -72,6 +74,85 @@ class FakeFormalRunner:
         }
         (episode / "result.json").write_text(json.dumps(result))
         return result
+
+
+def test_formal_chain_budget_guard_caps_each_attempt_without_changing_m1_identity(tmp_path):
+    code = tmp_path / "policy.py"
+    code.write_text("pass\n")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    runner = FakeFormalRunner("robosuite")
+    result = run_formal_attention(
+        suite="robosuite", task_id="cube_lift", seed=101,
+        artifact_root=tmp_path / "runs", policy_id="autonomous",
+        policy_code_path=code,
+        approved_policy_sha256=hashlib.sha256(code.read_bytes()).hexdigest(),
+        config_path=config,
+        approved_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+        runner=runner, max_attempts=4, assistance_credits=0,
+        overall_deadline_seconds=300,
+        formal_attempt_deadline_seconds=120, formal_run_wall_seconds=300,
+    )
+    assert len(runner.requests) == 4
+    assert all(request.overall_deadline_seconds == 300 for request in runner.requests)
+    assert all(0 < request.attempt_deadline_seconds <= 120 for request in runner.requests)
+    assert result["budget_guard"]["within_whole_case_wall_limit"] is True
+    assert result["formal_eligible"] is False
+
+
+def test_formal_chain_budget_guard_rejects_wrong_sandbox_deadline_receipt(tmp_path):
+    class WrongDeadlineRunner(FakeFormalRunner):
+        def execute(self, request):
+            result = super().execute(request)
+            ref = result["artifacts"]["sandbox_receipt"]
+            path = Path(ref["uri"])
+            receipt = json.loads(path.read_text())
+            receipt["deadline_seconds"] = 300
+            path.write_text(json.dumps(receipt))
+            ref["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            return result
+
+    code = tmp_path / "policy.py"
+    code.write_text("pass\n")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    with pytest.raises(RuntimeError, match="per-attempt deadline"):
+        run_formal_attention(
+            suite="robosuite", task_id="cube_lift", seed=101,
+            artifact_root=tmp_path / "runs", policy_id="autonomous",
+            policy_code_path=code,
+            approved_policy_sha256=hashlib.sha256(code.read_bytes()).hexdigest(),
+            config_path=config,
+            approved_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+            runner=WrongDeadlineRunner("robosuite"), max_attempts=4,
+            overall_deadline_seconds=300,
+            formal_attempt_deadline_seconds=120, formal_run_wall_seconds=300,
+        )
+
+
+@pytest.mark.parametrize("attempt,wall,max_attempts", [
+    (121, 300, 4), (120, 301, 4), (120, 300, 5),
+    (float("nan"), 300, 4), (True, 300, 4),
+])
+def test_formal_chain_budget_guard_rejects_unapproved_limits(
+    tmp_path, attempt, wall, max_attempts,
+):
+    code = tmp_path / "policy.py"
+    code.write_text("pass\n")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    with pytest.raises(ValueError, match="budget guard"):
+        run_formal_attention(
+            suite="robosuite", task_id="cube_lift", seed=101,
+            artifact_root=tmp_path / "runs", policy_id="autonomous",
+            policy_code_path=code,
+            approved_policy_sha256=hashlib.sha256(code.read_bytes()).hexdigest(),
+            config_path=config,
+            approved_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+            runner=FakeFormalRunner("robosuite"), max_attempts=max_attempts,
+            overall_deadline_seconds=300,
+            formal_attempt_deadline_seconds=attempt, formal_run_wall_seconds=wall,
+        )
 
 
 def test_interrupt_after_formal_completion_is_reported_too_late(tmp_path):

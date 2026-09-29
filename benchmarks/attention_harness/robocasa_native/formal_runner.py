@@ -136,7 +136,7 @@ class RobocasaFormalSuiteRunner:
         code = request.policy_code_path.read_text(encoding="utf-8")
         validate_generated_policy(code)
         started = time.monotonic()
-        deadline = started + request.overall_deadline_seconds
+        deadline = started + request.effective_attempt_deadline_seconds
         episode_dir = request.artifact_root / (
             f"{request.task_id}-seed{request.seed}-formal-{time.time_ns()}"
         )
@@ -173,8 +173,9 @@ class RobocasaFormalSuiteRunner:
                 client.assert_task()
                 action = AgentServerActionBackend(
                     base_url=services.agent_url, simulator_attested=True,
+                    sim_url=services.sim_url,
                     holder=f"formal-{episode_dir.name}",
-                    timeout_seconds=min(90.0, request.overall_deadline_seconds),
+                    timeout_seconds=min(90.0, request.effective_attempt_deadline_seconds),
                     poll_seconds=0.1,
                 )
                 action.set_episode_deadline(deadline)
@@ -298,6 +299,8 @@ class RobocasaFormalSuiteRunner:
                 run_id=request.run_id,
             )
         cancellation_receipts = [] if action is None else action.cancellation_receipts
+        planned_motion_receipts = [] if action is None else action.planned_motion_receipts
+        plan_query_receipts = [] if action is None else action.plan_query_receipts
         sandbox_path = _write_json(episode_dir / "sandbox_receipt.json", {
             "schema_version": "attentionbench.formal-sandbox-receipt.v1",
             "probe": sandbox_probe, "worker": None if outcome is None else outcome.__dict__,
@@ -305,10 +308,12 @@ class RobocasaFormalSuiteRunner:
             "sim_service": config["sim_service"], "agent_service": config["agent_service"],
             "task_source": config["task_source"], "sim_runtime": config["sim_runtime"],
             "action_cancellation_receipts": cancellation_receipts,
+            "planned_motion_receipts": planned_motion_receipts,
+            "plan_query_receipts": plan_query_receipts,
             "source_sha256_before": request.policy_sha256,
             "source_sha256_after": _digest(request.policy_code_path),
             "config_sha256_after": _digest(request.config_path),
-            "deadline_seconds": request.overall_deadline_seconds,
+            "deadline_seconds": request.effective_attempt_deadline_seconds,
             "run_id": request.run_id, "attempt_id": request.attempt_id,
             "elapsed_seconds": time.monotonic() - started,
         })

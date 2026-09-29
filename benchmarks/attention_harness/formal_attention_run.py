@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import threading
 import time
 from pathlib import Path
@@ -38,6 +39,8 @@ def run_formal_attention(
     entry_lock: dict[str, Any] | None = None,
     approved_policy_config_sha256: str | None = None,
     public_lift_progress_check: bool = False,
+    formal_attempt_deadline_seconds: float | None = None,
+    formal_run_wall_seconds: float | None = None,
     **scheduler_options: Any,
 ) -> dict[str, Any]:
     """Use one approved source/config version for every scheduled attempt."""
@@ -50,6 +53,27 @@ def run_formal_attention(
         artifact_root=artifact_root, overall_deadline_seconds=overall_deadline_seconds,
     )
     template.validate()
+    budget_guard = (formal_attempt_deadline_seconds is not None
+                    or formal_run_wall_seconds is not None)
+    if budget_guard:
+        max_attempts = scheduler_options.get("max_attempts", 3)
+        if (policy_id != "autonomous" or formal_attempt_deadline_seconds is None
+                or formal_run_wall_seconds is None
+                or isinstance(formal_attempt_deadline_seconds, bool)
+                or not isinstance(formal_attempt_deadline_seconds, (int, float))
+                or not math.isfinite(formal_attempt_deadline_seconds)
+                or isinstance(formal_run_wall_seconds, bool)
+                or not isinstance(formal_run_wall_seconds, (int, float))
+                or not math.isfinite(formal_run_wall_seconds)
+                or not 0 < formal_attempt_deadline_seconds <= 120
+                or not 0 < formal_run_wall_seconds <= 300
+                or formal_run_wall_seconds != overall_deadline_seconds
+                or isinstance(max_attempts, bool)
+                or not isinstance(max_attempts, int)
+                or not 1 <= max_attempts <= 4):
+            raise ValueError("formal v2.1 chain requires autonomous 120/300-second budget guard")
+    case_deadline = (time.monotonic() + formal_run_wall_seconds
+                     if budget_guard else None)
     if entry_lock is not None:
         lock = dict(entry_lock)
         digest = lock.pop("sha256", None)
@@ -89,6 +113,8 @@ def run_formal_attention(
                               if scheduler_options.get("demo_prior") else None),
         "memory_context": memory_context,
         "overall_deadline_seconds": overall_deadline_seconds,
+        "formal_attempt_deadline_seconds": formal_attempt_deadline_seconds,
+        "formal_run_wall_seconds": formal_run_wall_seconds,
         "entry_sha256": entry_lock["sha256"] if entry_lock else None,
     }
     scheduler_config_sha256 = hashlib.sha256(json.dumps(
@@ -111,6 +137,13 @@ def run_formal_attention(
             raise ValueError("formal Memory context disagrees with approved simulator config")
 
     def execute(**attempt: Any) -> dict[str, Any]:
+        attempt_deadline = None
+        if case_deadline is not None:
+            # Leave ten seconds for Service reaping and artifact finalization.
+            remaining = case_deadline - time.monotonic() - 10.0
+            if remaining <= 0:
+                raise TimeoutError("whole-case wall deadline leaves no safe attempt window")
+            attempt_deadline = min(formal_attempt_deadline_seconds, remaining)
         run_id = attempt["attention_run_id"]
         index = attempt["attention_attempt_index"]
         attempt_id = f"attempt:{run_id.removeprefix('run:')}:{index}"
@@ -171,6 +204,7 @@ def run_formal_attention(
             attention_input=attention_input,
             entry_sha256=entry_lock["sha256"] if entry_lock else None,
             entry_lock=dict(entry_lock) if entry_lock else None,
+            attempt_deadline_seconds=attempt_deadline,
         )
         try:
             formal = run_with_formal_boundary(request, runner=runner)
@@ -190,6 +224,12 @@ def run_formal_attention(
         elapsed = receipt.get("elapsed_seconds")
         if isinstance(elapsed, bool) or not isinstance(elapsed, (int, float)) or elapsed < 0:
             raise RuntimeError("formal sandbox elapsed time is invalid")
+        if budget_guard:
+            declared = receipt.get("deadline_seconds")
+            if (isinstance(declared, bool) or not isinstance(declared, (int, float))
+                    or not math.isfinite(declared)
+                    or not math.isclose(declared, attempt_deadline, rel_tol=0, abs_tol=1e-6)):
+                raise RuntimeError("formal sandbox did not attest the per-attempt deadline")
         native_evaluated = formal["native_evaluator"].get("evaluated") is True
         sdk_events = trace.get("sdk_events")
         if not isinstance(sdk_events, list):
@@ -262,7 +302,11 @@ def run_formal_attention(
     summary = run_sim_gt_attention(
         suite=suite, task_id=task_id, seed=seed, artifact_root=artifact_root,
         policy_id=policy_id, attempt_executor=execute,
-        runner_boundary_mode="formal", attempt_budget_seconds=overall_deadline_seconds,
+        runner_boundary_mode="formal",
+        attempt_budget_seconds=(formal_attempt_deadline_seconds if budget_guard
+                                else overall_deadline_seconds),
+        total_execution_seconds=formal_run_wall_seconds,
+        whole_case_deadline_monotonic=case_deadline,
         memory_applicability_context=memory_context,
         **scheduler_options,
     )
@@ -278,10 +322,19 @@ def run_formal_attention(
     summary["dev_hypothesis"] = {"status": "provided" if dev_hypothesis else "unknown",
                                   "content": dev_hypothesis.strip() if dev_hypothesis else None,
                                   "evidence": dev_hypothesis_evidence}
-    summary["runner_boundary"]["overall_deadline_certified"] = all(
+    wall_elapsed = time.monotonic() - (case_deadline - formal_run_wall_seconds) if budget_guard else None
+    summary["budget_guard"] = {
+        "attempt_deadline_seconds_max": formal_attempt_deadline_seconds,
+        "whole_case_wall_seconds_max": formal_run_wall_seconds,
+        "whole_case_wall_elapsed_seconds": wall_elapsed,
+        "within_whole_case_wall_limit": wall_elapsed <= formal_run_wall_seconds if budget_guard else None,
+    }
+    if budget_guard and wall_elapsed > formal_run_wall_seconds:
+        summary["formal_blockers"].append("whole-case wall limit exceeded")
+    summary["runner_boundary"]["overall_deadline_certified"] = bool(summary["attempts"]) and all(
         item["formal_runner_result"]["sandbox"]["deadline_enforced"]
         for item in summary["attempts"]
-    )
+    ) and (not budget_guard or wall_elapsed <= formal_run_wall_seconds)
     path = Path(summary["artifact_dir"]) / "attention_run.json"
     path.write_text(json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
     return summary

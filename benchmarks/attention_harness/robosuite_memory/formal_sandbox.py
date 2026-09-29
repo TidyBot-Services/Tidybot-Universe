@@ -18,7 +18,7 @@ from ..robocasa_native.policy_sandbox import validate_generated_policy
 
 _OPERATIONS = {
     "sensors": {"get_observation", "find_objects", "pixel_to_world"},
-    "arm": {"move_delta", "move_to_position"},
+    "arm": {"move_delta", "move_to_position", "plan_to_position"},
     "gripper": {"open", "close"},
     "base": {"move_delta"},
 }
@@ -176,7 +176,10 @@ def execute_formal_policy(*, code: str, sdk: Any, context: dict[str, Any],
                         result = getattr(getattr(sdk, group), operation)(*args, **kwargs)
                         # ActionResult can carry evaluator-adjacent service info.
                         # Policy code only needs completion, never that object.
-                        value = None if group in {"arm", "gripper", "base"} else _json_safe(result)
+                        value = (_json_safe(result)
+                                 if group == "arm" and operation == "plan_to_position"
+                                 else None if group in {"arm", "gripper", "base"}
+                                 else _json_safe(result))
                         response = {"ok": True, "value": value}
                     except Exception as exc:
                         response = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:1000]}

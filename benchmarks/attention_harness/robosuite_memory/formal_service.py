@@ -60,6 +60,9 @@ class DedicatedRobosuiteService:
         environment["TIDYBOT_INVALID_DEPTH_DIR"] = str(
             (self.log_path.parent / "invalid_depth_frames").resolve()
         )
+        environment["TIDYBOT_RECEIPT_DIR"] = str(
+            (self.log_path.parent / "action_receipts").resolve()
+        )
         environment.pop("PYTHONPATH", None)
         origin = subprocess.check_output(
             [sys.executable, "-c", "import robosuite_sim; print(robosuite_sim.__file__)"],

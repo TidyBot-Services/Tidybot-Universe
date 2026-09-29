@@ -17,6 +17,7 @@ import numpy as np
 
 from tidybot_sdk import RobotBackend
 from ..core.control import EmergencyInterrupt, raise_if_interrupted
+from .agent_actions import ReadOnlyArmPlanRejected
 
 
 class SafetyViolation(RuntimeError):
@@ -84,6 +85,12 @@ class SafetyMonitorBackend:
             raise_if_interrupted(self.interrupt_check)
         except EmergencyInterrupt:
             raise
+        except ReadOnlyArmPlanRejected:
+            # The adapter verified a typed SDK rejection before trajectory
+            # execution. Re-sample state and let the policy record a native
+            # failure; a completed partial move never takes this path.
+            self.observe()
+            raise
         except TimeoutError as exc:
             self.violations.append({
                 "kind": "action_outcome_unknown", "event_index": len(self.events),
@@ -91,6 +98,10 @@ class SafetyMonitorBackend:
             })
             raise
         except Exception as exc:
+            payload = getattr(exc, "payload", None)
+            if isinstance(payload, dict) and payload.get("action_executed") is True and payload.get("receipt"):
+                self._violate("observation_unavailable_after_executed_action", action=kind,
+                              action_receipt=payload["receipt"], error=f"{type(exc).__name__}: {exc}")
             self._violate("action_outcome_unknown", action=kind, error=f"{type(exc).__name__}: {exc}")
         self.observe()
         return value
@@ -119,6 +130,38 @@ class SafetyMonitorBackend:
             lambda: self.backend.move_arm_to_position(x, y, z, tolerance=tolerance, max_steps=max_steps),
             {"target_m": [x, y, z], "tolerance_m": tolerance, "max_steps": max_steps},
         )
+
+    def plan_arm_to_position(self, x, y, z) -> dict[str, Any]:
+        """Observe around a read-only simulator plan query before arm motion."""
+        values = (x, y, z)
+        if not all(isinstance(item, (int, float)) and not isinstance(item, bool)
+                   and math.isfinite(item) for item in values):
+            self._violate("invalid_plan_query")
+        raise_if_interrupted(self.interrupt_check)
+        before = self.observe()["robot0_eef_pos"]
+        callback = getattr(self.backend, "plan_arm_to_position", None)
+        if not callable(callback):
+            self._violate("planner_query_unavailable")
+        try:
+            result = callback(x, y, z)
+        except EmergencyInterrupt:
+            raise
+        except Exception as exc:
+            self._violate("planner_query_unavailable", error=f"{type(exc).__name__}: {exc}")
+        after = self.observe()["robot0_eef_pos"]
+        drift = float(np.linalg.norm(after - before))
+        if drift > 0.004:
+            self._violate("motion_during_plan_query", drift_m=drift)
+        if (not isinstance(result, dict)
+                or type(result.get("reachable")) is not bool
+                or type(result.get("planning_required")) is not bool
+                or not isinstance(result.get("status"), str)):
+            self._violate("invalid_plan_query_result")
+        self.events.append({"kind": "arm_plan_query", "target_m": list(values),
+                            "reachable": result["reachable"],
+                            "planning_required": result["planning_required"],
+                            "status": result["status"], "eef_drift_m": drift})
+        return result
 
     def set_gripper(self, command, *, settle_steps):
         if command not in (-1.0, 1.0) or settle_steps < 1:

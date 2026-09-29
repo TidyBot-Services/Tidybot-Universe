@@ -35,6 +35,12 @@ class FormalRunRequest:
     attention_input: dict[str, Any] | None = None
     entry_sha256: str | None = None
     entry_lock: dict[str, Any] | None = None
+    attempt_deadline_seconds: float | None = None
+
+    @property
+    def effective_attempt_deadline_seconds(self) -> float:
+        return (self.overall_deadline_seconds if self.attempt_deadline_seconds is None
+                else self.attempt_deadline_seconds)
 
     def validate(self) -> None:
         if (self.run_id is None) != (self.attempt_id is None):
@@ -67,6 +73,13 @@ class FormalRunRequest:
                 or not math.isfinite(self.overall_deadline_seconds)
                 or self.overall_deadline_seconds <= 0):
             raise ValueError("formal runner requires a finite positive overall deadline")
+        if self.attempt_deadline_seconds is not None and (
+            isinstance(self.attempt_deadline_seconds, bool)
+            or not isinstance(self.attempt_deadline_seconds, (int, float))
+            or not math.isfinite(self.attempt_deadline_seconds)
+            or not 0 < self.attempt_deadline_seconds <= self.overall_deadline_seconds
+        ):
+            raise ValueError("formal attempt deadline must be finite and within the entry deadline")
         if not self.policy_code_path.is_file():
             raise ValueError("formal policy source is missing")
         actual = hashlib.sha256(self.policy_code_path.read_bytes()).hexdigest()

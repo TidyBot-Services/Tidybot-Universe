@@ -1,0 +1,13 @@
+{
+  "assistance_credits": 1,
+  "assistance_mode": "benchmark_proxy",
+  "attempt_deadline_seconds": 120,
+  "attention_policy": "autonomous",
+  "human_deadline_seconds": 30,
+  "max_attempts": 4,
+  "no_heldout_or_effect_matrix": true,
+  "overall_deadline_seconds": 300,
+  "schema_version": "attentionbench.formal-base-repair-budget.v4",
+  "token_limit": 4096,
+  "whole_case_wall_seconds": 300
+}

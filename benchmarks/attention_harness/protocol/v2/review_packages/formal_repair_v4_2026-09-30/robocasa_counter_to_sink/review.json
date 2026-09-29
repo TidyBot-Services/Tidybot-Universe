@@ -1,0 +1,14 @@
+{
+  "approval_status": "pending_one_package_review",
+  "config_count": 25,
+  "native_success_minimum": null,
+  "old_invalids_reused": false,
+  "policy_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+  "schema_version": "attentionbench.formal-base-repair-review.v4",
+  "seed_range": [
+    101,
+    125
+  ],
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}
