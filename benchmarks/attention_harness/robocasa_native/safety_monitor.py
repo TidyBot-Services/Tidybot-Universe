@@ -98,6 +98,10 @@ class SafetyMonitorBackend:
             })
             raise
         except Exception as exc:
+            payload = getattr(exc, "payload", None)
+            if isinstance(payload, dict) and payload.get("action_executed") is True and payload.get("receipt"):
+                self._violate("observation_unavailable_after_executed_action", action=kind,
+                              action_receipt=payload["receipt"], error=f"{type(exc).__name__}: {exc}")
             self._violate("action_outcome_unknown", action=kind, error=f"{type(exc).__name__}: {exc}")
         self.observe()
         return value

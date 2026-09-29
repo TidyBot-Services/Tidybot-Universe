@@ -128,7 +128,18 @@ class RobosuiteRobotBackend:
         if not np.isfinite(array).all():
             raise ValueError("action must contain only finite values")
         clipped = np.clip(array, self._action_low, self._action_high)
-        result = self._client.step(clipped)
+        try:
+            result = self._client.step(clipped)
+        except Exception as exc:
+            payload = getattr(exc, "payload", None)
+            if isinstance(payload, dict):
+                receipt = payload.get("receipt") or {}
+                self.trace.append({"step": len(self.trace), "action": receipt.get("action", clipped.tolist()),
+                    "reward": receipt.get("reward"), "done": receipt.get("done"),
+                    "action_executed": payload.get("action_executed"),
+                    "action_receipt": receipt, "request_id": getattr(exc, "request_id", None),
+                    "service_error": payload, "status": "failed"})
+            raise
         self._last_observation = result.observation
         public = copy_observation(result.observation)
         self.trace.append(
@@ -137,6 +148,8 @@ class RobosuiteRobotBackend:
                 "action": clipped.tolist(),
                 "reward": result.reward,
                 "done": result.done,
+                "action_receipt": getattr(result, "receipt", None),
+                "request_id": getattr(result, "request_id", None),
                 "observation_sha256": observation_fingerprint(public),
                 **({"depth_recovery": result.info["depth_recovery"]}
                    if "depth_recovery" in result.info else {}),

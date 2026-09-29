@@ -1,0 +1,14 @@
+{
+  "schema_version": "tidybot.robosuite-service-lock.v1",
+  "repository": "https://github.com/TidyBot-Services/robosuite_sim.git",
+  "revision": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+  "package_version": "1.1.0",
+  "runtime": {
+    "robosuite": "1.5.1",
+    "mujoco": "3.3.0",
+    "numpy": "1.26.4"
+  },
+  "client_sha256": "868c10828bcb836c1b9fffcdb65fb0bfb30b9ae215b611ad4c18af717711f67e",
+  "historical_root_cause": "unknown",
+  "risk_status": "uncontrolled_pending_all_four_acceptance_checks"
+}

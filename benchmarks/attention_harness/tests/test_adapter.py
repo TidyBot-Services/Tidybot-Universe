@@ -109,3 +109,24 @@ def test_attach_and_refresh_do_not_reset_active_session() -> None:
     assert observation["robot0_eef_pos"].tolist() == [0.0, 0.0, 0.0]
     assert adapter.action_shape == (7,)
     assert adapter.refresh()["robot0_joint_pos"].shape == (7,)
+
+
+def test_executed_http_failure_keeps_receipt_in_trace_and_safety():
+    from robosuite_sim.client import ServiceError
+    from benchmarks.attention_harness.robocasa_native.safety_monitor import SafetyMonitorBackend, SafetyViolation
+    adapter, client = make_adapter()
+    adapter.reset(101)
+    receipt = {'action': [0.0]*6+[-1.0], 'reward': 2.5, 'done': True, 'action_executed': True}
+    error = ServiceError('depth failed', payload={'action_executed': True, 'receipt': receipt,
+                         'stop': {'environment_closed': True}}, status=500)
+    error.request_id = 'failed-request'
+    def fail(action):
+        raise error
+    client.step = fail
+    monitor = SafetyMonitorBackend(adapter)
+    with pytest.raises(SafetyViolation):
+        monitor.set_gripper(-1.0, settle_steps=1)
+    assert adapter.trace[0]['action_receipt'] == receipt
+    assert adapter.trace[0]['request_id'] == 'failed-request'
+    assert monitor.violations[0]['kind'] == 'observation_unavailable_after_executed_action'
+    assert monitor.violations[0]['action_receipt'] == receipt

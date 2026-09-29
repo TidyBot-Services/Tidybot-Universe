@@ -12,6 +12,8 @@ from collections import Counter
 from itertools import product
 from pathlib import Path
 
+from benchmarks.attention_harness.protocol.v2.depth_recovery_evidence import verify_recovery
+
 ARTIFACTS = {
     "native_result": "native_result.json",
     "safety": "safety.json",
@@ -32,7 +34,8 @@ def identity(row):
     return tuple(row.get(k) for k in ("suite", "task_id", "seed", "condition"))
 
 
-def assess(plan_path, ledger_path, expected_plan_sha, expected_ledger_sha):
+def assess(plan_path, ledger_path, expected_plan_sha, expected_ledger_sha,
+           recovery_review_path=None, expected_recovery_review_sha=None):
     plan_path, ledger_path = Path(plan_path), Path(ledger_path)
     issues = []
     if sha(plan_path) != expected_plan_sha:
@@ -67,6 +70,27 @@ def assess(plan_path, ledger_path, expected_plan_sha, expected_ledger_sha):
     if not plan.get("predeclared_before_runs", False):
         issues.append("plan_predeclaration_unattested")
 
+    reviewed_recoveries = {}
+    used_recoveries = set()
+    if recovery_review_path is not None or expected_recovery_review_sha is not None:
+        try:
+            if not expected_recovery_review_sha or sha(recovery_review_path) != expected_recovery_review_sha:
+                raise ValueError("review SHA mismatch")
+            review = read(recovery_review_path)
+            if (review.get("schema_version") != "attentionbench.depth-recovery-review.v1"
+                    or review.get("reviewer_role") != "independent_auditor"
+                    or not review.get("reviewer_id")
+                    or review.get("plan_sha256") != expected_plan_sha
+                    or review.get("ledger_sha256") != expected_ledger_sha):
+                raise ValueError("review authority or frozen grid mismatch")
+            for item in review.get("recoveries", []):
+                key = (item.get("attempt_id"), item.get("step"))
+                if key in reviewed_recoveries or item.get("approved") is not True:
+                    raise ValueError("duplicate or unapproved review")
+                reviewed_recoveries[key] = item
+        except Exception as exc:
+            issues.append("invalid_recovery_review:" + str(exc))
+            reviewed_recoveries = {}
     outcomes = []
     owners = {"run_id": {}, "attempt_id": {}, "artifact_dir": {}, "trace_sha256": {}}
 
@@ -169,9 +193,22 @@ def assess(plan_path, ledger_path, expected_plan_sha, expected_ledger_sha):
                                    for s in services.values()):
                 issues.append(f"{aid}:service_not_reaped")
             steps = trace.get("backend_steps")
-            if isinstance(steps, list) and any(isinstance(step, dict) and
-                                               "depth_recovery" in step for step in steps):
-                issues.append(f"{aid}:unreviewed_depth_recovery")
+            if isinstance(steps, list):
+                for step in steps:
+                    if not isinstance(step, dict) or "depth_recovery" not in step:
+                        continue
+                    recovery_key = (attempt_id, step.get("step"))
+                    approval = reviewed_recoveries.get(recovery_key, {})
+                    details = step["depth_recovery"]
+                    if (approval.get("trace_sha256") != attempt["artifact_sha256"]["trace"]
+                            or approval.get("service_revision") != slot.get("service_revision")
+                            or approval.get("first_capture_sha256") != details.get("capture_sha256")
+                            or approval.get("repeat_capture_sha256") != details.get("repeat_observation", {}).get("capture_sha256")
+                            or approval.get("equivalence_sha256") != details.get("equivalence", {}).get("sha256")):
+                        issues.append(f"{aid}:unreviewed_depth_recovery")
+                    else:
+                        used_recoveries.add(recovery_key)
+                        issues.extend(f"{aid}:depth_recovery:{reason}" for reason in verify_recovery(details))
             if key[0] == "robosuite" and (not isinstance(steps, list) or not steps or
                                              any(not isinstance(step, dict) for step in steps)):
                 issues.append(f"{aid}:backend_trace_missing")
@@ -189,7 +226,11 @@ def assess(plan_path, ledger_path, expected_plan_sha, expected_ledger_sha):
         outcomes.append({"identity": key, "native_success": row.get("native_success"),
                          "valid": not any(i.startswith(label + ":") for i in issues)})
 
+    if set(reviewed_recoveries) != used_recoveries:
+        issues.append("unused_or_unmatched_recovery_approval")
     return {"schema_version": "attentionbench.engineering.attrition-gate.v2",
+            "recovery_review_sha256": expected_recovery_review_sha,
+            "reviewed_recoveries": len(used_recoveries),
             "plan_sha256": sha(plan_path), "ledger_sha256": sha(ledger_path),
             "planned_slots": len(planned), "recorded_slots": len(recorded),
             "valid_slots": sum(r["valid"] for r in outcomes),
@@ -206,9 +247,12 @@ def main():
     ap.add_argument("--ledger", type=Path, required=True)
     ap.add_argument("--plan-sha256", required=True)
     ap.add_argument("--ledger-sha256", required=True)
+    ap.add_argument("--recovery-review", type=Path)
+    ap.add_argument("--recovery-review-sha256")
     ap.add_argument("--output", type=Path, required=True)
     args = ap.parse_args()
-    report = assess(args.plan, args.ledger, args.plan_sha256, args.ledger_sha256)
+    report = assess(args.plan, args.ledger, args.plan_sha256, args.ledger_sha256,
+                    args.recovery_review, args.recovery_review_sha256)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(args.output, "pass=" + str(report["structural_attrition_gate"]),
           "issues=" + str(len(report["issues"])))
