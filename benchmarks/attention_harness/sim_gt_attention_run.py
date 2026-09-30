@@ -57,6 +57,8 @@ def run_sim_gt_attention(
     attempt_budget_seconds: float = 300.0,
     total_execution_seconds: float | None = None,
     whole_case_deadline_monotonic: float | None = None,
+    fresh_advisor_cache: bool = False,
+    strict_admission_budget: bool = False,
     runner_boundary_mode: str = "trusted_dev",
     sleeper: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.time,
@@ -131,6 +133,7 @@ def run_sim_gt_attention(
                           approved_sha256=approved_demo_sha256)
     run_dir = artifact_root / f"attention-{suite}-{task_id}-seed{seed}-{uuid4().hex[:12]}"
     run_dir.mkdir(parents=True, exist_ok=False)
+    advisor_cache_path = (run_dir if fresh_advisor_cache else artifact_root) / "advisor_cache.sqlite3"
     public_demo, demo_receipt = (
         verify_demo_prior(demo_prior, suite=suite, task_id=task_id,
                           approved_sha256=approved_demo_sha256,
@@ -301,6 +304,9 @@ def run_sim_gt_attention(
             break
         if result["native_success"]:
             break
+        if result.get("sdk_budget_exhausted"):
+            stopped_reason = "sdk_call_budget_exhausted"
+            break
         if result.get("status") in {"timeout", "cancelled"}:
             stopped_reason = ("emergency_interrupt" if interrupted()
                               else f"attempt_{result['status']}")
@@ -397,9 +403,22 @@ def run_sim_gt_attention(
                              if assistance_mode is AssistanceMode.LIVE_HUMAN_FIRST else None),
                 mode=assistance_mode,
             )
+            provider_timeout = None
+            if strict_admission_budget:
+                provider_timeout = min(90.0, whole_case_deadline_monotonic - monotonic() - 10.0
+                                       if whole_case_deadline_monotonic is not None else 90.0)
+                if provider_timeout <= 0:
+                    stopped_reason = "whole_case_deadline"
+                    break
             runtime = AttentionRuntime(store, SimGTAdvisorProxy(
-                store, transport=advisor_transport or default_glm_transport(),
-                cache_path=artifact_root / "advisor_cache.sqlite3",
+                store, transport=advisor_transport or default_glm_transport(
+                    strict_usage=strict_admission_budget, response_log_dir=run_dir / "provider_replies",
+                    token_budget_limit=token_limit - tokens_used),
+                cache_path=advisor_cache_path,
+                strict_token_budget_remaining=(token_limit - tokens_used
+                                               if strict_admission_budget else None),
+                provider_timeout_seconds=provider_timeout,
+                usage_rejection_path=run_dir / "advisor_rejections" / f"{index}.json",
                 latency_seconds=MODE_SPECS[AssistanceMode.BENCHMARK_PROXY].proxy_latency_seconds,
                 sleeper=sleeper,
             ), clock=clock)
@@ -486,6 +505,14 @@ def run_sim_gt_attention(
                     attention_input["approval_granted"] = True
                     pending_execution_link = request.request_id
             except Exception as exc:
+                rejected_path = run_dir / "advisor_rejections" / f"{index}.json"
+                if rejected_path.is_file():
+                    rejected = json.loads(rejected_path.read_bytes())
+                    requests.append({"request_id": request.request_id,
+                                     "status": "invalid_provider_usage", "failure_slot": index,
+                                     "provider_total_tokens_observed": rejected["provider_total_tokens_observed"],
+                                     "cached": rejected["cached"], "artifact_path": str(rejected_path),
+                                     "artifact_sha256": hashlib.sha256(rejected_path.read_bytes()).hexdigest()})
                 current = store.get_request(request.request_id)
                 if current is not None and current.state is RequestState.PENDING:
                     runtime.cancel(request.request_id)
@@ -567,6 +594,8 @@ def run_sim_gt_attention(
         "resource_usage": {"assistance_credits": credits_used, "tokens": tokens_used},
         "stopped_reason": stopped_reason,
         "store": str(store_path.resolve()), "artifact_dir": str(run_dir.resolve()),
+        "advisor_cache": {"path": str(advisor_cache_path.resolve()),
+                          "initial_state": "empty_per_run" if fresh_advisor_cache else "shared"},
     }
     if random_plan is not None:
         realized = [row["failure_slot"] for row in requests]
@@ -586,8 +615,14 @@ def run_sim_gt_attention(
     return summary
 
 
-def default_glm_transport() -> AdvisorTransport:
+def default_glm_transport(*, strict_usage: bool = False, response_log_dir: Path | None = None,
+                          token_budget_limit: int = 4096) -> AdvisorTransport:
     """Explicit opt-in PARCC GLM transport; tests inject a deterministic fake."""
+    if strict_usage:
+        from .parcc_client import ParccClient
+        return SimGTGLMAdvisorTransport(ParccClient(timeout_seconds=90, max_attempts=1),
+            format_attempts=1, strict_usage=True, response_log_dir=response_log_dir,
+            token_budget_limit=token_budget_limit)
     return SimGTGLMAdvisorTransport()
 
 

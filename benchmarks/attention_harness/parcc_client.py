@@ -57,6 +57,7 @@ class ParccClient:
         max_attempts: int = 3,
         retry_delay_seconds: float = 2.0,
         transport: Transport | None = None,
+        response_observer: Callable[[int, dict[str, str], bytes], None] | None = None,
     ) -> None:
         self.endpoint = endpoint or os.environ.get("PARCC_URL", DEFAULT_PARCC_URL)
         self._api_key = api_key or os.environ.get("PARCC_API_KEY") or os.environ.get("LITELLM_KEY")
@@ -64,6 +65,7 @@ class ParccClient:
         self.max_attempts = max_attempts
         self.retry_delay_seconds = retry_delay_seconds
         self._transport = transport or _urlopen_transport
+        self.response_observer = response_observer
         if not self._api_key:
             raise ParccError(
                 "PARCC credential unavailable; set PARCC_API_KEY or LITELLM_KEY "
@@ -100,6 +102,8 @@ class ParccClient:
                 status, response_headers, raw = self._transport(
                     self.endpoint, headers, encoded, self.timeout_seconds
                 )
+                if self.response_observer is not None:
+                    self.response_observer(status, response_headers, raw)
                 body = json.loads(raw)
                 if status >= 400:
                     last_error = _safe_http_error(status, body)

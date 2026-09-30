@@ -22,6 +22,7 @@ from .core.models import MemoryUseRecord
 from .core.store import AttentionStore
 from .episode_trace import persist_episode_trace
 from .formal_runner_boundary import FormalRunRequest, FormalSuiteRunner, run_with_formal_boundary
+from .formal_memory_contract import initialize_frozen_memory, validate_memory_contract
 from .policy_input import public_attention_input
 from .public_progress import public_lift_progress_event
 from .sim_gt_attention_run import run_sim_gt_attention
@@ -34,6 +35,8 @@ def run_formal_attention(
     overall_deadline_seconds: float = 300.0,
     memory_context: dict[str, Any] | None = None,
     approved_memory_context_sha256: str | None = None,
+    memory_contract: dict[str, Any] | None = None,
+    approved_memory_contract_sha256: str | None = None,
     dev_hypothesis: str | None = None,
     dev_hypothesis_evidence: dict[str, str] | None = None,
     entry_lock: dict[str, Any] | None = None,
@@ -57,7 +60,7 @@ def run_formal_attention(
                     or formal_run_wall_seconds is not None)
     if budget_guard:
         max_attempts = scheduler_options.get("max_attempts", 3)
-        if (policy_id != "autonomous" or formal_attempt_deadline_seconds is None
+        if (formal_attempt_deadline_seconds is None
                 or formal_run_wall_seconds is None
                 or isinstance(formal_attempt_deadline_seconds, bool)
                 or not isinstance(formal_attempt_deadline_seconds, (int, float))
@@ -71,7 +74,7 @@ def run_formal_attention(
                 or isinstance(max_attempts, bool)
                 or not isinstance(max_attempts, int)
                 or not 1 <= max_attempts <= 4):
-            raise ValueError("formal v2.1 chain requires autonomous 120/300-second budget guard")
+            raise ValueError("formal Attention requires 120/300-second budget guard")
     case_deadline = (time.monotonic() + formal_run_wall_seconds
                      if budget_guard else None)
     if entry_lock is not None:
@@ -89,12 +92,34 @@ def run_formal_attention(
                     "overall_deadline_seconds": float(overall_deadline_seconds),
                     "approved_demo_sha256": scheduler_options.get("approved_demo_sha256"),
                     "approved_policy_config_sha256": approved_policy_config_sha256}
+        if memory_contract is not None or approved_memory_contract_sha256 is not None:
+            expected["approved_memory_contract_sha256"] = approved_memory_contract_sha256
+            expected["memory_contract_content_sha256"] = hashlib.sha256(json.dumps(
+                memory_contract, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":")).encode()).hexdigest()
         if (digest != actual or lock.get("suite") != suite or lock.get("task_id") != task_id
                 or lock.get("seed") != seed or lock.get("attention_policy") != policy_id
                 or lock.get("approved_config_sha256") != approved_config_sha256
                 or lock.get("approved_policy_sha256") != approved_policy_sha256
                 or any(lock.get(key) != value for key, value in expected.items())):
             raise ValueError("formal entry lock identity mismatch")
+    if memory_contract is not None:
+        if not approved_memory_contract_sha256 or entry_lock is None:
+            raise ValueError("frozen Memory requires an approved M1 contract lock")
+        if not budget_guard:
+            raise ValueError("frozen Memory requires explicit 120/300-second budget guard")
+        # The CLI checks the exact file bytes; the runtime checks this parsed
+        # value against the same file captured in the entry snapshot.
+        if (memory_context is not None and memory_context != memory_contract["context"]):
+            raise ValueError("legacy Memory context conflicts with frozen contract")
+        if any(scheduler_options.get(key) is not None for key in
+               ("store_path", "memory_gateway", "memory_evidence_root")):
+            raise ValueError("frozen Memory forbids a shared mutable store or gateway")
+        validate_memory_contract(memory_contract, suite=suite, task_id=task_id,
+                                 policy_id=policy_id, config=json.loads(config_path.read_bytes()))
+        memory_context = memory_contract["context"]
+    elif approved_memory_contract_sha256 is not None:
+        raise ValueError("approved Memory contract content missing")
     if dev_hypothesis is not None and (not isinstance(dev_hypothesis, str)
                                       or not dev_hypothesis.strip()
                                       or len(dev_hypothesis) > 2000):
@@ -135,8 +160,19 @@ def run_formal_attention(
                 or (suite == "robosuite" and
                     memory_context["camera_names"] != [approved["camera_name"]])):
             raise ValueError("formal Memory context disagrees with approved simulator config")
+    if memory_contract is not None:
+        store_path, evidence, gateway = initialize_frozen_memory(memory_contract,
+                                                                 artifact_root=artifact_root)
+        scheduler_options.update(store_path=store_path, memory_evidence_root=evidence,
+                                 memory_gateway=gateway, fresh_advisor_cache=True,
+                                 strict_admission_budget=True)
+
+    sdk_calls_remaining = 200
 
     def execute(**attempt: Any) -> dict[str, Any]:
+        nonlocal sdk_calls_remaining
+        if memory_contract is not None and sdk_calls_remaining <= 0:
+            raise RuntimeError("run SDK call budget exhausted before attempt")
         attempt_deadline = None
         if case_deadline is not None:
             # Leave ten seconds for Service reaping and artifact finalization.
@@ -205,6 +241,7 @@ def run_formal_attention(
             entry_sha256=entry_lock["sha256"] if entry_lock else None,
             entry_lock=dict(entry_lock) if entry_lock else None,
             attempt_deadline_seconds=attempt_deadline,
+            sdk_call_limit=sdk_calls_remaining if memory_contract is not None else None,
         )
         try:
             formal = run_with_formal_boundary(request, runner=runner)
@@ -217,6 +254,8 @@ def run_formal_attention(
         trace = json.loads(Path(formal["artifacts"]["trace"]["uri"]).read_text())
         safety = json.loads(Path(formal["artifacts"]["safety"]["uri"]).read_text())
         receipt = json.loads(Path(formal["artifacts"]["sandbox_receipt"]["uri"]).read_text())
+        if memory_contract is not None:
+            sdk_calls_remaining -= receipt["sdk_call_budget"]["dispatched"]
         if (safety.get("source") != "independent_safety_monitor"
                 or not isinstance(safety.get("unsafe_attempts"), int)
                 or isinstance(safety.get("unsafe_attempts"), bool)):
@@ -297,6 +336,7 @@ def run_formal_attention(
             "safety_unsafe": safety["unsafe_attempts"] > 0,
             "memory_ids": selected, "available_memory_ids": list(by_id),
             "memory_use_grants": grants,
+            "sdk_budget_exhausted": memory_contract is not None and sdk_calls_remaining == 0,
         }
 
     summary = run_sim_gt_attention(
@@ -319,6 +359,11 @@ def run_formal_attention(
     summary["scheduler_config_sha256"] = scheduler_config_sha256
     summary["memory_context"] = memory_context
     summary["approved_memory_context_sha256"] = approved_memory_context_sha256
+    if memory_contract is not None:
+        summary["memory_contract"] = memory_contract
+        summary["approved_memory_contract_sha256"] = approved_memory_contract_sha256
+        summary["sdk_call_budget"] = {"limit": 200, "dispatched": 200 - sdk_calls_remaining,
+                                      "remaining": sdk_calls_remaining}
     summary["dev_hypothesis"] = {"status": "provided" if dev_hypothesis else "unknown",
                                   "content": dev_hypothesis.strip() if dev_hypothesis else None,
                                   "evidence": dev_hypothesis_evidence}

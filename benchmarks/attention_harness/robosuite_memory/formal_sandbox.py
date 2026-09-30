@@ -107,7 +107,10 @@ def _json_safe(value: Any) -> Any:
 
 def execute_formal_policy(*, code: str, sdk: Any, context: dict[str, Any],
                           deadline: float, stderr_path: Path,
-                          cancel_check: Callable[[], bool] | None = None) -> FormalPolicyOutcome:
+                          cancel_check: Callable[[], bool] | None = None,
+                          max_sdk_calls: int = 200) -> FormalPolicyOutcome:
+    if type(max_sdk_calls) is not int or not 1 <= max_sdk_calls <= 200:
+        raise ValueError("formal SDK call limit must be 1–200")
     validate_generated_policy(code)
     worker = Path(__file__).with_name("formal_policy_worker.py").resolve()
     stderr_path.parent.mkdir(parents=True, exist_ok=True)
@@ -165,7 +168,7 @@ def execute_formal_policy(*, code: str, sdk: Any, context: dict[str, Any],
                         error = "policy worker sent unauthorized SDK RPC"
                         break
                     calls += 1
-                    if calls > 200:
+                    if calls > max_sdk_calls:
                         error = "policy exceeded SDK call limit"
                         break
                     args, kwargs = message.get("args"), message.get("kwargs")

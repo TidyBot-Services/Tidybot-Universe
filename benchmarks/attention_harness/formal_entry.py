@@ -12,6 +12,7 @@ from .attention_modes import AssistanceMode
 from .core.policies import POLICY_IDS, build_policy
 from .demo_prior import verify_demo_prior
 from .formal_runner_boundary import FormalRunRequest
+from .formal_memory_contract import validate_memory_contract
 from .robocasa_native.formal_runner import _config as robocasa_config
 from .robocasa_native.tasks import get_robocasa_task
 from .robosuite_memory.formal_runner import _config as robosuite_config
@@ -42,6 +43,8 @@ def inspect_formal_entry(
     demo_prior: Path | None = None, approved_demo_sha256: str | None = None,
     policy_config: Path | None = None,
     approved_policy_config_sha256: str | None = None,
+    memory_contract: Path | None = None,
+    approved_memory_contract_sha256: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, int] | None]:
     if suite == "robosuite":
         get_robosuite_task(task_id)
@@ -108,6 +111,15 @@ def inspect_formal_entry(
         if policy_id != "retry_k_then_ask" or set(parsed) != {"k"}:
             raise ValueError("policy config is not allowed for selected policy")
         build_policy(policy_id, **parsed)
+    # Historical entry locks remain reproducible. New primary-matrix freezes
+    # explicitly supply this contract for every condition, including no-read arms.
+    memory_raw = _read_approved(memory_contract, approved_memory_contract_sha256,
+                                "Memory contract")
+    if memory_raw is not None:
+        if policy_id == "retry_k_then_ask" and parsed is None:
+            raise ValueError("frozen retry condition requires explicit approved k")
+        validate_memory_contract(json.loads(memory_raw), suite=suite, task_id=task_id,
+                                 policy_id=policy_id, config=json.loads(config.read_bytes()))
     identity = {
         "schema_version": "attentionbench.formal-entry-lock.v1",
         "suite": suite, "task_id": task_id, "seed": seed,
@@ -122,6 +134,11 @@ def inspect_formal_entry(
         "human_deadline_seconds": float(human_deadline_seconds),
         "overall_deadline_seconds": float(overall_deadline_seconds),
     }
+    if memory_raw is not None:
+        identity["approved_memory_contract_sha256"] = approved_memory_contract_sha256
+        identity["memory_contract_content_sha256"] = hashlib.sha256(json.dumps(
+            json.loads(memory_raw), sort_keys=True, ensure_ascii=False,
+            separators=(",", ":")).encode()).hexdigest()
     identity["sha256"] = hashlib.sha256(json.dumps(identity, sort_keys=True,
         ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
     return identity, parsed

@@ -1,3 +1,11 @@
+## 2026-09-29（America/New_York）七条件冻结与总体准入审计进行中
+
+范围固定为本开发集主实验（2任务×101–125×7条件×1次），本轮350格仅生成与校验，不执行；held-out、Memory+evidence消融另行冻结。v2.4、attrition_gate与定稿规格书已保存于 `a42ab8201277ffa806281b89a4f14e3ef33b1059`。基础机器人策略字节不改，各条件只改求助规则与获批输入。
+
+chain、50/50 profile、depth operational gate复用，不重跑。独立审计核对787个证据SHA无漂移，并按当前Service评估版本影响。唯一授权的当前RoboCasa未知动作Safety负控在station run/attempt identity预检处失败，未到注入；双Service已回收，保留异常与launcher失败，开发case上限已用尽，不再重跑。因此完整Safety负控尚未通过，总体formal准入仍失败。Memory固定为现有可信v1，仅101/103/105每任务匹配，六个非full条件无Memory；每run独立初始状态/空缓存，禁止自动晋升。正式逐项裁决待独立审计签发。
+
+执行路径已补M1 Memory作用域/版本锁、每run 200 SDK聚合硬限与provider实际token/异常费用记账。Harness全量468 passed、10 skipped；后审修正另做专项验证。证据目录：`/home/truares/桌面/attentionbench-seven-freeze-20260929`。以下保留历史过程与旧范围结论。
+
 ## 2026-09-29（America/New_York）depth qualifying 与新版本档案最终裁决
 
 本轮 depth qualifying 与描述性准入档案完成：Service19fde8a新Robosuite25/25有效（含101–105五例各复用一次）、100尝试、5088持久动作回执；经影响核对的独立RoboCasa25/25有效、70尝试保留。合并50唯一案例、170唯一尝试、680四类产物文件SHA、独立Safety0，原生成功0/50、有效任务失败完整保留。五步骤限定范围均PASS；Robosuite/depth operational_gate=true。工程14网格不升格；c67 Robosuite证据不迁移；原槽30 interrupted_invalid字节及授权补测各自保留。

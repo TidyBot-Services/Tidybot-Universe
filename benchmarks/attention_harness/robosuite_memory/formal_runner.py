@@ -170,6 +170,7 @@ class RobosuiteFormalSuiteRunner:
                              "perception_mode": "sim_gt", "initial_objects": objects,
                              "attention_input": request.attention_input or {}},
                     deadline=deadline, stderr_path=episode_dir / "policy.stderr",
+                    max_sdk_calls=request.sdk_call_limit or 200,
                     cancel_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
                 )
                 status, error = outcome.status, outcome.error
@@ -249,6 +250,13 @@ class RobosuiteFormalSuiteRunner:
             "run_id": request.run_id, "attempt_id": request.attempt_id,
             "elapsed_seconds": time.monotonic() - started,
         }
+        if request.sdk_call_limit is not None:
+            requested = 0 if outcome is None else outcome.call_count
+            sandbox_receipt["sdk_call_budget"] = {
+                "limit": request.sdk_call_limit, "requested": requested,
+                "dispatched": min(requested, request.sdk_call_limit),
+                "rejected": max(0, requested - request.sdk_call_limit),
+            }
         sandbox_path = _write_json(episode_dir / "sandbox_receipt.json", sandbox_receipt)
         native_result = {
             "schema_version": "attentionbench.formal-native-result.v1",

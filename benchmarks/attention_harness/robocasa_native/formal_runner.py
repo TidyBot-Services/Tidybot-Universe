@@ -238,6 +238,7 @@ class RobocasaFormalSuiteRunner:
                              "language": config["task_prompt"], "initial_objects": objects,
                              "attention_input": request.attention_input or {}},
                     deadline=deadline, stderr_path=episode_dir / "policy.stderr",
+                    max_sdk_calls=request.sdk_call_limit or 200,
                     cancel_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
                 )
                 status, error = outcome.status, outcome.error
@@ -301,7 +302,7 @@ class RobocasaFormalSuiteRunner:
         cancellation_receipts = [] if action is None else action.cancellation_receipts
         planned_motion_receipts = [] if action is None else action.planned_motion_receipts
         plan_query_receipts = [] if action is None else action.plan_query_receipts
-        sandbox_path = _write_json(episode_dir / "sandbox_receipt.json", {
+        sandbox_receipt = {
             "schema_version": "attentionbench.formal-sandbox-receipt.v1",
             "probe": sandbox_probe, "worker": None if outcome is None else outcome.__dict__,
             "service_stop": stop, "service_source_unchanged": source_unchanged,
@@ -316,7 +317,15 @@ class RobocasaFormalSuiteRunner:
             "deadline_seconds": request.effective_attempt_deadline_seconds,
             "run_id": request.run_id, "attempt_id": request.attempt_id,
             "elapsed_seconds": time.monotonic() - started,
-        })
+        }
+        if request.sdk_call_limit is not None:
+            requested = 0 if outcome is None else outcome.call_count
+            sandbox_receipt["sdk_call_budget"] = {
+                "limit": request.sdk_call_limit, "requested": requested,
+                "dispatched": min(requested, request.sdk_call_limit),
+                "rejected": max(0, requested - request.sdk_call_limit),
+            }
+        sandbox_path = _write_json(episode_dir / "sandbox_receipt.json", sandbox_receipt)
         native_path = _write_json(episode_dir / "native_result.json", {
             "schema_version": "attentionbench.formal-native-result.v1",
             "source": "robocasa/task/success", "evaluated": native_evaluated,

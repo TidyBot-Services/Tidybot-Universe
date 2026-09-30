@@ -8,6 +8,7 @@ import sqlite3
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from .advisor_proxy import ADVISOR_MODEL, build_advisor_request
 from .core.advisor import AdvisorProxy, AdvisorTransportReply, ProxyReply
@@ -31,11 +32,18 @@ SIM_GT_MAX_TOKENS = 1024
 class SimGTGLMAdvisorTransport:
     """Validate GLM's JSON and account for bounded format retries in v2."""
 
-    def __init__(self, client: ParccClient | None = None, *, format_attempts: int = 2) -> None:
+    def __init__(self, client: ParccClient | None = None, *, format_attempts: int = 2,
+                 strict_usage: bool = False, response_log_dir: Path | None = None,
+                 token_budget_limit: int = 4096) -> None:
         if format_attempts < 1:
             raise ValueError("format_attempts must be positive")
         self.client = client or ParccClient()
         self.format_attempts = format_attempts
+        self.strict_usage = strict_usage
+        self.response_log_dir = response_log_dir
+        self.token_budget_limit = token_budget_limit
+        if strict_usage and (format_attempts != 1 or getattr(self.client, "max_attempts", 1) != 1):
+            raise ValueError("frozen Advisor requires one provider call and no format retry")
 
     def __call__(self, request: dict[str, Any]) -> AdvisorTransportReply:
         if request.get("model") != ADVISOR_MODEL:
@@ -47,13 +55,55 @@ class SimGTGLMAdvisorTransport:
         attempts = 0
         last_error: ValueError | None = None
         for _ in range(self.format_attempts):
-            response = self.client.chat(
-                model=ADVISOR_MODEL,
-                messages=list(request["messages"]),
-                max_tokens=int(request["max_tokens"]),
-                temperature=float(request["temperature"]),
-                reasoning_effort=str(request["reasoning_effort"]),
-            )
+            log_path = None
+            if self.strict_usage and self.response_log_dir is not None:
+                self.response_log_dir.mkdir(parents=True, exist_ok=True)
+                log_path = self.response_log_dir / f"{uuid4().hex}.json"
+                def retain_http(status, headers, body):
+                    raw_path = log_path.with_suffix(".http-body")
+                    raw_path.write_bytes(body)
+                    log_path.with_suffix(".http.json").write_text(json.dumps({
+                        "status": status, "request_id": headers.get("x-request-id"),
+                        "body_path": str(raw_path),
+                        "body_sha256": hashlib.sha256(body).hexdigest(),
+                    }, indent=2) + "\n")
+                self.client.response_observer = retain_http
+            if self.strict_usage and "provider_timeout_seconds" in request:
+                timeout = request["provider_timeout_seconds"]
+                if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= 90:
+                    raise ValueError("strict Advisor timeout outside remaining case budget")
+                self.client.timeout_seconds = min(getattr(self.client, "timeout_seconds", 90), timeout)
+            try:
+                response = self.client.chat(
+                    model=ADVISOR_MODEL,
+                    messages=list(request["messages"]),
+                    max_tokens=int(request["max_tokens"]),
+                    temperature=float(request["temperature"]),
+                    reasoning_effort=str(request["reasoning_effort"]),
+                )
+            except Exception as exc:
+                if log_path is not None:
+                    log_path.write_text(json.dumps({"status": "invalid_provider_response",
+                        "error": f"{type(exc).__name__}: {exc}", "usage": None,
+                        "content": None, "provider_cost_known": False}, indent=2) + "\n")
+                raise
+            raw = {"content": response.content, "usage": response.usage,
+                   "model": response.model, "attempts": response.attempts,
+                   "latency_seconds": response.latency_seconds, "request_id": response.request_id,
+                   "status": "received", "provider_cost_known": True}
+            if log_path is not None:
+                log_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+            if self.strict_usage:
+                keys = ("prompt_tokens", "completion_tokens", "total_tokens")
+                counts = response.usage
+                usage_valid = (isinstance(counts, dict) and all(type(counts.get(k)) is int and counts[k] >= 0 for k in keys)
+                         and counts["total_tokens"] == counts["prompt_tokens"] + counts["completion_tokens"]
+                         and response.attempts == 1)
+                if not usage_valid or counts["total_tokens"] > self.token_budget_limit:
+                    raw.update(status="invalid_provider_usage", provider_cost_known=usage_valid)
+                    if log_path is not None:
+                        log_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+                    raise ValueError("invalid or over-budget raw provider usage retained")
             latency += response.latency_seconds
             attempts += response.attempts
             for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
@@ -63,6 +113,11 @@ class SimGTGLMAdvisorTransport:
             try:
                 advice = parse_advisor_advice(response.content, request_type=request_type)
             except (ValueError, TypeError) as exc:
+                if self.strict_usage:
+                    raw.update(status="invalid_advisor_format", error=str(exc))
+                    if log_path is not None:
+                        log_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+                    raise ValueError("invalid Advisor format; raw provider response and usage retained") from exc
                 last_error = ValueError(str(exc))
                 continue
             return AdvisorTransportReply(
@@ -145,9 +200,15 @@ def semantic_advisor_cache_key(request: Mapping[str, Any]) -> str:
 class SimGTAdvisorProxy(AdvisorProxy):
     """Keep v1 request safety checks but use a distinct prompt/cache identity."""
 
-    def __init__(self, *args: Any, cache_path: Path | None = None, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, cache_path: Path | None = None,
+                 strict_token_budget_remaining: int | None = None,
+                 provider_timeout_seconds: float | None = None,
+                 usage_rejection_path: Path | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.shared_cache = SharedAdvisorCache(cache_path) if cache_path is not None else None
+        self.strict_token_budget_remaining = strict_token_budget_remaining
+        self.provider_timeout_seconds = provider_timeout_seconds
+        self.usage_rejection_path = usage_rejection_path
 
     def answer(
         self,
@@ -172,6 +233,8 @@ class SimGTAdvisorProxy(AdvisorProxy):
         cached = (self.shared_cache.get(key) if self.shared_cache is not None
                   else self.store.cache_get(key))
         if cached is None:
+            if self.provider_timeout_seconds is not None:
+                request["provider_timeout_seconds"] = self.provider_timeout_seconds
             transported = self.transport(request)
             if isinstance(transported, str):
                 transported = AdvisorTransportReply(
@@ -191,6 +254,26 @@ class SimGTAdvisorProxy(AdvisorProxy):
         else:
             artifact = cached
             was_cached = True
+        if self.strict_token_budget_remaining is not None:
+            usage = artifact.get("usage")
+            keys = ("prompt_tokens", "completion_tokens", "total_tokens")
+            valid = (isinstance(usage, dict) and all(type(usage.get(k)) is int
+                                                     and usage[k] >= 0 for k in keys)
+                     and usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"])
+            reason = ("missing_or_invalid_provider_token_usage" if not valid else
+                      "provider_total_tokens_exceed_run_budget" if not was_cached
+                      and usage["total_tokens"] > self.strict_token_budget_remaining else None)
+            if reason:
+                if self.usage_rejection_path is not None:
+                    self.usage_rejection_path.parent.mkdir(parents=True, exist_ok=True)
+                    self.usage_rejection_path.write_text(json.dumps({
+                        "schema_version": "attentionbench.advisor-usage-rejection.v1",
+                        "reason": reason, "request": request, "response": artifact,
+                        "cached": was_cached, "cache_key": key,
+                        "remaining_tokens": self.strict_token_budget_remaining,
+                        "provider_total_tokens_observed": usage.get("total_tokens") if isinstance(usage, dict) else None,
+                    }, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+                raise ValueError(reason)
         self.sleeper(self.latency_seconds)
         return ProxyReply(
             content=str(artifact["content"]),

@@ -1,3 +1,11 @@
+## 2026-09-29（America/New_York）七条件冻结与总体准入审计进行中
+
+范围固定为本开发集主实验（2任务×101–125×7条件×1次），本轮350格仅生成与校验，不执行；held-out、Memory+evidence消融另行冻结。v2.4、attrition_gate与定稿规格书已保存于 `a42ab8201277ffa806281b89a4f14e3ef33b1059`。基础机器人策略字节不改，各条件只改求助规则与获批输入。
+
+chain、50/50 profile、depth operational gate复用，不重跑。独立审计核对787个证据SHA无漂移，并按当前Service评估版本影响。唯一授权的当前RoboCasa未知动作Safety负控在station run/attempt identity预检处失败，未到注入；双Service已回收，保留异常与launcher失败，开发case上限已用尽，不再重跑。因此完整Safety负控尚未通过，总体formal准入仍失败。Memory固定为现有可信v1，仅101/103/105每任务匹配，六个非full条件无Memory；每run独立初始状态/空缓存，禁止自动晋升。正式逐项裁决待独立审计签发。
+
+执行路径已补M1 Memory作用域/版本锁、每run 200 SDK聚合硬限与provider实际token/异常费用记账。Harness全量468 passed、10 skipped；后审修正另做专项验证。证据目录：`/home/truares/桌面/attentionbench-seven-freeze-20260929`。以下保留历史过程与旧范围结论。
+
 # AttentionBench：按系统模块逐一收口
 
 > 更新：2026-09-30。本页只管**模块顺序和完成关口**；历史工作、命令、版本及原始证据在 [`STATUS.md`](../STATUS.md)。目前所有工程运行仍为 `formal_eligible=false`。

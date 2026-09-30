@@ -36,6 +36,7 @@ class FormalRunRequest:
     entry_sha256: str | None = None
     entry_lock: dict[str, Any] | None = None
     attempt_deadline_seconds: float | None = None
+    sdk_call_limit: int | None = None
 
     @property
     def effective_attempt_deadline_seconds(self) -> float:
@@ -43,6 +44,9 @@ class FormalRunRequest:
                 else self.attempt_deadline_seconds)
 
     def validate(self) -> None:
+        if self.sdk_call_limit is not None and (
+                type(self.sdk_call_limit) is not int or not 1 <= self.sdk_call_limit <= 200):
+            raise ValueError("formal remaining SDK call limit must be 1–200")
         if (self.run_id is None) != (self.attempt_id is None):
             raise ValueError("formal run and attempt identities must be paired")
         if self.run_id is not None and (not self.run_id.startswith("run:")
@@ -148,6 +152,14 @@ def run_with_formal_boundary(
             raise RuntimeError(f"formal runner {name} artifact is outside run root")
         if hashlib.sha256(path.read_bytes()).hexdigest() != ref.get("sha256"):
             raise RuntimeError(f"formal runner {name} artifact digest mismatch")
+        if name == "sandbox_receipt" and request.sdk_call_limit is not None:
+            budget = json.loads(path.read_bytes()).get("sdk_call_budget", {})
+            if (budget.get("limit") != request.sdk_call_limit
+                    or type(budget.get("dispatched")) is not int
+                    or not 0 <= budget["dispatched"] <= request.sdk_call_limit
+                    or type(budget.get("requested")) is not int
+                    or budget["requested"] < budget["dispatched"]):
+                raise RuntimeError("formal runner lacks remaining SDK call budget receipt")
         if request.run_id is not None:
             artifact = json.loads(path.read_text(encoding="utf-8"))
             if name in {"trace", "native_result"} and artifact.get("status") != result.get("status"):
