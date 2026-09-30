@@ -1,0 +1,73 @@
+{
+  "assistance_credits": 0,
+  "cases": [
+    {
+      "camera_config_id": "camera:agentview",
+      "camera_names": [
+        "agentview"
+      ],
+      "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+      "scene_id": "scene:095974d95f12b5c458fb",
+      "seed": 101,
+      "task_prompt": "Lift the cube clear of the table.",
+      "task_variant_id": "task-variant-0"
+    },
+    {
+      "camera_config_id": "camera:robot0_eye_in_hand",
+      "camera_names": [
+        "robot0_eye_in_hand"
+      ],
+      "object_set_id": "objects:bbdd455629c4c264753c",
+      "scene_id": "scene:0a4563fb4cba099d4ca9",
+      "seed": 102,
+      "task_prompt": "Pick up the cube from the table.",
+      "task_variant_id": "task-variant-1"
+    },
+    {
+      "camera_config_id": "camera:agentview",
+      "camera_names": [
+        "agentview"
+      ],
+      "object_set_id": "objects:6dac406b2c845d381cdc",
+      "scene_id": "scene:36e4b2483e89af66a7e6",
+      "seed": 103,
+      "task_prompt": "Lift the cube clear of the table.",
+      "task_variant_id": "task-variant-0"
+    },
+    {
+      "camera_config_id": "camera:robot0_eye_in_hand",
+      "camera_names": [
+        "robot0_eye_in_hand"
+      ],
+      "object_set_id": "objects:2690686dd68a15ef38a2",
+      "scene_id": "scene:4d12afab2b1a7765366d",
+      "seed": 104,
+      "task_prompt": "Pick up the cube from the table.",
+      "task_variant_id": "task-variant-1"
+    },
+    {
+      "camera_config_id": "camera:agentview",
+      "camera_names": [
+        "agentview"
+      ],
+      "object_set_id": "objects:a44eefc17cf5e13824b9",
+      "scene_id": "scene:8f38c0c9a83e9dc866e5",
+      "seed": 105,
+      "task_prompt": "Lift the cube clear of the table.",
+      "task_variant_id": "task-variant-0"
+    }
+  ],
+  "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+  "perception_mode": "sim_gt",
+  "policy_id": "reactive_help",
+  "schema_version": "attentionbench.memory-validation-plan.v2",
+  "seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

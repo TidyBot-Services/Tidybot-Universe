@@ -1,0 +1,165 @@
+{
+  "both_failed_assistance_credits_saved": 0,
+  "both_success_assistance_credits_saved": 0,
+  "control_successes": 0,
+  "control_unsafe_attempts": 0,
+  "counterexamples": [
+    {
+      "control_attempt_id": "attempt:counter_to_sink-seed102-20260927T162204.269026Z:0",
+      "control_native_success": false,
+      "control_unsafe_attempts": 0,
+      "reason": "treatment_failed",
+      "seed": 102,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed102-20260927T162251.841240Z:0",
+      "treatment_native_success": false,
+      "treatment_unsafe_attempts": 0,
+      "variation": {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+        "scene_id": "scene:93244621fd1a24b456d5",
+        "task_prompt": "pick the cup from the counter and place it in the sink",
+        "task_variant_id": "task:cup"
+      }
+    },
+    {
+      "control_attempt_id": "attempt:counter_to_sink-seed103-20260927T162404.864278Z:0",
+      "control_native_success": false,
+      "control_unsafe_attempts": 0,
+      "reason": "treatment_failed",
+      "seed": 103,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed103-20260927T162452.928840Z:0",
+      "treatment_native_success": false,
+      "treatment_unsafe_attempts": 0,
+      "variation": {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:a7d4f086836e78c38004",
+        "scene_id": "scene:feaf8e202a88a1bad005",
+        "task_prompt": "pick the mango from the counter and place it in the sink",
+        "task_variant_id": "task:mango"
+      }
+    },
+    {
+      "control_attempt_id": "attempt:counter_to_sink-seed104-20260927T162619.407956Z:0",
+      "control_native_success": false,
+      "control_unsafe_attempts": 0,
+      "reason": "treatment_failed",
+      "seed": 104,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed104-20260927T162709.455088Z:0",
+      "treatment_native_success": false,
+      "treatment_unsafe_attempts": 0,
+      "variation": {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:a61c8884dc61c3aeccc8",
+        "scene_id": "scene:6b34dfcee277f551a83b",
+        "task_prompt": "pick the onion from the counter and place it in the sink",
+        "task_variant_id": "task:onion"
+      }
+    },
+    {
+      "control_attempt_id": "attempt:counter_to_sink-seed105-20260927T162812.396819Z:0",
+      "control_native_success": false,
+      "control_unsafe_attempts": 0,
+      "reason": "treatment_failed",
+      "seed": 105,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed105-20260927T162901.062858Z:0",
+      "treatment_native_success": false,
+      "treatment_unsafe_attempts": 1,
+      "variation": {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+        "scene_id": "scene:b328d376a1514e3e6bae",
+        "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+        "task_variant_id": "task:rolling_pin"
+      }
+    }
+  ],
+  "empirical_confidence": 0.2,
+  "future_assistance_credits_saved": 0,
+  "gpu_seconds_saved": 0.0,
+  "human_seconds_per_success_gain": null,
+  "memory_id": "candidate:attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "paired_dev_seeds": 5,
+  "policy_changed_since_source": true,
+  "robot_seconds_saved": -154.77990305600542,
+  "safety_regressions": [
+    {
+      "control_attempt_id": "attempt:counter_to_sink-seed105-20260927T162812.396819Z:0",
+      "control_unsafe_attempts": 0,
+      "seed": 105,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed105-20260927T162901.062858Z:0",
+      "treatment_unsafe_attempts": 1,
+      "variation": {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+        "scene_id": "scene:b328d376a1514e3e6bae",
+        "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+        "task_variant_id": "task:rolling_pin"
+      }
+    }
+  ],
+  "source_human_attention_seconds": 0.0,
+  "source_kind": "advisor_proxy",
+  "source_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+  "success_gain": 1,
+  "success_rate_gain": 0.2,
+  "supporting_successes": [
+    {
+      "assistance_credits_saved": 0,
+      "control_attempt_id": "attempt:counter_to_sink-seed101-20260927T161946.919454Z:0",
+      "reason": "success_gain",
+      "seed": 101,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed101-20260927T162035.940213Z:0",
+      "variation": {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6",
+        "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+        "task_variant_id": "task:boxed_drink"
+      }
+    }
+  ],
+  "tokens_saved": 0,
+  "treatment_success_rate_95ci": {
+    "interpretation": "binomial reference only; frozen variation cases are not assumed IID",
+    "level": 0.95,
+    "lower": 0.03622410863243014,
+    "method": "wilson_score",
+    "n": 5,
+    "upper": 0.6244653702374747
+  },
+  "treatment_successes": 1,
+  "treatment_unsafe_attempts": 1,
+  "validated_scope": [
+    {
+      "camera_config_id": "camera:base+wrist",
+      "object_set_id": "objects:cda92955890a16bc8537",
+      "scene_id": "scene:29f6ddc71995db3e0fd6",
+      "task_variant_id": "task:boxed_drink"
+    }
+  ],
+  "validation_policy_hashes": [
+    "2db223b79a3c6850c49d6d4c5ee8e1f0638cf2fdc5f79d990669f25f63e498c0"
+  ]
+}

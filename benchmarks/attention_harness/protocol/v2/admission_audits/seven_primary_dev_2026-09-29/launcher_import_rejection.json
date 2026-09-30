@@ -1,0 +1,12 @@
+{
+  "phase": "launcher_import_before_plan_or_run",
+  "command": [
+    "/home/truares/桌面/attentionbench-week2-clean-venv/bin/python",
+    "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control.py"
+  ],
+  "exit_code": 1,
+  "stderr": "ModuleNotFoundError: No module named 'benchmarks'",
+  "real_cases_started": 0,
+  "services_started": 0,
+  "resolution": "Set PYTHONPATH to the pinned Universe checkout; no code/plan change or executed-case retry"
+}

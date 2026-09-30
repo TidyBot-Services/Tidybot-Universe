@@ -1,0 +1,2 @@
+{"actor": null, "event_key": "memory-validation:candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0:5:0", "event_type": "memory.validated", "expires_at": null, "reason": "validation_gate_passed", "sequence": 95, "status": "validated", "version": 1}
+{"actor": null, "event_key": "memory-promote:candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0", "event_type": "memory.trusted", "expires_at": null, "reason": "validated_memory_promoted", "sequence": 96, "status": "trusted", "version": 1}

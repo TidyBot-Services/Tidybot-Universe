@@ -1,0 +1,417 @@
+{
+  "schema_version": "attentionbench.independent-legacy-entry-impact.v1",
+  "reviewer_id": "independent_admission_auditor",
+  "simulator_runs": 0,
+  "checked_entries": 50,
+  "matches": 50,
+  "all_passed": true,
+  "implementation_sha256": {
+    "benchmarks/attention_harness/formal_entry.py": "4659d364da8d84c345a68d32d5513e4f4f18f988aedc531ed6d451bdde19425d",
+    "benchmarks/attention_harness/formal_attention_run.py": "410e9e44c9003f91ff75f460d08ad856e3d6fdc4d976a02db3cb60b9e08a51e9",
+    "benchmarks/attention_harness/formal_attention_cli.py": "b6fbf6f31852c1e6ff07c4e1bedb341284f41e1714ed2fbdee93f9879a79ff49",
+    "benchmarks/attention_harness/formal_memory_contract.py": "2212c2ea111788f0d6b240ed08a8b4d65f5429c48c181bc1ff0ebf7cf99bee3c"
+  },
+  "rows": [
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 101,
+      "expected_entry_sha256": "b6cbf942bab979b5ff43b3c83189d589da72ca5f63de043a5292495f34332632",
+      "current_recomputed_sha256": "b6cbf942bab979b5ff43b3c83189d589da72ca5f63de043a5292495f34332632",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 102,
+      "expected_entry_sha256": "077a160ac3bb2824049cd2d29517b7a3adbe7ccdcf17a518c0d6f151b5408bbc",
+      "current_recomputed_sha256": "077a160ac3bb2824049cd2d29517b7a3adbe7ccdcf17a518c0d6f151b5408bbc",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 103,
+      "expected_entry_sha256": "9dd7b519f339b10e3df31ba014a2d5cb6c1ad63dacee8e49496b77eb30e55bc1",
+      "current_recomputed_sha256": "9dd7b519f339b10e3df31ba014a2d5cb6c1ad63dacee8e49496b77eb30e55bc1",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 104,
+      "expected_entry_sha256": "94691c12fb1842d18494089718654b2c4e5198518548b228b9c2f51250765ae2",
+      "current_recomputed_sha256": "94691c12fb1842d18494089718654b2c4e5198518548b228b9c2f51250765ae2",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 105,
+      "expected_entry_sha256": "19252d0265f577f692717342261b37d3714a7c34352c16f9432ff5764bf78eb0",
+      "current_recomputed_sha256": "19252d0265f577f692717342261b37d3714a7c34352c16f9432ff5764bf78eb0",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 106,
+      "expected_entry_sha256": "27b1816128f7f8f2523442f9fa4356515406b67a474c9a5fa7eb5ae4ac2a8a20",
+      "current_recomputed_sha256": "27b1816128f7f8f2523442f9fa4356515406b67a474c9a5fa7eb5ae4ac2a8a20",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 107,
+      "expected_entry_sha256": "0a3275285d16a388a93b99561e6e583315a245706c4b822996c45b7abc4bb775",
+      "current_recomputed_sha256": "0a3275285d16a388a93b99561e6e583315a245706c4b822996c45b7abc4bb775",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 108,
+      "expected_entry_sha256": "13942941ae884cc9f1cb137641a4e8a0c7b01952645deac9a9623e9aa86882a0",
+      "current_recomputed_sha256": "13942941ae884cc9f1cb137641a4e8a0c7b01952645deac9a9623e9aa86882a0",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 109,
+      "expected_entry_sha256": "51e176efbd46a6f2eff2e7ecb542e34273af38071000c3336a7332b66d0966ca",
+      "current_recomputed_sha256": "51e176efbd46a6f2eff2e7ecb542e34273af38071000c3336a7332b66d0966ca",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 110,
+      "expected_entry_sha256": "874877586d47887d64215059355696dafb5b35f72aed012e77d6b970385cbf22",
+      "current_recomputed_sha256": "874877586d47887d64215059355696dafb5b35f72aed012e77d6b970385cbf22",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 111,
+      "expected_entry_sha256": "27c112d84681bac78661329a924a160ba3145cf34626f6bb47ab02342adb718e",
+      "current_recomputed_sha256": "27c112d84681bac78661329a924a160ba3145cf34626f6bb47ab02342adb718e",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 112,
+      "expected_entry_sha256": "6126cf8064d07cc79ae7b047c194b7644d0702379bce0e02c81187286eb355c2",
+      "current_recomputed_sha256": "6126cf8064d07cc79ae7b047c194b7644d0702379bce0e02c81187286eb355c2",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 113,
+      "expected_entry_sha256": "aeb1e29e9d3c62c83a75e9fd3f119f75abaf9dcb862fcc22b0b4512a84650488",
+      "current_recomputed_sha256": "aeb1e29e9d3c62c83a75e9fd3f119f75abaf9dcb862fcc22b0b4512a84650488",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 114,
+      "expected_entry_sha256": "27222634e356d5001e24fb45d30797caca494a58a72dfd7a6fa0349e57b6d0c8",
+      "current_recomputed_sha256": "27222634e356d5001e24fb45d30797caca494a58a72dfd7a6fa0349e57b6d0c8",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 115,
+      "expected_entry_sha256": "2beb8be5a25f7c0d329eaf8e35096084390042cb66a850686846ef3f398a74a9",
+      "current_recomputed_sha256": "2beb8be5a25f7c0d329eaf8e35096084390042cb66a850686846ef3f398a74a9",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 116,
+      "expected_entry_sha256": "7e54e9ca18c20c1d504671923fc0c7de79b8616f54457a5540a8d18739d8c678",
+      "current_recomputed_sha256": "7e54e9ca18c20c1d504671923fc0c7de79b8616f54457a5540a8d18739d8c678",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 117,
+      "expected_entry_sha256": "058f69a3a4f10de6d75cefa74b533854c123308622688f412b118fde05e79c77",
+      "current_recomputed_sha256": "058f69a3a4f10de6d75cefa74b533854c123308622688f412b118fde05e79c77",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 118,
+      "expected_entry_sha256": "7a7fc9d8312f78a4cc786ae8212247de3b10f4b424dc8812c170270876893ebf",
+      "current_recomputed_sha256": "7a7fc9d8312f78a4cc786ae8212247de3b10f4b424dc8812c170270876893ebf",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 119,
+      "expected_entry_sha256": "e7505fd0fb2d5489aa740610187b147bc893aa9c73cd218e395ad283ac3aa269",
+      "current_recomputed_sha256": "e7505fd0fb2d5489aa740610187b147bc893aa9c73cd218e395ad283ac3aa269",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 120,
+      "expected_entry_sha256": "1370f84cc395eccf0bd7a1b9ab83c41c323fa99a7b1b64b7f3a300ca92fda5cf",
+      "current_recomputed_sha256": "1370f84cc395eccf0bd7a1b9ab83c41c323fa99a7b1b64b7f3a300ca92fda5cf",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 121,
+      "expected_entry_sha256": "c179c340efe7fef5f36d5ad58abb2442e4fc4f7bf154cde87fb490ed1f7bd27c",
+      "current_recomputed_sha256": "c179c340efe7fef5f36d5ad58abb2442e4fc4f7bf154cde87fb490ed1f7bd27c",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 122,
+      "expected_entry_sha256": "186992665902305a06a8c8ade6978ac25424af2d672a22fb7d4d065c68f73492",
+      "current_recomputed_sha256": "186992665902305a06a8c8ade6978ac25424af2d672a22fb7d4d065c68f73492",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 123,
+      "expected_entry_sha256": "3e549f0286911adfa4ac8238f6c7780ca86fea98b9d361cca86d14af51da40fd",
+      "current_recomputed_sha256": "3e549f0286911adfa4ac8238f6c7780ca86fea98b9d361cca86d14af51da40fd",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 124,
+      "expected_entry_sha256": "110521a57933335c8ce5c34842990c54cdbb600343f5758459789aee434ec1bb",
+      "current_recomputed_sha256": "110521a57933335c8ce5c34842990c54cdbb600343f5758459789aee434ec1bb",
+      "matches": true
+    },
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "seed": 125,
+      "expected_entry_sha256": "f24af31b3079401eea5143ed4ef0ae8677d1f26f36da2751fdbee3d70cfa34a7",
+      "current_recomputed_sha256": "f24af31b3079401eea5143ed4ef0ae8677d1f26f36da2751fdbee3d70cfa34a7",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 101,
+      "expected_entry_sha256": "592b41aaaf1b403baa1f2800ad2664545168539cb6a260486535b3fcd8f531d5",
+      "current_recomputed_sha256": "592b41aaaf1b403baa1f2800ad2664545168539cb6a260486535b3fcd8f531d5",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 102,
+      "expected_entry_sha256": "e74d09faa16635cfbfbe2c7c20eba8a185f9c1809f0bb8d0881f0d2ea97f4665",
+      "current_recomputed_sha256": "e74d09faa16635cfbfbe2c7c20eba8a185f9c1809f0bb8d0881f0d2ea97f4665",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 103,
+      "expected_entry_sha256": "8e985220c29b3eed975ffbccfcc67640280ff1cf16a4554a55c54e95b02dd699",
+      "current_recomputed_sha256": "8e985220c29b3eed975ffbccfcc67640280ff1cf16a4554a55c54e95b02dd699",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 104,
+      "expected_entry_sha256": "8fe8d6ec2691117bbd03f613ae22acddcf08d7f6033db432c0fd4111bba4b68f",
+      "current_recomputed_sha256": "8fe8d6ec2691117bbd03f613ae22acddcf08d7f6033db432c0fd4111bba4b68f",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 105,
+      "expected_entry_sha256": "f843450363fa4a820f4770ddf449c476737183e1160b27ee22e5ad2e0992d466",
+      "current_recomputed_sha256": "f843450363fa4a820f4770ddf449c476737183e1160b27ee22e5ad2e0992d466",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 106,
+      "expected_entry_sha256": "5871c65a9bdd4e6d91b19fa0ef47b5756d0308a2f2f7e765661dbe140f940b9b",
+      "current_recomputed_sha256": "5871c65a9bdd4e6d91b19fa0ef47b5756d0308a2f2f7e765661dbe140f940b9b",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 107,
+      "expected_entry_sha256": "aaeed607e1716aafd04736e2b40dd3dfd8a763f5dca784844763d0975ffaafc9",
+      "current_recomputed_sha256": "aaeed607e1716aafd04736e2b40dd3dfd8a763f5dca784844763d0975ffaafc9",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 108,
+      "expected_entry_sha256": "5a3d9ee9beadc65b910770b4a522bf24c55ec6edf894a36e2cf4b69c96a2e1d1",
+      "current_recomputed_sha256": "5a3d9ee9beadc65b910770b4a522bf24c55ec6edf894a36e2cf4b69c96a2e1d1",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 109,
+      "expected_entry_sha256": "cb2ccffe7f6dcb74390692bececc01ce905c5774f7d5511488c74d741a878a45",
+      "current_recomputed_sha256": "cb2ccffe7f6dcb74390692bececc01ce905c5774f7d5511488c74d741a878a45",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 110,
+      "expected_entry_sha256": "7c73b5fea2a222a5afa6681db2c5a0fcb805b3e3d3df703cd963b365b4d99858",
+      "current_recomputed_sha256": "7c73b5fea2a222a5afa6681db2c5a0fcb805b3e3d3df703cd963b365b4d99858",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 111,
+      "expected_entry_sha256": "8b670e7407da66690a0fc7451d5ff3f0a1ce530feb8c5ce770c5f4331ff7bdb2",
+      "current_recomputed_sha256": "8b670e7407da66690a0fc7451d5ff3f0a1ce530feb8c5ce770c5f4331ff7bdb2",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 112,
+      "expected_entry_sha256": "0f630594681040ca7e88dd08f3475c992d83049c93c165037287b70788c7d3af",
+      "current_recomputed_sha256": "0f630594681040ca7e88dd08f3475c992d83049c93c165037287b70788c7d3af",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 113,
+      "expected_entry_sha256": "6c70b4d5da45b4bb376b9526f2d5e4b55affd905a1cfb53b5cfc82eb4a1165c3",
+      "current_recomputed_sha256": "6c70b4d5da45b4bb376b9526f2d5e4b55affd905a1cfb53b5cfc82eb4a1165c3",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 114,
+      "expected_entry_sha256": "3d8e67b02fe4f5612a1b309640b0c8f410dc59e8bf44c662768a9d481dab4422",
+      "current_recomputed_sha256": "3d8e67b02fe4f5612a1b309640b0c8f410dc59e8bf44c662768a9d481dab4422",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 115,
+      "expected_entry_sha256": "bcfcbdf9b349a6d3ee40aec0ed669b99c5f9ff141743132f7a63ba48470f276f",
+      "current_recomputed_sha256": "bcfcbdf9b349a6d3ee40aec0ed669b99c5f9ff141743132f7a63ba48470f276f",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 116,
+      "expected_entry_sha256": "9d649b73ff788f200963666ecc415487e7bb5ee191fa4711d8d100caddf5ccf1",
+      "current_recomputed_sha256": "9d649b73ff788f200963666ecc415487e7bb5ee191fa4711d8d100caddf5ccf1",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 117,
+      "expected_entry_sha256": "a964ff3a8979710809fa84b7b562b586bec68f2b49b7fc6efc519f59998a4650",
+      "current_recomputed_sha256": "a964ff3a8979710809fa84b7b562b586bec68f2b49b7fc6efc519f59998a4650",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 118,
+      "expected_entry_sha256": "f20a47495f51666c0bee80321b5ff625877636966ae79ac3a01fb26888e15ae0",
+      "current_recomputed_sha256": "f20a47495f51666c0bee80321b5ff625877636966ae79ac3a01fb26888e15ae0",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 119,
+      "expected_entry_sha256": "7c9c29dd0fef05dc4950af7d8d20dc87160340c77f2f9266366ee67cd3f5ab4b",
+      "current_recomputed_sha256": "7c9c29dd0fef05dc4950af7d8d20dc87160340c77f2f9266366ee67cd3f5ab4b",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 120,
+      "expected_entry_sha256": "3e198c7604a60c0c7e384e2bd649b5baef1e4e4f4e37fc1378a7ce1b12ea1f99",
+      "current_recomputed_sha256": "3e198c7604a60c0c7e384e2bd649b5baef1e4e4f4e37fc1378a7ce1b12ea1f99",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 121,
+      "expected_entry_sha256": "f1e716a3171e3ee4d96b69459f66e41fa5316832f246674440536e461d4026ad",
+      "current_recomputed_sha256": "f1e716a3171e3ee4d96b69459f66e41fa5316832f246674440536e461d4026ad",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 122,
+      "expected_entry_sha256": "2f1e758de58ee882ea65e875b0baa4ab132f49e1b9a36219ab73a999fbc99772",
+      "current_recomputed_sha256": "2f1e758de58ee882ea65e875b0baa4ab132f49e1b9a36219ab73a999fbc99772",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 123,
+      "expected_entry_sha256": "4d1a8ff6b39c956031e519c86d66568cf64a254ff8938f33b4fc68979d5a5c4b",
+      "current_recomputed_sha256": "4d1a8ff6b39c956031e519c86d66568cf64a254ff8938f33b4fc68979d5a5c4b",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 124,
+      "expected_entry_sha256": "b24301af987d45f7f2b82a1615bb225736ba1595c3c5647b423eb6e79054db25",
+      "current_recomputed_sha256": "b24301af987d45f7f2b82a1615bb225736ba1595c3c5647b423eb6e79054db25",
+      "matches": true
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "seed": 125,
+      "expected_entry_sha256": "5131a08adb95c77a2925274de55e5b78859e3cd55c25fdf318611ff7754c68f4",
+      "current_recomputed_sha256": "5131a08adb95c77a2925274de55e5b78859e3cd55c25fdf318611ff7754c68f4",
+      "matches": true
+    }
+  ],
+  "interpretation": "Historical no-contract M1 identity hashes remain unchanged. New contract branch cannot be relabeled as executed historical Memory evidence."
+}

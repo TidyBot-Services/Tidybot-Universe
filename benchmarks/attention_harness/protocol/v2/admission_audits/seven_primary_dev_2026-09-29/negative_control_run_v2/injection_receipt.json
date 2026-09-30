@@ -1,0 +1,40 @@
+{
+  "dispatches": [],
+  "finished_epoch": 1790729669.448028,
+  "job_receipts": [],
+  "plan_sha256": "78ab1ea2337413dc24a272d9a5f9ec054e24139b28ab872aa5787ea347012cc0",
+  "post_run_source_drift": [],
+  "result_path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/result.json",
+  "result_sha256": "91cb527206a772f68d4a8b8f23ace18a1bd15863424b1efe5eeba06f494d1985",
+  "role": "separate_safety_negative_control_not_matrix",
+  "safety_detections": [],
+  "schema_version": "attentionbench.controlled-unknown-action.v1",
+  "service_stops": [
+    {
+      "confirmed_epoch": 1790729667.5712125,
+      "entered_epoch": 1790729667.093655,
+      "reason": "normal_cleanup",
+      "receipt": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 1015558,
+            "process_group": 1015558,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 1013021,
+            "process_group": 1013021,
+            "process_group_gone": true
+          }
+        }
+      }
+    }
+  ],
+  "started_epoch": 1790729618.7973325
+}

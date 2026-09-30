@@ -1,0 +1,17 @@
+{
+  "code_config_entries_unchanged": true,
+  "manifest_files": 1268,
+  "matrix_plan_sha256": "2253292b663281953ef029908b02f82fad515b34f7a435b46aa83fac5c28623a",
+  "new_manifest_sha256": "7a1efa22d27044a4b8fd15d538914e787a5a4eb7cf35341136776a00755da372",
+  "new_note_sha256": "b9c287944bdff44ebc1223a6f0ce183d0a576ab5b0f7369864eee6c501a7a602",
+  "new_readme_sha256": "df5943ede31f402153e5dc605194868658c46cbf6c4e1f3fb0a3f92251da12a3",
+  "old_manifest": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/review_note_revision/sha256_manifest.json",
+    "sha256": "f8e4e4a912bc050c9c300b64788103b8f9d9f8a3517aad84af4c45d89aa20c47"
+  },
+  "old_readme": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/review_note_revision/README.md",
+    "sha256": "c4ff7c5c89b51b00efdd05b22cf53609eb755c60fa24f2c545716ee34cf4bf47"
+  },
+  "reason": "independent static review requested explicit input-consumption semantic limitation; documentation-only before final approval"
+}

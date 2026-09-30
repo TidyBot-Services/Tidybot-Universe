@@ -1,0 +1,26 @@
+{
+  "attempt_id": "attempt:seven-admission-safety-negative-control:0",
+  "attention_input": {},
+  "camera_attestation": [
+    "base_camera",
+    "wrist_camera"
+  ],
+  "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+  "entry_lock": null,
+  "error": "ValueError: public station run/attempt identity mismatch",
+  "final_observation_sha256": null,
+  "initial_observation_sha256": null,
+  "language_attestation": "pick the boxed drink from the counter and place it in the sink",
+  "policy_sha256": "9192905272eabde078c192088bfbb04677e5cc895c49cf091e69ec836e994fa4",
+  "reset_attestation": {
+    "object_set_id": "objects:cda92955890a16bc8537",
+    "scene_id": "scene:29f6ddc71995db3e0fd6"
+  },
+  "run_id": "run:seven-admission-safety-negative-control",
+  "schema_version": "attentionbench.formal-trace.v1",
+  "sdk_events": [],
+  "seed": 101,
+  "status": "failed",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

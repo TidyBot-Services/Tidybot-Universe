@@ -1,0 +1,44 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robosuite-restart/attention-robosuite-cube_lift-seed101-68b4cbf67d66/attempts/cube_lift-seed101-formal-1790487655743554061",
+  "artifacts": {
+    "native_result": {
+      "sha256": "3008e7aa6d8cb70c99b8bedae673e3a2d5cdf84a03fc2d478a13d371afdf82a1",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robosuite-restart/attention-robosuite-cube_lift-seed101-68b4cbf67d66/attempts/cube_lift-seed101-formal-1790487655743554061/native_result.json"
+    },
+    "safety": {
+      "sha256": "2a9ce5a43414d0498a550f148f9fc874caa85de53c8af2b1e376c3c4e132b8f4",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robosuite-restart/attention-robosuite-cube_lift-seed101-68b4cbf67d66/attempts/cube_lift-seed101-formal-1790487655743554061/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "727a3a4423b22dad9d5f8b0db92322679aa9119f3771fa87bcdd0bc8adf745f4",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robosuite-restart/attention-robosuite-cube_lift-seed101-68b4cbf67d66/attempts/cube_lift-seed101-formal-1790487655743554061/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "287626b045bc364955182d0cbbab980dd3e6912a087c8dfcdfd5d0fa60711f9c",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robosuite-restart/attention-robosuite-cube_lift-seed101-68b4cbf67d66/attempts/cube_lift-seed101-formal-1790487655743554061/trace.json"
+    }
+  },
+  "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:1",
+  "config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+  "error": null,
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+  "run_id": "run:attention-robosuite-cube_lift-seed101-68b4cbf67d66",
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 101,
+  "service_revision": "12bc69afe83c8398988be3eee637f91c14e9bf19",
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

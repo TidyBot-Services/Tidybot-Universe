@@ -1,0 +1,1 @@
+{"output": "/home/truares/\u684c\u9762/attentionbench-seven-freeze-20260929/negative_control_run", "error": "TypeError: run_with_formal_boundary() takes 1 positional argument but 2 were given", "real_dispatched_actions": 0, "safety_detected": []}

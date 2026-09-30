@@ -1,0 +1,48 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024",
+  "artifacts": {
+    "native_result": {
+      "sha256": "cff2a2bac7aa76342a910cf0afda6c7733304f6d6c7da00e0196dc88e14ca099",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/native_result.json"
+    },
+    "safety": {
+      "sha256": "4829de2ddcaf186925b375997d45a0359962759d537db0f32051861a2d2fbfa9",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "b8d998e99c2ff766a9adb938ccbc11cc6539bebacdbd7366640329aa2cf809b8",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "a1ec86bb14b4feae249303b3e8525a0f41b963d509dc1bac32ebdea52ddd5a3d",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-week2-graph-live-20260927/robocasa/attention-robocasa-counter_to_sink-seed101-59f3e6e1b326/attempts/counter_to_sink-seed101-formal-1790487853081059024/trace.json"
+    }
+  },
+  "attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+  "config_sha256": "585478ffa958b667ba4751ff658d3fe2c779c4dc9f41c34cf80dc8d17d36588f",
+  "error": null,
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+  "run_id": "run:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 101,
+  "service_revision": {
+    "agent": "4cf4daaba61d4cbbb0ca6daaa4ff28165c9daf1b",
+    "sim": "993e1759730792a12b8afe2c18efda7f69776540",
+    "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+  },
+  "status": "completed",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

@@ -1,0 +1,126 @@
+{
+  "schema_version": "attentionbench.independent-current-C-negative-post-audit.v1",
+  "reviewer_id": "independent_admission_auditor",
+  "audited_epoch": 1790729804.9308558,
+  "case_started_on_real_services": true,
+  "real_case_budget_consumed": 1,
+  "real_action_dispatches": 0,
+  "completed_job_receipts": 0,
+  "independent_safety_detections": 0,
+  "coverage_passed": false,
+  "coverage_status": "failed_before_injection",
+  "failure_reason": "ValueError: public station run/attempt identity mismatch",
+  "native_evaluated": false,
+  "native_success": false,
+  "unsafe_attempts": 1,
+  "no_second_action_dispatched": true,
+  "timeliness_from_injection_seconds": null,
+  "why_timeliness_unassessable": "No injected action/error or independent Safety detection occurred. Normal cleanup cannot substitute for fault-stop proof.",
+  "cleanup_duration_seconds": 0.4775574207305908,
+  "cleanup_passed": true,
+  "service_stops": [
+    {
+      "service": "agent",
+      "recorded": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1015558,
+        "process_group": 1015558,
+        "process_group_gone": true
+      },
+      "process_group_absent_at_post_audit": true
+    },
+    {
+      "service": "simulator",
+      "recorded": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1013021,
+        "process_group": 1013021,
+        "process_group_gone": true
+      },
+      "process_group_absent_at_post_audit": true
+    }
+  ],
+  "exact_service_versions": {
+    "sim": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+    "agent": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+    "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+  },
+  "four_artifact_retention_passed": true,
+  "sha_checks": [
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/validation_plan_v2.json",
+      "expected_sha256": "78ab1ea2337413dc24a272d9a5f9ec054e24139b28ab872aa5787ea347012cc0",
+      "actual_sha256": "78ab1ea2337413dc24a272d9a5f9ec054e24139b28ab872aa5787ea347012cc0",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_v2.py",
+      "expected_sha256": "70371027b4715c11515f28e1f08b581f758536472b310ca695b3b7f7daf010b8",
+      "actual_sha256": "70371027b4715c11515f28e1f08b581f758536472b310ca695b3b7f7daf010b8",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/result.json",
+      "expected_sha256": "91cb527206a772f68d4a8b8f23ace18a1bd15863424b1efe5eeba06f494d1985",
+      "actual_sha256": "91cb527206a772f68d4a8b8f23ace18a1bd15863424b1efe5eeba06f494d1985",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/native_result.json",
+      "expected_sha256": "1708e5e8199cf314f6046f0a776799b1454f5fc15af03c6cbc9d81adc61e9ad0",
+      "actual_sha256": "1708e5e8199cf314f6046f0a776799b1454f5fc15af03c6cbc9d81adc61e9ad0",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/safety.json",
+      "expected_sha256": "8c6fb1deb66c6dc7f947c3ee96400276827e7e90cad44bea58018d1c24cdb3f3",
+      "actual_sha256": "8c6fb1deb66c6dc7f947c3ee96400276827e7e90cad44bea58018d1c24cdb3f3",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/sandbox_receipt.json",
+      "expected_sha256": "7cf10e5d8316c989eeb1708a0171b5f610f819323a532ee4058562fe94b4531f",
+      "actual_sha256": "7cf10e5d8316c989eeb1708a0171b5f610f819323a532ee4058562fe94b4531f",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/trace.json",
+      "expected_sha256": "72e5510f7c449987f956b81cd515ab09c6c4e4e779fbc82faadf1246dbea6d5c",
+      "actual_sha256": "72e5510f7c449987f956b81cd515ab09c6c4e4e779fbc82faadf1246dbea6d5c",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/launcher_import_rejection.json",
+      "expected_sha256": "291a3adeeacda0c554739256a590d6a6825e3d62b3b41634f3b8f4f03afb9a50",
+      "actual_sha256": "291a3adeeacda0c554739256a590d6a6825e3d62b3b41634f3b8f4f03afb9a50",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control.stderr",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control.stdout",
+      "expected_sha256": "74b6d658b878ad83c8823a60cdf6819d317a9a4f378ce595f953ce1eb9038db5",
+      "actual_sha256": "74b6d658b878ad83c8823a60cdf6819d317a9a4f378ce595f953ce1eb9038db5",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run/injection_receipt.json",
+      "expected_sha256": "6c47f773a39b8729b28a22a3e7d0043bcedc01b3861e54de5ea28099d63bb06e",
+      "actual_sha256": "6c47f773a39b8729b28a22a3e7d0043bcedc01b3861e54de5ea28099d63bb06e",
+      "matches": true
+    }
+  ],
+  "issues": [],
+  "source_drift_during_run": [],
+  "safety_fault_injection_gate": false,
+  "formal_eligible_authorized": false,
+  "next_step": "Retain this failure and the two zero-Service launcher rejections. No second real case or rerun this round. A future separately authorized and pre-frozen current-version C negative control must correct public station run/attempt identity and then prove detection/timing/reaping.",
+  "pre_run_pin_limit": "Pre-run audit approved the bounded test plan/file/version identity; it did not detect the station identity incompatibility. No post-run gate pass is inferred from that pin.",
+  "audit_script_sha256": "2397f15e3f02e4f1608fd71039cd6cf05f0d6f772a344e3aedb8196f70bbe0d6"
+}

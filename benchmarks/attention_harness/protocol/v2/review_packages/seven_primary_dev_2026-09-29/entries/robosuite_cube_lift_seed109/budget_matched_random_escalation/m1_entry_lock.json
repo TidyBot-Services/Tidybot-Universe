@@ -1,0 +1,22 @@
+{
+  "approved_config_sha256": "8aa6a0e5983b2085661a4b566a5f7b094a12b499cac9036f2acbc32be24d2f6e",
+  "approved_demo_sha256": null,
+  "approved_memory_contract_sha256": "d3598cb79c89fbe347a0ece298a00620f3ee652934ecb89d3254a1a5f7892813",
+  "approved_policy_config_sha256": "c9aedea9aab94cc945770e89ce9af7b1829e67cf64f78193fee23394f8e36755",
+  "approved_policy_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+  "assistance_credits": 1,
+  "assistance_mode": "benchmark_proxy",
+  "attention_policy": "budget_matched_random_escalation",
+  "execution_target": "robosuite_sim",
+  "human_deadline_seconds": 30.0,
+  "max_attempts": 4,
+  "memory_contract_content_sha256": "6dabc07344a8dc8693692f52d8f6a5adc22a26a1e97465a7ee40731a36f2d17e",
+  "overall_deadline_seconds": 300.0,
+  "perception_mode": "sim_gt",
+  "schema_version": "attentionbench.formal-entry-lock.v1",
+  "seed": 109,
+  "sha256": "e18706f45410fb3995e904819327c042358bd78b65ed822b2fd764e484858af0",
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "token_limit": 4096
+}

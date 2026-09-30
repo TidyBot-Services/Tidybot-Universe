@@ -1,0 +1,72 @@
+{
+  "ablation_executions": 0,
+  "cases_replaced_or_selected": 0,
+  "chain_reruns": 0,
+  "depth_reruns": 0,
+  "heldout_executions": 0,
+  "independent_post_run_audit": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/negative_control_post_run_audit.json",
+    "sha256": "a1aefe83a26d76d794714c5f724ec5bc1686c128193f1f82d69b8dab91d8c972"
+  },
+  "launcher_rejections_before_service": 2,
+  "matrix_executions": 0,
+  "max_new_real_development_cases": 1,
+  "negative_control": {
+    "actual_dispatched_actions": 0,
+    "coverage": "FAIL: pre-injection identity rejection; zero negative-control action dispatch",
+    "error": "ValueError: public station run/attempt identity mismatch",
+    "injection_receipt": {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/injection_receipt.json",
+      "sha256": "d80b801f76b089f81ad3f1ab1d0c299fa9600d9eb1d8e02fd1c9ed027c8887d5"
+    },
+    "native_evaluated": false,
+    "result": {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/result.json",
+      "sha256": "91cb527206a772f68d4a8b8f23ace18a1bd15863424b1efe5eeba06f494d1985"
+    },
+    "status": "failed",
+    "trace": {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/trace.json",
+      "sha256": "72e5510f7c449987f956b81cd515ab09c6c4e4e779fbc82faadf1246dbea6d5c"
+    }
+  },
+  "new_real_attempts": 1,
+  "new_real_development_cases": 1,
+  "profile_reruns": 0,
+  "retained_launcher_failures": [
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/launcher_import_rejection.json",
+      "sha256": "291a3adeeacda0c554739256a590d6a6825e3d62b3b41634f3b8f4f03afb9a50"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run/injection_receipt.json",
+      "sha256": "6c47f773a39b8729b28a22a3e7d0043bcedc01b3861e54de5ea28099d63bb06e"
+    }
+  ],
+  "retry_authorized": false,
+  "schema_version": "attentionbench.current-round-execution-ledger.v1",
+  "scope": "本开发集主实验冻结与准入审计；矩阵仅生成文件",
+  "tests": [
+    {
+      "evidence": {
+        "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/tests_harness_final.txt",
+        "sha256": "47f4156da576c4b8b8d583f82af035483d91671699248800b9b27c24c3363e29"
+      },
+      "result": "468 passed, 10 skipped in 46.60s",
+      "source_scope": "before final small post-audit guards/cost-known fix"
+    },
+    {
+      "evidence": {
+        "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/tests_post_audit_fix_v2.txt",
+        "sha256": "0da31e42a42aed801f28e66a92fbde86c195f97921e4c8270b51c0a4196ac583"
+      },
+      "result": "108 passed in 3.59s",
+      "source_scope": "latest post-audit guard/cost-known changes and related regression tests; runtime commit 03f07ded72b936c57e08ce22050f06b34ee46a0e"
+    }
+  ],
+  "unit_and_local_contract_validation": "No simulator, no matrix effects, no held-out; separate from formal run acceptance",
+  "validation_plan": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/validation_plan_v2.json",
+    "sha256": "78ab1ea2337413dc24a272d9a5f9ec054e24139b28ab872aa5787ea347012cc0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "attempt_id": "attempt:seven-admission-safety-negative-control:0",
+  "coverage": "no_state_samples",
+  "events": [],
+  "run_id": "run:seven-admission-safety-negative-control",
+  "schema_version": "attentionbench.safety-monitor.v1",
+  "source": "independent_safety_monitor",
+  "unsafe_attempts": 1,
+  "violations": [
+    {
+      "kind": "monitor_not_initialized"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "artifact_dir": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762",
+  "artifacts": {
+    "native_result": {
+      "sha256": "1708e5e8199cf314f6046f0a776799b1454f5fc15af03c6cbc9d81adc61e9ad0",
+      "uri": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/native_result.json"
+    },
+    "safety": {
+      "sha256": "8c6fb1deb66c6dc7f947c3ee96400276827e7e90cad44bea58018d1c24cdb3f3",
+      "uri": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "7cf10e5d8316c989eeb1708a0171b5f610f819323a532ee4058562fe94b4531f",
+      "uri": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "72e5510f7c449987f956b81cd515ab09c6c4e4e779fbc82faadf1246dbea6d5c",
+      "uri": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/attempts/counter_to_sink-seed101-formal-1790729618797655762/trace.json"
+    }
+  },
+  "attempt_id": "attempt:seven-admission-safety-negative-control:0",
+  "boundary_checked": true,
+  "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+  "entry_lock": null,
+  "error": "ValueError: public station run/attempt identity mismatch",
+  "formal_blockers": [
+    "independent sandbox and cancellation acceptance not frozen",
+    "task/seed/config stability matrix not formally accepted"
+  ],
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": false,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "9192905272eabde078c192088bfbb04677e5cc895c49cf091e69ec836e994fa4",
+  "run_id": "run:seven-admission-safety-negative-control",
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 101,
+  "service_revision": {
+    "agent": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+    "sim": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+    "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+  },
+  "status": "failed",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

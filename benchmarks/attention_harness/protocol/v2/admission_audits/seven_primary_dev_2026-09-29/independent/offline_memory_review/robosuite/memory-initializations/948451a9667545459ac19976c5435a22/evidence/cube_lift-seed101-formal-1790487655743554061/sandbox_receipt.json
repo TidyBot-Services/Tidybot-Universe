@@ -1,0 +1,47 @@
+{
+  "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:1",
+  "config_sha256_after": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+  "deadline_seconds": 90.0,
+  "elapsed_seconds": 2.1486861080011295,
+  "probe": {
+    "boundary": "bubblewrap_user_mount_pid_network_namespace",
+    "bubblewrap_executable": "/usr/bin/bwrap",
+    "bubblewrap_version": "bubblewrap 0.6.1",
+    "credential_environment_absent": true,
+    "host_home_visible": false,
+    "host_root_visible": false,
+    "network_reachable": false,
+    "read_only_mounts": [
+      "/usr",
+      "/lib",
+      "/lib64",
+      "/bin",
+      "/worker/worker.py"
+    ],
+    "worker_has_simulator_client": false,
+    "worker_sha256": "899935a78d8b159f3df1591c22de8a3849f320138e0639ae21d9b76fcb7de236"
+  },
+  "run_id": "run:attention-robosuite-cube_lift-seed101-68b4cbf67d66",
+  "schema_version": "attentionbench.formal-sandbox-receipt.v1",
+  "service_revision": "12bc69afe83c8398988be3eee637f91c14e9bf19",
+  "service_source_unchanged": true,
+  "service_stop": {
+    "exit_code": -15,
+    "leader_reaped": true,
+    "mechanism": "dedicated_service_process_group_termination",
+    "pid": 759910,
+    "process_group": 759910,
+    "process_group_gone": true,
+    "reason": "normal_cleanup",
+    "service_module_origin": "/home/truares/\u684c\u9762/robosuite_sim-service/robosuite_sim/__init__.py"
+  },
+  "source_sha256_after": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+  "source_sha256_before": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+  "worker": {
+    "call_count": 2,
+    "elapsed_seconds": 0.045707451999987825,
+    "error": null,
+    "process_exit_code": 0,
+    "status": "completed"
+  }
+}

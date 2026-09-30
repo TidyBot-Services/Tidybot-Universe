@@ -1,0 +1,13 @@
+{
+  "dispatches": [],
+  "error": "TypeError: run_with_formal_boundary() takes 1 positional argument but 2 were given",
+  "finished_epoch": 1790729438.4415584,
+  "job_receipts": [],
+  "plan_sha256": "8facb220476697f89cf426d29e74f54e760d429abcdc1d5a8a3c3997d58d90db",
+  "post_run_source_drift": [],
+  "role": "separate_safety_negative_control_not_matrix",
+  "safety_detections": [],
+  "schema_version": "attentionbench.controlled-unknown-action.v1",
+  "service_stops": [],
+  "started_epoch": 1790729438.4414558
+}

@@ -1,0 +1,10 @@
+{
+  "attempt_id": "attempt:seven-admission-safety-negative-control:0",
+  "evaluated": false,
+  "native_success": false,
+  "run_id": "run:seven-admission-safety-negative-control",
+  "schema_version": "attentionbench.formal-native-result.v1",
+  "service_native_success": null,
+  "source": "robocasa/task/success",
+  "status": "failed"
+}

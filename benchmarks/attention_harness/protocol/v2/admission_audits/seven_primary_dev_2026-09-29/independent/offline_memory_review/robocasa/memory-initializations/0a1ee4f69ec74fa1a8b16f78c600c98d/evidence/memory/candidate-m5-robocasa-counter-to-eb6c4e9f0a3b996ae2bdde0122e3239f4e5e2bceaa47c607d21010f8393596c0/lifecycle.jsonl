@@ -1,0 +1,2 @@
+{"actor": null, "event_key": "memory-validation:candidate:m5:robocasa-counter-to-sink-public-sdk-v3:5:0", "event_type": "memory.validated", "expires_at": null, "reason": "validation_gate_passed", "sequence": 271, "status": "validated", "version": 1}
+{"actor": null, "event_key": "memory-promote:candidate:m5:robocasa-counter-to-sink-public-sdk-v3", "event_type": "memory.trusted", "expires_at": null, "reason": "validated_memory_promoted", "sequence": 272, "status": "trusted", "version": 1}

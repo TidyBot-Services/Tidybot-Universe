@@ -1,0 +1,18 @@
+{
+  "camera_height": 64,
+  "camera_name": "agentview",
+  "camera_width": 64,
+  "horizon": 500,
+  "object_set_id": "objects:c2061d848450f0886a06",
+  "perception_mode": "sim_gt",
+  "safety_limits": {
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "scene_id": "scene:f9fe1695bfe859d1d36b",
+  "schema_version": "attentionbench.robosuite-formal-config.v1",
+  "seed": 107,
+  "service_revision": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

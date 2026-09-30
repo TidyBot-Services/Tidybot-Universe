@@ -1,0 +1,38 @@
+{
+  "budget": {
+    "assistance_credits": 1,
+    "attempt_deadline_seconds": 120,
+    "max_attempts": 4,
+    "sdk_calls_max": 200,
+    "token_limit": 4096,
+    "whole_case_wall_seconds": 300
+  },
+  "environment": {
+    "PYTHONPATH": "/home/truares/桌面/attention_memory_service:/home/truares/桌面/Tidybot-Universe-attention-native"
+  },
+  "execution_authorized": false,
+  "format_attempts": 1,
+  "harness_python": {
+    "path": "/home/truares/.local/share/uv/python/cpython-3.10.21-linux-x86_64-gnu/bin/python3.10",
+    "sha256": "ca420bd4614ae7757b4cd4938b3c663e98d2b631bda518610071d9a4ca0b509e"
+  },
+  "launch_module": "benchmarks.attention_harness.formal_attention_cli",
+  "launch_preflight": "verify all manifest SHA and exact clean runtime/Service commits; authorization requires independent overall PASS",
+  "mode": "generation_and_inspection_only",
+  "model": "parcc/GLM",
+  "provider_http_attempts": 1,
+  "required_dynamic_output_argument": "--artifact-root (fresh directory outside this frozen package)",
+  "robocasa_agent_python": {
+    "path": "/home/truares/miniconda3/envs/maniskill/bin/python3.11",
+    "sha256": "f33fe7acf4552a82f53158d00f94fd10a082bb454a1779c3b7f207f7369ef2fe"
+  },
+  "robocasa_sim_python": {
+    "path": "/home/truares/miniconda3/envs/maniskill/bin/python3.11",
+    "sha256": "f33fe7acf4552a82f53158d00f94fd10a082bb454a1779c3b7f207f7369ef2fe"
+  },
+  "service_versions": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/software_versions.json",
+    "sha256": "05ea8b9a573d90fad13fb8e75e93fbe9042f9b8b048090662250ce4d85537366"
+  },
+  "single_glm_call": true
+}

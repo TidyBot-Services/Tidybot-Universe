@@ -1,0 +1,42 @@
+{
+  "accounting": {
+    "advisor_cache_initial_state": "empty_per_run",
+    "answered_request_credits": 1,
+    "cached_answer_credits": 1,
+    "cached_provider_tokens": 0,
+    "proxy_latency_seconds": 2
+  },
+  "automatic_promotion": false,
+  "condition": "full_trace_aware_attention_planner",
+  "context": {
+    "camera_config_id": "camera:base_camera+wrist_camera",
+    "camera_names": [
+      "base_camera",
+      "wrist_camera"
+    ],
+    "object_set_id": "objects:77525e87dc69802be6c7",
+    "perception_mode": "sim_gt",
+    "scene_id": "scene:5398937253ec8588f5c1",
+    "suite": "robocasa",
+    "task_id": "counter_to_sink",
+    "task_prompt": "pick the onion from the counter and place it in the sink",
+    "task_variant_id": "primary-dev-config:6a27f77a9e79b5caab03"
+  },
+  "evidence_root": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robocasa/evidence",
+  "initial_state": {
+    "kind": "sqlite_snapshot",
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robocasa/initial.sqlite3",
+    "sha256": "15781e887d56e6346573b5781a50e5385b417a62259edb3ae3ba5773870edde8",
+    "versions": [
+      {
+        "memory_id": "candidate:m5:robocasa-counter-to-sink-public-sdk-v3",
+        "version": 1
+      }
+    ]
+  },
+  "reset_each_run": true,
+  "schema_version": "attentionbench.formal-memory-contract.v1",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "visibility": "trusted_exact_versions"
+}

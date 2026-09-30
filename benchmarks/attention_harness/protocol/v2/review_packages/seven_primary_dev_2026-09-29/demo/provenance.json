@@ -1,0 +1,28 @@
+[
+  {
+    "asset_path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/demo/robosuite_cube_lift_actions.json",
+    "asset_sha256": "ebe11ac10a5ac3be7b1141133a3d34792f107e1416762620253d4f90e00af6a3",
+    "first_attempt_only": true,
+    "seed": 101,
+    "selection_rule": "first eight public SDK action events from pre-existing seed101 first attempt regardless of native outcome; no result/evaluator/sim state projection",
+    "source_native_success": false,
+    "source_trace": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/new_runs/robosuite-cube_lift-seed101/attention-robosuite-cube_lift-seed101-48da012352f8/attempts/cube_lift-seed101-formal-1790726480507439552/trace.json",
+    "source_trace_sha256": "76b253d1b3a2a3c29b944670db3a0130f740f89d22140401f240eebc85353341",
+    "steps": 5,
+    "suite": "robosuite",
+    "task_id": "cube_lift"
+  },
+  {
+    "asset_path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/demo/robocasa_counter_to_sink_actions.json",
+    "asset_sha256": "6f27981293e9cdf8da53aecdfee44707aba99b57d049bdfc77115aba3744a629",
+    "first_attempt_only": true,
+    "seed": 101,
+    "selection_rule": "first eight public SDK action events from pre-existing seed101 first attempt regardless of native outcome; no result/evaluator/sim state projection",
+    "source_native_success": false,
+    "source_trace": "/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v109_chain/chain_runs/robocasa-counter_to_sink-seed101/attention-robocasa-counter_to_sink-seed101-fe69d8e524f8/attempts/counter_to_sink-seed101-formal-1790715856146607201/trace.json",
+    "source_trace_sha256": "503d8073d0559d22db5d497c6b17f9af7cb7cc1efcfd97dfbe17c9a3b19713bf",
+    "steps": 8,
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  }
+]

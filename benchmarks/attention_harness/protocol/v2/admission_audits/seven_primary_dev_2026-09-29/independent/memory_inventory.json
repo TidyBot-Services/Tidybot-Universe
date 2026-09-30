@@ -1,0 +1,287 @@
+{
+  "schema_version": "attentionbench.independent-memory-inventory.v1",
+  "read_only": true,
+  "memories": [
+    {
+      "suite": "robosuite",
+      "source_sqlite": "/home/truares/桌面/attentionbench-m5-20260928/robosuite-current-v3/authority/attention_memory.sqlite3",
+      "sha256": "bdff6323c5f236a84984c92c5ca65d0171f5109fb5c0bcd28087bdc81871ade3",
+      "integrity_check": "ok",
+      "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+      "status": "trusted",
+      "version": 1,
+      "expires_at": null,
+      "source_run_id": "run:attention-robosuite-cube_lift-seed101-68b4cbf67d66",
+      "source_trace_id": "trace:cube_lift-seed101-formal-1790487647008852616:0",
+      "source_attempt_id": "attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+      "scope": {
+        "assistance_credits": 0,
+        "cases": [
+          {
+            "camera_config_id": "camera:agentview",
+            "camera_names": [
+              "agentview"
+            ],
+            "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+            "scene_id": "scene:095974d95f12b5c458fb",
+            "seed": 101,
+            "task_prompt": "Lift the cube clear of the table.",
+            "task_variant_id": "task-variant-0"
+          },
+          {
+            "camera_config_id": "camera:robot0_eye_in_hand",
+            "camera_names": [
+              "robot0_eye_in_hand"
+            ],
+            "object_set_id": "objects:bbdd455629c4c264753c",
+            "scene_id": "scene:0a4563fb4cba099d4ca9",
+            "seed": 102,
+            "task_prompt": "Pick up the cube from the table.",
+            "task_variant_id": "task-variant-1"
+          },
+          {
+            "camera_config_id": "camera:agentview",
+            "camera_names": [
+              "agentview"
+            ],
+            "object_set_id": "objects:6dac406b2c845d381cdc",
+            "scene_id": "scene:36e4b2483e89af66a7e6",
+            "seed": 103,
+            "task_prompt": "Lift the cube clear of the table.",
+            "task_variant_id": "task-variant-0"
+          },
+          {
+            "camera_config_id": "camera:robot0_eye_in_hand",
+            "camera_names": [
+              "robot0_eye_in_hand"
+            ],
+            "object_set_id": "objects:2690686dd68a15ef38a2",
+            "scene_id": "scene:4d12afab2b1a7765366d",
+            "seed": 104,
+            "task_prompt": "Pick up the cube from the table.",
+            "task_variant_id": "task-variant-1"
+          },
+          {
+            "camera_config_id": "camera:agentview",
+            "camera_names": [
+              "agentview"
+            ],
+            "object_set_id": "objects:a44eefc17cf5e13824b9",
+            "scene_id": "scene:8f38c0c9a83e9dc866e5",
+            "seed": 105,
+            "task_prompt": "Lift the cube clear of the table.",
+            "task_variant_id": "task-variant-0"
+          }
+        ],
+        "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+        "perception_mode": "sim_gt",
+        "policy_id": "reactive_help",
+        "schema_version": "attentionbench.memory-validation-plan.v2",
+        "seeds": [
+          101,
+          102,
+          103,
+          104,
+          105
+        ],
+        "suite": "robosuite",
+        "task_id": "cube_lift"
+      },
+      "provenance_artifact_sha256": "db0f4b734459028055e2dff366cab9fce15fe3ce9a14d9ddbd3cf0411316044c",
+      "raw_evidence_refs": [
+        {
+          "evidence_id": "evidence:trace_context.json",
+          "kind": "execution_context",
+          "sha256": "f92f892c7b0c28cdefce49ea8dcfba13dbbd749915d96b94f03d3821b281cfdf",
+          "uri": "artifact://cube_lift-seed101-formal-1790487647008852616/trace_context.json"
+        },
+        {
+          "evidence_id": "evidence:policy.py",
+          "kind": "policy_code",
+          "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+          "uri": "artifact://cube_lift-seed101-formal-1790487647008852616/policy.py"
+        },
+        {
+          "evidence_id": "evidence:service.log",
+          "kind": "service_log",
+          "sha256": "ed1006b28c2eb660cf884ec6edddf4bfc8686b52bbc2e32420fab51cf1c7c661",
+          "uri": "artifact://cube_lift-seed101-formal-1790487647008852616/service.log"
+        }
+      ],
+      "grants": [
+        {
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed103-1b7e2d026c37:1",
+          "context": {
+            "camera_config_id": "camera:agentview",
+            "camera_names": [
+              "agentview"
+            ],
+            "object_set_id": "objects:6dac406b2c845d381cdc",
+            "perception_mode": "sim_gt",
+            "scene_id": "scene:36e4b2483e89af66a7e6",
+            "suite": "robosuite",
+            "task_id": "cube_lift",
+            "task_prompt": "Lift the cube clear of the table.",
+            "task_variant_id": "task-variant-0"
+          },
+          "grant_id": "grant:c15e84084dc34ba8abe8adb8b0c09bf2",
+          "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+          "schema_version": "attentionbench.memory-use-grant.v1",
+          "used_at": 1790557906.7952292,
+          "version": 1
+        },
+        {
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed103-a01d5f445724:1",
+          "context": {
+            "camera_config_id": "camera:agentview",
+            "camera_names": [
+              "agentview"
+            ],
+            "object_set_id": "objects:6dac406b2c845d381cdc",
+            "perception_mode": "sim_gt",
+            "scene_id": "scene:36e4b2483e89af66a7e6",
+            "suite": "robosuite",
+            "task_id": "cube_lift",
+            "task_prompt": "Lift the cube clear of the table.",
+            "task_variant_id": "task-variant-0"
+          },
+          "grant_id": "grant:2b8f36d2c000463d9c321d2bcd5bca18",
+          "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+          "schema_version": "attentionbench.memory-use-grant.v1",
+          "used_at": 1790487819.2902656,
+          "version": 1
+        }
+      ],
+      "uses": [
+        {
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed103-a01d5f445724:1",
+          "evidence_refs": [],
+          "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+          "memory_version": 1,
+          "outcome": "native_success",
+          "run_id": "run:attention-robosuite-cube_lift-seed103-a01d5f445724",
+          "schema_version": "attentionbench.core.v1",
+          "use_id": "use:attempt:attention-robosuite-cube_lift-seed103-a01d5f445724:1:candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+          "used_at": 1790487819.2902656
+        },
+        {
+          "attempt_id": "attempt:attention-robosuite-cube_lift-seed103-1b7e2d026c37:1",
+          "evidence_refs": [],
+          "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+          "memory_version": 1,
+          "outcome": "native_success",
+          "run_id": "run:attention-robosuite-cube_lift-seed103-1b7e2d026c37",
+          "schema_version": "attentionbench.core.v1",
+          "use_id": "use:attempt:attention-robosuite-cube_lift-seed103-1b7e2d026c37:1:candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+          "used_at": 1790557906.7952292
+        }
+      ]
+    },
+    {
+      "suite": "robocasa",
+      "source_sqlite": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/robocasa-memory-v3/authority/attention_memory.sqlite3",
+      "sha256": "53368bc30322ba450d6791f639804d87080f5862d9ea94507ce09158627ee5db",
+      "integrity_check": "ok",
+      "memory_id": "candidate:m5:robocasa-counter-to-sink-public-sdk-v3",
+      "status": "trusted",
+      "version": 1,
+      "expires_at": null,
+      "source_run_id": "run:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326",
+      "source_trace_id": "trace:counter_to_sink-seed101-formal-1790487853081059024:0",
+      "source_attempt_id": "attempt:attention-robocasa-counter_to_sink-seed101-59f3e6e1b326:0",
+      "scope": {
+        "assistance_credits": 0,
+        "cases": [
+          {
+            "camera_config_id": "camera:base+wrist",
+            "camera_names": [
+              "base_camera",
+              "wrist_camera"
+            ],
+            "object_set_id": "objects:cda92955890a16bc8537",
+            "scene_id": "scene:29f6ddc71995db3e0fd6",
+            "seed": 101,
+            "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+            "task_variant_id": "task:boxed_drink"
+          },
+          {
+            "camera_config_id": "camera:base",
+            "camera_names": [
+              "base_camera"
+            ],
+            "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+            "scene_id": "scene:93244621fd1a24b456d5",
+            "seed": 102,
+            "task_prompt": "pick the cup from the counter and place it in the sink",
+            "task_variant_id": "task:cup"
+          },
+          {
+            "camera_config_id": "camera:base+wrist",
+            "camera_names": [
+              "base_camera",
+              "wrist_camera"
+            ],
+            "object_set_id": "objects:a7d4f086836e78c38004",
+            "scene_id": "scene:feaf8e202a88a1bad005",
+            "seed": 103,
+            "task_prompt": "pick the mango from the counter and place it in the sink",
+            "task_variant_id": "task:mango"
+          },
+          {
+            "camera_config_id": "camera:base",
+            "camera_names": [
+              "base_camera"
+            ],
+            "object_set_id": "objects:a61c8884dc61c3aeccc8",
+            "scene_id": "scene:6b34dfcee277f551a83b",
+            "seed": 104,
+            "task_prompt": "pick the onion from the counter and place it in the sink",
+            "task_variant_id": "task:onion"
+          },
+          {
+            "camera_config_id": "camera:base+wrist",
+            "camera_names": [
+              "base_camera",
+              "wrist_camera"
+            ],
+            "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+            "scene_id": "scene:b328d376a1514e3e6bae",
+            "seed": 105,
+            "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+            "task_variant_id": "task:rolling_pin"
+          }
+        ],
+        "memory_id": "candidate:m5:robocasa-counter-to-sink-public-sdk-v3",
+        "perception_mode": "sim_gt",
+        "policy_id": "reactive_help",
+        "schema_version": "attentionbench.memory-validation-plan.v2",
+        "seeds": [
+          101,
+          102,
+          103,
+          104,
+          105
+        ],
+        "suite": "robocasa",
+        "task_id": "counter_to_sink"
+      },
+      "provenance_artifact_sha256": "79bb80f5e5166b21dbf78468d94f7f340390571c5ec16404d5792d4123c36dde",
+      "raw_evidence_refs": [
+        {
+          "evidence_id": "evidence:trace_context.json",
+          "kind": "execution_context",
+          "sha256": "f72dc1d959d7279a6034bb1621abb0decfa2ae466be94cac25d712e73864d424",
+          "uri": "artifact://counter_to_sink-seed101-formal-1790487853081059024/trace_context.json"
+        },
+        {
+          "evidence_id": "evidence:policy.py",
+          "kind": "policy_code",
+          "sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+          "uri": "artifact://counter_to_sink-seed101-formal-1790487853081059024/policy.py"
+        }
+      ],
+      "grants": [],
+      "uses": []
+    }
+  ]
+}

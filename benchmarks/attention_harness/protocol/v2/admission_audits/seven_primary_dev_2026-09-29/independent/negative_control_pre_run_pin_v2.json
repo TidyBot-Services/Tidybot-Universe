@@ -1,0 +1,118 @@
+{
+  "schema_version": "attentionbench.independent-negative-control-pre-run-pin.v2",
+  "approved": true,
+  "reviewer": "independent_admission_auditor",
+  "reviewer_role": "independent_auditor",
+  "plan_sha256": "78ab1ea2337413dc24a272d9a5f9ec054e24139b28ab872aa5787ea347012cc0",
+  "script_sha256": "70371027b4715c11515f28e1f08b581f758536472b310ca695b3b7f7daf010b8",
+  "pre_run_epoch": 1790729571.362577,
+  "checked_files": [
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_runner_boundary.py",
+      "sha256": "fcdb0da82ac201cfce4931e52efc50d6cfdf931781061018434902d0c10f97ec",
+      "matches": true
+    },
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/agent_actions.py",
+      "sha256": "3d5844f9855771041a3e6bab328aef034e39d6845a7f011b856d38ef9bc01eea",
+      "matches": true
+    },
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/formal_runner.py",
+      "sha256": "602bed2b532ecdefb837b86fffeace68e28571d55ec620a4ce60dccead4b2c99",
+      "matches": true
+    },
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/formal_services.py",
+      "sha256": "c3f7fe9203b3eb0a7d560eaed7b5f05eff41d3f40b3f11f0a854396b8c97d34e",
+      "matches": true
+    },
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/safety_monitor.py",
+      "sha256": "4fa8db76d38552561f93e5ba03354cb666d42dcbd722304b64d877c61a8c8fa5",
+      "matches": true
+    },
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_config.json",
+      "sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "matches": true
+    },
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_policy.py",
+      "sha256": "9192905272eabde078c192088bfbb04677e5cc895c49cf091e69ec836e994fa4",
+      "matches": true
+    },
+    {
+      "role": "file_sha256",
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_v2.py",
+      "sha256": "70371027b4715c11515f28e1f08b581f758536472b310ca695b3b7f7daf010b8",
+      "matches": true
+    },
+    {
+      "role": "preserved_launcher_failures",
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/launcher_import_rejection.json",
+      "sha256": "291a3adeeacda0c554739256a590d6a6825e3d62b3b41634f3b8f4f03afb9a50",
+      "matches": true
+    },
+    {
+      "role": "preserved_launcher_failures",
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "role": "preserved_launcher_failures",
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control.stdout",
+      "sha256": "74b6d658b878ad83c8823a60cdf6819d317a9a4f378ce595f953ce1eb9038db5",
+      "matches": true
+    },
+    {
+      "role": "preserved_launcher_failures",
+      "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run/injection_receipt.json",
+      "sha256": "6c47f773a39b8729b28a22a3e7d0043bcedc01b3861e54de5ea28099d63bb06e",
+      "matches": true
+    }
+  ],
+  "versions": [
+    {
+      "role": "agent_source_root",
+      "path": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5",
+      "head": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+      "dirty": "",
+      "matches": true
+    },
+    {
+      "role": "sim_source_root",
+      "path": "/home/truares/桌面/maniskill_sim-attention-guard-v5",
+      "head": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+      "dirty": "",
+      "matches": true
+    },
+    {
+      "role": "task_source_root",
+      "path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks",
+      "head": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+      "dirty": "",
+      "matches": true
+    }
+  ],
+  "issues": [],
+  "prior_real_cases": 0,
+  "prior_start_errors_preserved": true,
+  "only_launcher_api_and_distinct_output_paths_changed": true,
+  "scope": "one separate current RoboCasa controlled unknown-action case/attempt maximum; no chain/profile/depth/matrix/held-out runs",
+  "required_post_run_checks": [
+    "one real completed public gripper.close job receipt retained before injected unknown",
+    "Safety action_outcome_unknown <=1s; no second SDK dispatch",
+    "both Service groups gone <=15s",
+    "exact current versions and 4 artifact SHA retained",
+    "failure not rerun or replaced"
+  ]
+}

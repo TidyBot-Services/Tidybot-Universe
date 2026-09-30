@@ -1,0 +1,33 @@
+{
+  "agent_service": {
+    "clean": true,
+    "commit": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+    "path": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5"
+  },
+  "maniskill_service": {
+    "clean": true,
+    "commit": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+    "path": "/home/truares/桌面/maniskill_sim-attention-guard-v5"
+  },
+  "memory_service": {
+    "clean": true,
+    "commit": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f",
+    "path": "/home/truares/桌面/attention_memory_service"
+  },
+  "robosuite_service": {
+    "clean": true,
+    "commit": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+    "path": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering"
+  },
+  "task_service": {
+    "clean": true,
+    "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+  },
+  "universe": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native",
+    "runtime_commit": "03f07ded72b936c57e08ce22050f06b34ee46a0e",
+    "saved_protocol_commit": "a42ab8201277ffa806281b89a4f14e3ef33b1059",
+    "scope": "runtime commit is independent of later delivery commits"
+  }
+}

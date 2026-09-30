@@ -1,0 +1,7 @@
+# 固定基础策略的输入消费范围
+
+独立审计对两份基础策略做AST及全文核对：Robosuite策略只读取context.task_id；RoboCasa策略只读取task_id/language。两者均不读取context.attention_input。基础控制代码保持获批字节不变。
+
+七条件仍可改变Harness求助决策、请求类型/时间、credit、Advisor输入、demo曝光和Memory授权记录；当前冻结不能证明demo_prior、advisor_guidance、memory_guidance、self-reflection/hypothesis被机器人控制代码消费，或因此改变动作、改善原生成功。Memory grant/use在本包中表示Harness授权与输入曝光记录，不能替代机器人代码消费证据。
+
+这是本开发集主实验结论的语义边界；不得把输入曝光写成代码已采纳或控制收益。既定v2.2没有另设输入消费/改善或原生成功最低门槛，本轮不新增门槛、不因结果修订基础机器人策略。任何未来基础策略修订都须另版审批与冻结，不能套用本包身份。

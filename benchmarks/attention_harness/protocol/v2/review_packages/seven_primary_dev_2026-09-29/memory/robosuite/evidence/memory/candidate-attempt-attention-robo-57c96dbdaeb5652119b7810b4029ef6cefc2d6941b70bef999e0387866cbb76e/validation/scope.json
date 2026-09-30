@@ -1,0 +1,34 @@
+{
+  "supported_variations": [
+    {
+      "camera_config_id": "camera:agentview",
+      "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+      "scene_id": "scene:095974d95f12b5c458fb",
+      "task_variant_id": "task-variant-0"
+    },
+    {
+      "camera_config_id": "camera:robot0_eye_in_hand",
+      "object_set_id": "objects:bbdd455629c4c264753c",
+      "scene_id": "scene:0a4563fb4cba099d4ca9",
+      "task_variant_id": "task-variant-1"
+    },
+    {
+      "camera_config_id": "camera:agentview",
+      "object_set_id": "objects:6dac406b2c845d381cdc",
+      "scene_id": "scene:36e4b2483e89af66a7e6",
+      "task_variant_id": "task-variant-0"
+    },
+    {
+      "camera_config_id": "camera:robot0_eye_in_hand",
+      "object_set_id": "objects:2690686dd68a15ef38a2",
+      "scene_id": "scene:4d12afab2b1a7765366d",
+      "task_variant_id": "task-variant-1"
+    },
+    {
+      "camera_config_id": "camera:agentview",
+      "object_set_id": "objects:a44eefc17cf5e13824b9",
+      "scene_id": "scene:8f38c0c9a83e9dc866e5",
+      "task_variant_id": "task-variant-0"
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "authority_rows_otherwise_unchanged": true,
+  "cleared_advisor_cache_rows": 0,
+  "evidence_file_sha256": {
+    "cube_lift-seed101-formal-1790487647008852616/approved_config.json": "a04512b270690c87d114214e827ae8498f3e50146257f599c71d7a942ac60761",
+    "cube_lift-seed101-formal-1790487647008852616/approved_policy.py": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+    "cube_lift-seed101-formal-1790487647008852616/attention_bundle.json": "d5f737b9671fd301783184a4f49bbc189098df9605d327e3769445da95c36f92",
+    "cube_lift-seed101-formal-1790487647008852616/native_result.json": "7b8e3bd26ce2eab37a9658bec928010303f5fb58b8d465b22866ee18978dc741",
+    "cube_lift-seed101-formal-1790487647008852616/policy.py": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+    "cube_lift-seed101-formal-1790487647008852616/policy.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cube_lift-seed101-formal-1790487647008852616/result.json": "bd345bc26c3bdf3c00fce14d0aa613c44ec02be2a0dc2e49c1366827284d8473",
+    "cube_lift-seed101-formal-1790487647008852616/safety.json": "2abc0b57dc7119cfae43e068a6b5b3aee1fd227cf4c169fd9b308ba0593321d3",
+    "cube_lift-seed101-formal-1790487647008852616/sandbox_receipt.json": "ac99861788bc58e1942cc0f6f67e9af94b459bd9934d08ebcfa150ee3292bd09",
+    "cube_lift-seed101-formal-1790487647008852616/service.log": "ed1006b28c2eb660cf884ec6edddf4bfc8686b52bbc2e32420fab51cf1c7c661",
+    "cube_lift-seed101-formal-1790487647008852616/trace.json": "c222237bf391bfce84510431f2cd1a35b4c2b0b9ed092eafbc81ed3f799b0f39",
+    "cube_lift-seed101-formal-1790487647008852616/trace_context.json": "f92f892c7b0c28cdefce49ea8dcfba13dbbd749915d96b94f03d3821b281cfdf",
+    "cube_lift-seed101-formal-1790487655743554061/approved_config.json": "a04512b270690c87d114214e827ae8498f3e50146257f599c71d7a942ac60761",
+    "cube_lift-seed101-formal-1790487655743554061/approved_policy.py": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+    "cube_lift-seed101-formal-1790487655743554061/attention_bundle.json": "191df6b435ece2df74579d278bfead5ab6c2aea45c99f317aea6ff37f8f9aac5",
+    "cube_lift-seed101-formal-1790487655743554061/native_result.json": "3008e7aa6d8cb70c99b8bedae673e3a2d5cdf84a03fc2d478a13d371afdf82a1",
+    "cube_lift-seed101-formal-1790487655743554061/policy.py": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+    "cube_lift-seed101-formal-1790487655743554061/policy.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cube_lift-seed101-formal-1790487655743554061/result.json": "52ff23adc427baed1b3c0a04c7c619cc79e7211a0818bc6261eea521b2e2c168",
+    "cube_lift-seed101-formal-1790487655743554061/safety.json": "2a9ce5a43414d0498a550f148f9fc874caa85de53c8af2b1e376c3c4e132b8f4",
+    "cube_lift-seed101-formal-1790487655743554061/sandbox_receipt.json": "727a3a4423b22dad9d5f8b0db92322679aa9119f3771fa87bcdd0bc8adf745f4",
+    "cube_lift-seed101-formal-1790487655743554061/service.log": "a54639747e41dfda0283163dfd9ec6058fa73d3a6d20eb72c618cc571dd2ae73",
+    "cube_lift-seed101-formal-1790487655743554061/trace.json": "287626b045bc364955182d0cbbab980dd3e6912a087c8dfcdfd5d0fa60711f9c",
+    "cube_lift-seed101-formal-1790487655743554061/trace_context.json": "f92f892c7b0c28cdefce49ea8dcfba13dbbd749915d96b94f03d3821b281cfdf",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/MEMORY.json": "28b3c6626b2cbf7c9d8dc3e5d299441865db3453b025251081c42c0c4651909e",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/knowledge/guidance.md": "1add32c16750a335327c82f5a22725ed9d309191f3e5f2891ff4a19816377d5c",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/knowledge/repair.md": "6418fbd595ee5f89f32f79c605c32dab7d07bf58bf68c8b40bb9eafb3be1b05a",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/lifecycle.jsonl": "4f0d6c55a93875af5275b8ef483005ec449aebd1a27477eb669b24690c18bd21",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/source/provenance.json": "a033e7005bc3671e835fa6c172f3c6c370676e61a0a9ec20841a332ca8c5ad2e",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/usage.jsonl": "36c033985cdb5d20bb7a2a49a63adf1a6dd47074abcc92884ef1d11e7fc02faf",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/validation/impact.json": "55e92b8a41532167c289ba7d160eb5a8f778b43c1f200d837e4bfa1ca2c7758d",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/validation/pairs.jsonl": "2705c224a181d4ad6ed5ebfd7f4007a6bdcf26b014da89d834740e087d7aa786",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/validation/plan.json": "9136e9e1893cbe869bde5dbd5f31b15aaaef96ccbeca21968155243acbc75539",
+    "memory/candidate-attempt-attention-robo-57c96dbdaeb5652119b7810b4029ef6cefc2d6941b70bef999e0387866cbb76e/validation/scope.json": "2a49c8665121e4168d70a580b716f1910e8d36e0e7c2166b0fb38323ea5d4cb0"
+  },
+  "expires_at": null,
+  "initial_snapshot": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robosuite/initial.sqlite3",
+    "sha256": "9e6db93239ef2b9c3ea1975ca502bddb164e0dcb817255ebc805f50510d5f931"
+  },
+  "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+  "scope": {
+    "assistance_credits": 0,
+    "cases": [
+      {
+        "camera_config_id": "camera:agentview",
+        "camera_names": [
+          "agentview"
+        ],
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb",
+        "seed": 101,
+        "task_prompt": "Lift the cube clear of the table.",
+        "task_variant_id": "task-variant-0"
+      },
+      {
+        "camera_config_id": "camera:robot0_eye_in_hand",
+        "camera_names": [
+          "robot0_eye_in_hand"
+        ],
+        "object_set_id": "objects:bbdd455629c4c264753c",
+        "scene_id": "scene:0a4563fb4cba099d4ca9",
+        "seed": 102,
+        "task_prompt": "Pick up the cube from the table.",
+        "task_variant_id": "task-variant-1"
+      },
+      {
+        "camera_config_id": "camera:agentview",
+        "camera_names": [
+          "agentview"
+        ],
+        "object_set_id": "objects:6dac406b2c845d381cdc",
+        "scene_id": "scene:36e4b2483e89af66a7e6",
+        "seed": 103,
+        "task_prompt": "Lift the cube clear of the table.",
+        "task_variant_id": "task-variant-0"
+      },
+      {
+        "camera_config_id": "camera:robot0_eye_in_hand",
+        "camera_names": [
+          "robot0_eye_in_hand"
+        ],
+        "object_set_id": "objects:2690686dd68a15ef38a2",
+        "scene_id": "scene:4d12afab2b1a7765366d",
+        "seed": 104,
+        "task_prompt": "Pick up the cube from the table.",
+        "task_variant_id": "task-variant-1"
+      },
+      {
+        "camera_config_id": "camera:agentview",
+        "camera_names": [
+          "agentview"
+        ],
+        "object_set_id": "objects:a44eefc17cf5e13824b9",
+        "scene_id": "scene:8f38c0c9a83e9dc866e5",
+        "seed": 105,
+        "task_prompt": "Lift the cube clear of the table.",
+        "task_variant_id": "task-variant-0"
+      }
+    ],
+    "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+    "perception_mode": "sim_gt",
+    "policy_id": "reactive_help",
+    "schema_version": "attentionbench.memory-validation-plan.v2",
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "suite": "robosuite",
+    "task_id": "cube_lift"
+  },
+  "source": {
+    "path": "/home/truares/桌面/attentionbench-m5-20260928/robosuite-current-v3/authority/attention_memory.sqlite3",
+    "sha256": "bdff6323c5f236a84984c92c5ca65d0171f5109fb5c0bcd28087bdc81871ade3"
+  },
+  "source_evidence": "/home/truares/桌面/attentionbench-m5-20260928/robosuite-current-v3/authority/attempts",
+  "status": "trusted",
+  "version": 1
+}

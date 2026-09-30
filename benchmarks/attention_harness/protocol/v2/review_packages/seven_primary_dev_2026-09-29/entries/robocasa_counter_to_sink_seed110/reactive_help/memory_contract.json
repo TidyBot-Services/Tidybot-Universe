@@ -1,0 +1,24 @@
+{
+  "accounting": {
+    "advisor_cache_initial_state": "empty_per_run",
+    "answered_request_credits": 1,
+    "cached_answer_credits": 1,
+    "cached_provider_tokens": 0,
+    "proxy_latency_seconds": 2
+  },
+  "automatic_promotion": false,
+  "condition": "reactive_help",
+  "context": null,
+  "evidence_root": null,
+  "initial_state": {
+    "kind": "empty",
+    "path": null,
+    "sha256": null,
+    "versions": []
+  },
+  "reset_each_run": true,
+  "schema_version": "attentionbench.formal-memory-contract.v1",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "visibility": "none"
+}

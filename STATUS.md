@@ -1,10 +1,12 @@
-## 2026-09-29（America/New_York）七条件冻结与总体准入审计进行中
+## 2026-09-29（America/New_York）七条件冻结与总体准入审计最终结论
 
-范围固定为本开发集主实验（2任务×101–125×7条件×1次），本轮350格仅生成与校验，不执行；held-out、Memory+evidence消融另行冻结。v2.4、attrition_gate与定稿规格书已保存于 `a42ab8201277ffa806281b89a4f14e3ef33b1059`。基础机器人策略字节不改，各条件只改求助规则与获批输入。
+**审计验收完成；正式准入未通过。独立签发formal_eligible=false，9个canonical gate中8 PASS、1 FAIL。** 唯一未过项为完整Safety负控（safety_fault_injection）：唯一新增当前RoboCasa case在station run/attempt身份预检被拒绝，未到预注册未知动作注入；派发/job/目标检测0，monitor_not_initialized的unsafe1不等于目标检测，故障即停时延不可测。四类原件SHA与双Service回收通过、0.478秒正常清理已留证，但不能补全负控coverage。live开发case上限1已用尽，不补跑、不择优替换，不自动开新一轮。
 
-chain、50/50 profile、depth operational gate复用，不重跑。独立审计核对787个证据SHA无漂移，并按当前Service评估版本影响。唯一授权的当前RoboCasa未知动作Safety负控在station run/attempt identity预检处失败，未到注入；双Service已回收，保留异常与launcher失败，开发case上限已用尽，不再重跑。因此完整Safety负控尚未通过，总体formal准入仍失败。Memory固定为现有可信v1，仅101/103/105每任务匹配，六个非full条件无Memory；每run独立初始状态/空缓存，禁止自动晋升。正式逐项裁决待独立审计签发。
+chain、50/50 profile、depth operational门复用且不重跑；任务可解性与可信Memory限定范围PASS；七条件350格生成/校验批准、执行0。冻结含同任务唯一基础策略字节SHA、50 seed配置、350 M1/launch锁、demo/k=2/随机quota1、逐条件Memory范围与exact v1、每run初态/空缓存/不自动晋升及统一费用规则。仅每任务101/103/105有Memory匹配；六个非full条件不可见，其他22 seed拒绝，不扩大作用域、不新增覆盖率或原生成功门槛。held-out与Memory+evidence消融另行冻结，本轮执行0。
 
-执行路径已补M1 Memory作用域/版本锁、每run 200 SDK聚合硬限与provider实际token/异常费用记账。Harness全量468 passed、10 skipped；后审修正另做专项验证。证据目录：`/home/truares/桌面/attentionbench-seven-freeze-20260929`。以下保留历史过程与旧范围结论。
+保存协议/attrition/规格提交 `a42ab8201277ffa806281b89a4f14e3ef33b1059`；执行代码提交 `03f07ded72b936c57e08ce22050f06b34ee46a0e`；五Service确切commit在冻结versions文件。1268冻结文件SHA、350M1、398runtime源码字节、50旧M1均经独立复核；最后911原件SHA复核无漂移。完整Harness468 passed/10 skipped后，最终差异专项108 passed；工程校验不计效果运行。
+
+两基础策略不读取attention_input：可审计求助/费用/曝光与授权，但不能声明Demo/Advisor/Memory被控制代码采纳或改善动作；该语义限制已冻结。完整报告、三类剩余包及逐项SHA见 `benchmarks/attention_harness/protocol/v2/admission_audits/seven_primary_dev_2026-09-29/README.md`；总体JSON SHA `334019e665609ada0dae2c09d0dec4fa2f0591c7bc332cd54387a3121f144e5b`。下一步仅未来另行授权/预注册当前C负控，原失败保留；不得在缺项闭合前签true。以下保留旧范围过程。
 
 ## 2026-09-29（America/New_York）depth qualifying 与新版本档案最终裁决
 

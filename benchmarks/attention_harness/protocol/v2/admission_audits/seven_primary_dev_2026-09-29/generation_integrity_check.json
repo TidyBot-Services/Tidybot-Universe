@@ -1,0 +1,20 @@
+{
+  "base_code_sha_per_task": {
+    "robocasa": [
+      "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780"
+    ],
+    "robosuite": [
+      "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8"
+    ]
+  },
+  "executed_slots": 0,
+  "independent_approval_required": true,
+  "manifest_files": 1267,
+  "manifest_missing_or_extra": [],
+  "manifest_sha256": "f8e4e4a912bc050c9c300b64788103b8f9d9f8a3517aad84af4c45d89aa20c47",
+  "matrix_plan_sha256": "2253292b663281953ef029908b02f82fad515b34f7a435b46aa83fac5c28623a",
+  "planned_slots": 350,
+  "scope": "本开发集主实验；held-out与消融另行冻结",
+  "sha_mismatches": [],
+  "unique_entries": 350
+}

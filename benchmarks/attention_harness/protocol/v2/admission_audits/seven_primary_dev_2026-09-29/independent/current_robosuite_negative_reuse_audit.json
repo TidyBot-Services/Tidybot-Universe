@@ -1,0 +1,874 @@
+{
+  "schema_version": "attentionbench.independent-current-robosuite-negative-reuse.v1",
+  "reviewer_id": "independent_admission_auditor",
+  "new_runs": 0,
+  "service_revision": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+  "scope": "Persistent depth failure after executed action on Robosuite engineering grid; preserves confirmed action receipt and fails closed, cannot count as primary effects or chain/profile success.",
+  "cases": [
+    {
+      "task": "cube_lift",
+      "condition": "autonomous",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 701373,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "7c0df635b8f0f1a783e55bab9f286ed9aa54f98094fa65cd8823711c1273fe31"
+    },
+    {
+      "task": "cube_lift",
+      "condition": "demo_first",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 701631,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "fea42f58774ee68447b162d1b9899cd5a991314fc5afa9236b286e20ca095185"
+    },
+    {
+      "task": "cube_lift",
+      "condition": "reactive_help",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 701798,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "4ad9e3d1f87eef28f2973612855a8dff6a42a327b3784dc1505a3daf258e32af"
+    },
+    {
+      "task": "cube_lift",
+      "condition": "retry_k_then_ask",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 701931,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "4144836f7effb14ff2fc813c0caafac8c40a0c72507b682d253516b1a7348b3a"
+    },
+    {
+      "task": "cube_lift",
+      "condition": "budget_matched_random_escalation",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 702110,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "25085fe6fc74e711cc60dfe5e27830836df1ed35c082414733280438b78af0ae"
+    },
+    {
+      "task": "cube_lift",
+      "condition": "trace_aware_hint_only",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 702262,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "865f4dd45a18b50bb2007caf6f4e5e388adc01b7d7d538a09918e63159f0ed96"
+    },
+    {
+      "task": "cube_lift",
+      "condition": "full_trace_aware_attention_planner",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 702428,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "89c30f0589e2bf7de43b14ece2174dbd6b6cc2f5b9d2d4a40808d4770c252623"
+    },
+    {
+      "task": "cube_stack",
+      "condition": "autonomous",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 702580,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "71c1db4ad99f1af3223c57861e92123a9e0008e304e0564fb8ce49920bc8216c"
+    },
+    {
+      "task": "cube_stack",
+      "condition": "demo_first",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 702713,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "9b979222f0db81753e02ca81f67ce7ed0d273ae3b4d99e18aa644d6733663704"
+    },
+    {
+      "task": "cube_stack",
+      "condition": "reactive_help",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 702906,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "667b77ea1aa419f628bcff6cde2d2b967b02ffbfe27857476dedbf8990887d59"
+    },
+    {
+      "task": "cube_stack",
+      "condition": "retry_k_then_ask",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 703133,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "b23fd38a1772cac2a2ac63361a260035078530801ed262516acae9a724e13904"
+    },
+    {
+      "task": "cube_stack",
+      "condition": "budget_matched_random_escalation",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 703383,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "14d735902fef056d289eda710f74d20a4b62199928e85be02711cee1a327166f"
+    },
+    {
+      "task": "cube_stack",
+      "condition": "trace_aware_hint_only",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 703649,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "38a1be67e030dca1f74077116369de0ec33ca342d2fdff6eb8f521a730bf6ba9"
+    },
+    {
+      "task": "cube_stack",
+      "condition": "full_trace_aware_attention_planner",
+      "independent_safety_unsafe_attempts": 1,
+      "single_attempt_and_immediate_scheduler_stop": true,
+      "service_stop": {
+        "exit_code": 0,
+        "leader_reaped": true,
+        "pid": 703866,
+        "process_group_gone": true
+      },
+      "case_audit_sha256": "223c37e9c386bcb0ca0b9df16b13508182d190f6e65d83d16eb5858898e68264"
+    }
+  ],
+  "sha_checks": [
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/plan.json",
+      "expected_sha256": "f2f9b04ca3a329be7ae644e6e44c9bbeb3d4ca97d07e333fb1eede59e5c3873a",
+      "actual_sha256": "f2f9b04ca3a329be7ae644e6e44c9bbeb3d4ca97d07e333fb1eede59e5c3873a",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/case_audit.json",
+      "expected_sha256": "7c0df635b8f0f1a783e55bab9f286ed9aa54f98094fa65cd8823711c1273fe31",
+      "actual_sha256": "7c0df635b8f0f1a783e55bab9f286ed9aa54f98094fa65cd8823711c1273fe31",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/original/attention-robosuite-cube_lift-seed101-e74f905ff32a/attention_run.json",
+      "expected_sha256": "20d828d647f31119b6d7edb3bf8de0863fe474a52fe5bb4e30b5bd8ff9e7938d",
+      "actual_sha256": "20d828d647f31119b6d7edb3bf8de0863fe474a52fe5bb4e30b5bd8ff9e7938d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/gate_artifacts/0/native_result.json",
+      "expected_sha256": "21518f9b3902a9b95ce4c240dfc858724ad3d54d42df7ac30cbdc7f6fd5b5560",
+      "actual_sha256": "21518f9b3902a9b95ce4c240dfc858724ad3d54d42df7ac30cbdc7f6fd5b5560",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/gate_artifacts/0/safety.json",
+      "expected_sha256": "42fca80d30d00ae31cf8fecf5dd3b1a46282cbe39c0c17dfaefef1fe136596b9",
+      "actual_sha256": "42fca80d30d00ae31cf8fecf5dd3b1a46282cbe39c0c17dfaefef1fe136596b9",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "4463b87693650e09223226e22edf0a79276fe01d68abbac0e015be450b0e670a",
+      "actual_sha256": "4463b87693650e09223226e22edf0a79276fe01d68abbac0e015be450b0e670a",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/gate_artifacts/0/trace.json",
+      "expected_sha256": "b8c3f3a77bbaa95b20f4221ab72a436cbd466ecfe6028ac600fd356274744b98",
+      "actual_sha256": "b8c3f3a77bbaa95b20f4221ab72a436cbd466ecfe6028ac600fd356274744b98",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/original/attention-robosuite-cube_lift-seed101-e74f905ff32a/attempts/cube_lift-seed101-20260929T232006.240505Z/attention_bundle.json",
+      "expected_sha256": "2187929c48624b7552e817758f294f3b5e5db071c759539ad9924effd8712f0e",
+      "actual_sha256": "2187929c48624b7552e817758f294f3b5e5db071c759539ad9924effd8712f0e",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/00-cube_lift-autonomous/original/attention-robosuite-cube_lift-seed101-e74f905ff32a/attention_run.json",
+      "expected_sha256": "20d828d647f31119b6d7edb3bf8de0863fe474a52fe5bb4e30b5bd8ff9e7938d",
+      "actual_sha256": "20d828d647f31119b6d7edb3bf8de0863fe474a52fe5bb4e30b5bd8ff9e7938d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/case_audit.json",
+      "expected_sha256": "fea42f58774ee68447b162d1b9899cd5a991314fc5afa9236b286e20ca095185",
+      "actual_sha256": "fea42f58774ee68447b162d1b9899cd5a991314fc5afa9236b286e20ca095185",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/original/attention-robosuite-cube_lift-seed101-b0628c4f84e4/attention_run.json",
+      "expected_sha256": "db0dd41a8e22bac051a616e8994ad1d40704a0414e170399a44801b03a624eb1",
+      "actual_sha256": "db0dd41a8e22bac051a616e8994ad1d40704a0414e170399a44801b03a624eb1",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/gate_artifacts/0/native_result.json",
+      "expected_sha256": "c4e2974a7dc216197ce370926ee006c8cb4297c96ebeeb4fd320ea24d319ef91",
+      "actual_sha256": "c4e2974a7dc216197ce370926ee006c8cb4297c96ebeeb4fd320ea24d319ef91",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/gate_artifacts/0/safety.json",
+      "expected_sha256": "d2b83e6d73a260112822c602a9a67c9e8ef740ffa4df9d1bebfcdf94269ad0ee",
+      "actual_sha256": "d2b83e6d73a260112822c602a9a67c9e8ef740ffa4df9d1bebfcdf94269ad0ee",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "f815aa26a4fd48516b0a0c8e9101dc9bd371e81bd18288843ea15e60139d1e48",
+      "actual_sha256": "f815aa26a4fd48516b0a0c8e9101dc9bd371e81bd18288843ea15e60139d1e48",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/gate_artifacts/0/trace.json",
+      "expected_sha256": "aae097322c5d07b5346a16668f8ac2c8c691f5a542655348cf3683612795e2f5",
+      "actual_sha256": "aae097322c5d07b5346a16668f8ac2c8c691f5a542655348cf3683612795e2f5",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/original/attention-robosuite-cube_lift-seed101-b0628c4f84e4/attempts/cube_lift-seed101-20260929T232008.567141Z/attention_bundle.json",
+      "expected_sha256": "e3569cc05f82cf237202e8e723e08cb78bbc9b404da2d8fc994ac48a8bb6a696",
+      "actual_sha256": "e3569cc05f82cf237202e8e723e08cb78bbc9b404da2d8fc994ac48a8bb6a696",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/01-cube_lift-demo_first/original/attention-robosuite-cube_lift-seed101-b0628c4f84e4/attention_run.json",
+      "expected_sha256": "db0dd41a8e22bac051a616e8994ad1d40704a0414e170399a44801b03a624eb1",
+      "actual_sha256": "db0dd41a8e22bac051a616e8994ad1d40704a0414e170399a44801b03a624eb1",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/case_audit.json",
+      "expected_sha256": "4ad9e3d1f87eef28f2973612855a8dff6a42a327b3784dc1505a3daf258e32af",
+      "actual_sha256": "4ad9e3d1f87eef28f2973612855a8dff6a42a327b3784dc1505a3daf258e32af",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/original/attention-robosuite-cube_lift-seed101-a6a0d3a029a4/attention_run.json",
+      "expected_sha256": "4ce3449d7bd646772b072b29862fdb780e095dfd6caa1aa7e81c81ed33589c91",
+      "actual_sha256": "4ce3449d7bd646772b072b29862fdb780e095dfd6caa1aa7e81c81ed33589c91",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/gate_artifacts/0/native_result.json",
+      "expected_sha256": "9fcd84ed1e97146b67cbdc873fb05f82347206be3afd46ff9ae9561149cd2fb3",
+      "actual_sha256": "9fcd84ed1e97146b67cbdc873fb05f82347206be3afd46ff9ae9561149cd2fb3",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/gate_artifacts/0/safety.json",
+      "expected_sha256": "d8e09db2670346b2aba4b2c0adced9e3e28f1043d85167a1e8a37dabbd5d4949",
+      "actual_sha256": "d8e09db2670346b2aba4b2c0adced9e3e28f1043d85167a1e8a37dabbd5d4949",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "951bbef01bd31f3b0f581f0df704381eced119c8301dae72168a7d07083a125f",
+      "actual_sha256": "951bbef01bd31f3b0f581f0df704381eced119c8301dae72168a7d07083a125f",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/gate_artifacts/0/trace.json",
+      "expected_sha256": "2babeb1e047d18d177bf48e94b42eaa86ba2cb36f27dd5e68b984152c4c22b62",
+      "actual_sha256": "2babeb1e047d18d177bf48e94b42eaa86ba2cb36f27dd5e68b984152c4c22b62",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/original/attention-robosuite-cube_lift-seed101-a6a0d3a029a4/attempts/cube_lift-seed101-20260929T232010.865829Z/attention_bundle.json",
+      "expected_sha256": "fbfc2c76be5874d5bff7e2da4c41d1c3cc6a44d067ff171d27dbed7035ea59f8",
+      "actual_sha256": "fbfc2c76be5874d5bff7e2da4c41d1c3cc6a44d067ff171d27dbed7035ea59f8",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/02-cube_lift-reactive_help/original/attention-robosuite-cube_lift-seed101-a6a0d3a029a4/attention_run.json",
+      "expected_sha256": "4ce3449d7bd646772b072b29862fdb780e095dfd6caa1aa7e81c81ed33589c91",
+      "actual_sha256": "4ce3449d7bd646772b072b29862fdb780e095dfd6caa1aa7e81c81ed33589c91",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/case_audit.json",
+      "expected_sha256": "4144836f7effb14ff2fc813c0caafac8c40a0c72507b682d253516b1a7348b3a",
+      "actual_sha256": "4144836f7effb14ff2fc813c0caafac8c40a0c72507b682d253516b1a7348b3a",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/original/attention-robosuite-cube_lift-seed101-1e3246a26e7d/attention_run.json",
+      "expected_sha256": "2d85e6b31cae3167fc09251f78c1c6f4191b841bfda420d7fca158bef3456747",
+      "actual_sha256": "2d85e6b31cae3167fc09251f78c1c6f4191b841bfda420d7fca158bef3456747",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/gate_artifacts/0/native_result.json",
+      "expected_sha256": "d4fb656bba9d0998d8990747a59f6281e97a73f2e433af31961eefff1f7a44ee",
+      "actual_sha256": "d4fb656bba9d0998d8990747a59f6281e97a73f2e433af31961eefff1f7a44ee",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/gate_artifacts/0/safety.json",
+      "expected_sha256": "4a54bcb4af16d6ee9f0fc60d93b3e02bb151c984445713a7276dbb658add0092",
+      "actual_sha256": "4a54bcb4af16d6ee9f0fc60d93b3e02bb151c984445713a7276dbb658add0092",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "f42d167453cdc2202758fc095c799cb1d67ef8b53f2f2419d2abbd566f80e977",
+      "actual_sha256": "f42d167453cdc2202758fc095c799cb1d67ef8b53f2f2419d2abbd566f80e977",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/gate_artifacts/0/trace.json",
+      "expected_sha256": "c3a89873b9f350f1ecdf381263b62c3107426bc1a333f081e9944ea5944d2ed5",
+      "actual_sha256": "c3a89873b9f350f1ecdf381263b62c3107426bc1a333f081e9944ea5944d2ed5",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/original/attention-robosuite-cube_lift-seed101-1e3246a26e7d/attempts/cube_lift-seed101-20260929T232013.189661Z/attention_bundle.json",
+      "expected_sha256": "a3172411b0a31906b3db53ce07d73bb3b08cab85004b2636ed9d4ac3aacb2c9d",
+      "actual_sha256": "a3172411b0a31906b3db53ce07d73bb3b08cab85004b2636ed9d4ac3aacb2c9d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/03-cube_lift-retry_k_then_ask/original/attention-robosuite-cube_lift-seed101-1e3246a26e7d/attention_run.json",
+      "expected_sha256": "2d85e6b31cae3167fc09251f78c1c6f4191b841bfda420d7fca158bef3456747",
+      "actual_sha256": "2d85e6b31cae3167fc09251f78c1c6f4191b841bfda420d7fca158bef3456747",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/case_audit.json",
+      "expected_sha256": "25085fe6fc74e711cc60dfe5e27830836df1ed35c082414733280438b78af0ae",
+      "actual_sha256": "25085fe6fc74e711cc60dfe5e27830836df1ed35c082414733280438b78af0ae",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/original/attention-robosuite-cube_lift-seed101-100f9942bcbe/attention_run.json",
+      "expected_sha256": "15f1b26ac5248a72206ece79f2aba7dc2adc96e232b8c33eebdfaa2244b37108",
+      "actual_sha256": "15f1b26ac5248a72206ece79f2aba7dc2adc96e232b8c33eebdfaa2244b37108",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/gate_artifacts/0/native_result.json",
+      "expected_sha256": "83bd704ee543d23af9d18047bd5a3e71f0045b6a09c0464b19928d825df8240f",
+      "actual_sha256": "83bd704ee543d23af9d18047bd5a3e71f0045b6a09c0464b19928d825df8240f",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/gate_artifacts/0/safety.json",
+      "expected_sha256": "4470f7696641f4a1946a8c8d3754de1fdb0d65b7c90fe6d1966ab91e0c6cb7eb",
+      "actual_sha256": "4470f7696641f4a1946a8c8d3754de1fdb0d65b7c90fe6d1966ab91e0c6cb7eb",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "a8e70989d73080f3e48a8b984f8b6c5c247d7902e6f389c62b642e09dc9566ea",
+      "actual_sha256": "a8e70989d73080f3e48a8b984f8b6c5c247d7902e6f389c62b642e09dc9566ea",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/gate_artifacts/0/trace.json",
+      "expected_sha256": "05be6dbf504fd1cdc765bf6a8ed556ab99892dfdf626f985187d08447147df63",
+      "actual_sha256": "05be6dbf504fd1cdc765bf6a8ed556ab99892dfdf626f985187d08447147df63",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/original/attention-robosuite-cube_lift-seed101-100f9942bcbe/attempts/cube_lift-seed101-20260929T232015.522152Z/attention_bundle.json",
+      "expected_sha256": "d362dd99aaa864dc8f293900aa4746ef15ffb9ae96f843104ed5a1d6beafb311",
+      "actual_sha256": "d362dd99aaa864dc8f293900aa4746ef15ffb9ae96f843104ed5a1d6beafb311",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/04-cube_lift-budget_matched_random_escalation/original/attention-robosuite-cube_lift-seed101-100f9942bcbe/attention_run.json",
+      "expected_sha256": "15f1b26ac5248a72206ece79f2aba7dc2adc96e232b8c33eebdfaa2244b37108",
+      "actual_sha256": "15f1b26ac5248a72206ece79f2aba7dc2adc96e232b8c33eebdfaa2244b37108",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/case_audit.json",
+      "expected_sha256": "865f4dd45a18b50bb2007caf6f4e5e388adc01b7d7d538a09918e63159f0ed96",
+      "actual_sha256": "865f4dd45a18b50bb2007caf6f4e5e388adc01b7d7d538a09918e63159f0ed96",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/original/attention-robosuite-cube_lift-seed101-233b879ce5f6/attention_run.json",
+      "expected_sha256": "2d9bb2eb28e7c76a03e1c6c2c28cbd887cd1693305446699781c4f2eef5b6a57",
+      "actual_sha256": "2d9bb2eb28e7c76a03e1c6c2c28cbd887cd1693305446699781c4f2eef5b6a57",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/gate_artifacts/0/native_result.json",
+      "expected_sha256": "3ee2f9901e5be74d3193995312dad63ee6097894bda09324829e6b933f4a5f62",
+      "actual_sha256": "3ee2f9901e5be74d3193995312dad63ee6097894bda09324829e6b933f4a5f62",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/gate_artifacts/0/safety.json",
+      "expected_sha256": "264a6d69cca58d0730d6a368b0ee52e6dbec62cd9bf3a40b74baf2dde5f8caed",
+      "actual_sha256": "264a6d69cca58d0730d6a368b0ee52e6dbec62cd9bf3a40b74baf2dde5f8caed",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "69fbcaaeaa1e64d4af34b15c95d8b07a98c2fdac934faf12715b15508264a0cc",
+      "actual_sha256": "69fbcaaeaa1e64d4af34b15c95d8b07a98c2fdac934faf12715b15508264a0cc",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/gate_artifacts/0/trace.json",
+      "expected_sha256": "7d20c10280fefd18a7b7bc0ef10b4a73bec598df05d5a17580cba85ee01516ca",
+      "actual_sha256": "7d20c10280fefd18a7b7bc0ef10b4a73bec598df05d5a17580cba85ee01516ca",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/original/attention-robosuite-cube_lift-seed101-233b879ce5f6/attempts/cube_lift-seed101-20260929T232017.809972Z/attention_bundle.json",
+      "expected_sha256": "bb95a81f601bf2352d0497a09b27984da48fc1334bf4927efb2ce6adc1a7e8b8",
+      "actual_sha256": "bb95a81f601bf2352d0497a09b27984da48fc1334bf4927efb2ce6adc1a7e8b8",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/05-cube_lift-trace_aware_hint_only/original/attention-robosuite-cube_lift-seed101-233b879ce5f6/attention_run.json",
+      "expected_sha256": "2d9bb2eb28e7c76a03e1c6c2c28cbd887cd1693305446699781c4f2eef5b6a57",
+      "actual_sha256": "2d9bb2eb28e7c76a03e1c6c2c28cbd887cd1693305446699781c4f2eef5b6a57",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/case_audit.json",
+      "expected_sha256": "89c30f0589e2bf7de43b14ece2174dbd6b6cc2f5b9d2d4a40808d4770c252623",
+      "actual_sha256": "89c30f0589e2bf7de43b14ece2174dbd6b6cc2f5b9d2d4a40808d4770c252623",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/original/attention-robosuite-cube_lift-seed101-779cd092b981/attention_run.json",
+      "expected_sha256": "f76054f9bf0fb8ecf9a2c0d85d59382f039a2e0e2e1fd701e0a3857dd5cd1826",
+      "actual_sha256": "f76054f9bf0fb8ecf9a2c0d85d59382f039a2e0e2e1fd701e0a3857dd5cd1826",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/gate_artifacts/0/native_result.json",
+      "expected_sha256": "1e4a60b2dd22cef2c4752769b9e84a03777f51622b7eee7cb6f70fd2c0654196",
+      "actual_sha256": "1e4a60b2dd22cef2c4752769b9e84a03777f51622b7eee7cb6f70fd2c0654196",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/gate_artifacts/0/safety.json",
+      "expected_sha256": "32a216d1d2bc72493e8f99555ad3e51801127239acfcc199c3d3cc5181065cde",
+      "actual_sha256": "32a216d1d2bc72493e8f99555ad3e51801127239acfcc199c3d3cc5181065cde",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "30bad3754241ce349c6aebc6a7405c7c8211465460b3492accfa65a141222b21",
+      "actual_sha256": "30bad3754241ce349c6aebc6a7405c7c8211465460b3492accfa65a141222b21",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/gate_artifacts/0/trace.json",
+      "expected_sha256": "62a1b7f2f21118f774ca01a0fbf57ea0f1edfce89ba5556b9518943a31f23eb7",
+      "actual_sha256": "62a1b7f2f21118f774ca01a0fbf57ea0f1edfce89ba5556b9518943a31f23eb7",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/original/attention-robosuite-cube_lift-seed101-779cd092b981/attempts/cube_lift-seed101-20260929T232020.120467Z/attention_bundle.json",
+      "expected_sha256": "aeb85b4b7542384ca0d5d2f285f3edbc891eadcf400e82b382ad2a5037fe12c2",
+      "actual_sha256": "aeb85b4b7542384ca0d5d2f285f3edbc891eadcf400e82b382ad2a5037fe12c2",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/06-cube_lift-full_trace_aware_attention_planner/original/attention-robosuite-cube_lift-seed101-779cd092b981/attention_run.json",
+      "expected_sha256": "f76054f9bf0fb8ecf9a2c0d85d59382f039a2e0e2e1fd701e0a3857dd5cd1826",
+      "actual_sha256": "f76054f9bf0fb8ecf9a2c0d85d59382f039a2e0e2e1fd701e0a3857dd5cd1826",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/case_audit.json",
+      "expected_sha256": "71c1db4ad99f1af3223c57861e92123a9e0008e304e0564fb8ce49920bc8216c",
+      "actual_sha256": "71c1db4ad99f1af3223c57861e92123a9e0008e304e0564fb8ce49920bc8216c",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/original/attention-robosuite-cube_stack-seed101-5484a67ce92a/attention_run.json",
+      "expected_sha256": "442d5d83cb564d795d5910060394e486ffe189ae03b57e95e9432764b9a73987",
+      "actual_sha256": "442d5d83cb564d795d5910060394e486ffe189ae03b57e95e9432764b9a73987",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/gate_artifacts/0/native_result.json",
+      "expected_sha256": "94235255d0a782eb848dac8f7b6b813e5700639c99c017158d01395e074d407d",
+      "actual_sha256": "94235255d0a782eb848dac8f7b6b813e5700639c99c017158d01395e074d407d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/gate_artifacts/0/safety.json",
+      "expected_sha256": "8bae1538ce2b70da9d1741924b0c2ec5db47cedca382e14ff2d037607cc370bc",
+      "actual_sha256": "8bae1538ce2b70da9d1741924b0c2ec5db47cedca382e14ff2d037607cc370bc",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "d7b47424265eddd66d79e67e4e0d984e2eae9451cb57f7c4a7a1d1a18c094078",
+      "actual_sha256": "d7b47424265eddd66d79e67e4e0d984e2eae9451cb57f7c4a7a1d1a18c094078",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/gate_artifacts/0/trace.json",
+      "expected_sha256": "6d759d829e886704c6353328d9c90c430319630dddb5ef8c841b000db03b6efc",
+      "actual_sha256": "6d759d829e886704c6353328d9c90c430319630dddb5ef8c841b000db03b6efc",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/original/attention-robosuite-cube_stack-seed101-5484a67ce92a/attempts/cube_stack-seed101-20260929T232022.444818Z/attention_bundle.json",
+      "expected_sha256": "dd67631dc995030ff54dd964d52d727dfcf0f128b5e804c846567c0d3ef92444",
+      "actual_sha256": "dd67631dc995030ff54dd964d52d727dfcf0f128b5e804c846567c0d3ef92444",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/07-cube_stack-autonomous/original/attention-robosuite-cube_stack-seed101-5484a67ce92a/attention_run.json",
+      "expected_sha256": "442d5d83cb564d795d5910060394e486ffe189ae03b57e95e9432764b9a73987",
+      "actual_sha256": "442d5d83cb564d795d5910060394e486ffe189ae03b57e95e9432764b9a73987",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/case_audit.json",
+      "expected_sha256": "9b979222f0db81753e02ca81f67ce7ed0d273ae3b4d99e18aa644d6733663704",
+      "actual_sha256": "9b979222f0db81753e02ca81f67ce7ed0d273ae3b4d99e18aa644d6733663704",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/original/attention-robosuite-cube_stack-seed101-c01fcf1c4961/attention_run.json",
+      "expected_sha256": "d6931cd9601a40916cbab1cbd7ae97240264f8785fa64a86b26152569d3c4260",
+      "actual_sha256": "d6931cd9601a40916cbab1cbd7ae97240264f8785fa64a86b26152569d3c4260",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/gate_artifacts/0/native_result.json",
+      "expected_sha256": "2d9b0e73b9b19dd8511ae9107265df4219c1b9c9cb312f019a7e1bf91d8c585a",
+      "actual_sha256": "2d9b0e73b9b19dd8511ae9107265df4219c1b9c9cb312f019a7e1bf91d8c585a",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/gate_artifacts/0/safety.json",
+      "expected_sha256": "5ee707e84e7fd1e48283eb23b087ead4c9b15c4af6573434d4b978a5c7fa7320",
+      "actual_sha256": "5ee707e84e7fd1e48283eb23b087ead4c9b15c4af6573434d4b978a5c7fa7320",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "7baac8812bf63b22c93c04216e29c6aebae5e9e584a6d71039086c974fd4c348",
+      "actual_sha256": "7baac8812bf63b22c93c04216e29c6aebae5e9e584a6d71039086c974fd4c348",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/gate_artifacts/0/trace.json",
+      "expected_sha256": "3e0adef05d52347341003ea360fd42e8a7239933fa0d72f1251c29000a55bf17",
+      "actual_sha256": "3e0adef05d52347341003ea360fd42e8a7239933fa0d72f1251c29000a55bf17",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/original/attention-robosuite-cube_stack-seed101-c01fcf1c4961/attempts/cube_stack-seed101-20260929T232024.739792Z/attention_bundle.json",
+      "expected_sha256": "608831eecfbc0d28d5c05d66b057088f4182f1dee555d0c37d1c7a78f92b5307",
+      "actual_sha256": "608831eecfbc0d28d5c05d66b057088f4182f1dee555d0c37d1c7a78f92b5307",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/08-cube_stack-demo_first/original/attention-robosuite-cube_stack-seed101-c01fcf1c4961/attention_run.json",
+      "expected_sha256": "d6931cd9601a40916cbab1cbd7ae97240264f8785fa64a86b26152569d3c4260",
+      "actual_sha256": "d6931cd9601a40916cbab1cbd7ae97240264f8785fa64a86b26152569d3c4260",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/case_audit.json",
+      "expected_sha256": "667b77ea1aa419f628bcff6cde2d2b967b02ffbfe27857476dedbf8990887d59",
+      "actual_sha256": "667b77ea1aa419f628bcff6cde2d2b967b02ffbfe27857476dedbf8990887d59",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/original/attention-robosuite-cube_stack-seed101-e20147049be7/attention_run.json",
+      "expected_sha256": "726857aa84b5f96e52e1abd43c3055791386d24ca4e7f2fd285bdcc1942fe30f",
+      "actual_sha256": "726857aa84b5f96e52e1abd43c3055791386d24ca4e7f2fd285bdcc1942fe30f",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/gate_artifacts/0/native_result.json",
+      "expected_sha256": "50151ba54276237bee1402ba7d6157b27a78d9e19235a3383aa29557493c4651",
+      "actual_sha256": "50151ba54276237bee1402ba7d6157b27a78d9e19235a3383aa29557493c4651",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/gate_artifacts/0/safety.json",
+      "expected_sha256": "5e92a4f584387bbfee571d3adf1c8c2ada04b27aa7eb1c800ad9d3ff6cc73dfc",
+      "actual_sha256": "5e92a4f584387bbfee571d3adf1c8c2ada04b27aa7eb1c800ad9d3ff6cc73dfc",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "4aaaaa9570ec987995736d8c303546059afad778e61f342036f929d8b327159e",
+      "actual_sha256": "4aaaaa9570ec987995736d8c303546059afad778e61f342036f929d8b327159e",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/gate_artifacts/0/trace.json",
+      "expected_sha256": "88b68384259197b565afce38c027cc285744e249518378b4cb350dacaf27c5d9",
+      "actual_sha256": "88b68384259197b565afce38c027cc285744e249518378b4cb350dacaf27c5d9",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/original/attention-robosuite-cube_stack-seed101-e20147049be7/attempts/cube_stack-seed101-20260929T232027.040253Z/attention_bundle.json",
+      "expected_sha256": "300037a59180d4c07d3126ba733b6d4a3dac1189678048fb6547527ae10914c4",
+      "actual_sha256": "300037a59180d4c07d3126ba733b6d4a3dac1189678048fb6547527ae10914c4",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/09-cube_stack-reactive_help/original/attention-robosuite-cube_stack-seed101-e20147049be7/attention_run.json",
+      "expected_sha256": "726857aa84b5f96e52e1abd43c3055791386d24ca4e7f2fd285bdcc1942fe30f",
+      "actual_sha256": "726857aa84b5f96e52e1abd43c3055791386d24ca4e7f2fd285bdcc1942fe30f",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/case_audit.json",
+      "expected_sha256": "b23fd38a1772cac2a2ac63361a260035078530801ed262516acae9a724e13904",
+      "actual_sha256": "b23fd38a1772cac2a2ac63361a260035078530801ed262516acae9a724e13904",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/original/attention-robosuite-cube_stack-seed101-927296a5c5d9/attention_run.json",
+      "expected_sha256": "a012f1a52f9b622fcc9e093ac9d02ee6bf25dd855457b4be0720c32548041001",
+      "actual_sha256": "a012f1a52f9b622fcc9e093ac9d02ee6bf25dd855457b4be0720c32548041001",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/gate_artifacts/0/native_result.json",
+      "expected_sha256": "9cc1708db9274c7afce05e4f731470ddd21de57e08e9faaf214cc6e61889705f",
+      "actual_sha256": "9cc1708db9274c7afce05e4f731470ddd21de57e08e9faaf214cc6e61889705f",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/gate_artifacts/0/safety.json",
+      "expected_sha256": "1891399b957ff3cc3259fe1d71e68b732a50ec064eac67e228b637f1d00fca6c",
+      "actual_sha256": "1891399b957ff3cc3259fe1d71e68b732a50ec064eac67e228b637f1d00fca6c",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "e3606fdd70077c1564368f96587ba33daec9c99543739a086478fdcbd2ec2c51",
+      "actual_sha256": "e3606fdd70077c1564368f96587ba33daec9c99543739a086478fdcbd2ec2c51",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/gate_artifacts/0/trace.json",
+      "expected_sha256": "a78fe85106f6092a4a7f1ab4de591a3d6ded3b77445975cea1dc6387d48c095d",
+      "actual_sha256": "a78fe85106f6092a4a7f1ab4de591a3d6ded3b77445975cea1dc6387d48c095d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/original/attention-robosuite-cube_stack-seed101-927296a5c5d9/attempts/cube_stack-seed101-20260929T232029.377840Z/attention_bundle.json",
+      "expected_sha256": "bd8c0270a4e0aa33282379a572b2dcb1af1710b88fc7f1cbac0a9aca08c5dc52",
+      "actual_sha256": "bd8c0270a4e0aa33282379a572b2dcb1af1710b88fc7f1cbac0a9aca08c5dc52",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/10-cube_stack-retry_k_then_ask/original/attention-robosuite-cube_stack-seed101-927296a5c5d9/attention_run.json",
+      "expected_sha256": "a012f1a52f9b622fcc9e093ac9d02ee6bf25dd855457b4be0720c32548041001",
+      "actual_sha256": "a012f1a52f9b622fcc9e093ac9d02ee6bf25dd855457b4be0720c32548041001",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/case_audit.json",
+      "expected_sha256": "14d735902fef056d289eda710f74d20a4b62199928e85be02711cee1a327166f",
+      "actual_sha256": "14d735902fef056d289eda710f74d20a4b62199928e85be02711cee1a327166f",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/original/attention-robosuite-cube_stack-seed101-502626c49241/attention_run.json",
+      "expected_sha256": "12334ff796db6f50e0580d21689f63cff17a905a5fcaaac29050fd9890726db9",
+      "actual_sha256": "12334ff796db6f50e0580d21689f63cff17a905a5fcaaac29050fd9890726db9",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/gate_artifacts/0/native_result.json",
+      "expected_sha256": "f7fa1ce877908f48790c447bb8cb9012d99a86b813241879dca23948756927c2",
+      "actual_sha256": "f7fa1ce877908f48790c447bb8cb9012d99a86b813241879dca23948756927c2",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/gate_artifacts/0/safety.json",
+      "expected_sha256": "4ddc23131bd2f6674556d3602e2a203509d04fb62f0c461a4fedbed9bf58fd0d",
+      "actual_sha256": "4ddc23131bd2f6674556d3602e2a203509d04fb62f0c461a4fedbed9bf58fd0d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "ed8164149a88ef298a70aea80068d418f89f3a5a014888570958854ea95d06ba",
+      "actual_sha256": "ed8164149a88ef298a70aea80068d418f89f3a5a014888570958854ea95d06ba",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/gate_artifacts/0/trace.json",
+      "expected_sha256": "8aa2f264376f2803e779919c25c806c470bbb2618543c25933c30929edc8dc91",
+      "actual_sha256": "8aa2f264376f2803e779919c25c806c470bbb2618543c25933c30929edc8dc91",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/original/attention-robosuite-cube_stack-seed101-502626c49241/attempts/cube_stack-seed101-20260929T232031.726876Z/attention_bundle.json",
+      "expected_sha256": "29b42ccb3ec68e2cc35cfd33abca2ee4d46cb3aca775392ececf37b7a000820d",
+      "actual_sha256": "29b42ccb3ec68e2cc35cfd33abca2ee4d46cb3aca775392ececf37b7a000820d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/11-cube_stack-budget_matched_random_escalation/original/attention-robosuite-cube_stack-seed101-502626c49241/attention_run.json",
+      "expected_sha256": "12334ff796db6f50e0580d21689f63cff17a905a5fcaaac29050fd9890726db9",
+      "actual_sha256": "12334ff796db6f50e0580d21689f63cff17a905a5fcaaac29050fd9890726db9",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/case_audit.json",
+      "expected_sha256": "38a1be67e030dca1f74077116369de0ec33ca342d2fdff6eb8f521a730bf6ba9",
+      "actual_sha256": "38a1be67e030dca1f74077116369de0ec33ca342d2fdff6eb8f521a730bf6ba9",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/original/attention-robosuite-cube_stack-seed101-a681fefced6c/attention_run.json",
+      "expected_sha256": "2a24bc910bcddab5505437ded776e6ffc7da824c2a49ca3a08ce5ab52103c123",
+      "actual_sha256": "2a24bc910bcddab5505437ded776e6ffc7da824c2a49ca3a08ce5ab52103c123",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/gate_artifacts/0/native_result.json",
+      "expected_sha256": "84fb04e202f71cc89c5273fe98feca0afb1102e57c24717ec5fb483a16ae6f8b",
+      "actual_sha256": "84fb04e202f71cc89c5273fe98feca0afb1102e57c24717ec5fb483a16ae6f8b",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/gate_artifacts/0/safety.json",
+      "expected_sha256": "e969f4aa72d42c00bbfcaa30aeef71e0f53ebd86f0f2b92c43bc91f8d9bac169",
+      "actual_sha256": "e969f4aa72d42c00bbfcaa30aeef71e0f53ebd86f0f2b92c43bc91f8d9bac169",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "2c92f0d99208d9204c9dd24232773fa5a3d9123c439cbab4c90690c9324711f2",
+      "actual_sha256": "2c92f0d99208d9204c9dd24232773fa5a3d9123c439cbab4c90690c9324711f2",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/gate_artifacts/0/trace.json",
+      "expected_sha256": "72fd0b743283fbaa969a702bd4a9dfa31b048e1e609acc975b30d83e9d5bda7d",
+      "actual_sha256": "72fd0b743283fbaa969a702bd4a9dfa31b048e1e609acc975b30d83e9d5bda7d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/original/attention-robosuite-cube_stack-seed101-a681fefced6c/attempts/cube_stack-seed101-20260929T232034.192482Z/attention_bundle.json",
+      "expected_sha256": "6b3678e047e8236b556056ca99d78fc0122d8dc84ca1fbd3d70c930d7ad3e5e2",
+      "actual_sha256": "6b3678e047e8236b556056ca99d78fc0122d8dc84ca1fbd3d70c930d7ad3e5e2",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/12-cube_stack-trace_aware_hint_only/original/attention-robosuite-cube_stack-seed101-a681fefced6c/attention_run.json",
+      "expected_sha256": "2a24bc910bcddab5505437ded776e6ffc7da824c2a49ca3a08ce5ab52103c123",
+      "actual_sha256": "2a24bc910bcddab5505437ded776e6ffc7da824c2a49ca3a08ce5ab52103c123",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/case_audit.json",
+      "expected_sha256": "223c37e9c386bcb0ca0b9df16b13508182d190f6e65d83d16eb5858898e68264",
+      "actual_sha256": "223c37e9c386bcb0ca0b9df16b13508182d190f6e65d83d16eb5858898e68264",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/original/attention-robosuite-cube_stack-seed101-52ba6390de14/attention_run.json",
+      "expected_sha256": "8f222525e4c467e433f08ea8f80f2a9c2a6a12d849a2efaf651ed0936cfc2ed6",
+      "actual_sha256": "8f222525e4c467e433f08ea8f80f2a9c2a6a12d849a2efaf651ed0936cfc2ed6",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/gate_artifacts/0/native_result.json",
+      "expected_sha256": "46ef1236a0f75940906c039811beca2659f5dc249eb74664bce96b8c731f179d",
+      "actual_sha256": "46ef1236a0f75940906c039811beca2659f5dc249eb74664bce96b8c731f179d",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/gate_artifacts/0/safety.json",
+      "expected_sha256": "0401b5f2ec6477e05173eaf3e49b74fcdedf011ea2dd6ad27d93101c910434c2",
+      "actual_sha256": "0401b5f2ec6477e05173eaf3e49b74fcdedf011ea2dd6ad27d93101c910434c2",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/gate_artifacts/0/sandbox_receipt.json",
+      "expected_sha256": "919374d19dee663829925de6e1b3771dc50507a7af34a0e90e50e4ea2b5f8156",
+      "actual_sha256": "919374d19dee663829925de6e1b3771dc50507a7af34a0e90e50e4ea2b5f8156",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/gate_artifacts/0/trace.json",
+      "expected_sha256": "92d1667233623718f5f74102c8a285a2cb0fc3911b614b9cb7e5341dedfa2258",
+      "actual_sha256": "92d1667233623718f5f74102c8a285a2cb0fc3911b614b9cb7e5341dedfa2258",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/original/attention-robosuite-cube_stack-seed101-52ba6390de14/attempts/cube_stack-seed101-20260929T232036.490496Z/attention_bundle.json",
+      "expected_sha256": "f0bfe293c01323eab19877fd5e35a955fa02f01388838011c2c31420d8b7d53e",
+      "actual_sha256": "f0bfe293c01323eab19877fd5e35a955fa02f01388838011c2c31420d8b7d53e",
+      "matches": true
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/persistent/cases/13-cube_stack-full_trace_aware_attention_planner/original/attention-robosuite-cube_stack-seed101-52ba6390de14/attention_run.json",
+      "expected_sha256": "8f222525e4c467e433f08ea8f80f2a9c2a6a12d849a2efaf651ed0936cfc2ed6",
+      "actual_sha256": "8f222525e4c467e433f08ea8f80f2a9c2a6a12d849a2efaf651ed0936cfc2ed6",
+      "matches": true
+    }
+  ],
+  "issues": [],
+  "passed": true,
+  "audit_source_sha256": "3b3eecd16a68ffa3ba75b3a426f068913c69e34c4330b3945ffc84077d6657eb"
+}

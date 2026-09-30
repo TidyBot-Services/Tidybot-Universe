@@ -1,0 +1,157 @@
+{
+  "both_failed_assistance_credits_saved": 0,
+  "both_success_assistance_credits_saved": 0,
+  "control_successes": 0,
+  "control_unsafe_attempts": 0,
+  "counterexamples": [],
+  "empirical_confidence": 1.0,
+  "future_assistance_credits_saved": 0,
+  "gpu_seconds_saved": 0.0,
+  "human_seconds_per_success_gain": null,
+  "memory_id": "candidate:m5:robocasa-counter-to-sink-public-sdk-v3",
+  "paired_dev_seeds": 5,
+  "policy_changed_since_source": true,
+  "robot_seconds_saved": -204.9448748199793,
+  "safety_regressions": [],
+  "source_human_attention_seconds": 0.0,
+  "source_kind": "advisor_proxy",
+  "source_policy_sha256": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+  "success_gain": 5,
+  "success_rate_gain": 1.0,
+  "supporting_successes": [
+    {
+      "assistance_credits_saved": 0,
+      "control_attempt_id": "attempt:counter_to_sink-seed101-20260928T215938.891412Z:0",
+      "reason": "success_gain",
+      "seed": 101,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed101-20260928T220028.481129Z:0",
+      "variation": {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6",
+        "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+        "task_variant_id": "task:boxed_drink"
+      }
+    },
+    {
+      "assistance_credits_saved": 0,
+      "control_attempt_id": "attempt:counter_to_sink-seed102-20260928T220158.096976Z:0",
+      "reason": "success_gain",
+      "seed": 102,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed102-20260928T220245.325075Z:0",
+      "variation": {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+        "scene_id": "scene:93244621fd1a24b456d5",
+        "task_prompt": "pick the cup from the counter and place it in the sink",
+        "task_variant_id": "task:cup"
+      }
+    },
+    {
+      "assistance_credits_saved": 0,
+      "control_attempt_id": "attempt:counter_to_sink-seed103-20260928T220416.767147Z:0",
+      "reason": "success_gain",
+      "seed": 103,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed103-20260928T220505.323028Z:0",
+      "variation": {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:a7d4f086836e78c38004",
+        "scene_id": "scene:feaf8e202a88a1bad005",
+        "task_prompt": "pick the mango from the counter and place it in the sink",
+        "task_variant_id": "task:mango"
+      }
+    },
+    {
+      "assistance_credits_saved": 0,
+      "control_attempt_id": "attempt:counter_to_sink-seed104-20260928T220633.176365Z:0",
+      "reason": "success_gain",
+      "seed": 104,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed104-20260928T220724.400330Z:0",
+      "variation": {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:a61c8884dc61c3aeccc8",
+        "scene_id": "scene:6b34dfcee277f551a83b",
+        "task_prompt": "pick the onion from the counter and place it in the sink",
+        "task_variant_id": "task:onion"
+      }
+    },
+    {
+      "assistance_credits_saved": 0,
+      "control_attempt_id": "attempt:counter_to_sink-seed105-20260928T220854.563651Z:0",
+      "reason": "success_gain",
+      "seed": 105,
+      "treatment_attempt_id": "attempt:counter_to_sink-seed105-20260928T220944.137429Z:0",
+      "variation": {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+        "scene_id": "scene:b328d376a1514e3e6bae",
+        "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+        "task_variant_id": "task:rolling_pin"
+      }
+    }
+  ],
+  "tokens_saved": 0,
+  "treatment_success_rate_95ci": {
+    "interpretation": "binomial reference only; frozen variation cases are not assumed IID",
+    "level": 0.95,
+    "lower": 0.5655175352168251,
+    "method": "wilson_score",
+    "n": 5,
+    "upper": 1.0
+  },
+  "treatment_successes": 5,
+  "treatment_unsafe_attempts": 0,
+  "validated_scope": [
+    {
+      "camera_config_id": "camera:base+wrist",
+      "object_set_id": "objects:cda92955890a16bc8537",
+      "scene_id": "scene:29f6ddc71995db3e0fd6",
+      "task_variant_id": "task:boxed_drink"
+    },
+    {
+      "camera_config_id": "camera:base",
+      "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+      "scene_id": "scene:93244621fd1a24b456d5",
+      "task_variant_id": "task:cup"
+    },
+    {
+      "camera_config_id": "camera:base+wrist",
+      "object_set_id": "objects:a7d4f086836e78c38004",
+      "scene_id": "scene:feaf8e202a88a1bad005",
+      "task_variant_id": "task:mango"
+    },
+    {
+      "camera_config_id": "camera:base",
+      "object_set_id": "objects:a61c8884dc61c3aeccc8",
+      "scene_id": "scene:6b34dfcee277f551a83b",
+      "task_variant_id": "task:onion"
+    },
+    {
+      "camera_config_id": "camera:base+wrist",
+      "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+      "scene_id": "scene:b328d376a1514e3e6bae",
+      "task_variant_id": "task:rolling_pin"
+    }
+  ],
+  "validation_policy_hashes": [
+    "39f4467454b6dc839dc31ee051777c07344e59db894c73fd9cd2bff687c4dfb6"
+  ]
+}

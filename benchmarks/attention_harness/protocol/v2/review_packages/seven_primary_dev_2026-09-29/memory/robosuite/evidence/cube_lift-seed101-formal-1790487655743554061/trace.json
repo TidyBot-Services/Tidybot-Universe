@@ -1,0 +1,219 @@
+{
+  "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:1",
+  "attention_input": {
+    "advisor_guidance": "Use the object poses returned by sensors.find_objects() (permitted sim_gt evidence) to locate the cube. Then, using sensors.get_observation() for the current end-effector position (robot0_eef_pos) and orientation (robot0_eef_quat): (1) move the end-effector above the cube, (2) lower it to the cube's grasp height, (3) close the gripper with gripper.close() and allow it to settle, and (4) move the end-effector upward to lift the cube off the table. Keep the gripper open during approach as you already do, and verify the cube's position changes after lifting by calling find_objects() again."
+  },
+  "backend_steps": [
+    {
+      "action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "done": false,
+      "observation_sha256": "4d605291001a55177c66189457e040ccae9b606f6d92f5718b633cbb0dfe00b4",
+      "reward": 0.0,
+      "step": 0
+    }
+  ],
+  "config_sha256": "96f704bb203a6c1097a16d64833450fa405e78201199e8585e469df14ca4c115",
+  "error": null,
+  "final_observation_sha256": "cfd563668c17cda4bd238d35fa7d2075dd66b0a2bd08dc8f546259ec1dff948c",
+  "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+  "policy_sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+  "reset_attestation": {
+    "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+    "scene_id": "scene:095974d95f12b5c458fb"
+  },
+  "run_id": "run:attention-robosuite-cube_lift-seed101-68b4cbf67d66",
+  "schema_version": "attentionbench.formal-trace.v1",
+  "sdk_events": [
+    {
+      "arguments": {
+        "camera_names": null,
+        "target_names": null
+      },
+      "duration_ms": 0.376,
+      "error": null,
+      "event_id": "sdk-0",
+      "event_type": "sdk.perception",
+      "operation": "find_objects",
+      "result": [
+        {
+          "confidence": 1.0,
+          "frame": "robosuite_world",
+          "name": "cube",
+          "position": [
+            -0.008872082758403153,
+            -0.01908645584039528,
+            0.8300569484529563
+          ],
+          "source": "sim_gt"
+        }
+      ],
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 0,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.000427
+    },
+    {
+      "arguments": {
+        "camera_names": null,
+        "target_names": null
+      },
+      "duration_ms": 0.451,
+      "error": null,
+      "event_id": "sdk-1",
+      "event_type": "sdk.perception",
+      "operation": "find_objects",
+      "result": [
+        {
+          "confidence": 1.0,
+          "frame": "robosuite_world",
+          "name": "cube",
+          "position": [
+            -0.008872082758403153,
+            -0.01908645584039528,
+            0.8300569484529563
+          ],
+          "source": "sim_gt"
+        }
+      ],
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 1,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.016186
+    },
+    {
+      "arguments": {
+        "settle_steps": 1
+      },
+      "duration_ms": 26.786,
+      "error": null,
+      "event_id": "sdk-2",
+      "event_type": "sdk.gripper_command",
+      "operation": "open",
+      "result": null,
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 2,
+      "source": "robot_sdk.gripper",
+      "status": "completed",
+      "timestamp": 0.043033
+    },
+    {
+      "arguments": {},
+      "duration_ms": 0.116,
+      "error": null,
+      "event_id": "sdk-3",
+      "event_type": "sdk.sensor_read",
+      "operation": "get_observation",
+      "result": {
+        "agentview_depth": {
+          "dtype": "float32",
+          "shape": [
+            64,
+            64,
+            1
+          ]
+        },
+        "agentview_image": {
+          "dtype": "uint8",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        },
+        "agentview_intrinsics": {
+          "dtype": "float64",
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "agentview_pose_mat": {
+          "dtype": "float64",
+          "shape": [
+            4,
+            4
+          ]
+        },
+        "robot0_eef_pos": {
+          "dtype": "float64",
+          "shape": [
+            3
+          ]
+        },
+        "robot0_eef_quat": {
+          "dtype": "float64",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_eef_quat_site": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "robot0_gripper_qpos": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_gripper_qvel": {
+          "dtype": "float64",
+          "shape": [
+            2
+          ]
+        },
+        "robot0_joint_pos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_cos": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_pos_sin": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_joint_vel": {
+          "dtype": "float64",
+          "shape": [
+            7
+          ]
+        },
+        "robot0_proprio-state": {
+          "dtype": "float64",
+          "shape": [
+            43
+          ]
+        }
+      },
+      "schema_version": "attentionbench.sdk-event.v1",
+      "sequence": 3,
+      "source": "robot_sdk.sensors",
+      "status": "completed",
+      "timestamp": 0.046445
+    }
+  ],
+  "seed": 101,
+  "status": "completed",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}
