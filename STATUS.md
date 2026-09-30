@@ -1,3 +1,13 @@
+## 2026-09-29（America/New_York）RoboCasa Safety负控修复与总体准入重签
+
+验收完成，重新签发 `formal_eligible=true`；用户关口7/7 PASS，canonical gate 9/9 PASS，未过项为空。判定限原签发的本开发集主实验范围。
+
+当前C唯一新增受控负控已证明真实动作/job完成→原独立Safety action_outcome_unknown→worker停止且第二动作0→双Service回收。检测0.178ms、worker停止1.633ms、双Service回收0.532s；12项身份/Safety回归与5项审计反例测试通过。修复新增负控请求身份构造器，使run/attempt与station目录一致；已有runtime/Safety/Service未改。
+
+其余6个用户PASS关口原结论、证据SHA及输入不变，0复跑；历史28份Safety与R14负控复用。1411份旧证据/源码SHA无漂移，原失败审计a1aefe83…及旧总体334019e6…原件保留；当前C负控是新授权的一次受控注入。held-out/350格效果矩阵/Memory探测和晋升/消融均执行0。
+
+[本轮总体重签](/home/truares/桌面/attentionbench-safety-repair-20260929/independent/overall_admission_audit_v3.json) SHA `ad66e2cd7da547e0450a77403cf2d993a9913c7512e6e48c1a84e5ffa654d0b6`；[新C负控审计](/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json) SHA `7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636`。全部Service进程组及控制器已回收，本轮结束，不自动开始下一轮。下一步为交付/审阅本次证据；签名不自动授权矩阵或held-out。以下原审计结论按历史轮次保留。
+
 ## 2026-09-29（America/New_York）七条件冻结与总体准入审计最终结论
 
 **审计验收完成；正式准入未通过。独立签发formal_eligible=false，9个canonical gate中8 PASS、1 FAIL。** 唯一未过项为完整Safety负控（safety_fault_injection）：唯一新增当前RoboCasa case在station run/attempt身份预检被拒绝，未到预注册未知动作注入；派发/job/目标检测0，monitor_not_initialized的unsafe1不等于目标检测，故障即停时延不可测。四类原件SHA与双Service回收通过、0.478秒正常清理已留证，但不能补全负控coverage。live开发case上限1已用尽，不补跑、不择优替换，不自动开新一轮。

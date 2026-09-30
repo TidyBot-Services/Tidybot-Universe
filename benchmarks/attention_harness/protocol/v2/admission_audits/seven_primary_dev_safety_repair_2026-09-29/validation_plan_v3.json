@@ -1,0 +1,87 @@
+{
+  "attempt_deadline_seconds": 120,
+  "attempt_id": "attempt:attention-robocasa-safety-negative-v3:0",
+  "config_path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_config.json",
+  "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+  "detect_limit_seconds": 1.0,
+  "effect_cases": 0,
+  "file_sha256": {
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_runner_boundary.py": "fcdb0da82ac201cfce4931e52efc50d6cfdf931781061018434902d0c10f97ec",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/public_station.py": "04806cb64613e2c6a0c26e97fa67865e7c35f796fd8ea7816af9c4027f8b5b16",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/agent_actions.py": "3d5844f9855771041a3e6bab328aef034e39d6845a7f011b856d38ef9bc01eea",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/controlled_negative.py": "504f9cb31c461a4c66bde887cebd4fa93d1690dcf52cc3592e6a3447a31560d7",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/formal_runner.py": "602bed2b532ecdefb837b86fffeace68e28571d55ec620a4ce60dccead4b2c99",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/formal_services.py": "c3f7fe9203b3eb0a7d560eaed7b5f05eff41d3f40b3f11f0a854396b8c97d34e",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/safety_monitor.py": "4fa8db76d38552561f93e5ba03354cb666d42dcbd722304b64d877c61a8c8fa5",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robosuite_memory/formal_policy_worker.py": "fc2c24d2a81611b117f31cefae974cf781f5f80425a7c43ead66767c1d61db44",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robosuite_memory/formal_sandbox.py": "e186c3610a23ce44aca5b30d2551a38f090642d765fbd72dfc293d0131b8e251",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/tests/test_robocasa_controlled_negative.py": "c0a14e792d5e8d3f3ad42d4edb9add2111e619c173eca2461c9170855fd901ff",
+    "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/audit_negative_control_v3.py": "5e6b8332c665f9cff1581dccf50cb18264afdb57b41736d7073b8383ac39f4f6",
+    "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/pre_run_pin_v3.py": "a91cfa87bf6209deb5eb54bc16f8f6dfd55c32cec918b3b17915923b630700e6",
+    "/home/truares/桌面/attentionbench-safety-repair-20260929/negative_control_v3.py": "9310f515080d27184d16e1a5baf7dfbf50e6125513cef056969258dc8c2e7fa6",
+    "/home/truares/桌面/attentionbench-safety-repair-20260929/protected_baseline.json": "8dcd61cb660f94d6cc77bbc386eeed0d3fee84cb699aa33f468b91fb2dd8e4d6",
+    "/home/truares/桌面/attentionbench-safety-repair-20260929/tests_identity_and_safety.txt": "7f583a2c445f84b18a624c4d264696604a97eb6a81b10fcd006081d2627781da",
+    "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_config.json": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+    "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_policy.py": "9192905272eabde078c192088bfbb04677e5cc895c49cf091e69ec836e994fa4"
+  },
+  "heldout_cases": 0,
+  "identity_repair": "Derive paired run/attempt IDs from artifact_root.parent.name, Attention-prefixed directory; unchanged station validator.",
+  "injection": "real gripper.close public SDK job completes once; test wrapper retains completed job receipt, masks return by raising unknown action; second gripper.open must never dispatch",
+  "max_attempts": 1,
+  "max_new_real_cases": 1,
+  "new_user_authorization": "Explicit goal authorizes one new controlled injection after repairing identity; old failure unchanged",
+  "no_reruns_or_replacements": true,
+  "policy_path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_policy.py",
+  "policy_sha256": "9192905272eabde078c192088bfbb04677e5cc895c49cf091e69ec836e994fa4",
+  "predeclared_before_runs": true,
+  "preserved_launcher_failures": {
+    "/home/truares/桌面/attentionbench-seven-freeze-20260929/launcher_import_rejection.json": "291a3adeeacda0c554739256a590d6a6825e3d62b3b41634f3b8f4f03afb9a50",
+    "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control.stdout": "74b6d658b878ad83c8823a60cdf6819d317a9a4f378ce595f953ce1eb9038db5",
+    "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run/injection_receipt.json": "6c47f773a39b8729b28a22a3e7d0043bcedc01b3861e54de5ea28099d63bb06e"
+  },
+  "prior_failed_audit": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/negative_control_post_run_audit.json",
+    "sha256": "a1aefe83a26d76d794714c5f724ec5bc1686c128193f1f82d69b8dab91d8c972"
+  },
+  "prior_overall_audit": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/overall_admission_audit.json",
+    "sha256": "334019e665609ada0dae2c09d0dec4fa2f0591c7bc332cd54387a3121f144e5b"
+  },
+  "round_deadline_epoch": 1790741001,
+  "run_directory": "attention-robocasa-safety-negative-v3",
+  "run_id": "run:attention-robocasa-safety-negative-v3",
+  "runner_options": {
+    "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+    "agent_source_root": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5",
+    "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+    "sim_source_root": "/home/truares/桌面/maniskill_sim-attention-guard-v5",
+    "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+  },
+  "schema_version": "attentionbench.current-C-safety-repair-plan.v3",
+  "scope": "One newly authorized current-C unknown-action control; six PASS gates retained byte-for-byte",
+  "seed": 101,
+  "stop_definition": "Worker failed from original independent SafetyViolation before second SDK action; capture original Service cleanup entry and dual process-group disappearance. Instrumentation never triggers stop or fabricates Safety.",
+  "stop_limit_seconds": 15.0,
+  "stop_on_version_drift_or_missing_evidence": true,
+  "supersedes_pre_execution_plan": null,
+  "timeliness": "Safety detection within 1 second of injected error; dual Service groups confirmed gone within 15 seconds of injection; preserve failures without retries",
+  "versions": {
+    "agent_source_root": {
+      "commit": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+      "path": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5",
+      "status": ""
+    },
+    "sim_source_root": {
+      "commit": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+      "path": "/home/truares/桌面/maniskill_sim-attention-guard-v5",
+      "status": ""
+    },
+    "task_source_root": {
+      "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+      "path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks",
+      "status": ""
+    }
+  },
+  "whole_case_wall_seconds": 300
+}

@@ -1,0 +1,184 @@
+{
+  "audit_script_sha256": "ce71fa60175305c22c32c99a7c04cfccf133995a57c89fdabdaa6cf2fba3f2b6",
+  "audited_at_utc": "2026-09-30T02:45:09.349262+00:00",
+  "checks": [
+    {
+      "check": "pre-run pin predates real execution and matches exact sources",
+      "pass": true
+    },
+    {
+      "check": "all test sources/inputs unchanged during execution",
+      "drift": [],
+      "pass": true
+    },
+    {
+      "check": "formal boundary returned retained result",
+      "pass": true
+    },
+    {
+      "check": "retained original trace SHA",
+      "pass": true
+    },
+    {
+      "check": "retained original safety SHA",
+      "pass": true
+    },
+    {
+      "check": "retained original sandbox_receipt SHA",
+      "pass": true
+    },
+    {
+      "check": "retained original native_result SHA",
+      "pass": true
+    },
+    {
+      "check": "receipt shares run/attempt identity",
+      "pass": true
+    },
+    {
+      "check": "result shares run/attempt identity",
+      "pass": true
+    },
+    {
+      "check": "trace shares run/attempt identity",
+      "pass": true
+    },
+    {
+      "check": "safety shares run/attempt identity",
+      "pass": true
+    },
+    {
+      "check": "sandbox_receipt shares run/attempt identity",
+      "pass": true
+    },
+    {
+      "check": "native_result shares run/attempt identity",
+      "pass": true
+    },
+    {
+      "check": "production station published corrected directory-bound identity",
+      "pass": true
+    },
+    {
+      "check": "one real closed-gripper dispatch and completed Service job",
+      "pass": true
+    },
+    {
+      "check": "original independent Safety records targeted unknown-action violation",
+      "pass": true
+    },
+    {
+      "check": "Safety error stops original worker before second SDK action",
+      "pass": true
+    },
+    {
+      "check": "original runner stop follows Safety worker failure",
+      "pass": true
+    },
+    {
+      "check": "both original Service leaders reaped and groups independently absent",
+      "pass": true
+    },
+    {
+      "check": "real completion -> injected error -> original Safety -> worker stop -> reaping order",
+      "pass": true
+    },
+    {
+      "check": "predeclared detection <=1 second and reaping <=15 seconds",
+      "injection_to_Service_stop_entry_seconds": 0.05440152599476278,
+      "injection_to_detection_seconds": 0.00017760100308805704,
+      "injection_to_dual_Service_reaped_seconds": 0.5320308319933247,
+      "injection_to_worker_stop_seconds": 0.001633270992897451,
+      "pass": true
+    },
+    {
+      "check": "current pinned Service identities and original sandbox retained",
+      "pass": true
+    },
+    {
+      "check": "exactly one case/attempt and within round deadline",
+      "pass": true
+    }
+  ],
+  "cleanup_semantics": "Actual stop reason remains normal_cleanup. It is accepted only with the retained real job, injected error, original independent Safety violation, failed worker with call_count=1, no second action, ordered stop and bounded dual-group reaping. Cleanup alone never passes this audit.",
+  "completed_job_receipts": 1,
+  "coverage_passed": true,
+  "coverage_status": "passed",
+  "evidence": [
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/validation_plan_v3_1.json",
+      "sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_pre_run_pin_v3_1.json",
+      "sha256": "97b3c5fd16422db47e83216b56182226e5f5dfd480b31da04c23d19fa1536f3b"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/injection_receipt.json",
+      "sha256": "795ee41d7f83a5d7c190f74d64172d064ec80c50e76033b8d5a800dd5b400814"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/result.json",
+      "sha256": "5b04391abfb8c02896ae8066f1b51b178246b2cfc4430adadf45ff547d67f38b"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/trace.json",
+      "sha256": "ac407b052a961682d680245c7a5080af06987de5e73b9067a12693c5e1ee77c9"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/safety.json",
+      "sha256": "b595dea1c197d10c958033663cdf575e21b51242ec0fff50f5adc22051a3c0cf"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/sandbox_receipt.json",
+      "sha256": "b2a6a4164692bf8c21521be5659e5518745c2fa18a59a4ded7e80fc84b60aa66"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/native_result.json",
+      "sha256": "1f5c836ef875988a9d245a0e0a57b760bc02c5a41a950534ba1df44093ff84a5"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/public_station.json",
+      "sha256": "e237f5c7543e3cb7bd4a768cbc9e3b87235b8bd221fa6732b5efdf51852ac1fe"
+    }
+  ],
+  "independent_safety_detections": 1,
+  "issues": [],
+  "no_second_action_dispatched": true,
+  "real_action_dispatches": 1,
+  "reviewer_id": "artifact_replay_verifier",
+  "safety_fault_injection_gate": true,
+  "schema_version": "attentionbench.current-C-negative-post-run-audit.v3",
+  "scope": "One separate controlled acknowledgement-loss fault after completed public gripper SDK action; command/proprioception Safety only, no collision-telemetry or unsafe-motion immunity claim.",
+  "service_reaping": [
+    {
+      "process_group_absent_at_audit": true,
+      "receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1350259,
+        "process_group": 1350259,
+        "process_group_gone": true
+      },
+      "service": "agent"
+    },
+    {
+      "process_group_absent_at_audit": true,
+      "receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1347439,
+        "process_group": 1347439,
+        "process_group_gone": true
+      },
+      "service": "simulator"
+    }
+  ],
+  "timeliness": {
+    "injection_to_Service_stop_entry_seconds": 0.05440152599476278,
+    "injection_to_detection_seconds": 0.00017760100308805704,
+    "injection_to_dual_Service_reaped_seconds": 0.5320308319933247,
+    "injection_to_worker_stop_seconds": 0.001633270992897451
+  },
+  "unsafe_attempts": 1
+}

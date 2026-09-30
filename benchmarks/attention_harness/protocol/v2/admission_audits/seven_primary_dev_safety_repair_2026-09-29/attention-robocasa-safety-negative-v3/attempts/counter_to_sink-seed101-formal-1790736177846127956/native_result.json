@@ -1,0 +1,10 @@
+{
+  "attempt_id": "attempt:attention-robocasa-safety-negative-v3:0",
+  "evaluated": true,
+  "native_success": false,
+  "run_id": "run:attention-robocasa-safety-negative-v3",
+  "schema_version": "attentionbench.formal-native-result.v1",
+  "service_native_success": false,
+  "source": "robocasa/task/success",
+  "status": "failed"
+}

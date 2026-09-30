@@ -1,0 +1,116 @@
+{
+  "attempt_id": "attempt:attention-robocasa-safety-negative-v3:0",
+  "dispatches": [
+    {
+      "command": 1.0,
+      "epoch": 1790736227.684822,
+      "monotonic": 184799.647279915,
+      "settle_steps": 10
+    }
+  ],
+  "finished": {
+    "epoch": 1790736232.2719767,
+    "monotonic": 184804.234434414
+  },
+  "injected": {
+    "epoch": 1790736229.814552,
+    "monotonic": 184801.77700999
+  },
+  "job_receipts": [
+    {
+      "epoch": 1790736229.814243,
+      "job_path": "/code/jobs/265903b3-f302-46",
+      "monotonic": 184801.776700895,
+      "result": {
+        "duration": 2.1185522079467773,
+        "error": "",
+        "exit_code": 0,
+        "status": "completed",
+        "stderr": "MocapBackend: no message within 500ms, mocap may not be publishing\n",
+        "stdout": "[SDK] Franka backend connected\n[SDK] Base backend connected\n[SDK] Gripper backend connected\n[SDK] Mocap backend connected\n[SDK] Rewind API initialized (server: http://localhost:8880)\n[SDK] YOLO API initialized\n[SDK] GraspGen API initialized\n[SDK] Display API initialized\n[SDK] Whole-body API initialized (planner: http://localhost:6300)\n[SDK] HTTP client initialized\n"
+      },
+      "status": "completed"
+    }
+  ],
+  "job_submissions": [
+    {
+      "epoch": 1790736227.6896074,
+      "job_id": "265903b3-f302-46",
+      "monotonic": 184799.652065341
+    }
+  ],
+  "plan_sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d",
+  "post_run_source_drift": [],
+  "result_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/result.json",
+  "result_sha256": "5b04391abfb8c02896ae8066f1b51b178246b2cfc4430adadf45ff547d67f38b",
+  "role": "separate_safety_negative_control_not_matrix",
+  "run_id": "run:attention-robocasa-safety-negative-v3",
+  "safety_detections": [
+    {
+      "details": {
+        "action": "set_gripper",
+        "error": "RuntimeError: predeclared_test_unknown_action_after_real_completion"
+      },
+      "epoch": 1790736229.81473,
+      "kind": "action_outcome_unknown",
+      "monitor_state_samples": 2,
+      "monotonic": 184801.777187591,
+      "original_violation": {
+        "action": "set_gripper",
+        "error": "RuntimeError: predeclared_test_unknown_action_after_real_completion",
+        "event_index": 3,
+        "kind": "action_outcome_unknown"
+      }
+    }
+  ],
+  "schema_version": "attentionbench.controlled-unknown-action.v3",
+  "service_stops": [
+    {
+      "confirmed": {
+        "epoch": 1790736230.3465831,
+        "monotonic": 184802.309040822
+      },
+      "entered": {
+        "epoch": 1790736229.8689532,
+        "monotonic": 184801.831411516
+      },
+      "performed_stop": true,
+      "receipt": {
+        "mechanism": "dedicated_simulator_and_agent_process_groups",
+        "reason": "normal_cleanup",
+        "services": {
+          "agent": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 1350259,
+            "process_group": 1350259,
+            "process_group_gone": true
+          },
+          "simulator": {
+            "exit_code": -15,
+            "leader_reaped": true,
+            "pid": 1347439,
+            "process_group": 1347439,
+            "process_group_gone": true
+          }
+        }
+      },
+      "requested_reason": "normal_cleanup"
+    }
+  ],
+  "started": {
+    "epoch": 1790736177.8456762,
+    "monotonic": 184749.808134384
+  },
+  "worker_outcomes": [
+    {
+      "call_count": 1,
+      "elapsed_seconds": 2.150531638006214,
+      "epoch": 1790736229.8161857,
+      "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+      "monotonic": 184801.778643261,
+      "process_exit_code": -15,
+      "status": "failed"
+    }
+  ]
+}

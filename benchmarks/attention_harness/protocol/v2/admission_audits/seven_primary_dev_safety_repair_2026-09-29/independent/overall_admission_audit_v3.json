@@ -1,0 +1,781 @@
+{
+  "Memory_coverage_minimum_added": false,
+  "audit_scripts": [
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/sign_overall_admission_v3.py",
+      "sha256": "44500788ed492fb4b36718bbbb70f80743e71b1a722841481f2e56ebc8e0103e"
+    },
+    {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/audit_negative_control_v3.py",
+      "sha256": "ce71fa60175305c22c32c99a7c04cfccf133995a57c89fdabdaa6cf2fba3f2b6"
+    }
+  ],
+  "canonical_gate_count": 9,
+  "canonical_gates": {
+    "depth_500": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_depth_audit.json",
+          "sha256": "7d47e2350e970638a9b6f648c2699b24a0880ae98af80d886212a1aa470ccdf5"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/independent_final_audit.json",
+          "sha256": "bec9ae2018c0f8772b5c69539ecae4802e54c35f646bbbb504c44c1ae70e2c4c"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        }
+      ],
+      "pass": true,
+      "reason": "Existing pinned R19fde8a operational gate remains passed; no rerun or cause claim; historical depth root cause unknown is retained controlled risk in this version/scope.",
+      "scope": "Robosuite cube_lift/depth operational admission only; not held-out or future-version immunity.",
+      "status": "pass"
+    },
+    "five_seed_chain_each_task": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/final_legacy_impact_audit.json",
+          "sha256": "7cb7d8e66630357fc78383272cfec44829c1a11c4b7cd3318fb0b626d9c04374"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_depth_audit.json",
+          "sha256": "7d47e2350e970638a9b6f648c2699b24a0880ae98af80d886212a1aa470ccdf5"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_robocasa_impact_audit.json",
+          "sha256": "60ab408adf4c44774ffa4fd8f20ab810a91093f3dc4e012f0fe7005287db4640"
+        }
+      ],
+      "pass": true,
+      "reason": "Reuse independently qualified 5/5 seeds 101-105 per task; original four artifacts and version bridges remain valid; no chain rerun.",
+      "scope": "Native Boolean success or false is admissible; chain case success is not required.",
+      "status": "pass"
+    },
+    "policy_identity": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_approval.json",
+          "sha256": "9605061df5350de9c18537c8c0bc9bc04e01d03bd8d54a6d7db158b153413ff6"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/final_legacy_impact_audit.json",
+          "sha256": "7cb7d8e66630357fc78383272cfec44829c1a11c4b7cd3318fb0b626d9c04374"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/matrix_plan.json",
+          "sha256": "2253292b663281953ef029908b02f82fad515b34f7a435b46aa83fac5c28623a"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/sha256_manifest.json",
+          "sha256": "7a1efa22d27044a4b8fd15d538914e787a5a4eb7cf35341136776a00755da372"
+        }
+      ],
+      "pass": true,
+      "reason": "Two unchanged public-SDK base policies, 50 seed configs, generation lineage and all 350 M1/launch locks match exact bytes; legacy 50 M1 identities remain unchanged.",
+      "scope": "Primary development main experiment only; input/help-rule approval, no effect execution.",
+      "status": "pass"
+    },
+    "safety": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/combined_admission_archive.json",
+          "sha256": "43907d4c1409aaed8e8eb7c651cc8f3d1bc8a63d8e7f4be08bf8a792db467f2b"
+        }
+      ],
+      "pass": true,
+      "reason": "All 170 selected qualifying/archive attempts retain independent Safety unsafe=0. The separate failed engineering negative has monitor_not_initialized unsafe=1 and is excluded from qualifying counts.",
+      "scope": "Zero unsafe/unknown-action in qualifying cases only; controlled negatives audited separately.",
+      "status": "pass"
+    },
+    "safety_fault_injection": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/negative_control_post_run_audit.json",
+          "sha256": "a1aefe83a26d76d794714c5f724ec5bc1686c128193f1f82d69b8dab91d8c972"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/result.json",
+          "sha256": "91cb527206a772f68d4a8b8f23ace18a1bd15863424b1efe5eeba06f494d1985"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/injection_receipt.json",
+          "sha256": "d80b801f76b089f81ad3f1ab1d0c299fa9600d9eb1d8e02fd1c9ed027c8887d5"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/current_robosuite_negative_reuse_audit.json",
+          "sha256": "cfe6d17877aa32b8eb0e66d95f8ece3f7d51e52c25e702e20f012d800f36b28d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/execution_ledger.json",
+          "sha256": "46f59b65492e1548c9b2198b97e795bf1056f7147621376bbb1728011a7c9705"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json",
+          "sha256": "7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/validation_plan_v3_1.json",
+          "sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_pre_run_pin_v3_1.json",
+          "sha256": "97b3c5fd16422db47e83216b56182226e5f5dfd480b31da04c23d19fa1536f3b"
+        }
+      ],
+      "pass": true,
+      "reason": "Current C controlled acknowledgement-loss fault reached a real completed gripper job; original independent Safety recorded action_outcome_unknown; original worker failed before second action; detection 0.000178s, worker stop 0.001633s, dual Service groups reaped 0.532031s from injection. Historical 28 Safety artifacts and current R14 depth-negative evidence reused unchanged.",
+      "scope": "Full current-version Safety negative-control package: signed historical 28 artifacts + unchanged current R14 negative + one new separate current C unknown-action control. No qualifying-case or effect outcome replacement.",
+      "status": "pass"
+    },
+    "seven_condition_approval": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_approval.json",
+          "sha256": "9605061df5350de9c18537c8c0bc9bc04e01d03bd8d54a6d7db158b153413ff6"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_audit.json",
+          "sha256": "431b9e289f78c1ca163e6f6e50e8f5c9bdb6f94e5d8bb001cf513a7ef34ab602"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/semantic_limitations.md",
+          "sha256": "b9c287944bdff44ebc1223a6f0ce183d0a576ab5b0f7369864eee6c501a7a602"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/accounting_rules.json",
+          "sha256": "c91f767acc5e7d60fb791104d1c434b4bcc5aa826acde5b4db6fc016d2c139be"
+        }
+      ],
+      "pass": true,
+      "reason": "All350 generation-only cells approved with condition assets, k2, random quota1, initial Memory scope/version and unified accounting. Policy bytes unchanged; finalmanifest1268 files checked. Semantic limits are explicit.",
+      "scope": "Seven frozen help-rule/input definitions for this developer main experiment only; no matrix execution authorization.",
+      "status": "pass"
+    },
+    "stability_each_task": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/final_legacy_impact_audit.json",
+          "sha256": "7cb7d8e66630357fc78383272cfec44829c1a11c4b7cd3318fb0b626d9c04374"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/combined_admission_archive.json",
+          "sha256": "43907d4c1409aaed8e8eb7c651cc8f3d1bc8a63d8e7f4be08bf8a792db467f2b"
+        }
+      ],
+      "pass": true,
+      "reason": "Reuse 25 R plus 25 C descriptive cases, 170 attempts, all original failures/invalid history retained. Native success 0/25 per task is not a threshold failure; SDK totals per run <=200 (max69).",
+      "scope": "25 predeclared seeds/task; original interrupted C case plus authorized supplement stays preserved and counts once.",
+      "status": "pass"
+    },
+    "task_feasibility": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v35_profile/task_feasibility_audit.json",
+          "sha256": "c4cef4232921d949758d734aa0a171f8986b034f9eaa0610faf4001e4d33196c"
+        }
+      ],
+      "pass": true,
+      "reason": "Separately labelled historical native-positive reference/Memory cases and unchanged native task/evaluator source establish native task/evaluator infrastructure solvability. No success is imported into base-policy outcomes.",
+      "scope": "Native task/evaluator solvability; not evidence that this fixed base controller succeeds or a current-reference skill safety claim.",
+      "status": "pass"
+    },
+    "trusted_memory": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/memory_inventory.json",
+          "sha256": "d7111849ee646b89b2007538666cf52d8d3289ef2d7df85586921a1d32aca985"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_audit.json",
+          "sha256": "431b9e289f78c1ca163e6f6e50e8f5c9bdb6f94e5d8bb001cf513a7ef34ab602"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_approval.json",
+          "sha256": "9605061df5350de9c18537c8c0bc9bc04e01d03bd8d54a6d7db158b153413ff6"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robosuite/provenance.json",
+          "sha256": "00ff54d2aab12bcbbb46ade0a977787b446f1f379d05c77fad608ecff52e956e"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robocasa/provenance.json",
+          "sha256": "ca8579ae412bc3d762ee2d5cee609aca2bc5b7325b7fb81bba4d3f569e1dcc2b"
+        }
+      ],
+      "pass": true,
+      "reason": "Trusted v1 promotion/provenance and historical raw per-attempt grant/use intact; current M Service/core components unchanged. Exact frozen initial state and no promotion enforced. Actual offline Service scope allows only101/103/105 per task and rejects other22; no scope broadening or minimum coverage.",
+      "scope": "In-process versioned Memory Service authority and scope/lifecycle/initialization validation. Offline grants are not robot runs; fixed controller consumption not proved.",
+      "status": "pass"
+    }
+  },
+  "condition_semantic_limits": [
+    {
+      "context_keys_read": [
+        "task_id"
+      ],
+      "interpretation": "Static approved control code does not consume Demo, Advisor guidance, Memory guidance, or reflection inputs. Scheduler request/cost/exposure records are auditable; no robot-control benefit or code-consumption claim follows. This is a limitation, not an added success or Memory-coverage threshold.",
+      "policy_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+      "reads_attention_input": false,
+      "suite": "robosuite"
+    },
+    {
+      "context_keys_read": [
+        "language",
+        "task_id"
+      ],
+      "interpretation": "Static approved control code does not consume Demo, Advisor guidance, Memory guidance, or reflection inputs. Scheduler request/cost/exposure records are auditable; no robot-control benefit or code-consumption claim follows. This is a limitation, not an added success or Memory-coverage threshold.",
+      "policy_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+      "reads_attention_input": false,
+      "suite": "robocasa"
+    }
+  ],
+  "current_negative_evidence_SHA_rechecks": [
+    {
+      "actual_sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d",
+      "expected_sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/validation_plan_v3_1.json"
+    },
+    {
+      "actual_sha256": "97b3c5fd16422db47e83216b56182226e5f5dfd480b31da04c23d19fa1536f3b",
+      "expected_sha256": "97b3c5fd16422db47e83216b56182226e5f5dfd480b31da04c23d19fa1536f3b",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_pre_run_pin_v3_1.json"
+    },
+    {
+      "actual_sha256": "795ee41d7f83a5d7c190f74d64172d064ec80c50e76033b8d5a800dd5b400814",
+      "expected_sha256": "795ee41d7f83a5d7c190f74d64172d064ec80c50e76033b8d5a800dd5b400814",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/injection_receipt.json"
+    },
+    {
+      "actual_sha256": "5b04391abfb8c02896ae8066f1b51b178246b2cfc4430adadf45ff547d67f38b",
+      "expected_sha256": "5b04391abfb8c02896ae8066f1b51b178246b2cfc4430adadf45ff547d67f38b",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/result.json"
+    },
+    {
+      "actual_sha256": "ac407b052a961682d680245c7a5080af06987de5e73b9067a12693c5e1ee77c9",
+      "expected_sha256": "ac407b052a961682d680245c7a5080af06987de5e73b9067a12693c5e1ee77c9",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/trace.json"
+    },
+    {
+      "actual_sha256": "b595dea1c197d10c958033663cdf575e21b51242ec0fff50f5adc22051a3c0cf",
+      "expected_sha256": "b595dea1c197d10c958033663cdf575e21b51242ec0fff50f5adc22051a3c0cf",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/safety.json"
+    },
+    {
+      "actual_sha256": "b2a6a4164692bf8c21521be5659e5518745c2fa18a59a4ded7e80fc84b60aa66",
+      "expected_sha256": "b2a6a4164692bf8c21521be5659e5518745c2fa18a59a4ded7e80fc84b60aa66",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/sandbox_receipt.json"
+    },
+    {
+      "actual_sha256": "1f5c836ef875988a9d245a0e0a57b760bc02c5a41a950534ba1df44093ff84a5",
+      "expected_sha256": "1f5c836ef875988a9d245a0e0a57b760bc02c5a41a950534ba1df44093ff84a5",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/native_result.json"
+    },
+    {
+      "actual_sha256": "e237f5c7543e3cb7bd4a768cbc9e3b87235b8bd221fa6732b5efdf51852ac1fe",
+      "expected_sha256": "e237f5c7543e3cb7bd4a768cbc9e3b87235b8bd221fa6732b5efdf51852ac1fe",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/public_station.json"
+    }
+  ],
+  "decision_rule": "AND of all nine canonical gates plus unchanged evidence/version integrity. Reuse eight signed canonical PASS entries exactly; only rejudge safety_fault_injection.",
+  "delivery_base_commit": "3e8b24f0bb0b5b22dcd4dbd3210c90658fdb4c61",
+  "depth_root_cause": "unknown; controlled retained risk in pinned operational scope",
+  "execution_authorized": false,
+  "execution_counts": {
+    "Memory_probes_or_promotions": 0,
+    "ablation_executions": 0,
+    "chain_reruns": 0,
+    "depth_reruns": 0,
+    "heldout_executions": 0,
+    "matrix_executions": 0,
+    "new_dispatched_actions": 1,
+    "new_real_attempts": 1,
+    "new_real_development_cases": 1,
+    "preflight_rejections_before_Service": 1,
+    "profile_reruns": 0,
+    "real_case_cap": 1,
+    "seven_condition_approval_reruns": 0,
+    "task_feasibility_reruns": 0
+  },
+  "failed_items": [],
+  "formal_eligible": true,
+  "freeze_manifest": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/sha256_manifest.json",
+    "sha256": "7a1efa22d27044a4b8fd15d538914e787a5a4eb7cf35341136776a00755da372"
+  },
+  "matrix_plan": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/matrix_plan.json",
+    "sha256": "2253292b663281953ef029908b02f82fad515b34f7a435b46aa83fac5c28623a"
+  },
+  "native_success_minimum_added": false,
+  "new_C_negative_audit": {
+    "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json",
+    "sha256": "7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636"
+  },
+  "next_steps": [
+    "This authorized repair round ends after Service/process cleanup and evidence delivery; no automatic new round.",
+    "Primary-development admission is signed eligible; no matrix/held-out execution is performed or authorized by this signature."
+  ],
+  "preserved_failed_negative": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/negative_control_post_run_audit.json",
+    "sha256": "a1aefe83a26d76d794714c5f724ec5bc1686c128193f1f82d69b8dab91d8c972"
+  },
+  "prior_overall_audit": {
+    "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/overall_admission_audit.json",
+    "sha256": "334019e665609ada0dae2c09d0dec4fa2f0591c7bc332cd54387a3121f144e5b"
+  },
+  "prior_round_execution_counts": {
+    "ablation_executions": 0,
+    "cap_consumed": 1,
+    "chain_reruns": 0,
+    "depth_reruns": 0,
+    "heldout_executions": 0,
+    "launcher_rejections_before_Service": 2,
+    "matrix_executions": 0,
+    "new_dispatched_actions": 0,
+    "new_real_attempts": 1,
+    "new_real_development_cases": 1,
+    "profile_reruns": 0,
+    "real_case_cap": 1,
+    "rerun_or_replacement_authorized": false
+  },
+  "protected_evidence_integrity": {
+    "baseline": {
+      "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/protected_baseline.json",
+      "sha256": "8dcd61cb660f94d6cc77bbc386eeed0d3fee84cb699aa33f468b91fb2dd8e4d6"
+    },
+    "checked_files": 1411,
+    "issues": []
+  },
+  "protocol_v2_2": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_2_2026-09-29.json",
+    "sha256": "e3d4fcb1c6e37a16e5131b60cbfa3ba92b3fd71b92042267cbdae52ae364d385"
+  },
+  "protocol_v2_4": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_4_resolution_2026-09-30.json",
+    "sha256": "9f060ba02364b537563b11e5dfc2ebbee0cea4150fd9b90ed12886be8065395d"
+  },
+  "remaining_three_packages": {
+    "safety_fault_injection": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/negative_control_post_run_audit.json",
+          "sha256": "a1aefe83a26d76d794714c5f724ec5bc1686c128193f1f82d69b8dab91d8c972"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/result.json",
+          "sha256": "91cb527206a772f68d4a8b8f23ace18a1bd15863424b1efe5eeba06f494d1985"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/injection_receipt.json",
+          "sha256": "d80b801f76b089f81ad3f1ab1d0c299fa9600d9eb1d8e02fd1c9ed027c8887d5"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/current_robosuite_negative_reuse_audit.json",
+          "sha256": "cfe6d17877aa32b8eb0e66d95f8ece3f7d51e52c25e702e20f012d800f36b28d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/execution_ledger.json",
+          "sha256": "46f59b65492e1548c9b2198b97e795bf1056f7147621376bbb1728011a7c9705"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json",
+          "sha256": "7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/validation_plan_v3_1.json",
+          "sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_pre_run_pin_v3_1.json",
+          "sha256": "97b3c5fd16422db47e83216b56182226e5f5dfd480b31da04c23d19fa1536f3b"
+        }
+      ],
+      "pass": true,
+      "reason": "Current C controlled acknowledgement-loss fault reached a real completed gripper job; original independent Safety recorded action_outcome_unknown; original worker failed before second action; detection 0.000178s, worker stop 0.001633s, dual Service groups reaped 0.532031s from injection. Historical 28 Safety artifacts and current R14 depth-negative evidence reused unchanged.",
+      "scope": "Full current-version Safety negative-control package: signed historical 28 artifacts + unchanged current R14 negative + one new separate current C unknown-action control. No qualifying-case or effect outcome replacement.",
+      "status": "pass"
+    },
+    "task_feasibility": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v35_profile/task_feasibility_audit.json",
+          "sha256": "c4cef4232921d949758d734aa0a171f8986b034f9eaa0610faf4001e4d33196c"
+        }
+      ],
+      "pass": true,
+      "reason": "Separately labelled historical native-positive reference/Memory cases and unchanged native task/evaluator source establish native task/evaluator infrastructure solvability. No success is imported into base-policy outcomes.",
+      "scope": "Native task/evaluator solvability; not evidence that this fixed base controller succeeds or a current-reference skill safety claim.",
+      "status": "pass"
+    },
+    "trusted_memory": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/memory_inventory.json",
+          "sha256": "d7111849ee646b89b2007538666cf52d8d3289ef2d7df85586921a1d32aca985"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_audit.json",
+          "sha256": "431b9e289f78c1ca163e6f6e50e8f5c9bdb6f94e5d8bb001cf513a7ef34ab602"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_approval.json",
+          "sha256": "9605061df5350de9c18537c8c0bc9bc04e01d03bd8d54a6d7db158b153413ff6"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robosuite/provenance.json",
+          "sha256": "00ff54d2aab12bcbbb46ade0a977787b446f1f379d05c77fad608ecff52e956e"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robocasa/provenance.json",
+          "sha256": "ca8579ae412bc3d762ee2d5cee609aca2bc5b7325b7fb81bba4d3f569e1dcc2b"
+        }
+      ],
+      "pass": true,
+      "reason": "Trusted v1 promotion/provenance and historical raw per-attempt grant/use intact; current M Service/core components unchanged. Exact frozen initial state and no promotion enforced. Actual offline Service scope allows only101/103/105 per task and rejects other22; no scope broadening or minimum coverage.",
+      "scope": "In-process versioned Memory Service authority and scope/lifecycle/initialization validation. Offline grants are not robot runs; fixed controller consumption not proved.",
+      "status": "pass"
+    }
+  },
+  "reused_canonical_PASS_gates": [
+    "policy_identity",
+    "five_seed_chain_each_task",
+    "stability_each_task",
+    "depth_500",
+    "task_feasibility",
+    "safety",
+    "trusted_memory",
+    "seven_condition_approval"
+  ],
+  "reused_user_PASS_gates": {
+    "chain": {
+      "byte_equivalent_payload": true,
+      "rerun_count": 0
+    },
+    "depth": {
+      "byte_equivalent_payload": true,
+      "rerun_count": 0
+    },
+    "memory": {
+      "byte_equivalent_payload": true,
+      "rerun_count": 0
+    },
+    "profile": {
+      "byte_equivalent_payload": true,
+      "rerun_count": 0
+    },
+    "seven_conditions": {
+      "byte_equivalent_payload": true,
+      "rerun_count": 0
+    },
+    "task_feasibility": {
+      "byte_equivalent_payload": true,
+      "rerun_count": 0
+    }
+  },
+  "reviewer_id": "artifact_replay_verifier",
+  "runtime_commit": "03f07ded72b936c57e08ce22050f06b34ee46a0e",
+  "runtime_compatibility": "All existing production source files unchanged. Added controlled_negative request builder binds only this separate test identity; its source SHA is pinned in the new plan. No original runner/monitor/Service change.",
+  "saved_protocol_commit": "a42ab8201277ffa806281b89a4f14e3ef33b1059",
+  "schema_version": "attentionbench.overall-admission-safety-resign.v3",
+  "scope": "本开发集主实验；held-out与消融另行冻结",
+  "service_versions": [
+    {
+      "clean": true,
+      "commit": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+      "current_commit": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+      "current_status": "",
+      "pass": true,
+      "path": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5",
+      "service": "agent_service"
+    },
+    {
+      "clean": true,
+      "commit": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+      "current_commit": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+      "current_status": "",
+      "pass": true,
+      "path": "/home/truares/桌面/maniskill_sim-attention-guard-v5",
+      "service": "maniskill_service"
+    },
+    {
+      "clean": true,
+      "commit": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f",
+      "current_commit": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f",
+      "current_status": "",
+      "pass": true,
+      "path": "/home/truares/桌面/attention_memory_service",
+      "service": "memory_service"
+    },
+    {
+      "clean": true,
+      "commit": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+      "current_commit": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+      "current_status": "",
+      "pass": true,
+      "path": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering",
+      "service": "robosuite_service"
+    },
+    {
+      "clean": true,
+      "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+      "current_commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+      "current_status": "",
+      "pass": true,
+      "path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks",
+      "service": "task_service"
+    }
+  ],
+  "signed_at_utc": "2026-09-30T02:46:57.717769+00:00",
+  "tests": [
+    {
+      "evidence": {
+        "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/tests_identity_and_safety.txt",
+        "sha256": "7f583a2c445f84b18a624c4d264696604a97eb6a81b10fcd006081d2627781da"
+      },
+      "result": "12 passed",
+      "scope": "Identity and original Safety/worker regression only"
+    },
+    {
+      "evidence": {
+        "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/tests_audit_predicates.txt",
+        "sha256": "ef0e7ef49e71fa999842be0cb8d22ec1058d3a384ed5c0a2ec6efb8f434975ac"
+      },
+      "result": "5 passed",
+      "scope": "Read-only audit replay and adversarial missing/late/second-action evidence"
+    }
+  ],
+  "timeliness": {
+    "injection_to_Service_stop_entry_seconds": 0.05440152599476278,
+    "injection_to_detection_seconds": 0.00017760100308805704,
+    "injection_to_dual_Service_reaped_seconds": 0.5320308319933247,
+    "injection_to_worker_stop_seconds": 0.001633270992897451
+  },
+  "user_seven_gate_summary": {
+    "chain": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/final_legacy_impact_audit.json",
+          "sha256": "7cb7d8e66630357fc78383272cfec44829c1a11c4b7cd3318fb0b626d9c04374"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_depth_audit.json",
+          "sha256": "7d47e2350e970638a9b6f648c2699b24a0880ae98af80d886212a1aa470ccdf5"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_robocasa_impact_audit.json",
+          "sha256": "60ab408adf4c44774ffa4fd8f20ab810a91093f3dc4e012f0fe7005287db4640"
+        }
+      ],
+      "pass": true,
+      "reason": "Reuse independently qualified 5/5 seeds 101-105 per task; original four artifacts and version bridges remain valid; no chain rerun.",
+      "scope": "Native Boolean success or false is admissible; chain case success is not required.",
+      "status": "pass"
+    },
+    "depth": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_depth_audit.json",
+          "sha256": "7d47e2350e970638a9b6f648c2699b24a0880ae98af80d886212a1aa470ccdf5"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/independent_final_audit.json",
+          "sha256": "bec9ae2018c0f8772b5c69539ecae4802e54c35f646bbbb504c44c1ae70e2c4c"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        }
+      ],
+      "pass": true,
+      "reason": "Existing pinned R19fde8a operational gate remains passed; no rerun or cause claim; historical depth root cause unknown is retained controlled risk in this version/scope.",
+      "scope": "Robosuite cube_lift/depth operational admission only; not held-out or future-version immunity.",
+      "status": "pass"
+    },
+    "memory": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/memory_inventory.json",
+          "sha256": "d7111849ee646b89b2007538666cf52d8d3289ef2d7df85586921a1d32aca985"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_audit.json",
+          "sha256": "431b9e289f78c1ca163e6f6e50e8f5c9bdb6f94e5d8bb001cf513a7ef34ab602"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_approval.json",
+          "sha256": "9605061df5350de9c18537c8c0bc9bc04e01d03bd8d54a6d7db158b153413ff6"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robosuite/provenance.json",
+          "sha256": "00ff54d2aab12bcbbb46ade0a977787b446f1f379d05c77fad608ecff52e956e"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robocasa/provenance.json",
+          "sha256": "ca8579ae412bc3d762ee2d5cee609aca2bc5b7325b7fb81bba4d3f569e1dcc2b"
+        }
+      ],
+      "pass": true,
+      "reason": "Trusted v1 promotion/provenance and historical raw per-attempt grant/use intact; current M Service/core components unchanged. Exact frozen initial state and no promotion enforced. Actual offline Service scope allows only101/103/105 per task and rejects other22; no scope broadening or minimum coverage.",
+      "scope": "In-process versioned Memory Service authority and scope/lifecycle/initialization validation. Offline grants are not robot runs; fixed controller consumption not proved.",
+      "status": "pass"
+    },
+    "profile": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/final_legacy_impact_audit.json",
+          "sha256": "7cb7d8e66630357fc78383272cfec44829c1a11c4b7cd3318fb0b626d9c04374"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/combined_admission_archive.json",
+          "sha256": "43907d4c1409aaed8e8eb7c651cc8f3d1bc8a63d8e7f4be08bf8a792db467f2b"
+        }
+      ],
+      "pass": true,
+      "reason": "Reuse 25 R plus 25 C descriptive cases, 170 attempts, all original failures/invalid history retained. Native success 0/25 per task is not a threshold failure; SDK totals per run <=200 (max69).",
+      "scope": "25 predeclared seeds/task; original interrupted C case plus authorized supplement stays preserved and counts once.",
+      "status": "pass"
+    },
+    "safety_negative_controls": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/negative_control_post_run_audit.json",
+          "sha256": "a1aefe83a26d76d794714c5f724ec5bc1686c128193f1f82d69b8dab91d8c972"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/result.json",
+          "sha256": "91cb527206a772f68d4a8b8f23ace18a1bd15863424b1efe5eeba06f494d1985"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/negative_control_run_v2/injection_receipt.json",
+          "sha256": "d80b801f76b089f81ad3f1ab1d0c299fa9600d9eb1d8e02fd1c9ed027c8887d5"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/current_robosuite_negative_reuse_audit.json",
+          "sha256": "cfe6d17877aa32b8eb0e66d95f8ece3f7d51e52c25e702e20f012d800f36b28d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/execution_ledger.json",
+          "sha256": "46f59b65492e1548c9b2198b97e795bf1056f7147621376bbb1728011a7c9705"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json",
+          "sha256": "7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/validation_plan_v3_1.json",
+          "sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_pre_run_pin_v3_1.json",
+          "sha256": "97b3c5fd16422db47e83216b56182226e5f5dfd480b31da04c23d19fa1536f3b"
+        }
+      ],
+      "pass": true,
+      "reason": "Current C controlled acknowledgement-loss fault reached a real completed gripper job; original independent Safety recorded action_outcome_unknown; original worker failed before second action; detection 0.000178s, worker stop 0.001633s, dual Service groups reaped 0.532031s from injection. Historical 28 Safety artifacts and current R14 depth-negative evidence reused unchanged.",
+      "scope": "Full current-version Safety negative-control package: signed historical 28 artifacts + unchanged current R14 negative + one new separate current C unknown-action control. No qualifying-case or effect outcome replacement.",
+      "status": "pass"
+    },
+    "seven_conditions": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_approval.json",
+          "sha256": "9605061df5350de9c18537c8c0bc9bc04e01d03bd8d54a6d7db158b153413ff6"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/seven_condition_freeze_audit.json",
+          "sha256": "431b9e289f78c1ca163e6f6e50e8f5c9bdb6f94e5d8bb001cf513a7ef34ab602"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/semantic_limitations.md",
+          "sha256": "b9c287944bdff44ebc1223a6f0ce183d0a576ab5b0f7369864eee6c501a7a602"
+        },
+        {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/accounting_rules.json",
+          "sha256": "c91f767acc5e7d60fb791104d1c434b4bcc5aa826acde5b4db6fc016d2c139be"
+        }
+      ],
+      "pass": true,
+      "reason": "All350 generation-only cells approved with condition assets, k2, random quota1, initial Memory scope/version and unified accounting. Policy bytes unchanged; finalmanifest1268 files checked. Semantic limits are explicit.",
+      "scope": "Seven frozen help-rule/input definitions for this developer main experiment only; no matrix execution authorization.",
+      "status": "pass"
+    },
+    "task_feasibility": {
+      "evidence": [
+        {
+          "path": "/home/truares/桌面/attentionbench-seven-freeze-20260929/independent/evidence_reuse_audit.json",
+          "sha256": "6ef4ca36b03ccd18f6e62cf02d508f67308906f522183fab715928702946b37d"
+        },
+        {
+          "path": "/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v35_profile/task_feasibility_audit.json",
+          "sha256": "c4cef4232921d949758d734aa0a171f8986b034f9eaa0610faf4001e4d33196c"
+        }
+      ],
+      "pass": true,
+      "reason": "Separately labelled historical native-positive reference/Memory cases and unchanged native task/evaluator source establish native task/evaluator infrastructure solvability. No success is imported into base-policy outcomes.",
+      "scope": "Native task/evaluator solvability; not evidence that this fixed base controller succeeds or a current-reference skill safety claim.",
+      "status": "pass"
+    }
+  }
+}

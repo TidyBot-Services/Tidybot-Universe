@@ -1,0 +1,213 @@
+{
+  "delivery_root": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/admission_audits/seven_primary_dev_safety_repair_2026-09-29",
+  "files": [
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/CONCLUSIONS.txt",
+      "relative_path": "CONCLUSIONS.txt",
+      "sha256": "165d9cdabc82aa6fe2b95997e84f4576e82095aa6d5e44dc4cbbcd4dca978587"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/README.md",
+      "relative_path": "README.md",
+      "sha256": "6b24ada0e90d74c26824ce07166ddc654f10e14ee44e88cad004652cabbf9d6a"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/agent.log",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/agent.log",
+      "sha256": "ce2d88d79bc62007868716c1618c2dd11d7850efc40d0e105a4dbb73e0bed518"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/approved_config.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/approved_config.json",
+      "sha256": "76bc9bc29d38ce7fe9a71e367bee4108523ca42ede02d3e7e1e4195e1c5a85b8"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/approved_policy.py",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/approved_policy.py",
+      "sha256": "9192905272eabde078c192088bfbb04677e5cc895c49cf091e69ec836e994fa4"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/native_result.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/native_result.json",
+      "sha256": "1f5c836ef875988a9d245a0e0a57b760bc02c5a41a950534ba1df44093ff84a5"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/policy.stderr",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/policy.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/result.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/result.json",
+      "sha256": "70990b180f79fe0140fda3b4eabb3b29d508c5ed786e980e563168183abc7dcd"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/safety.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/safety.json",
+      "sha256": "b595dea1c197d10c958033663cdf575e21b51242ec0fff50f5adc22051a3c0cf"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/sandbox_receipt.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/sandbox_receipt.json",
+      "sha256": "b2a6a4164692bf8c21521be5659e5518745c2fa18a59a4ded7e80fc84b60aa66"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/simulator.log",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/simulator.log",
+      "sha256": "c428e97e2c42df357648a06f4ca39f36750fd66e62bd2cb65bfdadb48175d3f4"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/trace.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/attempts/counter_to_sink-seed101-formal-1790736177846127956/trace.json",
+      "sha256": "ac407b052a961682d680245c7a5080af06987de5e73b9067a12693c5e1ee77c9"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/injection_receipt.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/injection_receipt.json",
+      "sha256": "795ee41d7f83a5d7c190f74d64172d064ec80c50e76033b8d5a800dd5b400814"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/public_frame.jpg",
+      "relative_path": "attention-robocasa-safety-negative-v3/public_frame.jpg",
+      "sha256": "9f2d7ba780a0f33284062a3409508dd86cbf5ad67e5404c269cb5f5a191042a7"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/public_frame_receipt.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/public_frame_receipt.json",
+      "sha256": "59787c9afce2c3d9eee20cc1de27c5f7b94a7e4b31b63b795664f7e1f0969a16"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/public_station.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/public_station.json",
+      "sha256": "e237f5c7543e3cb7bd4a768cbc9e3b87235b8bd221fa6732b5efdf51852ac1fe"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/attention-robocasa-safety-negative-v3/result.json",
+      "relative_path": "attention-robocasa-safety-negative-v3/result.json",
+      "sha256": "5b04391abfb8c02896ae8066f1b51b178246b2cfc4430adadf45ff547d67f38b"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/audit_negative_control_v3.py",
+      "relative_path": "independent/audit_negative_control_v3.py",
+      "sha256": "ce71fa60175305c22c32c99a7c04cfccf133995a57c89fdabdaa6cf2fba3f2b6"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json",
+      "relative_path": "independent/negative_control_post_run_audit_v3.json",
+      "sha256": "7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_pre_run_pin_v3.json",
+      "relative_path": "independent/negative_control_pre_run_pin_v3.json",
+      "sha256": "47a14e710ffc0c09272221417643e3d90c3bb7f62a9b40f65a8100d843d65f85"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_pre_run_pin_v3_1.json",
+      "relative_path": "independent/negative_control_pre_run_pin_v3_1.json",
+      "sha256": "97b3c5fd16422db47e83216b56182226e5f5dfd480b31da04c23d19fa1536f3b"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/overall_admission_audit_v3.json",
+      "relative_path": "independent/overall_admission_audit_v3.json",
+      "sha256": "ad66e2cd7da547e0450a77403cf2d993a9913c7512e6e48c1a84e5ffa654d0b6"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/overall_admission_report_v3.md",
+      "relative_path": "independent/overall_admission_report_v3.md",
+      "sha256": "ee3e8d807204bff1131293145b789c552284f825e19d948268da34e82ce6a278"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/pre_run_pin_v3.py",
+      "relative_path": "independent/pre_run_pin_v3.py",
+      "sha256": "52c4941dbaf31a121d2a30abbd3170847f8bfe568a37e60df763dd912b24232f"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/sign_overall_admission_v3.py",
+      "relative_path": "independent/sign_overall_admission_v3.py",
+      "sha256": "44500788ed492fb4b36718bbbb70f80743e71b1a722841481f2e56ebc8e0103e"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/independent/test_audit_predicates.py",
+      "relative_path": "independent/test_audit_predicates.py",
+      "sha256": "af604bc27bd1f372537199044f59fb83fe6a44affaff47a53a3a7e7faa7a9ff8"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/negative_control_v3.py",
+      "relative_path": "negative_control_v3.py",
+      "sha256": "bdaa7d60aa08cc8efd282a85210ac0276e913541c73f8fb3cd6d8498a620c459"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/negative_control_v3.stderr",
+      "relative_path": "negative_control_v3.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/negative_control_v3.stdout",
+      "relative_path": "negative_control_v3.stdout",
+      "sha256": "54f765d93ebfee39e118140dbfb535beba3ecfa076e9eddf83b8f307a614a737"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/pre_run_pin_v3_1.stdout",
+      "relative_path": "pre_run_pin_v3_1.stdout",
+      "sha256": "e197ef52aca7958b728734542ac1ea0b83ccab6196aa341685b53dd9fb9bb983"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/preflight_rejection/audit_negative_control_v3.py",
+      "relative_path": "preflight_rejection/audit_negative_control_v3.py",
+      "sha256": "5e6b8332c665f9cff1581dccf50cb18264afdb57b41736d7073b8383ac39f4f6"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/preflight_rejection/negative_control_v3.py",
+      "relative_path": "preflight_rejection/negative_control_v3.py",
+      "sha256": "9310f515080d27184d16e1a5baf7dfbf50e6125513cef056969258dc8c2e7fa6"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/preflight_rejection/pre_run_pin_v3.py",
+      "relative_path": "preflight_rejection/pre_run_pin_v3.py",
+      "sha256": "a91cfa87bf6209deb5eb54bc16f8f6dfd55c32cec918b3b17915923b630700e6"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/protected_baseline.json",
+      "relative_path": "protected_baseline.json",
+      "sha256": "8dcd61cb660f94d6cc77bbc386eeed0d3fee84cb699aa33f468b91fb2dd8e4d6"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/tests_audit_predicates.txt",
+      "relative_path": "tests_audit_predicates.txt",
+      "sha256": "ef0e7ef49e71fa999842be0cb8d22ec1058d3a384ed5c0a2ec6efb8f434975ac"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/tests_identity_and_safety.txt",
+      "relative_path": "tests_identity_and_safety.txt",
+      "sha256": "7f583a2c445f84b18a624c4d264696604a97eb6a81b10fcd006081d2627781da"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/validation_plan_v3.json",
+      "relative_path": "validation_plan_v3.json",
+      "sha256": "89ff347d826261d6ced8d55e9ba518b3a25b2f402bc376087eecf5781c175146"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/validation_plan_v3_1.json",
+      "relative_path": "validation_plan_v3_1.json",
+      "sha256": "053a11af9098359b81c737e1a7588407f02dc17c2a0d1669909004fec8f2e50d"
+    },
+    {
+      "original_path": "/home/truares/桌面/attentionbench-safety-repair-20260929/verify_delivery.py",
+      "relative_path": "verify_delivery.py",
+      "sha256": "b90eb72565a72bb06a13557648b1e4f40bbfceddf830f2b46f703df1f2bc15c3"
+    }
+  ],
+  "implementation_sources": [
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/controlled_negative.py",
+      "sha256": "504f9cb31c461a4c66bde887cebd4fa93d1690dcf52cc3592e6a3447a31560d7"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/tests/test_robocasa_controlled_negative.py",
+      "sha256": "c0a14e792d5e8d3f3ad42d4edb9add2111e619c173eca2461c9170855fd901ff"
+    }
+  ],
+  "original_root": "/home/truares/桌面/attentionbench-safety-repair-20260929",
+  "schema_version": "attentionbench.safety-repair-delivery-manifest.v1",
+  "verification_output_excluded": "delivery_verification.stdout"
+}

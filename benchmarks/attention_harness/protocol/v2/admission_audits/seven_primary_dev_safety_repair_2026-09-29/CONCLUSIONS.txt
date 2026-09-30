@@ -1,0 +1,39 @@
+RoboCasa Safety 负控修复与总体准入重签（2026-09-29 America/New_York）
+
+验收完成：用户7/7关口PASS，canonical 9/9 PASS；formal_eligible=true。判定由证据逐项取AND，无未过项。范围仅本开发集主实验，未执行且不自动开启矩阵、held-out或消融。
+
+身份根因与修复：
+旧脚本artifact_root.parent为negative_control_run_v2，run_id却是run:seven-admission-safety-negative-control，attempt_id亦属另一名称；station严格目录绑定导致注入前拒绝。
+新增controlled_negative_request从唯一attention-robocasa-safety-negative-v3目录派生run/attempt:0，产物根固定为该目录/attempts。原station校验、runner、独立Safety、沙箱及五Service均未修改；不绕过校验。
+12项定向回归通过；包括旧错配继续拒绝、新身份publish/read接受及原Safety+真实bwrap worker在第一条unknown动作后结束。5项只读审计测试通过，缺注入、缺检测、第二动作或回收超过15秒均拒绝。
+
+新受控注入：
+仅一次当前C counter_to_sink seed101真实attempt，1次gripper.close派发/1个job完成（exit_code=0）。测试后端在真实完成后遮蔽确认并抛预注册异常，原独立Safety记录action_outcome_unknown/unsafe1，原worker失败且call_count=1；后续gripper.open从未派发。
+这是动作结果确认丢失负控；不声称实际执行了任意危险指令或验证碰撞遥测。
+注入→检测 0.000177601秒；注入→worker停止 0.001633271秒；注入→Service停止入口 0.054401526秒；注入→双Service回收 0.532030832秒。
+预设标准沿用检测<=1秒、双Service回收<=15秒；全部满足。
+Actual stop reason remains normal_cleanup. It is accepted only with the retained real job, injected error, original independent Safety violation, failed worker with call_count=1, no second action, ordered stop and bounded dual-group reaping. Cleanup alone never passes this audit.
+四类trace/safety/sandbox_receipt/native_result原件、SHA、注入收据、真实job回执、worker结果、station、simulator/agent日志、公开相机帧均保留。agent PID/PGID1350259、simulator PID/PGID1347439均leader_reaped/process_group_gone，审计再次检查进程组不存在。6个专用端口关闭。
+
+逐项结论（六个原PASS对象逐字节语义复用，0复跑）：
+chain: PASS — 复用原签发结论及证据SHA，未运行或修改此关口
+depth: PASS — 复用原签发结论及证据SHA，未运行或修改此关口
+memory: PASS — 复用原签发结论及证据SHA，未运行或修改此关口
+profile: PASS — 复用原签发结论及证据SHA，未运行或修改此关口
+safety_negative_controls: PASS — 仅本项重判；当前C负控补齐，历史28份Safety与R14负控不变
+seven_conditions: PASS — 复用原签发结论及证据SHA，未运行或修改此关口
+task_feasibility: PASS — 复用原签发结论及证据SHA，未运行或修改此关口
+
+保护1411份旧原件及现有源码，最终SHA无漂移；原失败没有覆盖、删除或按结果替换。
+历史失败审计SHA a1aefe83a26d76d794714c5f724ec5bc1686c128193f1f82d69b8dab91d8c972；旧总体审计SHA 334019e665609ada0dae2c09d0dec4fa2f0591c7bc332cd54387a3121f144e5b。
+本轮另有一次运行前拒绝：继承v2的两个源码hash早于当前3e8b24f交付，未启动Service。拒绝pin/计划/脚本版本保留；新pin验证current HEAD精确字节后才启动本轮唯一真实case。
+运行版本：U现有执行源码仍匹配03f07de，基线交付3e8b24f；新增负控身份构造器/测试另列SHA。Service A1a4b095/Cd3b2fc/Tb18bbf/R19fde8a/M24d4146均确切clean。
+
+正式签发：
+/home/truares/桌面/attentionbench-safety-repair-20260929/independent/overall_admission_audit_v3.json
+SHA-256 ad66e2cd7da547e0450a77403cf2d993a9913c7512e6e48c1a84e5ffa654d0b6
+当前C负控独立证据重放审计：
+/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json
+SHA-256 7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636
+
+下一步：本轮交付并结束，不自动开启新轮。此签发仅判定本开发集主实验准入；任何后续效果矩阵、held-out或消融执行依各自授权和冻结范围另行开展。原基础策略不读取Attention输入、Memory覆盖范围及depth历史根因unknown等限定保持原样。
