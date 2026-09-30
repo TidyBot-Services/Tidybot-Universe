@@ -1,0 +1,9 @@
+{
+  "decision": "Fresh reviewed five-seed chain only. Prior seed outcomes remain in their original version and are not reused.",
+  "formal_eligible": false,
+  "prior_approved_package_index_sha256": "1a0075fa2676de48541f2667d03caa4076a49ab7a4b808500b720a48cd8fa558",
+  "prior_stopped_chain_audit_sha256": "8c53e75e438eee097cb84b3c9960453038621b056a599025ce9ddd581bdb3a2f",
+  "profile_rule": "Freeze 106-125 exact configs and locks only after chain passes; no held-out, seven-condition matrix, or formal admission.",
+  "schema_version": "attentionbench.v2.sim_gt.policy-repair-addendum.v2.6-candidate",
+  "status": "engineering_review_candidate"
+}

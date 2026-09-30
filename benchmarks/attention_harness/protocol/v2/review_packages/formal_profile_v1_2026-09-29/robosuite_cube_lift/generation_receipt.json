@@ -1,0 +1,16 @@
+{
+  "engineering_smoke_audit_sha256": "654e4e57df0f93b689df36b385e3492ce00b728437f0fa9ec5561e9397ba48a6",
+  "formal_eligible": false,
+  "generation_method": "manual public-SDK engineering repair after hard-stopped development chain",
+  "model_calls": 0,
+  "observed_run_outcomes_used_for_diagnosis_and_revision": true,
+  "original_candidate_sha256": "fb331f7c8343d9d36683ebfc7bc3c395d9301664f135b68169d4ba9a7e576fd5",
+  "original_hard_stop_audit_sha256": "37e6d9433647fdc9b926c321f77d9f09718eabb609ba713572bfd8be96aa321f",
+  "prior_chain_audit_sha256": "5b7d90108d0801bbc281d683bee9ce5d2bc7e6d622295025320076330547a2db",
+  "prior_preflight_stop_sha256": "26ba5a59b886ba1c24a59cadee5fcea5e895be5a9ffc78f1a5311b5ca4ad30ca",
+  "prior_stopped_chain_audit_sha256": "c3ecb369ecdccb5c8734c333eadd2f416122f0e85425ec80b2276cd6ef761ea6",
+  "provenance_note": "Same v2.9 policy bytes and settings. All development seed identities 101–125 frozen before profile dispatch.",
+  "schema_version": "attentionbench.formal-profile-generation-receipt.v1",
+  "sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/formal_profile_v1_2026-09-29/robosuite_cube_lift/policy.py"
+}

@@ -1,0 +1,63 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "gripper.open",
+    "gripper.close",
+    "arm.move_delta"
+  ],
+  "approval_status": "pending",
+  "budget": {
+    "advisor_credits_per_run_max": 1,
+    "advisor_total_tokens_per_run_max": 4096,
+    "attempt_deadline_seconds_max": 120,
+    "commanded_arm_delta_m_max": 0.25,
+    "development_chain_seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "development_profile_seeds_inclusive": [
+      101,
+      125
+    ],
+    "held_out_or_seven_condition_runs": 0,
+    "observed_step_m_max": 0.5,
+    "pre_approval_simulator_cases": 0,
+    "sdk_calls_per_attempt_max": 200,
+    "simulator_attempts_per_run_max": 4,
+    "wall_clock_seconds_per_run_max": 300
+  },
+  "candidate_scope": "same policy source across development seeds; attached simulator config and M1 lock are for seed 101 only; later seed-specific configs and M1 locks require exact review before use",
+  "forbidden_inputs": [
+    "native evaluator or success Boolean",
+    "simulator-private object pose or debug keys",
+    "prior run outcome",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "m1_attention_policy": "autonomous",
+  "no_run_or_eligibility_claim": true,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language",
+    "sensors.find_objects([target_name]): public name, position, source",
+    "sensors.find_objects([\"spout\"]): public name, position, source",
+    "sensors.get_observation()[\"robot0_eef_pos\"]: public proprioception"
+  ],
+  "perception_mode": "sim_gt",
+  "protocol": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_1_2026-09-29.json",
+    "sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124"
+  },
+  "risks": [
+    "Five-name public vocabulary may abstain on other development variations; no outcome-dependent additions are permitted after approval.",
+    "Spout is a landmark, not the sink basin center; placement may fail.",
+    "Fixed base approach and straight-line transfer may be unreachable or contact obstacles; Safety has no collision telemetry."
+  ],
+  "schema_version": "attentionbench.formal-base-review.v1",
+  "selection_basis": "Task source defines counter-to-sink and public language; SDK exposes object and spout positions, robot proprioception, and bounded base/arm/gripper calls. Candidate created without scoring runs.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

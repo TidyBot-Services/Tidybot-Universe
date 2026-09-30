@@ -1,0 +1,21 @@
+{
+  "approval_status": "awaiting_explicit_operator_review",
+  "generation_method": "manual public-SDK candidate authored from task and SDK contracts",
+  "hypothesis": "A public sim-GT cube position and public arm proprioception can guide a step-bounded SDK grasp and lift.",
+  "inputs": [
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_1_2026-09-29.json",
+      "sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/m2_robosuite_seed101_config.json",
+      "sha256": "31ff175cfea8fb7e07097bb78f8293c457b62270ebc5143f3719b3a10adae98a"
+    }
+  ],
+  "model_calls": 0,
+  "observed_run_outcomes_used_for_selection_or_editing": false,
+  "schema_version": "attentionbench.formal-base-generation-receipt.v1",
+  "sha256": "fb331f7c8343d9d36683ebfc7bc3c395d9301664f135b68169d4ba9a7e576fd5",
+  "simulator_runs_for_candidate": 0,
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/formal_base_2026-09-29/robosuite_cube_lift/policy.py"
+}

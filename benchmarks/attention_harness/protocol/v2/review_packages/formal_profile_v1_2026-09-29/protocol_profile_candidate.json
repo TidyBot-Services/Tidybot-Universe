@@ -1,0 +1,17 @@
+{
+  "chain_cases_reused_once": true,
+  "depth_comparison_bias_resolved": false,
+  "formal_eligible": false,
+  "new_cases": 40,
+  "no_heldout_or_seven_policy_effects": true,
+  "prior_chain_audit_sha256": "5b7d90108d0801bbc281d683bee9ce5d2bc7e6d622295025320076330547a2db",
+  "prior_chain_package_index_sha256": "ae1aa206ebe308f1351aa94a46dcac149978907ca771b86ac724f936cdf687ca",
+  "profile_seed_range": [
+    101,
+    125
+  ],
+  "profile_slots": 50,
+  "same_policy_and_settings": true,
+  "schema_version": "attentionbench.fixed-base-profile-package.v1",
+  "status": "pending_exact_package_review"
+}

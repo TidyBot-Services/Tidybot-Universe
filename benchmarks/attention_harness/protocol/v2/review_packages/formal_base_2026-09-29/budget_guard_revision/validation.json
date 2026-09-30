@@ -1,0 +1,32 @@
+{
+  "approved_chain_index_sha256": "e23a3cc42b85fcca31252d6ece584231606083afe1a9318c28807c97a54ffb20",
+  "branch": "feature/attention-native-robosuite",
+  "code_sha256": {
+    "benchmarks/attention_harness/formal_attention_cli.py": "d759d604406ae417eb8e749d563ac0226a93389863e6dadc02e2a8f909c067a5",
+    "benchmarks/attention_harness/formal_attention_run.py": "597dab767ff189043a00353a934f71b7e09503477131bf6dff703fd9dbfd5505",
+    "benchmarks/attention_harness/formal_runner_boundary.py": "fcdb0da82ac201cfce4931e52efc50d6cfdf931781061018434902d0c10f97ec",
+    "benchmarks/attention_harness/robocasa_native/formal_runner.py": "20aae250699340dee1a1407046ed63929c9c4d08b928963d613d538cead9a813",
+    "benchmarks/attention_harness/robosuite_memory/formal_runner.py": "c300d054a84e2fc331197b83cee4c1409f637f649758d85c63fca6db43304392",
+    "benchmarks/attention_harness/sim_gt_attention_run.py": "106510dbc1d8c1aa63ac5a289e86c527b59b564405fac3561613f17a08239c43"
+  },
+  "formal_eligible": false,
+  "head": "fbf0887513d55177ca7ba1ff4dd5cf067baf7e1e",
+  "held_out_cases_started": 0,
+  "independent_admission_audit": "pending",
+  "operator_approval": "pending",
+  "original_protocol_sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124",
+  "seven_policy_comparisons_started": 0,
+  "simulator_cases_started": 0,
+  "static_checks": [
+    "git diff --check: pass",
+    "91 targeted pytest cases: pass",
+    "six production source SHA-256 verified"
+  ],
+  "status": "candidate_only_no_real_seed_case",
+  "test_command": "/home/truares/桌面/attentionbench-week2-clean-venv/bin/python -m pytest -q benchmarks/attention_harness/tests/test_formal_attention_chain.py benchmarks/attention_harness/tests/test_formal_runner_boundary.py benchmarks/attention_harness/tests/test_sim_gt_attention_run.py benchmarks/attention_harness/tests/test_robosuite_formal_runner.py benchmarks/attention_harness/tests/test_robocasa_formal_runner.py",
+  "test_result": "91 passed in 13.30s",
+  "test_sha256": {
+    "benchmarks/attention_harness/tests/test_formal_attention_chain.py": "9d6f196483b8292136d4feff13648e1d310b1852a15c4687bb247481a0bcb479",
+    "benchmarks/attention_harness/tests/test_sim_gt_attention_run.py": "415938d99ca8be75e0acc43aeec7e25760c60eb11167442994eeff00da1c891e"
+  }
+}

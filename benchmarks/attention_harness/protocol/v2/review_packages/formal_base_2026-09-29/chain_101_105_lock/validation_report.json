@@ -1,0 +1,23 @@
+{
+  "checks": {
+    "current_robocasa_imported_simulator_runtime_identity_matches": true,
+    "current_robocasa_service_and_task_source_revisions_and_trees_match": true,
+    "current_robosuite_service_revision_matches": true,
+    "existing_m1_targeted_pytest": "16 passed, 16 deselected",
+    "generation_metadata_source_hashes_match": true,
+    "only_seed_scene_object_and_robocasa_prompt_vary": true,
+    "ten_configs_pass_formal_entry_preflight": true,
+    "ten_m1_lock_jsons_match_recomputed_identity": true,
+    "ten_policy_and_receipt_hashes_match_seed101_approval": true,
+    "zero_new_simulator_cases": true
+  },
+  "formal_eligible": false,
+  "not_established": [
+    "run completion",
+    "native evaluator outcome",
+    "Trace/Advisor/Memory/Safety artifact completeness",
+    "Service reaping"
+  ],
+  "schema_version": "attentionbench.v2.1.five-seed-chain-lock-static-validation.v1",
+  "status": "passed_pending_102_105_approval"
+}

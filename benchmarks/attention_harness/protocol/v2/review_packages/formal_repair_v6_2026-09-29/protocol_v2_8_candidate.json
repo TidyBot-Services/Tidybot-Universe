@@ -1,0 +1,9 @@
+{
+  "decision": "New exact code, Service and policy package review before a fresh five-seed engineering chain.",
+  "formal_eligible": false,
+  "prior_approved_package_index_sha256": "85eece96233c5860ce65c472c9f02eeacde0665589e635420170ebb35e0fa22e",
+  "prior_hard_stop_audit_sha256": "11b78f51bf3d6d57b80ff809f1d38c3ff919e2955a0b08aa603d1cf12dd7ba42",
+  "profile_rule": "Freeze 106-125 exact configs and locks only after the chain passes; no held-out, seven-condition matrix or formal admission.",
+  "schema_version": "attentionbench.v2.sim_gt.policy-repair-addendum.v2.8-candidate",
+  "status": "engineering_review_candidate"
+}

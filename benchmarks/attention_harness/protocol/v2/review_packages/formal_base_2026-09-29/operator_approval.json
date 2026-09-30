@@ -1,0 +1,28 @@
+{
+  "schema_version": "attentionbench.formal-base-operator-approval.v1",
+  "approved_at_utc": "2026-09-28T23:47:24Z",
+  "approval_source": {
+    "codex_thread_id": "01a0ea5f-b556-7130-b1ed-4530171cf0f2",
+    "user_message": "全都批准吧",
+    "referent": "Both exact SHA-256 review-package indexes presented in the preceding assistant message"
+  },
+  "protocol_sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124",
+  "approved_packages": [
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "index": "robosuite_cube_lift/sha256_index.json",
+      "index_sha256": "fa3b3f1797dc1638c3716ef7c34968823e8f0ab6fef6c03e6dfaab1499e66ad5"
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "index": "robocasa_counter_to_sink/sha256_index.json",
+      "index_sha256": "f8a6bf157ebe1dda7f579c20d77e21bc320eb0d0b6639383d86abd0f8c91f6e0"
+    }
+  ],
+  "approved_content": "Each index binds the exact policy source, seed-101 simulator config, generation receipt, seed-101 autonomous M1 entry lock, review limits, and validation report.",
+  "scope_note": "Other seeds and attention conditions require their own exact config and M1 entry locks before execution; this approval does not attest task success or formal admission.",
+  "simulator_cases_executed_for_this_approval": 0,
+  "formal_eligible": false
+}

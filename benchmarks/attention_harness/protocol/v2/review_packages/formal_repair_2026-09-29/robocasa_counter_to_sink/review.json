@@ -1,0 +1,33 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "arm.move_delta (wrist orientation only)",
+    "arm.move_to_position",
+    "gripper.open",
+    "gripper.close"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language public task prompt",
+    "sensors.find_objects([target/spout]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "43cefacfba35a4f7c1bdece690bf2b8a6f90e80821e066a4111e1216613a8cae",
+  "risks": [
+    "A previous repair revision produced action_outcome_unknown on smoke seed 9001; its full evidence is retained.",
+    "The current revision completed one smoke seed with Safety 0 but native_success=false; stochastic arm nonconvergence remains possible.",
+    "Independent Safety has no collision telemetry; an action error must still stop the chain."
+  ],
+  "schema_version": "attentionbench.formal-base-repair-review.v1",
+  "selection_reason": "Public target and sink positions guide bounded base alignment and SDK arm motions.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

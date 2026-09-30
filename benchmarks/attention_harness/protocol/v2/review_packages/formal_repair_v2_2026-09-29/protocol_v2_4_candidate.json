@@ -1,0 +1,10 @@
+{
+  "chain_rule": "One case per task and seed 101-105; stop at first unsafe, unknown action, missing artifact, version drift, absent Service stop receipt or budget overrun.",
+  "decision": "A separately reviewed, new five-seed engineering chain is required; v2.3 seed 101 outcomes remain in their stopped version. No policy substitution inside a running chain.",
+  "formal_eligible": false,
+  "prior_approved_package_index_sha256": "ed9f12d60ecde6a464bc8baa90ec8b17f2aea7b4a1f8f9b5b8724f3c092156cf",
+  "prior_stopped_chain_audit_sha256": "736de003cd615f49fe9d7531ad81c79d13e1f901010276a5d0c24f7135a68b77",
+  "profile_rule": "Only after new chain passes, freeze 106-125 exact configs and locks before any 25-seed profile. No held-out, matrix or formal_eligible=true.",
+  "schema_version": "attentionbench.v2.sim_gt.policy-repair-addendum.v2.4-candidate",
+  "status": "engineering_review_candidate"
+}

@@ -1,0 +1,11 @@
+{
+  "all_planned_timeout_audit_sha256": "db6d881b49e6e67033c1df4ad9c8dd2e98c39f0449a5304246454c990637fc64",
+  "chain_preflight": "verify runtime_code_lock.json and all 10 CLI inputs before launch",
+  "depth_risk": "not resolved; remains an independent completion gate",
+  "focused_tests": "24 TidyBot action/runner tests plus Service reset and Agent strict-trajectory fault injection passed.",
+  "formal_eligible": false,
+  "integrated_engineering_seed_9002_9004_audit_sha256": "c3bcb6ed74d82e1789e9c24eb8da835a23359eb3bfee7d74003860c28bc480a4",
+  "integrated_engineering_seed_9003_audit_sha256": "eff280e789011c291942144a96d53f3cfc7b56fe309b6fa42e191778cd9da27c",
+  "old_chain_reused_as_new_result": false,
+  "schema_version": "attentionbench.formal-base-repair-validation.v6"
+}

@@ -1,0 +1,20 @@
+{
+  "engineering_repeat_audit_sha256": "e0b2186d76d7e9dc495e90924d258387c2e8a7acd1a48d3b6bd74c95338c692d",
+  "engineering_smoke_audit_sha256": "f8b2762705036be714f032b02d0506af2d68b0734312365acbc9aeb983919d85",
+  "formal_eligible": false,
+  "generation_method": "manual engineering repair of nonconvergent arm approach and release, plus public segmentation dropout",
+  "model_calls": 0,
+  "observed_run_outcomes_used_for_diagnosis_and_revision": true,
+  "original_candidate_sha256": "d16545ace4cad867849d6477cb16ce1db2ad750b0bcb46350f79d8ca5b286bb8",
+  "original_hard_stop_audit_sha256": "37e6d9433647fdc9b926c321f77d9f09718eabb609ba713572bfd8be96aa321f",
+  "pregrasp_forensic_sha256": "6ab400bd5493e870e81718874e2590e2de8af194b15048a54d5439d64665f072",
+  "prior_candidate_sha256": "ba940bae038a157b180e77318689b5f05fe44d84216319a39f69407be209c567",
+  "prior_chain_audit_sha256": "5b7d90108d0801bbc281d683bee9ce5d2bc7e6d622295025320076330547a2db",
+  "prior_preflight_stop_sha256": "26ba5a59b886ba1c24a59cadee5fcea5e895be5a9ffc78f1a5311b5ca4ad30ca",
+  "prior_stopped_chain_audit_sha256": "c3ecb369ecdccb5c8734c333eadd2f416122f0e85425ec80b2276cd6ef761ea6",
+  "provenance_note": "Same v2.9 policy bytes and settings. All development seed identities 101–125 frozen before profile dispatch.",
+  "schema_version": "attentionbench.formal-profile-generation-receipt.v1",
+  "sha256": "241f89b9fd6d04b232369caefc479445c67379a367521bce2a28160f740f1e33",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/formal_profile_v1_2026-09-29/robocasa_counter_to_sink/policy.py",
+  "stopped_chain_audit_sha256": "8c53e75e438eee097cb84b3c9960453038621b056a599025ce9ddd581bdb3a2f"
+}

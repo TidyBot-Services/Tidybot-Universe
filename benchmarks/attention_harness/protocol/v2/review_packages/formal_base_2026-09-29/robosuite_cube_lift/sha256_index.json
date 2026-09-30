@@ -1,0 +1,14 @@
+{
+  "approval_status": "pending",
+  "files": {
+    "config.json": "31ff175cfea8fb7e07097bb78f8293c457b62270ebc5143f3719b3a10adae98a",
+    "generation_receipt.json": "76e0ec5a9004be4f9af5c5211bea8a186b4918ff9669922af367b5848cf6a04b",
+    "m1_entry_lock.json": "313e76d28e32cd5a86d80f39a75dde7aa2de1c0824a6bce223a70e3646df498b",
+    "policy.py": "fb331f7c8343d9d36683ebfc7bc3c395d9301664f135b68169d4ba9a7e576fd5",
+    "review.json": "6ef84f85bda0802344e4c58d4911d785cae2ed9a5b5796fa73a4ba6680180697",
+    "validation_report.json": "aea4ea69cc1a3e38b8791c6c45ea97adc331978d192c15063d1c6e9ca307e998"
+  },
+  "hash_algorithm": "SHA-256 over exact file bytes",
+  "index_self_hash": "provided separately; a file cannot contain its own SHA-256",
+  "schema_version": "attentionbench.formal-base-file-index.v1"
+}

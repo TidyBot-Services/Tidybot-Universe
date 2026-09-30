@@ -34,6 +34,30 @@ def identity(row):
     return tuple(row.get(k) for k in ("suite", "task_id", "seed", "condition"))
 
 
+def trace_condition(trace):
+    """Resolve a formal condition only from its hash-bound M1 identity."""
+    if trace.get("schema_version") != "attentionbench.formal-trace.v1":
+        return trace.get("condition")
+    lock = trace.get("entry_lock")
+    if not isinstance(lock, dict):
+        raise ValueError("formal trace entry lock missing")
+    payload = dict(lock)
+    digest = payload.pop("sha256", None)
+    actual = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
+                                      separators=(",", ":")).encode()).hexdigest()
+    if (digest != actual or lock.get("schema_version") != "attentionbench.formal-entry-lock.v1"
+            or any(lock.get(k) != trace.get(k) for k in ("suite", "task_id", "seed"))
+            or lock.get("approved_policy_sha256") != trace.get("policy_sha256")
+            or lock.get("approved_config_sha256") != trace.get("config_sha256")
+            or not isinstance(lock.get("attention_policy"), str)
+            or not lock["attention_policy"]):
+        raise ValueError("formal trace entry identity invalid")
+    condition = lock["attention_policy"]
+    if "condition" in trace and trace["condition"] != condition:
+        raise ValueError("formal trace condition conflicts with entry lock")
+    return condition
+
+
 def assess(plan_path, ledger_path, expected_plan_sha, expected_ledger_sha,
            recovery_review_path=None, expected_recovery_review_sha=None):
     plan_path, ledger_path = Path(plan_path), Path(ledger_path)
@@ -179,7 +203,12 @@ def assess(plan_path, ledger_path, expected_plan_sha, expected_ledger_sha,
                 issues.append(f"{aid}:independent_safety")
             if (trace.get("suite"), trace.get("task_id"), trace.get("seed")) != key[:3]:
                 issues.append(f"{aid}:trace_identity")
-            if trace.get("condition") != key[3]:
+            try:
+                condition = trace_condition(trace)
+            except ValueError as exc:
+                condition = None
+                issues.append(f"{aid}:trace_condition_identity:{exc}")
+            if condition != key[3]:
                 issues.append(f"{aid}:trace_condition")
             if (trace.get("policy_sha256") != slot.get("policy_sha256") or
                     trace.get("config_sha256") != slot.get("config_sha256") or

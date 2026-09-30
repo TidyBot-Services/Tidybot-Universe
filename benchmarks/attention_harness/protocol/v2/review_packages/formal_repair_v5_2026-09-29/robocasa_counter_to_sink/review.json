@@ -1,0 +1,33 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "arm.move_delta (wrist orientation only)",
+    "arm.move_to_position",
+    "gripper.open",
+    "gripper.close"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language public task prompt",
+    "sensors.find_objects([target/spout]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "791b172269fb76777f1b7282c70fffafa8a0777f38f70ca23af5e2dbde1b0a18",
+  "risks": [
+    "The same off-profile seed 9003 completed with Safety 0 in three repeated candidate runs but task native success remained false.",
+    "The full integrated post-grasp transport path is not yet covered by this version in real Service; the fresh five-seed chain is the next gate.",
+    "Historical depth HTTP 500 root remains unresolved; any unknown motion retains independent Safety hard stop."
+  ],
+  "schema_version": "attentionbench.formal-base-repair-review.v5",
+  "selection_reason": "A documented wide lateral arm reach plateaued; short observed pregrasp base alignment avoids that approach. A sink release arm translation also plateaued; the same release geometry is reached with short observed base steps. Missing public spout segmentation stops further motion cleanly.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

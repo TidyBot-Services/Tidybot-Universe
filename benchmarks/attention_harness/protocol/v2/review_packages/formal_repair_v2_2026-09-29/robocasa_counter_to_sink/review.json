@@ -1,0 +1,33 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "arm.move_delta (wrist orientation only)",
+    "arm.move_to_position",
+    "gripper.open",
+    "gripper.close"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language public task prompt",
+    "sensors.find_objects([target/spout]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "3317141d6006b8b161e460f6f1bc661edb61851db0a56f2ac9a00aafa13004cb",
+  "risks": [
+    "One seed-9001 engineering smoke completed with Safety 0 and native failure; multi-seed convergence remains unproven.",
+    "The v2.3 seed-101 unknown action is preserved and not counted.",
+    "Base commands remain inside independent Safety limits; any timeout remains unknown and hard-stops."
+  ],
+  "schema_version": "attentionbench.formal-base-repair-review.v2",
+  "selection_reason": "The stopped seed-101 diagonal carry base command timed out after partial motion. A public-SDK, short, axis-separated route clears the lateral distance before forward travel.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

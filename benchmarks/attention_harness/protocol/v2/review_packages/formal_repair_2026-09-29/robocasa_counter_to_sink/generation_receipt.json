@@ -1,0 +1,13 @@
+{
+  "engineering_smoke_audit_sha256": "654e4e57df0f93b689df36b385e3492ce00b728437f0fa9ec5561e9397ba48a6",
+  "formal_eligible": false,
+  "generation_method": "manual public-SDK engineering repair after hard-stopped development chain",
+  "model_calls": 0,
+  "observed_run_outcomes_used_for_diagnosis_and_revision": true,
+  "original_candidate_sha256": "d16545ace4cad867849d6477cb16ce1db2ad750b0bcb46350f79d8ca5b286bb8",
+  "original_hard_stop_audit_sha256": "37e6d9433647fdc9b926c321f77d9f09718eabb609ba713572bfd8be96aa321f",
+  "provenance_note": "The revision is not the original outcome-independent candidate. Its old seed-101 results remain failed in the old freeze.",
+  "schema_version": "attentionbench.formal-base-repair-generation-receipt.v1",
+  "sha256": "43cefacfba35a4f7c1bdece690bf2b8a6f90e80821e066a4111e1216613a8cae",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/formal_repair_2026-09-29/robocasa_counter_to_sink/policy.py"
+}

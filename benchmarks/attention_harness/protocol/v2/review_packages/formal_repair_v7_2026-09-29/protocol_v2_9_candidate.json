@@ -1,0 +1,9 @@
+{
+  "decision": "New exact policy, Agent source identity and Runner code package review before a fresh chain.",
+  "formal_eligible": false,
+  "prior_approved_package_index_sha256": "b3b7b8a608cb9fea3c2448f7f2172e3526d9c94e27b8da017963cb8fdd2e35a7",
+  "prior_hard_stop_case_audit_sha256": "c3ecb369ecdccb5c8734c333eadd2f416122f0e85425ec80b2276cd6ef761ea6",
+  "profile_rule": "Freeze 106-125 exact configs and locks only after the chain passes; no held-out, seven-condition matrix or formal admission.",
+  "schema_version": "attentionbench.v2.sim_gt.policy-repair-addendum.v2.9-candidate",
+  "status": "engineering_review_candidate"
+}

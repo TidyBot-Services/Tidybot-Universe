@@ -1,0 +1,33 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "arm.move_delta (wrist orientation only)",
+    "arm.move_to_position",
+    "gripper.open",
+    "gripper.close"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language public task prompt",
+    "sensors.find_objects([target/spout]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "241f89b9fd6d04b232369caefc479445c67379a367521bce2a28160f740f1e33",
+  "risks": [
+    "The v2.8 chain hard-stopped on RoboCasa seed 102 unknown arm outcome; no result is reused.",
+    "Native task success is not required for the chain, but task solvability needs separate evidence.",
+    "Depth HTTP 500 comparison bias remains unresolved."
+  ],
+  "schema_version": "attentionbench.formal-profile-review.v1",
+  "selection_reason": "Carry forward reviewed v2.9 policy bytes without an outcome-dependent edit.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

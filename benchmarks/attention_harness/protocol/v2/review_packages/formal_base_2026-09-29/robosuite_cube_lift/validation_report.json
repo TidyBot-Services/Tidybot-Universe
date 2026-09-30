@@ -1,0 +1,20 @@
+{
+  "checks": {
+    "generated_policy_ast_public_sdk_gate": "passed",
+    "generation_receipt_source_and_sha": "passed",
+    "locked_independent_source_revisions_and_tree_hashes": "passed",
+    "m1_inspect_formal_entry_recomputation": "passed",
+    "python_compile": "passed",
+    "synthetic_public_sdk_success_path": "passed",
+    "synthetic_unknown_target_no_motion": "not_applicable",
+    "targeted_existing_m1_pytest": "16 passed, 16 deselected"
+  },
+  "known_limit": "Synthetic SDK and static checks cannot establish task success, collision freedom, runtime feasibility, or formal admission.",
+  "native_evaluator_verified": false,
+  "schema_version": "attentionbench.formal-base-static-validation.v1",
+  "simulator_cases_executed": 0,
+  "status": "static_checks_passed_awaiting_operator_approval",
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "test_python": "/home/truares/桌面/attentionbench-week2-clean-venv/bin/python"
+}

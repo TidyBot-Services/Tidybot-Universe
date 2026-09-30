@@ -1,0 +1,31 @@
+{
+  "chain_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "engineering_smoke": {
+    "allowed_seeds": [
+      9001,
+      9002,
+      9003,
+      9004,
+      9005
+    ],
+    "checks_completed_across_tasks": 6,
+    "counts_toward_formal_experiment": false,
+    "max_checks_across_tasks": 10
+  },
+  "formal_eligible": false,
+  "held_out_or_seven_policy_runs": 0,
+  "max_advisor_credits": 1,
+  "max_advisor_tokens": 4096,
+  "max_attempt_seconds": 120,
+  "max_attempts_per_case": 4,
+  "max_case_seconds": 300,
+  "max_new_chain_cases_per_task": 5,
+  "max_sdk_calls_per_attempt": 200,
+  "schema_version": "attentionbench.repair-review-budget.v1"
+}

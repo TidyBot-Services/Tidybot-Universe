@@ -1,0 +1,15 @@
+{
+  "approval_source": {
+    "codex_thread_id": "01a0ea5f-b556-7130-b1ed-4530171cf0f2",
+    "referent": "The exact budget-guard revision SHA-256 index presented immediately before this message",
+    "user_message": "自动帮我审批通过"
+  },
+  "approved_at_utc": "2026-09-29T00:42:05.956254+00:00",
+  "approved_index": "sha256_index.json",
+  "approved_index_sha256": "7ee3276725015d324faad7e48da4acf76ab5374b7d4c32d459a570d66acbe797",
+  "formal_eligible": false,
+  "independent_verification_sha256": "fe07be7adfd79964b1fb8f7b78fd53cfeaa9c6ac55b12cbd8a3642a4bbc9bdf2",
+  "independent_verification_uri": "/home/truares/桌面/attentionbench-five-seed-chain-20260929/budget_guard_independent_verification.json",
+  "schema_version": "attentionbench.v2.2.execution-guard-operator-approval.v1",
+  "scope": "Development five-seed chain budget execution revision only; preserves previously approved policy/config/M1 files. No formal experiment admission or held-out/matrix authorization."
+}

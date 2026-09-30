@@ -1,0 +1,18 @@
+{
+  "approval_mechanism": "user delegated approval to Codex after exact package construction and validation",
+  "approval_scope": "new five-seed engineering development chain only, under protocol_v2_3_candidate and original v2.1/v2.2 safety/budget rules",
+  "approved_at_date": "2026-09-29",
+  "approved_package_file_count": 32,
+  "approved_package_index_sha256": "ed9f12d60ecde6a464bc8baa90ec8b17f2aea7b4a1f8f9b5b8724f3c092156cf",
+  "formal_eligible": false,
+  "not_authorized": [
+    "formal_eligible=true",
+    "old seed-101 replacement",
+    "25-seed profile",
+    "held-out",
+    "seven-policy comparison"
+  ],
+  "risk_acknowledgment": "The package explicitly retains one unsafe engineering smoke from an earlier revision; the current RoboCasa revision has one completed Safety-0 smoke but native failure and residual nonconvergence risk. Any new unsafe or unknown action stops the new chain.",
+  "schema_version": "attentionbench.formal-base-repair-operator-approval.v1",
+  "source_user_instruction": "自动帮我审批通过"
+}

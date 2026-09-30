@@ -1,0 +1,13 @@
+{
+  "schema_version": "attentionbench.v2.1.five-seed-chain-lock-approval.v1",
+  "approved_at_utc": "2026-09-29T00:08:49Z",
+  "approval_source": {
+    "codex_thread_id": "01a0ea5f-b556-7130-b1ed-4530171cf0f2",
+    "user_answer": "批准该精确索引",
+    "question_index_sha256": "e23a3cc42b85fcca31252d6ece584231606083afe1a9318c28807c97a54ffb20"
+  },
+  "approved_index": "sha256_index.json",
+  "approved_index_sha256": "e23a3cc42b85fcca31252d6ece584231606083afe1a9318c28807c97a54ffb20",
+  "scope": "Both tasks' exact seed-102 through seed-105 configs and M1 entry locks for the five-seed development chain, with the previously approved seed-101 policy packages unchanged.",
+  "formal_eligible": false
+}

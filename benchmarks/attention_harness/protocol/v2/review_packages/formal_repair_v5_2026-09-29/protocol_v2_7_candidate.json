@@ -1,0 +1,9 @@
+{
+  "decision": "Receipt path correction only; new exact package review and fresh five-seed engineering chain required.",
+  "formal_eligible": false,
+  "prior_approved_package_index_sha256": "92a2da5d39dc0efe9f65147e7ff362156c74fb989d5c4bf3a6444d2bdd013371",
+  "prior_preflight_stop_sha256": "26ba5a59b886ba1c24a59cadee5fcea5e895be5a9ffc78f1a5311b5ca4ad30ca",
+  "profile_rule": "Freeze 106-125 exact configs and locks only after chain passes; no held-out, seven-condition matrix or formal admission.",
+  "schema_version": "attentionbench.v2.sim_gt.policy-repair-addendum.v2.7-candidate",
+  "status": "engineering_review_candidate"
+}

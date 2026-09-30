@@ -1,0 +1,29 @@
+{
+  "action_allowlist": [
+    "gripper.open",
+    "gripper.close",
+    "arm.move_to_position"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "sensors.find_objects([cube]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+  "risks": [
+    "Engineering seed 9001 completed with native_success=false; grasp geometry remains unproven across development seeds.",
+    "Robosuite depth HTTP 500 root cause remains unknown."
+  ],
+  "schema_version": "attentionbench.formal-base-repair-review.v1",
+  "selection_reason": "The public local controller matches Robosuite's single-step OSC semantics.",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

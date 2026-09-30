@@ -1,0 +1,15 @@
+{
+  "engineering_smoke_audit_sha256": "654e4e57df0f93b689df36b385e3492ce00b728437f0fa9ec5561e9397ba48a6",
+  "formal_eligible": false,
+  "generation_method": "manual public-SDK engineering repair after hard-stopped development chain",
+  "model_calls": 0,
+  "observed_run_outcomes_used_for_diagnosis_and_revision": true,
+  "original_candidate_sha256": "fb331f7c8343d9d36683ebfc7bc3c395d9301664f135b68169d4ba9a7e576fd5",
+  "original_hard_stop_audit_sha256": "37e6d9433647fdc9b926c321f77d9f09718eabb609ba713572bfd8be96aa321f",
+  "prior_preflight_stop_sha256": "26ba5a59b886ba1c24a59cadee5fcea5e895be5a9ffc78f1a5311b5ca4ad30ca",
+  "prior_stopped_chain_audit_sha256": "11b78f51bf3d6d57b80ff809f1d38c3ff919e2955a0b08aa603d1cf12dd7ba42",
+  "provenance_note": "New v2.8 package after v2.7 RoboCasa seed 102 unknown base action. RoboCasa policy uses the bounded release window; Robosuite policy bytes are unchanged. New Service and Runner identities are bound separately. Old seed results remain separate.",
+  "schema_version": "attentionbench.formal-base-repair-generation-receipt.v6",
+  "sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/formal_repair_v6_2026-09-29/robosuite_cube_lift/policy.py"
+}

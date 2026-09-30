@@ -1,0 +1,33 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "arm.move_delta (wrist orientation only)",
+    "arm.move_to_position",
+    "gripper.open",
+    "gripper.close"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language public task prompt",
+    "sensors.find_objects([target/spout]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "241f89b9fd6d04b232369caefc479445c67379a367521bce2a28160f740f1e33",
+  "risks": [
+    "The v2.8 chain hard-stopped on RoboCasa seed 102 unknown arm outcome; no result is reused.",
+    "Native task success is not required for the chain, but task solvability needs separate evidence.",
+    "Depth HTTP 500 comparison bias remains unresolved."
+  ],
+  "schema_version": "attentionbench.formal-base-repair-review.v7",
+  "selection_reason": "The public-object approach clearance is 40 mm, and the carry route stops after a completed base command with under 75 percent odometry progress. The planner reset, 45 mm tool frame correction and unchanged 4 mm public endpoint check remain. Diagnostic seed 102 and off-profile 9002–9004 completed with independent Safety zero.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

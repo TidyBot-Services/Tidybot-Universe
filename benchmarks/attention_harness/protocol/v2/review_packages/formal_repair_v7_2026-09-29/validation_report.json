@@ -1,0 +1,10 @@
+{
+  "chain_preflight": "verify runtime_code_lock.json and all 10 CLI inputs before launch",
+  "depth_risk": "not resolved; remains an independent completion gate",
+  "focused_tests": "25 TidyBot action/runner tests and Agent arm-only fault injection passed.",
+  "formal_eligible": false,
+  "old_chain_reused_as_new_result": false,
+  "prior_hard_stop_case_audit_sha256": "c3ecb369ecdccb5c8734c333eadd2f416122f0e85425ec80b2276cd6ef761ea6",
+  "repair_audit_sha256": "bdead95ece5b66bcd2e74466444989dddd37ec31eacc828c4e301ac3c9047a66",
+  "schema_version": "attentionbench.formal-base-repair-validation.v7"
+}

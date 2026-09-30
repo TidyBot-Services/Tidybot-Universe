@@ -1,0 +1,16 @@
+{
+  "chain_rule": "At most one newly approved case per task and seed 101-105 in protocol order; stop at first unsafe, unknown action, missing artifact, version drift or absent Service stop receipt. No substitution after a new chain begins.",
+  "decision": "A fresh engineering chain needs a separately frozen review identity because both old seed-101 cases failed. Earlier cases and conclusions remain in their original freeze; none is replaced or counted in the new chain.",
+  "eligibility_rule": "Engineering approval does not authorize formal_eligible=true, a 25-seed profile, held-out, or the seven-policy comparison. An independent admission audit remains required.",
+  "formal_eligible": false,
+  "preserved_execution_v2_2_sha256": "e3d4fcb1c6e37a16e5131b60cbfa3ba92b3fd71b92042267cbdae52ae364d385",
+  "preserved_hard_stop_audit_sha256": "37e6d9433647fdc9b926c321f77d9f09718eabb609ba713572bfd8be96aa321f",
+  "preserved_protocol_v2_1_sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124",
+  "repair_policy_sha256": {
+    "robocasa": "43cefacfba35a4f7c1bdece690bf2b8a6f90e80821e066a4111e1216613a8cae",
+    "robosuite": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8"
+  },
+  "schema_version": "attentionbench.v2.sim_gt.policy-repair-addendum.v2.3-candidate",
+  "status": "engineering_review_candidate",
+  "supersedes_for_new_development_chain_only": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_2_2026-09-29.json"
+}

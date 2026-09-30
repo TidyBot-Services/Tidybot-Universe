@@ -1,0 +1,16 @@
+{
+  "approval_mechanism": "current goal authorizes the frozen 25-seed descriptive profile after an independently audited chain and exact package review",
+  "approved_package_index_sha256": "72b0bca67ef50dc4995c292dd3f039fa86391ac393b7184805f66c45940353a5",
+  "chain_audit_sha256": "5b7d90108d0801bbc281d683bee9ce5d2bc7e6d622295025320076330547a2db",
+  "formal_eligible": false,
+  "not_authorized": [
+    "rerun or replacement of 101-105 chain cases",
+    "policy or settings edits in response to profile outcomes",
+    "held-out",
+    "seven-policy effect comparison",
+    "formal_eligible=true"
+  ],
+  "review_audit_sha256": "0d042ab80a2eeb7fdcb4aaeaac2e4f0a4d7ab682b6f9d845cbcc6abd9ddccc27",
+  "schema_version": "attentionbench.fixed-base-profile-operator-approval.v1",
+  "scope": "40 once-only new development cases, seeds 106-125 for each task; reuse matching 101-105 chain cases once"
+}

@@ -1,0 +1,15 @@
+{
+  "approval_mechanism": "prior user delegated exact engineering package approval and current goal authorizes autonomous engineering repair after independent review",
+  "approved_package_index_sha256": "85eece96233c5860ce65c472c9f02eeacde0665589e635420170ebb35e0fa22e",
+  "formal_eligible": false,
+  "not_authorized": [
+    "reuse of previous seed-101 results",
+    "25-seed profile before separate exact lock",
+    "held-out",
+    "seven-policy effect comparison",
+    "formal_eligible=true"
+  ],
+  "review_audit_sha256": "fa9fd42db5b28905815071ee386973ae181df3894ecfa49efdf5cdfba2b19bcb",
+  "schema_version": "attentionbench.formal-repair-v5-operator-approval.v1",
+  "scope": "fresh five-seed engineering chain only; hard stop at first unknown, unsafe, incomplete evidence or version drift"
+}

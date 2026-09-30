@@ -1,0 +1,140 @@
+{
+  "approved_chain_index_sha256": "e23a3cc42b85fcca31252d6ece584231606083afe1a9318c28807c97a54ffb20",
+  "code_evidence": [
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_attention_cli.py",
+      "sha256": "1d9685cc7671cf20564fd88a763cbc50165e96ec2fe3b9476bb8347f01c4d5b1"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_attention_run.py",
+      "sha256": "510a302cdef1cc063e708fe308fd9e6d1fa37edeb1d15aa3398be11d60fe6176"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/sim_gt_attention_run.py",
+      "sha256": "a180b7b21160b7544b8afbf28ea9d9d9c0c83d8138e6e2b4d3273e1a09e3116f"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robosuite_memory/formal_runner.py",
+      "sha256": "407db60d338f894b51e2b5cd4700b1e1c0d83d74331257a2b7fbb70189a4464f"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/formal_runner.py",
+      "sha256": "9180bea3c2128974eedff0d0d7753045216556b159031a0f3b4f0428d36bcedf"
+    }
+  ],
+  "conclusion": "Do not launch a qualifying v2.1 five-seed chain using the approved lock bytes. Existing policy/config/lock approvals remain intact; no result may be used to choose a new budget.",
+  "finding": "Approved 300-second M1 overall_deadline is passed to every formal attempt; scheduler reserves max_attempts multiplied by that value and has no independent 300-second wall-clock stop.",
+  "formal_eligible": false,
+  "locks": [
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "f048067ab23be59eb78dd058cd876074f2e5efaaa960bed7157b15dc14311102",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 101,
+      "suite": "robosuite"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "94e6671bb790aa0ee85ed45ba575b92a75549c2847daddf59b4aeef0c9c42148",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 102,
+      "suite": "robosuite"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "6fa8cb43886959e50154be90784015f71412ea34f54ea5289143866bb54cd623",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 103,
+      "suite": "robosuite"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "d17d8e2329550a7bcc5c3208a81ebe0e30b8d4413f6f45bc98e6524d3b1f28e1",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 104,
+      "suite": "robosuite"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "3cfad5b290813d4a197d7868aa5f589bf2eddaa5ba05ede1e63bd6c7d712266d",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 105,
+      "suite": "robosuite"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "e264546053e2d2c0ecdc86f8e4e233cbc801885a8991a8b30835a0e053524000",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 101,
+      "suite": "robocasa"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "60c67fe4b7c7ff8e0bc75f0ab0129b310b03975ab0cb6f120b33baa599c989bb",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 102,
+      "suite": "robocasa"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "76d96ed935f5f126e829aa2ebd2c82e3645943cf2675ec2fac2c4008a2685dd6",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 103,
+      "suite": "robocasa"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "380c2aa76545348e490e0c14d7d75fcf3b24eeda7128ad341cfd8dcd85fef0e3",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 104,
+      "suite": "robocasa"
+    },
+    {
+      "current_runner_attempt_deadline_seconds": 300.0,
+      "current_scheduler_execution_budget_seconds": 1200.0,
+      "m1_identity_sha256": "9de1a95add9c64c6e750e9d3155f13696d32ff69a8292235aa44b86c2a1cabe1",
+      "max_attempts": 4,
+      "overall_deadline_seconds": 300.0,
+      "seed": 105,
+      "suite": "robocasa"
+    }
+  ],
+  "protocol": {
+    "limits": {
+      "attempt_deadline_seconds_max": 120,
+      "simulator_attempts_max": 4,
+      "wall_clock_seconds_max": 300
+    },
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_1_2026-09-29.json",
+    "sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124"
+  },
+  "qualifying_chain_cases_started": 0,
+  "resolution_paths_requiring_new_review": [
+    "Preserve four attempts and implement separately enforced 120-second attempt and 300-second whole-case deadlines; freeze new software/protocol version, independently audit the boundary, and seek exact operator approval.",
+    "Reduce the M1 maximum to two attempts with 120-second per-attempt deadline, AND add a separately enforced 300-second whole-case wall-clock deadline; freeze new locks/software/protocol version, independently audit the boundary, and seek exact approval. Reducing attempts alone is insufficient because service startup and scheduler overhead can exceed the wall budget."
+  ],
+  "schema_version": "attentionbench.v2.1.preexecution-budget-gap-audit.v1",
+  "violations": [
+    "configured per-attempt deadline 300 > 120",
+    "scheduler execution budget 300 * 4 = 1200 > 300",
+    "no separately enforced 300-second whole-case wall-clock deadline in the current formal scheduler path"
+  ]
+}

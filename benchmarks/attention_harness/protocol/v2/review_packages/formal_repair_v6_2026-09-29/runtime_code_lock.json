@@ -1,0 +1,33 @@
+{
+  "agent_service": {
+    "revision": "4fec9371a1ee9996bfb1b6db11d9525306f85aca",
+    "tree_sha256": "363f618bda935add2646dfdb08e603e0533eb36a44ec0fa4c8943c1a21e74f8b"
+  },
+  "external_planner_assets": {
+    "/home/truares/workspace/curobo/src/curobo/content/assets/robot/franka_description/franka_panda_tidyverse.urdf": "d2895872a625052bc5a35773bed0355052aee62d0f29b9ea7705e91513477736",
+    "/home/truares/workspace/curobo/src/curobo/content/configs/robot/franka_tidyverse.yml": "2e464bc407930216dfd49793512f687ccf61d31e3cabb5d622e7bd2eaf06fca5",
+    "/home/truares/文档/maniskill-tidyverse/tidyverse.urdf": "c7d1ce0a08359077ffe9230621074ec57a906974ec55c952d130496cbdcba072"
+  },
+  "formal_eligible": false,
+  "schema_version": "attentionbench.formal-repair-runtime-code-lock.v1",
+  "sim_service": {
+    "revision": "a3bb2fe446ef6b4dcfa78fa8d6124801f4666611",
+    "tree_sha256": "98eb498589fc6432a6491e7890c123e3876caab5338834abc213b36e09deb5db"
+  },
+  "task_source": {
+    "revision": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756"
+  },
+  "tidybot_files": {
+    "benchmarks/attention_harness/formal_attention_cli.py": "d759d604406ae417eb8e749d563ac0226a93389863e6dadc02e2a8f909c067a5",
+    "benchmarks/attention_harness/formal_attention_run.py": "597dab767ff189043a00353a934f71b7e09503477131bf6dff703fd9dbfd5505",
+    "benchmarks/attention_harness/formal_runner_boundary.py": "fcdb0da82ac201cfce4931e52efc50d6cfdf931781061018434902d0c10f97ec",
+    "benchmarks/attention_harness/robocasa_native/agent_actions.py": "6afeab6ec21d74c21e31e42874aa5cb160ef4fc9853ac252c2571607c9b2d4ab",
+    "benchmarks/attention_harness/robocasa_native/formal_runner.py": "4eda0df705ff65d5b39b49ec2bbd7185bacc1919b68e876fabed2e2547eb5d7c",
+    "benchmarks/attention_harness/robocasa_native/formal_services.py": "c3f7fe9203b3eb0a7d560eaed7b5f05eff41d3f40b3f11f0a854396b8c97d34e",
+    "benchmarks/attention_harness/robocasa_native/policy_sandbox.py": "244cad94747947fa4057882185c788d138dbddcec7b2d140f44dda2ab67eaae4",
+    "benchmarks/attention_harness/robocasa_native/safety_monitor.py": "92966849fa05540268dbeb86492a83c767b4dd45d34a3dc232f2f809908647bd",
+    "benchmarks/attention_harness/robosuite_memory/formal_runner.py": "c300d054a84e2fc331197b83cee4c1409f637f649758d85c63fca6db43304392"
+  },
+  "tidybot_head": "fbf0887513d55177ca7ba1ff4dd5cf067baf7e1e"
+}

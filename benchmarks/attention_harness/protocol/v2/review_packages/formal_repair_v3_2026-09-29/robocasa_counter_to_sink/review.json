@@ -1,0 +1,33 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "arm.move_delta (wrist orientation only)",
+    "arm.move_to_position",
+    "gripper.open",
+    "gripper.close"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language public task prompt",
+    "sensors.find_objects([target/spout]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "ba940bae038a157b180e77318689b5f05fe44d84216319a39f69407be209c567",
+  "risks": [
+    "Post-grasp target may be occluded and native task may fail; empty perception is never treated as success.",
+    "Unknown motion still propagates to independent Safety and hard-stops.",
+    "One seed-9001 smoke is safe but does not prove multi-seed reliability."
+  ],
+  "schema_version": "attentionbench.formal-base-repair-review.v3",
+  "selection_reason": "Public /perceive uses segmentation; post-grasp empty detection is an expected visibility limit. The policy ends motion cleanly and leaves native failure to the independent evaluator.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

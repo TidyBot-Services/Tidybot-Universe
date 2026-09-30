@@ -1,0 +1,21 @@
+{
+  "approval_status": "awaiting_explicit_operator_review",
+  "generation_method": "manual public-SDK candidate authored from task and SDK contracts",
+  "hypothesis": "Public task language and sim-GT object/landmark positions can guide a bounded SDK pick and sink placement.",
+  "inputs": [
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/formal_admission_v2_1_2026-09-29.json",
+      "sha256": "d2b5a68d7943b6cdf382dcc0217d99d72ff3d00ccb56f9a729d66ee42f9c0124"
+    },
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/m2_robocasa_seed101_config.json",
+      "sha256": "fd32f0dfde74c6a754edf8e0b4ba78f94f733762e226bec2af177341edb2cc27"
+    }
+  ],
+  "model_calls": 0,
+  "observed_run_outcomes_used_for_selection_or_editing": false,
+  "schema_version": "attentionbench.formal-base-generation-receipt.v1",
+  "sha256": "d16545ace4cad867849d6477cb16ce1db2ad750b0bcb46350f79d8ca5b286bb8",
+  "simulator_runs_for_candidate": 0,
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/formal_base_2026-09-29/robocasa_counter_to_sink/policy.py"
+}

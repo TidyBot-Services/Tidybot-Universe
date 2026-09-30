@@ -1,0 +1,16 @@
+{
+  "approval_mechanism": "user previously delegated exact engineering package approval to Codex and current goal authorizes autonomous engineering repair; new package independently re-reviewed",
+  "approval_scope": "fresh five-seed engineering development chain only, under unchanged budget and independent Safety; stop at first unknown/unsafe",
+  "approved_package_index_sha256": "1bd8148703fb038e86a63bb630b37421266cb027a0524bd6bf7d3a7a48690b85",
+  "formal_eligible": false,
+  "not_authorized": [
+    "reuse of v2.3 seed-101 as new result",
+    "25-seed profile until separate exact seed 106-125 lock",
+    "held-out",
+    "seven-policy effect comparison",
+    "formal_eligible=true"
+  ],
+  "review_audit_sha256": "59ea7eb38d3456f0862d545545c19f2e39b4ab27c858b4ecd50978d59855f96b",
+  "schema_version": "attentionbench.formal-repair-v2-operator-approval.v1",
+  "source_user_instruction": "自动帮我审批通过; current goal: 在已授权的工程排错范围内，自主定位并修复"
+}

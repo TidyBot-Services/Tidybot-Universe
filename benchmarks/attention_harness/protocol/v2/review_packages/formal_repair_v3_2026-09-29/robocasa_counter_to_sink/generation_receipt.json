@@ -1,0 +1,15 @@
+{
+  "engineering_smoke_audit_sha256": "f8b2762705036be714f032b02d0506af2d68b0734312365acbc9aeb983919d85",
+  "formal_eligible": false,
+  "generation_method": "manual engineering handling of post-grasp public segmentation occlusion after stopped v2 chain",
+  "model_calls": 0,
+  "observed_run_outcomes_used_for_diagnosis_and_revision": true,
+  "original_candidate_sha256": "d16545ace4cad867849d6477cb16ce1db2ad750b0bcb46350f79d8ca5b286bb8",
+  "original_hard_stop_audit_sha256": "37e6d9433647fdc9b926c321f77d9f09718eabb609ba713572bfd8be96aa321f",
+  "prior_candidate_sha256": "3317141d6006b8b161e460f6f1bc661edb61851db0a56f2ac9a00aafa13004cb",
+  "provenance_note": "v2 seed-104 incomplete remains stopped; v3 permits post-grasp occlusion to end without further motion and native evaluator to record task failure.",
+  "schema_version": "attentionbench.formal-base-repair-generation-receipt.v3",
+  "sha256": "ba940bae038a157b180e77318689b5f05fe44d84216319a39f69407be209c567",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/formal_repair_v3_2026-09-29/robocasa_counter_to_sink/policy.py",
+  "stopped_chain_audit_sha256": "f68e1f2afcf823857e74b19f5a676894f87cc30368df4a015bdb74abdce42610"
+}

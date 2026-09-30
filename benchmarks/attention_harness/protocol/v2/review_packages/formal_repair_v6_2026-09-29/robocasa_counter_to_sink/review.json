@@ -1,0 +1,33 @@
+{
+  "action_allowlist": [
+    "base.move_delta",
+    "arm.move_delta (wrist orientation only)",
+    "arm.move_to_position",
+    "gripper.open",
+    "gripper.close"
+  ],
+  "approval_status": "pending_exact_package_review",
+  "forbidden_inputs": [
+    "native evaluator verdict",
+    "private simulator state",
+    "Memory guidance or grant",
+    "held-out observations"
+  ],
+  "formal_eligible": false,
+  "observation_allowlist": [
+    "context.task_id",
+    "context.language public task prompt",
+    "sensors.find_objects([target/spout]) public name/position/source",
+    "sensors.get_observation().robot0_eef_pos public proprioception"
+  ],
+  "policy_sha256": "fb216788fefecd372ef7e53cc0bea4f69aa3ef60ca2599697643844f57c92727",
+  "risks": [
+    "The approved v2.7 chain stopped on RoboCasa seed 102 unsafe unknown; it is not reused.",
+    "Off-profile seeds 9002, 9003, 9004 completed but native task failure remained; the fresh chain is required.",
+    "Depth HTTP 500 comparative bias remains unresolved and is a separate completion blocker."
+  ],
+  "schema_version": "attentionbench.formal-base-repair-review.v6",
+  "selection_reason": "Scene reset now invalidates stale planner coordinates. Strict arm-only planned descent uses the corrected 45 mm tool frame while preserving public 4 mm endpoint tolerance; other arm moves retain their convergent controller. A bounded sink release window avoids the prior final base push. Three off-profile integrated engineering seeds completed Safety 0.",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

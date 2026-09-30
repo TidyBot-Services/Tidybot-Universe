@@ -1,0 +1,23 @@
+{
+  "ast_public_sdk": "passed for both policy sources",
+  "current_candidate_smoke": {
+    "robocasa": "Off-profile seed 9003, same v4 candidate code/config: one initial complete Safety 0 plus three frozen repeats complete Safety 0; all native failure.",
+    "robosuite": "unchanged policy; prior engineering seed 9001 complete Safety 0"
+  },
+  "focused_tests": "Six offline cases including unknown base-action propagation and spout occlusion; 6 passed.",
+  "formal_eligible": false,
+  "new_repeat_audit_sha256": "e0b2186d76d7e9dc495e90924d258387c2e8a7acd1a48d3b6bd74c95338c692d",
+  "new_smoke_audit_sha256": "f8b2762705036be714f032b02d0506af2d68b0734312365acbc9aeb983919d85",
+  "old_chain_reused_as_new_result": false,
+  "pregrasp_forensic_sha256": "6ab400bd5493e870e81718874e2590e2de8af194b15048a54d5439d64665f072",
+  "prior_preflight_stop_sha256": "26ba5a59b886ba1c24a59cadee5fcea5e895be5a9ffc78f1a5311b5ca4ad30ca",
+  "receipt_path_correction": "Both generation receipts now bind the exact v5 package code path and unchanged policy SHA; all ten CLI input identities must be independently checked before dispatch.",
+  "schema_version": "attentionbench.formal-base-repair-validation.v5",
+  "smoke_audit_path": "/home/truares/桌面/attentionbench-five-seed-repair-20260929/smoke_evidence_audit.json",
+  "smoke_audit_sha256": "654e4e57df0f93b689df36b385e3492ce00b728437f0fa9ec5561e9397ba48a6",
+  "smoke_checks_total": 6,
+  "smoke_unknown_or_unsafe_runs": 1,
+  "stopped_v2_3_chain_audit_sha256": "736de003cd615f49fe9d7531ad81c79d13e1f901010276a5d0c24f7135a68b77",
+  "stopped_v2_chain_audit_sha256": "f68e1f2afcf823857e74b19f5a676894f87cc30368df4a015bdb74abdce42610",
+  "stopped_v3_chain_audit_sha256": "8c53e75e438eee097cb84b3c9960453038621b056a599025ce9ddd581bdb3a2f"
+}
