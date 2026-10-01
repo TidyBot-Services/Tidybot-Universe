@@ -1,8 +1,8 @@
 ## GitHub 交付与当前复核
 
-本次集中交付 Universe 当前功能分支及其实际调用的五个独立仓库，不合并 main/master，不运行350格、held-out或新GLM。PhD阅读入口为 [项目指南](docs/attentionbench_project_guide.md)，六仓库精确版本、命令与边界为 [交付清单](docs/attentionbench_github_delivery.json)。安装脚本移除了将 Robosuite 降回旧版的重复安装，requirements 与 lock 保持19fde8a；追加2项版本一致性测试。
+本次集中交付 Universe 当前功能分支及其实际调用的五个独立仓库，不合并 main/master，不运行350格、held-out或新GLM。代码及证据已提交推送为 `3402d0fe9b0baa71ecf171725dba6c22dc4889d4`；六仓库当前分支经`ls-remote`核对为本地/远端HEAD一致、工作树干净。PhD阅读入口为 [项目指南](docs/attentionbench_project_guide.md)，六仓库精确版本、命令与边界为 [交付清单](docs/attentionbench_github_delivery.json)。安装脚本移除了将 Robosuite 降回旧版的重复安装，requirements 与 lock 保持19fde8a；追加2项版本一致性测试。
 
-当前回归：Harness **518 passed、10 skipped**；Orchestrator旧pipeline **84 passed**；Memory Service **22 passed**；Robosuite Service **11 passed**。这些是本轮代码/接口测试，不是新增正式效果或用户现场演示。
+当前回归：Harness **518 passed、10 skipped**；Orchestrator旧pipeline **84 passed**；Memory Service **22 passed**；Robosuite Service **11 passed**；同工作站干净checkout的安装/UI/执行边界专项 **16 passed**。GitHub指南和清单已由API读回确认。这些是代码/接口测试，不是新电脑全安装、新增正式效果或用户现场演示。
 
 **当前冻结包一致性未通过，不能采用下方旧PASS作为现版本执行依据。** 只读运行当前 `verify_package.py` 返回1：语义文档已说明读取指导，校验规则却要求它与“不读取”的旧版完全相同。`verify_delivery.py` 返回1、5项问题：当前manifest与批准SHA不匹配原总体审计引用、package验证失败、资格不能由当前结果推导、批准sidecar不匹配。两份现SHA与历史SHA均记录在交付清单。历史 `formal_eligible=true` 原件保留，未改签；当前复核为失败，`execution_authorized=false`，本轮不放宽规则或重签准入。下一步只需先闭合这项现有包内一致性缺陷，再讨论效果执行；不是追加新成功门槛。
 

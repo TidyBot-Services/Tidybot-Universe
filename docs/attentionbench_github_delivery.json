@@ -5,6 +5,7 @@
     "repository": "https://github.com/TidyBot-Services/Tidybot-Universe",
     "branch": "feature/attention-native-robosuite",
     "source_base_commit": "55d75ab55ea9aaa48ee86a2ce9fed953562f4b1d",
+    "published_code_commit": "3402d0fe9b0baa71ecf171725dba6c22dc4889d4",
     "delivery_revision": "The Git commit containing this file; resolve via the research branch. No self-referential commit hash is embedded.",
     "default_branch_merged": false
   },
@@ -20,6 +21,7 @@
     "orchestrator_pipeline": {"command": "python tests/test_orchestrator_pipeline.py (from skill-agent-setup/claude-code)", "passed": 84, "failed": 0},
     "memory_service": {"command": "python -m pytest tests -q --disable-warnings", "passed": 22, "failed": 0},
     "robosuite_service": {"command": "python -m pytest tests -q --disable-warnings", "passed": 11, "failed": 0},
+    "clean_checkout_subset": {"commit": "3402d0fe9b0baa71ecf171725dba6c22dc4889d4", "command": "python -m pytest test_setup_pins.py test_ui_server.py test_formal_runner_boundary.py -q (under benchmarks/attention_harness/tests)", "passed": 16, "failed": 0, "scope": "Same workstation dependencies, fresh checkout; not a new machine installation or frozen episode reproduction."},
     "setup_and_demo_shell_syntax": "pass",
     "new_pin_consistency_tests": 2,
     "credential_pattern_scan": "No recognized key/private-key patterns found in reviewed text, new compressed raw archive or new SQLite snapshots. Pattern scan is not an exhaustive security audit.",
@@ -35,6 +37,15 @@
     "Update personal verification guide to current scripts and scoped cleanup; retain original frozen/audit bytes.",
     "Publish latest Agent Server and ManiSkill feature branches; verify existing other Service branches."
   ],
+  "publication_verification": {
+    "repositories_checked": 6,
+    "working_trees_clean_at_code_handoff": true,
+    "local_HEAD_matches_remote_branch_HEAD": true,
+    "method": "git ls-remote --heads origin <current research branch> independently compared with git rev-parse HEAD for every repository",
+    "guide_and_manifest_retrievable_from_GitHub": true,
+    "universe_metadata_commit": "The later commit containing this manifest only records publication verification; published_code_commit identifies the tested implementation.",
+    "main_master_merged": false
+  },
   "current_admission_reverification": {
     "classification": "blocked_existing_freeze_consistency_defect_not_a_new_effect_requirement",
     "historical_signed_formal_eligible": true,

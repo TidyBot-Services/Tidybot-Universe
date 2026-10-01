@@ -1,8 +1,8 @@
 ## 当前交付与下一步
 
-PhD先读 [项目指南](attentionbench_project_guide.md)，仓库/分支/提交和复核命令见 [GitHub交付清单](attentionbench_github_delivery.json)。六个主链仓库按各自研究分支交付，不合并默认分支，不执行正式效果矩阵。安装入口已去掉Robosuite旧版本覆盖；个人验证指南改为现有三项脚本和精确范围的停止方式。
+PhD先读 [项目指南](attentionbench_project_guide.md)，仓库/分支/提交和复核命令见 [GitHub交付清单](attentionbench_github_delivery.json)。Universe代码/证据已推送为`3402d0f`；六仓库本地/远端研究分支HEAD一致、工作树干净，指南和清单已从GitHub读回。不合并默认分支，不执行正式效果矩阵。安装入口已去掉Robosuite旧版本覆盖；个人验证指南改为现有三项脚本和精确范围的停止方式。
 
-- **代码回归通过：** Harness 518 passed、10 skipped；旧Graph pipeline 84 passed；Memory 22 passed；Robosuite 11 passed。不是新现场/正式效果验收。
+- **代码回归通过：** Harness 518 passed、10 skipped；旧Graph pipeline 84 passed；Memory 22 passed；Robosuite 11 passed；同主机干净checkout专项16 passed。不是新机器全安装或现场/正式效果验收。
 - **当前准入复核未通过：** package的语义说明与旧版一致性规则冲突；当前manifest/批准SHA与原总体签名引用不符。完整交付验证列出5项问题，历史true不作为现版本有效准入依据；`execution_authorized=false`。
 - **下一步边界：** 先修复现有冻结包的一致性与审批关联，另轮审查，不改历史签名、不放宽门槛；然后亲自演示和另行授权七方法比较。350格、held-out、真人与LIBERO未在本轮执行。
 
