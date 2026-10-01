@@ -1,0 +1,383 @@
+{
+  "ended_at_epoch": 1790742701.964141,
+  "reserved_attempts": 20,
+  "attempt_cap_reached": true,
+  "all_attempts_completed": true,
+  "no_new_execution_authorized": true,
+  "closed_at_user_90_minute_limit_or_earlier": true,
+  "service_groups": [
+    {
+      "row_id": "adoption-v1-robosuite-old-baseline",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1583243,
+        "process_group": 1583243,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robosuite-no-guidance",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1583436,
+        "process_group": 1583436,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robosuite-hint",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1583670,
+        "process_group": 1583670,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robosuite-content-ablation",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1583904,
+        "process_group": 1583904,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robosuite-demo",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1584118,
+        "process_group": 1584118,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robosuite-memory",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1584353,
+        "process_group": 1584353,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-scheduler-hint-0",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1587719,
+        "process_group": 1587719,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-scheduler-hint-1",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1587935,
+        "process_group": 1587935,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-scheduler-hint-2",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1588285,
+        "process_group": 1588285,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-scheduler-memory-0",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1595392,
+        "process_group": 1595392,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-scheduler-memory-1",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1595630,
+        "process_group": 1595630,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-scheduler-demo-0",
+      "service": "robosuite",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "mechanism": "dedicated_service_process_group_termination",
+        "pid": 1598404,
+        "process_group": 1598404,
+        "process_group_gone": true,
+        "reason": "normal_cleanup",
+        "service_module_origin": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering/robosuite_sim/__init__.py"
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-old-baseline",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1602130,
+        "process_group": 1602130,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-old-baseline",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1599615,
+        "process_group": 1599615,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-no-guidance",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1608043,
+        "process_group": 1608043,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-no-guidance",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1604662,
+        "process_group": 1604662,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-hint",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1613034,
+        "process_group": 1613034,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-hint",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1610021,
+        "process_group": 1610021,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-content-ablation",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1617918,
+        "process_group": 1617918,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-content-ablation",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1615011,
+        "process_group": 1615011,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-demo",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1622474,
+        "process_group": 1622474,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-demo",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1619891,
+        "process_group": 1619891,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-memory",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1627026,
+        "process_group": 1627026,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-memory",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1624453,
+        "process_group": 1624453,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1638079,
+        "process_group": 1638079,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1635477,
+        "process_group": 1635477,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-memory-v1-1",
+      "service": "agent",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1642641,
+        "process_group": 1642641,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    },
+    {
+      "row_id": "adoption-v1-robocasa-memory-v1-1",
+      "service": "simulator",
+      "saved_stop_receipt": {
+        "exit_code": -15,
+        "leader_reaped": true,
+        "pid": 1640060,
+        "process_group": 1640060,
+        "process_group_gone": true
+      },
+      "currently_group_absent": true
+    }
+  ],
+  "pending_only": "new external approval of the exact frozen candidate; no robot work remains"
+}

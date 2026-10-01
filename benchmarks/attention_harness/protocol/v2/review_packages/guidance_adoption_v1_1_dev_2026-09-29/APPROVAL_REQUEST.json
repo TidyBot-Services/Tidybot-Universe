@@ -1,0 +1,29 @@
+{
+  "approval_status": "pending_user_review",
+  "candidate_manifest_sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab",
+  "created_epoch": 1790742507.4830089,
+  "development_engineering_acceptance": "PASS",
+  "formal_eligible": false,
+  "heldout_authorized": false,
+  "matrix_authorized": false,
+  "old_approval_reused": false,
+  "policies": {
+    "robocasa": {
+      "path": "frozen/final_policies/robocasa_counter_to_sink.py",
+      "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "version": "v1.1"
+    },
+    "robosuite": {
+      "path": "frozen/final_policies/robosuite_cube_lift.py",
+      "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "version": "v1"
+    }
+  },
+  "review_roles": {
+    "final_external_approval": "not yet provided",
+    "implementation_and_mechanical_audit": "Codex author"
+  },
+  "schema": "attentionbench.guidance-adoption-new-approval-request.v1.1",
+  "scope": "accept bounded development evidence and freeze exact new control SHA pair; no further execution",
+  "version": "guidance-adoption-v1.1-dev"
+}

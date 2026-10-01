@@ -1,0 +1,163 @@
+{
+  "schema": "attentionbench.guidance-adoption-approval-closeout.v1.1",
+  "verified_at_utc": "2026-09-30T15:03:03+00:00",
+  "result": "PASS",
+  "checks": [
+    {
+      "check": "human approval decision and exact package identity",
+      "result": "PASS"
+    },
+    {
+      "check": "verbatim instruction preserved with checksum",
+      "result": "PASS"
+    },
+    {
+      "check": "REVIEW exact SHA matches manifest and operator",
+      "result": "PASS"
+    },
+    {
+      "check": "manifest SHA unchanged and bound to user approval",
+      "result": "PASS"
+    },
+    {
+      "check": "final policy exact SHAs bound",
+      "result": "PASS"
+    },
+    {
+      "check": "approval receipt checksum in current status and goal",
+      "result": "PASS"
+    },
+    {
+      "check": "verification receipt bound by approval",
+      "result": "PASS"
+    },
+    {
+      "check": "current package state frozen and approved",
+      "result": "PASS"
+    },
+    {
+      "check": "all original status boolean values unchanged",
+      "result": "PASS"
+    },
+    {
+      "check": "historical formal and execution authorization flags unchanged",
+      "result": "PASS"
+    },
+    {
+      "check": "scoped approval excludes all forbidden execution",
+      "result": "PASS"
+    },
+    {
+      "check": "RoboCasa no success improvement recorded as limitation",
+      "result": "PASS"
+    },
+    {
+      "check": "old non-adoption conclusion preserved",
+      "result": "PASS"
+    },
+    {
+      "check": "Safety negative control and admission still separate",
+      "result": "PASS"
+    },
+    {
+      "check": "original administrative history unchanged: APPROVAL_REQUEST.json",
+      "result": "PASS"
+    },
+    {
+      "check": "original administrative history unchanged: approval_status.json",
+      "result": "PASS"
+    },
+    {
+      "check": "original administrative history unchanged: goal_completion_audit.json",
+      "result": "PASS"
+    },
+    {
+      "check": "original administrative history unchanged: closeout_receipt.json",
+      "result": "PASS"
+    },
+    {
+      "check": "original administrative history unchanged: blocked_audit.json",
+      "result": "PASS"
+    },
+    {
+      "check": "17 requirements completed by actual operator evidence",
+      "result": "PASS"
+    },
+    {
+      "check": "current status and scope documented: STATUS.md",
+      "result": "PASS"
+    },
+    {
+      "check": "current status and scope documented: docs/attentionbench_progress.md",
+      "result": "PASS"
+    },
+    {
+      "check": "post-approval full frozen and archive hashes unchanged",
+      "result": "PASS"
+    },
+    {
+      "check": "protected old files and absent sentinel unchanged",
+      "result": "PASS"
+    },
+    {
+      "check": "attempt ledger stays completed 20/20 with no new run",
+      "result": "PASS"
+    },
+    {
+      "check": "raw development ledger unchanged",
+      "result": "PASS"
+    }
+  ],
+  "checks_passed": 26,
+  "issues": [],
+  "method": "Read-only hashes, JSON fields and saved evidence; no new tests, attempts or Services",
+  "identity": {
+    "package_directory": "guidance_adoption_v1_1_dev_2026-09-29",
+    "version": "guidance-adoption-v1.1-dev",
+    "review": {
+      "path": "frozen/REVIEW.md",
+      "sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7"
+    },
+    "manifest": {
+      "path": "sha256_manifest.json",
+      "sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab"
+    },
+    "policies": {
+      "robocasa": {
+        "path": "frozen/final_policies/robocasa_counter_to_sink.py",
+        "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+        "version": "v1.1"
+      },
+      "robosuite": {
+        "path": "frozen/final_policies/robosuite_cube_lift.py",
+        "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+        "version": "v1"
+      }
+    },
+    "binding_rule": "Only these exact REVIEW, manifest and policy bytes and the files bound by that manifest; no inheritance or extension to other versions or scopes."
+  },
+  "operator_approval_sha256": "3ac6bd9dc1c952ebbe6c0a69b3c4b9a9ac69a2ebee21f47350c0b9636fbeebc2",
+  "administrative_files_sha256": {
+    "operator_approval.json": "3ac6bd9dc1c952ebbe6c0a69b3c4b9a9ac69a2ebee21f47350c0b9636fbeebc2",
+    "approval_verification_receipt.json": "0ceb5730ca808682537938cb7724a3d4406988e3b10b7e52bf02d97efd945669",
+    "approval_status_preapproval.json": "7711169b7db14f676b47d09f2a030fa238cc939bfe6d30dc3f66a0564dc0e1c3",
+    "approval_status.json": "17acf3e33039333527615e29996369425a98a02d226fa091d1320abae62d95ee",
+    "goal_completion_approved_audit.json": "6b6c2fde814317db369cbe087d4327a8ba033db25e965809ff07072acafdf576",
+    "README.md": "59a43be97c7bb245c282c394e8f25bfabdf7f55e5b2e279a666756c3e096fea9"
+  },
+  "status_documents_sha256": {
+    "STATUS.md": "2f5067f355def7ffca8dfd298083aef376d4b16e499bb134ca34585aa55cc14b",
+    "docs/attentionbench_progress.md": "74385469a887dc5011718f41ebfb7612cf1fea97b9ca9433daa4130552564e2d"
+  },
+  "post_approval_frozen_verification": {
+    "schema": "attentionbench.guidance-adoption-frozen-verification.v1.1",
+    "pass": true,
+    "frozen_files": 59,
+    "raw_files_verified": 1267,
+    "issues": [],
+    "candidate_manifest_sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab"
+  },
+  "protected_entries_verified": 1724,
+  "protected_drift": [],
+  "next_steps": "Safety负控缺口和新身份准入重签仍待另轮，不自动授权。"
+}

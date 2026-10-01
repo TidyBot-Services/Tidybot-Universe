@@ -1,0 +1,22 @@
+{
+  "approved_config_sha256": "8aa6a0e5983b2085661a4b566a5f7b094a12b499cac9036f2acbc32be24d2f6e",
+  "approved_demo_sha256": null,
+  "approved_memory_contract_sha256": "3aac06c592a3984f4b3901b200dde7c3cc139e2b21bbe790783ec98d63b298dd",
+  "approved_policy_config_sha256": null,
+  "approved_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+  "assistance_credits": 1,
+  "assistance_mode": "benchmark_proxy",
+  "attention_policy": "autonomous",
+  "execution_target": "robosuite_sim",
+  "human_deadline_seconds": 30.0,
+  "max_attempts": 4,
+  "memory_contract_content_sha256": "51e9cb3bd1ecc49e9280eaf7b4597c775e856af4ca9383acde0253e162cde08a",
+  "overall_deadline_seconds": 300.0,
+  "perception_mode": "sim_gt",
+  "schema_version": "attentionbench.formal-entry-lock.v1",
+  "seed": 109,
+  "sha256": "6b21fedb55a82cc15732330a66f1c15a06a3746fb318a7ca2409b503b9b37372",
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "token_limit": 4096
+}

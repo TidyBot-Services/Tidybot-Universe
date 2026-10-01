@@ -1,0 +1,47 @@
+{
+  "artifact_sha256": "db0f4b734459028055e2dff366cab9fce15fe3ce9a14d9ddbd3cf0411316044c",
+  "assistance_credits": 1,
+  "episode_result_uri": "artifact://cube_lift-seed101-formal-1790487647008852616/result.json",
+  "evidence_ids": [
+    "evidence:policy.py",
+    "evidence:trace_context.json"
+  ],
+  "human_attention_seconds": 0.0,
+  "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+  "raw_evidence_refs": [
+    {
+      "evidence_id": "evidence:trace_context.json",
+      "kind": "execution_context",
+      "sha256": "f92f892c7b0c28cdefce49ea8dcfba13dbbd749915d96b94f03d3821b281cfdf",
+      "uri": "artifact://cube_lift-seed101-formal-1790487647008852616/trace_context.json"
+    },
+    {
+      "evidence_id": "evidence:policy.py",
+      "kind": "policy_code",
+      "sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+      "uri": "artifact://cube_lift-seed101-formal-1790487647008852616/policy.py"
+    },
+    {
+      "evidence_id": "evidence:service.log",
+      "kind": "service_log",
+      "sha256": "ed1006b28c2eb660cf884ec6edddf4bfc8686b52bbc2e32420fab51cf1c7c661",
+      "uri": "artifact://cube_lift-seed101-formal-1790487647008852616/service.log"
+    }
+  ],
+  "received_guidance": "Use the object poses returned by sensors.find_objects() (permitted sim_gt evidence) to locate the cube. Then, using sensors.get_observation() for the current end-effector position (robot0_eef_pos) and orientation (robot0_eef_quat): (1) move the end-effector above the cube, (2) lower it to the cube's grasp height, (3) close the gripper with gripper.close() and allow it to settle, and (4) move the end-effector upward to lift the cube off the table. Keep the gripper open during approach as you already do, and verify the cube's position changes after lifting by calling find_objects() again.",
+  "request_id": "attention-request:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+  "responder": "advisor_proxy",
+  "response_content_sha256": "5cb4e978a9e5bd0bc9ac0d4ae90b9f916d510407a8af424a19f237ded03b59c0",
+  "response_id": "proxy-response:attention-request:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+  "schema_version": "attentionbench.memory-provenance.v2",
+  "source_attempt_id": "attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+  "source_developer_model": "formal-generated-policy",
+  "source_execution_target": "robosuite_sim",
+  "source_kind": "advisor_proxy",
+  "source_policy_id": "reactive_help",
+  "source_policy_sha256": "fb9f0f7349244ec1b3c110c1d811c5eab30ab7f26620b7d43dbd583f8b4bcbaa",
+  "source_raw_trace_id": "raw-trace:cube_lift-seed101-formal-1790487647008852616:0",
+  "source_run_id": "run:attention-robosuite-cube_lift-seed101-68b4cbf67d66",
+  "source_seed": 101,
+  "source_trace_id": "trace:cube_lift-seed101-formal-1790487647008852616:0"
+}

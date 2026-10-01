@@ -1,0 +1,1 @@
+guidance_compile_v1 {'demo': {}, 'memory': {'candidate:m5:robocasa-counter-to-sink-public-sdk-v3': {'grasp_offset_m': 0.045, 'base_forward_m': 0.11, 'open_settle_steps': 20, 'close_settle_steps': 30}}, 'advisor': {}}

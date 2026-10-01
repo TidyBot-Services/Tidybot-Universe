@@ -1,0 +1,13 @@
+{
+  "approval_status": "development execution authorized by user goal; final external approval pending",
+  "author": "Codex implementation under current user goal",
+  "design_sha256": "2cda4682340451446e9204d04d5b25f72a12be5e345b9af83767e48a9688a09c",
+  "new_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+  "new_source": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/guidance_adoption_v1/robocasa_counter_to_sink_v1.py",
+  "old_approval_reused": false,
+  "old_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+  "old_source": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/base/robocasa_counter_to_sink/policy.py",
+  "origin": "manual reviewed source revision, not model-provider generation",
+  "schema": "attentionbench.guidance-adoption-policy-change.v1",
+  "version": "guidance-adoption-v1"
+}

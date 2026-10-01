@@ -1,0 +1,31 @@
+{
+  "counts_for_chain_or_profile": false,
+  "generation_kind": "approved_guidance_control_revision",
+  "hypothesis": "Exact approved public-SDK guidance consumer; identity rebinding only, no new generation or execution.",
+  "lineage": {
+    "approved_guidance_REVIEW": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/REVIEW.md",
+      "sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7"
+    },
+    "approved_guidance_operator_approval": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/operator_approval.json",
+      "sha256": "3ac6bd9dc1c952ebbe6c0a69b3c4b9a9ac69a2ebee21f47350c0b9636fbeebc2"
+    },
+    "approved_guidance_policy": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/final_policies/robosuite_cube_lift.py",
+      "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    "old_generation_receipt": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/base/robosuite_cube_lift/generation_receipt.json",
+      "sha256": "0c60f5e17c0264b88e5c3fb5f2572413ef164f2b78aead4812cb752e236acee4"
+    },
+    "old_policy": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/base/robosuite_cube_lift/policy.py",
+      "sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8"
+    }
+  },
+  "new_model_generation_calls": 0,
+  "schema_version": "attentionbench.approved-guidance-derived-source.v1",
+  "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robosuite_cube_lift/policy.py"
+}

@@ -1,0 +1,18 @@
+{
+  "advisor_cache_initial_state": "empty_per_run",
+  "all_outcomes_retained": true,
+  "answered_request_credits": 1,
+  "automatic_memory_promotion": false,
+  "budget_exhaustion": "no extra attempts/requests; native success at exact SDK limit remains a success if otherwise valid",
+  "cache": "new empty cache for each run; within-run hits use the same 2s logical latency",
+  "cached_answer_credits": 1,
+  "cached_provider_tokens": 0,
+  "memory_initial_versions": "exact allowlist from task-specific immutable SQLite snapshot",
+  "memory_reset_each_run": true,
+  "minimum_native_success_numerator": null,
+  "out_of_scope": "Service must deny retrieval/grant; continue with no Memory; never broaden scope",
+  "proxy_latency_seconds": 2,
+  "rejected_provider_responses": "retain raw HTTP bytes/SHA, response/content/usage and unknown costs; stop without retry; do not report unknown as zero",
+  "sdk_calls": "200 accepted policy SDK broker calls summed across attempts; rejected excess RPC is separately reported and not dispatched",
+  "tokens": "actual prompt+completion total; cached new-provider tokens=0; unknown/inconsistent usage or total>4096 invalid and retained"
+}

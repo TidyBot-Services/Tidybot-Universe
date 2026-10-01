@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/pre_run_pin.py", line 62, in <module>
+    'audit_script_sha256': sha(ROOT / 'independent/audit_negative_control_guidance.py'),
+  File "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/pre_run_pin.py", line 14, in <lambda>
+    sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+  File "/home/truares/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/pathlib.py", line 1126, in read_bytes
+    with self.open(mode='rb') as f:
+  File "/home/truares/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/pathlib.py", line 1119, in open
+    return self._accessor.open(self, mode, buffering, encoding, errors,
+FileNotFoundError: [Errno 2] No such file or directory: '/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/audit_negative_control_guidance.py'

@@ -1,0 +1,22 @@
+{
+  "approved_config_sha256": "30b7201c245bb0edfaa1bb8c1d5605bab417605829e53f86b417b0be46c2ab6c",
+  "approved_demo_sha256": null,
+  "approved_memory_contract_sha256": "0424ddc9b916dd099c3ca22a76087d83e2fada4104d79c75e746fe02163d32e2",
+  "approved_policy_config_sha256": null,
+  "approved_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+  "assistance_credits": 1,
+  "assistance_mode": "benchmark_proxy",
+  "attention_policy": "trace_aware_hint_only",
+  "execution_target": "robocasa_sim",
+  "human_deadline_seconds": 30.0,
+  "max_attempts": 4,
+  "memory_contract_content_sha256": "609b36a9e2e051551436170c085152e2240f202ae797e4bb77a93f6d5d1cee24",
+  "overall_deadline_seconds": 300.0,
+  "perception_mode": "sim_gt",
+  "schema_version": "attentionbench.formal-entry-lock.v1",
+  "seed": 103,
+  "sha256": "a85d692a42f2bf8d508d6320a4cf619db4807b03f338f2a63637f143ebbe437d",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "token_limit": 4096
+}

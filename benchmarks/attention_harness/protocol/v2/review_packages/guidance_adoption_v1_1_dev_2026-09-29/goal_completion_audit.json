@@ -1,0 +1,183 @@
+{
+  "schema": "attentionbench.actual-goal-completion-audit.v1.1",
+  "audited_at_epoch": 1790743072.230159,
+  "current_branch": "feature/attention-native-robosuite",
+  "previous_goal_turn_classification": "progress: implementation, live causal evidence, frozen package and cleanup completed",
+  "candidate_manifest_sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab",
+  "checks": [
+    {
+      "item": "2.robosuite",
+      "requirement": "基础控制消费公开attention_input并绑定最终新SHA",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/final_policies/robosuite_cube_lift.py",
+      "detail": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    {
+      "item": "2.robocasa",
+      "requirement": "基础控制消费公开attention_input并绑定最终新SHA",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/final_policies/robocasa_counter_to_sink.py",
+      "detail": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7"
+    },
+    {
+      "item": "1",
+      "requirement": "三类进入控制路径和曝光≠采纳判据在实现前设计冻结",
+      "state": "proven",
+      "evidence": [
+        "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/versioned_source/DESIGN.md",
+        "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/versioned_source/DESIGN_AMENDMENT_v1_1.md"
+      ],
+      "detail": ""
+    },
+    {
+      "item": "3.hint",
+      "requirement": "同seed同场景下该指导内容改变实际控制，并有原生改善",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/evidence_audit_v1_1.json",
+      "detail": "Robosuite正式Service存在性证据；不作多seed总体效果估计。"
+    },
+    {
+      "item": "3.demo",
+      "requirement": "同seed同场景下该指导内容改变实际控制，并有原生改善",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/evidence_audit_v1_1.json",
+      "detail": "Robosuite正式Service存在性证据；不作多seed总体效果估计。"
+    },
+    {
+      "item": "3.memory",
+      "requirement": "同seed同场景下该指导内容改变实际控制，并有原生改善",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/evidence_audit_v1_1.json",
+      "detail": "Robosuite正式Service存在性证据；不作多seed总体效果估计。"
+    },
+    {
+      "item": "3.core",
+      "requirement": "核心full planner请求/回复→下一attempt消费→原生成功",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/summary.json",
+      "detail": "确定性开发Advisor transport；不声称线上GLM。"
+    },
+    {
+      "item": "3.memory_authority",
+      "requirement": "Memory实际trusted exact v1限定检索、grant、内容、next attempt和use一致",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/evidence_audit_v1_1.json",
+      "detail": "调度器证明使用原autonomous开发路径，full条件Memory选择未声称通过。"
+    },
+    {
+      "item": "V.baseline",
+      "requirement": "无指导原机器人动作不变",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/evidence_audit_v1_1.json",
+      "detail": "RC只读规划查询目标变化不作动作变化；同观测离线全部SDK调用相同。"
+    },
+    {
+      "item": "V.safety",
+      "requirement": "独立Safety为0且原监控不变",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/evidence_audit_v1_1.json",
+      "detail": ""
+    },
+    {
+      "item": "V.artifacts",
+      "requirement": "完整失败、80份主产物SHA和专属Service回收",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/ledger.json",
+      "detail": "6原生成功/14原生失败全保留；部分已有recorder清理临时wrapper按missing诚实留证，4类主产物齐全。"
+    },
+    {
+      "item": "V.honesty",
+      "requirement": "动作变化未改善成功的案例如实记录为设计问题",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/REVIEW.md",
+      "detail": "RC的成功改善未通过；全局至少一例改善门槛由RS满足。"
+    },
+    {
+      "item": "C.no_extra",
+      "requirement": "不跑350格/held-out，开发attempt上限20，90分钟内执行收尾",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/evidence_audit_v1_1.json",
+      "detail": "测试已终结，不自动开新轮。"
+    },
+    {
+      "item": "C.protected",
+      "requirement": "旧策略/旧冻结包/chain/profile/depth/准入及Safety负控均不改",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/evidence/protected_before.json",
+      "detail": "",
+      "fresh_hash_recheck": {
+        "files": 1724,
+        "drift": []
+      }
+    },
+    {
+      "item": "4.freeze",
+      "requirement": "另版冻结两份新基础策略SHA和完整新审批候选身份",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/APPROVAL_REQUEST.json",
+      "detail": ""
+    },
+    {
+      "item": "4.approval",
+      "requirement": "最终新SHA审批已作出，未套用旧审批",
+      "state": "incomplete",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/approval_status.json",
+      "detail": "当前pending_user_review；已有审批问题尚无直接人类答复，内部goal继续提示不构成批准。"
+    },
+    {
+      "item": "D.deliverables",
+      "requirement": "设计、控制源码、有界审计、独立新冻结审批包和逐项结论齐备",
+      "state": "proven",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/REVIEW.md",
+      "detail": ""
+    }
+  ],
+  "complete": false,
+  "missing_requirements": [
+    {
+      "item": "4.approval",
+      "requirement": "最终新SHA审批已作出，未套用旧审批",
+      "state": "incomplete",
+      "evidence": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/approval_status.json",
+      "detail": "当前pending_user_review；已有审批问题尚无直接人类答复，内部goal继续提示不构成批准。"
+    }
+  ],
+  "blocking_condition": "final new exact-SHA approval missing",
+  "consecutive_goal_turns_with_this_blocker": 2,
+  "no_new_execution_permitted": true,
+  "robot_work_terminal": true,
+  "current_source_matches_frozen": [
+    {
+      "file": "robocasa_counter_to_sink_v1_1.py",
+      "matches": true
+    },
+    {
+      "file": "verify_frozen_package.py",
+      "matches": true
+    },
+    {
+      "file": "bounded_run.py",
+      "matches": true
+    },
+    {
+      "file": "evidence_audit.py",
+      "matches": true
+    },
+    {
+      "file": "robosuite_cube_lift_v1.py",
+      "matches": true
+    },
+    {
+      "file": "control_compiler.py",
+      "matches": true
+    },
+    {
+      "file": "collect_robocasa_jobs.py",
+      "matches": true
+    },
+    {
+      "file": "robocasa_counter_to_sink_v1.py",
+      "matches": true
+    }
+  ]
+}

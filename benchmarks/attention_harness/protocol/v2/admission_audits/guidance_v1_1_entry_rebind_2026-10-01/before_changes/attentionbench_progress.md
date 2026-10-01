@@ -1,0 +1,219 @@
+## 2026-09-30（Asia/Shanghai）当前 guidance v1.1 Safety 负控完成，总体重签未通过
+
+本轮验收审计完成，当前版本 `formal_eligible=false`。当前 C Safety 负控 PASS；唯一剩余缺口为新 R/C 控制 SHA 尚未绑定获批的七条件 M1/launch 身份，影响 `policy_identity` 与 `seven_condition_approval`，当前身份适用性7/9 canonical PASS。原六个 PASS 关口的判定、范围、证据对象逐字段保留，0重跑、0修改；旧版本 true 签名不外推。
+
+沿用目录绑定的负控身份构造器，并支持经原 boundary 验证的公开 `attention_input`；station 身份检查和原独立 Safety 保留，旧错误身份继续拒绝。精确批准的 C v1.1（SHA `c016bed6…`）消费冻结文本，完成首个 .11m base job 后注入确认丢失；原 Safety 检测 `action_outcome_unknown`、原 worker 失败、第二动作0、原 runner 双 Service 回收。注入到检测0.214ms、worker停止1.824ms、双回收0.524s；四类原件、注入收据、进程组与端口最终复核完整。
+
+无指导基线全机器人程序 AST 对齐PASS，chain/profile/depth按原范围可复用；新编译器诊断输出/CPU开销不作为时延等价证明。只读比较350份旧M1与350份旧launch，全部仍绑定旧策略SHA；两套新策略的真实request.validate均在Service前拒绝 `formal request entry lock mismatch`。当前开发审批17/17保留，不改写原批准或旧锁，不把该审批扩展为新七条件身份批准。
+
+[总体重签](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/overall_admission_audit.json) SHA `a68f8fec50b9de3463b5e5612133fe1810428bf6f07b869324607c9fa7da3b9c`；[当前负控](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/negative_control_post_run_audit.json) SHA `59ab3797ecd3557cc933c9c357575c113ee80a665467c2c8b8d66179ee651ce6`；[版本复核](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/version_alignment_audit.json) SHA `33de5e5b715d4919cdd527a534fdaa822a63a4a4f3e918a9b84bbddccd0bf7be`；[逐项交付](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/CONCLUSIONS.md)。仓库归档为 `benchmarks/attention_harness/protocol/v2/admission_audits/guidance_v1_1_safety_resign_2026-09-30/`，含只读 `verify_delivery.py` 与SHA清单。
+
+专项测试7 passed、审计反例10 passed；59冻结文件/1267原归档验证一致，1434旧证据/源码保护项无漂移，五Service源版本干净且不变。本轮真实case仅1；held-out/350格效果/其余六关口/Memory新探测及晋升均0。原失败、旧成功负控与RoboCasa“动作改变但成功未改善”完整保留。
+
+下一步如继续，应另建绑定两套新控制SHA的七条件输入/M1/launch冻结批准包，复用本次负控与AST桥；不需要因该身份缺口再跑机器人。本轮已在90分钟内回收收尾，不自动开始下一轮。以下保留开发审批与旧版本历史。
+
+## 2026-09-30（America/New_York）指导采纳 v1.1 — 开发验证包已冻结 + 已批准
+
+当前会话人类用户明确批准 `guidance_adoption_v1_1_dev_2026-09-29` 的精确SHA开发包；原17项要求现17/17完成。批准时间为2026-09-30 10:59:40 America/New_York（14:59:40 UTC）。[批准原话与完整边界](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/operator_approval.json)、[当前审批状态](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/approval_status.json)及[17/17逐项证据](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/goal_completion_approved_audit.json)已落盘。
+
+审批精确绑定 REVIEW SHA `090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7` 与 manifest SHA `2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab`，最终R/C控制SHA不变。审批前只读复核59冻结文件、1267归档文件及1724旧包/源码保护项无漂移；既有20/20 attempt、Safety 0、82项测试与204项机械审计证据保留。本审批轮没有启动Service、测试或任何新运行，冻结内容与布尔判定未改。
+
+批准仅限本开发验证包，不授权350格、held-out、效果矩阵、正式效果比较或任何后续执行，不外推到其他版本。RoboCasa“动作改变但原生成功未改善”为已知设计限制；旧v1 Memory未采纳证据及旧语义结论完整保留，新批准不覆盖旧结论。下一步Safety负控缺口与新guidance身份重签准入仍待另轮，不被本批准自动解锁；本身份 `formal_eligible=false`，不继承旧版本签名。
+
+以下条目保留审批前状态与旧版本历史；本包当前状态以本条及operator批准记录为准。
+
+## 2026-09-29（America/New_York）指导采纳 v1.1 — 有界开发验收PASS，最终SHA审批待定
+
+本用户goal的实现、真实Service验证与另版冻结包已交付，等待新SHA审批；新版本`formal_eligible=false`，不继承旧准入签名。20/20次seed101开发attempt完整、独立Safety0、80份主产物SHA与全部专属Service进程组回收通过；350格/held-out均0。机械审计204/204、最终相关测试82通过；1724旧包/源码SHA无漂移。
+
+Robosuite hint/demo/Memory文本各有同策略、同seed/config/初始观测的49→86实际OSC控制步、原生false→true证据；full planner两次失败→求助→第三次成功的请求/回复/execution关联成立。trusted exact v1 Memory真实retrieve/grant/下一执行成功另外由原autonomous开发路径验证，不冒充full条件Memory效果。Advisor/demo为明确标注开发fixture，非线上GLM或成功示教录像。
+
+RoboCasa v1 hint/demo已改变完成的底盘job但仍原生失败；v1 Memory只改被后端忽略的settle字段和未执行的抓取高度，诚实判未采纳。实现前另冻v1.1修订，在剩余2次额度内证明同文本把初始前进.125→.11m且job完成；仍原生失败，后续可达性是设计问题，成功改善未通过。无指导机器人动作保持原样；只读规划查询的运行间变化不记作策略采纳。旧失败及首次审计路径重定位问题全部保留。
+
+[新审批包](benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/REVIEW.md)与[完整原件](/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/CONCLUSIONS.md)。最终控制SHA：R `405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2`；C `c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7`；整包manifest `2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab`。59冻结文件、1267归档文件SHA复核通过。本轮测试已结束、不自动开新轮；待审批只接受新身份，不授权任何后续执行。以下保留旧模块与旧版本历史。
+
+## 2026-09-29（America/New_York）RoboCasa Safety负控修复与总体准入重签
+
+验收完成，重新签发 `formal_eligible=true`；用户关口7/7 PASS，canonical gate 9/9 PASS，未过项为空。判定限原签发的本开发集主实验范围。
+
+当前C唯一新增受控负控已证明真实动作/job完成→原独立Safety action_outcome_unknown→worker停止且第二动作0→双Service回收。检测0.178ms、worker停止1.633ms、双Service回收0.532s；12项身份/Safety回归与5项审计反例测试通过。修复新增负控请求身份构造器，使run/attempt与station目录一致；已有runtime/Safety/Service未改。
+
+其余6个用户PASS关口原结论、证据SHA及输入不变，0复跑；历史28份Safety与R14负控复用。1411份旧证据/源码SHA无漂移，原失败审计a1aefe83…及旧总体334019e6…原件保留；当前C负控是新授权的一次受控注入。held-out/350格效果矩阵/Memory探测和晋升/消融均执行0。
+
+[本轮总体重签](/home/truares/桌面/attentionbench-safety-repair-20260929/independent/overall_admission_audit_v3.json) SHA `ad66e2cd7da547e0450a77403cf2d993a9913c7512e6e48c1a84e5ffa654d0b6`；[新C负控审计](/home/truares/桌面/attentionbench-safety-repair-20260929/independent/negative_control_post_run_audit_v3.json) SHA `7c25bd5b7c69b966a339de822ff7c19fa2b0b33e1760cd4dc3a67c965dbc0636`。全部Service进程组及控制器已回收，本轮结束，不自动开始下一轮。下一步为交付/审阅本次证据；签名不自动授权矩阵或held-out。以下原审计结论按历史轮次保留。
+
+## 2026-09-29（America/New_York）七条件冻结与总体准入审计最终结论
+
+**审计验收完成；正式准入未通过。独立签发formal_eligible=false，9个canonical gate中8 PASS、1 FAIL。** 唯一未过项为完整Safety负控（safety_fault_injection）：唯一新增当前RoboCasa case在station run/attempt身份预检被拒绝，未到预注册未知动作注入；派发/job/目标检测0，monitor_not_initialized的unsafe1不等于目标检测，故障即停时延不可测。四类原件SHA与双Service回收通过、0.478秒正常清理已留证，但不能补全负控coverage。live开发case上限1已用尽，不补跑、不择优替换，不自动开新一轮。
+
+chain、50/50 profile、depth operational门复用且不重跑；任务可解性与可信Memory限定范围PASS；七条件350格生成/校验批准、执行0。冻结含同任务唯一基础策略字节SHA、50 seed配置、350 M1/launch锁、demo/k=2/随机quota1、逐条件Memory范围与exact v1、每run初态/空缓存/不自动晋升及统一费用规则。仅每任务101/103/105有Memory匹配；六个非full条件不可见，其他22 seed拒绝，不扩大作用域、不新增覆盖率或原生成功门槛。held-out与Memory+evidence消融另行冻结，本轮执行0。
+
+保存协议/attrition/规格提交 `a42ab8201277ffa806281b89a4f14e3ef33b1059`；执行代码提交 `03f07ded72b936c57e08ce22050f06b34ee46a0e`；五Service确切commit在冻结versions文件。1268冻结文件SHA、350M1、398runtime源码字节、50旧M1均经独立复核；最后911原件SHA复核无漂移。完整Harness468 passed/10 skipped后，最终差异专项108 passed；工程校验不计效果运行。
+
+两基础策略不读取attention_input：可审计求助/费用/曝光与授权，但不能声明Demo/Advisor/Memory被控制代码采纳或改善动作；该语义限制已冻结。完整报告、三类剩余包及逐项SHA见 `benchmarks/attention_harness/protocol/v2/admission_audits/seven_primary_dev_2026-09-29/README.md`；总体JSON SHA `334019e665609ada0dae2c09d0dec4fa2f0591c7bc332cd54387a3121f144e5b`。下一步仅未来另行授权/预注册当前C负控，原失败保留；不得在缺项闭合前签true。以下保留旧范围过程。
+
+## 2026-09-29（America/New_York）depth qualifying 与新版本档案独立验收完成
+
+本轮 depth qualifying 与描述性准入档案完成：Service19fde8a新Robosuite25/25有效（含101–105五例各复用一次）、100尝试、5088持久动作回执；经影响核对的独立RoboCasa25/25有效、70尝试保留。合并50唯一案例、170唯一尝试、680四类产物文件SHA、独立Safety0，原生成功0/50、有效任务失败完整保留。五步骤限定范围均PASS；Robosuite/depth operational_gate=true。工程14网格不升格；c67 Robosuite证据不迁移；原槽30 interrupted_invalid字节及授权补测各自保留。
+
+v2.4已正式写入“当前冻结版本已控制的保留风险”，历史根因unknown；冻结lock旧风险注释由该独立协议裁决明确覆盖，锁本身未改字节。总体准入审计已完成，formal_eligible=false、effect_comparison_authorized=false；未执行held-out或七策略效果矩阵。当前剩余正式范围门的复核见总体审计，未自动启动新轮。
+
+证据：[/home/truares/桌面/attentionbench-depth-qualifying-20260929/CONCLUSIONS.txt](/home/truares/桌面/attentionbench-depth-qualifying-20260929/CONCLUSIONS.txt)，[总体审计](/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_overall_admission_audit.json) SHA `47832d16fe54a3f6ae50af213daf85923be99526d1d8d04d9a6ca14587addb12`，[协议v2.4](../benchmarks/attention_harness/protocol/v2/formal_admission_v2_4_resolution_2026-09-30.json) SHA `9f060ba02364b537563b11e5dfc2ebbee0cea4150fd9b90ed12886be8065395d`。测试14+34通过。保护33文件、sourcefreeze247文件、RoboCasa历史freeze439文件无变化；所属Service与控制器已回收，在90分钟截止前完成。
+<!-- depth-qualifying-current-end -->
+
+<!-- v111-current-start -->
+## 2026-09-29（America/New_York）运行管理与 50 槽工程档案完成
+
+50/50 预先指定的整槽结果完整、有效，170 次尝试的四类产物、独立 Safety 0、唯一 Trace、原生布尔值和 Service 回收收据均核对通过。 原生任务成功 0/50；任务失败完整留档，不按成败筛选。完整结果与失败/未运行清单见[独立终审](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v112_isolated_continuation/final_audit.json)，SHA `fb8af591345a4f8e5670e925731ee3792ac54d276eb86711d696df8d434efb13`。
+
+前 29 槽明确引用 v110 的 98 次既有尝试，仅计一次；槽 30–36 引用本轮 v111 的 7 个已完成结果；v111 因外部 Service 源改动在派发槽 37 前停止，v112 隔离同一冻结提交，仅继续 37–50，全部结果各计一次。用户本轮授权的槽 30 独立补测及 31–50 均由[运行前冻结计划](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v112_isolated_continuation/profile_plan.json)指定唯一目录。原槽 30 中断原件永久保留为 `interrupted_invalid`，不充当完整结果；v110 原计划和账本未改写。全部历史失败、两次 API 兼容测试失败和启动前宿主识别拒绝日志保留；该启动拒绝未派发任何槽。
+
+槽边界停止、持久派发与状态、独立跨宿主退出回收、终结收据及显式恢复已完成，9/9 可控子进程测试通过。[冻结修订](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v112_isolated_continuation/freeze.json) SHA `17f3defc57b8539bd9efc66e2bf90d9f006d99c44d30d3ae35f766404bd19ede`；3382 份历史文件、原运行/策略/配置/模拟器/Safety/评测/预算字节及个案审计逻辑均未改变。所有已启动 Service 已回收，控制器已退出。该轮用时约 70.8 分钟，未自动启动下一轮。
+
+范围仅关闭本轮运行管理和执行档案工作。depth 比较偏差关口继续独立跟踪且未通过，`comparison_bias_gate=false`、`formal_eligible=false`；未升级整个模块完成，未开启七策略比较或 held-out。当前版本为 v112，沿用本轮原 90 分钟总截止。检查点见[CHECKPOINT](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v112_isolated_continuation/CHECKPOINT.md)与[progress](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v112_isolated_continuation/progress.json)。
+<!-- v111-current-end -->
+
+## 当前模块裁决：固定条件 RoboCasa／Robosuite（最新）
+
+[v88 六个原阻塞 seed 合并审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v88_six_blocker_audit/audit.json)确认 110／111／116／117／119／122 在相同候选策略、动作后端与 sim／Agent 源码树下，各有一项定向工程探针完成、独立 Safety 0、产物与回收通过。117／122 的 `_0` 目标名在真实公开 Trace 中被查询；116／119 动作有回执。旧六个无效判定不变，六例也不计新链或新档案。RoboCasa 工程阻塞有了合并证据，depth 偏差与新版本整包审阅仍待解决。
+
+[v87 两个缺口 seed 的最终组合候选审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v87_final_combined_targets/audit.json)：seed116／117 各一次离档单尝试均完成、原生评估失败、独立 Safety 0，四类产物与服务回收通过。116 首次 4.69 mm 残差修正至 3.32 mm；117 正确查询 `bottled_drink_0`，规划无轨迹时安全结束。旧 50 槽哈希不变；这些工程结果不计新链或新档案，depth 偏差裁决和新版本整包审阅仍是下一关。
+
+[v86 可执行失效关口](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v86_attrition_gate/audit.json)已把预定任务×seed×条件网格、每槽唯一、逐次原始文件哈希、独立 Safety、版本身份和未审 depth 恢复的拒绝规则做成只读审计器；另拒绝跨条件复用同一 episode，核对运行／尝试 ID 与 Trace 条件。六项对抗测试通过。旧 50 槽回归检查仍拒绝原有六个无效案例。此关口不证明历史 depth 500 无动作依赖偏差，不能替代新版本完整审阅；`comparison_bias_gate=false`，新五 seed 链、50 槽与七条件比较仍禁启。
+
+[depth 恢复与偏差审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v85_depth_recovery_bias_audit/audit.json)：候选对动作后越界深度只做一次不推进物理的补采，要求原始两帧、SHA 和仿真状态不变；恢复回执进入正式 Trace。独立负控中两帧持续越界仍为 HTTP 500／Safety unsafe 1，正控中仅首帧越界的案例完成 6 个动作、Safety 0，四类产物与 Service 回收均复核。普通单步无恢复标记。历史异常的原帧缺失，无法判断实际故障是否属于可恢复瞬态；若按有效案例筛选，动作或策略依赖的无效率仍可能造成比较偏差。后续比较必须保留预定全矩阵，任何无效或未审恢复均停在独立偏差审计关口。当前 `comparison_bias_gate=false`，新五 seed 链及 50 槽禁启，`formal_eligible=false`。
+
+此前[可动柜门轨迹审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v72_door_guard_audit/audit.json)：规划世界保留可动柜门形体，但现有 `strict` ACM 将它们与机器人放宽。候选已增加只读逐点门碰撞检查，并在提交动作前拒绝碰门轨迹。独立工程 seed122、seed110 分别发现 13、17 个碰门轨迹点，均无手臂动作且 Safety 0；seed119 的四次扫描零碰撞、两次动作残差 <4 mm 且 Safety 0；seed111 无规划轨迹、Safety 0。四例原生任务均未成功，安全拒绝不等于任务达成。旧诊断状态及旧哈希配置两版各保留 unsafe 1 原档；旧 50 槽、无效标签、4 mm 容差不变。RoboCasa 原生成功和 Robosuite depth 比较偏差未解决，新链与新档案仍禁启，`formal_eligible=false`。
+
+此前[物理接触审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v63_physical_contact_audit/audit.json)：离档 seed122 手臂动作开始约 6 秒后，仿真物理接触记录中 `panda_link6` 持续碰到 `hingeleftdoor`，42 个采样的最大冲量约 1.805；该次独立 Safety unsafe 1。这解释了该次关节和底座停滞的重要物理因素，但不能外推到旧四个无效案例。规划器存在起点碰撞后清空障碍世界的回退，铰链门是否被有效纳入轨迹检查仍需核实。候选只增加工程接触记录，旧 50 槽原件、4 mm 容差、Robosuite depth 未解裁决不变；新链和新档案仍禁启，`formal_eligible=false`。
+
+此前[FK 与严格收敛复测](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v61_stable_settle_audit/audit.json)：离线[仿真 URDF 核对](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v59_sim_fk_diagnostic/audit.json)显示，修正后的首次规划关节目标对应的公开 EEF 位置距任务目标仅约 0.007 mm，实际关节角对应约 8.085 mm 误差。候选去掉二次残差补偿，并要求关节与底座连续三次满足更严稳定阈值；定向测试主链 105 passed、执行器 6 passed。真实 seed122 首次动作仍在 10 秒后以关节 0.0115 rad、底座 28.14 mm 的误差未收敛，独立 Safety unsafe 1 并停跑。规划器曾清空碰撞世界重试，但此前安全完成的 seed119 也有此行为，物理接触原因未确证。旧 50 槽、原 4 mm 容差、Robosuite depth 未解裁决不变；新链与档案仍禁启，`formal_eligible=false`。
+
+新增[关节与底座终点诊断](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v58_arm_endpoint_audit/audit.json)：离档 seed122 的首次规划动作虽完成，末端仍差 8.661 mm，最大关节误差 0.01076 rad、底座偏离保持目标 29.61 mm；后续修正关节误差 0.05914 rad，执行器不收敛，独立 Safety unsafe 1。日志补强了定位依据，但尚未确定跨案例的主因；四类产物、源身份和回收已核对。旧 50 槽与冻结 4 mm 容差不变，手臂可靠性和 depth 比较偏差仍阻塞新链与新档案，`formal_eligible=false`。
+
+最新[手臂坐标与残差续查](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v56_arm_frame_postmortem/audit.json)发现 RoboCasa 规划器 `ee_link` 与公开 EEF 的固定偏航差 45°；修正规划姿态后，真实 seed122 两次动作的偏航变化均小于 0.5°。但三版独立工程 seed122 的最终残差仍为 8.235／6.322／6.307 mm，均超过原 4 mm 容差，各由独立 Safety 记 unsafe 1 并停跑。底座执行期间的位移仍待定位；小幅修正现有次数和进展停止界限，v55 已因进展不足结束。三版四类 SHA、Service 源身份与回收核对通过，主链定向 105 passed、Agent 轨迹 5 passed。旧 50 槽结果不变，seed110／111 未续跑；RoboCasa 手臂与 Robosuite depth 比较偏差关口仍失败，新五 seed 链和 50 槽不得启动，`formal_eligible=false`。
+
+最新[只读规划与残差独立审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v52_preflight_and_residual_audit/audit.json)：候选 SDK 可在提交手臂动作前查询规划，独立 Safety 核对查询期间末端未移动。v48 seed 117 和 v51 seed 116 的 `IK_FAIL` 因而不提交动作，均完整原生失败、Safety 0；v50 seed 119 查询与两次规划动作成功，Safety 0。但 v51 seed 122 首次规划动作留下 8.707 mm 残差，二次修正关节不收敛、Safety unsafe 1，故按预注册顺序未启动 seed 110／111。旧 50 槽不替换，原 4 mm 容差未放宽。此前 v45–v47 的沙箱和端口入口失败亦[原样留档](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v49_readonly_plan_audit/audit.json)。RoboCasa 安全关口与 Robosuite depth 比较偏差仍失败，`formal_eligible=false`。
+
+此前[离档 v40–v43 独立审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v44_diagnostic_audit/audit.json)：v40 策略入口静态拒绝，未启动仿真；v41 seed 119 单次工程尝试完成、原生失败、Safety 0，但不证明旧故障根治。v42 seed 117 已从公开 GT 正确锁定 `bottled_drink_0`，手臂规划实际 `IK_FAIL`／Safety unsafe 1；v43 额外底盘前进又超时／Safety unsafe 1，该动作已撤回。Service 候选修正了把“规划器已加载但无轨迹”误报为“不可用”的状态。按硬停规则 seed 122 未启动；旧 50 槽不替换。RoboCasa 手臂关口和 Robosuite depth 比较偏差仍失败，`formal_eligible=false`。
+
+此前 RoboCasa [v39 目标实例与小残差候选审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v39_target_and_arm_candidate/audit.json)确认任务配置中的目标 `obj` 先于干扰物，公开感知按该顺序把重复类别命名为 `_0`／`_1`；旧 seed 117／122 的公开 Trace 均有两者，候选只选 `_0`，缺失时停下。旧 seed 116 的 7.411 mm 残差发生在笛卡尔修正后，候选改为一次有界实测规划修正，继续严格检查 4 mm；新 WholeBodyError 仅投影有界原因，Safety 仍停跑，专项 14 passed。其后真实 Service 结果以上述 v44 为准；seed 116 仍缺新实测，seed 119 原作业错误细节缺失，历史判定不变。
+
+Robosuite Service 的[depth 诊断候选](/home/truares/桌面/attentionbench-depth-diagnostic-v2-20260929/audit.json)现逐次保存同内容坏帧，并标记异常发生阶段与动作摘要；故障注入和 6 项 Service 测试通过。历史异常帧仍缺，无法从这些检查推出七策略比较不存在选择性无效结果；depth 关口继续失败，独立 Safety 停跑规则未变。
+
+新查明 RoboCasa Service 的公开感知请求原本会额外调用一次 `env.step`，现有**未晋级候选**改用 ManiSkill `get_obs()` 读当前图像。固定离档 seed 9003 的三次感知与一次完整 Runner 工程运行通过，原生任务失败、独立 Safety 0、双 Service 回收；首次探针因误用不存在的 `/health` 而超时，失败原件保留。[逐项审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v38_integrated_readonly/readonly_perception_analysis.json)。尚不能证明旧六个无效例已解决，depth 比较偏差仍未排除；未启动新档案，`formal_eligible=false`。
+
+50 槽后已做[离档工程阻塞分析](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v36_blocker_repair/blocker_analysis.json)：RoboCasa 长水平接近的规划路径候选与目标后缀选择候选完成定向测试和旧 Trace 回放，单次工程 seed 9003 链完整、Safety 0、原生失败。117／122 的 `_0` 对应关系现有上述源码依据，但尚无新真实 Service 验证；seed 116／119 的手臂未知结果和 Robosuite depth 500 的动作相关比较偏差仍未解决。候选未建立新审阅整包，未重启五 seed 链或 50 槽；独立 Safety 停跑规则不变，`formal_eligible=false`。
+
+**未完成，`formal_eligible=false`。** 按[预先冻结的验收条件](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/acceptance_freeze.json)，新版审阅整包的新 101–105 双任务链 10/10 完整、独立 Safety 0；随后同策略、同设置的 101–125 双任务档案 **50/50 槽、162 attempts 全部入账**，无挑选、替换或补跑。任务成功不是门槛：有效的 44 例均原生失败。另 6 个 RoboCasa 槽无效：seed 110／111／116／119 的手臂结果未知并被独立 Safety 判 unsafe，seed 117／122 的公开 GT 实例后缀导致目标名查询失配。[50 槽独立审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v35_profile/independent_profile_audit.json)和[无效例原件定位](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v35_profile/invalid_case_forensics.json)保留逐例结果、无效原因、Safety、Trace、四类 SHA 和 Service 回收。其他策略的原生成功仅作[任务可解性旁证](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v35_profile/task_feasibility_audit.json)。历史 depth 500 原始异常帧缺失，此次 5088 个 Robosuite backend step 未复现也不能排除动作相关比较偏差；[独立风险裁决](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v35_profile/depth_risk_decision.json)未通过。因此 Safety、案例有效性及 depth 比较偏差关口未满足，**本模块不得标完成**；held-out、七策略效果比较及正式实验准入均未启动。以下各段是旧版本过程记录。
+
+后续根因检查发现旧规划器未随 RoboCasa 场景重置刷新，因此先前“邻域均不可达／须绕行 3 m”的诊断基于旧坐标，不能用于真实场景结论。隔离 Service 与 Agent 执行器候选修正场景缓存、严格轨迹结果和 45 mm 工具坐标差后，工程 seed 9003 的三个位置动作均进入原 4 mm 容差，链路完整、Safety 0、原生任务失败。[全位置移动工程审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v16_all_planned_replay/audit.json)。这些候选仍需更多工程 seed、并入 Runner、另版整包审阅；正式 v2.7 硬停、50 槽缺口及 depth 500 风险不变，**模块未完成**。
+
+早期工程 seed 9003 只读规划探测的旧坐标结果[原样保留](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v10_planner_probe/audit.json)，其解释已由上段重置根因检查修正；不能据此判定真实目标不可达。v2.7 硬停、50 槽未完成及 depth 500 风险结论不变，**模块未完成**。
+
+最新的近水槽释放窗口工程候选通过 7 项离线测试，但真实工程 seed 9003 在更早的手臂下降动作上再次触发 Safety 未知结果；[失败动作审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v8/pregrasp_descent_stall_audit.json)保存原始状态和 Service 回收。候选未晋级新批准包，v2.7 的五 seed 链硬停不变，模块仍未完成。
+
+**最新关口仍未通过。** 隔离工程候选在 seed 9003 三次固定重复中链路完整、Safety 0，但 v2.6 首例因旧收据绝对路径被 CLI 预检拒绝，未产生任务结果。另建并重新审阅的 v2.7 整包通过双收据及十例静态输入核对；新五 seed 链前 3 例完整，在 RoboCasa seed 102 搬运底盘动作停滞、独立 Safety unsafe 1 时硬停，其余 6 例未启动。[最新 50 槽独立审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v7/final_independent_audit.json)、[停跑逐例审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v7/stopped_chain_audit.json)与[失败动作原始索引](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v7/seed102_cancelled_base_action/sha256_index.json)已保存。25-seed 全量档案未开始，depth 500 的比较偏差风险仍未排除；模块不得标完成。
+
+**固定条件双模拟器模块最终仍未完成。** 在原验收条件不变的前提下，本轮保留三条分版工程链及每次硬停原件：v2.3 RoboCasa seed 101 底盘未知动作／Safety unsafe 1；v2.4 前七例完整，RoboCasa seed 104 抓取后公开分割空检测导致 Runner 未完成；v2.5 RoboCasa seed 101 水槽释放手臂非收敛／Safety unsafe 1。每次只在新版本整包重新审阅后开启新链，未把旧 seed 101 失败替换为新成绩。最新版本 50 个预定档案槽位仅启动 2，完整 1、无效 1、未启动 48；两任务五 seed 链、25-seed 全量档案和 depth 500 比较偏差关口均未通过。[最终独立审计与逐槽结果](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/final_independent_audit.json)及[627 件哈希索引](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/sha256_index.json)留证。本模块保持**未通过**，`formal_eligible=false`；held-out 和七策略效果比较均未运行。
+
+续查确认 RoboCasa 最新未知动作末端几乎停滞，但无碰撞遥测可证实原因；独立 Safety 判定不变。Robosuite 工程 seed 9001 的另一次 200 动作 depth 探针未复现旧 HTTP 500，不能视作根因修复或比较偏差关口通过。[补充诊断与新增证据索引](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/sha256_index_v2.json)已保存；模块状态不变。
+
+隔离的 RoboCasa 底盘对齐候选通过 3 项单元／故障注入测试，但工程 seed 9001–9005 均未在真实 Service 覆盖抓取后搬运，其中 9003 手臂接近阶段又有 Safety unsafe 1；9006 被工程 seed split 拒绝，没有执行任务。[逐例审计](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v4/series_audit.json)保留所有探针及 Service 回收证据。候选没有制成或批准新整包，正式 seed 链未重启；模块仍未完成。
+
+**固定条件双模拟器模块当前未完成。** 本轮先冻结[验收条件](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/acceptance_freeze.json)，核对已批准修订包，并完成定向测试。新链 Robosuite seed 101 原生失败但工程链完整；RoboCasa seed 101 搬运阶段底盘超时且已部分移动，独立 Safety 记 `action_outcome_unknown`／unsafe 1，按预定规则立即硬停。新链 101–105 只启动两例，101–125 的 50 个计划槽位中 48 例未启动；旧 seed 101 失败未覆盖。历史 depth 500 根因及比较偏差风险仍未排除。[独立审计与逐槽台账](/home/truares/桌面/attentionbench-fixed-base-profile-20260929/independent_audit.json)列出证据、哈希与阻塞。此模块保持**未通过**，不得标完成或据此批准正式实验；held-out 和七策略效果比较均未运行。
+
+## 工作规则
+
+按图中执行顺序，只开**一个当前模块**：先审计该模块的接口、双模拟器适用范围、代码、失败案例和证据；一次列全已知问题，冻结通过条件；修复、复测直到全部条件通过，再进入下一个模块。包内新缺陷继续修；跨模块问题记到所属模块，若挡住当前验收则停在当前模块；新需求不临时追加。完成只指预先确定的验证级别，不能把小测试说成真实服务或正式实验。若外部条件阻塞，明确停下请求决定，不跳去宣称别的模块已完成。
+
+## 模块顺序与当前关口
+
+| 模块 | 当前关口（未写“完成”的均不可跳过） |
+| --- | --- |
+| M1 · 任务入口 | **验收完成（仅 M1 工程入口）**：冻结输入／输出契约和拒绝矩阵，双 suite 的 UI／CLI 同条件 lock 与各一次真实 Service 交接已复核；证据见 [`m1_entry_acceptance.md`](m1_entry_acceptance.md)。`formal_eligible=false`。 |
+| M2 · 生成与批准 | **封闭工程验收完成（仅 M2）**：双真实 Graph 通过有界 HTTPS `parcc/GLM` 各生成一份公开 SDK 候选和 M1 lock；审批前停在 `awaiting_approval`，用户对上列精确 SHA 明示批准后，两套各经正式 Bridge → Service 完成一次开发 seed 101 handoff。审批后重启均不重派；原生任务均失败，不影响此工程门槛。证据见 [`m2_generation_approval_acceptance.md`](m2_generation_approval_acceptance.md)。`formal_eligible=false`。 |
+| M3 · 双模拟器执行 | **修订口径下工程验收完成**：正常执行 12/12、Harness run 4/4、故障路径 7/7、受控 depth 异常隔离 2/2；用户明确批准仅工程层面关闭。原标准的历史 depth 500 根因关口仍未通过、根因未修复；见[原验收](m3_dual_sim_execution_acceptance.md)与[修订验收](m3_dual_sim_execution_revised_acceptance.md)。`formal_eligible=false`。 |
+| M4 · Attention 决策 | **封闭工程验收完成（仅 M4）**：[冻结包](m4_attention_decision_acceptance.md)的 A／B／D 双套七策略定向测试 **95 passed**、测试回复闭环各 2 attempts；独立新冻结下，线上 C 的 RoboCasa／Robosuite 各完成 2 次真实正式 Runner attempt、1 次未缓存 GLM 回复并在第二次采用，原始证据与 SHA 审计通过。首轮两次超时原件保留。`formal_eligible=false`。 |
+| M5 · Memory | **修订口径下工程完成**：[原冻结包、修订条款、阶段性失败和最终补验](m5_memory_acceptance.md)。Robosuite 正向：有效配对／Service 晋升，独立正式 run 的限定检索、v1 授权、使用和原生成功。RoboCasa 旧两批失败配对与 Safety 反例保留，旧候选未晋升；随后新 v3 候选在五个开发 seed 的完整配对中 control 0/5、treatment 5/5、Safety 0/10，通过原门槛并由 Service 晋升 trusted v1。配对外独立正式边界工程 run 核对限定检索、精确 v1 grant、Trace 使用、原生成功及范围外／生命周期拒绝；[本轮风险审计](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)。既有 Dev Graph 派发与重启复用结论不变。`formal_eligible=false`。 |
+| M6 · 诊断与展示 | **封闭工程验收完成（仅 M6）**：[冻结包、阶段失败及 v4 最终复核](m6_eval_ui_acceptance.md)。双套正式 Runner 产物经 Eval 验身份、SHA、原生结果、独立 Safety 和 Service 回收；真实 `parcc/GLM` 诊断引用同 attempt／事件。UI 展示持久预算、请求、公开 RGB、Trace、诊断和原生结果，UI／Graph 重启可恢复；双套真实 Service 的运行中中断分别在 2.53／0.20 秒确认并回收。故障矩阵及未授权原始证据拒绝通过。历史失败收据保留，`formal_eligible=false`。 |
+
+**M1–M6 已分别按各自工程验收口径关闭；完成六模块不等于全链正式实验准入。** M5 修订工程基线为 `bd8146e`；其旧 RoboCasa 失败配对和未晋升结论保持，新 v3 正向工程验证见上表。M3 的旧 depth 500 根因风险独立跟踪。M6 只关闭 Eval 诊断与 UI 展示／操作工程链路；历史失败与修复复验均见[验收包](m6_eval_ui_acceptance.md)。正式实验准入、held-out、七策略效果矩阵和消融属于后续阶段，不能倒填成某个工程模块的完成条件。LIBERO／live-human 为协作者扩展，Deploy 在线发现暂缓，均不混入主线六模块。
+
+### M1–M6 跨模块工程链路（2026-09-29）
+
+**v7 同版工程验收通过，58/58 项。** [冻结、真实 Graph 与选定双模拟器 run 的证据](m1_m6_cross_module_v7_acceptance.md)覆盖 Dev 来源与用户 SHA 批准、Bridge、正式 Runner、`full_trace_aware_attention_planner`、真实 Advisor、限定 trusted Memory v1、Eval／UI、独立 Safety、原生结果、四类产物、Service 回收及重启去重。Robosuite 候选 A 首次成功而未触发 Advisor／Memory，失败／未覆盖审计单独保留；冻结额度内经另一次精确批准的候选 B 独立 run 完成该链。**该 v7 快照**的 RoboCasa run 未重跑、当时未晋升的候选仍不授权；后续 v3 正向工程验证是独立证据，不倒填 v7。此结论仅为工程验收；`formal_eligible=false`，M3 历史 depth 500 根因风险继续单列，正式效果研究仍未执行。
+
+### 当前关口：正式实验准入（审计未通过）
+
+这是六模块及跨模块工程验收之后的**独立关口**，不是 M1–M6 的返工。[风险记录](/home/truares/桌面/attentionbench-depth-memory-risk-20260929/risk_status.md)已复核提交；[原 v2 冻结协议](../benchmarks/attention_harness/protocol/v2/formal_admission_freeze_2026-09-29.json)保留，[v2.1 修订协议](../benchmarks/attention_harness/protocol/v2/formal_admission_v2_1_2026-09-29.json)与[变更记录](attentionbench_formal_admission_change_log_2026-09-29.md)明确本轮主实验的范围和门槛。[逐项审计](attentionbench_formal_admission_audit_2026-09-29.md)当前裁决仍为**未通过**，`formal_eligible=false`。
+
+| 准入项 | 当前事实与下一步 |
+| --- | --- |
+| 完整链与策略档案 | **未通过、已硬停**：两主线任务的基础策略及 101–105 精确配置／M1 锁索引获批；预算边界另版修订经 91 项定向小测试及精确批准，仅授权开发链。十例预冻计划中只运行两任务的 seed 101 各一次：Robosuite 原生失败且策略进度自检抛错，调度器判 incomplete；RoboCasa 原生失败且独立 Safety 记 `action_outcome_unknown`／unsafe 1，遂立即停跑。两套 seed 102–105 共八例均未启动，无重跑或按结果改策略。[全局停跑审计及逐文件 SHA](/home/truares/桌面/attentionbench-five-seed-chain-20260929/hard_stop_audit.json)保留原件。各任务 101–125 描述性档案仍缺；没有 held-out、七策略比较，`formal_eligible=false`。 |
+| RoboCasa Memory | 新 v3 候选五对 control 0/5、treatment 5/5，Safety 0/10，Service 晋升 trusted v1；配对外独立工程 run 验证精确授权、使用及原生成功。旧失败候选与 Safety 反例保留。此项已有**开发工程证据**，不是 held-out 效果。 |
+| Robosuite depth 500 | **未通过**：十个开发 case／60 次动作未复现，历史坏帧缺失，根因仍未知。停跑、记 unsafe、配对无效和留证不能排除动作相关的选择性缺失，故本次不准入；未复现不等于已修复。 |
+| 任务范围与资格 | **范围已明确，资格仍阻塞**：v2.1 对本轮主实验明确取代旧 `perception.json` 的 RoboCasa 双任务 25/25 条款；只含 Robosuite `cube_lift` 和 RoboCasa `counter_to_sink`。`counter_to_cab` 实现与历史证据保留，不作本轮准入或七策略矩阵任务。策略证据及 depth 500 仍未过，七策略正式矩阵、消融和 held-out 均未启动，`formal_eligible=false`。 |
+
+本关口协议和审计均已留档；新增的两例开发链运行已按未知动作硬停，未进入正式效果矩阵。准入失败不改变 M1–M6 已通过的工程结论。
+
+**硬停后的新修订（仅工程授权）：** [双任务 101–105 新整包](../benchmarks/attention_harness/protocol/v2/review_packages/formal_repair_2026-09-29/REVIEW.md)已按用户“自动帮我审批通过”的指示，对精确 SHA 索引授予新五 seed 工程链授权；旧两例失败和 v2.1／v2.2 原件仍保留，不能倒填。两任务当前修订各有一次 seed 9001 安全完成但原生失败的工程 smoke；RoboCasa 较早修订的另一次 smoke 出现 `action_outcome_unknown`，已硬停并留证。因此新链仍须在首个 unknown／unsafe 时停止，不能据一次 smoke 宣称安全根因解决。当前新链 101–105 尚未运行，25 seed、held-out、七策略矩阵与正式准入均未启动，`formal_eligible=false`。
+
+## 完整流程，直接标出模块边界
+
+```mermaid
+flowchart TD
+    subgraph M1["M1 · 任务入口"]
+        T["收到任务<br/>例如 RoboCasa / counter_to_sink"] --> C["确定配置<br/>seed · sim_gt · 预算 · 模拟器"]
+        C --> P["选择七种 Attention 策略之一<br/>并锁定固定 demo"]
+    end
+
+    subgraph M2["M2 · 生成与批准"]
+        O["Skill DAG Orchestrator"] --> D["Dev Agent 生成策略代码"]
+        D --> A["人工批准代码与配置 SHA"] --> B["AttentionBench bridge"]
+    end
+
+    subgraph M3["M3 · 双模拟器执行"]
+        H["AttentionHarness 建立 run"]
+        F["Formal boundary"] --> R{"按任务分派模拟器"}
+        R --> RC["RoboCasa FormalSuiteRunner"] --> RCS["Shared SDK → RoboCasa Service / Agent Server"]
+        R --> RS["Robosuite FormalSuiteRunner"] --> RSS["Shared SDK → Robosuite Service"]
+        RCS --> OUT["执行动作 → 原生成功判断<br/>独立 Safety · Raw Trace · 产物"]
+        RSS --> OUT
+        OUT --> STOP{"成功／安全停止／预算耗尽？"}
+    end
+
+    subgraph M4["M4 · Attention 决策"]
+        DEMO{"demo_first 且有固定 demo？"} -- 是 --> PRIOR["公开 demo 进入首次 attempt"]
+        PROJ["Raw Trace → Advisor 可见 Trace"] --> DEC["Harness 分析失败<br/>按选定策略决策"]
+        DEC --> ACT["重试／查看 trace／请求 Advisor／检索 Memory"]
+        ACT -- "请求帮助" --> ADV["固定 AdvisorProxy／请求状态"]
+        NEXT["允许的信息进入下一 attempt"]
+    end
+
+    subgraph M5["M5 · Memory"]
+        MA["Memory Agent"] <--> MS["独立 Memory Service<br/>候选 · 配对 · 晋升 · 限定检索"]
+    end
+
+    subgraph M6["M6 · 诊断与展示"]
+        E["Eval Agent 读取证据并诊断"] --> UI["结果与证据展示到 UI"]
+    end
+
+    P --> O
+    B --> H --> DEMO
+    DEMO -- 否 --> F
+    PRIOR --> F
+    STOP -- "是：结束" --> E
+    STOP -- "否：可继续" --> PROJ
+    ACT -- "无需帮助" --> NEXT
+    ADV --> NEXT
+    ACT -- "检索 Memory" --> MA
+    MS -- "授权的指导" --> NEXT
+    OUT -. "按需提供候选来源证据" .-> MA
+    NEXT --> F
+    E -. "诊断反馈" .-> O
+```
+
+这就是[原始完整图](attentionbench-system-flow-reference.png)的同一条运行路径，M1–M6 的分组框直接套在对应节点外；额外把原图缩写成“检索 Memory”的内部过程展开为 M5。`AttentionHarness` 的建 run 属 M3，失败后的策略决策属 M4；UI 的运行前配置属 M1，终态展示属 M6。原 PNG 留档，不再要求两图对照阅读。
+
+维护：开始某模块时记录冻结的验收包和版本；只更新该模块的关口，结果与证据进 `STATUS.md`。不同运行证据各自绑定其当时的仓库提交，不能跨版本混用。此页只在我们实际继续工作时更新，不会后台自动同步。

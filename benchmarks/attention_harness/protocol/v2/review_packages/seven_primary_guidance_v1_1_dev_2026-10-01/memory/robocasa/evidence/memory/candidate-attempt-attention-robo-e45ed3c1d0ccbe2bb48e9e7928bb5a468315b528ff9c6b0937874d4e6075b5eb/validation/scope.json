@@ -1,0 +1,10 @@
+{
+  "supported_variations": [
+    {
+      "camera_config_id": "camera:base+wrist",
+      "object_set_id": "objects:cda92955890a16bc8537",
+      "scene_id": "scene:29f6ddc71995db3e0fd6",
+      "task_variant_id": "task:boxed_drink"
+    }
+  ]
+}

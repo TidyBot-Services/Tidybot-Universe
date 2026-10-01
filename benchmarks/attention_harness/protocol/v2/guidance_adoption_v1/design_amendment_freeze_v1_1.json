@@ -1,0 +1,10 @@
+{
+  "schema": "attentionbench.guidance-adoption-design-amendment-freeze.v1",
+  "frozen_before_implementation": true,
+  "frozen_at_epoch": 1790741222.6887336,
+  "amendment_sha256": "11fd78690848fa5ed7ea48866bcf04aee3eea6ae5dac1dad494f51441dee871e",
+  "parent_design_sha256": "2cda4682340451446e9204d04d5b25f72a12be5e345b9af83767e48a9688a09c",
+  "remaining_live_attempts": 2,
+  "attempt_cap_unchanged": 20,
+  "external_approval": "pending"
+}

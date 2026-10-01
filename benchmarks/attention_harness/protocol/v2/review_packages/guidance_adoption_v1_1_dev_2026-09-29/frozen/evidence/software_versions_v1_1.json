@@ -1,0 +1,37 @@
+{
+  "agent_service": {
+    "clean": true,
+    "commit": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+    "path": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5"
+  },
+  "maniskill_service": {
+    "clean": true,
+    "commit": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+    "path": "/home/truares/桌面/maniskill_sim-attention-guard-v5"
+  },
+  "memory_service": {
+    "clean": true,
+    "commit": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f",
+    "path": "/home/truares/桌面/attention_memory_service"
+  },
+  "robosuite_service": {
+    "clean": true,
+    "commit": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+    "path": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering"
+  },
+  "task_service": {
+    "clean": true,
+    "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+  },
+  "universe": {
+    "branch": "feature/attention-native-robosuite",
+    "exact_original_source_lock": "protected_before.json",
+    "new_policy_versions": {
+      "robocasa": "v1.1",
+      "robosuite": "v1"
+    },
+    "new_runtime_changes": "two standalone policies, bounded driver/audit and tests only; frozen original runtime unchanged",
+    "runtime_base_commit": "55d75ab55ea9aaa48ee86a2ce9fed953562f4b1d"
+  }
+}

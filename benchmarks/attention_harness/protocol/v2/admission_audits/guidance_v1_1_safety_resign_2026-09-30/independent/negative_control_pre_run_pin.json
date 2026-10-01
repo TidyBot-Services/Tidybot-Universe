@@ -1,0 +1,190 @@
+{
+  "approved": true,
+  "audit_script_sha256": "df3f07ea6429707883a880e3661d8dcf2ce14a46aba9785e182f150c437b88a1",
+  "checks": [
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_runner_boundary.py",
+      "sha256": "2a671ac6d87367b9de74276b78d4b1d4a069cb1a595e89a24a9b38beaa16046e"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/REVIEW.md",
+      "sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/final_policies/robocasa_counter_to_sink.py",
+      "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/inputs/robocasa_config.json",
+      "sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/inputs/robocasa_memory_fixture.json",
+      "sha256": "928131f792044f3b6560cc3b8afffccd9cefda5aff5330e58c068a1c9b36ca60"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/operator_approval.json",
+      "sha256": "3ac6bd9dc1c952ebbe6c0a69b3c4b9a9ac69a2ebee21f47350c0b9636fbeebc2"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/sha256_manifest.json",
+      "sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/public_station.py",
+      "sha256": "04806cb64613e2c6a0c26e97fa67865e7c35f796fd8ea7816af9c4027f8b5b16"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/agent_actions.py",
+      "sha256": "3d5844f9855771041a3e6bab328aef034e39d6845a7f011b856d38ef9bc01eea"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/controlled_negative.py",
+      "sha256": "9a0cdb7b67c1a0eb6f93133a92d14d3b347fe173d73f4c7bf827747a19439414"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/formal_runner.py",
+      "sha256": "e2feb34de8f1d76d4754b083c8a42dda8fdf63d91ab324aabc6ff33b9aa60ddf"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/formal_services.py",
+      "sha256": "c3f7fe9203b3eb0a7d560eaed7b5f05eff41d3f40b3f11f0a854396b8c97d34e"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa_native/safety_monitor.py",
+      "sha256": "4fa8db76d38552561f93e5ba03354cb666d42dcbd722304b64d877c61a8c8fa5"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robosuite_memory/formal_policy_worker.py",
+      "sha256": "fc2c24d2a81611b117f31cefae974cf781f5f80425a7c43ead66767c1d61db44"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robosuite_memory/formal_sandbox.py",
+      "sha256": "e186c3610a23ce44aca5b30d2551a38f090642d765fbd72dfc293d0131b8e251"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/guidance_frozen_verification.json",
+      "sha256": "97b7023de7f42505c7d16e1833c4f5a3ca21fe6f6a2f4f59dbd0dd7fef8fa347"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/audit_negative_control.py",
+      "sha256": "df3f07ea6429707883a880e3661d8dcf2ce14a46aba9785e182f150c437b88a1"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/pre_run_pin.py",
+      "sha256": "6f2ba9c983091df5a8565da48a04f5c9db2cb7ca77413ebbad10101fd1ee10b7"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/negative_control_guidance.py",
+      "sha256": "3e5a410a1bd50880f0b98bd43c21ae71983b0e519fc40ad846fa6ce7d901c45d"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/protected_baseline.json",
+      "sha256": "c274f95384eb7cf59b8786117a9c4e7ad222ef13e99fdf6206f1ff82f56400e2"
+    },
+    {
+      "check": "pinned source/input SHA",
+      "pass": true,
+      "path": "/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/tests_identity_guidance_safety.txt",
+      "sha256": "0d57c87c708b5a1bea27082187a9443defd993ca4de3b8b0fed0c01273272520"
+    },
+    {
+      "check": "all prior evidence and runtime files unchanged",
+      "checked_files": 1434,
+      "drift": [],
+      "pass": true
+    },
+    {
+      "check": "clean exact Service commit",
+      "commit": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+      "pass": true,
+      "path": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5",
+      "status": ""
+    },
+    {
+      "check": "clean exact Service commit",
+      "commit": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+      "pass": true,
+      "path": "/home/truares/桌面/maniskill_sim-attention-guard-v5",
+      "status": ""
+    },
+    {
+      "check": "clean exact Service commit",
+      "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+      "pass": true,
+      "path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks",
+      "status": ""
+    },
+    {
+      "check": "original station publisher and reader accept corrected paired identity",
+      "pass": true
+    },
+    {
+      "check": "exact approved v1.1 dev policy and public input fixture",
+      "pass": true
+    },
+    {
+      "check": "exactly one separate attempt; prohibited executions zero",
+      "pass": true
+    },
+    {
+      "check": "original timing thresholds retained",
+      "pass": true
+    },
+    {
+      "check": "bounded case fits remaining deadline",
+      "pass": true
+    },
+    {
+      "check": "no control launched yet",
+      "pass": true
+    }
+  ],
+  "plan_sha256": "50dabf340f037264c76dc3e6a388221da99ccea785fe23c4c9ac5b09c7216fb1",
+  "preflight_script_sha256": "6f2ba9c983091df5a8565da48a04f5c9db2cb7ca77413ebbad10101fd1ee10b7",
+  "reviewer_id": "artifact_preflight_verifier",
+  "schema_version": "attentionbench.current-C-negative-pre-run-pin.v3",
+  "scope": "Approval of identity and bounded test only; no post-run gate conclusion.",
+  "script_sha256": "3e5a410a1bd50880f0b98bd43c21ae71983b0e519fc40ad846fa6ce7d901c45d",
+  "signed_at_utc": "2026-09-30T15:19:52.482116+00:00"
+}

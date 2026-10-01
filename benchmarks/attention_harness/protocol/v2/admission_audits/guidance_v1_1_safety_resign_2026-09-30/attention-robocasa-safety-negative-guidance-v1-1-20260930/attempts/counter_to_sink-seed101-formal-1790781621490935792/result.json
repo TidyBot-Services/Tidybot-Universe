@@ -1,0 +1,49 @@
+{
+  "artifact_dir": "/home/truares/\u684c\u9762/attentionbench-guidance-safety-resign-20260930/attention-robocasa-safety-negative-guidance-v1-1-20260930/attempts/counter_to_sink-seed101-formal-1790781621490935792",
+  "artifacts": {
+    "native_result": {
+      "sha256": "adfb02328d95ecfa0cfec1cf9a2e571902ab5d18c8a295e0b334741e8c66152d",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-guidance-safety-resign-20260930/attention-robocasa-safety-negative-guidance-v1-1-20260930/attempts/counter_to_sink-seed101-formal-1790781621490935792/native_result.json"
+    },
+    "safety": {
+      "sha256": "82a416540f1d5d55beeaf323f5cf4d8f0bf8bc5938c899806a5b34b1f1d5d051",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-guidance-safety-resign-20260930/attention-robocasa-safety-negative-guidance-v1-1-20260930/attempts/counter_to_sink-seed101-formal-1790781621490935792/safety.json"
+    },
+    "sandbox_receipt": {
+      "sha256": "673753d00f07f2da607d60e3ec801f8f454c792b33c3a2b9b4a64e8339604460",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-guidance-safety-resign-20260930/attention-robocasa-safety-negative-guidance-v1-1-20260930/attempts/counter_to_sink-seed101-formal-1790781621490935792/sandbox_receipt.json"
+    },
+    "trace": {
+      "sha256": "0d45bcbaa894c8234589e73cd7afe56bc6b40bf9d7f3106bc98ed5dbf9c8eef7",
+      "uri": "/home/truares/\u684c\u9762/attentionbench-guidance-safety-resign-20260930/attention-robocasa-safety-negative-guidance-v1-1-20260930/attempts/counter_to_sink-seed101-formal-1790781621490935792/trace.json"
+    }
+  },
+  "attempt_id": "attempt:attention-robocasa-safety-negative-guidance-v1-1-20260930:0",
+  "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+  "entry_lock": null,
+  "error": "RuntimeError: SafetyViolation: independent safety monitor: action_outcome_unknown",
+  "formal_eligible": false,
+  "native_evaluator": {
+    "evaluated": true,
+    "native_success": false
+  },
+  "native_success": false,
+  "policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+  "run_id": "run:attention-robocasa-safety-negative-guidance-v1-1-20260930",
+  "sandbox": {
+    "action_cancellation_verified": true,
+    "deadline_enforced": true,
+    "process_isolated": true,
+    "sdk_rpc_only": true
+  },
+  "schema_version": "attentionbench.formal-runner-result.v1",
+  "seed": 101,
+  "service_revision": {
+    "agent": "1a4b0953b8380378a58102317a1cee48f57a3dd0",
+    "sim": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0",
+    "task": "b18bbf1585c42e370ae45ababdddad700cc2c71d"
+  },
+  "status": "failed",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

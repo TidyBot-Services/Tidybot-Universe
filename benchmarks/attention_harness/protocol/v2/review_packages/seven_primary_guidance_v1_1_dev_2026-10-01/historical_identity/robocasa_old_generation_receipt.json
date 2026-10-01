@@ -1,0 +1,28 @@
+{
+  "counts_for_chain_or_profile": false,
+  "engineering_evidence": {
+    "depth_bias_design_audit_sha256": "c2efc0ba6ea0e198d78c72d1058716d23b562d3abb8808c29aa197ad7841e6b1",
+    "robocasa_six_blocker_audit_sha256": "ea1e02cf251bfdfa2cc0eb16aa24781f58589f3245a620566b7022dc1f903876",
+    "v100_ack_repetitions": "72dd7cdaf79b56c256ea3b7e3dc809fb2fc5d29d9d8c149822cf03b1cc91da3d",
+    "v101_six_seeds": "3f7f8912ed7ac9b2cf691a09a14455b174c970334fd5f7ee241b3ae215b78ad4",
+    "v105_seed116_forensics": "9de2d7df444495ede29d5ab73c4b932ce27b8af7b05436ff4630988439999fb8",
+    "v106_plan_mismatch": "41d70da2990f8c07555c0bcc2fb18114805bda3de295ff6f870453854a1b8600",
+    "v107_fixture_guard": "d3d85c5d4f8eae82361e47a946619f348040c5984777e4c42ff449b3e8e9f4f3",
+    "v99_ack_diagnostics": "147ac1df4fb4d4c20741ed795cc78093049d86cc063700443e4e4bef28edf000"
+  },
+  "frozen_source_relocation": {
+    "control_bytes_changed": false,
+    "original_policy": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-repair-v5/benchmarks/attention_harness/protocol/v2/review_packages/formal_repair_v5_2026-09-30/robocasa_counter_to_sink/policy.py",
+      "sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780"
+    },
+    "original_receipt": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-repair-v5/benchmarks/attention_harness/protocol/v2/review_packages/formal_repair_v5_2026-09-30/robocasa_counter_to_sink/generation_receipt.json",
+      "sha256": "11e212bda63331603d3ce60f9f65030a814a56080acf03cd8ad8eeccf1958be0"
+    }
+  },
+  "hypothesis": "Public fixed-base policy with exact target instance and fail-closed action outcomes.",
+  "schema_version": "attentionbench.formal-base-repair-generation-receipt.v5",
+  "sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/base/robocasa_counter_to_sink/policy.py"
+}

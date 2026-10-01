@@ -1,0 +1,21 @@
+# 新 guidance v1.1 M1/launch 开发身份冻结 review
+
+本包重新绑定两任务、每任务25个开发seed（101–125）、每seed七条件，共350份M1锁与350份launch。生成与校验文件不是运行效果矩阵；executed_slots=0，execution_authorized=false。
+
+精确控制策略：R `405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2`；C `c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7`。两文件逐字节复制自已批准guidance adoption v1.1，原REVIEW SHA `090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7`、批准与manifest均保持原样。
+
+350份identity仅改变 `approved_policy_sha256` 与原inspect_formal_entry计算的 `sha256`；配置、Memory合同、demo manifest、retry k=2、随机quota=1、预算、初态、权限和统计规则逐字节保持原定义。新路径仅用于新副本的code/config/条件输入/generation receipt；Memory合同中的authority/evidence原路径保留并由SHA保护。无Memory范围扩大，仅101/103/105原范围，其他22不扩大。
+
+新generation receipt明确是已批准的指导控制修订；保存旧生成及review lineage，provider调用0。不是重新让模型生成，也不把旧工程结果归到新代码。398份原runtime源码逐字节不变；当前Safety请求helper另绑定精确字节SHA。runtime锁依据原398字节+当前helper，base HEAD与文档/旧交付待提交状态如实记录，不声称整个工作区干净。
+
+全量机械review350/350 PASS：原CLI参数声明解析，原M1重新计算，原request.validate接受新锁、拒绝旧锁；每份launch期望identity、receipt、Service根和Python目标字节SHA对齐。代码未修改任何validator。专项篡改测试11 passed，拒绝旧策略SHA、旧entry、改代码/配置/条件、held-out、缺失single-call、改Memory及receipt路径不匹配；只读校验没有worker或Service。第一次测试5项因预期错误文案/异常类型不符而失败（拒绝本身有效），原输出保留并修正断言。生成末尾复制工具缺目录的失败日志亦保留，原350身份未重生成。
+
+审查角色为作者提供的机械review，不冒充外部独立审查员。批准权来自本轮用户明确要求“生成新身份→冻结+review→批准→重签准入”的直接goal，执行后sidecar绑定本REVIEW及完整manifest精确SHA；不会伪造另一条人类事后确认SHA原话。先前guidance批准仅用于代码来源，新身份批准另由本轮operator_approval.json记录。
+
+复用证据：本轮保留此前六关口和当前v1.1 Safety PASS；无指导AST桥PASS，上轮总体SHA `a68f8fec50b9de3463b5e5612133fe1810428bf6f07b869324607c9fa7da3b9c`、负控SHA `59ab3797ecd3557cc933c9c357575c113ee80a665467c2c8b8d66179ee651ce6` 不改。既有检测0.214ms、worker停1.824ms、第二动作0、双回收0.524s；本轮没有负控或六关口重跑。
+
+RoboCasa“动作改变但成功未改善”、旧Memory未采纳和历史depth根因unknown保留，不增加原生成功率或Memory覆盖门槛。可解性与效果证据仍按原限定范围解释。旧七条件包、旧失败与旧准入审计均不覆盖。
+
+本批准仅限新身份开发冻结包，不授权350格效果、held-out、任何效果矩阵、正式效果比较、机器人/Service运行或其他版本。总体formal_eligible须由实际身份review、operator批准及复用关口完整性联合推导；批准和准入都不等于执行许可。90分钟内收尾，不自动下一轮。
+
+逐文件SHA见sha256_manifest.json；逐entry新旧差异见identity_rebind_index.json；全量review与测试见review_evidence/。本REVIEW是sidecar批准前的冻结审查内容，后续只新增审批记录，不改写冻结载荷。

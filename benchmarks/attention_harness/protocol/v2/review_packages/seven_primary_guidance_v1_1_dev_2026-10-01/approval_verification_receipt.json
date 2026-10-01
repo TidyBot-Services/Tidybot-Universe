@@ -1,0 +1,40 @@
+{
+  "Service_starts": 0,
+  "approval_required": true,
+  "document_correction_preapproval_verification": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/document_correction_preapproval_verification.json",
+    "sha256": "ddaec2308dbb1e6805d067a2c0b0e2f5ddd29a9d33bda768bab1027140b0ad5b"
+  },
+  "entries": 350,
+  "exception_authority": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/user_clarifications_verbatim.json",
+    "sha256": "5d16ed82b15ee004bdfe2d1526cabf2166dac9fb32e75f749612abfb9c7202a4"
+  },
+  "files": 1290,
+  "issues": [
+    {
+      "check": "unchanged condition and Memory authority bytes",
+      "pass": false
+    }
+  ],
+  "manifest_sha256": "40bbbd88a966a43f6b66245b20f51e0ff767571af2767e25fcfad96c552350c7",
+  "operator_approval_sha256": "f635f6b94f31eb700c5d8f7f76dc51fe3a4853d8af2c26b9fab5f16a0f8b642e",
+  "pass": false,
+  "previous_receipt": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/originals/approval_verification_receipt.json",
+    "sha256": "3562b47a1e7968baafec340c350451d8a7827c2584c7b028e56247712387d44d"
+  },
+  "process_exit_code": 1,
+  "production_preflight_and_launch_review_pass": false,
+  "raw_verify_report": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/verify_after_refreeze.json",
+    "sha256": "466b9db71ed80f6a093efae6a779121bfba03a0cae499498b42b297036fd8e36"
+  },
+  "result_scope": "original full verifier; FAIL is preserved, not relabeled as PASS",
+  "review_sha256": "a83605415c146694d3c1b2b4116805db51477253f07ca396edd53450b3558c47",
+  "reviewer_role": "author-produced full mechanical review; original user goal supplies approval authority",
+  "robot_runs": 0,
+  "schema": "attentionbench.guidance-identity-freeze-verification.v1",
+  "verified_at_utc": "2026-09-30T20:39:05.158780+00:00",
+  "verifier_sha256": "0e92884f66855dd38a8b12a1b6f2d5ab96f0fc802cc245f4aa1c4c6b32f0bf20"
+}

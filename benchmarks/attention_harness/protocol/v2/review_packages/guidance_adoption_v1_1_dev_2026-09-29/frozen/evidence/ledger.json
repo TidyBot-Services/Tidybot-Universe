@@ -1,0 +1,794 @@
+{
+  "attempt_cap": 20,
+  "formal_eligible": false,
+  "hard_stopped": false,
+  "rows": [
+    {
+      "arm": "old-baseline",
+      "artifacts": {
+        "native_result": {
+          "sha256": "60cf5f3c71c0a6e4b73611215534465abac75358c2c5f6ac338d845efe3e6cbe",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/native_result.json"
+        },
+        "safety": {
+          "sha256": "69304cd96c257d3c6b1838a2bb1767119e7b61d3a6eb96a6f58b8ffa502bc44b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "40720052209c6247e1c24c5db1e04980e37657f940a880c0b156f559810cb754",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "b88eac648ec5146cb3f32aa18a1b1a4674997cd6f2364ee379548cbc8624889b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/trace.json"
+        }
+      },
+      "attention_input": {},
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740665.4722931,
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "id": "adoption-v1-robosuite-old-baseline",
+      "native_success": false,
+      "policy_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/result.json",
+      "result_sha256": "92a11243fcce78d7887f1037376e5df41bea679c6fdc218b809a9d10c8506d58",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790740662.629301,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "no-guidance",
+      "artifacts": {
+        "native_result": {
+          "sha256": "b03d8ff51482dd43ad0f6313a6c9fd68a896c7c0de5c0bee585631d70e4bca19",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/native_result.json"
+        },
+        "safety": {
+          "sha256": "c0a3be7da577140229a98efcee1e76ecb1ffb8a9616d7b1ada5dbae506630e3b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "00d129d6db8b66d3db0c74d91e7a8ca8f7b4616c00e7bfa80767b8d6c1054c0f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "498f541b8b9dbac5c59430117d83e9ab6b264f05cbdee720b96d6079af24f34b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/trace.json"
+        }
+      },
+      "attention_input": {},
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740668.2337446,
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "id": "adoption-v1-robosuite-no-guidance",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/result.json",
+      "result_sha256": "6e21ea7d2a4bffa547ea7cd71928652660a6aa77ddafaa563079afe7356d621d",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790740665.4725156,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "hint",
+      "artifacts": {
+        "native_result": {
+          "sha256": "9e748cc57aa0219b60bc557fb9b0f09455cb8e3c15c0bacdaa4833d5555e371c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/native_result.json"
+        },
+        "safety": {
+          "sha256": "70890defef231e6d664aab74f1fa2fea8d9d020feecf3d2510332bc25cb729bd",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "0001b939b8a53d265188ce63dbf29ec46e38f3ddbce734936d4bc73b75076192",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "ef558c89e5aa0cbfbd2fe4b655fb4510e199834bcda87f7d6c2a0968a16cc8ec",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/trace.json"
+        }
+      },
+      "attention_input": {
+        "advisor_guidance": "AB_CONTROL_V1 grasp_offset_m=.005;approach_tolerance_m=.004;close_settle_steps=30;"
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740671.5276337,
+      "guidance_content_sha256": "ae6e83ce08319dcdf33ae611494e3821d4b71e75b80961dc81e6641341d584a3",
+      "id": "adoption-v1-robosuite-hint",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/result.json",
+      "result_sha256": "c777cbded5d9c5cd4d77dccb6b4735641357f60df2f05c2b66e2daed7eaae076",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790740668.2341578,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "content-ablation",
+      "artifacts": {
+        "native_result": {
+          "sha256": "f2d78dc6168aed799a9a79bef535d0399b034172517b2c83aff6731ac0091652",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/native_result.json"
+        },
+        "safety": {
+          "sha256": "547cba8ca7ddf70c965f0dd777e9ecfc614f3915f0541a31b3d8860215e896fa",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "1333749b85e0002ed61167526d549ea75520e87f9b4abf2f1adc0fb29549ae22",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "b1055a4405803df61b9b51323c4bb85c8fbb6569d0b148e098e1511f3b5d22cd",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/trace.json"
+        }
+      },
+      "attention_input": {
+        "advisor_guidance": "Review trace and retry."
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740674.3496187,
+      "guidance_content_sha256": "f52ab148fdca07cb926b303d87a21646e9030f815a1dfba5fc6b0baa1a898731",
+      "id": "adoption-v1-robosuite-content-ablation",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/result.json",
+      "result_sha256": "646e5c21b7bc3edb5eb04fd3d36999ea322419b0ed09b69f98fb0b040f2b9947",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790740671.5278928,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "demo",
+      "artifacts": {
+        "native_result": {
+          "sha256": "5f6e806d8818184b0e03f582644eaafc44acf82bcca80032247b34af55b92d2c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/native_result.json"
+        },
+        "safety": {
+          "sha256": "a828d9637524706ee8bbb6cc0176a5fb6e8926ad9f2ec0cb5c8399534c2eca78",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "2f1152711c4f10890fae348ae560b300637ff56ef90954d10d401b758fcdc73c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "3ac2bc017fe167eb94b13f719c6e2002254e41403c6891e4920a6432ba040306",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/trace.json"
+        }
+      },
+      "attention_input": {
+        "demo_prior": "{\"assets\":[{\"kind\":\"action_trajectory\",\"path\":\"/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/inputs/robosuite_authored_demo_actions.json\",\"sha256\":\"3412c333fcc3568e23d4e8b9a6a7ebe1e220d6e6366092c9a22cec7a91339317\",\"steps\":[{\"arguments\":{\"settle_steps\":10},\"operation\":\"sdk.gripper.open\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.00887208275840315,\"y\":-0.019086455840395283,\"z\":0.9500569484529563},\"operation\":\"sdk.arm.move_to_position\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.008872082758403153,\"y\":-0.01908645584039528,\"z\":0.8350569484529563},\"operation\":\"sdk.arm.move_to_position\"},{\"arguments\":{\"settle_steps\":30},\"operation\":\"sdk.gripper.close\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.008872082758403153,\"y\":-0.01908645584039528,\"z\":1.0300569484529563},\"operation\":\"sdk.arm.move_to_position\"}]}],\"schema_version\":\"attentionbench.public-demo.v1\"}"
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740677.6593099,
+      "guidance_content_sha256": "a9b2c1b328e742dcee7bb555dbfc4656fbb0e3406e2b999a64b3faaf507bb2a8",
+      "id": "adoption-v1-robosuite-demo",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/result.json",
+      "result_sha256": "9f8d705f2987763ade6fa285dada5f438265dedc64027127c20b7e9cac2e0b1e",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790740674.3501148,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "memory",
+      "artifacts": {
+        "native_result": {
+          "sha256": "3ac150fdd174615048a0714439264e37cb4ef012210d3e4666f985d715ba859e",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/native_result.json"
+        },
+        "safety": {
+          "sha256": "9a91ec8358801580655fe659f11bd61b9e2e91660e73c8d3afef6ddc453555e2",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "0020cbdbaaca88997397ff4cdb97db651e5dbec835726eb214aa369c92fccb16",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "1f054502a74d4b2d7d50f608613374ab45c3eef87408ba473a43f9a623099db6",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/trace.json"
+        }
+      },
+      "attention_input": {
+        "memory_guidance": {
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0": "Use the object poses returned by sensors.find_objects() (permitted sim_gt evidence) to locate the cube. Then, using sensors.get_observation() for the current end-effector position (robot0_eef_pos) and orientation (robot0_eef_quat): (1) move the end-effector above the cube, (2) lower it to the cube's grasp height, (3) close the gripper with gripper.close() and allow it to settle, and (4) move the end-effector upward to lift the cube off the table. Keep the gripper open during approach as you already do, and verify the cube's position changes after lifting by calling find_objects() again."
+        },
+        "memory_ids_to_use": [
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0"
+        ]
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740680.9596689,
+      "guidance_content_sha256": "f0e6e00b225226449c867e8fed1ca69b700652677117356ac30cfb850792ffbf",
+      "id": "adoption-v1-robosuite-memory",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/result.json",
+      "result_sha256": "f2ec0f6843119b36945621bed64dccb50904253eb626fe71c33d1613513e77cc",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790740677.6596506,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "e1fb03ad020260e0a7ebeae13fcfa28f1ff89edf550f8eeca2cae4933e449bda",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/native_result.json"
+        },
+        "safety": {
+          "sha256": "a9d0ba1ef98f494b927b7d6e8d81279363b0e7d7f3609b152cc3e44370c013b0",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "254d8911d994cd196c3b0504a4dff4fb205258569ab4ad726250bf582f695282",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "14a60b1ba708e0c0244374f7410a2cbf7a5863d4ffedeb82fef806aa1735f768",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/trace.json"
+        }
+      },
+      "attention_input": {},
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740746.5487838,
+      "entry_sha256": "98eab7d33354135da8ec5ec6135e3f8bde50a72be2bec258a5f0b0f63b13cba0",
+      "id": "adoption-v1-scheduler-hint-0",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/result.json",
+      "result_sha256": "12f7b0c92c92d1afa3a22bb263fbcf2e09c60f70559a92c51cb37413f20f90a5",
+      "scheduler_kind": "hint",
+      "seed": 101,
+      "source_kind": "actual_scheduler",
+      "started_epoch": 1790740743.825356,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "84dd36f230d6dec0bc92d11d6f370fcb3f0eb35be29c60893eee27cb10924b0f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/native_result.json"
+        },
+        "safety": {
+          "sha256": "dd1d960c7a41587cbbe30131bee92da28b4a8f95b1782bea311f2b9075578d99",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "8c2e9b0a813e0adaadf717ca1c5df082379a1bc3e76a7157b204258b018fb049",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "f9de89ca72b5b065c15ff30b0b4fb29b1eedf52fa939a7ca3fa08c1a3027c3ba",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/trace.json"
+        }
+      },
+      "attention_input": {
+        "inspected_trace": "{\"failure\": {\"classification_source\": \"deterministic_event_rules\", \"confidence\": 0.5, \"consecutive_failures\": 1, \"error_type\": \"TaskOutcomeFailure\", \"first_failed_event_id\": \"execution-finished\", \"inferred_cause\": null, \"last_successful_event_id\": \"sdk-13\", \"message\": \"execution finished but the task goal was not verified\", \"observed_symptom\": \"execution finished but the task goal was not verified\", \"retryable\": null, \"safety_relevant\": false, \"stage\": \"unknown\", \"termination_reason\": null}, \"assessment\": {\"trace_id\": \"trace:cube_lift-seed101-formal-1790740743829087442:0\", \"failure_type\": \"unknown\", \"repeated_failure\": false, \"code_changed\": null, \"progress\": false, \"evidence_sufficient\": false, \"locally_repairable\": false, \"risk\": \"normal\", \"event_ids\": [\"execution-finished\"], \"evidence_ids\": [\"evidence:policy.py\", \"evidence:trace_context.json\"], \"prior_trace_ids\": [], \"prior_event_ids\": [], \"code_sha256\": \"405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2\", \"prior_code_sha256\": null, \"hypothesis_unverified\": false, \"schema_version\": \"attentionbench.trace-assessment.v1\"}}"
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740749.3919184,
+      "entry_sha256": "98eab7d33354135da8ec5ec6135e3f8bde50a72be2bec258a5f0b0f63b13cba0",
+      "id": "adoption-v1-scheduler-hint-1",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/result.json",
+      "result_sha256": "b8fbb78de0780a9ad594dbb94311532ce73511537d5d84dfcc1e95f08a3e6537",
+      "scheduler_kind": "hint",
+      "seed": 101,
+      "source_kind": "actual_scheduler",
+      "started_epoch": 1790740746.5826013,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "cc78cae72d777009b17e8a8e0d24c3f6bb1a2a91c101c1a49b001df2c67265ab",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/native_result.json"
+        },
+        "safety": {
+          "sha256": "edca6879374ac6c763c4d8ec4c30af3664c898377c1ecb43a2df2af54a896a0e",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "c6dff070d196527b84fb4196f90cf2d1c280a3fab2f9ef7e31fb82f417e0793f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "65e4d4bc034fe6dd406a5a8645a428082ee6dd8240d63ee41055a13225084f7f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/trace.json"
+        }
+      },
+      "attention_input": {
+        "advisor_guidance": "AB_CONTROL_V1 grasp_offset_m=.005;approach_tolerance_m=.004;close_settle_steps=30;"
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740754.744766,
+      "entry_sha256": "98eab7d33354135da8ec5ec6135e3f8bde50a72be2bec258a5f0b0f63b13cba0",
+      "id": "adoption-v1-scheduler-hint-2",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/result.json",
+      "result_sha256": "8a23ec31a485413eeda0f2a0f2ebcec20d15358a657de150d60cf5a44d2d02d0",
+      "scheduler_kind": "hint",
+      "seed": 101,
+      "source_kind": "actual_scheduler",
+      "started_epoch": 1790740751.483501,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "26d4c19e0f74eff267c195913d55aa0e3d436e4b02803709c8b888a9131b40b2",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/native_result.json"
+        },
+        "safety": {
+          "sha256": "f549fe1faa82ec4463ef2358f41f72538d4501a0405efcde948c18fadc62c24b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "fd92e30219e7e7d83d1723d6016b9fd455d9e91dd9a65824e73891ddfc4dd40a",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "4bad508fe83bf0f2be2bd2e63681a432f01b85f6620e9bb5598c35daf4be38d4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/trace.json"
+        }
+      },
+      "attention_input": {},
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740898.4129367,
+      "entry_sha256": "c63f40506ff37d04834a63c9bfd20b78e3f50338319257746ea56518a054fa96",
+      "id": "adoption-v1-scheduler-memory-0",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/result.json",
+      "result_sha256": "02ed51c6b228e88df611c12f18bdd90476adc42cd1330ff21a3624a55375e3b2",
+      "scheduler_kind": "memory",
+      "seed": 101,
+      "source_kind": "actual_scheduler",
+      "started_epoch": 1790740895.5594912,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "4833e035ddbbd04c1a7bc6382e1f168c0574a8ee6eb83c4d03c5e917e4071ba2",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/native_result.json"
+        },
+        "safety": {
+          "sha256": "e27eedbffae3a33bfc71505dd8025cd3f297d19086d3825384d2a0fba2552815",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "68e893974bcb350ffe36c6527394738d77352ed8d7db65755095fa828829a728",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "97b1b260c475a43591659a14bfd6563a9bd63a107b181fb5ede9d1aac325dbd4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/trace.json"
+        }
+      },
+      "attention_input": {
+        "memory_guidance": {
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0": "Use the object poses returned by sensors.find_objects() (permitted sim_gt evidence) to locate the cube. Then, using sensors.get_observation() for the current end-effector position (robot0_eef_pos) and orientation (robot0_eef_quat): (1) move the end-effector above the cube, (2) lower it to the cube's grasp height, (3) close the gripper with gripper.close() and allow it to settle, and (4) move the end-effector upward to lift the cube off the table. Keep the gripper open during approach as you already do, and verify the cube's position changes after lifting by calling find_objects() again."
+        },
+        "memory_ids_to_use": [
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0"
+        ]
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740901.7707164,
+      "entry_sha256": "c63f40506ff37d04834a63c9bfd20b78e3f50338319257746ea56518a054fa96",
+      "id": "adoption-v1-scheduler-memory-1",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/result.json",
+      "result_sha256": "7ab952f4b79d7d2360ea72f5f42185777d7df47a95159ce8dc51c78ecb21ebe0",
+      "scheduler_kind": "memory",
+      "seed": 101,
+      "source_kind": "actual_scheduler",
+      "started_epoch": 1790740898.5036144,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "0d38f965d4bff519da09449fc0cc33d5e227124639cea915c5d9e28aec633ce4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/native_result.json"
+        },
+        "safety": {
+          "sha256": "977eae4df2b43b6b36ed5dedc9d00d2616a8043d0c5daa9db517ada0b6f22d6d",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "015bde21bbfecb39929e265d797568ab6f228f62b3526a0fb7ea0a08ecc86d80",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "59335e7ef4b4164ed18d9f6ba102cb197567ae02c59d56058e8e53f00c63b3a1",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/trace.json"
+        }
+      },
+      "attention_input": {
+        "demo_prior": "{\"assets\":[{\"kind\":\"action_trajectory\",\"path\":\"/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/approved_demo/actions.json\",\"sha256\":\"3412c333fcc3568e23d4e8b9a6a7ebe1e220d6e6366092c9a22cec7a91339317\",\"steps\":[{\"arguments\":{\"settle_steps\":10},\"operation\":\"sdk.gripper.open\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.00887208275840315,\"y\":-0.019086455840395283,\"z\":0.9500569484529563},\"operation\":\"sdk.arm.move_to_position\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.008872082758403153,\"y\":-0.01908645584039528,\"z\":0.8350569484529563},\"operation\":\"sdk.arm.move_to_position\"},{\"arguments\":{\"settle_steps\":30},\"operation\":\"sdk.gripper.close\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.008872082758403153,\"y\":-0.01908645584039528,\"z\":1.0300569484529563},\"operation\":\"sdk.arm.move_to_position\"}]}],\"schema_version\":\"attentionbench.public-demo.v1\"}"
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "ended_epoch": 1790740957.7685373,
+      "entry_sha256": "6273737878280124798cfc74d8531dbad04207e899e3547216d95556567696c6",
+      "id": "adoption-v1-scheduler-demo-0",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/result.json",
+      "result_sha256": "088611bf01122cb7837b8b77fbc2750fb14f3a4bab01303cfeac39cb8f041fb7",
+      "scheduler_kind": "demo",
+      "seed": 101,
+      "source_kind": "actual_scheduler",
+      "started_epoch": 1790740952.805344,
+      "status": "completed",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "old-baseline",
+      "artifacts": {
+        "native_result": {
+          "sha256": "3ce87869324c409bc66548577aafac98b6c286d5e63c073436ba84b674c20a82",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/native_result.json"
+        },
+        "safety": {
+          "sha256": "c1345f959be6ff10ff2f74ede6d6d4916635f837b2d178d668f0edeb931b9713",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "02271740bd3d8082bf785b9537f97924366ed99acddb7950e2cc8162f8e11b5a",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "f525fae4c30ba9de9c0329039e2816c0a8c87279a4e50cba012c539ba66cbeda",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/trace.json"
+        }
+      },
+      "attention_input": {},
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741041.148175,
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "id": "adoption-v1-robocasa-old-baseline",
+      "native_success": false,
+      "policy_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/result.json",
+      "result_sha256": "14e26e334637dd3f72ace454975f9974e97dfb09af13899ad311f41691b60353",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790740972.7378833,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "no-guidance",
+      "artifacts": {
+        "native_result": {
+          "sha256": "30063e1483dd665846101cb60f786b6490d44a91dac015107532b09d7527b204",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/native_result.json"
+        },
+        "safety": {
+          "sha256": "5487e081936fba5de6e54e69d44ec5ac9a356a929b4d7c03ed1bdf34f76a85b5",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "5a1e82b80cd020599da28fc072fa16df712a877b4c730489da07dfc0380a8286",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "c6cc72f9687c5f9c448d71d27e2b3a633bcfaa5bcdcd48f1347ffcef31421bb1",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/trace.json"
+        }
+      },
+      "attention_input": {},
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741110.2242334,
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "id": "adoption-v1-robocasa-no-guidance",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/result.json",
+      "result_sha256": "32316b960d1794030bca2b3162c5344cd89567fa1a6b3f3ecf9eac56597a0175",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790741041.1487713,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "hint",
+      "artifacts": {
+        "native_result": {
+          "sha256": "620706e66fa178700d8fe2422d8ad01985e65c38901e4bdabddf004ff81d552c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/native_result.json"
+        },
+        "safety": {
+          "sha256": "865ccd9c274550e6c037ac9da9c6e385b1afd3fad32e592a1e354abdd66c6925",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "dcef8be7f9ac39fe80324e6a66e0ad29e265c2bdc1475dea23600d415a1cc619",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "1a2c5959850685c8f4f85c517dc4727799931023b0f427ef538f1340a70e5762",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/trace.json"
+        }
+      },
+      "attention_input": {
+        "advisor_guidance": "AB_CONTROL_V1 base_forward_m=.11;grasp_offset_m=.045;open_settle_steps=20;close_settle_steps=30;"
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741179.5366826,
+      "guidance_content_sha256": "523fbe721df05f2f5018841211db3aee2d40c33e111be1e1fa2991661594e1b1",
+      "id": "adoption-v1-robocasa-hint",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/result.json",
+      "result_sha256": "ff093f95d16e16fb71bf7d504d6269b6683a0e57cb2d5518258f7de9722d03ee",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790741110.2249238,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "content-ablation",
+      "artifacts": {
+        "native_result": {
+          "sha256": "ebb1c9c913832ccbf7c91e51f2794d8a094827eab9e132cc01b7f41aa4bea72c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/native_result.json"
+        },
+        "safety": {
+          "sha256": "334083efac1cbf034d8a254e05ca1e58abf159b307caf01576f4fe35721cc897",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "239b53d549679b2452c9579b668607ca99f5f5949d7de77a67ba6b6d44037e09",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "e92f36a7b6760d78c1c476cf6a0dfc6e8fd875292edad48ee12f8400f36fe826",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/trace.json"
+        }
+      },
+      "attention_input": {
+        "advisor_guidance": "Review trace and retry."
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741249.210306,
+      "guidance_content_sha256": "f52ab148fdca07cb926b303d87a21646e9030f815a1dfba5fc6b0baa1a898731",
+      "id": "adoption-v1-robocasa-content-ablation",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/result.json",
+      "result_sha256": "f75e64c8255796ac0d39fd804b4a314d411601bf71cf6d1ee86737095854b05b",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790741179.5374863,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "demo",
+      "artifacts": {
+        "native_result": {
+          "sha256": "750bfa4406a357de82190810a7e5d7a11925a8cfbea0a4b8d03df80f3200dc0e",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/native_result.json"
+        },
+        "safety": {
+          "sha256": "58f319e653257825872bc74a589442f082142eb84572647ec07a228e89b396bd",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "807e703bbe978afd5d7a0e97a77f90439515a712aea5b47e32d27892a7847712",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "04524cb264d17a001b7f3518e099b01b31f5e405447d4514483e1b2e1444c1ad",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/trace.json"
+        }
+      },
+      "attention_input": {
+        "demo_prior": "{\"assets\":[{\"kind\":\"action_trajectory\",\"path\":\"/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/inputs/robocasa_authored_demo_actions.json\",\"sha256\":\"205041236ce08d2e9f4a29b79b18a7b67a971e1392dd9070895912572cf3efdd\",\"steps\":[{\"arguments\":{\"dtheta\":0.0,\"dx\":0.11,\"dy\":-0.1,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.11,\"dy\":-0.1,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.15,\"dy\":-0.075,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.15,\"dy\":-0.075,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.0,\"dy\":-0.08,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.0,\"dy\":-0.08,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dx\":0.0,\"dy\":0.0,\"dz\":0.0,\"rotation_delta\":[-0.175,0.165,0.0]},\"operation\":\"sdk.arm.move_delta\"},{\"arguments\":{\"dx\":0.0,\"dy\":0.0,\"dz\":0.0,\"rotation_delta\":[0.0,0.0,-0.8]},\"operation\":\"sdk.arm.move_delta\"}]}],\"schema_version\":\"attentionbench.public-demo.v1\"}"
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741318.1593628,
+      "guidance_content_sha256": "92222e03509a9f8ca65d26907496a22f5ce7a5d90baac4b3dd9851bda2590647",
+      "id": "adoption-v1-robocasa-demo",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/result.json",
+      "result_sha256": "30d9ea485bb83dd0d5aa1010d83259f527316fd16d92b6224530d734f5e6d79d",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790741249.2109869,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "memory",
+      "artifacts": {
+        "native_result": {
+          "sha256": "7429eb7f537ae6f231f382970d50d4df1375cd070050724b2f2fdc521ba69f02",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/native_result.json"
+        },
+        "safety": {
+          "sha256": "7ffbfaa2069bc317e64d6fe12efcdbf2c874a3d44b45c2aad4b405e16ecd83a5",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "6d12db6c461273c0832c37fea6615e44a08c0982daf0a67146b7d07ae41619a9",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "bdb826924e93ba09312d5671efadf3f034d649eba213e7fa288f40b65b7be3b3",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/trace.json"
+        }
+      },
+      "attention_input": {
+        "memory_guidance": {
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3": "Rewrite policy.py to: (1) call sensors.find_objects() and inspect the returned object names/positions to locate the target object on the counter and the sink location; (2) use the SDK's motion primitives (e.g., move the end-effector toward the object's position, close the gripper to grasp, then move to the sink position and release). Use get_observation() (robot0_eef_pos, robot0_gripper_width) to verify approach and grasp success between steps, and iterate until the object is placed. The current code discards the find_objects() results entirely — capture and use them."
+        },
+        "memory_ids_to_use": [
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3"
+        ]
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741387.7457702,
+      "guidance_content_sha256": "d18f511b69e5233ebd3d2f47e8104f8b19fe5169867e2c487ba5b0baa81fe436",
+      "id": "adoption-v1-robocasa-memory",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/result.json",
+      "result_sha256": "87008206eeea1947260e6f17f46a68786f47d26a8a4b8c15019cd9d8bdabcc88",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790741318.1601226,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "no-guidance-v1-1",
+      "artifacts": {
+        "native_result": {
+          "sha256": "7ac066a226d78864351e39a48a24fd16fe2061ce9b40f87add7c0c020e465791",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/native_result.json"
+        },
+        "safety": {
+          "sha256": "38b34caf0b11fab10410927d68a01c4d78f18d23e9dd96e7955cb0e9c4e1a216",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "52d630bfedcdc6d1f979cd02e0376f0281e4c0036ecf94aaaab02bd538321869",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "c82ca71cf95a11d191920347f725062333a7f116d7dd24bf14018dcdc599cce1",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/trace.json"
+        }
+      },
+      "attention_input": {},
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741585.435462,
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "id": "adoption-v1-robocasa-no-guidance-v1-1",
+      "native_success": false,
+      "policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/result.json",
+      "result_sha256": "56cfb097ce90b88e087dc11e65f3d182d6868d993022703af07a9a2818a77e3b",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790741515.8088589,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    },
+    {
+      "arm": "memory-v1-1",
+      "artifacts": {
+        "native_result": {
+          "sha256": "0576e61faa7587c5fee2b7f0ab516ba7029d4316a07982a85c75ca95faf608b3",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/native_result.json"
+        },
+        "safety": {
+          "sha256": "66a8301b466fd789afda7683e667e1d5f094477d51fa0421e473c50977128da4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "1f1aac47f375867bea67e4dd6b760b8ba5fbde0a90d8cfedc4661c36b66db03d",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "742d62bdde5e3a47ec60bb963c5e2d0f9da9b0769adb38701f9c5796154b2d23",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/trace.json"
+        }
+      },
+      "attention_input": {
+        "memory_guidance": {
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3": "Rewrite policy.py to: (1) call sensors.find_objects() and inspect the returned object names/positions to locate the target object on the counter and the sink location; (2) use the SDK's motion primitives (e.g., move the end-effector toward the object's position, close the gripper to grasp, then move to the sink position and release). Use get_observation() (robot0_eef_pos, robot0_gripper_width) to verify approach and grasp success between steps, and iterate until the object is placed. The current code discards the find_objects() results entirely — capture and use them."
+        },
+        "memory_ids_to_use": [
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3"
+        ]
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "ended_epoch": 1790741654.7348464,
+      "guidance_content_sha256": "d18f511b69e5233ebd3d2f47e8104f8b19fe5169867e2c487ba5b0baa81fe436",
+      "id": "adoption-v1-robocasa-memory-v1-1",
+      "native_success": false,
+      "policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "result_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/result.json",
+      "result_sha256": "cf9a7850e221df5a3fc55cdd7efae91932c2c414497246a037a3a006a8fa7cb5",
+      "seed": 101,
+      "source_kind": "paired_input_fixture",
+      "started_epoch": 1790741585.4367971,
+      "status": "completed",
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "unsafe_attempts": 0
+    }
+  ],
+  "schema": "attentionbench.guidance-adoption-live-ledger.v1"
+}

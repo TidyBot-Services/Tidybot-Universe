@@ -1,0 +1,110 @@
+{
+  "schema": "attentionbench.guidance-adoption-frozen-verification.v1.1",
+  "pass": true,
+  "frozen_files": 59,
+  "raw_files_verified": 1267,
+  "issues": [],
+  "candidate_manifest_sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab",
+  "verified_at": {
+    "utc": "2026-09-30T14:59:40+00:00",
+    "America/New_York": "2026-09-30T10:59:40-04:00",
+    "Asia/Shanghai": "2026-09-30T22:59:40+08:00"
+  },
+  "method": "read-only SHA verification; no simulator, Service, test suite or new attempt started",
+  "review_sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7",
+  "protected_entries_verified": 1724,
+  "preserved_absent_entries": [
+    "logging_config.py"
+  ],
+  "protected_drift": [],
+  "current_source_matches_frozen": [
+    {
+      "file": "DESIGN.md",
+      "sha256": "2cda4682340451446e9204d04d5b25f72a12be5e345b9af83767e48a9688a09c",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "DESIGN_AMENDMENT_v1_1.md",
+      "sha256": "11fd78690848fa5ed7ea48866bcf04aee3eea6ae5dac1dad494f51441dee871e",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "bounded_run.py",
+      "sha256": "3c5f3b47f636f23234c1be1dc2e9c1d3534b6e44c45f3aa20865e4b4393ffa58",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "collect_robocasa_jobs.py",
+      "sha256": "581baad01535c43957121e79781697e6404c1069c9c5e95c56106233eaa3b7a9",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "control_compiler.py",
+      "sha256": "73128b838a253abf590f190ff3235c2dccca7e65073c97b37b2435ed2e75abb1",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "design_amendment_freeze_v1_1.json",
+      "sha256": "bfe5a950dab5f47ce2ac55986a2bdb8d7a1b0a79d7ad58d53007703ca30defab",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "design_freeze.json",
+      "sha256": "22b04e7e643316e6702f00b7e9d3692424fd4fcbb2042ccc174283888a80e3eb",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "evidence_audit.py",
+      "sha256": "d88f2b76df4102b556509dcbc202f569dc6ce213ef4a0304f3a1859d1278c8e7",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "robocasa_change_receipt.json",
+      "sha256": "8c33a81212878ab994cda9392acf161d184e0f9e9d09cef459ee2b4e97060058",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "robocasa_change_receipt_v1_1.json",
+      "sha256": "504d78c2360e7e22d68ca0fa423a54d290ee9d4291a0170ce86c590592038771",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "robocasa_counter_to_sink_v1.py",
+      "sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "robocasa_counter_to_sink_v1_1.py",
+      "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "robosuite_change_receipt.json",
+      "sha256": "7e62ed7e1f5d3234cea781731a55fcb5cf8d5d09d9fb3a9ce73892fae4335c2e",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "robosuite_cube_lift_v1.py",
+      "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "status": "matches_frozen"
+    },
+    {
+      "file": "verify_frozen_package.py",
+      "sha256": "ce9b75eb85895df0ad5b9d0b28eff54422dac91d5ef33cd09de4ea1e13006e43",
+      "status": "matches_frozen"
+    }
+  ],
+  "existing_evidence_summary": {
+    "attempts_completed": 20,
+    "safety_unsafe_total": 0,
+    "frozen_mechanical_checks_passed": 204,
+    "saved_final_regression_passed": 82
+  },
+  "historical_sidecars_sha256": {
+    "APPROVAL_REQUEST.json": "8823d60418cbb040c0745c66f5bfbedf30cbd97105b621c23cfe90953babac61",
+    "approval_status.json": "7711169b7db14f676b47d09f2a030fa238cc939bfe6d30dc3f66a0564dc0e1c3",
+    "goal_completion_audit.json": "97f6e4277f785b9c22bc6a9f7def8f62cf3f281c70addf08d1cdd62260b985bf",
+    "closeout_receipt.json": "18dea0c75369ca1175fccce18954d4a0cc8f4af0d5ae753c35231ef706e59a7b",
+    "blocked_audit.json": "86000389443539cb343da22a37a23bed29a76e6b72fd9285275685a448bf1a6e"
+  }
+}

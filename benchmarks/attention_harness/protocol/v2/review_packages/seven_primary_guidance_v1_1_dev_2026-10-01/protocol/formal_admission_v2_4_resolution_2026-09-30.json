@@ -1,0 +1,177 @@
+{
+  "base_protocol": "formal_admission_v2_2_2026-09-29.json",
+  "base_protocol_sha256": "e3d4fcb1c6e37a16e5131b60cbfa3ba92b3fd71b92042267cbdae52ae364d385",
+  "combined_admission_archive": {
+    "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/combined_admission_archive.json",
+    "sha256": "43907d4c1409aaed8e8eb7c651cc8f3d1bc8a63d8e7f4be08bf8a792db467f2b"
+  },
+  "depth_500": {
+    "dependency_lock_risk_annotation": "The dependency lock was frozen before this qualifying audit. Its earlier uncontrolled_pending_all_four_acceptance_checks annotation is historical; this independently reviewed v2.4 depth decision now governs the risk classification. The locked revision and runtime source bytes remain unchanged.",
+    "engineering_conclusion": {
+      "audit": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/independent_final_audit.json",
+      "audit_sha256": "bec9ae2018c0f8772b5c69539ecae4802e54c35f646bbbb504c44c1ae70e2c4c",
+      "operational_comparison_bias_gate": true,
+      "scope": "engineering grid only (cube_lift/cube_stack x seed 101 x 7 conditions)"
+    },
+    "historical_root_cause": "unknown",
+    "independent_audit": {
+      "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_depth_audit.json",
+      "sha256": "7d47e2350e970638a9b6f648c2699b24a0880ae98af80d886212a1aa470ccdf5"
+    },
+    "operational_gate": true,
+    "operational_scope": "Robosuite cube_lift / depth admission on pinned Service 19fde8a; no strategy effect or held-out authorization",
+    "qualifying_run": {
+      "attrition_gate": {
+        "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_qualifying_plan_attrition_gate.json",
+        "sha256": "f85f95a5d80f2a927827575625c4be37b7a3a1c3e16ab50570192d4245f27a9e"
+      },
+      "definition": "Five-seed chain for the primary Robosuite task cube_lift on seeds 101-105 under pinned Service 19fde8a, executed through the real scheduler, independent Safety monitor and native evaluator, then gated by attrition_gate.py.",
+      "executed_attempts": 20,
+      "executed_cases": 5,
+      "hash_timing": "plan hash is frozen before the run; the final ledger hash is checked by the independent reviewer only after the run completes (a final ledger hash cannot be known in advance).",
+      "ledger": {
+        "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/qualifying_ledger.json",
+        "sha256": "75454618784aae77375783d710b9227c736c1328149a838422b15965fab5f0e5"
+      },
+      "plan": {
+        "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/qualifying_plan.json",
+        "sha256": "29d642732dd52e5800aebd6c0f4f0a8b353777a3976435af885b885dffee31f3"
+      },
+      "pre_run_independent_pin": {
+        "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_plan_pin.json",
+        "sha256": "1125ff63f9c0cd0e96ed825614c07b3e4a75b87d85e6141abc99af04890f4495"
+      },
+      "required": true,
+      "status": "passed_independent_audit"
+    },
+    "risk_control_basis": {
+      "current_version_qualifying_audit": {
+        "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_depth_audit.json",
+        "sha256": "7d47e2350e970638a9b6f648c2699b24a0880ae98af80d886212a1aa470ccdf5"
+      },
+      "engineering_audit_sha256": "bec9ae2018c0f8772b5c69539ecae4802e54c35f646bbbb504c44c1ae70e2c4c",
+      "engineering_controls": {
+        "action_receipts": true,
+        "idempotent_retry": true,
+        "recovery_equivalence": true,
+        "uniform_exception_handling": true
+      },
+      "interpretation": "Retained-risk classification combines reviewed action receipts/idempotent retry/recovery equivalence/uniform fail-closed exceptions with current pinned-version qualifying evidence. A no-reproduction window alone is not a root-cause fix."
+    },
+    "risk_downgrade_statement": "历史坏帧根因仍为 unknown。经 pinned Service 19fde8a 的五 seed qualifying 与独立 depth 审计通过，历史坏帧归为“当前冻结版本已控制的保留风险”；该分类限当前冻结版本及 Robosuite/depth 范围，不承诺以后不再出现错误。",
+    "risk_status": "current_frozen_version_controlled_retained_risk"
+  },
+  "drafted_at_utc": "2026-09-30T00:00:00+00:00",
+  "effect_comparison_authorized": false,
+  "formal_eligible": false,
+  "formal_eligible_reason": "User explicitly limits this goal to depth qualifying and descriptive archive admission while retaining formal_eligible=false. This audit does not claim unverified broader task-feasibility, trusted-Memory or seven-condition approval gates passed.",
+  "new_version_robosuite_profile": {
+    "attempts": 100,
+    "audit": {
+      "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_robosuite_profile_audit.json",
+      "sha256": "8fea4e8a5ca4c0d7a0687ca8b8b413630e747a14f9d8a864c30f78b3343f5d4e"
+    },
+    "executed_actions_with_durable_receipts": 5088,
+    "ledger": {
+      "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/profile_ledger.json",
+      "sha256": "a8bdf892a04b3e028b1ce617040916b2b13895492a636a8b7af0e675f7c155a5"
+    },
+    "native_successes": 0,
+    "plan": {
+      "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/profile_plan.json",
+      "sha256": "5fedf9e699e26e644bbfef9b0b5339488054cddc88c150175093a56d56595245"
+    },
+    "planned_slots": 25,
+    "qualifying_cases_count_once": true,
+    "service_revision": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+    "status": "independently_audited",
+    "valid_slots": 25
+  },
+  "next_step": "Keep the new 25-slot Robosuite and retained 25-slot RoboCasa archive. Any later request to admit formal effects must independently adjudicate the remaining broader protocol gates and receive separate authorization before any held-out or seven-condition effect execution.",
+  "overall_admission_audit": {
+    "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_overall_admission_audit.json",
+    "sha256": "47832d16fe54a3f6ae50af213daf85923be99526d1d8d04d9a6ca14587addb12"
+  },
+  "overall_admission_gate_status": {
+    "depth_500_operational": {
+      "scope": "Robosuite/depth",
+      "status": "pass"
+    },
+    "five_seed_chain_each_task": {
+      "robocasa": "historical frozen five seeds 101-105 independently revalidated as part of retained 25-case archive",
+      "robosuite": "fresh pinned 19fde8a five seeds 101-105",
+      "status": "pass_for_selected_archive"
+    },
+    "policy_identity": {
+      "note": "Frozen public base policy/config/generation/M1 identities verified; broader seven-condition policy/demo approvals not re-adjudicated or authorized by this request.",
+      "status": "pass_for_this_qualifying_archive"
+    },
+    "policy_profile_each_task": {
+      "minimum_success_numerator_required": false,
+      "robocasa": 25,
+      "robosuite": 25,
+      "status": "pass_descriptive_only"
+    },
+    "safety": {
+      "status": "pass_for_selected_archive",
+      "unsafe_or_unknown_action_attempts": 0
+    },
+    "safety_fault_injection": {
+      "evidence": "/home/truares/桌面/attentionbench-depth-bias-gate-20260929/independent_final_audit.json",
+      "note": "Pinned engineering persistent/unknown-action controls retained; broader formal admission control package is not independently promoted by this archive audit.",
+      "status": "engineering_depth_controls_passed_full_admission_not_reassessed"
+    },
+    "task_feasibility": {
+      "note": "Native false results are valid and are not a failed success-threshold gate. This audit does not adjudicate separately labeled current-version reference-skill/infrastructure solvability evidence.",
+      "status": "not_reassessed_for_current_full_admission"
+    },
+    "trusted_memory": {
+      "note": "Selected cases use no trusted Memory; exact-version trusted grants/use and lifecycle/scope controls for future full-method conditions are outside the executed scope.",
+      "status": "autonomous_boundary_passed_full_admission_not_reassessed"
+    }
+  },
+  "profile_status": {
+    "attempts": 170,
+    "completed": true,
+    "safety_zero": 170,
+    "service": "c67b5d3",
+    "slot30": "original interruption retained; independent supplement completed",
+    "slots_valid": 50,
+    "version": "v112"
+  },
+  "re_run_scope": {
+    "robocasa": "25 separate-service cases independently checked for impact and SHA validity; the original slot30 interruption remains permanently retained and its authorized supplement counts once.",
+    "robosuite": "25 new-version cases on 19fde8a, seeds101-125; the 5 qualifying cases are counted exactly once and the remaining20 are new executions; old c67b5d3 Robosuite cases are not transferred."
+  },
+  "reviewed_at_utc": "2026-09-30T00:18:15.974058+00:00",
+  "robocasa_impact_review": {
+    "attempts": 70,
+    "native_successes": 0,
+    "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/independent_robocasa_impact_audit.json",
+    "robosuite_service_change_invalidates_robocasa": false,
+    "sha256": "60ab408adf4c44774ffa4fd8f20ab810a91093f3dc4e012f0fe7005287db4640",
+    "valid_slots": 25
+  },
+  "schema_version": "attentionbench.formal-admission.v2.4-resolution",
+  "service_pin": {
+    "branch": "feature/depth-recovery-engineering-20260930",
+    "lock_file": "robosuite-service.lock.json",
+    "lock_file_sha256": "3194976c1f2a316d8888219bdfaab10667c5cb750a60ad3b672498368923ef1a",
+    "note": "19fde8a supersedes c67b5d3 by adding persisted action receipts. The Robosuite admission archive must be produced on 19fde8a; RoboCasa uses a separate service and is checked for impact rather than invalidated wholesale.",
+    "repository": "robosuite_sim-depth-recovery-engineering",
+    "requirements_sha256": "bb36a3a318c2ef08399b15f2dc4fddfe38f26e5c79e0bdf60d25947a89721a11",
+    "revision": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+    "runtime_identity": {
+      "path": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/runtime_identity.json",
+      "sha256": "4a24294af1887e2ce4806fd2eb116d29c6fd44d638c2c2b29bf35bf69902330e"
+    }
+  },
+  "service_version_chain": {
+    "081cd57": "diagnostic only: preserve rejected normalized depth frames; no rerender recovery",
+    "19fde8a": "c67b5d3 plus persisted executed action receipts and contained audited recovery (the pinned final revision)",
+    "c67b5d3": "bounded depth rerender recovery candidate (used by the completed v112 50/50 profile)"
+  },
+  "status": "independently_audited_operational_admission_effects_withheld",
+  "supersedes_candidate": "formal_admission_v2_3_candidate_2026-09-30.json",
+  "unchanged_rules": "All v2.2 clauses not expressly amended here remain in force, including seed splits, budget, Safety authority, invalidity reporting, zero held-out/matrix effects, and formal_eligible=false until the full independent admission audit passes."
+}

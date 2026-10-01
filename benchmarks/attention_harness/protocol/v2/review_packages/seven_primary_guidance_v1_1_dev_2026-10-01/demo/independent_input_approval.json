@@ -1,0 +1,57 @@
+{
+  "schema_version": "attentionbench.independent-demo-input-approval.v1",
+  "approved": true,
+  "approval_id": "independent-demo-approval-a8777ed9411fd8f7",
+  "approved_by": "independent_admission_auditor",
+  "reviewer_role": "independent_auditor",
+  "reviewed_epoch": 1790729727.826693,
+  "provenance_path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/demo/provenance.json",
+  "provenance_sha256": "a8777ed9411fd8f70ce8b3d53b6f8e72752aed7c4f00c8da4c8cb8240918710e",
+  "assets": [
+    {
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "asset_path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/demo/robosuite_cube_lift_actions.json",
+      "asset_sha256": "ebe11ac10a5ac3be7b1141133a3d34792f107e1416762620253d4f90e00af6a3",
+      "source_trace": "/home/truares/桌面/attentionbench-depth-qualifying-20260929/new_runs/robosuite-cube_lift-seed101/attention-robosuite-cube_lift-seed101-48da012352f8/attempts/cube_lift-seed101-formal-1790726480507439552/trace.json",
+      "source_trace_sha256": "76b253d1b3a2a3c29b944670db3a0130f740f89d22140401f240eebc85353341",
+      "source_native_result_sha256": "b245407ec31feca1a077504cb002c2f9a6fcdf83f565f22b560a313004d8e59a",
+      "steps": 5,
+      "projected_characters": 977,
+      "checks": {
+        "source_trace_sha": true,
+        "asset_sha": true,
+        "seed101_first_attempt": true,
+        "fixed_projection_equals_first_eight_public_actions": true,
+        "bound_32": true,
+        "public_sdk_operations": true,
+        "false_source_outcome_preserved": true,
+        "projection_under_4000": true
+      }
+    },
+    {
+      "suite": "robocasa",
+      "task_id": "counter_to_sink",
+      "asset_path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/demo/robocasa_counter_to_sink_actions.json",
+      "asset_sha256": "6f27981293e9cdf8da53aecdfee44707aba99b57d049bdfc77115aba3744a629",
+      "source_trace": "/home/truares/桌面/attentionbench-fixed-base-profile-20260929/engineering_v109_chain/chain_runs/robocasa-counter_to_sink-seed101/attention-robocasa-counter_to_sink-seed101-fe69d8e524f8/attempts/counter_to_sink-seed101-formal-1790715856146607201/trace.json",
+      "source_trace_sha256": "503d8073d0559d22db5d497c6b17f9af7cb7cc1efcfd97dfbe17c9a3b19713bf",
+      "source_native_result_sha256": "81ddb1c151b79f3be7e79e57e22a604ec5bf8c0fc9abb3ed15ea60f745d684bc",
+      "steps": 8,
+      "projected_characters": 1185,
+      "checks": {
+        "source_trace_sha": true,
+        "asset_sha": true,
+        "seed101_first_attempt": true,
+        "fixed_projection_equals_first_eight_public_actions": true,
+        "bound_32": true,
+        "public_sdk_operations": true,
+        "false_source_outcome_preserved": true,
+        "projection_under_4000": true
+      }
+    }
+  ],
+  "issues": [],
+  "scope": "Fixed public SDK trajectory prefixes for demo_first in two-task primary development matrix; exact asset SHA only. Neither prefix is labeled a successful demonstration, no task outcome/minimum success gate is added. No online help or control-source change authorized.",
+  "review_script_sha256": "38557c484cc7ab6edc7efefa1756cbc4e6f928d29b2dd05790043e2055ea5443"
+}

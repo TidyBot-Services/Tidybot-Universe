@@ -1,0 +1,1 @@
+{"stage":"offline test fixture","result":"14 failed,22 passed","reason":"Test fixture used shared TidyBotSDK for RoboCasa; it has no base facade. Corrected test to existing RobocasaMobileSDK. No policy or runtime change.","following_log":"tests_initial_fixed.log"}

@@ -25,8 +25,8 @@ uv pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements-robo
 uv pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements-orchestrator.txt"
 uv pip install --python "$VENV_DIR/bin/python" -e "$MEMORY_SERVICE_SOURCE"
 "$VENV_DIR/bin/python" -c 'from attention_memory_service.memory_service import MemoryService; from attention_memory_service.memory_service_client import MemoryServiceClient; assert hasattr(MemoryService, "authorize_dev_use") and hasattr(MemoryServiceClient, "authorize_dev_use"), "Memory Service lacks Dev-use evidence API"'
-uv pip install --python "$VENV_DIR/bin/python" --no-deps \
-  "git+https://github.com/TidyBot-Services/robosuite_sim.git@12bc69afe83c8398988be3eee637f91c14e9bf19"
+# requirements-robosuite.txt above is the single installation source for the
+# pinned Robosuite package. A second install here used to downgrade that pin.
 
 echo "TidyBot AttentionBench environment ready: $VENV_DIR"
 echo "Run tests with: $VENV_DIR/bin/python -m pytest benchmarks/attention_harness/tests"

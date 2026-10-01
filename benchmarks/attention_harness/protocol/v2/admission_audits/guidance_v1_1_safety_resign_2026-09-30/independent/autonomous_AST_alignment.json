@@ -1,0 +1,32 @@
+{
+  "new_policy_worker_runs": 0,
+  "new_robot_runs": 0,
+  "passed": true,
+  "records": [
+    {
+      "empty_guidance_compiler_parameters": {},
+      "new_normalized_AST_sha256": "fb4483c3782a8cb103de88571ab400ffdf0c97b6bf298c3c0a1a1ac6480a6c88",
+      "new_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "new_source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/final_policies/robosuite_cube_lift.py",
+      "normalization_rules": "Empty guidance dictionary; default-only parameter lookups; absent demo branches; finite constant tuple indexes; zero offsets; explicit unchanged SDK defaults; Robosuite pure guided wrapper expansion and constant approach defaults.",
+      "old_normalized_AST_sha256": "fb4483c3782a8cb103de88571ab400ffdf0c97b6bf298c3c0a1a1ac6480a6c88",
+      "old_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+      "old_source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/inputs/robosuite_old_policy.py",
+      "suite": "robosuite",
+      "whole_autonomous_robot_program_AST_equal": true
+    },
+    {
+      "empty_guidance_compiler_parameters": {},
+      "new_normalized_AST_sha256": "2f9106b32d3dfe8ae437322bf3124dc9635a21de0d6f0b98f2aad3d3e18ff3e3",
+      "new_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "new_source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/final_policies/robocasa_counter_to_sink.py",
+      "normalization_rules": "Empty guidance dictionary; default-only parameter lookups; absent demo branches; finite constant tuple indexes; zero offsets; explicit unchanged SDK defaults; Robosuite pure guided wrapper expansion and constant approach defaults.",
+      "old_normalized_AST_sha256": "2f9106b32d3dfe8ae437322bf3124dc9635a21de0d6f0b98f2aad3d3e18ff3e3",
+      "old_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+      "old_source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/inputs/robocasa_old_policy.py",
+      "suite": "robocasa",
+      "whole_autonomous_robot_program_AST_equal": true
+    }
+  ],
+  "scope": "Autonomous/no-guidance robot call and control-flow program equality for all observations; new diagnostic compiler output/CPU overhead is excluded and no execution-time identity or guided-effect invariance is claimed."
+}

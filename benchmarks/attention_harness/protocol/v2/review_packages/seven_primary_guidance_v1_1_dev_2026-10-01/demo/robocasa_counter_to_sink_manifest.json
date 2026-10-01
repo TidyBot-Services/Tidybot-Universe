@@ -1,0 +1,17 @@
+{
+  "approval": {
+    "approved_by": "independent_admission_auditor",
+    "id": "independent-demo-approval-a8777ed9411fd8f7"
+  },
+  "assets": [
+    {
+      "kind": "action_trajectory",
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/demo/robocasa_counter_to_sink_actions.json",
+      "sha256": "6f27981293e9cdf8da53aecdfee44707aba99b57d049bdfc77115aba3744a629",
+      "source": "public_sdk"
+    }
+  ],
+  "schema_version": "attentionbench.public-demo.v1",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

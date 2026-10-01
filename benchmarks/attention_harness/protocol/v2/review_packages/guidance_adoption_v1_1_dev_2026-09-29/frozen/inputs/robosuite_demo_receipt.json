@@ -1,0 +1,16 @@
+{
+  "approval": {
+    "approved_by": "user-goal-authorized-development-fixture",
+    "id": "guidance-adoption-v1-development-input"
+  },
+  "assets": [
+    {
+      "kind": "action_trajectory",
+      "path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/inputs/robosuite_authored_demo_actions.json",
+      "sha256": "3412c333fcc3568e23d4e8b9a6a7ebe1e220d6e6366092c9a22cec7a91339317"
+    }
+  ],
+  "manifest_sha256": "7fc02a152c0dcd451bf9c7dccc31c29d29f5e92c880a6d0b5098ed25c49e053f",
+  "original_trajectory_sha256": "ebe11ac10a5ac3be7b1141133a3d34792f107e1416762620253d4f90e00af6a3",
+  "provenance": "authored development SDK trajectory derived from old public prior; not a successful robot recording"
+}

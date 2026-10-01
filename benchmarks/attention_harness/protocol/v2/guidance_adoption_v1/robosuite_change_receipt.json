@@ -1,0 +1,13 @@
+{
+  "approval_status": "development execution authorized by user goal; final external approval pending",
+  "author": "Codex implementation under current user goal",
+  "design_sha256": "2cda4682340451446e9204d04d5b25f72a12be5e345b9af83767e48a9688a09c",
+  "new_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+  "new_source": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/guidance_adoption_v1/robosuite_cube_lift_v1.py",
+  "old_approval_reused": false,
+  "old_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+  "old_source": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/base/robosuite_cube_lift/policy.py",
+  "origin": "manual reviewed source revision, not model-provider generation",
+  "schema": "attentionbench.guidance-adoption-policy-change.v1",
+  "version": "guidance-adoption-v1"
+}

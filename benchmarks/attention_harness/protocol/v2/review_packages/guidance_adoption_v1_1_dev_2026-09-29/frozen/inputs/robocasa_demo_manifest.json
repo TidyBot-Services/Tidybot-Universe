@@ -1,0 +1,17 @@
+{
+  "approval": {
+    "approved_by": "user-goal-authorized-development-fixture",
+    "id": "guidance-adoption-v1-development-input"
+  },
+  "assets": [
+    {
+      "kind": "action_trajectory",
+      "path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/inputs/robocasa_authored_demo_actions.json",
+      "sha256": "205041236ce08d2e9f4a29b79b18a7b67a971e1392dd9070895912572cf3efdd",
+      "source": "public_sdk"
+    }
+  ],
+  "schema_version": "attentionbench.public-demo.v1",
+  "suite": "robocasa",
+  "task_id": "counter_to_sink"
+}

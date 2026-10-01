@@ -1,0 +1,151 @@
+{
+  "authority_rows_otherwise_unchanged": true,
+  "cleared_advisor_cache_rows": 0,
+  "evidence_file_sha256": {
+    "counter_to_sink-seed101-formal-1790487853081059024/agent.log": "f8c1be82ce312fa7b9247fa39a85930234ab3286ef9754dd29c9cef8f25cd42e",
+    "counter_to_sink-seed101-formal-1790487853081059024/approved_config.json": "708084890fce3f0241d8c5056114afa61c4a27f2726c3124b57162720ef59b7b",
+    "counter_to_sink-seed101-formal-1790487853081059024/approved_policy.py": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+    "counter_to_sink-seed101-formal-1790487853081059024/attention_bundle.json": "f2d1f8beb3cf9352772b6d6d66077772d2992487c1dd33634ddd8102dff5718c",
+    "counter_to_sink-seed101-formal-1790487853081059024/native_result.json": "cff2a2bac7aa76342a910cf0afda6c7733304f6d6c7da00e0196dc88e14ca099",
+    "counter_to_sink-seed101-formal-1790487853081059024/policy.py": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+    "counter_to_sink-seed101-formal-1790487853081059024/policy.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "counter_to_sink-seed101-formal-1790487853081059024/result.json": "c70cf74ac81a7a6eb94b8af9de0ad0d244636da5f0dd5108edce2623e70c54a9",
+    "counter_to_sink-seed101-formal-1790487853081059024/safety.json": "4829de2ddcaf186925b375997d45a0359962759d537db0f32051861a2d2fbfa9",
+    "counter_to_sink-seed101-formal-1790487853081059024/sandbox_receipt.json": "b8d998e99c2ff766a9adb938ccbc11cc6539bebacdbd7366640329aa2cf809b8",
+    "counter_to_sink-seed101-formal-1790487853081059024/simulator.log": "f8329c5aab1a11cfbc86054ad91b956c3807e9b35a28038f370e66761cf2187e",
+    "counter_to_sink-seed101-formal-1790487853081059024/trace.json": "a1ec86bb14b4feae249303b3e8525a0f41b963d509dc1bac32ebdea52ddd5a3d",
+    "counter_to_sink-seed101-formal-1790487853081059024/trace_context.json": "f72dc1d959d7279a6034bb1621abb0decfa2ae466be94cac25d712e73864d424",
+    "counter_to_sink-seed101-formal-1790487908796947404/agent.log": "a42be9f93262a2c4c16cbcf29799219c5520ee024af3eea2df9e3e49e5847d9d",
+    "counter_to_sink-seed101-formal-1790487908796947404/approved_config.json": "708084890fce3f0241d8c5056114afa61c4a27f2726c3124b57162720ef59b7b",
+    "counter_to_sink-seed101-formal-1790487908796947404/approved_policy.py": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+    "counter_to_sink-seed101-formal-1790487908796947404/attention_bundle.json": "a68d78d7fadfda0bc8e308a4f7f3b62bec95feb4e8da906b55b04035f7db5335",
+    "counter_to_sink-seed101-formal-1790487908796947404/native_result.json": "e175b114a8f6defca3f64e586d0477ac822707c347205ba79052b2c1b03b60dd",
+    "counter_to_sink-seed101-formal-1790487908796947404/policy.py": "4b3ab783307912713f457db7208f6dab3c5dab8835e1814b7a99aa79eb0c6f9b",
+    "counter_to_sink-seed101-formal-1790487908796947404/policy.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "counter_to_sink-seed101-formal-1790487908796947404/result.json": "3f511883f88046836c5631cd5bdbd736b528b3dbf46635c9d390bcd906a4e46b",
+    "counter_to_sink-seed101-formal-1790487908796947404/safety.json": "71d673d6b779e81d27cf5de0129fdf6a3a09ec28754f58ca33f3d582368fd656",
+    "counter_to_sink-seed101-formal-1790487908796947404/sandbox_receipt.json": "ebda389935306d27349c706a8c880d3eb9590efac77aec04d837bf54777c6d13",
+    "counter_to_sink-seed101-formal-1790487908796947404/simulator.log": "3bb8612ed2f7a717ca874136e749fa1cbe19228c448c8d2b328e743b6a88ba7b",
+    "counter_to_sink-seed101-formal-1790487908796947404/trace.json": "b7862933a79897f2f490058ebc227c3f43749dde01ee419a8f38068bf2224cd7",
+    "counter_to_sink-seed101-formal-1790487908796947404/trace_context.json": "f72dc1d959d7279a6034bb1621abb0decfa2ae466be94cac25d712e73864d424",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/MEMORY.json": "edad39d526c99f480ab038211fc0af00a43db5d7309a255534577ed1410137f2",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/knowledge/guidance.md": "d734049259b00845114d08c44d1a2249e3e28e0bc120e98de2ac6f01567073d8",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/knowledge/repair.md": "61063874fcfc5a88abd6a2a197191fff5b8b9f7293ebb535e6e56a9fbfac5edd",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/lifecycle.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/source/provenance.json": "7c3d11eedfc928cb3154db5fe743b1364ff14bdfc6da7854e96ff07ea6c702fe",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/usage.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/validation/impact.json": "59fddcf73a5b8aa2831a766b3b954f187ba5db1f24fb9ab2a0bca068a57a3e58",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/validation/pairs.jsonl": "fadb8f653258b6ea12e7b4587d2491195b74b634cc4a3df0360419a2227a1733",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/validation/plan.json": "dec056052545208df460c67627f9dcf223860a6715bf74163405610b27493486",
+    "memory/candidate-attempt-attention-robo-e45ed3c1d0ccbe2bb48e9e7928bb5a468315b528ff9c6b0937874d4e6075b5eb/validation/scope.json": "d89f46ff8f2d1f15c841325176e8578d8cd5b4daaaea76f715eb84214d55c99c",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/MEMORY.json": "b18bf6f5132e21ccaffc9cf5f8b1072c4f15f9fe32b34555e7c483e73dd68fdb",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/knowledge/guidance.md": "d734049259b00845114d08c44d1a2249e3e28e0bc120e98de2ac6f01567073d8",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/knowledge/repair.md": "98ea00d6729d3b6c4bedb54844b7c21d9cde409244f426b7b7ce93d09b8802a0",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/lifecycle.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/source/provenance.json": "1bec6e16a0c7d24c8bcec449622b0dda102af57f4f7e6f6fab4282370b1fd8c8",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/usage.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/validation/impact.json": "12c56b82ce10143c9a77f1d43e4181e903bb5ac29003be7706f98ec08bf521aa",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/validation/pairs.jsonl": "3fef29198f7983a6bbcb117ca03d339fb1eb52eceb56a5c9bef7ff6057a19df6",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/validation/plan.json": "baed4b877bc96e23629e7facd34120d9cb3efd4e1d9ea7622dce0d8eddb3dbc7",
+    "memory/candidate-m5-robocasa-counter-to-e3660ad99154dab72eb5b427d7960661740327b58f5efe137c9b8e233b5ed972/validation/scope.json": "d89f46ff8f2d1f15c841325176e8578d8cd5b4daaaea76f715eb84214d55c99c",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/MEMORY.json": "d702b30ad84127784ac4c5e23bf77d2b6f6f2b75996ac62d8023fefdcb805bb3",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/knowledge/guidance.md": "d734049259b00845114d08c44d1a2249e3e28e0bc120e98de2ac6f01567073d8",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/knowledge/repair.md": "a6ab7b513a3f7706ae11ebbae04e648018dc2e8fe915f6eb370ea8321aa6c922",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/lifecycle.jsonl": "d65a4e7422b5928f9d2ea11a8d21775b02e22074e0ef9f2c6005d1a2c0fe08d9",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/source/provenance.json": "6ef3d3f31b7b2b1d65d875ac55a68462474448c6093f009d0414796f015e5a25",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/usage.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/validation/impact.json": "a623cd33e4ac709f251758a1c8311abfbe66d770c4db1592618f4f27cbbf4ed5",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/validation/pairs.jsonl": "0785155727a2feb2f4d9c3f880a7e80a3d01e73fd582ddc2561ce5d941d4169d",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/validation/plan.json": "7fed74ab1a60a546bb3dbe2e5dbf818a0176d812d1d2a09447a0d95989ce9a2a",
+    "memory/candidate-m5-robocasa-counter-to-eb6c4e9f0a3b996ae2bdde0122e3239f4e5e2bceaa47c607d21010f8393596c0/validation/scope.json": "b0b13933cc020a4bc9b4572ffce438e47511f268586c6d64390c34d567c5e4c3"
+  },
+  "expires_at": null,
+  "initial_snapshot": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robocasa/initial.sqlite3",
+    "sha256": "15781e887d56e6346573b5781a50e5385b417a62259edb3ae3ba5773870edde8"
+  },
+  "memory_id": "candidate:m5:robocasa-counter-to-sink-public-sdk-v3",
+  "scope": {
+    "assistance_credits": 0,
+    "cases": [
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6",
+        "seed": 101,
+        "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+        "task_variant_id": "task:boxed_drink"
+      },
+      {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:2c28d6ccbcc0992b4f50",
+        "scene_id": "scene:93244621fd1a24b456d5",
+        "seed": 102,
+        "task_prompt": "pick the cup from the counter and place it in the sink",
+        "task_variant_id": "task:cup"
+      },
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:a7d4f086836e78c38004",
+        "scene_id": "scene:feaf8e202a88a1bad005",
+        "seed": 103,
+        "task_prompt": "pick the mango from the counter and place it in the sink",
+        "task_variant_id": "task:mango"
+      },
+      {
+        "camera_config_id": "camera:base",
+        "camera_names": [
+          "base_camera"
+        ],
+        "object_set_id": "objects:a61c8884dc61c3aeccc8",
+        "scene_id": "scene:6b34dfcee277f551a83b",
+        "seed": 104,
+        "task_prompt": "pick the onion from the counter and place it in the sink",
+        "task_variant_id": "task:onion"
+      },
+      {
+        "camera_config_id": "camera:base+wrist",
+        "camera_names": [
+          "base_camera",
+          "wrist_camera"
+        ],
+        "object_set_id": "objects:2b0ecc383fd1fd9296f2",
+        "scene_id": "scene:b328d376a1514e3e6bae",
+        "seed": 105,
+        "task_prompt": "pick the rolling pin from the counter and place it in the sink",
+        "task_variant_id": "task:rolling_pin"
+      }
+    ],
+    "memory_id": "candidate:m5:robocasa-counter-to-sink-public-sdk-v3",
+    "perception_mode": "sim_gt",
+    "policy_id": "reactive_help",
+    "schema_version": "attentionbench.memory-validation-plan.v2",
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "suite": "robocasa",
+    "task_id": "counter_to_sink"
+  },
+  "source": {
+    "path": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/robocasa-memory-v3/authority/attention_memory.sqlite3",
+    "sha256": "53368bc30322ba450d6791f639804d87080f5862d9ea94507ce09158627ee5db"
+  },
+  "source_evidence": "/home/truares/桌面/attentionbench-depth-memory-risk-20260929/robocasa-memory-v3/authority/attempts",
+  "status": "trusted",
+  "version": 1
+}

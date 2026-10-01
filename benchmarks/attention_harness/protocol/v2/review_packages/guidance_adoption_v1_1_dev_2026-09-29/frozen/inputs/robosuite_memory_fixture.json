@@ -1,0 +1,8 @@
+{
+  "memory_guidance": {
+    "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0": "Use the object poses returned by sensors.find_objects() (permitted sim_gt evidence) to locate the cube. Then, using sensors.get_observation() for the current end-effector position (robot0_eef_pos) and orientation (robot0_eef_quat): (1) move the end-effector above the cube, (2) lower it to the cube's grasp height, (3) close the gripper with gripper.close() and allow it to settle, and (4) move the end-effector upward to lift the cube off the table. Keep the gripper open during approach as you already do, and verify the cube's position changes after lifting by calling find_objects() again."
+  },
+  "memory_ids_to_use": [
+    "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0"
+  ]
+}

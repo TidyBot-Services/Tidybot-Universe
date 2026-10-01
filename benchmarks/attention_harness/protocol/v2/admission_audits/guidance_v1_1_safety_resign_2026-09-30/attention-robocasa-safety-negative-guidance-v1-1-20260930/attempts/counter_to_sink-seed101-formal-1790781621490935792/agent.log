@@ -1,0 +1,76 @@
+2026-09-30 23:21:05,605 INFO robot_profile: Loaded robot profile 'full' from /home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5/profiles/full.yaml (disabled: [])
+2026-09-30 23:21:05,606 INFO agent_server: Robot profile: full (disabled capabilities: none)
+/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5/server.py:226: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5/server.py:330: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+INFO:     Started server process [3618405]
+INFO:     Waiting for application startup.
+2026-09-30 23:21:05,654 INFO agent_server: Starting hardware server (dry_run=False)
+2026-09-30 23:21:05,860 INFO backends.base: BaseBackend: connected to localhost:50800
+2026-09-30 23:21:05,869 INFO franka_protocol.client: Connected to server at localhost
+2026-09-30 23:21:05,869 INFO backends.franka: FrankaBackend: connected to localhost
+2026-09-30 23:21:05,871 INFO gripper_protocol.client: Connected to localhost
+2026-09-30 23:21:05,871 INFO backends.gripper: GripperBackend: connected to localhost
+2026-09-30 23:21:05,873 INFO camera_protocol.client: Connected to ws://localhost:6380
+2026-09-30 23:21:05,873 INFO backends.cameras: CameraBackend: connected to localhost:6380
+2026-09-30 23:21:05,974 INFO backends.cameras: CameraBackend: cached intrinsics for wrist_camera (maniskill_wrist)
+2026-09-30 23:21:06,075 INFO backends.cameras: CameraBackend: cached infrared_left intrinsics for wrist_camera
+2026-09-30 23:21:06,176 INFO backends.cameras: CameraBackend: cached infrared_right intrinsics for wrist_camera
+2026-09-30 23:21:06,276 INFO backends.cameras: CameraBackend: cached intrinsics for base_camera (maniskill_base)
+2026-09-30 23:21:06,376 INFO backends.cameras: CameraBackend: cached infrared_left intrinsics for base_camera
+2026-09-30 23:21:06,476 INFO backends.cameras: CameraBackend: cached infrared_right intrinsics for base_camera
+2026-09-30 23:21:06,476 INFO camera_protocol.client: Receive thread started
+2026-09-30 23:21:06,476 INFO camera_protocol.client: Subscribed to ['color', 'depth', 'infrared_left', 'infrared_right'] on all (resolved: all)
+2026-09-30 23:21:06,477 INFO backends.cameras: CameraBackend: subscribed to ['color', 'depth', 'infrared_left', 'infrared_right'] at 15 fps
+2026-09-30 23:21:06,477 INFO backends.mocap: MocapBackend: connected to tcp://localhost:6390
+2026-09-30 23:21:06,576 INFO camera_protocol.client: recv_loop [1]: text, 29 bytes
+2026-09-30 23:21:06,580 INFO camera_protocol.client: recv_loop [2]: binary, 40847 bytes
+2026-09-30 23:21:06,588 INFO camera_protocol.client: recv_loop [3]: binary, 26458 bytes
+2026-09-30 23:21:06,594 INFO camera_protocol.client: recv_loop [4]: binary, 35054 bytes
+2026-09-30 23:21:06,596 INFO camera_protocol.client: recv_loop [5]: binary, 21962 bytes
+2026-09-30 23:21:06,977 WARNING backends.mocap: MocapBackend: no message within 500ms, mocap may not be publishing
+2026-09-30 23:21:06,977 INFO system_logger.logger: [SystemLogger] Started recording (interval=0.1s)
+2026-09-30 23:21:06,977 INFO safety_monitor: SafetyMonitor started
+2026-09-30 23:21:06,977 INFO arm_monitor: ArmMonitor started (grace=3.0s, cooldown=30.0s)
+2026-09-30 23:21:06,977 INFO agent_server: API key auth DISABLED (no keys configured)
+2026-09-30 23:21:06,977 INFO agent_server: Hardware server ready on 127.0.0.1:8880
+2026-09-30 23:21:06,978 WARNING safety_monitor: SafetyMonitor: mocap lost — auto-rewind disabled (re-enable when mocap is tracking)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8880 (Press CTRL+C to quit)
+2026-09-30 23:21:10,567 INFO routes.code_routes: Job 0287d10b-1f6c-49 submitted by formal-counter_to_sink-seed101-formal-1790781621490935792 (position 1)
+2026-09-30 23:21:10,568 INFO system_logger.logger: [SystemLogger] Cleared all waypoints
+2026-09-30 23:21:10,568 INFO lease: Lease granted to job:formal-counter_to_sink-seed101-formal-1790781621490935792:0287d10b-1f6c-49 (baf3c49f-5c3a-44d1-a43b-d5ca0f7750fa)
+2026-09-30 23:21:10,568 INFO execution_recorder: ExecutionRecorder: started for 5e1a930d-9318-48 (2 cameras, state=True)
+2026-09-30 23:21:10,569 INFO code_executor: Executing code (ID: 5e1a930d-9318-48): /home/truares/文档/Tidybot-Universe/logs/code_executions/20260930_232110_5e1a930d-9318-48.py
+2026-09-30 23:21:12,186 INFO code_executor: Execution 5e1a930d-9318-48 finished: ExecutionStatus.COMPLETED (duration: 1.62s, exit_code: 0)
+2026-09-30 23:21:12,187 INFO execution_recorder: ExecutionRecorder: stopped for 5e1a930d-9318-48 (9 frames, 17 state samples, 1.6s)
+2026-09-30 23:21:12,188 INFO execution_recorder: ExecutionRecorder: cleaned up 85de5c77-7df6-48
+2026-09-30 23:21:12,189 INFO routes.code_routes: Job 0287d10b-1f6c-49 finished: completed (execution 5e1a930d-9318-48)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-30 23:21:12,387 INFO agent_server: Shutting down hardware server
+2026-09-30 23:21:12,387 INFO arm_monitor: ArmMonitor stopped
+2026-09-30 23:21:12,387 INFO safety_monitor: SafetyMonitor stopped
+2026-09-30 23:21:12,387 INFO system_logger.logger: [SystemLogger] Stopped recording (3/19 samples, 3 waypoints)
+2026-09-30 23:21:12,388 INFO backends.mocap: MocapBackend: disconnected
+2026-09-30 23:21:12,439 INFO camera_protocol.client: Receive thread stopped
+2026-09-30 23:21:12,439 INFO camera_protocol.client: Disconnected
+2026-09-30 23:21:12,440 INFO backends.cameras: CameraBackend: disconnected
+2026-09-30 23:21:12,440 INFO gripper_protocol.client: Disconnected
+2026-09-30 23:21:12,440 INFO backends.gripper: GripperBackend: disconnected
+2026-09-30 23:21:12,444 INFO franka_protocol.client: Disconnected
+2026-09-30 23:21:12,445 INFO backends.franka: FrankaBackend: disconnected
+2026-09-30 23:21:12,486 INFO backends.base: BaseBackend: disconnected
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3618405]

@@ -1,0 +1,12 @@
+{
+  "schema": "attentionbench.guidance-adoption-blocked-audit.v1.1",
+  "checked_at_epoch": 1790743194.3344631,
+  "same_blocker_consecutive_goal_turns": 3,
+  "blocking_condition": "new exact-SHA approval has not been supplied by the human user",
+  "previous_goal_turn_classification": "progress: requirement-by-requirement completion audit and fresh source/preservation hashes established that final approval is the only missing requirement",
+  "required_external_change": "user replies to the existing approval question for candidate manifest 2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab",
+  "already_complete": "implementation, design, bounded real-Service causal proof, all artifacts/cleanup, new SHA package and conclusions",
+  "new_execution_permitted": false,
+  "candidate_manifest_sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab",
+  "candidate_immutable_payload_unchanged": true
+}

@@ -1,0 +1,17 @@
+{
+  "approval": {
+    "approved_by": "independent_admission_auditor",
+    "id": "independent-demo-approval-a8777ed9411fd8f7"
+  },
+  "assets": [
+    {
+      "kind": "action_trajectory",
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/demo/robosuite_cube_lift_actions.json",
+      "sha256": "ebe11ac10a5ac3be7b1141133a3d34792f107e1416762620253d4f90e00af6a3",
+      "source": "public_sdk"
+    }
+  ],
+  "schema_version": "attentionbench.public-demo.v1",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

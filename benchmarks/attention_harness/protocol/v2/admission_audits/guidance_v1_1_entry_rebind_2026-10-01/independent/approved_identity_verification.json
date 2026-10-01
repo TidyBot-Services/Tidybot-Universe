@@ -1,0 +1,17 @@
+{
+  "Service_starts": 0,
+  "approval_required": true,
+  "entries": 350,
+  "files": 1290,
+  "issues": [],
+  "manifest_sha256": "32febf630ff2d6a979e9eabec50152ff9ac887721ab3eef372b30434c7160d5e",
+  "operator_approval_sha256": "10d29fece3c46b5327fd09b3900d779fe7b1e225965441886d31b69e329346e3",
+  "pass": true,
+  "production_preflight_and_launch_review_pass": true,
+  "review_sha256": "a83605415c146694d3c1b2b4116805db51477253f07ca396edd53450b3558c47",
+  "reviewer_role": "author-produced full mechanical review; original user goal supplies approval authority",
+  "robot_runs": 0,
+  "schema": "attentionbench.guidance-identity-freeze-verification.v1",
+  "verified_at_utc": "2026-09-30T16:23:21.829807+00:00",
+  "verifier_sha256": "0e92884f66855dd38a8b12a1b6f2d5ab96f0fc802cc245f4aa1c4c6b32f0bf20"
+}

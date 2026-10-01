@@ -1,0 +1,43 @@
+{
+  "checked_at_utc": "2026-09-30T15:39:22.504381+00:00",
+  "controller_pids": [],
+  "expected_ports": [
+    {
+      "listening": false,
+      "port": 6300
+    },
+    {
+      "listening": false,
+      "port": 8880
+    },
+    {
+      "listening": false,
+      "port": 6355
+    },
+    {
+      "listening": false,
+      "port": 6370
+    },
+    {
+      "listening": false,
+      "port": 6380
+    },
+    {
+      "listening": false,
+      "port": 50800
+    }
+  ],
+  "passed": true,
+  "process_groups": [
+    {
+      "absent": true,
+      "process_group": 3618405,
+      "service": "agent"
+    },
+    {
+      "absent": true,
+      "process_group": 3615589,
+      "service": "simulator"
+    }
+  ]
+}

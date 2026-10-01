@@ -1,0 +1,32 @@
+{
+  "attempt_cap": 20,
+  "deadline_epoch": 1790744904,
+  "design_sha256": "2cda4682340451446e9204d04d5b25f72a12be5e345b9af83767e48a9688a09c",
+  "final_approval_status": "pending_new_external_approval",
+  "formal_eligible": false,
+  "frozen_before_implementation": true,
+  "paired_arms": [
+    "old_baseline",
+    "new_no_guidance",
+    "hint",
+    "content_ablation",
+    "demo",
+    "memory"
+  ],
+  "protected_before_sha256": "3d4759ba840c4f18891fdacc85bba30c6069354c82b23de270b062a0e3b85465",
+  "runtime_commit": "55d75ab55ea9aaa48ee86a2ce9fed953562f4b1d",
+  "scheduler_proofs": [
+    "hint_next_attempt",
+    "trusted_memory_next_attempt"
+  ],
+  "schema": "attentionbench.guidance-adoption-preregistration.v1",
+  "seeds": [
+    101
+  ],
+  "started_utc": "2026-09-30 03:38:24 UTC",
+  "stop_new_runs_epoch": 1790744304,
+  "tasks": [
+    "robosuite/cube_lift",
+    "robocasa/counter_to_sink"
+  ]
+}

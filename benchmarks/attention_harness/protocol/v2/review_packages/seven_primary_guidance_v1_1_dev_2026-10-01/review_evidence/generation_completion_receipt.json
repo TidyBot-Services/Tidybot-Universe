@@ -1,0 +1,9 @@
+{
+  "Service_starts": 0,
+  "at_utc": "2026-09-30T16:10:46.918233+00:00",
+  "error": "Missing review_tools directory at final source-copy step, after all identities were generated. Directory creation corrected; no lock/launch changes or regeneration needed.",
+  "generated_entries": 350,
+  "original_failure_retained": "/home/truares/桌面/attentionbench-guidance-entry-rebind-20261001/generation_initial_failure.stderr",
+  "phase": "pre-freeze assembly completion",
+  "robot_runs": 0
+}

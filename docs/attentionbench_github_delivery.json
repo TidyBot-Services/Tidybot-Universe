@@ -1,0 +1,71 @@
+{
+  "schema_version": "attentionbench.github-code-delivery.v1",
+  "scope": "Current Universe working tree and the five independent repositories used by its latest guidance execution contract; old checkouts and unrelated org repositories excluded.",
+  "universe": {
+    "repository": "https://github.com/TidyBot-Services/Tidybot-Universe",
+    "branch": "feature/attention-native-robosuite",
+    "source_base_commit": "55d75ab55ea9aaa48ee86a2ce9fed953562f4b1d",
+    "delivery_revision": "The Git commit containing this file; resolve via the research branch. No self-referential commit hash is embedded.",
+    "default_branch_merged": false
+  },
+  "services": [
+    {"name": "Memory Service", "repository": "https://github.com/TidyBot-Services/attention_memory_service", "branch": "feature/attentionbench-week2-sync-20260927", "commit": "24d414638ad2cdd6557f09f042e8b6ef2b597b0f"},
+    {"name": "Robosuite Service", "repository": "https://github.com/TidyBot-Services/robosuite_sim", "branch": "feature/depth-recovery-engineering-20260930", "commit": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905"},
+    {"name": "ManiSkill Service", "repository": "https://github.com/TidyBot-Services/maniskill_sim", "branch": "feature/attentionbench-planner-guard-v5", "commit": "d3b2fc0f326febf5f79c2bb871fcde4ba997e4d0"},
+    {"name": "Agent Server", "repository": "https://github.com/TidyBot-Services/agent_server", "branch": "feature/attentionbench-planning-rejection-v5", "commit": "1a4b0953b8380378a58102317a1cee48f57a3dd0"},
+    {"name": "RoboCasa tasks", "repository": "https://github.com/TidyBot-Services/maniskill-robocasa-tasks", "branch": "feature/attentionbench-week2-sync-20260927", "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d"}
+  ],
+  "verification": {
+    "harness": {"command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<independent Robosuite>:<Memory Service>:<Universe> <harness venv>/bin/python -m pytest benchmarks/attention_harness/tests -q --disable-warnings", "passed": 518, "skipped": 10, "failed": 0},
+    "orchestrator_pipeline": {"command": "python tests/test_orchestrator_pipeline.py (from skill-agent-setup/claude-code)", "passed": 84, "failed": 0},
+    "memory_service": {"command": "python -m pytest tests -q --disable-warnings", "passed": 22, "failed": 0},
+    "robosuite_service": {"command": "python -m pytest tests -q --disable-warnings", "passed": 11, "failed": 0},
+    "setup_and_demo_shell_syntax": "pass",
+    "new_pin_consistency_tests": 2,
+    "credential_pattern_scan": "No recognized key/private-key patterns found in reviewed text, new compressed raw archive or new SQLite snapshots. Pattern scan is not an exhaustive security audit.",
+    "new_simulator_effect_runs": 0,
+    "new_GLM_calls": 0,
+    "held_out_runs": 0,
+    "formal_matrix_runs": 0
+  },
+  "changes_in_this_delivery": [
+    "Commit previously pending guidance implementation, safety helper, tests, evidence, approval records, personal verification scripts and cost estimate.",
+    "Remove setup_env.sh's redundant old Robosuite install; requirements and service lock now remain aligned at 19fde8a.",
+    "Add concise PhD project guide, README research entry and repository version manifest.",
+    "Update personal verification guide to current scripts and scoped cleanup; retain original frozen/audit bytes.",
+    "Publish latest Agent Server and ManiSkill feature branches; verify existing other Service branches."
+  ],
+  "current_admission_reverification": {
+    "classification": "blocked_existing_freeze_consistency_defect_not_a_new_effect_requirement",
+    "historical_signed_formal_eligible": true,
+    "current_reverification_pass": false,
+    "execution_authorized": false,
+    "package_command": "PYTHONPATH=<Universe>:<Memory Service>:<Robosuite Service> PYTHONDONTWRITEBYTECODE=1 python benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/verify_package.py",
+    "package_exit_code": 1,
+    "package_files": 1290,
+    "package_entries": 350,
+    "package_issue": "unchanged condition and Memory authority bytes: semantic_limitations.md now reflects guidance consumption but the frozen reviewer also requires it to equal the no-guidance old document",
+    "delivery_command": "PYTHONPATH=<Universe>:<Memory Service>:<Robosuite Service> PYTHONDONTWRITEBYTECODE=1 python benchmarks/attention_harness/protocol/v2/admission_audits/guidance_v1_1_entry_rebind_2026-10-01/verify_delivery.py",
+    "delivery_exit_code": 1,
+    "delivery_issue_count": 5,
+    "delivery_issues": [
+      "operator_approval.json SHA differs from original overall audit evidence reference",
+      "sha256_manifest.json SHA differs from original overall audit evidence reference",
+      "new frozen identity/approval verification fails the semantic-document equality check",
+      "historical eligibility is not derived from current verification result",
+      "approval sidecars mismatch"
+    ],
+    "manifest_expected_by_historical_audit": "32febf630ff2d6a979e9eabec50152ff9ac887721ab3eef372b30434c7160d5e",
+    "manifest_current_sha256": "40bbbd88a966a43f6b66245b20f51e0ff767571af2767e25fcfad96c552350c7",
+    "approval_expected_by_historical_audit": "10d29fece3c46b5327fd09b3900d779fe7b1e225965441886d31b69e329346e3",
+    "approval_current_sha256": "f635f6b94f31eb700c5d8f7f76dc51fe3a4853d8af2c26b9fab5f16a0f8b642e",
+    "historical_signature_rewritten": false,
+    "next_step": "Resolve this frozen-package amendment and approval/audit references in a separately scoped review. Do not bypass the reviewer, automatically flip eligibility, or run the 350-cell matrix."
+  },
+  "reproduction_limits": [
+    "Historical review packages and evidence refer to absolute paths of the source workstation; a fresh machine needs separate path/configuration binding.",
+    "Unit tests are not new live Service or formal effect acceptance.",
+    "Personal verification scripts are prepared; their three demos were not run in this publication task.",
+    "No API keys, local ignored AGENTS.md, model weights or unrelated desktop data are intentionally included."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "candidate_manifest_sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab",
+  "no_execution_authorized": true,
+  "status": "frozen_and_approved",
+  "decision": "approved",
+  "review_sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7",
+  "operator_approval": {
+    "path": "operator_approval.json",
+    "sha256": "3ac6bd9dc1c952ebbe6c0a69b3c4b9a9ac69a2ebee21f47350c0b9636fbeebc2"
+  },
+  "approved_at": {
+    "utc": "2026-09-30T14:59:40+00:00",
+    "America/New_York": "2026-09-30T10:59:40-04:00",
+    "Asia/Shanghai": "2026-09-30T22:59:40+08:00"
+  },
+  "scope": "bounded_development_validation_and_exact_sha_freeze_only",
+  "known_design_limitation": "RoboCasa动作改变但原生成功未改善；旧未采纳证据与结论保留",
+  "next_steps_status": "Safety负控缺口与新身份重签准入仍待另轮；均不自动解锁",
+  "historical_pending_status": "approval_status_preapproval.json",
+  "goal_completion_evidence": "goal_completion_approved_audit.json"
+}

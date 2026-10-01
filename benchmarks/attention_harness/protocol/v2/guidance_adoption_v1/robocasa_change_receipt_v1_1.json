@@ -1,0 +1,14 @@
+{
+  "schema": "attentionbench.guidance-adoption-policy-change.v1",
+  "version": "guidance-adoption-v1.1",
+  "suite": "robocasa",
+  "old_source": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/guidance_adoption_v1/robocasa_counter_to_sink_v1.py",
+  "old_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+  "new_source": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/guidance_adoption_v1/robocasa_counter_to_sink_v1_1.py",
+  "new_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+  "amendment_sha256": "11fd78690848fa5ed7ea48866bcf04aee3eea6ae5dac1dad494f51441dee871e",
+  "implemented_at_epoch": 1790741289.3290288,
+  "change": "one content-triggered Memory/text recipe additionally sets existing base_forward_m=.11",
+  "approval_status": "user goal authorizes bounded development; final new external approval pending",
+  "old_approval_reused": false
+}

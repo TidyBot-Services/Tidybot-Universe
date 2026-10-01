@@ -1,0 +1,110 @@
+{
+  "scope": "preparation only; static/read-only checks; the three .sh demos were not executed",
+  "bash_syntax": "passed: 4 files",
+  "python_compile": "passed",
+  "contract_sha_and_runtime_lock_preflight": "passed (--check-only with the same-SHA venv entry and exact dependency versions)",
+  "pure_compiler_hint": {
+    "baseline": {},
+    "test_reply": {
+      "grasp_offset_m": 0.005,
+      "approach_tolerance_m": 0.004
+    },
+    "defaults": {
+      "grasp_offset_m": {
+        "value": 0.02,
+        "source": "frozen_policy_default"
+      },
+      "approach_tolerance_m": {
+        "value": 0.018,
+        "source": "frozen_policy_default"
+      },
+      "open_settle_steps": {
+        "value": 10,
+        "source": "frozen_policy_default"
+      }
+    }
+  },
+  "existing_log_parsing": [
+    {
+      "kind": "no-guidance",
+      "path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816",
+      "parsed_receipt": {
+        "demo": {},
+        "memory": {},
+        "advisor": {}
+      },
+      "action_event_count": 5
+    },
+    {
+      "kind": "hint",
+      "path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632",
+      "parsed_receipt": {
+        "demo": {},
+        "memory": {},
+        "advisor": {
+          "grasp_offset_m": 0.005,
+          "approach_tolerance_m": 0.004,
+          "close_settle_steps": 30
+        }
+      },
+      "action_event_count": 6
+    }
+  ],
+  "protected_files_unchanged": {
+    "count": 1698,
+    "drift": []
+  },
+  "episode_executions": 0,
+  "Service_starts": 0,
+  "provider_calls": 0,
+  "heldout_executions": 0,
+  "matrix_executions": 0,
+  "runtime_verification": "not run; reserved for user",
+  "python_environment": {
+    "actual_python_entry": "/home/truares/.cache/tidybot-attention/venv/bin/python",
+    "actual_python_sha256": "ca420bd4614ae7757b4cd4938b3c663e98d2b631bda518610071d9a4ca0b509e",
+    "dependency_versions": {
+      "mujoco": "3.3.0",
+      "numpy": "1.26.4",
+      "robosuite": "1.5.1"
+    },
+    "execution_contract_sha256": "c8311ad60cb20bf43b3f984e6b9cb832a4d7025ecc9e8150033a5662b0f037a2",
+    "frozen_execution_authorized": false,
+    "harness_python": {
+      "path": "/home/truares/.local/share/uv/python/cpython-3.10.21-linux-x86_64-gnu/bin/python3.10",
+      "sha256": "ca420bd4614ae7757b4cd4938b3c663e98d2b631bda518610071d9a4ca0b509e"
+    },
+    "package": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01",
+    "passed": true,
+    "robosuite_service": {
+      "clean": true,
+      "commit": "19fde8aa7c47c283fce7edcb25348e4ccb2fd905",
+      "path": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering"
+    },
+    "scope": "单独的用户亲自验证；不会将冻结包改为获准执行"
+  },
+  "deliverable_sha256": {
+    "benchmarks/attention_harness/scripts/README.md": "8cafeff5f7c913b4b53f3d9295aed95c4fa221ea05f9132e1137107711f81dee",
+    "benchmarks/attention_harness/scripts/personal_verify_common.sh": "e10a0c0c736c247fbfde4b035a0e6b00cde4a672312e71849229947f7024db52",
+    "benchmarks/attention_harness/scripts/verify_2_guidance_adopted.sh": "6a1734de2412d001288b9507b0825819feac456a00d0fb6975b134c02b4fbc36",
+    "benchmarks/attention_harness/scripts/verify_1_system_runs.sh": "afc184076bcab03ab8ff2ba663802c2a8720ddcce795fbf9ad19e40cbcc376c0",
+    "benchmarks/attention_harness/scripts/personal_verify.py": "f1147f72d3e58918506edfd16bae239bc1849d5e7935b941ef22de47c8b8c9a2",
+    "benchmarks/attention_harness/scripts/verify_3_unsafe_stopped.sh": "92df01556c44ea7ddb85fb45c46ffdd81908d91f15ab1bd1246333714311232a",
+    "docs/cost_estimate_350.md": "dc36f285f223d78c55ec2353f4b06d929a490474793a6b7164d15c26cc13f434",
+    "docs/cost_estimate_350_sources.json": "4df723ce9a738d5a3c1c9c924ab0000a7ec3d011881a98200568a75c086a3477"
+  },
+  "completion_audit": {
+    "three_executable_scripts": true,
+    "judgment_and_stop_in_every_script": true,
+    "README_sequence_and_runtime_limits": true,
+    "formal_paths_and_SHA_from_frozen_entry_and_contract": true,
+    "fixed_reply_pure_compiler_coverage": true,
+    "independent_Safety_implementation_preserved": true,
+    "automatic_owned_group_pkill_and_residual_checks_present": true,
+    "cost_350_grid_confirmed_from_frozen_plan": true,
+    "time_tokens_robot_time_parallel_and_uncertainties_documented": true,
+    "local_document_links_resolve": true,
+    "all_1698_protected_file_hashes_unchanged": true,
+    "runtime_demos_deliberately_not_executed": true
+  }
+}

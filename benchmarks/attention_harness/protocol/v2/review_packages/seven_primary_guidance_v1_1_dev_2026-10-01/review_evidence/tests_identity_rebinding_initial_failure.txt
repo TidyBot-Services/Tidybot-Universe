@@ -1,0 +1,316 @@
+...FFFFF...                                                              [100%]
+=================================== FAILURES ===================================
+_________________ test_old_policy_sha_rejected_for_new_source __________________
+
+    def test_old_policy_sha_rejected_for_new_source():
+        with pytest.raises(ValueError,match='policy differs from approved SHA-256'):
+>           reviewer.inspect_launch(replace(arguments(),'--approved-policy-sha256','e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780'))
+
+independent/test_identity_review.py:38: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+independent/review_identity_package.py:56: in inspect_launch
+    lock, _ = inspect_formal_entry(suite=args.suite, task_id=args.task, seed=args.seed,
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_entry.py:80: in inspect_formal_entry
+    request.validate()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = FormalRunRequest(suite='robocasa', task_id='counter_to_sink', seed=101, policy_code_path=PosixPath('/home/truares/桌面/T..._id=None, attention_input=None, entry_sha256=None, entry_lock=None, attempt_deadline_seconds=None, sdk_call_limit=None)
+
+    def validate(self) -> None:
+        if self.sdk_call_limit is not None and (
+                type(self.sdk_call_limit) is not int or not 1 <= self.sdk_call_limit <= 200):
+            raise ValueError("formal remaining SDK call limit must be 1–200")
+        if (self.run_id is None) != (self.attempt_id is None):
+            raise ValueError("formal run and attempt identities must be paired")
+        if self.run_id is not None and (not self.run_id.startswith("run:")
+                                        or not self.attempt_id.startswith("attempt:")):
+            raise ValueError("invalid formal Attention identity")
+        public_attention_input(self.attention_input)
+        if self.entry_sha256 is not None and (len(self.entry_sha256) != 64 or
+                any(c not in "0123456789abcdef" for c in self.entry_sha256)):
+            raise ValueError("invalid formal entry digest")
+        if self.entry_lock is not None:
+            lock = dict(self.entry_lock)
+            digest = lock.pop("sha256", None)
+            actual = hashlib.sha256(json.dumps(lock, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":")).encode("utf-8")).hexdigest()
+            if (digest != actual or digest != self.entry_sha256
+                    or lock.get("suite") != self.suite or lock.get("task_id") != self.task_id
+                    or lock.get("seed") != self.seed
+                    or lock.get("approved_config_sha256") != self.config_sha256
+                    or lock.get("approved_policy_sha256") != self.policy_sha256
+                    or lock.get("overall_deadline_seconds") != self.overall_deadline_seconds):
+                raise ValueError("formal request entry lock mismatch")
+        if self.suite not in {"robocasa", "robosuite"}:
+            raise ValueError("formal runner requires a primary simulator suite")
+        if not self.task_id or isinstance(self.seed, bool) or not isinstance(self.seed, int):
+            raise ValueError("formal runner requires a task and integer seed")
+        if (isinstance(self.overall_deadline_seconds, bool)
+                or not isinstance(self.overall_deadline_seconds, (int, float))
+                or not math.isfinite(self.overall_deadline_seconds)
+                or self.overall_deadline_seconds <= 0):
+            raise ValueError("formal runner requires a finite positive overall deadline")
+        if self.attempt_deadline_seconds is not None and (
+            isinstance(self.attempt_deadline_seconds, bool)
+            or not isinstance(self.attempt_deadline_seconds, (int, float))
+            or not math.isfinite(self.attempt_deadline_seconds)
+            or not 0 < self.attempt_deadline_seconds <= self.overall_deadline_seconds
+        ):
+            raise ValueError("formal attempt deadline must be finite and within the entry deadline")
+        if not self.policy_code_path.is_file():
+            raise ValueError("formal policy source is missing")
+        actual = hashlib.sha256(self.policy_code_path.read_bytes()).hexdigest()
+        if actual != self.policy_sha256:
+>           raise ValueError("formal policy source differs from approved digest")
+E           ValueError: formal policy source differs from approved digest
+
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_runner_boundary.py:91: ValueError
+
+During handling of the above exception, another exception occurred:
+
+    def test_old_policy_sha_rejected_for_new_source():
+>       with pytest.raises(ValueError,match='policy differs from approved SHA-256'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'policy differs from approved SHA-256'
+E        Input: 'formal policy source differs from approved digest'
+
+independent/test_identity_review.py:37: AssertionError
+______________ test_modified_policy_cannot_use_existing_approval _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-truares/pytest-155/test_modified_policy_cannot_us0')
+
+    def test_modified_policy_cannot_use_existing_approval(tmp_path):
+        args=arguments();code=Path(args[args.index('--code')+1]);changed=tmp_path/'altered.py'
+        changed.write_text(code.read_text()+'\nbase.move_delta(dx=.01,dy=0,dtheta=0,frame="local")\n')
+        with pytest.raises(ValueError,match='policy differs from approved SHA-256'):
+>           reviewer.inspect_launch(replace(args,'--code',changed))
+
+independent/test_identity_review.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+independent/review_identity_package.py:56: in inspect_launch
+    lock, _ = inspect_formal_entry(suite=args.suite, task_id=args.task, seed=args.seed,
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_entry.py:80: in inspect_formal_entry
+    request.validate()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = FormalRunRequest(suite='robocasa', task_id='counter_to_sink', seed=101, policy_code_path=PosixPath('/tmp/pytest-of-tru..._id=None, attention_input=None, entry_sha256=None, entry_lock=None, attempt_deadline_seconds=None, sdk_call_limit=None)
+
+    def validate(self) -> None:
+        if self.sdk_call_limit is not None and (
+                type(self.sdk_call_limit) is not int or not 1 <= self.sdk_call_limit <= 200):
+            raise ValueError("formal remaining SDK call limit must be 1–200")
+        if (self.run_id is None) != (self.attempt_id is None):
+            raise ValueError("formal run and attempt identities must be paired")
+        if self.run_id is not None and (not self.run_id.startswith("run:")
+                                        or not self.attempt_id.startswith("attempt:")):
+            raise ValueError("invalid formal Attention identity")
+        public_attention_input(self.attention_input)
+        if self.entry_sha256 is not None and (len(self.entry_sha256) != 64 or
+                any(c not in "0123456789abcdef" for c in self.entry_sha256)):
+            raise ValueError("invalid formal entry digest")
+        if self.entry_lock is not None:
+            lock = dict(self.entry_lock)
+            digest = lock.pop("sha256", None)
+            actual = hashlib.sha256(json.dumps(lock, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":")).encode("utf-8")).hexdigest()
+            if (digest != actual or digest != self.entry_sha256
+                    or lock.get("suite") != self.suite or lock.get("task_id") != self.task_id
+                    or lock.get("seed") != self.seed
+                    or lock.get("approved_config_sha256") != self.config_sha256
+                    or lock.get("approved_policy_sha256") != self.policy_sha256
+                    or lock.get("overall_deadline_seconds") != self.overall_deadline_seconds):
+                raise ValueError("formal request entry lock mismatch")
+        if self.suite not in {"robocasa", "robosuite"}:
+            raise ValueError("formal runner requires a primary simulator suite")
+        if not self.task_id or isinstance(self.seed, bool) or not isinstance(self.seed, int):
+            raise ValueError("formal runner requires a task and integer seed")
+        if (isinstance(self.overall_deadline_seconds, bool)
+                or not isinstance(self.overall_deadline_seconds, (int, float))
+                or not math.isfinite(self.overall_deadline_seconds)
+                or self.overall_deadline_seconds <= 0):
+            raise ValueError("formal runner requires a finite positive overall deadline")
+        if self.attempt_deadline_seconds is not None and (
+            isinstance(self.attempt_deadline_seconds, bool)
+            or not isinstance(self.attempt_deadline_seconds, (int, float))
+            or not math.isfinite(self.attempt_deadline_seconds)
+            or not 0 < self.attempt_deadline_seconds <= self.overall_deadline_seconds
+        ):
+            raise ValueError("formal attempt deadline must be finite and within the entry deadline")
+        if not self.policy_code_path.is_file():
+            raise ValueError("formal policy source is missing")
+        actual = hashlib.sha256(self.policy_code_path.read_bytes()).hexdigest()
+        if actual != self.policy_sha256:
+>           raise ValueError("formal policy source differs from approved digest")
+E           ValueError: formal policy source differs from approved digest
+
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_runner_boundary.py:91: ValueError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = PosixPath('/tmp/pytest-of-truares/pytest-155/test_modified_policy_cannot_us0')
+
+    def test_modified_policy_cannot_use_existing_approval(tmp_path):
+        args=arguments();code=Path(args[args.index('--code')+1]);changed=tmp_path/'altered.py'
+        changed.write_text(code.read_text()+'\nbase.move_delta(dx=.01,dy=0,dtheta=0,frame="local")\n')
+>       with pytest.raises(ValueError,match='policy differs from approved SHA-256'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'policy differs from approved SHA-256'
+E        Input: 'formal policy source differs from approved digest'
+
+independent/test_identity_review.py:44: AssertionError
+______________________ test_wrong_config_sha_is_rejected _______________________
+
+    def test_wrong_config_sha_is_rejected():
+        with pytest.raises(ValueError,match='config differs from approved SHA-256'):
+>           reviewer.inspect_launch(replace(arguments(),'--approved-config-sha256','0'*64))
+
+independent/test_identity_review.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+independent/review_identity_package.py:56: in inspect_launch
+    lock, _ = inspect_formal_entry(suite=args.suite, task_id=args.task, seed=args.seed,
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_entry.py:80: in inspect_formal_entry
+    request.validate()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = FormalRunRequest(suite='robocasa', task_id='counter_to_sink', seed=101, policy_code_path=PosixPath('/home/truares/桌面/T..._id=None, attention_input=None, entry_sha256=None, entry_lock=None, attempt_deadline_seconds=None, sdk_call_limit=None)
+
+    def validate(self) -> None:
+        if self.sdk_call_limit is not None and (
+                type(self.sdk_call_limit) is not int or not 1 <= self.sdk_call_limit <= 200):
+            raise ValueError("formal remaining SDK call limit must be 1–200")
+        if (self.run_id is None) != (self.attempt_id is None):
+            raise ValueError("formal run and attempt identities must be paired")
+        if self.run_id is not None and (not self.run_id.startswith("run:")
+                                        or not self.attempt_id.startswith("attempt:")):
+            raise ValueError("invalid formal Attention identity")
+        public_attention_input(self.attention_input)
+        if self.entry_sha256 is not None and (len(self.entry_sha256) != 64 or
+                any(c not in "0123456789abcdef" for c in self.entry_sha256)):
+            raise ValueError("invalid formal entry digest")
+        if self.entry_lock is not None:
+            lock = dict(self.entry_lock)
+            digest = lock.pop("sha256", None)
+            actual = hashlib.sha256(json.dumps(lock, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":")).encode("utf-8")).hexdigest()
+            if (digest != actual or digest != self.entry_sha256
+                    or lock.get("suite") != self.suite or lock.get("task_id") != self.task_id
+                    or lock.get("seed") != self.seed
+                    or lock.get("approved_config_sha256") != self.config_sha256
+                    or lock.get("approved_policy_sha256") != self.policy_sha256
+                    or lock.get("overall_deadline_seconds") != self.overall_deadline_seconds):
+                raise ValueError("formal request entry lock mismatch")
+        if self.suite not in {"robocasa", "robosuite"}:
+            raise ValueError("formal runner requires a primary simulator suite")
+        if not self.task_id or isinstance(self.seed, bool) or not isinstance(self.seed, int):
+            raise ValueError("formal runner requires a task and integer seed")
+        if (isinstance(self.overall_deadline_seconds, bool)
+                or not isinstance(self.overall_deadline_seconds, (int, float))
+                or not math.isfinite(self.overall_deadline_seconds)
+                or self.overall_deadline_seconds <= 0):
+            raise ValueError("formal runner requires a finite positive overall deadline")
+        if self.attempt_deadline_seconds is not None and (
+            isinstance(self.attempt_deadline_seconds, bool)
+            or not isinstance(self.attempt_deadline_seconds, (int, float))
+            or not math.isfinite(self.attempt_deadline_seconds)
+            or not 0 < self.attempt_deadline_seconds <= self.overall_deadline_seconds
+        ):
+            raise ValueError("formal attempt deadline must be finite and within the entry deadline")
+        if not self.policy_code_path.is_file():
+            raise ValueError("formal policy source is missing")
+        actual = hashlib.sha256(self.policy_code_path.read_bytes()).hexdigest()
+        if actual != self.policy_sha256:
+            raise ValueError("formal policy source differs from approved digest")
+        if len(self.config_sha256) != 64 or any(c not in "0123456789abcdef" for c in self.config_sha256):
+            raise ValueError("formal run requires frozen config SHA-256")
+        if self.config_path is not None:
+            if not self.config_path.is_file():
+                raise ValueError("formal config source is missing")
+            if hashlib.sha256(self.config_path.read_bytes()).hexdigest() != self.config_sha256:
+>               raise ValueError("formal config source differs from approved digest")
+E               ValueError: formal config source differs from approved digest
+
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_runner_boundary.py:98: ValueError
+
+During handling of the above exception, another exception occurred:
+
+    def test_wrong_config_sha_is_rejected():
+>       with pytest.raises(ValueError,match='config differs from approved SHA-256'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'config differs from approved SHA-256'
+E        Input: 'formal config source differs from approved digest'
+
+independent/test_identity_review.py:49: AssertionError
+______________ test_changed_condition_cannot_reuse_entry_identity ______________
+
+    def test_changed_condition_cannot_reuse_entry_identity():
+        with pytest.raises(ValueError,match='launch expected entry SHA mismatch'):
+>           reviewer.inspect_launch(replace(arguments(),'--attention-policy','reactive_help'))
+
+independent/test_identity_review.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+independent/review_identity_package.py:56: in inspect_launch
+    lock, _ = inspect_formal_entry(suite=args.suite, task_id=args.task, seed=args.seed,
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_entry.py:121: in inspect_formal_entry
+    validate_memory_contract(json.loads(memory_raw), suite=suite, task_id=task_id,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+contract = {'accounting': {'advisor_cache_initial_state': 'empty_per_run', 'answered_request_credits': 1, 'cached_answer_credits': 1, 'cached_provider_tokens': 0, ...}, 'automatic_promotion': False, 'condition': 'autonomous', 'context': None, ...}
+
+    def validate_memory_contract(contract: dict[str, Any], *, suite: str, task_id: str,
+                                 policy_id: str, config: dict[str, Any]) -> None:
+        required = {"schema_version", "suite", "task_id", "condition", "visibility",
+                    "initial_state", "context", "reset_each_run", "automatic_promotion",
+                    "accounting", "evidence_root"}
+        if (not isinstance(contract, dict) or set(contract) != required
+                or contract["schema_version"] != "attentionbench.formal-memory-contract.v1"
+                or (contract["suite"], contract["task_id"], contract["condition"])
+                   != (suite, task_id, policy_id)
+                or contract["reset_each_run"] is not True
+                or contract["automatic_promotion"] is not False
+                or contract["accounting"] != ACCOUNTING):
+>           raise ValueError("Memory contract identity, reset or accounting mismatch")
+E           ValueError: Memory contract identity, reset or accounting mismatch
+
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_memory_contract.py:37: ValueError
+
+During handling of the above exception, another exception occurred:
+
+    def test_changed_condition_cannot_reuse_entry_identity():
+>       with pytest.raises(ValueError,match='launch expected entry SHA mismatch'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'launch expected entry SHA mismatch'
+E        Input: 'Memory contract identity, reset or accounting mismatch'
+
+independent/test_identity_review.py:54: AssertionError
+__________________ test_heldout_seed_cannot_enter_dev_binding __________________
+
+    def test_heldout_seed_cannot_enter_dev_binding():
+        with pytest.raises(ValueError):
+>           reviewer.inspect_launch(replace(arguments(),'--seed','1001'))
+
+independent/test_identity_review.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+independent/review_identity_package.py:56: in inspect_launch
+    lock, _ = inspect_formal_entry(suite=args.suite, task_id=args.task, seed=args.seed,
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/formal_entry.py:55: in inspect_formal_entry
+    if validate_seed(seed, allow_heldout=False) != "dev":
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+seed = 1001
+
+    def validate_seed(seed: int, *, allow_heldout: bool = False) -> str:
+        split = classify_seed(seed)
+        if split == "heldout" and not allow_heldout:
+>           raise PermissionError(
+                "held-out seeds require explicit allow_heldout=True; do not use them during development"
+            )
+E           PermissionError: held-out seeds require explicit allow_heldout=True; do not use them during development
+
+../Tidybot-Universe-attention-native/benchmarks/attention_harness/seed_guard.py:37: PermissionError
+=========================== short test summary info ============================
+FAILED independent/test_identity_review.py::test_old_policy_sha_rejected_for_new_source
+FAILED independent/test_identity_review.py::test_modified_policy_cannot_use_existing_approval
+FAILED independent/test_identity_review.py::test_wrong_config_sha_is_rejected
+FAILED independent/test_identity_review.py::test_changed_condition_cannot_reuse_entry_identity
+FAILED independent/test_identity_review.py::test_heldout_seed_cannot_enter_dev_binding
+5 failed, 6 passed in 0.16s

@@ -1,0 +1,1 @@
+{"acceptance": "FAIL", "checks": 204, "failed_checks": [{"check": "verified demo projection reached actual control", "pass": false}], "attempts": 20, "audit_sha256": "3bc1f7530ee6ba61a2db3d43611184d2d25bcfbf7bdc633974c36d128ec74bc9"}

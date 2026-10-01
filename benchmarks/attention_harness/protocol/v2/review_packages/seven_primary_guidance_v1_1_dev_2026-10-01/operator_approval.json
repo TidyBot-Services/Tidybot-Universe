@@ -1,0 +1,206 @@
+{
+  "approval_at": {
+    "America/New_York": "2026-09-30T16:37:10.543295-04:00",
+    "UTC": "2026-09-30T20:37:10.543295+00:00"
+  },
+  "approval_basis": "explicit current goal delegates generation + review + approval of identity-only dev package",
+  "decision": "approved",
+  "document_correction_approval": {
+    "approval_at": {
+      "America/New_York": "2026-09-30T16:37:10.543295-04:00",
+      "UTC": "2026-09-30T20:37:10.543295+00:00"
+    },
+    "approval_basis": "The current goal authorizes recording approval after document SHA correction and review; the later direct human answer explicitly accepts retaining the original full verifier failure while issuing a separate document correction review.",
+    "authorization_source": "direct current human goal expressly requests reapproval of a document-only refreeze, with two direct clarifications recorded verbatim",
+    "decision": "approved",
+    "human_clarifications_record": {
+      "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/user_clarifications_verbatim.json",
+      "sha256": "5d16ed82b15ee004bdfe2d1526cabf2166dac9fb32e75f749612abfb9c7202a4"
+    },
+    "human_clarifications_verbatim": [
+      {
+        "answer": "修正说明放在包外，由审批文件绑定 SHA；manifest 严格只改两条（推荐）",
+        "question": "现有 verify_package.py 要求包内新增文件也必须进入 manifest；因此 correction_2026-10-01.md 放在包内，会与“manifest 仅两条变化”冲突。你希望采用哪种方式？我会继续核对其余文件的 SHA。"
+      },
+      {
+        "answer": "保留所有代码：另出文档修正复核，明确记录原 verify 的这一项失败（推荐）",
+        "question": "原 verify 已实测失败：review_tools/review_identity_package.py 第 163–167 行把旧版 semantic_limitations.md 字节相等纳入检查，必然拒绝已修正文档。你希望如何处理这个与“任何代码零变化”的冲突？"
+      }
+    ],
+    "identity": {
+      "correction_note": {
+        "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/correction_2026-10-01.md",
+        "sha256": "779940149a395f3253070c66d00d3e9a4df83a3f87f31f28a558ed111de633fa"
+      },
+      "documents": {
+        "README.md": {
+          "new_sha256": "90010f305f4af15e30cab8e0e2046b9b6cb163e97a5e4e75facfd45933f23f24",
+          "old_sha256": "df5943ede31f402153e5dc605194868658c46cbf6c4e1f3fb0a3f92251da12a3"
+        },
+        "semantic_limitations.md": {
+          "new_sha256": "fddb23713e2539cadb872e572cf115c18571482272f9a69231170c91613b6a4d",
+          "old_sha256": "b9c287944bdff44ebc1223a6f0ce183d0a576ab5b0f7369864eee6c501a7a602"
+        }
+      },
+      "manifest": {
+        "path": "sha256_manifest.json",
+        "sha256": "40bbbd88a966a43f6b66245b20f51e0ff767571af2767e25fcfad96c552350c7"
+      },
+      "matrix_plan_unchanged": {
+        "path": "matrix_plan.json",
+        "sha256": "e622a60c5489db481bccb6ba4c61d1791f24c2a9aea69998fd7db18f49a8a2fc"
+      },
+      "original_manifest": {
+        "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/originals/sha256_manifest.json",
+        "sha256": "32febf630ff2d6a979e9eabec50152ff9ac887721ab3eef372b30434c7160d5e"
+      },
+      "policies_unchanged": {
+        "robocasa": {
+          "path": "base/robocasa_counter_to_sink/policy.py",
+          "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7"
+        },
+        "robosuite": {
+          "path": "base/robosuite_cube_lift/policy.py",
+          "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+        }
+      },
+      "review_unchanged": {
+        "path": "REVIEW.md",
+        "sha256": "a83605415c146694d3c1b2b4116805db51477253f07ca396edd53450b3558c47"
+      }
+    },
+    "known_semantic_limit": "参数被消费不等于原生成功改善；后者仍须同seed无指导对照实验。",
+    "operator_message_sha256": "d89f522bde1fd3f7d222126f070d945f8b094657dfd7f82de68337b85ffd53c6",
+    "operator_message_verbatim": "/goal # Goal：重新冻结 semantic_limitations 修正包（文档修正）\n\n### 目标\n\n对 `seven_primary_guidance_v1_1_dev_2026-10-01` 冻结包做**文档修正后的重冻结**：重算被修改的两份文档 SHA → 更新 `sha256_manifest.json` → 写修正说明 → 重新 verify + 重新审批，使冻结包恢复自洽。**只改文档，不动任何代码/策略/配置/入口。**\n\n### 背景（当前事实，勿改）\n\n- 已修正两份文档（此前过时）：\n  - `semantic_limitations.md`：原写\"两者均不读取 context.attention_input\" → 已改为\"两者均读取并经 compile_attention 编译为 adoption 参数\"；\n  - `README.md` 第 15 行：同步改为\"读取并编译；参数被消费 ≠ 原生成功改善\"。\n- 修正依据（代码实况）：`base/robosuite_cube_lift/policy.py` 第 284 行 `compile_attention(context.get(\"attention_input\", {}), ...)`，及第 318–333 行用 `grasp_offset_m` / `approach_tolerance_m` / `open_settle_steps` 改变动作；`base/robocasa_counter_to_sink/policy.py` 同样读取。\n- 后果：这两文件字节变了，`sha256_manifest.json` 里它们的旧 SHA 已对不上，冻结包完整性被破坏。\n\n### 执行步骤\n\n1. **重算 SHA**：对 `semantic_limitations.md` 与 `README.md` 重算 SHA-256。\n2. **更新 manifest**：把 `sha256_manifest.json` 中这两条更新为新 SHA；确认其余冻结文件 SHA **全部不变**（除这两条外零漂移）。\n3. **写修正说明**：新增 `correction_2026-10-01.md`，记录：原文档过时原因、修正前后表述、代码依据（文件+行号）、以及\"只改文档、未改代码/策略/配置\"的声明。\n4. **重跑 verify**：用 `verify_package.py` 复核全包 SHA 一致、除两份文档外无其它变化。\n5. **重新审批**：更新 `approval_status.json` / 写新 `operator_approval.json`，记录本次修正的批准（原话 + 新 SHA + 范围 + 时间戳）。\n\n### 硬约束（禁止）\n\n- **只允许** `semantic_limitations.md`、`README.md`、`sha256_manifest.json`、`correction_2026-10-01.md`、审批/状态文件变化；**不得改动** `base/*/policy.py`、configs、entries、matrix_plan、runtime_source_lock、software_versions 等任何其余文件。\n- 不重跑任何实验、不跑 held-out / 350 格效果矩阵；不直接改布尔值。\n- 修正不改代码行为——只改\"文档对代码的描述\"，不得把\"参数被消费\"升级成\"原生成功改善\"（后者仍须对照实验证明）。\n- 90 分钟到点安全收尾并交付逐项结论，不自动开新一轮。\n\n### 交付物\n\n- 更新后的 `sha256_manifest.json`（仅两份文档条目变化，其余 SHA 不变）。\n- `correction_2026-10-01.md`（修正说明 + 代码依据 + 只改文档声明）。\n- 新的 `operator_approval.json` / `approval_status.json`。\n- 全包 verify 通过报告 + 逐项 SHA + 下一步。",
+    "operator_statement_verbatim": "对 `seven_primary_guidance_v1_1_dev_2026-10-01` 冻结包做**文档修正后的重冻结**：重算被修改的两份文档 SHA → 更新 `sha256_manifest.json` → 写修正说明 → 重新 verify + 重新审批，使冻结包恢复自洽。**只改文档，不动任何代码/策略/配置/入口。**",
+    "original_verify_expected_result": "FAIL at unchanged condition and Memory authority bytes; semantic_limitations.md intentionally differs from the old package; not waived inside the original verifier",
+    "recorded_by": "Codex; author-produced mechanical review; not an external reviewer or separate post-freeze human SHA confirmation",
+    "schema_version": "attentionbench.operator-document-correction-approval.v1",
+    "scope": {
+      "allowed_existing_frozen_document_changes": [
+        "semantic_limitations.md",
+        "README.md"
+      ],
+      "allowed_metadata_changes": [
+        "sha256_manifest.json",
+        "operator_approval.json",
+        "approval_status.json",
+        "approval_verification_receipt.json"
+      ],
+      "classification": "document_description_correction_only",
+      "correction_note_location": "outside package; SHA bound in this approval",
+      "excluded": [
+        "held-out",
+        "350-cell effects",
+        "any effects matrix",
+        "formal effect comparison",
+        "robot or Service execution",
+        "other versions or scopes",
+        "code or validator changes",
+        "policy changes",
+        "configs or entries changes",
+        "matrix_plan or runtime_source_lock or software_versions changes",
+        "overall admission re-sign",
+        "direct boolean changes"
+      ],
+      "execution_authorized": false,
+      "package_directory": "seven_primary_guidance_v1_1_dev_2026-10-01",
+      "statement": "仅批准两份已修正文档及其两条SHA索引、包外修正说明和审批状态；其他1288冻结SHA不变。保留原verify的旧语义文档相等失败，单独批准文档修正复核范围。不扩展到代码、策略、配置、入口、实验或总体准入重签。"
+    },
+    "verification": {
+      "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/document_correction_preapproval_verification.json",
+      "sha256": "ddaec2308dbb1e6805d067a2c0b0e2f5ddd29a9d33bda768bab1027140b0ad5b"
+    }
+  },
+  "formal_eligible": "not set by this approval; overall audit must derive separately",
+  "human_postfreeze_SHA_confirmation": false,
+  "identity": {
+    "binding_rule": "Only this exact SHA-indexed development identity freeze; prior guidance and old seven-condition approvals are lineage, not implicit new-SHA approvals.",
+    "manifest": {
+      "path": "sha256_manifest.json",
+      "sha256": "40bbbd88a966a43f6b66245b20f51e0ff767571af2767e25fcfad96c552350c7"
+    },
+    "matrix_plan": {
+      "path": "matrix_plan.json",
+      "sha256": "e622a60c5489db481bccb6ba4c61d1791f24c2a9aea69998fd7db18f49a8a2fc"
+    },
+    "package_directory": "seven_primary_guidance_v1_1_dev_2026-10-01",
+    "policies": {
+      "robocasa": {
+        "path": "base/robocasa_counter_to_sink/policy.py",
+        "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7"
+      },
+      "robosuite": {
+        "path": "base/robosuite_cube_lift/policy.py",
+        "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+      }
+    },
+    "review": {
+      "path": "REVIEW.md",
+      "sha256": "a83605415c146694d3c1b2b4116805db51477253f07ca396edd53450b3558c47"
+    }
+  },
+  "known_limits": [
+    "RoboCasa guidance changes action but native success not improved; not an admission success-rate threshold",
+    "Old v1 Memory nonadoption preserved; current guidance policies compile attention_input into adoption parameters; consumption is not proof of native success improvement",
+    "Historical depth root cause remains unknown in old operational scope",
+    "Mechanically reviewed development identities are not effect executions or claims of guided success over all seeds",
+    "Original full verifier remains FAIL only at old semantic-document equality; the direct human user approved a separate documentation correction review with this failure explicitly recorded",
+    "Historical overall admission audit is retained, not re-signed or rebound to the new documentation metadata in this round"
+  ],
+  "legacy_identity_approval_context": {
+    "field_semantics": "The existing top-level operator_message_verbatim, operator_statement_verbatim, operator_message_sha256, approval_basis, scope and human_postfreeze_SHA_confirmation remain the historical identity-freeze authorization fields required by the unchanged verifier. They are not represented as a new human post-freeze statement or new effects authorization. Current reapproval authority and narrower scope are document_correction_approval below.",
+    "original_goal_authorization": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/goal_authorization.json",
+      "sha256": "4ebeebd921dc351dd4df010e1a63baa78c17607b2a55bfd13d5c4c1feac9d9fa"
+    },
+    "original_review": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/REVIEW.md",
+      "sha256": "a83605415c146694d3c1b2b4116805db51477253f07ca396edd53450b3558c47"
+    },
+    "previous_manifest_sha256": "32febf630ff2d6a979e9eabec50152ff9ac887721ab3eef372b30434c7160d5e"
+  },
+  "next_step": "Review and retain this documentation correction and approval; original verify remains FAIL under the unchanged legacy semantic-file equality rule. No execution or overall admission re-sign is authorized by this record.",
+  "old_evidence_preservation": {
+    "current_Safety_negative_reused_without_rerun": true,
+    "old_seven_package_unchanged": true,
+    "original_failure_evidence_retained": true
+  },
+  "operator": {
+    "authorization_source": "direct human-provided current goal",
+    "identity": "human user in current conversation",
+    "recorded_by": "Codex",
+    "review_role": "delegated approval recording after full mechanical review; not an external reviewer"
+  },
+  "operator_message_sha256": "becf349f0b84e6a138fd7f975ed82e417386a221daa5ce44ba1ee2f321c19350",
+  "operator_message_verbatim": "# Goal：为新策略 SHA 绑定 M1/launch 身份并重签准入\n\n### 目标\n\n为 guidance adoption v1.1 的**新策略 SHA** 重新生成并绑定 M1 entry lock + launch 身份，冻结 + review + 批准，使 `policy_identity` 与 `seven_condition_approval` 两关对齐；随后重签总体准入——**七关口全过则签发 `formal_eligible=true`，否则列出准确未过项**。不以翻布尔值为目标。\n\n### 背景（当前事实，勿改）\n\n- 上轮 Safety 负控已 PASS（身份对齐、注入→检测 0.214ms、第二动作 0、双 Service 回收）；原六关口结论保留未重跑。\n- 唯一剩余缺口：**新策略 SHA 尚未绑定获批的 M1/launch 身份**，导致 `policy_identity`、`seven_condition_approval` 判定不成立。\n- 根因：guidance adoption 改了基础策略代码 → SHA 变 → 旧 M1 entry lock / launch 身份仍绑旧 SHA，与新代码不匹配。\n- guidance adoption v1.1 REVIEW\\.md SHA `090a190f…`（已批准）；上轮总体重签审计 SHA `a68f8fec…`。\n- 350 格、held-out、效果矩阵均未运行，本轮也不运行。\n\n### 执行步骤\n\n1. **生成新身份**：对新策略 SHA，为每任务每 seed 重新生成 M1 entry lock（绑定新策略字节 SHA + 配置）+ launch 身份；保留身份校验逻辑，不绕过。\n2. **冻结 + review**：出 review 包（逐文件 SHA 索引），确认新身份与新策略 SHA 严格一致、与已批准的 guidance adoption 包无漂移。\n3. **批准**：写入 `operator_approval.json`（批准原话 + 精确 SHA + 范围仅本 dev 包 + 时间戳）。\n4. **重签总体准入**：其余 6 关口复用不重跑；仅重判 policy_identity + seven_condition_approval → 签发 `formal_eligible` 或列出未过项。\n\n### 硬约束（禁止）\n\n- 不重跑、不改动已 PASS 的 6 关口；不跑 held-out、不跑 350 格效果矩阵。\n- 不绕过身份检查（是\"重新绑定\"不是\"删掉\"）；不直接改布尔值。\n- 批准仅限本 dev 包，不外推到效果矩阵授权。\n- 90 分钟到点安全收尾并交付逐项结论，不自动开新一轮。\n\n### 交付物\n\n- 新 M1 entry lock + launch 身份冻结 review 包（SHA 索引）。\n- `operator_approval.json`。\n- 重新签发的总体准入审计（`formal_eligible` 判定 + 逐项 + 证据 SHA + 下一步）。",
+  "operator_statement_verbatim": "为 guidance adoption v1.1 的**新策略 SHA** 重新生成并绑定 M1 entry lock + launch 身份，冻结 + review + 批准，使 `policy_identity` 与 `seven_condition_approval` 两关对齐；随后重签总体准入——**七关口全过则签发 `formal_eligible=true`，否则列出准确未过项**。不以翻布尔值为目标。",
+  "package_status": "frozen_and_approved_document_correction_only_with_legacy_verify_exception",
+  "previous_approval": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/originals/operator_approval.json",
+    "sha256": "10d29fece3c46b5327fd09b3900d779fe7b1e225965441886d31b69e329346e3"
+  },
+  "schema_version": "attentionbench.operator-guidance-identity-approval.v1",
+  "scope": {
+    "classification": "new_guidance_v1_1_M1_launch_identity_only_dev_freeze",
+    "excluded": [
+      "held-out",
+      "350-cell effects",
+      "any effects matrix",
+      "formal effect comparison",
+      "robot or Service execution",
+      "other versions or scopes"
+    ],
+    "execution_authorized": false,
+    "statement": "仅批准本dev包的已批准guidance策略新SHA与350 M1/launch重新绑定、原条件输入和逐文件冻结；授权完成本轮准入复核，不授权启动执行。"
+  },
+  "verification": {
+    "entries": 350,
+    "files": 1290,
+    "original_full_verifier_result": "FAIL: approved legacy-document equality exception; not presented as a full verifier PASS",
+    "pass": true,
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/document_correction_preapproval_verification.json",
+    "scope": "document correction only; original full verifier FAIL is preserved",
+    "sha256": "ddaec2308dbb1e6805d067a2c0b0e2f5ddd29a9d33bda768bab1027140b0ad5b"
+  }
+}

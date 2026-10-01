@@ -6,6 +6,14 @@
 
 # Tidybot Universe
 
+## AttentionBench research entry
+
+For AttentionBench, use the `feature/attention-native-robosuite` branch rather
+than the default branch. Start with the [project guide](docs/attentionbench_project_guide.md)
+for the research question, system modules, exact Service repositories, current
+evidence and reproduction limits. See [module progress](docs/attentionbench_progress.md)
+for the full history.
+
 ## The Bet
 
 AI agents have already changed software engineering. They write code, debug it, ship it. The same revolution is coming for robotics — but robotics has constraints that software doesn't. We're building the framework that bridges that gap.

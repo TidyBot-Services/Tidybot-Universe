@@ -1,0 +1,20 @@
+{
+  "files": {
+    "robocasa_authored_demo_actions.json": "205041236ce08d2e9f4a29b79b18a7b67a971e1392dd9070895912572cf3efdd",
+    "robocasa_config.json": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+    "robocasa_demo_manifest.json": "2bd17bd00fbaf95461d68d1d714d7e45f390a2c24fdb286501639c5e36e2bb6e",
+    "robocasa_demo_projection.txt": "947999c002f6f8f79af7f7e77a86d259249a77e363a4ca10e1b0fed111ab0d6d",
+    "robocasa_demo_receipt.json": "d98946916af0b2606cdc7c5a937e385dc0df04653d56b27296d42c75457142e7",
+    "robocasa_memory_fixture.json": "928131f792044f3b6560cc3b8afffccd9cefda5aff5330e58c068a1c9b36ca60",
+    "robocasa_new_policy.py": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+    "robocasa_old_policy.py": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+    "robosuite_authored_demo_actions.json": "3412c333fcc3568e23d4e8b9a6a7ebe1e220d6e6366092c9a22cec7a91339317",
+    "robosuite_config.json": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+    "robosuite_demo_manifest.json": "7fc02a152c0dcd451bf9c7dccc31c29d29f5e92c880a6d0b5098ed25c49e053f",
+    "robosuite_demo_projection.txt": "c0abbb5a6a49543b27d8d2bce51fb78e32ecd2c6cf9417d43607774f314b4a18",
+    "robosuite_demo_receipt.json": "fc14dc3b55b63bfaef876090f219078206ecfdc0776b79c74bfd82a8ce01e4e9",
+    "robosuite_memory_fixture.json": "b2c430d824a5caaa8760a0f0d8ea0166396ad1c7b3448a2628919dd8a6576708",
+    "robosuite_new_policy.py": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+    "robosuite_old_policy.py": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8"
+  }
+}

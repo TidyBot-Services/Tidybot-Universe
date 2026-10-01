@@ -1,0 +1,17 @@
+{
+  "approval": {
+    "approved_by": "user-goal-authorized-development-fixture",
+    "id": "guidance-adoption-v1-development-input"
+  },
+  "assets": [
+    {
+      "kind": "action_trajectory",
+      "path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/inputs/robosuite_authored_demo_actions.json",
+      "sha256": "3412c333fcc3568e23d4e8b9a6a7ebe1e220d6e6366092c9a22cec7a91339317",
+      "source": "public_sdk"
+    }
+  ],
+  "schema_version": "attentionbench.public-demo.v1",
+  "suite": "robosuite",
+  "task_id": "cube_lift"
+}

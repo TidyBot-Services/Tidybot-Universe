@@ -1,0 +1,8 @@
+{
+  "memory_guidance": {
+    "candidate:m5:robocasa-counter-to-sink-public-sdk-v3": "Rewrite policy.py to: (1) call sensors.find_objects() and inspect the returned object names/positions to locate the target object on the counter and the sink location; (2) use the SDK's motion primitives (e.g., move the end-effector toward the object's position, close the gripper to grasp, then move to the sink position and release). Use get_observation() (robot0_eef_pos, robot0_gripper_width) to verify approach and grasp success between steps, and iterate until the object is placed. The current code discards the find_objects() results entirely — capture and use them."
+  },
+  "memory_ids_to_use": [
+    "candidate:m5:robocasa-counter-to-sink-public-sdk-v3"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "source": "public_sdk",
+  "steps": [
+    {
+      "arguments": {
+        "settle_steps": 10
+      },
+      "operation": "sdk.gripper.open"
+    },
+    {
+      "arguments": {
+        "max_steps": 80,
+        "tolerance": 0.018,
+        "x": -0.00887208275840315,
+        "y": -0.019086455840395283,
+        "z": 0.9500569484529563
+      },
+      "operation": "sdk.arm.move_to_position"
+    },
+    {
+      "arguments": {
+        "max_steps": 80,
+        "tolerance": 0.018,
+        "x": -0.008872082758403153,
+        "y": -0.01908645584039528,
+        "z": 0.8500569484529563
+      },
+      "operation": "sdk.arm.move_to_position"
+    },
+    {
+      "arguments": {
+        "settle_steps": 10
+      },
+      "operation": "sdk.gripper.close"
+    },
+    {
+      "arguments": {
+        "max_steps": 80,
+        "tolerance": 0.018,
+        "x": -0.008872082758403153,
+        "y": -0.01908645584039528,
+        "z": 1.0300569484529563
+      },
+      "operation": "sdk.arm.move_to_position"
+    }
+  ]
+}

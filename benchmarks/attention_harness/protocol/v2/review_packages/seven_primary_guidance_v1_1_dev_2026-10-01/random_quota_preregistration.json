@@ -1,0 +1,9 @@
+{
+  "early_success": "report realized shortfall without imputing help or adding attempts",
+  "full_method_planned_quota": 1,
+  "predeclared_before_effects": true,
+  "slot_rule": "SHA-256(seed:failure_slot) rank; select lowest quota slots",
+  "source": "fixed protocol help quota, not realized full-method outcomes",
+  "target_request_count": 1,
+  "total_failure_slots": 3
+}

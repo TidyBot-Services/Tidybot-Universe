@@ -1,0 +1,71 @@
+{
+  "approval_verification_receipt": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/approval_verification_receipt.json",
+    "sha256": "e72bfcc54971777a0ec0280cf9935816b549ec0b4098039a7c007a39b3fa1543"
+  },
+  "approved_verification_sha256": "0150275fcfcd1d784b31b750b42fee6be957e683454de2b87ce7458211c57733",
+  "correction_note": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/correction_2026-10-01.md",
+    "sha256": "779940149a395f3253070c66d00d3e9a4df83a3f87f31f28a558ed111de633fa"
+  },
+  "document_correction_approval": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/operator_approval.json",
+    "sha256": "f635f6b94f31eb700c5d8f7f76dc51fe3a4853d8af2c26b9fab5f16a0f8b642e"
+  },
+  "document_correction_verification": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/document_correction_verification.json",
+    "result": "PASS",
+    "sha256": "0150275fcfcd1d784b31b750b42fee6be957e683454de2b87ce7458211c57733"
+  },
+  "documents": {
+    "README.md": {
+      "new_sha256": "90010f305f4af15e30cab8e0e2046b9b6cb163e97a5e4e75facfd45933f23f24",
+      "old_sha256": "df5943ede31f402153e5dc605194868658c46cbf6c4e1f3fb0a3f92251da12a3"
+    },
+    "semantic_limitations.md": {
+      "new_sha256": "fddb23713e2539cadb872e572cf115c18571482272f9a69231170c91613b6a4d",
+      "old_sha256": "b9c287944bdff44ebc1223a6f0ce183d0a576ab5b0f7369864eee6c501a7a602"
+    }
+  },
+  "execution_authorized": false,
+  "formal_admission": "historical_pass_retained_not_resigned_for_document_correction",
+  "historical_formal_admission": {
+    "current_round": "Not rerun, resigned, rebound or overwritten. The previous overall audit remains historical and references previous manifest/operator metadata.",
+    "overall_admission": {
+      "path": "/home/truares/桌面/attentionbench-guidance-entry-rebind-20261001/independent/overall_admission_audit.json",
+      "sha256": "620867e88541c647869be69fa558e7de1af5ab3ae3d4491fc0a74f3d2c2bfc9d"
+    },
+    "status": "passed_for_exact_current_dev_identity"
+  },
+  "last_updated": {
+    "America/New_York": "2026-09-30T16:39:05.158780-04:00",
+    "UTC": "2026-09-30T20:39:05.158780+00:00"
+  },
+  "manifest": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/sha256_manifest.json",
+    "sha256": "40bbbd88a966a43f6b66245b20f51e0ff767571af2767e25fcfad96c552350c7"
+  },
+  "next_step": "Review and retain this correction package. Any future original full-verifier rule repair, overall admission metadata rebind, or experiment execution needs an explicitly scoped separate request.",
+  "operator_approval_sha256": "f635f6b94f31eb700c5d8f7f76dc51fe3a4853d8af2c26b9fab5f16a0f8b642e",
+  "original_full_verification": {
+    "issues": [
+      {
+        "check": "unchanged condition and Memory authority bytes",
+        "pass": false
+      }
+    ],
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/verify_after_refreeze.json",
+    "process_exit_code": 1,
+    "result": "FAIL",
+    "sha256": "466b9db71ed80f6a093efae6a779121bfba03a0cae499498b42b297036fd8e36"
+  },
+  "overall_admission": {
+    "path": "/home/truares/桌面/attentionbench-guidance-entry-rebind-20261001/independent/overall_admission_audit.json",
+    "sha256": "620867e88541c647869be69fa558e7de1af5ab3ae3d4491fc0a74f3d2c2bfc9d"
+  },
+  "package_status": "frozen_and_approved_document_correction_only_with_legacy_verify_exception",
+  "previous_approval_status": {
+    "path": "/home/truares/桌面/attentionbench-semantic-document-refreeze-20261001/originals/approval_status.json",
+    "sha256": "7aa337f8861d077809ecb26e7437f9124a497634bec082ed03bdfd4960b309be"
+  }
+}

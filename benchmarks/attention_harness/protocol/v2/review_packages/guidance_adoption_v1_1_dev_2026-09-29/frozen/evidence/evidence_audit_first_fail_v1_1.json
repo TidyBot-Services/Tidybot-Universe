@@ -1,0 +1,4170 @@
+{
+  "attempt_evidence": [
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "60cf5f3c71c0a6e4b73611215534465abac75358c2c5f6ac338d845efe3e6cbe",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/native_result.json"
+        },
+        "safety": {
+          "sha256": "69304cd96c257d3c6b1838a2bb1767119e7b61d3a6eb96a6f58b8ffa502bc44b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "40720052209c6247e1c24c5db1e04980e37657f940a880c0b156f559810cb754",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "b88eac648ec5146cb3f32aa18a1b1a4674997cd6f2364ee379548cbc8624889b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-old-baseline/attempts/cube_lift-seed101-formal-1790740662630334835/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 49,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "cfdabadcb40e7411238d4bbae45175ddea063d3a9bb5bd809716fbe127c80ea1"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": false,
+      "policy_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "bafd3d63c84429328f9c5c6f138e91bb4748961ef9d5a2d05e75dab5c9e17c5c",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robosuite-old-baseline",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "b03d8ff51482dd43ad0f6313a6c9fd68a896c7c0de5c0bee585631d70e4bca19",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/native_result.json"
+        },
+        "safety": {
+          "sha256": "c0a3be7da577140229a98efcee1e76ecb1ffb8a9616d7b1ada5dbae506630e3b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "00d129d6db8b66d3db0c74d91e7a8ca8f7b4616c00e7bfa80767b8d6c1054c0f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "498f541b8b9dbac5c59430117d83e9ab6b264f05cbdee720b96d6079af24f34b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-no-guidance/attempts/cube_lift-seed101-formal-1790740665478849816/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 49,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "cfdabadcb40e7411238d4bbae45175ddea063d3a9bb5bd809716fbe127c80ea1"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "bafd3d63c84429328f9c5c6f138e91bb4748961ef9d5a2d05e75dab5c9e17c5c",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robosuite-no-guidance",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "9e748cc57aa0219b60bc557fb9b0f09455cb8e3c15c0bacdaa4833d5555e371c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/native_result.json"
+        },
+        "safety": {
+          "sha256": "70890defef231e6d664aab74f1fa2fea8d9d020feecf3d2510332bc25cb729bd",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "0001b939b8a53d265188ce63dbf29ec46e38f3ddbce734936d4bc73b75076192",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "ef558c89e5aa0cbfbd2fe4b655fb4510e199834bcda87f7d6c2a0968a16cc8ec",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-hint/attempts/cube_lift-seed101-formal-1790740668238951632/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 86,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "f627596933ec7e0e507c495b1e0c912f74161c629a3795ac6a7c5abfb46adb07"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "7eb03816a4cf26cb3fa8909b8376d2ac4c1d878e21facb610185359a3de40360",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8350569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 30
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.009306671499627186,
+            "y": -0.01913283751948946,
+            "z": 1.014267821927804
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robosuite-hint",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "f2d78dc6168aed799a9a79bef535d0399b034172517b2c83aff6731ac0091652",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/native_result.json"
+        },
+        "safety": {
+          "sha256": "547cba8ca7ddf70c965f0dd777e9ecfc614f3915f0541a31b3d8860215e896fa",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "1333749b85e0002ed61167526d549ea75520e87f9b4abf2f1adc0fb29549ae22",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "b1055a4405803df61b9b51323c4bb85c8fbb6569d0b148e098e1511f3b5d22cd",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-content-ablation/attempts/cube_lift-seed101-formal-1790740671534143282/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 49,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "cfdabadcb40e7411238d4bbae45175ddea063d3a9bb5bd809716fbe127c80ea1"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "bafd3d63c84429328f9c5c6f138e91bb4748961ef9d5a2d05e75dab5c9e17c5c",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robosuite-content-ablation",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "5f6e806d8818184b0e03f582644eaafc44acf82bcca80032247b34af55b92d2c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/native_result.json"
+        },
+        "safety": {
+          "sha256": "a828d9637524706ee8bbb6cc0176a5fb6e8926ad9f2ec0cb5c8399534c2eca78",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "2f1152711c4f10890fae348ae560b300637ff56ef90954d10d401b758fcdc73c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "3ac2bc017fe167eb94b13f719c6e2002254e41403c6891e4920a6432ba040306",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-demo/attempts/cube_lift-seed101-formal-1790740674353775619/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 86,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "ed00a530eab9f80145c0f21697278096deb3dcf45fe2879c253a85f410b7cd92"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "0e2ac5751c47f9d1c63863b000a600fd89f1f3c01fe520b781fa01a019e7ca98",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403156,
+            "y": -0.019086455840395276,
+            "z": 0.8350569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 30
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00930667149962719,
+            "y": -0.019132837519489476,
+            "z": 1.014267821927804
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403156,
+            "y": -0.019086455840395276,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robosuite-demo",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "3ac150fdd174615048a0714439264e37cb4ef012210d3e4666f985d715ba859e",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/native_result.json"
+        },
+        "safety": {
+          "sha256": "9a91ec8358801580655fe659f11bd61b9e2e91660e73c8d3afef6ddc453555e2",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "0020cbdbaaca88997397ff4cdb97db651e5dbec835726eb214aa369c92fccb16",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "1f054502a74d4b2d7d50f608613374ab45c3eef87408ba473a43f9a623099db6",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robosuite-memory/attempts/cube_lift-seed101-formal-1790740677666928174/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 86,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "f627596933ec7e0e507c495b1e0c912f74161c629a3795ac6a7c5abfb46adb07"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "7eb03816a4cf26cb3fa8909b8376d2ac4c1d878e21facb610185359a3de40360",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8350569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 30
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.009306671499627186,
+            "y": -0.01913283751948946,
+            "z": 1.014267821927804
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robosuite-memory",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "e1fb03ad020260e0a7ebeae13fcfa28f1ff89edf550f8eeca2cae4933e449bda",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/native_result.json"
+        },
+        "safety": {
+          "sha256": "a9d0ba1ef98f494b927b7d6e8d81279363b0e7d7f3609b152cc3e44370c013b0",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "254d8911d994cd196c3b0504a4dff4fb205258569ab4ad726250bf582f695282",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "14a60b1ba708e0c0244374f7410a2cbf7a5863d4ffedeb82fef806aa1735f768",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740743829087442/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 49,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "cfdabadcb40e7411238d4bbae45175ddea063d3a9bb5bd809716fbe127c80ea1"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "bafd3d63c84429328f9c5c6f138e91bb4748961ef9d5a2d05e75dab5c9e17c5c",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-scheduler-hint-0",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "84dd36f230d6dec0bc92d11d6f370fcb3f0eb35be29c60893eee27cb10924b0f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/native_result.json"
+        },
+        "safety": {
+          "sha256": "dd1d960c7a41587cbbe30131bee92da28b4a8f95b1782bea311f2b9075578d99",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "8c2e9b0a813e0adaadf717ca1c5df082379a1bc3e76a7157b204258b018fb049",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "f9de89ca72b5b065c15ff30b0b4fb29b1eedf52fa939a7ca3fa08c1a3027c3ba",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740746585646937/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 49,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "cfdabadcb40e7411238d4bbae45175ddea063d3a9bb5bd809716fbe127c80ea1"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "bafd3d63c84429328f9c5c6f138e91bb4748961ef9d5a2d05e75dab5c9e17c5c",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-scheduler-hint-1",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "cc78cae72d777009b17e8a8e0d24c3f6bb1a2a91c101c1a49b001df2c67265ab",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/native_result.json"
+        },
+        "safety": {
+          "sha256": "edca6879374ac6c763c4d8ec4c30af3664c898377c1ecb43a2df2af54a896a0e",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "c6dff070d196527b84fb4196f90cf2d1c280a3fab2f9ef7e31fb82f417e0793f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "65e4d4bc034fe6dd406a5a8645a428082ee6dd8240d63ee41055a13225084f7f",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/hint/runs/attention-robosuite-cube_lift-seed101-e710a52b052e/attempts/cube_lift-seed101-formal-1790740751486711051/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 86,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "f627596933ec7e0e507c495b1e0c912f74161c629a3795ac6a7c5abfb46adb07"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "7eb03816a4cf26cb3fa8909b8376d2ac4c1d878e21facb610185359a3de40360",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8350569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 30
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.009306671499627186,
+            "y": -0.01913283751948946,
+            "z": 1.014267821927804
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-scheduler-hint-2",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "26d4c19e0f74eff267c195913d55aa0e3d436e4b02803709c8b888a9131b40b2",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/native_result.json"
+        },
+        "safety": {
+          "sha256": "f549fe1faa82ec4463ef2358f41f72538d4501a0405efcde948c18fadc62c24b",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "fd92e30219e7e7d83d1723d6016b9fd455d9e91dd9a65824e73891ddfc4dd40a",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "4bad508fe83bf0f2be2bd2e63681a432f01b85f6620e9bb5598c35daf4be38d4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740895562810535/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 49,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "cfdabadcb40e7411238d4bbae45175ddea063d3a9bb5bd809716fbe127c80ea1"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": false,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "bafd3d63c84429328f9c5c6f138e91bb4748961ef9d5a2d05e75dab5c9e17c5c",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-scheduler-memory-0",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "4833e035ddbbd04c1a7bc6382e1f168c0574a8ee6eb83c4d03c5e917e4071ba2",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/native_result.json"
+        },
+        "safety": {
+          "sha256": "e27eedbffae3a33bfc71505dd8025cd3f297d19086d3825384d2a0fba2552815",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "68e893974bcb350ffe36c6527394738d77352ed8d7db65755095fa828829a728",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "97b1b260c475a43591659a14bfd6563a9bd63a107b181fb5ede9d1aac325dbd4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/memory/runs/attention-robosuite-cube_lift-seed101-1384558c6e46/attempts/cube_lift-seed101-formal-1790740898510798217/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 86,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "f627596933ec7e0e507c495b1e0c912f74161c629a3795ac6a7c5abfb46adb07"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "7eb03816a4cf26cb3fa8909b8376d2ac4c1d878e21facb610185359a3de40360",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 0.8350569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 30
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.009306671499627186,
+            "y": -0.01913283751948946,
+            "z": 1.014267821927804
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403153,
+            "y": -0.01908645584039528,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-scheduler-memory-1",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "0d38f965d4bff519da09449fc0cc33d5e227124639cea915c5d9e28aec633ce4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/native_result.json"
+        },
+        "safety": {
+          "sha256": "977eae4df2b43b6b36ed5dedc9d00d2616a8043d0c5daa9db517ada0b6f22d6d",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "015bde21bbfecb39929e265d797568ab6f228f62b3526a0fb7ea0a08ecc86d80",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "59335e7ef4b4164ed18d9f6ba102cb197567ae02c59d56058e8e53f00c63b3a1",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/scheduler/demo/runs/attention-robosuite-cube_lift-seed101-dde8e7d43b68/attempts/cube_lift-seed101-formal-1790740952809226465/trace.json"
+        }
+      },
+      "config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a",
+      "execution": {
+        "count": 86,
+        "kind": "executed_service_OSC_action_arrays",
+        "sha256": "ed00a530eab9f80145c0f21697278096deb3dcf45fe2879c253a85f410b7cd92"
+      },
+      "initial_observation_sha256": "c59f77c0f562bd2f249be9989fe53e9a841a2c56c9ba70bee4be64d1aab13fc8",
+      "native_success": true,
+      "policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "reset_attestation": {
+        "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+        "scene_id": "scene:095974d95f12b5c458fb"
+      },
+      "robot_command_sha256": "0e2ac5751c47f9d1c63863b000a600fd89f1f3c01fe520b781fa01a019e7ca98",
+      "robot_commands": [
+        {
+          "arguments": {
+            "settle_steps": 10
+          },
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403156,
+            "y": -0.019086455840395276,
+            "z": 0.8350569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "settle_steps": 30
+          },
+          "operation": "close",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00930667149962719,
+            "y": -0.019132837519489476,
+            "z": 1.014267821927804
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.008872082758403156,
+            "y": -0.019086455840395276,
+            "z": 1.0300569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-scheduler-demo-0",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robosuite",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "3ce87869324c409bc66548577aafac98b6c286d5e63c073436ba84b674c20a82",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/native_result.json"
+        },
+        "safety": {
+          "sha256": "c1345f959be6ff10ff2f74ede6d6d4916635f837b2d178d668f0edeb931b9713",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "02271740bd3d8082bf785b9537f97924366ed99acddb7950e2cc8162f8e11b5a",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "f525fae4c30ba9de9c0329039e2816c0a8c87279a4e50cba012c539ba66cbeda",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-old-baseline/attempts/counter_to_sink-seed101-formal-1790740972740101088/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+        "temporary_wrapper_missing_count": 9
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-old-baseline",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "30063e1483dd665846101cb60f786b6490d44a91dac015107532b09d7527b204",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/native_result.json"
+        },
+        "safety": {
+          "sha256": "5487e081936fba5de6e54e69d44ec5ac9a356a929b4d7c03ed1bdf34f76a85b5",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "5a1e82b80cd020599da28fc072fa16df712a877b4c730489da07dfc0380a8286",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "c6cc72f9687c5f9c448d71d27e2b3a633bcfaa5bcdcd48f1347ffcef31421bb1",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance/attempts/counter_to_sink-seed101-formal-1790741041152722325/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+        "temporary_wrapper_missing_count": 9
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-no-guidance",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "620706e66fa178700d8fe2422d8ad01985e65c38901e4bdabddf004ff81d552c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/native_result.json"
+        },
+        "safety": {
+          "sha256": "865ccd9c274550e6c037ac9da9c6e385b1afd3fad32e592a1e354abdd66c6925",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "dcef8be7f9ac39fe80324e6a66e0ad29e265c2bdc1475dea23600d415a1cc619",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "1a2c5959850685c8f4f85c517dc4727799931023b0f427ef538f1340a70e5762",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-hint/attempts/counter_to_sink-seed101-formal-1790741110228966242/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "c3f88f96c2fe6b9b49c442439a6ff947d99cad5cecf2982e95762ecc9cc437a9",
+        "temporary_wrapper_missing_count": 4
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "c3f88f96c2fe6b9b49c442439a6ff947d99cad5cecf2982e95762ecc9cc437a9",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-hint",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "ebb1c9c913832ccbf7c91e51f2794d8a094827eab9e132cc01b7f41aa4bea72c",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/native_result.json"
+        },
+        "safety": {
+          "sha256": "334083efac1cbf034d8a254e05ca1e58abf159b307caf01576f4fe35721cc897",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "239b53d549679b2452c9579b668607ca99f5f5949d7de77a67ba6b6d44037e09",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "e92f36a7b6760d78c1c476cf6a0dfc6e8fd875292edad48ee12f8400f36fe826",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-content-ablation/attempts/counter_to_sink-seed101-formal-1790741179545702840/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+        "temporary_wrapper_missing_count": 0
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-content-ablation",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "750bfa4406a357de82190810a7e5d7a11925a8cfbea0a4b8d03df80f3200dc0e",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/native_result.json"
+        },
+        "safety": {
+          "sha256": "58f319e653257825872bc74a589442f082142eb84572647ec07a228e89b396bd",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "807e703bbe978afd5d7a0e97a77f90439515a712aea5b47e32d27892a7847712",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "04524cb264d17a001b7f3518e099b01b31f5e405447d4514483e1b2e1444c1ad",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-demo/attempts/counter_to_sink-seed101-formal-1790741249214915035/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "c3f88f96c2fe6b9b49c442439a6ff947d99cad5cecf2982e95762ecc9cc437a9",
+        "temporary_wrapper_missing_count": 0
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "c3f88f96c2fe6b9b49c442439a6ff947d99cad5cecf2982e95762ecc9cc437a9",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-demo",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "7429eb7f537ae6f231f382970d50d4df1375cd070050724b2f2fdc521ba69f02",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/native_result.json"
+        },
+        "safety": {
+          "sha256": "7ffbfaa2069bc317e64d6fe12efcdbf2c874a3d44b45c2aad4b405e16ecd83a5",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "6d12db6c461273c0832c37fea6615e44a08c0982daf0a67146b7d07ae41619a9",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "bdb826924e93ba09312d5671efadf3f034d649eba213e7fa288f40b65b7be3b3",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory/attempts/counter_to_sink-seed101-formal-1790741318164301348/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+        "temporary_wrapper_missing_count": 0
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-memory",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "7ac066a226d78864351e39a48a24fd16fe2061ce9b40f87add7c0c020e465791",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/native_result.json"
+        },
+        "safety": {
+          "sha256": "38b34caf0b11fab10410927d68a01c4d78f18d23e9dd96e7955cb0e9c4e1a216",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "52d630bfedcdc6d1f979cd02e0376f0281e4c0036ecf94aaaab02bd538321869",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "c82ca71cf95a11d191920347f725062333a7f116d7dd24bf14018dcdc599cce1",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-no-guidance-v1-1/attempts/counter_to_sink-seed101-formal-1790741515813898239/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+        "temporary_wrapper_missing_count": 0
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "2ea6c98c6a6d5ff15f796463c4abe43150bff550b97b9e35eb1a3104164e977f",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    },
+    {
+      "artifacts": {
+        "native_result": {
+          "sha256": "0576e61faa7587c5fee2b7f0ab516ba7029d4316a07982a85c75ca95faf608b3",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/native_result.json"
+        },
+        "safety": {
+          "sha256": "66a8301b466fd789afda7683e667e1d5f094477d51fa0421e473c50977128da4",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/safety.json"
+        },
+        "sandbox_receipt": {
+          "sha256": "1f1aac47f375867bea67e4dd6b760b8ba5fbde0a90d8cfedc4661c36b66db03d",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/sandbox_receipt.json"
+        },
+        "trace": {
+          "sha256": "742d62bdde5e3a47ec60bb963c5e2d0f9da9b0769adb38701f9c5796154b2d23",
+          "uri": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/trace.json"
+        }
+      },
+      "config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "execution": {
+        "count": 9,
+        "ignored_parameter": "gripper.settle_steps",
+        "job_receipt_path": "/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/direct/adoption-v1-robocasa-memory-v1-1/attempts/counter_to_sink-seed101-formal-1790741585441847498/executed_jobs/receipt.json",
+        "kind": "completed_Agent_job_sequence_and_independent_Safety_samples",
+        "sha256": "c3f88f96c2fe6b9b49c442439a6ff947d99cad5cecf2982e95762ecc9cc437a9",
+        "temporary_wrapper_missing_count": 0
+      },
+      "initial_observation_sha256": "698df7f78e1a2f06167f570e09c42429c0be0b19ea1f87de93efafa60d42b35f",
+      "native_success": false,
+      "policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "reset_attestation": {
+        "object_set_id": "objects:cda92955890a16bc8537",
+        "scene_id": "scene:29f6ddc71995db3e0fd6"
+      },
+      "robot_command_sha256": "c3f88f96c2fe6b9b49c442439a6ff947d99cad5cecf2982e95762ecc9cc437a9",
+      "robot_commands": [
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.15,
+            "dy": -0.075,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.0,
+            "dy": -0.08,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              -0.175,
+              0.165,
+              0.0
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {
+            "dx": 0.0,
+            "dy": 0.0,
+            "dz": 0.0,
+            "rotation_delta": [
+              0.0,
+              0.0,
+              -0.8
+            ]
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        {
+          "arguments": {},
+          "operation": "open",
+          "source": "robot_sdk.gripper",
+          "status": "completed"
+        }
+      ],
+      "row_id": "adoption-v1-robocasa-memory-v1-1",
+      "seed": 101,
+      "status": "completed",
+      "suite": "robocasa",
+      "unsafe_attempts": 0
+    }
+  ],
+  "attempts_retained": 20,
+  "audit_role": "author-produced read-only mechanical audit; no independent reviewer claim",
+  "bounded_engineering_acceptance": "FAIL",
+  "checks": [
+    {
+      "cap": 20,
+      "check": "bounded attempt cap",
+      "pass": true,
+      "used": 20
+    },
+    {
+      "check": "development seed only",
+      "pass": true
+    },
+    {
+      "check": "all attempts finished before 90-minute deadline",
+      "pass": true
+    },
+    {
+      "check": "original preimplementation design intact",
+      "pass": true
+    },
+    {
+      "check": "v1.1 amendment frozen before implementation",
+      "pass": true
+    },
+    {
+      "check": "old policy/package/runtime/gates preserved",
+      "drift": [],
+      "files": 1724,
+      "pass": true
+    },
+    {
+      "check": "original new-version input lock intact",
+      "pass": true
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 5,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 49,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-old-baseline"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 5,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 49,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-no-guidance"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 6,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 86,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-hint"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 5,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 49,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-content-ablation"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 6,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 86,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-demo"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 6,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 86,
+      "pass": true,
+      "row_id": "adoption-v1-robosuite-memory"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 5,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 49,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-0"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 5,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 49,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-1"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 6,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 86,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-hint-2"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 5,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 49,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-0"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 6,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 86,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-memory-1"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 6,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "actual executed OSC controls, not trace-only fields",
+      "count": 86,
+      "pass": true,
+      "row_id": "adoption-v1-scheduler-demo-0"
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-old-baseline",
+      "sdk_commands": 9
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance",
+      "sdk_commands": 9
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-hint",
+      "sdk_commands": 9
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-content-ablation",
+      "sdk_commands": 9
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-demo",
+      "sdk_commands": 9
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory",
+      "sdk_commands": 9
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-no-guidance-v1-1",
+      "sdk_commands": 9
+    },
+    {
+      "check": "complete retained attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1"
+    },
+    {
+      "check": "four artifact SHAs",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1"
+    },
+    {
+      "check": "independent Safety zero",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1"
+    },
+    {
+      "check": "native verdict from pinned evaluator",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1"
+    },
+    {
+      "check": "Service process groups reaped",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1"
+    },
+    {
+      "check": "source/config unchanged during actual attempt",
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1"
+    },
+    {
+      "check": "completed robot commands",
+      "count": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1"
+    },
+    {
+      "check": "actual Agent jobs completed for every SDK command",
+      "jobs": 9,
+      "pass": true,
+      "row_id": "adoption-v1-robocasa-memory-v1-1",
+      "sdk_commands": 9
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robosuite unchanged no-guidance baseline",
+      "pass": true
+    },
+    {
+      "changed": false,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": false,
+      "expected": false,
+      "pair_kind": "robosuite unchanged no-guidance baseline",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robosuite content ablation",
+      "pass": true
+    },
+    {
+      "changed": false,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": false,
+      "expected": false,
+      "pair_kind": "robosuite content ablation",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robosuite hint v1",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "robosuite hint v1",
+      "pass": true
+    },
+    {
+      "check": "paired native success improvement",
+      "pair_kind": "robosuite hint v1",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robosuite demo v1",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "robosuite demo v1",
+      "pass": true
+    },
+    {
+      "check": "paired native success improvement",
+      "pair_kind": "robosuite demo v1",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robosuite memory v1",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "robosuite memory v1",
+      "pass": true
+    },
+    {
+      "check": "paired native success improvement",
+      "pair_kind": "robosuite memory v1",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robocasa unchanged no-guidance baseline",
+      "pass": true
+    },
+    {
+      "changed": false,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": false,
+      "expected": false,
+      "pair_kind": "robocasa unchanged no-guidance baseline",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robocasa content ablation",
+      "pass": true
+    },
+    {
+      "changed": false,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": false,
+      "expected": false,
+      "pair_kind": "robocasa content ablation",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robocasa hint v1",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "robocasa hint v1",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robocasa demo v1",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "robocasa demo v1",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robocasa memory v1",
+      "pass": true
+    },
+    {
+      "changed": false,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": false,
+      "expected": false,
+      "pair_kind": "robocasa memory v1",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robocasa v1.1 unchanged no-guidance baseline",
+      "pass": true
+    },
+    {
+      "changed": false,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": false,
+      "expected": false,
+      "pair_kind": "robocasa v1.1 unchanged no-guidance baseline",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "robocasa memory v1.1",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "robocasa memory v1.1",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "full planner answered hint consumed by next attempt",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "full planner answered hint consumed by next attempt",
+      "pass": true
+    },
+    {
+      "check": "paired native success improvement",
+      "pair_kind": "full planner answered hint consumed by next attempt",
+      "pass": true
+    },
+    {
+      "check": "paired identities/reset equality",
+      "pair_kind": "trusted exact Memory grant consumed by next attempt (autonomous development)",
+      "pass": true
+    },
+    {
+      "changed": true,
+      "check": "observable adoption or expected non-adoption",
+      "executed_changed": true,
+      "expected": true,
+      "pair_kind": "trusted exact Memory grant consumed by next attempt (autonomous development)",
+      "pass": true
+    },
+    {
+      "check": "paired native success improvement",
+      "pair_kind": "trusted exact Memory grant consumed by next attempt (autonomous development)",
+      "pass": true
+    },
+    {
+      "check": "full Trace-aware request/answer/execution linkage",
+      "pass": true
+    },
+    {
+      "check": "actual exact-scope trusted-v1 Memory grant/content/use provenance",
+      "pass": true
+    },
+    {
+      "check": "verified demo projection reached actual control",
+      "pass": false
+    },
+    {
+      "check": "at least one guidance/action/native-success causal chain",
+      "pass": true
+    }
+  ],
+  "effect_matrix_executions": 0,
+  "failures": [
+    {
+      "check": "verified demo projection reached actual control",
+      "pass": false
+    }
+  ],
+  "formal_eligible": false,
+  "heldout_executions": 0,
+  "hint_provenance": {
+    "actual_provider": "deterministic development transport, no online GLM call",
+    "execution_links": [
+      {
+        "execution_id": "execution:cube_lift-seed101-formal-1790740751486711051:2",
+        "request_id": "attention-request:attention-robosuite-cube_lift-seed101-e710a52b052e:1",
+        "response_id": "proxy-response:attention-request:attention-robosuite-cube_lift-seed101-e710a52b052e:1",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-e710a52b052e",
+        "use": "guidance"
+      }
+    ],
+    "request": {
+      "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-e710a52b052e:1",
+      "created_at": 1790740749.4327714,
+      "deadline_at": null,
+      "mode": "benchmark_proxy",
+      "priority": "normal",
+      "reason": "cause_unknown_after_inspection",
+      "request_id": "attention-request:attention-robosuite-cube_lift-seed101-e710a52b052e:1",
+      "request_type": "hint",
+      "response_id": "proxy-response:attention-request:attention-robosuite-cube_lift-seed101-e710a52b052e:1",
+      "run_id": "run:attention-robosuite-cube_lift-seed101-e710a52b052e",
+      "schema_version": "attentionbench.core.v1",
+      "state": "answered",
+      "trace_id": "trace:cube_lift-seed101-formal-1790740746585646937:1"
+    },
+    "response_id": "proxy-response:attention-request:attention-robosuite-cube_lift-seed101-e710a52b052e:1"
+  },
+  "limitations": [
+    "one development seed, no population effect estimate",
+    "authored SDK demo prior, not a successful demonstration recording",
+    "exact phrase/directive compiler, unsupported language is exposure only",
+    "RoboCasa v1 Memory changed trace cadence but not completed backend commands; retained non-adoption",
+    "RoboCasa v1.1 Memory changes base action but native success remains false; downstream reachability unresolved",
+    "RoboCasa hint/demo real-Service evidence belongs to v1; v1.1 changes only Memory phrase recipe",
+    "RoboCasa temporary job wrappers can be removed by existing recorder cleanup; completed-job logs, Safety samples and four primary artifacts retained",
+    "full planner generic-failure Memory selection left unchanged; actual Memory scheduler proof uses existing autonomous development route"
+  ],
+  "memory_provenance": {
+    "attention_policy": "autonomous",
+    "full_condition_memory_selection_not_claimed": true,
+    "grants": [
+      {
+        "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1384558c6e46:1",
+        "context": {
+          "camera_config_id": "camera:agentview",
+          "camera_names": [
+            "agentview"
+          ],
+          "object_set_id": "objects:8bb9cf21b4c6ca9db214",
+          "perception_mode": "sim_gt",
+          "scene_id": "scene:095974d95f12b5c458fb",
+          "suite": "robosuite",
+          "task_id": "cube_lift",
+          "task_prompt": "Lift the cube clear of the table.",
+          "task_variant_id": "task-variant-0"
+        },
+        "grant_id": "grant:ecc3094d6dd343fb97d71ded64fc13b5",
+        "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+        "schema_version": "attentionbench.memory-use-grant.v1",
+        "used_at": 1790740898.5008273,
+        "version": 1
+      }
+    ],
+    "uses": [
+      {
+        "attempt_id": "attempt:attention-robosuite-cube_lift-seed101-1384558c6e46:1",
+        "evidence_refs": [],
+        "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+        "memory_version": 1,
+        "outcome": "native_success",
+        "run_id": "run:attention-robosuite-cube_lift-seed101-1384558c6e46",
+        "schema_version": "attentionbench.core.v1",
+        "use_id": "use:attempt:attention-robosuite-cube_lift-seed101-1384558c6e46:1:candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+        "used_at": 1790740898.5008273
+      }
+    ]
+  },
+  "new_external_approval": "pending",
+  "pairs": [
+    {
+      "control_id": "adoption-v1-robosuite-old-baseline",
+      "control_native_success": false,
+      "control_policy_sha256": "fa1eff2f0bf938fc8dec6ad1bcf58c1db481a00332f59e2108bcfb94d93ee6c8",
+      "executed_control_change": false,
+      "expected_observable_adoption": false,
+      "first_command_divergence": null,
+      "first_raw_control_divergence": null,
+      "guidance_content": {},
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "kind": "robosuite unchanged no-guidance baseline",
+      "native_improved": false,
+      "observable_robot_command_change": false,
+      "same_policy_sha": false,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robosuite-no-guidance",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    {
+      "control_id": "adoption-v1-robosuite-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "executed_control_change": false,
+      "expected_observable_adoption": false,
+      "first_command_divergence": null,
+      "first_raw_control_divergence": null,
+      "guidance_content": {
+        "advisor_guidance": "Review trace and retry."
+      },
+      "guidance_content_sha256": "29b2e2a8f2ab72727ad2fe150e0b7ef31e0411a87f36c05434ef29d66e49c6b5",
+      "kind": "robosuite content ablation",
+      "native_improved": false,
+      "observable_robot_command_change": false,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robosuite-content-ablation",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    {
+      "control_id": "adoption-v1-robosuite-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "index_zero_based": 1
+      },
+      "first_raw_control_divergence": {
+        "control": [
+          0.2652130426046476,
+          -0.05900971029777255,
+          -1.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "guidance": [
+          0.2652130426046477,
+          -0.05900971029777262,
+          -0.12337525718341791,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "index_zero_based": 17
+      },
+      "guidance_content": {
+        "advisor_guidance": "AB_CONTROL_V1 grasp_offset_m=.005;approach_tolerance_m=.004;close_settle_steps=30;"
+      },
+      "guidance_content_sha256": "aea8e412486119a10081874a6613f8f923c4a440d29e7a2bf1fec521d53f6c97",
+      "kind": "robosuite hint v1",
+      "native_improved": true,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robosuite-hint",
+      "treatment_native_success": true,
+      "treatment_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    {
+      "control_id": "adoption-v1-robosuite-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "index_zero_based": 1
+      },
+      "first_raw_control_divergence": {
+        "control": [
+          0.2652130426046476,
+          -0.05900971029777255,
+          -1.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "guidance": [
+          0.2652130426046477,
+          -0.05900971029777262,
+          -0.12337525718341791,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "index_zero_based": 17
+      },
+      "guidance_content": {
+        "demo_prior": "{\"assets\":[{\"kind\":\"action_trajectory\",\"path\":\"/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/inputs/robosuite_authored_demo_actions.json\",\"sha256\":\"3412c333fcc3568e23d4e8b9a6a7ebe1e220d6e6366092c9a22cec7a91339317\",\"steps\":[{\"arguments\":{\"settle_steps\":10},\"operation\":\"sdk.gripper.open\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.00887208275840315,\"y\":-0.019086455840395283,\"z\":0.9500569484529563},\"operation\":\"sdk.arm.move_to_position\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.008872082758403153,\"y\":-0.01908645584039528,\"z\":0.8350569484529563},\"operation\":\"sdk.arm.move_to_position\"},{\"arguments\":{\"settle_steps\":30},\"operation\":\"sdk.gripper.close\"},{\"arguments\":{\"max_steps\":80,\"tolerance\":0.004,\"x\":-0.008872082758403153,\"y\":-0.01908645584039528,\"z\":1.0300569484529563},\"operation\":\"sdk.arm.move_to_position\"}]}],\"schema_version\":\"attentionbench.public-demo.v1\"}"
+      },
+      "guidance_content_sha256": "3f54adf5777f895a00325fc855999986d949231047b45c19e946c165afbb19ea",
+      "kind": "robosuite demo v1",
+      "native_improved": true,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robosuite-demo",
+      "treatment_native_success": true,
+      "treatment_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    {
+      "control_id": "adoption-v1-robosuite-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "index_zero_based": 1
+      },
+      "first_raw_control_divergence": {
+        "control": [
+          0.2652130426046476,
+          -0.05900971029777255,
+          -1.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "guidance": [
+          0.2652130426046477,
+          -0.05900971029777262,
+          -0.12337525718341791,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "index_zero_based": 17
+      },
+      "guidance_content": {
+        "memory_guidance": {
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0": "Use the object poses returned by sensors.find_objects() (permitted sim_gt evidence) to locate the cube. Then, using sensors.get_observation() for the current end-effector position (robot0_eef_pos) and orientation (robot0_eef_quat): (1) move the end-effector above the cube, (2) lower it to the cube's grasp height, (3) close the gripper with gripper.close() and allow it to settle, and (4) move the end-effector upward to lift the cube off the table. Keep the gripper open during approach as you already do, and verify the cube's position changes after lifting by calling find_objects() again."
+        },
+        "memory_ids_to_use": [
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0"
+        ]
+      },
+      "guidance_content_sha256": "ddc69116fafdc9f306011aae68da1b4ee70d88547141fc8ec17c2654600f56e1",
+      "kind": "robosuite memory v1",
+      "native_improved": true,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robosuite-memory",
+      "treatment_native_success": true,
+      "treatment_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    {
+      "control_id": "adoption-v1-robocasa-old-baseline",
+      "control_native_success": false,
+      "control_policy_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+      "executed_control_change": false,
+      "expected_observable_adoption": false,
+      "first_command_divergence": null,
+      "first_raw_control_divergence": null,
+      "guidance_content": {},
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "kind": "robocasa unchanged no-guidance baseline",
+      "native_improved": false,
+      "observable_robot_command_change": false,
+      "same_policy_sha": false,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robocasa-no-guidance",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add"
+    },
+    {
+      "control_id": "adoption-v1-robocasa-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "executed_control_change": false,
+      "expected_observable_adoption": false,
+      "first_command_divergence": null,
+      "first_raw_control_divergence": null,
+      "guidance_content": {
+        "advisor_guidance": "Review trace and retry."
+      },
+      "guidance_content_sha256": "29b2e2a8f2ab72727ad2fe150e0b7ef31e0411a87f36c05434ef29d66e49c6b5",
+      "kind": "robocasa content ablation",
+      "native_improved": false,
+      "observable_robot_command_change": false,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robocasa-content-ablation",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add"
+    },
+    {
+      "control_id": "adoption-v1-robocasa-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        "index_zero_based": 0
+      },
+      "first_raw_control_divergence": null,
+      "guidance_content": {
+        "advisor_guidance": "AB_CONTROL_V1 base_forward_m=.11;grasp_offset_m=.045;open_settle_steps=20;close_settle_steps=30;"
+      },
+      "guidance_content_sha256": "24859e14e16bf5bc6bf2522dff698a1644b146dd2efe1e5afc5ed00587f8951f",
+      "kind": "robocasa hint v1",
+      "native_improved": false,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robocasa-hint",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add"
+    },
+    {
+      "control_id": "adoption-v1-robocasa-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        "index_zero_based": 0
+      },
+      "first_raw_control_divergence": null,
+      "guidance_content": {
+        "demo_prior": "{\"assets\":[{\"kind\":\"action_trajectory\",\"path\":\"/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/inputs/robocasa_authored_demo_actions.json\",\"sha256\":\"205041236ce08d2e9f4a29b79b18a7b67a971e1392dd9070895912572cf3efdd\",\"steps\":[{\"arguments\":{\"dtheta\":0.0,\"dx\":0.11,\"dy\":-0.1,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.11,\"dy\":-0.1,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.15,\"dy\":-0.075,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.15,\"dy\":-0.075,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.0,\"dy\":-0.08,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dtheta\":0.0,\"dx\":0.0,\"dy\":-0.08,\"frame\":\"local\"},\"operation\":\"sdk.base.move_delta\"},{\"arguments\":{\"dx\":0.0,\"dy\":0.0,\"dz\":0.0,\"rotation_delta\":[-0.175,0.165,0.0]},\"operation\":\"sdk.arm.move_delta\"},{\"arguments\":{\"dx\":0.0,\"dy\":0.0,\"dz\":0.0,\"rotation_delta\":[0.0,0.0,-0.8]},\"operation\":\"sdk.arm.move_delta\"}]}],\"schema_version\":\"attentionbench.public-demo.v1\"}"
+      },
+      "guidance_content_sha256": "72538cddc9e7460c6c8ec770edc026f9e6dcc877a697192b9aed14d007a50110",
+      "kind": "robocasa demo v1",
+      "native_improved": false,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robocasa-demo",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add"
+    },
+    {
+      "control_id": "adoption-v1-robocasa-no-guidance",
+      "control_native_success": false,
+      "control_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add",
+      "executed_control_change": false,
+      "expected_observable_adoption": false,
+      "first_command_divergence": null,
+      "first_raw_control_divergence": null,
+      "guidance_content": {
+        "memory_guidance": {
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3": "Rewrite policy.py to: (1) call sensors.find_objects() and inspect the returned object names/positions to locate the target object on the counter and the sink location; (2) use the SDK's motion primitives (e.g., move the end-effector toward the object's position, close the gripper to grasp, then move to the sink position and release). Use get_observation() (robot0_eef_pos, robot0_gripper_width) to verify approach and grasp success between steps, and iterate until the object is placed. The current code discards the find_objects() results entirely — capture and use them."
+        },
+        "memory_ids_to_use": [
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3"
+        ]
+      },
+      "guidance_content_sha256": "585f291dd1df45a51a670bc920bc8765584e98b6620cb1e9e8975603d98b121a",
+      "kind": "robocasa memory v1",
+      "native_improved": false,
+      "observable_robot_command_change": false,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robocasa-memory",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add"
+    },
+    {
+      "control_id": "adoption-v1-robocasa-old-baseline",
+      "control_native_success": false,
+      "control_policy_sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780",
+      "executed_control_change": false,
+      "expected_observable_adoption": false,
+      "first_command_divergence": null,
+      "first_raw_control_divergence": null,
+      "guidance_content": {},
+      "guidance_content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "kind": "robocasa v1.1 unchanged no-guidance baseline",
+      "native_improved": false,
+      "observable_robot_command_change": false,
+      "same_policy_sha": false,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robocasa-no-guidance-v1-1",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7"
+    },
+    {
+      "control_id": "adoption-v1-robocasa-no-guidance-v1-1",
+      "control_native_success": false,
+      "control_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.125,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "dtheta": 0.0,
+            "dx": 0.11,
+            "dy": -0.1,
+            "frame": "local"
+          },
+          "operation": "move_delta",
+          "source": "robot_sdk.base",
+          "status": "completed"
+        },
+        "index_zero_based": 0
+      },
+      "first_raw_control_divergence": null,
+      "guidance_content": {
+        "memory_guidance": {
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3": "Rewrite policy.py to: (1) call sensors.find_objects() and inspect the returned object names/positions to locate the target object on the counter and the sink location; (2) use the SDK's motion primitives (e.g., move the end-effector toward the object's position, close the gripper to grasp, then move to the sink position and release). Use get_observation() (robot0_eef_pos, robot0_gripper_width) to verify approach and grasp success between steps, and iterate until the object is placed. The current code discards the find_objects() results entirely — capture and use them."
+        },
+        "memory_ids_to_use": [
+          "candidate:m5:robocasa-counter-to-sink-public-sdk-v3"
+        ]
+      },
+      "guidance_content_sha256": "585f291dd1df45a51a670bc920bc8765584e98b6620cb1e9e8975603d98b121a",
+      "kind": "robocasa memory v1.1",
+      "native_improved": false,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-robocasa-memory-v1-1",
+      "treatment_native_success": false,
+      "treatment_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7"
+    },
+    {
+      "control_id": "adoption-v1-scheduler-hint-1",
+      "control_native_success": false,
+      "control_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "index_zero_based": 1
+      },
+      "first_raw_control_divergence": {
+        "control": [
+          0.2652130426046476,
+          -0.05900971029777255,
+          -1.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "guidance": [
+          0.2652130426046477,
+          -0.05900971029777262,
+          -0.12337525718341791,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "index_zero_based": 17
+      },
+      "guidance_content": {
+        "advisor_guidance": "AB_CONTROL_V1 grasp_offset_m=.005;approach_tolerance_m=.004;close_settle_steps=30;"
+      },
+      "guidance_content_sha256": "aea8e412486119a10081874a6613f8f923c4a440d29e7a2bf1fec521d53f6c97",
+      "kind": "full planner answered hint consumed by next attempt",
+      "native_improved": true,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-scheduler-hint-2",
+      "treatment_native_success": true,
+      "treatment_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    },
+    {
+      "control_id": "adoption-v1-scheduler-memory-0",
+      "control_native_success": false,
+      "control_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "executed_control_change": true,
+      "expected_observable_adoption": true,
+      "first_command_divergence": {
+        "control": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.018,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "guidance": {
+          "arguments": {
+            "max_steps": 80,
+            "tolerance": 0.004,
+            "x": -0.00887208275840315,
+            "y": -0.019086455840395283,
+            "z": 0.9500569484529563
+          },
+          "operation": "move_to_position",
+          "source": "robot_sdk.arm",
+          "status": "completed"
+        },
+        "index_zero_based": 1
+      },
+      "first_raw_control_divergence": {
+        "control": [
+          0.2652130426046476,
+          -0.05900971029777255,
+          -1.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "guidance": [
+          0.2652130426046477,
+          -0.05900971029777262,
+          -0.12337525718341791,
+          0.0,
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "index_zero_based": 17
+      },
+      "guidance_content": {
+        "memory_guidance": {
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0": "Use the object poses returned by sensors.find_objects() (permitted sim_gt evidence) to locate the cube. Then, using sensors.get_observation() for the current end-effector position (robot0_eef_pos) and orientation (robot0_eef_quat): (1) move the end-effector above the cube, (2) lower it to the cube's grasp height, (3) close the gripper with gripper.close() and allow it to settle, and (4) move the end-effector upward to lift the cube off the table. Keep the gripper open during approach as you already do, and verify the cube's position changes after lifting by calling find_objects() again."
+        },
+        "memory_ids_to_use": [
+          "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0"
+        ]
+      },
+      "guidance_content_sha256": "ddc69116fafdc9f306011aae68da1b4ee70d88547141fc8ec17c2654600f56e1",
+      "kind": "trusted exact Memory grant consumed by next attempt (autonomous development)",
+      "native_improved": true,
+      "observable_robot_command_change": true,
+      "same_policy_sha": true,
+      "same_seed_scene_config_initial_observation": true,
+      "treatment_id": "adoption-v1-scheduler-memory-1",
+      "treatment_native_success": true,
+      "treatment_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2"
+    }
+  ],
+  "schema": "attentionbench.guidance-adoption-evidence-audit.v1.1",
+  "unsafe_attempts_total": 0
+}

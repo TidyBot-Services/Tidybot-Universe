@@ -1,0 +1,85 @@
+{
+  "source": "public_sdk",
+  "steps": [
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.125,
+        "dy": -0.1,
+        "frame": "local"
+      },
+      "operation": "sdk.base.move_delta"
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.125,
+        "dy": -0.1,
+        "frame": "local"
+      },
+      "operation": "sdk.base.move_delta"
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.15,
+        "dy": -0.075,
+        "frame": "local"
+      },
+      "operation": "sdk.base.move_delta"
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.15,
+        "dy": -0.075,
+        "frame": "local"
+      },
+      "operation": "sdk.base.move_delta"
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.0,
+        "dy": -0.08,
+        "frame": "local"
+      },
+      "operation": "sdk.base.move_delta"
+    },
+    {
+      "arguments": {
+        "dtheta": 0.0,
+        "dx": 0.0,
+        "dy": -0.08,
+        "frame": "local"
+      },
+      "operation": "sdk.base.move_delta"
+    },
+    {
+      "arguments": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "dz": 0.0,
+        "rotation_delta": [
+          -0.175,
+          0.165,
+          0.0
+        ]
+      },
+      "operation": "sdk.arm.move_delta"
+    },
+    {
+      "arguments": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "dz": 0.0,
+        "rotation_delta": [
+          0.0,
+          0.0,
+          -0.8
+        ]
+      },
+      "operation": "sdk.arm.move_delta"
+    }
+  ]
+}

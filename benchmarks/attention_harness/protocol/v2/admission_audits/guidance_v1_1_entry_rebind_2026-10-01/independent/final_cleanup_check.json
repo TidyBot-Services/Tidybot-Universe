@@ -1,0 +1,33 @@
+{
+  "at_utc": "2026-09-30T16:30:59.550500+00:00",
+  "controller_pids": [],
+  "new_Service_starts": 0,
+  "passed": true,
+  "ports": [
+    {
+      "listening": false,
+      "port": 6300
+    },
+    {
+      "listening": false,
+      "port": 8880
+    },
+    {
+      "listening": false,
+      "port": 6355
+    },
+    {
+      "listening": false,
+      "port": 6370
+    },
+    {
+      "listening": false,
+      "port": 6380
+    },
+    {
+      "listening": false,
+      "port": 50800
+    }
+  ],
+  "robot_attempts": 0
+}

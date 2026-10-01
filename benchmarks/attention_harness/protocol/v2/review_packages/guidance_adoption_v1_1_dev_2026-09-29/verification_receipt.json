@@ -1,0 +1,8 @@
+{
+  "schema": "attentionbench.guidance-adoption-frozen-verification.v1.1",
+  "pass": true,
+  "frozen_files": 59,
+  "raw_files_verified": 1267,
+  "issues": [],
+  "candidate_manifest_sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab"
+}

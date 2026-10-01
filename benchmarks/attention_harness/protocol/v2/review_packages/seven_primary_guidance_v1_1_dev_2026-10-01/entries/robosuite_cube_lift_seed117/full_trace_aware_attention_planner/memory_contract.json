@@ -1,0 +1,41 @@
+{
+  "accounting": {
+    "advisor_cache_initial_state": "empty_per_run",
+    "answered_request_credits": 1,
+    "cached_answer_credits": 1,
+    "cached_provider_tokens": 0,
+    "proxy_latency_seconds": 2
+  },
+  "automatic_promotion": false,
+  "condition": "full_trace_aware_attention_planner",
+  "context": {
+    "camera_config_id": "camera:agentview",
+    "camera_names": [
+      "agentview"
+    ],
+    "object_set_id": "objects:86c244273b2e164bae25",
+    "perception_mode": "sim_gt",
+    "scene_id": "scene:db60d3f7dbc1c847b263",
+    "suite": "robosuite",
+    "task_id": "cube_lift",
+    "task_prompt": "Lift the cube clear of the table.",
+    "task_variant_id": "primary-dev-config:8f6d0770615b5f8fbf39"
+  },
+  "evidence_root": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robosuite/evidence",
+  "initial_state": {
+    "kind": "sqlite_snapshot",
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/memory/robosuite/initial.sqlite3",
+    "sha256": "9e6db93239ef2b9c3ea1975ca502bddb164e0dcb817255ebc805f50510d5f931",
+    "versions": [
+      {
+        "memory_id": "candidate:attempt:attention-robosuite-cube_lift-seed101-68b4cbf67d66:0",
+        "version": 1
+      }
+    ]
+  },
+  "reset_each_run": true,
+  "schema_version": "attentionbench.formal-memory-contract.v1",
+  "suite": "robosuite",
+  "task_id": "cube_lift",
+  "visibility": "trusted_exact_versions"
+}

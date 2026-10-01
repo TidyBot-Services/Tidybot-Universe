@@ -1,3 +1,61 @@
+## GitHub 交付与当前复核
+
+本次集中交付 Universe 当前功能分支及其实际调用的五个独立仓库，不合并 main/master，不运行350格、held-out或新GLM。PhD阅读入口为 [项目指南](docs/attentionbench_project_guide.md)，六仓库精确版本、命令与边界为 [交付清单](docs/attentionbench_github_delivery.json)。安装脚本移除了将 Robosuite 降回旧版的重复安装，requirements 与 lock 保持19fde8a；追加2项版本一致性测试。
+
+当前回归：Harness **518 passed、10 skipped**；Orchestrator旧pipeline **84 passed**；Memory Service **22 passed**；Robosuite Service **11 passed**。这些是本轮代码/接口测试，不是新增正式效果或用户现场演示。
+
+**当前冻结包一致性未通过，不能采用下方旧PASS作为现版本执行依据。** 只读运行当前 `verify_package.py` 返回1：语义文档已说明读取指导，校验规则却要求它与“不读取”的旧版完全相同。`verify_delivery.py` 返回1、5项问题：当前manifest与批准SHA不匹配原总体审计引用、package验证失败、资格不能由当前结果推导、批准sidecar不匹配。两份现SHA与历史SHA均记录在交付清单。历史 `formal_eligible=true` 原件保留，未改签；当前复核为失败，`execution_authorized=false`，本轮不放宽规则或重签准入。下一步只需先闭合这项现有包内一致性缺陷，再讨论效果执行；不是追加新成功门槛。
+
+以下保留历史签发及其范围。
+
+## 2026-10-01（Asia/Shanghai）guidance v1.1 新M1/launch身份已冻结批准，总体准入重签PASS
+
+本轮验收完成，精确新开发身份签发 `formal_eligible=true`；用户7/7、canonical9/9 PASS，未过项为空，`execution_authorized=false`。仅重判 `policy_identity` 与 `seven_condition_approval`；此前其余7个canonical/6个用户关口对象逐字段复用，原当前Safety PASS及无指导AST桥保持原SHA，不重跑。前轮false与M1错配审计作为历史原件保留。
+
+另建 `seven_primary_guidance_v1_1_dev_2026-10-01` 包：2任务×25 dev seed×7条件，50配置、350新M1、350 launch、1290文件SHA索引。原生产inspect_formal_entry重新计算，全部新锁由原request.validate接受，旧锁对新代码仍被拒绝；每份canonical仅变策略SHA和计算摘要。配置/demo/Memory/预算/初态/费用及398份原runtime源码字节不变，当前Safety请求helper另锁精确SHA；验证器未改。
+
+批准依据本轮人类goal明确要求生成→review→批准→重签，引用原话并绑定新REVIEW/manifest/R-C策略精确SHA，审查角色为作者机械review；未伪造另一条人类事后确认新SHA的发言，不冒充外部独立审查员。旧guidance17/17批准包未改；新的operator_approval仅批准新身份开发包，不外推到效果执行。
+
+[新冻结review](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/REVIEW.md) SHA `a83605415c146694d3c1b2b4116805db51477253f07ca396edd53450b3558c47`；manifest SHA `32febf630ff2d6a979e9eabec50152ff9ac887721ab3eef372b30434c7160d5e`；[operator批准](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/operator_approval.json) SHA `10d29fece3c46b5327fd09b3900d779fe7b1e225965441886d31b69e329346e3`；[总体重签](/home/truares/桌面/attentionbench-guidance-entry-rebind-20261001/independent/overall_admission_audit.json) SHA `620867e88541c647869be69fa558e7de1af5ab3ae3d4491fc0a74f3d2c2bfc9d`。完整逐项结论见[本轮交付](/home/truares/桌面/attentionbench-guidance-entry-rebind-20261001/CONCLUSIONS.md)，仓库审计归档为 `admission_audits/guidance_v1_1_entry_rebind_2026-10-01/`。
+
+新身份专项11 passed、350/350机械review、1290冻结SHA与3033旧保护项复核通过；五Service干净且commit不变，Harness/Sim/Agent解释器字节SHA一致。本轮Service/机器人/负控重跑/其余关口/350效果/held-out/Memory新探测晋升/模型生成均0。RoboCasa“动作改变但成功未改善”、旧Memory未采纳和depth根因unknown保留，不加成功率或Memory覆盖门槛。
+
+本轮90分钟内安全收尾，不自动开启下一轮。下一步仅审阅保存本签名；任何后续效果、held-out或机器人执行需要另行明确授权计划，准入PASS不等于效果已验证或执行授权。以下保留旧身份缺口与旧审批历史。
+
+## 2026-09-30（Asia/Shanghai）当前 guidance v1.1 Safety 负控完成，总体重签未通过
+
+本轮验收审计完成，当前版本 `formal_eligible=false`。当前 C Safety 负控 PASS；唯一剩余缺口为新 R/C 控制 SHA 尚未绑定获批的七条件 M1/launch 身份，影响 `policy_identity` 与 `seven_condition_approval`，当前身份适用性7/9 canonical PASS。原六个 PASS 关口的判定、范围、证据对象逐字段保留，0重跑、0修改；旧版本 true 签名不外推。
+
+沿用目录绑定的负控身份构造器，并支持经原 boundary 验证的公开 `attention_input`；station 身份检查和原独立 Safety 保留，旧错误身份继续拒绝。精确批准的 C v1.1（SHA `c016bed6…`）消费冻结文本，完成首个 .11m base job 后注入确认丢失；原 Safety 检测 `action_outcome_unknown`、原 worker 失败、第二动作0、原 runner 双 Service 回收。注入到检测0.214ms、worker停止1.824ms、双回收0.524s；四类原件、注入收据、进程组与端口最终复核完整。
+
+无指导基线全机器人程序 AST 对齐PASS，chain/profile/depth按原范围可复用；新编译器诊断输出/CPU开销不作为时延等价证明。只读比较350份旧M1与350份旧launch，全部仍绑定旧策略SHA；两套新策略的真实request.validate均在Service前拒绝 `formal request entry lock mismatch`。当前开发审批17/17保留，不改写原批准或旧锁，不把该审批扩展为新七条件身份批准。
+
+[总体重签](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/overall_admission_audit.json) SHA `a68f8fec50b9de3463b5e5612133fe1810428bf6f07b869324607c9fa7da3b9c`；[当前负控](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/negative_control_post_run_audit.json) SHA `59ab3797ecd3557cc933c9c357575c113ee80a665467c2c8b8d66179ee651ce6`；[版本复核](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/independent/version_alignment_audit.json) SHA `33de5e5b715d4919cdd527a534fdaa822a63a4a4f3e918a9b84bbddccd0bf7be`；[逐项交付](/home/truares/桌面/attentionbench-guidance-safety-resign-20260930/CONCLUSIONS.md)。仓库归档为 `benchmarks/attention_harness/protocol/v2/admission_audits/guidance_v1_1_safety_resign_2026-09-30/`，含只读 `verify_delivery.py` 与SHA清单。
+
+专项测试7 passed、审计反例10 passed；59冻结文件/1267原归档验证一致，1434旧证据/源码保护项无漂移，五Service源版本干净且不变。本轮真实case仅1；held-out/350格效果/其余六关口/Memory新探测及晋升均0。原失败、旧成功负控与RoboCasa“动作改变但成功未改善”完整保留。
+
+下一步如继续，应另建绑定两套新控制SHA的七条件输入/M1/launch冻结批准包，复用本次负控与AST桥；不需要因该身份缺口再跑机器人。本轮已在90分钟内回收收尾，不自动开始下一轮。以下保留开发审批与旧版本历史。
+
+## 2026-09-30（America/New_York）指导采纳 v1.1 — 开发验证包已冻结 + 已批准
+
+当前会话人类用户明确批准 `guidance_adoption_v1_1_dev_2026-09-29` 的精确SHA开发包；原17项要求现17/17完成。批准时间为2026-09-30 10:59:40 America/New_York（14:59:40 UTC）。[批准原话与完整边界](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/operator_approval.json)、[当前审批状态](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/approval_status.json)及[17/17逐项证据](/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/goal_completion_approved_audit.json)已落盘。
+
+审批精确绑定 REVIEW SHA `090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7` 与 manifest SHA `2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab`，最终R/C控制SHA不变。审批前只读复核59冻结文件、1267归档文件及1724旧包/源码保护项无漂移；既有20/20 attempt、Safety 0、82项测试与204项机械审计证据保留。本审批轮没有启动Service、测试或任何新运行，冻结内容与布尔判定未改。
+
+批准仅限本开发验证包，不授权350格、held-out、效果矩阵、正式效果比较或任何后续执行，不外推到其他版本。RoboCasa“动作改变但原生成功未改善”为已知设计限制；旧v1 Memory未采纳证据及旧语义结论完整保留，新批准不覆盖旧结论。下一步Safety负控缺口与新guidance身份重签准入仍待另轮，不被本批准自动解锁；本身份 `formal_eligible=false`，不继承旧版本签名。
+
+以下条目保留审批前状态与旧版本历史；本包当前状态以本条及operator批准记录为准。
+
+## 2026-09-29（America/New_York）指导采纳 v1.1 — 有界开发验收PASS，最终SHA审批待定
+
+本用户goal的实现、真实Service验证与另版冻结包已交付，等待新SHA审批；新版本`formal_eligible=false`，不继承旧准入签名。20/20次seed101开发attempt完整、独立Safety0、80份主产物SHA与全部专属Service进程组回收通过；350格/held-out均0。机械审计204/204、最终相关测试82通过；1724旧包/源码SHA无漂移。
+
+Robosuite hint/demo/Memory文本各有同策略、同seed/config/初始观测的49→86实际OSC控制步、原生false→true证据；full planner两次失败→求助→第三次成功的请求/回复/execution关联成立。trusted exact v1 Memory真实retrieve/grant/下一执行成功另外由原autonomous开发路径验证，不冒充full条件Memory效果。Advisor/demo为明确标注开发fixture，非线上GLM或成功示教录像。
+
+RoboCasa v1 hint/demo已改变完成的底盘job但仍原生失败；v1 Memory只改被后端忽略的settle字段和未执行的抓取高度，诚实判未采纳。实现前另冻v1.1修订，在剩余2次额度内证明同文本把初始前进.125→.11m且job完成；仍原生失败，后续可达性是设计问题，成功改善未通过。无指导机器人动作保持原样；只读规划查询的运行间变化不记作策略采纳。旧失败及首次审计路径重定位问题全部保留。
+
+[新审批包](benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/REVIEW.md)与[完整原件](/home/truares/桌面/attentionbench-guidance-adoption-v1-20260929/CONCLUSIONS.md)。最终控制SHA：R `405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2`；C `c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7`；整包manifest `2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab`。59冻结文件、1267归档文件SHA复核通过。本轮测试已结束、不自动开新轮；待审批只接受新身份，不授权任何后续执行。以下保留旧模块与旧版本历史。
+
 ## 2026-09-29（America/New_York）RoboCasa Safety负控修复与总体准入重签
 
 验收完成，重新签发 `formal_eligible=true`；用户关口7/7 PASS，canonical gate 9/9 PASS，未过项为空。判定限原签发的本开发集主实验范围。

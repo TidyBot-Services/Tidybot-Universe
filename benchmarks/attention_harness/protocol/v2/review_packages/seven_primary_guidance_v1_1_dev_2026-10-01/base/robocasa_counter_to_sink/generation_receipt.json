@@ -1,0 +1,31 @@
+{
+  "counts_for_chain_or_profile": false,
+  "generation_kind": "approved_guidance_control_revision",
+  "hypothesis": "Exact approved public-SDK guidance consumer; identity rebinding only, no new generation or execution.",
+  "lineage": {
+    "approved_guidance_REVIEW": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/REVIEW.md",
+      "sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7"
+    },
+    "approved_guidance_operator_approval": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/operator_approval.json",
+      "sha256": "3ac6bd9dc1c952ebbe6c0a69b3c4b9a9ac69a2ebee21f47350c0b9636fbeebc2"
+    },
+    "approved_guidance_policy": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/guidance_adoption_v1_1_dev_2026-09-29/frozen/final_policies/robocasa_counter_to_sink.py",
+      "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7"
+    },
+    "old_generation_receipt": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/base/robocasa_counter_to_sink/generation_receipt.json",
+      "sha256": "53b9c872ef179f46bd7038e492eb9e74b9f5f514e1855b3ee439c8153040b326"
+    },
+    "old_policy": {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_dev_2026-09-29/base/robocasa_counter_to_sink/policy.py",
+      "sha256": "e22f944fddcae410095d91cf6ef61a1626db4bcdb88479b9ac19281895f11780"
+    }
+  },
+  "new_model_generation_calls": 0,
+  "schema_version": "attentionbench.approved-guidance-derived-source.v1",
+  "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+  "source": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robocasa_counter_to_sink/policy.py"
+}

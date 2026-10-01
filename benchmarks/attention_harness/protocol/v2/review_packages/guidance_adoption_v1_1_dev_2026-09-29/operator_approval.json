@@ -1,0 +1,120 @@
+{
+  "schema": "attentionbench.guidance-adoption-operator-approval.v1.1",
+  "decision": "approved",
+  "package_status": "frozen_and_approved",
+  "operator": {
+    "identity": "human user in current conversation",
+    "authorization_source": "direct human user instruction in current conversation",
+    "recorded_by": "Codex",
+    "review_role": "operator approval; existing mechanical audit remains author-produced"
+  },
+  "operator_statement_verbatim": "对 `guidance_adoption_v1_1_dev_2026-09-29` 冻结包（以 `frozen/REVIEW.md` 的精确 SHA 为准）作出**批准**决定，写入审批证据，解锁下一阶段。**批准范围仅限该开发验证包**，不授权 350 格效果矩阵、held-out 或正式效果比较。",
+  "operator_message_verbatim": "# Goal：审批 guidance adoption v1.1 dev 新 SHA 冻结包\n\n### 目标\n\n对 `guidance_adoption_v1_1_dev_2026-09-29` 冻结包（以 `frozen/REVIEW.md` 的精确 SHA 为准）作出**批准**决定，写入审批证据，解锁下一阶段。**批准范围仅限该开发验证包**，不授权 350 格效果矩阵、held-out 或正式效果比较。\n\n### 背景（当前事实，勿改）\n\n- 有界开发验收已通过：Robosuite 三种指导（hint / demo / Memory）均改变实际控制、原生失败转成功；RoboCasa 已证明动作改变、成功仍未改善（按设计问题记录，旧未采纳证据完整保留）。\n- 20/20 次 attempt 留证并回收，Safety 全 0；82 项测试 + 204 项审计通过。\n- 17 项要求中 16 项完成，唯一待办 = 新 SHA 审批。\n- 候选包与旧冻结文件均无漂移；Service 已回收；本轮测试已结束。\n\n### 执行步骤\n\n1. 核对 `frozen/REVIEW.md` 的 SHA 与候选包逐文件 SHA 一致（确认无漂移）。\n2. 写入 `operator_approval.json`：记录批准原话、精确 SHA、批准范围（仅 dev 验证包）、以及 RoboCasa 的已知设计限制。\n3. 更新状态：guidance adoption 包\"已冻结 + 已批准\"，明确下一步（Safety 负控缺口 + 重签准入）不被本批准自动解锁。\n\n### 必须写进批准的边界（勿漏）\n\n- 批准**不代表**授权跑 350 格、held-out、效果矩阵或正式效果比较。\n- RoboCasa\"动作改变但成功未改善\"作为**已知设计限制**明确记录，不掩饰、不写成\"已改善\"。\n- 旧未采纳证据保留，新批准不覆盖旧结论。\n\n### 硬约束\n\n- 不直接改布尔值；审批只绑定本包精确 SHA，不外推到其它版本或范围。\n- 不启动任何新运行。\n\n### 交付物\n\n- `operator_approval.json`（批准原话 + SHA + 范围 + 已知限制 + 时间戳）。\n- 状态与下一步说明（Safety 负控缺口、重签准入仍待另轮）。",
+  "operator_message_sha256": "3dae38437a671f4dcd0d9c3ba388fe2fd44aa44f8c1998fc4b9cce5502157b92",
+  "approved_at": {
+    "utc": "2026-09-30T14:59:40+00:00",
+    "America/New_York": "2026-09-30T10:59:40-04:00",
+    "Asia/Shanghai": "2026-09-30T22:59:40+08:00"
+  },
+  "identity": {
+    "package_directory": "guidance_adoption_v1_1_dev_2026-09-29",
+    "version": "guidance-adoption-v1.1-dev",
+    "review": {
+      "path": "frozen/REVIEW.md",
+      "sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7"
+    },
+    "manifest": {
+      "path": "sha256_manifest.json",
+      "sha256": "2d6499da1b781cf4943c018eee6d23d6ae82ca7b005bb86f4772de5b8ced3dab"
+    },
+    "policies": {
+      "robocasa": {
+        "path": "frozen/final_policies/robocasa_counter_to_sink.py",
+        "sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+        "version": "v1.1"
+      },
+      "robosuite": {
+        "path": "frozen/final_policies/robosuite_cube_lift.py",
+        "sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+        "version": "v1"
+      }
+    },
+    "binding_rule": "Only these exact REVIEW, manifest and policy bytes and the files bound by that manifest; no inheritance or extension to other versions or scopes."
+  },
+  "approved_scope": {
+    "classification": "bounded_development_validation_and_exact_sha_freeze_only",
+    "statement": "仅批准本新版本开发验证包的有界开发证据与精确SHA冻结。批准完成本包审批待办；下一阶段仅列为待另轮事项，不授权启动。",
+    "excluded": [
+      "350格效果矩阵",
+      "held-out",
+      "任何效果矩阵",
+      "正式效果比较",
+      "新增开发attempt或任何新运行",
+      "Safety负控缺口处理的自动启动",
+      "正式准入重签或formal_eligible签发",
+      "其他版本或其他范围"
+    ],
+    "execution_authority": "none; no further execution authorized",
+    "formal_admission": "not granted; original formal_eligible=false remains unchanged"
+  },
+  "known_limitations": [
+    {
+      "id": "robocasa_native_success_not_improved",
+      "classification": "known_design_limitation",
+      "statement": "RoboCasa已证明动作改变，但原生成功仍未改善；仍为原生失败。初始底盘job前进.125→.11m且完成，后续只读规划拒绝，可达性需另轮设计验证。本批准不将其写成已改善。",
+      "evidence": {
+        "path": "frozen/REVIEW.md",
+        "sha256": "090a190f325a23a138003456c41ee436c3f8e85605584b7ca0c7ba21615981c7"
+      }
+    },
+    {
+      "id": "robocasa_v1_memory_not_adopted",
+      "classification": "preserved_prior_non_adoption",
+      "statement": "旧RoboCasa v1 Memory仅改变被后端忽略的settle_steps及未执行抓取高度，原判未采纳。v1.1批准不覆盖、撤销或改写该结论；v1 hint/demo证据仍按原SHA解释。",
+      "retained_v1_policy": {
+        "path": "frozen/versioned_source/robocasa_counter_to_sink_v1.py",
+        "sha256": "cab2bde1e07fa5681990f0547a8dcea1c027ffd9fdb90c1189ce9a78f2531add"
+      }
+    },
+    {
+      "id": "bounded_evidence_provenance",
+      "classification": "development_evidence_only",
+      "statement": "仅seed101两种原场景的存在性因果证据；Advisor为确定性开发fixture，demo为authored SDK development prior；Memory授权路径由原autonomous开发调度验证，未声称full条件Memory效果或总体成功率。"
+    }
+  ],
+  "prior_evidence_preservation": {
+    "statement": "旧未采纳证据、旧语义限制、全部失败与旧审批身份保留，新批准不覆盖旧结论。冻结REVIEW与APPROVAL_REQUEST中的待审批描述是审批前快照，当前审批状态由本sidecar及approval_status.json记录。",
+    "raw_archive": {
+      "path": "frozen/raw_development_evidence.tar.gz",
+      "sha256": "e7c148e41df04014ceee22bfd5c515f1448d2601599a0f1bfd88c69ec3b0e1a9"
+    },
+    "raw_manifest": {
+      "path": "frozen/raw_manifest.json",
+      "sha256": "110436956cd39ccdc987dcedc44b1ef09fa9ea6d637f126e04b929b9db79b00e"
+    },
+    "protected_entries_rechecked": 1724,
+    "protected_drift": "none"
+  },
+  "verification": {
+    "path": "approval_verification_receipt.json",
+    "sha256": "0ceb5730ca808682537938cb7724a3d4406988e3b10b7e52bf02d97efd945669",
+    "result": "PASS",
+    "frozen_files": 59,
+    "raw_files": 1267,
+    "frozen_evidence_audit_sha256": "855084d55ed6881fae94f54446304f4fd1c441154b4621402ba4bf29294a3a8a",
+    "method": "read-only file hashes and retained evidence; no test or robot rerun"
+  },
+  "next_steps": [
+    {
+      "item": "Safety负控缺口",
+      "status": "pending_separate_round",
+      "authority": "not automatically unlocked by this approval"
+    },
+    {
+      "item": "新guidance身份重签准入",
+      "status": "pending_separate_round",
+      "authority": "not automatically unlocked; old admission signature not inherited"
+    }
+  ],
+  "implementation_boundary": "Only administrative approval evidence/status/docs written. Frozen payload, manifest, policy code, native-success/Safety verdicts and eligibility/authorization booleans remain unchanged."
+}

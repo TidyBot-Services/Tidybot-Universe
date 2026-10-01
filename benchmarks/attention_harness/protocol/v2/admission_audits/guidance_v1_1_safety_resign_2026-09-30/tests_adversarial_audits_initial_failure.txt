@@ -1,0 +1,18 @@
+.F........                                                               [100%]
+=================================== FAILURES ===================================
+____________ test_changed_no_guidance_base_default_is_not_inherited ____________
+
+tmp_path = PosixPath('/tmp/pytest-of-truares/pytest-153/test_changed_no_guidance_base_0')
+
+    def test_changed_no_guidance_base_default_is_not_inherited(tmp_path):
+        comparator = fixture_package(tmp_path)
+        target = tmp_path / 'frozen/final_policies/robocasa_counter_to_sink.py'
+        original = target.read_text()
+        changed = original.replace('"base_forward_m", 0.125', '"base_forward_m", 0.12')
+>       assert changed != original
+E       assert '"""Public-SDK counter-to-sink repair candidate with base alignment."""\n\nfrom robot_sdk import sensors, base, arm, g...d_only_arm_plan_rejected":\n        raise\n    # Valid native task failure after a read-only, no-trajectory finding.\n' != '"""Public-SDK counter-to-sink repair candidate with base alignment."""\n\nfrom robot_sdk import sensors, base, arm, g...d_only_arm_plan_rejected":\n        raise\n    # Valid native task failure after a read-only, no-trajectory finding.\n'
+
+independent/test_audits.py:48: AssertionError
+=========================== short test summary info ============================
+FAILED independent/test_audits.py::test_changed_no_guidance_base_default_is_not_inherited
+1 failed, 9 passed in 0.07s
