@@ -1,0 +1,26 @@
+{
+  "definition_version": "attention-control-v1.8",
+  "entries": [
+    {
+      "attentionbench": {
+        "approved_config_sha256": "76bc9bc29d38ce7fe9a71e367bee4108523ca42ede02d3e7e1e4195e1c5a85b8",
+        "approved_generated_policy": true,
+        "approved_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+        "formal_config_file": "attention_policy_switch/v1.8/profile-1/config.json",
+        "generated_policy_file": "benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robocasa_counter_to_sink/policy.py",
+        "runner_boundary": "formal",
+        "seed": 101,
+        "suite": "robocasa",
+        "task": "counter_to_sink"
+      },
+      "dependencies": [],
+      "description": "\u6267\u884c\u5df2\u6279\u51c6\u7684\u5b8c\u6574 Public SDK \u7b56\u7565\u3002\u5185\u90e8\u51fd\u6570\u548c SDK \u52a8\u4f5c\u6ca1\u6709\u72ec\u7acb Skill DAG \u8c03\u5ea6\u5b9a\u4e49\u6216\u5b50\u6280\u80fd\u4e8b\u4ef6\uff1b\u672c\u56fe\u4ec5\u8bb0\u5f55\u6574\u4f53\u4efb\u52a1\u8282\u70b9\u3002",
+      "display_name": "\u53f0\u9762\u7269\u4f53\u79fb\u81f3\u6c34\u69fd",
+      "name": "counter-to-sink-guidance-v1-1",
+      "status": "done"
+    }
+  ],
+  "formal_eligible": false,
+  "graph_id": "robocasa-counter_to_sink-guidance-v1-1",
+  "task_env": "attentionbench-engineering"
+}

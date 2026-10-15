@@ -1,0 +1,216 @@
+##
+## Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+##
+## NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
+## property and proprietary rights in and to this material, related
+## documentation and any modifications thereto. Any use, reproduction,
+## disclosure or distribution of this material and related documentation
+## without an express license agreement from NVIDIA CORPORATION or
+## its affiliates is strictly prohibited.
+##
+collision_spheres:
+    panda_link0:
+        - "center": [0.0, 0.0, 0.085]
+          "radius": 0.03 #0.07
+        - "center": [-0.1, -0.0, 0.085]
+          "radius": 0.03 #0.07
+    panda_link1:
+        - "center": [0.0, -0.08, 0.0]
+          "radius": 0.055
+        - "center": [0.0, -0.03, 0.0]
+          "radius": 0.06
+        - "center": [0.0, 0.0, -0.12]
+          "radius": 0.06
+        - "center": [0.0, 0.0, -0.17]
+          "radius": 0.06
+    panda_link2:
+        - "center": [0.0, 0.0, 0.03]
+          "radius": 0.055
+        - "center": [0.0, 0.0, 0.08]
+          "radius": 0.055
+        - "center": [0.0, -0.12, 0.0]
+          "radius": 0.055
+        - "center": [0.0, -0.17, 0.0]
+          "radius": 0.055
+    panda_link3:
+        - "center": [0.0, 0.0, -0.06]
+          "radius": 0.05
+        - "center": [0.0, 0.0, -0.1]
+          "radius": 0.06
+        - "center": [0.08, 0.06, 0.0]
+          "radius": 0.052
+        - "center": [0.08, 0.02, 0.0]
+          "radius": 0.052
+    panda_link4:
+        - "center": [0.0, 0.0, 0.02]
+          "radius": 0.052
+        - "center": [0.0, 0.0, 0.06]
+          "radius": 0.052
+        - "center": [-0.08, 0.095, 0.0]
+          "radius": 0.055
+        - "center": [-0.08, 0.06, 0.0]
+          "radius": 0.052
+    panda_link5:
+        - "center": [0.0, 0.03, 0.0]
+          "radius": 0.05
+        - "center": [0.0, 0.082, 0.0]
+          "radius": 0.05
+        - "center": [0.0, 0.000, -0.22]
+          "radius": 0.05
+        - "center": [0.0, 0.052, -0.18]
+          "radius": 0.04
+        - "center": [0.01, 0.08, -0.14]
+          "radius": 0.022
+        - "center": [0.01, 0.085, -0.11]
+          "radius": 0.022
+        - "center": [0.01, 0.09, -0.08]
+          "radius": 0.022
+        - "center": [0.01, 0.095, -0.05]
+          "radius": 0.022
+        - "center": [-0.01, 0.08, -0.14]
+          "radius": 0.022
+        - "center": [-0.01, 0.085, -0.11]
+          "radius": 0.022
+        - "center": [-0.01, 0.09, -0.08]
+          "radius": 0.022
+        - "center": [-0.01, 0.095, -0.05]
+          "radius": 0.022
+        - "center": [0.0, -0.009, 0.0]
+          "radius": 0.05
+    panda_link6:
+        - "center": [0.085, 0.035, 0.0]
+          "radius": 0.045 
+        - "center": [0.085, 0.0, 0.0]
+          "radius": 0.045 
+        - "center": [0.085, -0.015, 0.0]
+          "radius": 0.045 
+    panda_link7:
+        - "center": [0.0, 0.0, 0.07]
+          "radius": 0.045
+        - "center": [0.02, 0.04, 0.08]
+          "radius": 0.024
+        - "center": [0.04, 0.02, 0.08]
+          "radius": 0.024
+        - "center": [0.04, 0.06, 0.085]
+          "radius": 0.02
+        - "center": [0.06, 0.04, 0.085]
+          "radius": 0.02
+    panda_hand:
+        - "center": [0.0, -0.075, 0.01]
+          "radius": 0.023
+        - "center": [0.0, -0.045, 0.01]
+          "radius": 0.023
+        - "center": [0.0, -0.015, 0.01]
+          "radius": 0.023
+        - "center": [0.0, 0.015, 0.01]
+          "radius": 0.023
+        - "center": [0.0, 0.045, 0.01]
+          "radius": 0.023
+        - "center": [0.0, 0.075, 0.01]
+          "radius": 0.023
+        - "center": [0.0, -0.08, 0.03]
+          "radius": 0.022
+        - "center": [0.0, -0.045, 0.03]
+          "radius": 0.022
+        - "center": [0.0, -0.015, 0.03]
+          "radius": 0.022
+        - "center": [0.0, 0.015, 0.03]
+          "radius": 0.022
+        - "center": [0.0, 0.045, 0.03]
+          "radius": 0.022
+        - "center": [0.0, 0.08, 0.03]
+          "radius": 0.022
+        - "center": [0.0, -0.08, 0.045]
+          "radius": 0.022
+        - "center": [0.0, -0.045, 0.045]
+          "radius": 0.022
+        - "center": [0.0, -0.015, 0.045]
+          "radius": 0.022
+        - "center": [0.0, 0.015, 0.045]
+          "radius": 0.022
+        - "center": [0.0, 0.045, 0.045]
+          "radius": 0.022
+        - "center": [0.0, 0.08, 0.045]
+          "radius": 0.022
+    panda_leftfinger:
+        - "center": [0.0, 0.01, 0.043]
+          "radius": 0.011 
+        - "center": [0.0, 0.02, 0.015]
+          "radius": 0.011 
+    panda_rightfinger:
+        - "center": [0.0, -0.01, 0.043]
+          "radius": 0.011 
+        - "center": [0.0, -0.02, 0.015]
+          "radius": 0.011 
+    # Mobile base — 5x4x3 = 60 spheres densified to match arm sphere density.
+    # Positions based on sapien probe of tidyverse base_link collision body:
+    #   center=(-0.198, 0, 0.309), size=(0.733, 0.523, 0.606) in base_link frame.
+    # After URDF fix (base_fixed origin → (0,0,0.47225)), cuRobo's base_link_z
+    # frame coincides with sapien's base_link frame at qpos=0, so sphere
+    # positions here are directly sapien's collision-body coordinates.
+    # r=0.10 with grid spacing 0.18/0.17/0.20 → adjacent spheres overlap,
+    # gap-free coverage of the full 0.73×0.52×0.60 platform body.
+    base_link_z:
+        # Z=0.1 layer (lower)
+        - {"center": [-0.565, -0.262, 0.1], "radius": 0.10}
+        - {"center": [-0.381, -0.262, 0.1], "radius": 0.10}
+        - {"center": [-0.198, -0.262, 0.1], "radius": 0.10}
+        - {"center": [-0.015, -0.262, 0.1], "radius": 0.10}
+        - {"center": [ 0.169, -0.262, 0.1], "radius": 0.10}
+        - {"center": [-0.565, -0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.381, -0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.198, -0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.015, -0.087, 0.1], "radius": 0.10}
+        - {"center": [ 0.169, -0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.565,  0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.381,  0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.198,  0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.015,  0.087, 0.1], "radius": 0.10}
+        - {"center": [ 0.169,  0.087, 0.1], "radius": 0.10}
+        - {"center": [-0.565,  0.262, 0.1], "radius": 0.10}
+        - {"center": [-0.381,  0.262, 0.1], "radius": 0.10}
+        - {"center": [-0.198,  0.262, 0.1], "radius": 0.10}
+        - {"center": [-0.015,  0.262, 0.1], "radius": 0.10}
+        - {"center": [ 0.169,  0.262, 0.1], "radius": 0.10}
+        # Z=0.3 layer (middle)
+        - {"center": [-0.565, -0.262, 0.3], "radius": 0.10}
+        - {"center": [-0.381, -0.262, 0.3], "radius": 0.10}
+        - {"center": [-0.198, -0.262, 0.3], "radius": 0.10}
+        - {"center": [-0.015, -0.262, 0.3], "radius": 0.10}
+        - {"center": [ 0.169, -0.262, 0.3], "radius": 0.10}
+        - {"center": [-0.565, -0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.381, -0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.198, -0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.015, -0.087, 0.3], "radius": 0.10}
+        - {"center": [ 0.169, -0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.565,  0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.381,  0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.198,  0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.015,  0.087, 0.3], "radius": 0.10}
+        - {"center": [ 0.169,  0.087, 0.3], "radius": 0.10}
+        - {"center": [-0.565,  0.262, 0.3], "radius": 0.10}
+        - {"center": [-0.381,  0.262, 0.3], "radius": 0.10}
+        - {"center": [-0.198,  0.262, 0.3], "radius": 0.10}
+        - {"center": [-0.015,  0.262, 0.3], "radius": 0.10}
+        - {"center": [ 0.169,  0.262, 0.3], "radius": 0.10}
+        # Z=0.5 layer (upper, just below arm mount at 0.47m)
+        - {"center": [-0.565, -0.262, 0.5], "radius": 0.10}
+        - {"center": [-0.381, -0.262, 0.5], "radius": 0.10}
+        - {"center": [-0.198, -0.262, 0.5], "radius": 0.10}
+        - {"center": [-0.015, -0.262, 0.5], "radius": 0.10}
+        - {"center": [ 0.169, -0.262, 0.5], "radius": 0.10}
+        - {"center": [-0.565, -0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.381, -0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.198, -0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.015, -0.087, 0.5], "radius": 0.10}
+        - {"center": [ 0.169, -0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.565,  0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.381,  0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.198,  0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.015,  0.087, 0.5], "radius": 0.10}
+        - {"center": [ 0.169,  0.087, 0.5], "radius": 0.10}
+        - {"center": [-0.565,  0.262, 0.5], "radius": 0.10}
+        - {"center": [-0.381,  0.262, 0.5], "radius": 0.10}
+        - {"center": [-0.198,  0.262, 0.5], "radius": 0.10}
+        - {"center": [-0.015,  0.262, 0.5], "radius": 0.10}
+        - {"center": [ 0.169,  0.262, 0.5], "radius": 0.10}

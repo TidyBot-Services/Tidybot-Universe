@@ -1,0 +1,32 @@
+{
+  "formal_eligible": false,
+  "profiles": [
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "df06733072a23a774e758140997c42cd1329f10ec34f79add42bfc74de4f1a55",
+      "approved_policy_sha256": "de68d0397eb561181ed18ce54e18402f8faa7d914dba3f60cab80c59b6f28431",
+      "attention_control_binding": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/attention_policy_switch/candidate4/attention-binding.json",
+      "attention_control_binding_sha256": "c4839df4b29491f4bc3d7d0dd79305f3fd56b658d348bd3911b8c7ea02a24a8c",
+      "code": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/openarm_mobile/policies/counter_to_sink_mobile_v1.py",
+      "config": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/attention_policy_switch/candidate4/config.json",
+      "execution_target": "robocasa_sim",
+      "id": "attention-control-candidate4-openarm-mobile-left",
+      "robot": {
+        "execution_arm": "left",
+        "model": "OpenArm"
+      },
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/attention_policy_switch/candidate4/graph.json",
+      "skill_graph_sha256": "31ef16ae612b4425dcd95b023a6d0abd4866e763db62e9fd274bd6875eca6699",
+      "skill_root": "openarm-mobile-counter-to-sink-left",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/\u6587\u6863/Tidybot-Universe/sims/robocasa_tasks"
+    }
+  ],
+  "require_skill_graph": true,
+  "schema_version": "attentionbench.ui-run-catalog.v1",
+  "scope": "Independent native OpenArm mobile engineering runtime Attention policy handover; initial action policy/model/DAG identities retained. Frozen formal resources unchanged."
+}

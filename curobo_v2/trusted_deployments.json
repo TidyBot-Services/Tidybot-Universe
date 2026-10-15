@@ -1,0 +1,79 @@
+{
+  "7e12122aa85aaf7b1b13bf8779d91b344ff7761c68060805d045d01dd60aaa26": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r01/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r01/adapter-changes.json",
+    "adapter_changes_sha256": "134ea276eabdf2e89ab78d244419174285e03d31b36a8f42c038cdee87207737"
+  },
+  "d6b91df7b26c10e8c1c3ae4f0aab4d1912fdf3d620e67263ea81fe8731fdf037": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r02/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r02/adapter-changes.json",
+    "adapter_changes_sha256": "1774a0c546ba48769a99fe358e389952d470d8c89447c0112f9a932a69d03099"
+  },
+  "7bf8d49b44845b5109c42df1a8bbf8cb77f35540096a1687f98b05f0e9207da9": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r03/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r03/adapter-changes.json",
+    "adapter_changes_sha256": "dad1af862e6c6a3482f3816ffe101cfcd8b9656d1f9c4e72a786d1bd5ed9d4b5"
+  },
+  "bac15651c5079c715cbe1e28ab2d29102dcbfec41e96170eecffeb14c058b72f": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r04/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r04/adapter-changes.json",
+    "adapter_changes_sha256": "8c23605949cfa30e6f2503b4326e16ba641a44ace8ed20bc6a21b4b2d79b4190"
+  },
+  "9bc35a4a12dd1f1613ac939ad030e9cf1a9c6fd4f5c384e4cd41ee4abd5781f0": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r05/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r05/adapter-changes.json",
+    "adapter_changes_sha256": "404dba415d1df6b8c201d284bb6ea6c26a48320c37672dda87698dc12aded578"
+  },
+  "504e93170ae833a1e58ffa3013fbe36d47047d0ffae919bb2aa1b80885e32421": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r06/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r06/adapter-changes.json",
+    "adapter_changes_sha256": "b1e8587add6bb0aad0b68215a02e2a8a83662ac7397c2a939942e3d6f8e52a04"
+  },
+  "917a327cced4eb14b970633d4d32af7ffab56d60eeded0bd55b52a978cbd4cb9": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r07/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r07/adapter-changes.json",
+    "adapter_changes_sha256": "8dddc22cdf1d799d750532385897481d39933e19ea429b113fb20362862ce3a1"
+  },
+  "a8f3560e3955eb81920a8c3f5b1165027c797a00818d6935f6b9489a2d3819f0": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r08/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r08/adapter-changes.json",
+    "adapter_changes_sha256": "da9cddcc4cb99330beecbcad086b1c6b47daa4dd5ee7febad99a8d8bb368dfb9"
+  },
+  "a6b5826fddcab83af99197f32afeb3c4f4bac39c2ad22ab7856bcbd85f9d8c53": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r09/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r09/adapter-changes.json",
+    "adapter_changes_sha256": "29e18fbce01c96fa8f20e8d9199c10c337b7aff2a66f33c0510819ad61759e4c"
+  },
+  "723cf597546c4b67d04806fc7c3f41617ca77e85bb76d48c7717a69a82a2570f": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-01/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-01/adapter-changes.json",
+    "adapter_changes_sha256": "479f681cdc6443d6ffb60e17c534247b9a185db696301409b137714dd56fb3f6"
+  },
+  "07e18c15e946423838dedca5f52b2c98ec2b2292a8bf8b0ca8b62f9d13022ff6": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-02/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-02/adapter-changes.json",
+    "adapter_changes_sha256": "fdcf110f30c1858a2c915152d016e1979aa081ebd569e6b9c1f8a31109ea1ac6"
+  }
+}
