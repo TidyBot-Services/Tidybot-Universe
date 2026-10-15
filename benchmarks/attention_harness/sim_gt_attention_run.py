@@ -129,6 +129,9 @@ def run_sim_gt_attention(
     total_execution_seconds: float | None = None,
     whole_case_deadline_monotonic: float | None = None,
     fresh_advisor_cache: bool = False,
+    advisor_replay_only: bool = False,
+    memory_enabled: bool = True,
+    trace_evidence: bool = True,
     strict_admission_budget: bool = False,
     request_mode: str = "async",
     approval_rules: dict[str, Any] | None = None,
@@ -148,6 +151,8 @@ def run_sim_gt_attention(
     A demo is an approved, hashed pre-task public SDK artifact manifest.
     Approval is fail-closed unless an external human decision callback exists.
     """
+    if any(type(value) is not bool for value in (advisor_replay_only, memory_enabled, trace_evidence)):
+        raise ValueError("Advisor replay and ablation flags must be boolean")
     if suite not in {"robocasa", "robosuite", "robocasa365"}:
         raise ValueError("unsupported sim_gt suite")
     if runner_boundary_mode not in {"trusted_dev", "generated_sandbox", "formal"}:
@@ -308,6 +313,11 @@ def run_sim_gt_attention(
     flow = RequestFlow(store=control_store, clock=clock, monotonic=monotonic, sleeper=sleeper,
                        human_deadline_seconds=human_deadline_seconds, request_mode=request_mode)
     control_store.record_scheduler_options(unified_run_id, {
+        # Keep the established default snapshot shape; non-default switches
+        # are explicit here and all switches are in the run/config artifacts.
+        **({"advisor_replay_only": True} if advisor_replay_only else {}),
+        **({"memory_enabled": False} if not memory_enabled else {}),
+        **({"trace_evidence": False} if not trace_evidence else {}),
         "request_mode": request_mode, "approval_rules": dict(approval_rules or {}),
         "assistance_mode": assistance_mode.value, "gpu_seconds_limit": float(gpu_seconds_limit)})
     gpu_usage: list[dict[str, Any]] = []
@@ -680,7 +690,7 @@ def run_sim_gt_attention(
                 and assistance_credits - credits_used <= 0):
             stopped_reason = "approval_required_no_budget"
             break
-        assessment = None if random_plan else assess_trace(trace, previous_traces)
+        assessment = None if random_plan or not trace_evidence else assess_trace(trace, previous_traces)
         if assessment is not None:
             previous_traces.append(trace)
         trusted_memory_ids = []
@@ -688,7 +698,7 @@ def run_sim_gt_attention(
             memory_id for prior_attempt in attempts
             for memory_id in prior_attempt.get("memory_ids", [])
         }
-        for memory_id in ([] if random_plan else result.get("available_memory_ids", [])):
+        for memory_id in ([] if random_plan or not memory_enabled else result.get("available_memory_ids", [])):
             if memory_id in already_used_memory_ids:
                 continue
             memory = memory_gateway.get_memory(memory_id)
@@ -713,7 +723,7 @@ def run_sim_gt_attention(
                 matching_memory_count=len(trusted_memory_ids),
                 unsafe=signals.get("unsafe", False),
                 approval_required=signals.get("approval_required", False),
-                assessment=assessment, pending_requests=pending,
+                assessment=assessment, pending_requests=pending, trace_evidence=trace_evidence,
             )
 
         decision = policy.decide(policy_context(pending=(1 if flow.outstanding is not None else 0)))
@@ -773,17 +783,17 @@ def run_sim_gt_attention(
                     stopped_reason = "whole_case_deadline"
                     break
             runtime = AttentionRuntime(control_store, SimGTAdvisorProxy(
-                control_store, transport=advisor_transport or default_glm_transport(
+                control_store, transport=advisor_transport or (replay_transport if advisor_replay_only else default_glm_transport(
                     strict_usage=strict_admission_budget, response_log_dir=run_dir / "provider_replies",
-                    token_budget_limit=token_limit - tokens_used),
-                cache_path=advisor_cache_path,
+                    token_budget_limit=token_limit - tokens_used)),
+                cache_path=advisor_cache_path, replay_only=advisor_replay_only,
                 strict_token_budget_remaining=(token_limit - tokens_used
                                                if strict_admission_budget else None),
                 provider_timeout_seconds=provider_timeout,
                 usage_rejection_path=run_dir / "advisor_rejections" / f"{index}.json",
                 latency_seconds=MODE_SPECS[AssistanceMode.BENCHMARK_PROXY].proxy_latency_seconds,
                 sleeper=sleeper,
-            ), clock=clock)
+            ), clock=clock, trace_evidence=trace_evidence, memory_enabled=memory_enabled)
             outstanding = flow.open(
                 request, decision, runtime, failure_slot=index, trace_id=trace_id,
                 link=link, blocking_reason=blocking_reason,
@@ -928,6 +938,8 @@ def run_sim_gt_attention(
         } for r in attempts],
         "decisions": decisions, "requests": requests,
         "safety_signals": monitored_attempts,
+        "advisor_replay_only": advisor_replay_only,
+        "memory_enabled": memory_enabled, "trace_evidence": trace_evidence,
         "request_mode": request_mode,
         "gpu_usage": gpu_usage,
         "approval_rules": dict(approval_rules or {}),
@@ -955,6 +967,10 @@ def run_sim_gt_attention(
         json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8"
     )
     return summary
+
+
+def replay_transport(request):
+    raise RuntimeError("advisor_cache_miss")
 
 
 def default_glm_transport(*, strict_usage: bool = False, response_log_dir: Path | None = None,
@@ -991,7 +1007,7 @@ def run_robocasa_attention(
             task_id=task_id, seed=seed, policy=robot_policy, policy_id=policy_id,
             perception_mode="sim_gt", action_backend=monitor,
             client=client_factory(task_id), hypothesis=hypothesis,
-            retrieve_memory=policy_id != "trace_aware_hint_only",
+            retrieve_memory=kwargs.get("memory_enabled", True) and policy_id != "trace_aware_hint_only",
             runtime_variation=runtime_variation, replay_camera_ws=replay_camera_ws,
             **attempt,
         )
@@ -1034,7 +1050,7 @@ def run_robosuite_attention(
                 policy_id=policy_id, perception_mode="sim_gt", adapter=adapter,
                 action_backend=monitor,
                 hypothesis=hypothesis, runtime_variation=runtime_variation,
-                retrieve_memory=policy_id != "trace_aware_hint_only",
+                retrieve_memory=kwargs.get("memory_enabled", True) and policy_id != "trace_aware_hint_only",
                 replay_camera_url=adapter.service_url if record_replay else None,
                 **attempt,
             )

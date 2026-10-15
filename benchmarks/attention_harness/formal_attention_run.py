@@ -177,6 +177,9 @@ def run_formal_attention(
                               if scheduler_options.get("demo_prior") else None),
         "memory_context": memory_context,
         "request_mode": scheduler_options.get("request_mode", "async"),
+        "advisor_replay_only": scheduler_options.get("advisor_replay_only", False),
+        "memory_enabled": scheduler_options.get("memory_enabled", True),
+        "trace_evidence": scheduler_options.get("trace_evidence", True),
         "gpu_seconds_limit": float(scheduler_options.get("gpu_seconds_limit", 0.0)),
         "approval_rules": approved_sim_config.get("approval_rules") or {},
         "overall_deadline_seconds": overall_deadline_seconds,
@@ -243,7 +246,8 @@ def run_formal_attention(
         attention_input = public_attention_input(attempt["attention_input"])
         gateway = attempt["memory_gateway"]
         client_gateway = gateway.gateway if suite == "robocasa365" else gateway
-        if isinstance(client_gateway, MemoryServiceClient):
+        memory_enabled = scheduler_options.get("memory_enabled", True)
+        if memory_enabled and isinstance(client_gateway, MemoryServiceClient):
             health = client_gateway.health()
             if (health.get("schema_version") != "attentionbench.memory-service.v2"
                     or "attempt_bound_use_grants" not in health.get("capabilities", [])
@@ -251,8 +255,10 @@ def run_formal_attention(
                 raise RuntimeError("formal Memory Service schema or store identity mismatch")
         # Hint-only has no Memory read path, including the availability probe.
         available = (gateway.retrieve(memory_context, now=time.time())
-                     if memory_context and policy_id != "trace_aware_hint_only" else [])
+                     if memory_enabled and memory_context and policy_id != "trace_aware_hint_only" else [])
         selected = attention_input.get("memory_ids_to_use", [])
+        if selected and not memory_enabled:
+            raise RuntimeError("Memory-disabled Attention cannot select Memory")
         if selected and policy_id == "trace_aware_hint_only":
             raise RuntimeError("hint-only Attention cannot select Memory")
         if selected and memory_context is None:

@@ -22,10 +22,14 @@ class AttentionRuntime:
         proxy: AdvisorProxy | None,
         *,
         clock: Callable[[], float],
+        trace_evidence: bool = True,
+        memory_enabled: bool = True,
     ) -> None:
         self.store = store
         self.proxy = proxy
         self.clock = clock
+        self.trace_evidence = trace_evidence
+        self.memory_enabled = memory_enabled
 
     def open_request(self, request: AttentionRequestRecord, *,
                      reserve_credit: bool = True) -> AttentionRequestRecord:
@@ -102,7 +106,7 @@ class AttentionRuntime:
             fallback = self.store.transition_request(
                 request_id,
                 RequestState.FALLBACK,
-                event_key=f"human-deadline:{request_id}",
+                event_key=f"human-deadline:{request_id}", transitioned_at=self.clock(),
             )
         elif request.state is RequestState.FALLBACK:
             fallback = request
@@ -150,7 +154,7 @@ class AttentionRuntime:
         updated = self.store.transition_request(
             request_id,
             RequestState.CANCELLED,
-            event_key=f"cancel:{request_id}",
+            event_key=f"cancel:{request_id}", transitioned_at=self.clock(),
         )
         if self.store.has_reservation(self._reservation_id(request.request_id)):
             self.store.settle_assistance(self._reservation_id(request.request_id), commit=False)
@@ -176,7 +180,7 @@ class AttentionRuntime:
             reply = self.proxy.answer(
                 request_type=request.request_type.value,
                 trace_packet=packet,
-                public_images=public_images,
+                public_images=public_images if self.trace_evidence else (),
             )
             if reply.total_tokens:
                 self.store.consume_resources(
@@ -215,7 +219,38 @@ class AttentionRuntime:
         )
         return updated
 
-    def _advisor_packet(
+    def _advisor_packet(self, request, supplied):
+        packet = self._full_advisor_packet(request, supplied)
+        if isinstance(packet, AdvisorTracePacket):
+            packet = packet.artifact()
+        if not self.trace_evidence:
+            # Failure-summary ablation has an explicit allowlist: no code,
+            # hypothesis, event/evidence references or nested trace assessments.
+            packet = {'trace_id': packet.get('trace_id'),
+                      'failure': {key: packet.get('failure', {}).get(key)
+                          for key in ('stage', 'error_type', 'message', 'observed_symptom',
+                                      'termination_reason', 'classification_source')
+                          if isinstance(packet.get('failure'), Mapping) and key in packet['failure']
+                          and isinstance(packet['failure'][key], (str, int, float, bool))},
+                      'failure_history': [
+                          {'attempt_index': item.get('attempt_index'),
+                           'failure': {key: value for key, value in item.get('failure', {}).items()
+                               if key in ('stage', 'error_type', 'message', 'observed_symptom',
+                                          'termination_reason', 'classification_source')
+                               and isinstance(value, (str, int, float, bool))}}
+                          for item in packet.get('failure_history', [])]}
+        if not self.memory_enabled:
+            def without_memory(value):
+                if isinstance(value, Mapping):
+                    return {key: without_memory(item) for key, item in value.items()
+                            if 'memory' not in str(key).lower()}
+                if isinstance(value, (list, tuple)):
+                    return [without_memory(item) for item in value]
+                return value
+            packet = without_memory(packet)
+        return packet
+
+    def _full_advisor_packet(
         self,
         request: AttentionRequestRecord,
         supplied: Mapping[str, Any] | AdvisorTracePacket | None,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
@@ -107,7 +108,9 @@ class AttentionStore(DevStoreMixin):
         return payload
 
     def record_launch_started(self, launch_id: str, *, pid: int) -> dict[str, Any]:
-        payload = {"launch_id": launch_id, "pid": pid, "state": "started"}
+        from ..run_recovery import process_namespace
+        payload = {"launch_id": launch_id, "pid": pid, "state": "started",
+                   "process_namespace": process_namespace()}
         with self._transaction() as connection:
             connection.execute(
                 "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
@@ -587,10 +590,12 @@ class AttentionStore(DevStoreMixin):
         *,
         response: AttentionResponseRecord | None = None,
         event_key: str,
+        transitioned_at: float | None = None,
     ) -> AttentionRequestRecord:
         with self._transaction() as connection:
             return self._transition_request_tx(
-                connection, request_id, state, response=response, event_key=event_key)
+                connection, request_id, state, response=response, event_key=event_key,
+                transitioned_at=transitioned_at)
 
     def _transition_request_tx(
         self,
@@ -600,6 +605,7 @@ class AttentionStore(DevStoreMixin):
         *,
         response: AttentionResponseRecord | None = None,
         event_key: str,
+        transitioned_at: float | None = None,
     ) -> AttentionRequestRecord:
         existing_event = connection.execute(
             "SELECT payload FROM events WHERE event_key = ?", (event_key,)
@@ -639,6 +645,8 @@ class AttentionStore(DevStoreMixin):
         payload = {
             "request": updated.artifact(),
             "response": response.artifact() if response else None,
+            "transitioned_at": (response.created_at if response else time.time())
+                               if transitioned_at is None else transitioned_at,
         }
         connection.execute(
             "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
@@ -984,7 +992,7 @@ class AttentionStore(DevStoreMixin):
                     (key, request_id, _json(payload)))
             return self._transition_request_tx(
                 connection, request_id, RequestState.FALLBACK,
-                event_key=f"human-decline:{request_id}")
+                event_key=f"human-decline:{request_id}", transitioned_at=declined_at)
 
     WAITING_ACTIVITIES = frozenset({
         "autonomous_retry", "trace_inspection", "memory_retrieval", "evidence_index",
@@ -1374,7 +1382,9 @@ class AttentionStore(DevStoreMixin):
         connection.execute(
             "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
             "VALUES (?, ?, ?, ?, ?)",
-            (event_key, event_entity_type, identifier, event_type, _json({event_entity_type: payload})),
+            (event_key, event_entity_type, identifier, event_type,
+             _json({event_entity_type: payload, **({'transitioned_at': time.time()}
+                   if event_entity_type == 'request' else {})})),
         )
 
     @staticmethod

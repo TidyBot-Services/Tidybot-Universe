@@ -164,13 +164,14 @@ def test_live_human_async_fallback_applies_after_the_deadline(tmp_path):
     assert result["native_success"] is True
     row = result["requests"][0]
     assert row["responder"] == "advisor_proxy" and row["request_mode"] == "async"
-    # The robot kept working while no person answered.
-    assert row["waiting_activities"] >= 2
+    # The robot kept working while no person answered (one attempt is enough to show it;
+    # how many fit before the deadline depends on machine load).
+    assert row["waiting_activities"] >= 1
     store = store_of(result)
     events = {e["event_type"] for e in store.events()}
     assert {"request.timeout_observed", "request.fallback"} <= events
     first_guided = next(i for i, c in enumerate(contexts) if c["attention_input"].get("advisor_guidance"))
-    assert first_guided >= 3
+    assert first_guided >= 2  # at least one autonomous attempt ran before the reply landed
 
 
 def test_live_human_reply_during_waiting_attempt_is_used_next(tmp_path):

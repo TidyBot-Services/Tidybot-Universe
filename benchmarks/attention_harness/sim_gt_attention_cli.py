@@ -36,6 +36,10 @@ def main() -> int:
     parser.add_argument("--assistance-mode", choices=[mode.value for mode in AssistanceMode],
                         default=AssistanceMode.BENCHMARK_PROXY.value)
     parser.add_argument("--human-deadline-seconds", type=float, default=60.0)
+    parser.add_argument("--memory-enabled", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--trace-evidence", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--advisor-replay-only", action="store_true",
+                        help="read cached Advisor replies; fail on a miss without provider calls")
     parser.add_argument("--request-mode", choices=("async", "blocking"), default="async",
                         help="async keeps working while a request is pending; blocking waits")
     parser.add_argument("--gpu-seconds-limit", type=float, default=0.0,
@@ -97,6 +101,8 @@ def main() -> int:
         assistance_mode=AssistanceMode(args.assistance_mode),
         human_deadline_seconds=args.human_deadline_seconds,
         request_mode=args.request_mode, gpu_seconds_limit=args.gpu_seconds_limit,
+        advisor_replay_only=args.advisor_replay_only,
+        memory_enabled=args.memory_enabled, trace_evidence=args.trace_evidence,
         approval_rules=(None if args.approval_rules is None
                         else json.loads(args.approval_rules.read_text())),
         token_limit=args.token_limit,

@@ -38,6 +38,7 @@ class PolicyContext:
     # Requests already opened and not yet resolved. At most one request is
     # outstanding per run, so a pending request turns another ask into safe work.
     pending_requests: int = 0
+    trace_evidence: bool = True
 
 
 @dataclass(frozen=True)
@@ -184,6 +185,12 @@ def _trace_decision(context: PolicyContext, *, full: bool) -> PolicyDecision:
             return PolicyDecision(decision.action, decision.reason, decision.request_type,
                                   decision.priority, **refs)
         return PolicyDecision(DecisionAction.STOP, "approval_required_policy_cannot_proceed", **refs)
+    if not context.trace_evidence:
+        if full and context.matching_memory_count:
+            return PolicyDecision(DecisionAction.RETRIEVE_MEMORY, "trusted_memory_matches")
+        if context.consecutive_failures >= 2:
+            return _trace_request(context, "cause_unresolved")
+        return PolicyDecision(DecisionAction.RETRY, "failure_summary_retry")
     if a is None:
         # Compatibility for callers that have not supplied a projected packet.
         if full and context.matching_memory_count:

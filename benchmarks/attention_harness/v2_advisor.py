@@ -145,18 +145,26 @@ _VOLATILE_FIELDS = frozenset({
 class SharedAdvisorCache:
     """Persistent response cache shared by runs under one experiment root."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, read_only: bool = False) -> None:
         self.path = path
+        self.read_only = read_only
+        if read_only:
+            return
         path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(path) as db:
             db.execute("CREATE TABLE IF NOT EXISTS replies (key TEXT PRIMARY KEY, payload TEXT NOT NULL)")
 
     def get(self, key: str) -> dict[str, Any] | None:
-        with sqlite3.connect(self.path, timeout=30) as db:
+        if self.read_only and not self.path.is_file():
+            return None
+        target = self.path.resolve().as_uri() + "?mode=ro" if self.read_only else self.path
+        with sqlite3.connect(target, timeout=30, uri=self.read_only) as db:
             row = db.execute("SELECT payload FROM replies WHERE key = ?", (key,)).fetchone()
         return json.loads(row[0]) if row else None
 
     def put(self, key: str, value: dict[str, Any]) -> None:
+        if self.read_only:
+            raise RuntimeError("Advisor replay cache is read-only")
         with sqlite3.connect(self.path, timeout=30) as db:
             db.execute("INSERT OR IGNORE INTO replies(key, payload) VALUES (?, ?)",
                        (key, json.dumps(value, sort_keys=True, ensure_ascii=False)))
@@ -203,9 +211,12 @@ class SimGTAdvisorProxy(AdvisorProxy):
     def __init__(self, *args: Any, cache_path: Path | None = None,
                  strict_token_budget_remaining: int | None = None,
                  provider_timeout_seconds: float | None = None,
-                 usage_rejection_path: Path | None = None, **kwargs: Any) -> None:
+                 usage_rejection_path: Path | None = None,
+                 replay_only: bool = False, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.shared_cache = SharedAdvisorCache(cache_path) if cache_path is not None else None
+        self.replay_only = replay_only
+        self.shared_cache = (SharedAdvisorCache(cache_path, read_only=replay_only)
+                             if cache_path is not None else None)
         self.strict_token_budget_remaining = strict_token_budget_remaining
         self.provider_timeout_seconds = provider_timeout_seconds
         self.usage_rejection_path = usage_rejection_path
@@ -233,6 +244,8 @@ class SimGTAdvisorProxy(AdvisorProxy):
         cached = (self.shared_cache.get(key) if self.shared_cache is not None
                   else self.store.cache_get(key))
         if cached is None:
+            if self.replay_only:
+                raise RuntimeError("advisor_cache_miss")
             if self.provider_timeout_seconds is not None:
                 request["provider_timeout_seconds"] = self.provider_timeout_seconds
             transported = self.transport(request)
