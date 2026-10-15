@@ -1725,16 +1725,32 @@
     return `<div class="ab-arm-status" data-arm-status>${handStatusContent(control,historical)}</div>`;
   }
 
+  // Fixed launch selection shares the server's profile identity and budgets.
+  function fixedLaunchSelection(profile, values) {
+    if (!profile?.id || !String(profile.execution_target).endsWith('_sim')) throw new Error('A registered simulator profile is required');
+    return {profile_id:profile.id,seed:profile.seed,attention_policy:values.policy,
+      execution_target:profile.execution_target,assistance_mode:values.assistance_mode,
+      max_attempts:Number(values.attempts),assistance_credits:Number(values.credits),
+      token_limit:Number(values.tokens),human_deadline_seconds:Number(values.human_deadline),
+      overall_deadline_seconds:Number(values.wall_seconds),request_mode:values.request_mode,
+      gpu_seconds:Number(values.gpu_seconds)};
+  }
+
   function bindLaunch() {
     view.querySelector('[data-open-launch]')?.addEventListener('click', () => {
       const options = launchOptions;
       const certifiedProfiles = (options?.profiles || []).filter(p => p.certified_bimanual_v2).map(p => ({...p,task_id:p.task,robot:p.robot.model,execution_arm:p.robot.execution_arm,enabled:true,channel:'certified_v2',wall_seconds:600,attempt_wall_seconds:600,sdk_call_limit:200,base_mode:'stationary'}));
-      const devProfiles = [...certifiedProfiles,...(options?.dev_loop?.profiles || options?.dev_v2?.profiles || [])];
+      const fixedProfiles=(options?.profiles || []).filter(p=>!p.certified_bimanual_v2).map(p=>({...p,
+        task_id:p.task,robot:p.robot?.model || 'Approved configuration',execution_arm:p.robot?.execution_arm || 'single',
+        enabled:true,channel:'formal',wall_seconds:300,attempt_wall_seconds:p.attempt_wall_seconds || 120,sdk_call_limit:200}));
+      const devProfiles = [...certifiedProfiles,...fixedProfiles,...(options?.dev_loop?.profiles || options?.dev_v2?.profiles || [])];
+      const executionLocations=(options?.execution_targets || []).map(target=>({...target,
+        available:target.available || target.id==='simulation' && devProfiles.some(profile=>profile.enabled && String(profile.execution_target).endsWith('_sim'))}));
       if (!devProfiles.length) return;
       const benchmarkNames = {robosuite:'Robosuite',robocasa:'RoboCasa',robocasa365:'RoboCasa365'};
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
       const source = linkedConfiguration?.run || currentSnapshot?.run;
-      const isFixed=p=>p.channel==='certified_v2';
+      const isFixed=p=>['certified_v2','formal'].includes(p.channel);
       const matchingProfiles=source?devProfiles.filter(p=>p.suite===source.suite&&p.task_id===source.task_id&&p.seed===source.seed&&p.robot===source.robot?.model&&p.execution_arm===source.robot?.execution_arm&&p.enabled):[];
       const preferDev=Boolean(currentSnapshot?.dev_session);
       const sourceProfile=matchingProfiles.find(p=>isFixed(p)!==preferDev)||matchingProfiles[0];
@@ -1751,13 +1767,22 @@
             <label class="ab-launch-field">Execution mode<select name="execution_arm" aria-label="Execution mode" required></select></label>
             <label class="ab-launch-field">Development seed<input name="seed" type="number" value="101" readonly></label>
             <label class="ab-launch-field">Execution target<input name="execution_target" value="RoboCasa365 simulator" readonly></label>
+            <label class="ab-launch-field">Execution location<select name="execution_target_choice">${executionLocations.map(target=>`<option value="${esc(target.id)}" ${target.available?'':'disabled'}>${esc(label(target.id))}${target.available?'':` · Unavailable: ${esc(target.reason || 'No runner available')}`}</option>`).join('')}</select></label>
+            <label class="ab-launch-field">Request mode<select name="request_mode">${(options?.request_modes || []).map(mode=>`<option value="${esc(mode.id)}" ${mode.default?'selected':''}>${esc(label(mode.id))}</option>`).join('')}</select><small>Fixed-policy runs; Dev iterations use their registered help workflow.</small></label>
+            <label class="ab-launch-field">GPU time budget (seconds)<input name="gpu_seconds" type="number" min="0" max="${esc(options?.limits?.gpu_seconds ?? 0)}" value="0"><small>0: track usage without a GPU budget.</small></label>
             <label class="ab-launch-field">Policy model<input name="model" value="${esc(options?.dev_loop?.model || 'Approved execution policy')}" readonly></label>
+          </div></section>
+          <section class="ab-launch-section" data-fixed-config hidden><h4>Fixed policy assistance</h4><div class="ab-launch-grid">
+            <label class="ab-launch-field">Attention policy<select name="fixed_policy">${(options?.attention_policies || []).map(policy=>`<option value="${esc(policy)}">${esc(policyTitle(policy))}</option>`).join('')}</select></label>
+            <label class="ab-launch-field">Assistance mode<select name="fixed_assistance">${(options?.assistance_modes || []).map(mode=>`<option value="${esc(mode)}">${esc(label(mode))}</option>`).join('')}</select></label>
+            <label class="ab-launch-field">Assistance credits<input name="fixed_credits" type="number" min="0" max="${esc(options?.limits?.assistance_credits ?? 0)}" value="1"></label>
+            <label class="ab-launch-field">Human reply deadline (seconds)<input name="fixed_human_deadline" type="number" min="1" max="${esc(options?.limits?.human_deadline_seconds ?? 0)}" value="60"></label>
           </div></section>
           <section class="ab-launch-section" data-v2-config hidden><h4>Dev v2 experiment</h4><p class="minor">Development validation only. Scene reproducibility across resets is unverified; do not use these records for a formal policy comparison.</p><div class="ab-launch-grid">
             <label class="ab-launch-field"><span>Dispatch</span><select name="v2_start"><option value="yes">Start real model and simulation</option><option value="no">Create only · no resource dispatch</option></select></label><label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''} required></label>
             <label class="ab-launch-field">Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
             <label class="ab-launch-field">Attention policy<select name="v2_policy"><option value="all">All seven · frozen comparison</option>${(options?.dev_v2?.policies||[]).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field op-eval-toggle"><input name="eval_agent_enabled" type="checkbox" ${options?.dev_v2?.eval_agent_supported===false?'disabled':'checked'}>Eval agent — AI reviews each attempt's recording</label>
+            <label class="ab-launch-field op-eval-toggle"><input name="eval_agent_enabled" type="checkbox" checked ${options?.dev_v2?.eval_agent_supported===false?'disabled':''}>Eval agent — AI reviews each attempt's recording</label>
             <label class="ab-launch-field">Help count / credits<input name="help_count" type="number" min="0" max="2" value="2"></label>
             <label class="ab-launch-field">Human approval wait (seconds)<input name="human_wait_seconds" type="number" min="1" max="600" value="60"></label>
           </div><details><summary>Independent resource limits</summary><p>Each column is frozen at creation. Units: counts, tokens, credits, seconds.</p><table><thead><tr><th>Resource</th><th>Cell limit</th><th>Experiment limit</th></tr></thead><tbody>${Object.entries(options?.dev_v2?.default_cell_budget||{}).map(([k,v])=>`<tr><td>${esc(label(k))}</td><td><input aria-label="Cell ${esc(k)}" data-v2-cell="${k}" type="number" min="0" value="${v}"></td><td><input aria-label="Experiment ${esc(k)}" data-v2-experiment="${k}" type="number" min="0" value="${options?.dev_v2?.goal_limits?.[k]??v}"></td></tr>`).join('')}</tbody></table></details>
@@ -1773,6 +1798,7 @@
           </div></section>
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><button class="ab-button-primary" type="submit">Start run</button></div><p role="status" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
+      form.eval_agent_enabled.checked = options?.dev_v2?.eval_agent_supported !== false;
       const requestKey = globalThis.crypto?.randomUUID?.() || `dev-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       let submitting = false;
       function fillOptions(select, values, title, unavailable = () => false) {
@@ -1794,7 +1820,7 @@
         form.sdk_calls.value = profile?.channel==='dev_v2'?Number(form.querySelector('[data-v2-cell="sdk_calls"]')?.value||0):profile ? profile.sdk_call_limit * iterations : 0;
         const description = profile ? `${profile.robot} · ${armNames[profile.execution_arm] || profile.execution_arm} · Seed ${profile.seed}${profile.layout_id!=null?` · Layout ${profile.layout_id} / Style ${profile.style_id}`:''}${profile.base_mode==='stationary'?' · Stationary base':''}. ` : '';
         const unavailable = profile && !profile.enabled ? profile.unavailable_reason || 'This configuration is unavailable.' : '';
-        form.querySelector('[data-launch-preview]').textContent = unavailable || description + (profile?.channel === 'certified_v2' ? 'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.' : `Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`);
+        form.querySelector('[data-launch-preview]').textContent = unavailable || description + (profile?.channel === 'certified_v2' ? 'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.' : profile?.channel==='formal' ? 'Runs the approved policy with locked execution and assistance conditions.' : `Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`);
         form.querySelector('[data-run-type-description]').textContent=isFixed(profile||{})?'Runs an approved policy with fixed resource limits.':'Generates and revises policy code within the selected budgets.';
         for(const input of form.querySelectorAll('input[name]')){
           let output=form.querySelector(`[data-fixed-for="${input.name}"]`);
@@ -1809,6 +1835,10 @@
         const profile = selectedProfile();
         const certified = profile?.channel === 'certified_v2';
         const v2=profile?.channel==='dev_v2';
+        const formal=profile?.channel==='formal';
+        form.querySelector('[data-fixed-config]').hidden=!formal;
+        form.fixed_credits.disabled=!formal;
+        form.fixed_human_deadline.disabled=!formal;
         form.querySelector('[data-v2-config]').hidden=!v2;
         if(v2)form.v2_policy.value=options.dev_v2.bridge_schema?'full_trace_aware_attention_planner':'autonomous';
         form.querySelector('[data-iterations-label]').textContent=v2?'Maximum generated versions':'Maximum iterations / executions';
@@ -1819,12 +1849,14 @@
         form.max_attempts.readOnly = certified;
         form.token_limit.readOnly = certified;
         form.wall_seconds.readOnly = certified;
-        form.wall_seconds.max = certified ? 600 : profile?.channel==='dev_v2' ? 86400 : 1800;
-        form.model.value = certified ? 'Approved execution policy · official V2' : (options?.dev_loop?.model || '');
+        form.wall_seconds.max = isFixed(profile||{}) ? 600 : profile?.channel==='dev_v2' ? 86400 : 1800;
+        form.model.value = isFixed(profile||{}) ? 'Approved execution policy' : (options?.dev_loop?.model || '');
         form.max_attempts.value = certified ? 1 : v2?(options.dev_v2.default_max_iterations||3):3;
-        form.token_limit.value = certified ? 0 : v2?(options.dev_v2.default_cell_budget?.provider_tokens||220000):60000;
+        form.token_limit.value = certified ? 0 : formal?30000:v2?(options.dev_v2.default_cell_budget?.provider_tokens||220000):60000;
         form.seed.value = profile?.seed ?? 101;
         form.execution_target.value = profile ? label(profile.execution_target) : '';
+        form.request_mode.disabled = !isFixed(profile||{});
+        form.gpu_seconds.disabled = !isFixed(profile||{});
         form.attempt_wall_seconds.value = profile?.attempt_wall_seconds ?? '';
         if (resetWall) form.wall_seconds.value = profile?.wall_seconds ?? 600;
         form.querySelector('#ab-launch-message').textContent = '';
@@ -1878,6 +1910,8 @@
         try {
           const certified = profile.channel === 'certified_v2';
           let selection = certified ? {profile_id:profile.id,seed:profile.seed,attention_policy:'autonomous',execution_target:profile.execution_target,assistance_mode:'benchmark_proxy',max_attempts:1,assistance_credits:0,token_limit:0,human_deadline_seconds:60,overall_deadline_seconds:600,robot_model:profile.robot,execution_arm:profile.execution_arm} : {channel:'dev_loop',profile_id:profile.id,request_key:requestKey,max_attempts:Number(form.max_attempts.value),token_limit:Number(form.token_limit.value),wall_seconds:Number(form.wall_seconds.value),seed:profile.seed};
+          if(profile.channel==='formal')selection=fixedLaunchSelection(profile,{policy:form.fixed_policy.value,assistance_mode:form.fixed_assistance.value,attempts:form.max_attempts.value,credits:form.fixed_credits.value,tokens:form.token_limit.value,human_deadline:form.fixed_human_deadline.value,wall_seconds:form.wall_seconds.value,request_mode:form.request_mode.value || 'async',gpu_seconds:form.gpu_seconds.value});
+          if(certified){selection.request_mode=form.request_mode.value || 'async';selection.gpu_seconds=Number(form.gpu_seconds.value);}
           if(profile.channel==='dev_v2'){
             const n=Number(form.max_attempts.value),help=Number(form.help_count.value);
             const cell=Object.fromEntries([...form.querySelectorAll('[data-v2-cell]')].map(e=>[e.dataset.v2Cell,Number(e.value)]));
@@ -1887,13 +1921,13 @@
             selection={eval_agent:{enabled:form.eval_agent_enabled.checked,model:'parcc/Qwen'},request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:form.v2_policy.value==='all'?(options.dev_v2.policies):[form.v2_policy.value],mode:form.v2_mode.value,help_budget:help,human_wait_seconds:Number(form.human_wait_seconds.value),configuration:{goal_id:form.goal_id.value,experiment_budget:experiment,cell_budget:cell,max_iterations:n,wall_seconds:Number(form.wall_seconds.value)}};
           }
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
-          const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':certified ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
+          const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-          selectedDev = profile.channel==='dev_v2'?'v2-'+result.cells[0].key:certified ? null : result.session_id;
+          selectedDev = profile.channel==='dev_v2'?'v2-'+result.cells[0].key:isFixed(profile) ? null : result.session_id;
           linkedSource = null;
           linkedConfiguration = null;
-          pendingLaunch = certified ? result.launch_id : null;
+          pendingLaunch = isFixed(profile) ? result.launch_id : null;
           stored('attention.pending-launch',pendingLaunch);
           selectedRun = null;
           const url = new URL(location.href);
@@ -2038,7 +2072,7 @@
   }
 
   function budgetCard(name, value, unit, primary = false) {
-    const used = Number(value?.used || 0);
+    const used = value?.used == null ? null : Number(value.used);
     const reserved = value?.reserved;
     const remaining = Number(value?.remaining || 0);
     const limit = Number(value?.limit || 0);
@@ -2470,6 +2504,83 @@
       } catch(error) {view.querySelector('#ab-live-message').textContent=error.message;b.disabled=false;}
     }));
   }
+  // Attention mechanism presentation: server permissions and persisted records.
+  let memoryCatalogue = null, memorySelected = null, memoryMessage = '';
+  function requestAllowed(request, action) {
+    return Array.isArray(request?.permitted_actions) && request.permitted_actions.includes(action);
+  }
+  function requestMechanismDetails(snapshot, chosen) {
+    const rows = snapshot.request_timeline?.requests || [];
+    return `<div data-attention-requests>${(snapshot.requests || []).map(request => {
+      const explanation=request.explanation || {}, timeline=rows.find(row=>row.request_id===request.request_id);
+      const disposition=snapshot.request_dispositions?.[request.request_id]?.disposition || timeline?.disposition;
+      const memories=(snapshot.memory?.uses || []).filter(item=>item.attempt_id===request.attempt_id);
+      const active=chosen?.request_id===request.request_id;
+      return `<details data-persist-detail="mechanism:${esc(request.request_id)}"><summary>${esc(requestType(request))} · ${esc(request.state)}${disposition?` · Reply ${esc(disposition)}`:''}</summary>
+        <p>${esc(explanation.why || request.reason || 'Reason not recorded')}</p>
+        <p>Priority: ${esc(request.priority || 'Not recorded')} · Deadline: ${request.deadline_at==null?'None':esc(dateTime(request.deadline_at))}</p>
+        ${explanation.assistance_requested?`<p>${esc(explanation.assistance_requested)}</p>`:''}${explanation.while_waiting?`<p>${esc(explanation.while_waiting)}</p>`:''}
+        ${explanation.agent_hypothesis?`<p>Hypothesis: ${esc(explanation.agent_hypothesis)}</p>`:''}
+        ${memories.map(item=>{const record=snapshot.memory?.records?.[item.memory_id]?.record;return `<article data-request-memory><b>${esc(item.memory_id)} @ ${esc(item.memory_version ?? 'unrecorded version')}</b><p>${esc(record?.guidance || 'Memory content unavailable')}</p></article>`;}).join('')}
+        ${timeline?`<p>Response latency: ${timeline.response_latency_seconds==null?'No reply recorded':`${esc(number(timeline.response_latency_seconds))} s`}</p><ol>${timeline.transitions.map(item=>`<li>${esc(item.state)} · ${item.at==null?'Time unrecorded':esc(dateTime(item.at))}</li>`).join('')}</ol>${timeline.used_response?`<p>Reply used: ${esc(timeline.used_response.content)}</p>`:''}${timeline.execution_links.map(item=>`<p>Guided execution: ${esc(item.execution_id)}</p>`).join('')}${timeline.candidate_memories.map(item=>`<p>Candidate: ${esc(item.memory_id)}</p>`).join('')}`:''}
+        ${active?`<div class="op-controls">${requestAllowed(request,'defer')?'<button type="button" data-defer-request>Handle later</button>':''}${requestAllowed(request,'ignore')?'<button type="button" data-ignore-request>Ignore · use Advisor fallback</button>':''}${requestAllowed(request,'cancel')?'<button type="button" data-cancel-request>Cancel request</button>':''}</div>`:''}</details>`;
+    }).join('')}</div>`;
+  }
+  function memoryPanel(snapshot) {
+    const memory=snapshot.memory;
+    if (!memory) return '';
+    const records=memoryCatalogue?.memories || Object.values(memory.records || {}).map(item=>({...item.record,memory_id:item.memory_id}));
+    const canOperate=memoryCatalogue?.control?.can_operate ?? memory.control?.can_operate;
+    const detail=memorySelected || null, record=detail?.record;
+    return `<details data-memory-panel data-persist-detail="memory-panel"><summary>Memory · candidates & validation queue</summary>
+      <p>${memory.control?'Reads the same Memory records as the agent.':'Memory service is not configured.'}</p>
+      ${(memory.ingestion || []).map(item=>`<p data-memory-ingestion>${esc(item.memory_id || item.request_id)} · ${esc(item.decision)}${item.reason?` · ${esc(item.reason)}`:''}</p>`).join('')}
+      ${memory.control?'<button type="button" data-memory-refresh>Refresh Memory catalogue</button>':''}
+      <p data-memory-message role="status">${esc(memoryMessage)}</p>
+      ${['Candidates / validation','Other memories'].map((group,index)=>`<h4>${group}</h4><ul>${records.filter(item=>['candidate','validated'].includes(item.status)===(index===0)).map(item=>`<li><button type="button" data-memory-open="${esc(item.memory_id)}">${esc(item.memory_id)} @ ${esc(item.version ?? '?')} · ${esc(item.status || 'Unknown')}</button></li>`).join('') || '<li>No records loaded</li>'}</ul>`).join('')}
+      ${detail?`<article data-memory-detail><h4>${esc(detail.memory_id)} @ ${esc(record?.version ?? '?')} · ${esc(record?.status || 'Unavailable')}</h4><p>${esc(record?.guidance || detail.error || 'Content unavailable')}</p><details data-persist-detail="memory-validation:${esc(detail.memory_id)}"><summary>Validation, lifecycle and uses</summary><pre>${esc(JSON.stringify({validation:detail.validation,history:detail.history,uses:detail.uses},null,2))}</pre></details>
+        ${canOperate && record?`<form data-memory-operation data-memory-id="${esc(detail.memory_id)}"><label>Operator<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Operation<select name="action"><option value="disable">Disable</option><option value="enable">Enable</option><option value="rollback">Roll back permanently</option><option value="expiry">Set expiry</option></select></label><label>Expiry (Unix seconds, only for set expiry)<input name="expires_at" type="number" min="0" step="any"></label><button type="submit">Apply lifecycle operation</button></form>`:''}</article>`:''}</details>`;
+  }
+  function attentionRunContext(snapshot) {
+    const lock=snapshot.lock, work=snapshot.autonomous_work;
+    const workState=work?.state || work?.status || (work?.blocked?.length?'blocked':work?.continuing_while_waiting?.length?'continuing while waiting':work?.running?.length?'running':'idle');
+    return `${lock?`<details data-run-lock data-persist-detail="run-lock"><summary>Locked run conditions</summary><p>Policy switchable: ${esc(String(lock.policy_switchable))} · Ranking eligible: ${esc(String(lock.ranking_eligible))}</p><pre>${esc(JSON.stringify(lock.conditions || lock,null,2))}</pre></details>`:''}${work?`<p data-autonomous-work>Autonomous work: ${esc(workState)}${work.reason?` · ${esc(work.reason)}`:''}${work.blocked_by?` · ${esc(typeof work.blocked_by==='string'?work.blocked_by:JSON.stringify(work.blocked_by))}`:''}</p>${(work.blocked || []).map(item=>`<p>Blocked: ${esc(item.kind)} · ${esc(item.reason || item.waiting_for || item.depends_on || 'Details unavailable')}</p>`).join('')}`:''}`;
+  }
+  function resourceContext(snapshot) {
+    return `<div data-resource-reservations>${Object.entries(snapshot.resources || {}).map(([name,value])=>`<p>${esc(label(name))} reserved: ${value.reserved==null?'Not tracked':esc(number(value.reserved))}${name==='gpu_seconds'?` · GPU used: ${value.used==null?'Not tracked':esc(number(value.used))+' s'} · ${value.budgeted===false?'No budget set':'Budgeted'}<br><small>${esc(value.coverage || 'GPU coverage unavailable')}</small>`:''}</p>`).join('')}</div>`;
+  }
+  function bindAttentionPanels(snapshot,chosen) {
+    const region=view.querySelector('[data-core-region="request"]');
+    if(region && !snapshot.dev_session) region.insertAdjacentHTML('beforeend',requestMechanismDetails(snapshot,chosen)+memoryPanel(snapshot));
+    if(!snapshot.dev_session) {
+      view.querySelector('[data-run-settings]')?.insertAdjacentHTML('beforeend',attentionRunContext(snapshot));
+      view.querySelector('[data-resource-details]')?.insertAdjacentHTML('beforeend',resourceContext(snapshot));
+      const allowed={hint:'respond_hint',approve:'approve_or_deny',deny:'approve_or_deny',interrupt:'confirm_interrupt'};
+      view.querySelectorAll('button[data-respond]').forEach(button=>{if(!requestAllowed(chosen,allowed[button.dataset.respond]))button.remove();});
+      for(const [selector,action] of [['[data-defer-request]','defer'],['[data-cancel-request]','cancel'],['[data-ignore-request]','ignore']]) {
+        [...view.querySelectorAll(selector)].forEach((button,index)=>{if(!requestAllowed(chosen,action)||index>0)button.remove();});
+      }
+    }
+    async function read(path) {const response=await fetch(path,{cache:'no-store'});const result=await response.json();if(!response.ok)throw new Error(result.error || `HTTP ${response.status}`);return result;}
+    function redraw() {if(currentSnapshot?.run.run_id===snapshot.run.run_id)render(currentSnapshot);}
+    view.querySelector('[data-memory-refresh]')?.addEventListener('click',async event=>{
+      event.currentTarget.disabled=true;
+      try{memoryCatalogue=await read('/api/memories');memoryMessage='Catalogue refreshed';}catch(error){memoryMessage=error.message;}redraw();
+    });
+    view.querySelectorAll('[data-memory-open]').forEach(button=>button.addEventListener('click',async()=>{
+      button.disabled=true;
+      try{memorySelected=await read('/api/memories/'+encodeURIComponent(button.dataset.memoryOpen));memoryMessage='';}catch(error){memoryMessage=error.message;}redraw();
+    }));
+    view.querySelector('[data-memory-operation]')?.addEventListener('submit',async event=>{
+      event.preventDefault();const form=event.currentTarget;if(!form.reportValidity())return;
+      const action=form.elements.action.value,body={actor:form.elements.actor.value.trim(),reason:form.elements.reason.value.trim()};
+      if(action==='expiry'){const raw=form.elements.expires_at.value;if(raw===''){memoryMessage='Expiry time is required';redraw();return;}body.expires_at=Number(raw);}
+      form.querySelector('button').disabled=true;
+      try{const response=await controlFetch(`/api/memories/${encodeURIComponent(form.dataset.memoryId)}/${action}`,{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(body)});const result=await response.json();if(!response.ok)throw new Error(result.error || `HTTP ${response.status}`);memorySelected=await read('/api/memories/'+encodeURIComponent(form.dataset.memoryId));memoryCatalogue=await read('/api/memories');memoryMessage='Lifecycle operation saved';lastRendered='';await refresh();}catch(error){memoryMessage=error.message;}redraw();
+    });
+  }
+  // End Attention mechanism presentation.
+
   function bindDevGuidance(snapshot){
     const form=view.querySelector('[data-dev-guidance]');if(!form)return;
     const sid=snapshot.dev_session.session_id,key=`${sid}:${form.dataset.requestId}`;
@@ -2902,7 +3013,7 @@
 
   function operatorBudgetCard(name,value,seconds=false,ended=false,showZero=false) {
     if (!value || (value.used==null && value.limit==null) || (Number(value.limit)===0 && !Number(value.used) && !showZero)) return '';
-    const used=value.used==null?null:Number(value.used),limit=value.limit==null?null:Number(value.limit),out=used!=null && limit!=null && limit>=0 && used>=limit;
+    const used=value.used==null?null:Number(value.used),limit=value.limit==null?null:Number(value.limit),out=value.budgeted!==false && used!=null && limit!=null && limit>=0 && used>=limit;
     const warn=!out && used!=null && limit>0 && used/limit>=0.7;
     const format=v=>v==null?'—':seconds?operatorTime(v):number(v);
     return `<div class="op-meter${out?' out':warn?' warn':''}" data-fill="${limit>0&&used!=null?Math.min(100,Math.round(used/limit*100)):0}"><span>${name}</span><b><em data-count-to="${used==null?'':used}" data-count-seconds="${seconds?'1':''}">${format(used)}</em> <small>/ ${format(limit)}</small></b><div class="op-budget-track"><i style="width:${pct(used,limit)}%"></i></div>${out?`<small>Used up${ended?' · this ended the run':''}</small>`:''}</div>`;
@@ -3049,6 +3160,7 @@
       const pending=snapshot.dev_v2.planner.requests.some(r=>r.request_type==='approval'&&r.state==='waiting');
       if(pending&&region){region.dataset.state='waiting';const action=region.querySelector('.op-action');if(action){action.className='op-action need';action.innerHTML='<h4>A robot action needs your decision</h4><p>Review the exact source and bounded permission below. Recorded public preparation is available below; the action remains blocked.</p>';}}
     }
+    bindAttentionPanels(snapshot, chosen);
     bindPlanner(snapshot);
     mountPolicyController();
     if (snapshot.dev_session) view.querySelector('[data-execution-viewer]').insertAdjacentHTML('beforeend',`${DEBUG_VIEW ? devVersionHistory(snapshot.dev_session) : ''}`);
@@ -3258,6 +3370,7 @@
         button.disabled = false;
       }
     }
+    view.querySelectorAll('[data-ignore-request]').forEach(button => button.addEventListener('click', () => requestAction('ignore', button)));
     view.querySelectorAll('[data-defer-request]').forEach(button => button.addEventListener('click', () => requestAction('defer', button)));
     view.querySelectorAll('[data-cancel-request]').forEach(button => button.addEventListener('click', () => requestAction('cancel', button)));
     view.querySelectorAll('#ab-emergency-interrupt,#ab-cancel-run').forEach(button => button.addEventListener('click', async event => {
