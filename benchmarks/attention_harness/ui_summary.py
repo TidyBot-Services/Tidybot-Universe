@@ -20,7 +20,14 @@ def comparison_summary(store: AttentionStore, selected_run_id: str) -> dict[str,
     conditions["budget"] = selected["budget"]
     runs = {}
     attempts: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    human_seconds: dict[str, float] = defaultdict(float)
     for event in store.events():
+        # Human attention = time from a request to a reply written by a person.
+        # Automatic-advisor replies cost a credit but no human time.
+        if event["entity_type"] == "request" and event["event_type"] == "request.answered":
+            request, response = event["payload"].get("request"), event["payload"].get("response")
+            if request and response and response.get("responder") == "human":
+                human_seconds[request["run_id"]] += max(0.0, response["created_at"] - request["created_at"])
         if event["entity_type"] in {"run", "runs"}:
             run = store.get_run(event["entity_id"])
             if run is not None:
@@ -47,6 +54,7 @@ def comparison_summary(store: AttentionStore, selected_run_id: str) -> dict[str,
             "seed": run["seed"],
             "success": any(item.get("native_success") is True for item in terminal.values()),
             "assistance_used": store.budget_status(run["run_id"])["used"],
+            "human_seconds": human_seconds.get(run["run_id"], 0.0),
         })
     seed_sets = [sorted(item["seed"] for item in group) for group in rows.values()]
     comparable = (
@@ -64,6 +72,7 @@ def comparison_summary(store: AttentionStore, selected_run_id: str) -> dict[str,
             "runs": count,
             "success_rate": successes / count,
             "average_assistance_used": sum(item["assistance_used"] for item in values) / count,
+            "average_human_seconds": sum(item["human_seconds"] for item in values) / count,
             "seeds": sorted(item["seed"] for item in values),
         })
     return {"conditions": conditions, "comparable": comparable, "policies": policies}

@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from .core.dev_store import DevConflict
-from .dev_ledger import encoded, cost, GOAL
+from .dev_ledger import encoded, cost, GOAL, experiment_goal
 from .dev_loop import sha, owner_alive, immutable
 
 EXECUTION_RESOURCES = ('executions', 'sdk_calls', 'control_steps', 'execution_seconds')
@@ -138,7 +138,7 @@ def reconcile_waits(store, exp_id):
         e = store.get(db, 'experiments', exp_id)
         if not db.execute("SELECT 1 FROM sqlite_master WHERE name='v2_planner_requests'").fetchone():
             return result
-        jobs = store.goal_jobs(db, e.get('goal_id',GOAL))
+        jobs = store.goal_jobs(db, experiment_goal(e))
         for state,j in jobs:
             c = store.get(db,'cells',j['cell'])
             if c['experiment_id'] != exp_id or j['kind'] != 'human' or state != 'claimed':
@@ -158,7 +158,7 @@ def reconcile_waits(store, exp_id):
                 continue
             try:
                 columns=db.execute('SELECT cell,version,kind FROM v2_jobs WHERE id=?',(j['job_id'],)).fetchone()
-                if (columns!=(j['cell'],j['version'],'human') or j.get('goal_id')!=e.get('goal_id',GOAL)
+                if (columns!=(j['cell'],j['version'],'human') or j.get('goal_id')!=experiment_goal(e)
                     or j['job_id']!=f"{j['cell']}:{j['version']}:human"):
                     raise DevConflict('original human job/goal identity mismatch')
                 if j.get('actual') or j.get('receipt') or set(j['reservation']) != {'help_wait_seconds'}:
@@ -211,7 +211,7 @@ def reconcile_waits(store, exp_id):
                         raise DevConflict('original human decision mismatch')
                 elif r.get('response') or r['state'] in {'approved','rejected'}:
                     raise DevConflict('original response timestamp missing')
-                g = store._goal(db,e.get('goal_id',GOAL))
+                g = store._goal(db,experiment_goal(e))
                 if g['real_started_at'] is None or not g['real_started_at'] <= r['created_at']:
                     raise DevConflict('original goal clock missing/mismatch')
                 goal_wait=sum(job.get('actual',{}).get('help_wait_seconds',0) for state,job in jobs if state=='settled')

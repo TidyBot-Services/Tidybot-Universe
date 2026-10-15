@@ -2,7 +2,7 @@
 import argparse,copy,hashlib,json,os,time
 from pathlib import Path
 from .dev_configuration import FIELDS,normalize_configuration,configured_budget,worst_slot
-from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded
+from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded,experiment_goal
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .dev_loop import immutable,sha,process_identity,owner_alive
 from .dev_tasks import get_task,validate_selection,options as task_options
@@ -14,6 +14,11 @@ CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens
 def cell_key(exp_id,task,seed,policy):return hashlib.sha256(f'{exp_id}|{task}|{seed}|{policy}'.encode()).hexdigest()
 def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     b=json.loads(Path(path).read_bytes());limits=b.get('limits')
+    legacy=(manifest or {}).get('selection',{}).get('configuration')
+    if legacy is not None:
+        if b.get('configuration')!=legacy or Path(b.get('ledger_path','/missing')).resolve()!=store.path.resolve():raise ValueError('independent authorization/ledger binding mismatch')
+        if b.get('deadline_epoch',0)<=time.time():raise DevBudgetExhausted('authorization deadline expired')
+        return b
     if manifest and 'goal_id' in manifest:
         expected=dict(goal_id=manifest['goal_id'],experiment_id=manifest['experiment_id'],limits=manifest['goal_limits'],wall_limit=manifest['wall_limit'])
         if any(b.get(k)!=v for k,v in expected.items()) or b.get('manifest_sha256')!=manifest_ref['sha256'] or Path(b.get('ledger_path','/missing')).resolve()!=store.path.resolve():raise ValueError('v3 budget/manifest/ledger binding mismatch')
@@ -23,7 +28,7 @@ def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     return b
 
 def create(store,artifact_root,selection):
-    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible'}|FIELDS
+    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent'}|FIELDS
     if not isinstance(selection,dict) or set(selection)-allowed:raise ValueError('bounded explicit experiment selection required')
     v3=bool(set(selection)&FIELDS)
     configuration=normalize_configuration(selection) if v3 else None
@@ -47,12 +52,26 @@ def create(store,artifact_root,selection):
     params=selection.get('policy_parameters',{})
     if not isinstance(params,dict) or set(params)-set(policies):raise ValueError('policy parameter keys differ')
     parameters={p:policy_parameters(p,params.get(p)) for p in policies}
+    legacy_configuration=selection.get('configuration')
+    if legacy_configuration is not None:
+        if v3:raise ValueError('legacy and modern experiment configuration cannot be mixed')
+        if not isinstance(legacy_configuration,dict) or set(legacy_configuration)!={'goal_id','experiment_budget','cell_budget','max_iterations','wall_seconds'}:raise ValueError('complete independent experiment configuration required')
+        from .dev_ledger import cost,resource_equal
+        for budget_name in ('experiment_budget','cell_budget'):
+            cost(legacy_configuration[budget_name])
+            if set(legacy_configuration[budget_name]) not in (set(RESOURCES),set(RESOURCES)-{'eval_calls'}):raise ValueError('complete resource budget required')
+        if type(legacy_configuration['max_iterations']) is not int or legacy_configuration['max_iterations']<1:raise ValueError('positive max iterations required')
+        g=store.goal()
+        if store.goal_id!=legacy_configuration['goal_id'] or not resource_equal(g['limits'],legacy_configuration['experiment_budget']) or g['wall_limit']!=legacy_configuration['wall_seconds']:raise ValueError('experiment must bind its independent ledger')
+        if any(legacy_configuration['cell_budget'].get(k,0)>legacy_configuration['experiment_budget'].get(k,0) for k in RESOURCES):raise ValueError('cell exceeds experiment resource budget')
     exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
     if v3:
         budget=configured_budget(configuration)
         n=len(tasks)*len(seeds)*len(policies)
-        goal_limits=configuration.get('goal_limits',{k:n*v for k,v in budget.items()});__import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
+        goal_limits=configuration.get('goal_limits',{k:n*v for k,v in budget.items()})
+        if set(goal_limits)==set(RESOURCES)-{'eval_calls'}:goal_limits={**goal_limits,'eval_calls':0}
+        __import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
         if set(goal_limits)!=set(RESOURCES) or any(n*budget[k]>goal_limits[k] for k in RESOURCES):raise ValueError('goal allocation exceeds limits')
         wait_wall=configuration['max_versions']*configuration.get('planner_features',{}).get('human_wait_seconds',0)
         wall_limit=configuration.get('wall_limit',n*(budget['model_seconds']+budget['execution_seconds']+wait_wall)+3600)
@@ -61,6 +80,14 @@ def create(store,artifact_root,selection):
         if wall_limit<worst_slot(configuration):raise ValueError('zero slot wall refused')
         normalized.update({k:configuration[k] for k in FIELDS if k in configuration})
         normalized.update(cell_budget=budget,goal_limits=goal_limits,wall_limit=wall_limit)
+    if legacy_configuration is not None:normalized['configuration']=legacy_configuration
+    if 'eval_agent' in selection:
+        review=selection['eval_agent']
+        if not isinstance(review,dict) or set(review)!={'enabled','model'} or type(review['enabled']) is not bool or review['model']!='parcc/Qwen':raise ValueError('explicit Qwen review configuration required')
+        normalized['eval_agent']=dict(review)
+    if 'name_suffix' in selection:
+        from .ui_history import name_suffix
+        normalized['name_suffix']=name_suffix(selection['name_suffix'])
     with store.tx() as db:
         row=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(exp_id,)).fetchone()
         if row:
@@ -77,6 +104,9 @@ def create(store,artifact_root,selection):
     demos={t:DemoProvider().freeze(t) for t in tasks}
     # All base conditions live once, outside the policy specifications.
     budget=budget if v3 else dict(CELL_BUDGET,help_credits=help_budget,help_count=help_budget,advisor_calls=min(2,help_budget))
+    if legacy_configuration is not None:budget=dict(legacy_configuration['cell_budget'])
+    if 'eval_agent' in normalized:
+        for config in configs.values():config['eval_agent']=dict(normalized['eval_agent'])
     cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
     # Fixed schedule: first cell verifies v1→v2, then all remaining cells v1,
     # then their v2. Coverage is preserved before remaining iteration slots.
@@ -85,7 +115,7 @@ def create(store,artifact_root,selection):
         depth=configuration['target_depth'];maximum=configuration['max_versions']
         schedule=[{'cell':cells[0]['key'],'through_version':depth}]+[{'cell':c['key'],'through_version':v} for v in range(1,depth+1) for c in cells[1:]]
         schedule += [{'cell':c['key'],'through_version':maximum,'compensation':True} for c in cells]
-    else:store.ensure_goal(GOAL,LIMITS,7200)
+    elif legacy_configuration is None:store.ensure_goal(GOAL,LIMITS,7200)
     manifest=dict(schema='attentionbench.dev-experiment.v2',experiment_id=exp_id,selection=normalized,
         model=MODEL,cell_budget=budget,goal_limits=LIMITS,wall_limit=7200,opening=[] if v3 else store.goal()['opening'],
         robot='OpenArm365',execution_arm='both',configs=configs,initial_sources=sources,identity_lock=ref,
@@ -100,12 +130,19 @@ def create(store,artifact_root,selection):
             c['attempt_wall_seconds']=configuration['attempt_wall_seconds']
             if configuration.get('reproducible_reset'):c['scene_reset_seed']=c['seed']
             if configuration.get('scene_contract'):c['scene_contract']=configuration['scene_contract']
+    if legacy_configuration is not None:
+        depth=legacy_configuration['max_iterations'];goal_id=legacy_configuration['goal_id']
+        manifest.update(max_iterations=depth,goal_id=goal_id,
+            goal_limits=legacy_configuration['experiment_budget'],wall_limit=legacy_configuration['wall_seconds'],
+            target_depth=depth,target_valid_executions=depth,max_versions=depth,
+            ledger_path=str(store.path.resolve()))
+        manifest['schedule']=[{'cell':c['key'],'through_version':v} for v in range(1,depth+1) for c in cells]
     public_screen(sources);public_screen(demos);validate_fairness(manifest)
     manifest_path=directory/'manifest.json'
     mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
     if json.loads(manifest_path.read_bytes())!=manifest:raise DevConflict('immutable manifest conflict')
     exp=dict(experiment_id=exp_id,selection=normalized,manifest=mref,artifact_dir=str(directory),state='planned',cancelled=False,owner=None,created_at=time.time(),formal_eligible=False)
-    if v3:exp['goal_id']=goal_id
+    if v3 or legacy_configuration is not None:exp['goal_id']=goal_id
     with store.tx() as db:
         if v3:
             allocated={k:0 for k in RESOURCES}
@@ -166,7 +203,7 @@ def snapshot(store,exp_id):
         from .dev_planner import PlannerControl
         control=PlannerControl(store)
         cells=[{**c,'planner':control.snapshot(c['key'])} if c.get('planner_features') else c for c in cells]
-    return {**e,'cells':cells,'resources':store.goal(e.get('goal_id',GOAL))}
+    return {**e,'cells':cells,'resources':store.goal(experiment_goal(e))}
 def list_experiments(store):
     with store.tx() as db:return [json.loads(r[0]) for r in db.execute('SELECT payload FROM v2_experiments ORDER BY rowid DESC')]
 def cancel(store,exp_id):
@@ -199,7 +236,7 @@ def wait_recovery(store, db, exp_id):
     This is deliberately not a general retry/source-migration mechanism.
     """
     from .dev_planner import binding, digest
-    e=store.get(db,'experiments',exp_id);gid=e.get('goal_id',GOAL)
+    e=store.get(db,'experiments',exp_id);gid=experiment_goal(e)
     jobs=store.goal_jobs(db,gid)
     waits=[]
     for state,j in jobs:
@@ -227,7 +264,7 @@ def wait_recovery(store, db, exp_id):
         if state in {'reserved','claimed','needs_review'}:dead(json.loads(payload).get('owner'))
     for payload, in db.execute('SELECT payload FROM v2_experiments'):
         other=json.loads(payload)
-        if other.get('goal_id',GOAL)==gid and other['state'] in {'unknown','needs_review','condition_invalid'}:reject('unresolved experiment')
+        if experiment_goal(other)==gid and other['state'] in {'unknown','needs_review','condition_invalid'}:reject('unresolved experiment')
         for receipt in Path(other['artifact_dir']).glob('scheduler-process-*.json'):
             identity=json.loads(receipt.read_bytes())
             if identity is None:reject('unknown scheduler receipt')
@@ -306,7 +343,7 @@ def acquire(store,exp_id,owner):
     with store.tx() as db:
         e=store.get(db,'experiments',exp_id)
         if e['state'] in {'stopped','cancelled'} or e['cancelled']:raise DevConflict('experiment stopped or unresolved')
-        g=store._goal(db,e.get('goal_id',GOAL))
+        g=store._goal(db,experiment_goal(e))
         if g.get('real_finished_at') or g['wall_remaining']<=0:raise DevConflict('original authorization expired/closed')
         recovery=wait_recovery(store,db,exp_id)
         if e.get('owner') and owner_alive(e['owner']):raise DevConflict('live serial experiment owner already exists')
@@ -316,16 +353,17 @@ def acquire(store,exp_id,owner):
         for payload, in db.execute('SELECT payload FROM v2_cells'):
             if (identity:=json.loads(payload).get('owner')) and owner_alive(identity):raise DevConflict('live cell owner already exists')
         if e['cancelled']:raise DevConflict('experiment cancelled')
-        if any(state=='needs_review' for state,j in store.goal_jobs(db,e.get('goal_id',GOAL))):raise DevConflict('goal has unresolved claimed work; no further automatic dispatch')
+        store.recover_evals(db, goal_id=experiment_goal(e))
+        if any(state=='needs_review' for state,j in store.goal_jobs(db,experiment_goal(e))):raise DevConflict('goal has unresolved claimed work; no further automatic dispatch')
         # First recovery quarantines every claim in this goal across experiments.
-        gid=e.get('goal_id',GOAL)
+        gid=experiment_goal(e)
         claimed=[j for state,j in store.goal_jobs(db,gid) if state=='claimed' and j['kind']!='human']
         for j in claimed:
             db.execute("UPDATE v2_jobs SET state='needs_review' WHERE id=?",(j['job_id'],))
             c=store.get(db,'cells',j['cell']);c.update(owner=None,state='needs_review',reason='worker_lost_no_claim_retry');store.put(db,'cells',j['cell'],c)
         for eid,ep in db.execute('SELECT id,payload FROM v2_experiments').fetchall():
             ep=json.loads(ep)
-            if ep.get('goal_id',GOAL)!=gid:continue
+            if experiment_goal(ep)!=gid:continue
             for key,cp in db.execute('SELECT id,payload FROM v2_cells WHERE exp=?',(eid,)).fetchall():
                 c=json.loads(cp)
                 if claimed and c['state']=='planned':c.update(state='not_started',reason='upstream_unknown_quarantined');store.put(db,'cells',key,c)
@@ -433,7 +471,17 @@ def options():
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('command',choices=['create','plan','run','status','cancel','report','export','probe']);p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--selection');p.add_argument('--experiment');p.add_argument('--max-cells',type=int);p.add_argument('--budget-file');p.add_argument('--dry-run',action='store_true');p.add_argument('--output');p.add_argument('--max-slots',type=int);p.add_argument('--outer-deadline-epoch',type=float);p.add_argument('--min-start-wall-seconds',type=float);a=p.parse_args();s=DevV2Store(a.store)
-    if a.command in {'create','plan'}:value=create(s,a.artifacts,json.loads(Path(a.selection).read_bytes()))
+    if a.command in {'create','plan'}:
+        selection=json.loads(Path(a.selection).read_bytes())
+        configuration=selection.get('configuration')
+        if configuration is not None:
+            # Daily pre-provisions a finite independent goal before this child
+            # materializes its first experiment. With no experiment yet, the
+            # default store cannot infer that goal. Bind it explicitly, checking
+            # immutable limits rather than opening/provisioning the default goal.
+            s=DevV2Store(a.store,configuration=dict(goal_id=configuration['goal_id'],
+                limits=configuration['experiment_budget'],wall_seconds=configuration['wall_seconds']))
+        value=create(s,a.artifacts,selection)
     elif a.command=='run':value=snapshot(s,a.experiment) if a.dry_run else run(s,a.experiment,max_cells=a.max_cells,budget_file=a.budget_file,max_slots=a.max_slots,outer_deadline_epoch=a.outer_deadline_epoch,min_start_wall_seconds=a.min_start_wall_seconds)
     elif a.command=='probe':
         from .dev_probe import run_probe

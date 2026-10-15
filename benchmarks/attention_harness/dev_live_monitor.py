@@ -51,7 +51,10 @@ def _phase(ep, version):
         raise MonitorError('bad_phase', 'Malformed phase metadata') from exc
 
 
-def live(store, exp_id, key):
+VIEW_KEYS = {'external', 'side', 'top', 'left_wrist', 'right_wrist'}
+
+
+def live(store, exp_id, key, view=None):
     c = store.cell(key)
     if c['experiment_id'] != exp_id:
         raise MonitorError('cell_mismatch', 'Cell outside experiment', 404)
@@ -78,7 +81,11 @@ def live(store, exp_id, key):
         raise MonitorError('episode_outside_cell', 'Episode outside registered cell')
     if not ep.is_dir():
         raise MonitorError('invalid_episode_path','Registered episode directory is missing')
-    latest = ep / 'live/latest.json'
+    # Extra camera angles live in their own folder with the same metadata schema; 'external' is the original view.
+    if view not in (None, 'external') and view not in VIEW_KEYS:
+        raise MonitorError('unknown_view', 'Unknown camera view', 404)
+    base = ep / 'live' if view in (None, 'external') else ep / 'live' / 'views' / view
+    latest = base / 'latest.json'
     if not latest.resolve().is_relative_to(ep):
         raise MonitorError('path_escape', 'Live metadata outside episode')
     row['phase'], row['waiting_since'] = _phase(ep, c.get('active_version'))
@@ -119,7 +126,7 @@ def live(store, exp_id, key):
             raise MonitorError('bad_receipt', 'Invalid reset receipt') from exc
     if type(meta.get('sequence')) is not int or meta['sequence'] < 0:
         raise MonitorError('bad_sequence', 'Invalid frame sequence')
-    frame = (ep / 'live' / meta['file']).resolve()
+    frame = (base / meta['file']).resolve()
     if not frame.is_relative_to(ep):
         raise MonitorError('path_escape', 'Live frame outside episode')
     if not frame.is_file():
@@ -137,7 +144,8 @@ def live(store, exp_id, key):
 
 def response(store, exp_id, key, *, image=False, query=None):
     try:
-        c, row, frame = live(store, exp_id, key)
+        view = (query or {}).get('view', [None])[0]
+        c, row, frame = live(store, exp_id, key, view)
         if not image:
             return row, 'application/json', 200, {}
         constraints = {'episode': 'episode_id', 'version': 'version', 'seq': 'sequence', 'sha': 'frame_sha256'}

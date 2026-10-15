@@ -41,6 +41,8 @@ from .dev_attention import DevAttentionControl
 from .fixed_ui import FixedUI
 from .memory_view import ACTIONS as MEMORY_ACTIONS, MemoryView
 from .gpu_meter import COVERAGE as GPU_COVERAGE
+from .run_recovery import recover_lost_runs
+from .request_lifecycle import request_timeline
 
 
 UI_DIR = Path(__file__).with_name("ui")
@@ -102,6 +104,7 @@ def read_orchestrator_sessions(base_url: str, graph: str) -> list[dict[str, Any]
 
 
 def list_runs(store: AttentionStore) -> list[dict[str, Any]]:
+    recover_lost_runs(store)
     # Sidebar metadata comes from current materialized rows. Reading all event
     # payloads also parses every physical trace and delays the entire UI.
     with store._connect() as db:
@@ -483,6 +486,7 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         "response_evidence": adoption,
         "waiting_windows": store.waiting_windows(run_id),
         "request_lifecycle": lifecycle,
+        "request_timeline": request_timeline(store, run_id),
         "memory": memory_snapshot(store, run_id, projection, memory_view),
         "lock": run_lock(store, run, run_id),
         "autonomous_work": autonomous_work(attempts, requests, store.list_work_items(run_id)),
@@ -518,9 +522,18 @@ def create_server(
     robosuite_url: str | None = None, camera_name: str | None = None,
     robocasa_camera_ws: str | None = None, robocasa_camera_device: str = "maniskill_base",
     run_catalog: Path | None = None, dev_v2_bridge=None,
+    dev_v2_root: Path | None = None, dev_v2_authorization: Path | None = None,
+    dev_v2_per_run_budget: bool = False,
     memory_view: MemoryView | None = None,
 ) -> ThreadingHTTPServer:
+    # These adapters own different ledgers. Never silently replace an explicitly
+    # injected shared-goal bridge with an independent daily experiment budget.
+    if dev_v2_bridge is not None and dev_v2_root is not None:
+        raise ValueError('choose an existing goal bridge or --dev-v2-root')
+    if dev_v2_root is None and (dev_v2_authorization is not None or dev_v2_per_run_budget):
+        raise ValueError('Dev v2 authorization/budget options require --dev-v2-root')
     if store is not None:
+        recover_lost_runs(store)
         # Live snapshots must not block executor evidence or stop acknowledgements.
         # This explicit opt-in leaves immutable memory SQLite snapshots untouched.
         store.enable_concurrent_writes()
@@ -538,6 +551,12 @@ def create_server(
     human_token = os.environ.get('ATTENTION_HUMAN_APPROVAL_TOKEN','')
     if human_token and len(human_token)<24:raise ValueError('separate human capability must have at least 24 characters')
     profiles = load_catalog(run_catalog) if run_catalog is not None else []
+
+    if dev_v2_root is not None:
+        from .daily_dev_v2 import DailyDevV2
+        authorization = json.loads(dev_v2_authorization.read_bytes()) if dev_v2_authorization else None
+        dev_v2_bridge = DailyDevV2(dev_v2_root, profiles, authorization,
+                                  per_run_budget=dev_v2_per_run_budget)
 
     from . import dev_loop
     from .core.dev_store import DevConflict
@@ -1269,6 +1288,12 @@ def main() -> None:
     parser.add_argument("--artifact-root", type=Path, help="parent of episode artifact directories")
     parser.add_argument("--run-catalog", type=Path,
                         help="operator-approved formal simulator profiles for UI launch")
+    parser.add_argument("--dev-v2-root", type=Path,
+                        help="dedicated daily experiment ledgers and artifacts")
+    parser.add_argument("--dev-v2-authorization", type=Path,
+                        help="explicit time-bounded daily run authorization")
+    parser.add_argument("--dev-v2-per-run-budget", action="store_true",
+                        help="each daily run retains its own finite cumulative budget")
     parser.add_argument("--robosuite-url", help="Robosuite simulator service origin for public RGB camera")
     parser.add_argument("--camera-name", help="camera name, e.g. agentview")
     parser.add_argument("--robocasa-camera-ws", help="ManiSkill camera bridge URL, e.g. ws://127.0.0.1:5580")
@@ -1283,6 +1308,8 @@ def main() -> None:
     parser.add_argument("--memory-local-operator", action="store_true",
                         help="allow disable/enable/rollback/expiry on the local Memory (development)")
     args = parser.parse_args()
+    if args.dev_v2_root is None and (args.dev_v2_authorization is not None or args.dev_v2_per_run_budget):
+        parser.error("Dev v2 authorization/budget options require --dev-v2-root")
     if args.host not in {"127.0.0.1", "localhost", "::1"}:
         parser.error("this local operator console binds only to loopback")
     if args.store is not None and not args.store.is_file():
@@ -1292,6 +1319,8 @@ def main() -> None:
     if args.run_catalog is not None and (args.store is None or args.artifact_root is None):
         parser.error("--run-catalog requires --store and --artifact-root")
     store = AttentionStore(args.store) if args.store is not None else None
+    if store is not None:
+        recover_lost_runs(store)
     if args.orchestrator_url:
         url = urlsplit(args.orchestrator_url)
         if url.scheme not in {"http", "https"} or not url.netloc or url.path not in {"", "/"}:
@@ -1326,7 +1355,9 @@ def main() -> None:
                            camera_name=args.camera_name,
                            robocasa_camera_ws=args.robocasa_camera_ws,
                            robocasa_camera_device=args.robocasa_camera_device,
-                           run_catalog=args.run_catalog)
+                           run_catalog=args.run_catalog, dev_v2_root=args.dev_v2_root,
+                           dev_v2_authorization=args.dev_v2_authorization,
+                           dev_v2_per_run_budget=args.dev_v2_per_run_budget)
     print(f"AttentionBench UI: http://{args.host}:{server.server_port}/ui/", flush=True)
     try:
         server.serve_forever()

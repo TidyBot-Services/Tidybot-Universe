@@ -24,10 +24,25 @@ def checked(ref):
     if sha(ref['uri'])!=ref['sha256']:raise DevConflict('immutable evidence digest mismatch')
     return Path(ref['uri'])
 def job_for(cell,version,kind):return next((j for j in cell['jobs'] if j['version']==version and j['kind']==kind),None)
+def screen_model_packet(packet):
+    # The single named AI-opinion field is explicit protocol metadata. Screen its
+    # contents normally; do not loosen public_screen's restrictions for any text.
+    copy=dict(packet)
+    if 'public_feedback' in copy:
+        feedback=dict(copy['public_feedback'])
+        review=feedback.pop('evaluator_review',None)
+        if review is not None:
+            # Text-only reviews (no recording viewed) carry passed=None and mode='text_only'; the 2-key vision form stays valid.
+            keys=set(review) if isinstance(review,dict) else set()
+            if keys not in ({'passed','feedback'},{'passed','feedback','mode'}) or not isinstance(review['feedback'],str) or review.get('mode','vision') not in ('vision','text_only') or (type(review['passed']) is not bool and not (review['passed'] is None and review.get('mode')=='text_only')):raise ValueError('invalid AI review opinion')
+            public_screen(review)
+        copy['public_feedback']=feedback
+    public_screen(copy)
+
 def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     # Only public packet/source fields are accepted before any reservation.
     for m in messages:
-        if m['role']=='user':public_screen(json.loads(m['content']))
+        if m['role']=='user':screen_model_packet(json.loads(m['content'])) if kind=='model' else public_screen(json.loads(m['content']))
     cell=store.cell(key);runtime=cell.get('runtime',{})
     existing=job_for(cell,version,kind)
     if existing and existing['state']=='settled':
@@ -169,15 +184,19 @@ def feedback_for(cell):
     return feedback,checked(last['source']).read_text(),failures,prior[:-1]
 
 def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None):
-    public_screen(previous);public_screen(feedback);public_screen(attention)
+    public_screen(previous);screen_model_packet({'public_feedback':feedback});public_screen(attention)
     # Explicit public task + SDK packet; resource paths and evaluator excluded.
     t=get_task(config['task_id']);public_cfg={k:config[k] for k in ['task_id','official_env','task_prompt','seed','robot','execution_arm','controller','layout_id','style_id','scene_id','horizon','sdk_call_limit','attempt_wall_seconds','perception_mode']}
     f=dict(feedback)
     if not trace_visible:f.pop('action_trace',None)
     packet={'locked_task':public_cfg,'previous_complete_source':previous,'public_feedback':f,'attention_control':attention,'remaining_budget':remaining}
     if source_size_limit_bytes:packet['source_size_limit_bytes']=source_size_limit_bytes
-    public_screen(packet)
-    return [{'role':'system','content':t.system_prompt()},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
+    screen_model_packet(packet)
+    opinion=''
+    if 'evaluator_review' in f:
+        textonly=f['evaluator_review'].get('mode')=='text_only'
+        opinion=('\nTEXT-ONLY review of your previous attempt (nobody viewed the recording; AI opinion, may be wrong): ' if textonly else '\nEvaluator review of your previous attempt (AI opinion, may be wrong): ')+json.dumps(f['evaluator_review'],ensure_ascii=False)
+    return [{'role':'system','content':t.system_prompt()+opinion},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
 
 def attention(store,key,version,feedback,previous,failures,prior,m,owner,directory,client):
     cell=store.cell(key);policy=cell['policy_id'];params=m['policies'].get(policy,policy_parameters(policy));remaining=max(0,cell['budget']['help_count']-cell['used']['help_count'])
@@ -228,7 +247,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     public_screen(packet)
     return packet,ref,help_record
 
-def execute(store,key,version,record,config,owner,directory,runner_factory,*,memory_validation=None):
+def execute(store,key,version,record,config,owner,directory,runner_factory,client=None,*,memory_validation=None):
     cell=store.cell(key);goal=store.goal_for_cell(key);cleanup=cell.get('runtime',{}).get('startup_cleanup_seconds',25);seconds=min(config['attempt_wall_seconds'],goal['wall_remaining']-cleanup,cell['budget']['execution_seconds']-cell['used']['execution_seconds']-cleanup)
     if seconds<=20:raise DevBudgetExhausted('insufficient execution and cleanup time')
     reservation={'executions':1,'sdk_calls':config['sdk_call_limit'],'control_steps':config['horizon'],'execution_seconds':seconds+cleanup}
@@ -300,6 +319,78 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,*,mem
         raise
     finally:
         done.set();watcher.join(2);store.update_cell(key,active_episode=None,active_version=None)
+    # The execution is already settled. Review failures must never enter unknown().
+    if config.get('eval_agent',{}).get('enabled',False):
+        eval_after_execution(store,key,version,episode_root,config,owner,directory,client)
+
+def eval_after_execution(store,key,version,episode_root,config,owner,directory,client):
+    from .v2_evaluator import build_eval_evidence,review_execution,empty_review,write_review,WORST_CASE_SECONDS,VISION_TOKENS,TEXT_TOKENS
+    job=None;claimed=False
+    try:
+        if (directory/'evaluator-review.json').exists():return
+        evidence=build_eval_evidence(episode_root,config)
+        # UTF-8 bytes conservatively bound text tokens; bound each resized image
+        # by 4096 visual tokens. Base64 transfer bytes are not textual tokens.
+        text={k:v for k,v in evidence.items() if k!='frames'}
+        input_bound=len(json.dumps(text,ensure_ascii=False).encode())+4096*len(evidence['frames'])+4096
+        # Worst case = Qwen probe + Qwen vision call + GLM text fallback; it is released down to the measured time.
+        reservation=dict(eval_calls=1,provider_tokens=input_bound+VISION_TOKENS+TEXT_TOKENS,input_tokens=input_bound,output_tokens=VISION_TOKENS+TEXT_TOKENS,model_seconds=WORST_CASE_SECONDS)
+        if store.goal_for_cell(key)['wall_remaining']<WORST_CASE_SECONDS:raise DevBudgetExhausted('insufficient review time budget')
+        job=store.reserve(key,version,'eval',reservation)
+        store.claim(job['job_id'],owner);claimed=True
+        provider=client
+        if provider is None:
+            credential=os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
+            if not credential:
+                path=Path('/home/truares/.litellm-key')
+                if path.is_file():credential=path.read_text().strip()
+            provider=ParccClient(api_key=credential,max_attempts=1,timeout_seconds=90)
+        review=review_execution(episode_root,config,provider,output_dir=directory,evidence=evidence,prefer_text_only=sticky_text_only(directory,version))
+        usage=review['usage'];values=[usage.get(k) for k in ('total_tokens','prompt_tokens','completion_tokens')]
+        actual=dict(reservation)
+        if all(type(v) is int and v>=0 for v in values) and values[0]==values[1]+values[2] and all(v<=reservation[k] for v,k in zip(values,('provider_tokens','input_tokens','output_tokens'))):
+            actual.update(provider_tokens=values[0],input_tokens=values[1],output_tokens=values[2])
+        actual['model_seconds']=min(WORST_CASE_SECONDS,review['latency_seconds'])
+        store.settle(job['job_id'],actual,{'review':{'uri':str(directory/'evaluator-review.json'),'sha256':sha(directory/'evaluator-review.json')},'usage_accounting':'measured' if actual['provider_tokens']!=reservation['provider_tokens'] else 'reservation_retained'})
+    except Exception as exc:
+        # Unknown usage is charged at reservation; no control-state mutation,
+        # no execution retry and no propagation to run_cell's error handlers.
+        try:
+            if not (directory/'evaluator-review.json').exists():
+                status='skipped_budget' if isinstance(exc,DevBudgetExhausted) else 'failed'
+                write_review(directory,empty_review(config,status,type(exc).__name__))
+        except Exception:pass
+        if job:
+            try:
+                if claimed:store.settle(job['job_id'],job['reservation'],{'review_error':type(exc).__name__,'usage_accounting':'reservation_retained'})
+                else:store.release_unclaimed(job['job_id'])
+            except Exception:
+                # Preserve an operational error for operators, never change cell state.
+                try:immutable(directory/'eval-accounting-error.json',{'error':type(exc).__name__})
+                except Exception:pass
+
+
+def sticky_text_only(directory,version):
+    # If the previous attempt's vision call timed out after a successful probe, the vision model is too slow for
+    # this run: skip it for the rest of the run instead of paying 90 s again after every attempt.
+    try:
+        value=json.loads((Path(directory).parent/f'v{version-1}'/'evaluator-review.json').read_bytes())
+        return value.get('fallback_reason') in ('qwen_vision_timeout','qwen_skipped_after_vision_timeout')
+    except (OSError,ValueError,AttributeError):return False
+
+def previous_review(cell):
+    if not cell['versions']:return None
+    last=cell['versions'][-1];path=Path(last['source']['uri']).parent/'evaluator-review.json'
+    if not path.is_file():return None
+    try:
+        value=json.loads(path.read_bytes())
+        if value.get('status')!='completed':return None
+        review={k:value[k] for k in ('passed','feedback')}
+        if value.get('mode')=='text_only':review['mode']='text_only'
+        public_screen(review)
+        if not isinstance(review['feedback'],str) or (type(review['passed']) is not bool and not (review['passed'] is None and review.get('mode')=='text_only')):return None
+        return review
+    except (OSError,ValueError,KeyError):return None
 
 def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=None):
     from .dev_experiment import verify_manifest
@@ -326,7 +417,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             if last and last['valid'] and ('goal_id' not in m or sum(j['kind']=='execute' and j['state']=='settled' for j in cell['jobs'])<m['target_valid_executions']):
                 job=job_for(cell,last['version'],'execute')
                 if not job:
-                    execute(store,key,last['version'],last,config,owner,root/f"v{last['version']}",runner_factory);continue
+                    execute(store,key,last['version'],last,config,owner,root/f"v{last['version']}",runner_factory,client);continue
                 if job['state']!='settled':raise DevConflict('unsettled execution never redispatched')
             count=len(cell['versions'])
             if 'goal_id' in m:
@@ -348,6 +439,8 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             if 'goal_id' in m:
                 for resource in ['model_seconds','execution_seconds','help_wait_seconds']:
                     remaining[resource]=max(0,cell['budget'][resource]-sum(j['reservation'].get(resource,0) for j in store.cell(key)['jobs'] if j['state']=='settled'))
+            review=previous_review(cell) if config.get('eval_agent',{}).get('enabled',False) else None
+            if review is not None:feedback={**feedback,'evaluator_review':review}
             messages=model_messages(config,previous,feedback,packet,remaining,m['trace_visible'],m.get('source_size_limit_bytes'))
             if cell.get('planner_features') and cell['planner_features']['memory'] and not (job_for(store.cell(key),version,'model') or {}).get('actual'):
                 from .dev_planner_memory import load_memory

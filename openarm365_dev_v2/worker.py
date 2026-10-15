@@ -41,6 +41,12 @@ def main():
         from benchmarks.attention_harness.robocasa365.human_camera import capture_human_view
         context=json.loads((args.evidence/'recording_context.json').read_bytes())
         recorder=StepRecorder(args.evidence,context)
+        # Display-only extra angles (side, top, both wrists). Never policy input; every failure is contained.
+        extra=None
+        try:
+            from .extra_views import ExtraViews,look_target
+            extra=ExtraViews(env,args.evidence,context,episode,look_target(env))
+        except Exception:extra=None
         def capture(sequence):
             capture_human_view(recorder,env,episode,sequence)
             # Copy the actual just-captured RGB, atomic metadata publication.
@@ -53,6 +59,9 @@ def main():
                      'control_step':sequence,'monotonic':time.monotonic(),'wall_time':time.time(),
                      'file':image.name,'sha256':hashlib.sha256(image.read_bytes()).hexdigest()}
                 tmp=live/'latest.tmp';tmp.write_text(json.dumps(row));tmp.replace(live/'latest.json')
+                if extra is not None:
+                    try:extra.capture(sequence)
+                    except Exception:pass
         executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,frame_callback=capture)
         capture(0)
         def observe():

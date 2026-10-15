@@ -90,6 +90,11 @@ class OpenArm365DevRunnerV2:
             recording=finalize_recording(episode,recording_context,status)
             video=episode/'advisor_replay.mp4'
             if video.is_file():recording['video']={'uri':str(video.resolve()),'sha256':hashlib.sha256(video.read_bytes()).hexdigest()}
+            # Display-only extra angles: best effort, never changes the recording receipt or the result.
+            try:
+                from .extra_views import finalize_extra_views
+                finalize_extra_views(episode)
+            except Exception:pass
         public_steps=[r for r in owner.ledger if r['group']!='owner']
         violations=[r['error'] for r in public_steps if not r['ok'] and any(s in r.get('error','') for s in
             ('Unexpected physical','Measured native','Stationary base','grasp contact lost','object/hand transform'))]

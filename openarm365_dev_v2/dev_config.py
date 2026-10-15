@@ -51,6 +51,8 @@ def make_lock(path):
     for folder in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']:
         files.extend(p for p in (ROOT/folder).rglob('*.py') if '__pycache__' not in p.parts)
     files.extend(p for p in (ROOT/'benchmarks/attention_harness').glob('dev*.py'))
+    files.append(ROOT/'benchmarks/attention_harness/v2_evaluator.py')
+    files.append(ROOT/'benchmarks/attention_harness/daily_dev_v2.py')
     for name in ['core/policies.py','core/assessment.py','core/models.py','core/trace.py','core/dev_store.py','formal_runner_boundary.py','policy_input.py','parcc_client.py','dev_attention.py','ui_server.py','ui/live.js','ui/index.html','ui_history.py','ui_observability.py','ui_media.py','robocasa_native/policy_sandbox.py','robocasa365/recording.py','robocasa365/human_camera.py']:
         files.append(ROOT/'benchmarks/attention_harness'/name)
     files.extend(p for p in (ROOT/'benchmarks/attention_harness/dev_ui').glob('*') if p.is_file())
@@ -93,5 +95,9 @@ def validate_dev_config(c,*,expected_source_root=None):
         validate(ref,c['task_id'],contract['tasks'][c['task_id']]['state'])
         if 'scene_reset_seed' not in c:raise ValueError('scene contract requires reproducible reset')
         expected['scene_contract']=ref
+    if 'eval_agent' in c:
+        review=c['eval_agent']
+        if not isinstance(review,dict) or set(review)!={'enabled','model'} or type(review['enabled']) is not bool or review['model']!='parcc/Qwen':raise ValueError('invalid recording review configuration')
+        expected['eval_agent']=dict(review)
     if c!=expected or any(type(c[k]) is not type(v) for k,v in expected.items()):raise ValueError('Dev configuration mismatch')
     return c

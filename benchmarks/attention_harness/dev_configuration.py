@@ -29,9 +29,10 @@ def normalize_configuration(selection):
  return p
 def derive_cell_budget(p,sdk_calls=80,horizon=2400):
  g=p['max_versions'];e=p['target_valid_executions'];h=p['help_budget'];i=p['max_input_bytes_per_request'];s=p['model_reserve_seconds']
- return dict(dev_calls=g,advisor_calls=h,executions=e,provider_tokens=g*(i+8192)+h*(i+2048),input_tokens=(g+h)*i,output_tokens=g*8192+h*2048,model_seconds=(g+h)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon)
+ return dict(dev_calls=g,advisor_calls=h,eval_calls=0,executions=e,provider_tokens=g*(i+8192)+h*(i+2048),input_tokens=(g+h)*i,output_tokens=g*8192+h*2048,model_seconds=(g+h)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon)
 def configured_budget(p):
  required=derive_cell_budget(p,SDK['sdk_calls'],SDK['control_steps']);b=p.get('cell_budget',required);cost(b)
+ if set(b)==set(RESOURCES)-{'eval_calls'}:b={**b,'eval_calls':0}
  if set(b)!=set(RESOURCES):raise ValueError('complete cell budget required')
  if p['coverage']=='strict_full_depth' and any(b[k]<v for k,v in required.items()):raise ValueError('strict cell budget below worst-case requirement')
  minimum=derive_cell_budget({**p,'max_versions':1,'target_valid_executions':1,'help_budget':0})

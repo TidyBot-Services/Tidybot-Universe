@@ -6,7 +6,7 @@ from .dev_experiment import snapshot,verify_manifest,cell_key,acquire
 from .dev_loop import process_identity
 from .dev_v2_loop import provider_call,execute,immutable,job_for
 from .core.dev_store import DevConflict
-PROBE_BUDGET=dict(dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=160,control_steps=4800,help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=120,execution_seconds=1080)
+PROBE_BUDGET=dict(eval_calls=0,dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=160,control_steps=4800,help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=120,execution_seconds=1080)
 SOURCE='from robot_sdk import sensors\nobservation = sensors.get_observation()\n'
 def create_probe(store,parent):
  e=snapshot(store,parent);m=verify_manifest(e)

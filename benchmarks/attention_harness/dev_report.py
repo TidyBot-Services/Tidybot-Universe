@@ -5,7 +5,7 @@ from pathlib import Path
 from .dev_loop import sha
 from .core.dev_store import DevConflict
 from .dev_experiment import snapshot,validate_fairness
-from .dev_ledger import RESOURCES,GOAL
+from .dev_ledger import RESOURCES,GOAL,resource_equal
 from .dev_failure_analysis import classify
 
 def wilson(successes,n):
@@ -44,7 +44,7 @@ def analyze_cell(c,planned,manifest_ref):
             elif job['kind'] in {'demo','human','cache'}:read(receipt['help'])
             for k,v in actual.items():recomputed[k]+=v
         except (OSError,ValueError,KeyError,TypeError) as exc:resource_errors.append(str(exc));unknown=True
-    if not resource_errors and recomputed!=c['used']:resource_errors.append('cell used differs from settlement receipts');unknown=True
+    if not resource_errors and not resource_equal(recomputed,c['used']):resource_errors.append('cell used differs from settlement receipts');unknown=True
     eligible=c.get('experiment_eligible',False) and not c.get('mixed_policy',False) and c['state']!='condition_invalid'
     if (c['task_id'],c['seed'])!=(planned['task_id'],planned['seed']):unknown=True
     for v in c['versions']:
