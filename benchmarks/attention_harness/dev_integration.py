@@ -19,6 +19,7 @@ from .dev_loop import sha, process_identity, owner_alive
 from .dev_main_bridge import DevMainBridge
 from .dev_configuration import normalize_configuration, derive_cell_budget, configured_budget
 from .core.dev_store import DevConflict, DevBudgetExhausted
+from .legacy_paths import resolve
 from .dev_ledger import RESOURCES
 from .dev_tasks import validate_selection
 from .dev_v2_loop import immutable
@@ -31,7 +32,7 @@ GOAL_KEY='full-planner-threefeatures-20261015'
 GOAL_ID=hashlib.sha256(('goal|'+GOAL_KEY).encode()).hexdigest()[:32]
 LEDGER=OUT/'real-integration-ledger.sqlite'
 STATE=OUT/'main-integration/host'
-SERVICE=Path('/home/truares/桌面/attention_memory_service')
+SERVICE=resolve(Path('/home/truares/桌面/attention_memory_service'))
 
 
 def load_private(path):

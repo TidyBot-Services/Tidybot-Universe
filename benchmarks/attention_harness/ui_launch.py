@@ -14,6 +14,7 @@ from .attention_modes import AssistanceMode
 from .core.policies import POLICY_IDS
 from .core.store import AttentionStore
 from .formal_entry import inspect_formal_entry
+from .legacy_paths import resolve_tree
 from .seed_guard import validate_seed
 
 
@@ -36,6 +37,9 @@ def load_catalog(path: Path) -> list[dict[str, Any]]:
     profiles = raw.get("profiles") if isinstance(raw, dict) else None
     if not isinstance(profiles, list) or not profiles:
         raise ValueError("run catalog requires nonempty profiles")
+    # Catalogs written before the workspace reorganization name old Desktop paths; look
+    # them up at their new home. The catalog file and its recorded strings stay as written.
+    profiles[:] = [resolve_tree(item) if isinstance(item, dict) else item for item in profiles]
     require_graph = raw.get("require_skill_graph", False)
     if type(require_graph) is not bool:
         raise ValueError("run catalog require_skill_graph must be boolean")

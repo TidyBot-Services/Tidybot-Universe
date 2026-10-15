@@ -207,7 +207,9 @@ def test_promoted_mobile_default_preserves_all_original_approved_profiles():
     mobile_profile=next(p for p in profiles if p.get('base_capability'))
     openarm_left=[p for p in profiles if p.get('robot')=={'model':'OpenArm','execution_arm':'left'}]
     assert openarm_left[0]['id']==mobile_profile['id']
-    assert mobile_profile['code']==str(ROOT/'openarm_mobile/policies/counter_to_sink_mobile_v1.py')
+    # The catalog records the Desktop path the repository had when it was approved; compare the
+    # file itself, so the check holds wherever the repository lives.
+    assert Path(mobile_profile['code']).resolve()==(ROOT/'openarm_mobile/policies/counter_to_sink_mobile_v1.py').resolve()
     assert mobile_profile['approved_policy_sha256']=='de68d0397eb561181ed18ce54e18402f8faa7d914dba3f60cab80c59b6f28431'
     assert mobile_profile['approved_config_sha256']=='6abe32992c9f38a098775d92c32172a90920abbfebe67bcee98d87a9be480563'
     assert mobile_profile['skill_graph_sha256']=='8ee9e41b7d6ad8f08dae91f1fe5137a6361ac8d83a5948fc3fa4e69c16831545'
