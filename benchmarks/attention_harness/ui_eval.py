@@ -39,7 +39,13 @@ def eval_snapshot(root: Path, run_id: str, run: dict[str, Any], store_path: Path
                   "native_success": summary["native_success"],
                   "stopped_reason": summary.get("stopped_reason"),
                   "approved_config_sha256": summary.get("approved_config_sha256"),
-                  "attempt_ids": [item["attempt_id"] for item in packet["attempts"]]}
+                  "attempt_ids": [item["attempt_id"] for item in packet["attempts"]],
+                  "native_outcomes": {item['attempt_id']: {'native_success': item['native_success'],
+                    'evaluated': item.get('outcome', {}).get('evaluated') is True} for item in packet['attempts']}}
+        from .ui_launch_worker import diagnostic_enabled
+        if not diagnostic_enabled(summary):
+            result.update(status="native_only", model="Native evaluator", diagnosis="Optional model diagnosis disabled by the zero token budget.")
+            return result
         diagnosis_file = run_dir / "eval_diagnosis.json"
         if diagnosis_file.is_file():
             diagnosis = json.loads(diagnosis_file.read_text(encoding="utf-8"))

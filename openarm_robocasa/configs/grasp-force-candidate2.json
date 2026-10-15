@@ -1,0 +1,81 @@
+{
+  "schema": "openarm-robocasa.robot-parameters.v1",
+  "mount_offset_fixture_m": [
+    0.55,
+    -0.5,
+    0.6
+  ],
+  "mount_yaw_offset_rad": 1.5707963267948966,
+  "initial": {
+    "left": [
+      -0.8807231187820435,
+      -1.4092193841934204,
+      -0.4913395941257477,
+      1.8287632465362549,
+      -0.4026445746421814,
+      0.08818583190441132,
+      -0.8314703106880188
+    ],
+    "right": [
+      0.8807544331050363,
+      1.4092485988929182,
+      0.49107286080873214,
+      1.8288416674730266,
+      0.40277617095035817,
+      -0.08865098312812648,
+      0.8314842437456812
+    ],
+    "left_gripper": 0.02,
+    "right_gripper": 0.02
+  },
+  "controller_source": "openarm_phase1/acceptance_config.json",
+  "controller_sha256": "f0120618728e75549e7c0bb7d65bb84c8e6813af0dc97e50b48345cd3490c07f",
+  "model_sha256": "ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456",
+  "bootstrap_evidence": "outputs/openarm-robocasa/scene-probe-10/bootstrap.json",
+  "scope": "Independent grasp-force candidate2; all frozen limits unchanged; task capability pending",
+  "tcp_orientation_mount": {
+    "left": [
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        -1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        -1
+      ]
+    ],
+    "right": [
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        -1
+      ]
+    ]
+  },
+  "gripper_free_close_m": 0.006,
+  "contact_hold_inset_m": 0.0004,
+  "contact_hold_steps": 12,
+  "contact_hold_finger_damping": 300,
+  "mimic_tendon_damping": 10000.0,
+  "contact_hold_follower_damping": 0,
+  "solver_position_iterations": 32,
+  "solver_velocity_iterations": 8,
+  "contact_hold_finger_stiffness": 6000
+}

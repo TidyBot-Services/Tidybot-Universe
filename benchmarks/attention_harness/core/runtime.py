@@ -51,19 +51,26 @@ class AttentionRuntime:
         return self._resolve_proxy(request, trace_packet=trace_packet, public_images=public_images)
 
     def submit_human_response(
-        self, request_id: str, *, response_id: str, content: str
+        self, request_id: str, *, response_id: str, content: str, guidance_scope=None
     ) -> AttentionRequestRecord:
         request = self._request(request_id)
         if request.mode is not AssistanceMode.LIVE_HUMAN_FIRST:
             raise StateConflictError("benchmark-proxy requests cannot accept human responses")
         if request.deadline_at is not None and self.clock() >= request.deadline_at:
             raise StateConflictError("human response arrived after the request deadline")
+        robot=(self.store.get_run(request.run_id).get('robot_configuration') or {}).get('robot',{})
+        if request.request_type.value=='hint' and robot.get('execution_arm')=='both':
+            from openarm_bimanual.hint import validate_scope
+            guidance_scope=validate_scope(guidance_scope,attempt_id=request.attempt_id)
+        elif guidance_scope:
+            raise ValueError('Hint scope is unavailable for this request')
         response = AttentionResponseRecord(
             response_id=response_id,
             request_id=request_id,
             responder="human",
             content=content,
             created_at=self.clock(),
+            guidance_scope=guidance_scope or {},
         )
         updated = self.store.transition_request(
             request_id,

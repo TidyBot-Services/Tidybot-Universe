@@ -101,6 +101,7 @@ class RunRecord:
     evaluator_model: str | None = None
     status: RunStatus = RunStatus.CREATED
     schema_version: str = SCHEMA_VERSION
+    robot_configuration: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         _required(self.run_id, "run_id")
@@ -175,6 +176,7 @@ class TraceEvent:
     result: dict[str, Any] = field(default_factory=dict)
     error: dict[str, Any] | None = None
     evidence_refs: tuple[str, ...] = field(default_factory=tuple)
+    timestamp_basis: str = "unknown"
 
     def __post_init__(self) -> None:
         for value, name in (
@@ -215,8 +217,10 @@ class FailureSummary:
     def __post_init__(self) -> None:
         _required(self.stage, "failure stage")
         _required(self.error_type, "failure error_type")
-        if self.consecutive_failures < 1:
-            raise ValueError("consecutive_failures must be positive")
+        if self.consecutive_failures < 0:
+            raise ValueError("consecutive_failures must be non-negative")
+        if self.consecutive_failures == 0 and (self.stage != "none" or self.error_type != "none"):
+            raise ValueError("zero failures requires an explicit no-failure summary")
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError("failure confidence must be between zero and one")
 
@@ -384,6 +388,7 @@ class AttentionResponseRecord:
     provider_attempts: int = 0
     token_usage: dict[str, Any] = field(default_factory=dict)
     provider_request_id: str | None = None
+    guidance_scope: dict[str, Any] = field(default_factory=dict)
     schema_version: str = SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -397,7 +402,9 @@ class AttentionResponseRecord:
             raise ValueError("Advisor provider attempts must be non-negative")
 
     def artifact(self) -> dict[str, Any]:
-        return _artifact(self)
+        value = _artifact(self)
+        if not self.guidance_scope:value.pop("guidance_scope",None)
+        return value
 
 
 @dataclass(frozen=True)

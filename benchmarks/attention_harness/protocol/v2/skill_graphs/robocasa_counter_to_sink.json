@@ -1,0 +1,26 @@
+{
+  "graph_id": "robocasa-counter_to_sink-guidance-v1-1",
+  "definition_version": "guidance-v1.1-dev-2026-10-01",
+  "task_env": "attentionbench-engineering",
+  "formal_eligible": false,
+  "entries": [
+    {
+      "name": "counter-to-sink-guidance-v1-1",
+      "display_name": "台面物体移至水槽",
+      "description": "执行已批准的完整 Public SDK 策略。内部函数和 SDK 动作没有独立 Skill DAG 调度定义或子技能事件；本图仅记录整体任务节点。",
+      "status": "done",
+      "dependencies": [],
+      "attentionbench": {
+        "suite": "robocasa",
+        "task": "counter_to_sink",
+        "seed": 101,
+        "runner_boundary": "formal",
+        "approved_generated_policy": true,
+        "generated_policy_file": "benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robocasa_counter_to_sink/policy.py",
+        "approved_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+        "formal_config_file": "benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/configs/robocasa_counter_to_sink_seed101.json",
+        "approved_config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de"
+      }
+    }
+  ]
+}

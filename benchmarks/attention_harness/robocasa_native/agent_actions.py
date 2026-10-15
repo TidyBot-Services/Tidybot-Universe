@@ -54,6 +54,8 @@ class AgentServerActionBackend:
         sim_url: str | None = None,
         transport: JsonTransport | None = None,
     ) -> None:
+        from curobo_v2.deployment import retired_entry
+        retired_entry('RoboCasa legacy Agent Server action backend')
         # The current agent_server /health endpoint does not attest whether
         # it is connected to a simulator or physical hardware. Fail closed
         # unless the caller explicitly confirms this endpoint is simulator-only.

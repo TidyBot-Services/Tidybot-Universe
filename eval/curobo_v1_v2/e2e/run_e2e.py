@@ -153,6 +153,7 @@ def run_one(skill_path: Path, label: str, version: str, idx: int,
 
 
 def main():
+    raise RuntimeError('V2-only: unauthenticated historical V1/V2 comparison execution is disabled')
     ap = argparse.ArgumentParser()
     ap.add_argument("--skill", required=True, help="Absolute path to main.py")
     ap.add_argument("--version", required=True,

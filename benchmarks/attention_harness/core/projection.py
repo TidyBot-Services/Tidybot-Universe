@@ -13,11 +13,11 @@ class AttentionProjection:
     def __init__(self, store: AttentionStore) -> None:
         self.store = store
 
-    def snapshot(self, run_id: str) -> dict[str, Any]:
+    def snapshot(self, run_id: str, *, events=None) -> dict[str, Any]:
         run = self.store.get_run(run_id)
         if run is None:
             raise StateConflictError(f"run {run_id!r} does not exist")
-        events = self.store.events()
+        events = self.store.events() if events is None else events
         attempts = _entities(events, "attempts", run_id=run_id)
         attempt_ids = {item["attempt_id"] for item in attempts}
         traces = [item for item in _entities(events, "traces") if item["attempt_id"] in attempt_ids]

@@ -15,6 +15,7 @@ Usage:
     DISPLAY=:0 python scripts/diag_v2_collision.py --sim-api http://localhost:5500
 """
 from __future__ import annotations
+raise RuntimeError('V2-only: historical unverified diagnostic entry is retired; locked official public API owner required')
 
 import argparse
 import json
@@ -38,6 +39,7 @@ def fetch_cuboids(sim_api: str) -> list[dict]:
 
 
 def main():
+    raise RuntimeError('V2-only: historical unverified solver diagnostic is retired; use locked official public API diagnostics')
     ap = argparse.ArgumentParser()
     ap.add_argument("--sim-api", default="http://localhost:5500")
     ap.add_argument("--robot-cfg", default="franka_tidyverse.yml")

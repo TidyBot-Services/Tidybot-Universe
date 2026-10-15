@@ -1,0 +1,30 @@
+{
+  "schema_version": "attentionbench.ui-run-catalog.v1",
+  "profiles": [
+    {
+      "id": "live-human-robocasa-counter-to-sink-seed101-openarm-mobile-left-candidate4",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "execution_target": "robocasa_sim",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks",
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/policies/counter_to_sink.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/launch_configs/counter_to_sink_left_candidate4.json",
+      "approved_policy_sha256": "af06debbb9d2c0b137994eb74027b0b70b10838b4a720c55ba3054aa52d7a402",
+      "approved_config_sha256": "6abe32992c9f38a098775d92c32172a90920abbfebe67bcee98d87a9be480563",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/launch_configs/openarm-mobile-counter-to-sink-left_candidate4_graph.json",
+      "skill_graph_sha256": "42db620560502f7ee209a5633b9d673661b350fc12718b27d259bee7b4cb17f3",
+      "skill_root": "openarm-mobile-counter-to-sink-left",
+      "robot": {
+        "model": "OpenArm",
+        "execution_arm": "left"
+      }
+    }
+  ],
+  "formal_eligible": false,
+  "scope": "Independent operator-authorized mobile OpenArm seed101 engineering acceptance; preserved native evaluator and safety bounds.",
+  "require_skill_graph": true
+}

@@ -1,0 +1,217 @@
+"""Persistent, serial, public-only Dev experiments; no formal approvals minted."""
+import argparse,copy,hashlib,json,os,time
+from pathlib import Path
+from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded
+from .core.dev_store import DevConflict,DevBudgetExhausted
+from .dev_loop import immutable,sha,process_identity,owner_alive
+from .dev_tasks import get_task,validate_selection,options as task_options
+from .dev_help import POLICY_IDS,policy_parameters,DemoProvider,EMPTY_MEMORY,HELP_PRICING,public_screen
+from openarm365_dev_v2.dev_config import make_lock,make_dev_config,validate_dev_config,verify_lock,ROOT
+
+MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
+CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
+def cell_key(exp_id,task,seed,policy):return hashlib.sha256(f'{exp_id}|{task}|{seed}|{policy}'.encode()).hexdigest()
+def validate_budget_file(path):
+    b=json.loads(Path(path).read_bytes());limits=b.get('limits')
+    expected={'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}
+    if b.get('goal')!=GOAL or limits!=expected:raise ValueError('original goal budget file required; cannot reset/expand')
+    return b
+
+def create(store,artifact_root,selection):
+    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible'}
+    if not isinstance(selection,dict) or set(selection)-allowed:raise ValueError('bounded explicit experiment selection required')
+    key=selection.get('request_key')
+    import re
+    if not isinstance(key,str) or not re.fullmatch('[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
+    mode=selection.get('mode','experiment')
+    if mode not in {'experiment','interactive'}:raise ValueError('unsupported Dev mode')
+    tasks=selection.get('tasks',list(__import__('benchmarks.attention_harness.dev_tasks',fromlist=['TASKS']).TASKS))
+    seeds=selection.get('seeds',[101]);policies=selection.get('policies',list(POLICY_IDS))
+    if not isinstance(tasks,list) or not tasks or len(tasks)>32 or len(set(tasks))!=len(tasks):raise ValueError('unique registered task list required')
+    if not isinstance(seeds,list) or not seeds or len(set(seeds))!=len(seeds):raise ValueError('unique seed list required')
+    if not isinstance(policies,list) or not policies or len(set(policies))!=len(policies) or any(p not in POLICY_IDS for p in policies):raise ValueError('unique supported policy list required')
+    if mode=='interactive' and (len(tasks),len(seeds),len(policies))!=(1,1,1):raise ValueError('interactive session has one task/seed/policy')
+    for t in tasks:
+        for seed in seeds:validate_selection(t,seed)
+    help_budget=selection.get('help_budget',1)
+    if type(help_budget) is not int or not 0<=help_budget<=2:raise ValueError('help budget must be 0–2')
+    trace_visible=selection.get('trace_visible',True)
+    if type(trace_visible) is not bool:raise ValueError('trace visibility must be boolean')
+    params=selection.get('policy_parameters',{})
+    if not isinstance(params,dict) or set(params)-set(policies):raise ValueError('policy parameter keys differ')
+    parameters={p:policy_parameters(p,params.get(p)) for p in policies}
+    exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
+    normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
+    with store.tx() as db:
+        row=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(exp_id,)).fetchone()
+        if row:
+            e=json.loads(row[0])
+            if e['selection']!=normalized:raise DevConflict('request key reused with different experiment conditions')
+            verify_manifest(e)
+    if row:return snapshot(store,e['experiment_id'])
+    directory=Path(artifact_root).resolve()/exp_id;directory.mkdir(parents=True,exist_ok=True)
+    lock_path=directory/'identity-lock.json'
+    ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path)
+    verify_lock(ref)
+    configs={f'{t}:{s}':make_dev_config(t,s,ref) for t in tasks for s in seeds}
+    sources={t:{'source':Path(get_task(t).initial_policy).read_text(),'sha256':sha(get_task(t).initial_policy)} for t in tasks}
+    demos={t:DemoProvider().freeze(t) for t in tasks}
+    # All base conditions live once, outside the policy specifications.
+    budget=dict(CELL_BUDGET,help_credits=help_budget,help_count=help_budget,advisor_calls=min(2,help_budget))
+    cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
+    # Fixed schedule: first cell verifies v1→v2, then all remaining cells v1,
+    # then their v2. Coverage is preserved before remaining iteration slots.
+    schedule=[{'cell':cells[0]['key'],'through_version':2}]+[{'cell':c['key'],'through_version':1} for c in cells[1:]]+[{'cell':c['key'],'through_version':2} for c in cells[1:]]
+    manifest=dict(schema='attentionbench.dev-experiment.v2',experiment_id=exp_id,selection=normalized,
+        model=MODEL,cell_budget=budget,goal_limits=LIMITS,wall_limit=7200,opening=store.goal()['opening'],
+        robot='OpenArm365',execution_arm='both',configs=configs,initial_sources=sources,identity_lock=ref,
+        memory=EMPTY_MEMORY,help_pricing=HELP_PRICING,demos=demos,policies=parameters,trace_visible=trace_visible,
+        cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
+    public_screen(sources);public_screen(demos);validate_fairness(manifest)
+    manifest_path=directory/'manifest.json'
+    mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
+    if json.loads(manifest_path.read_bytes())!=manifest:raise DevConflict('immutable manifest conflict')
+    exp=dict(experiment_id=exp_id,selection=normalized,manifest=mref,artifact_dir=str(directory),state='planned',cancelled=False,owner=None,created_at=time.time(),formal_eligible=False)
+    with store.tx() as db:
+        # Guard simultaneous same-key creators without permitting conditions drift.
+        row=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(exp_id,)).fetchone()
+        if row:
+            old=json.loads(row[0])
+            if old!=exp:raise DevConflict('experiment creation raced; refresh existing immutable manifest')
+        else:
+            store.put(db,'experiments',exp_id,exp)
+            for row in cells:
+                payload=dict(row,experiment_id=exp_id,state='planned',owner=None,mode=mode,
+                    mixed_policy=False,experiment_eligible=mode=='experiment',policy_segments=[row['policy_id']],
+                    budget=budget,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False)
+                db.execute('INSERT INTO v2_cells VALUES (?,?,?)',(row['key'],exp_id,encoded(payload)))
+            store.event(db,'experiment_created',{'experiment_id':exp_id,'manifest':mref})
+    return snapshot(store,exp_id)
+
+def validate_fairness(m):
+    if m['formal_eligible'] is not False or m['model']!=MODEL or m['memory']!=EMPTY_MEMORY:raise ValueError('Dev conditions differ')
+    if len({c['key'] for c in m['cells']})!=len(m['cells']):raise ValueError('duplicate cell keys')
+    expected={(t,s,p) for t in m['selection']['tasks'] for s in m['selection']['seeds'] for p in m['selection']['policies']}
+    if expected!={(c['task_id'],c['seed'],c['policy_id']) for c in m['cells']}:raise ValueError('planned denominator incomplete')
+    for c in m['cells']:
+        if c['key']!=cell_key(m['experiment_id'],c['task_id'],c['seed'],c['policy_id']):raise ValueError('cell identity mismatch')
+    return True
+
+def verify_manifest(exp):
+    if sha(exp['manifest']['uri'])!=exp['manifest']['sha256']:raise DevConflict('manifest digest drift')
+    m=json.loads(Path(exp['manifest']['uri']).read_bytes());validate_fairness(m)
+    verify_lock(m['identity_lock'])
+    for c in m['configs'].values():validate_dev_config(c)
+    for t,r in m['initial_sources'].items():
+        if hashlib.sha256(r['source'].encode()).hexdigest()!=r['sha256']:raise DevConflict('initial source drift')
+    for d in m['demos'].values():DemoProvider().result(d)
+    return m
+
+def snapshot(store,exp_id):
+    with store.tx() as db:
+        e=store.get(db,'experiments',exp_id);keys=[r[0] for r in db.execute('SELECT id FROM v2_cells WHERE exp=? ORDER BY rowid',(exp_id,))]
+    return {**e,'cells':[store.cell(k) for k in keys],'resources':store.goal()}
+def list_experiments(store):
+    with store.tx() as db:return [json.loads(r[0]) for r in db.execute('SELECT payload FROM v2_experiments ORDER BY rowid DESC')]
+def cancel(store,exp_id):
+    with store.tx() as db:
+        e=store.get(db,'experiments',exp_id);e.update(cancelled=True,state='cancelled');store.put(db,'experiments',exp_id,e)
+        for key,p in db.execute('SELECT id,payload FROM v2_cells WHERE exp=?',(exp_id,)).fetchall():
+            c=json.loads(p)
+            if c['state']=='planned':c.update(state='cancelled',reason='operator_cancel');store.put(db,'cells',key,c)
+        store.event(db,'experiment_cancelled',{'experiment_id':exp_id})
+    return snapshot(store,exp_id)
+def switch(store,key,policy):
+    policy_parameters(policy)
+    with store.tx() as db:
+        c=store.get(db,'cells',key)
+        if c['mode']!='interactive':raise DevConflict('experiment policy is frozen')
+        if c['state'] not in {'planned','running'}:raise DevConflict('session read-only')
+        if c['owner']:
+            c['pending_policy']=policy
+        else:
+            c['policy_id']=policy;c['policy_segments'].append(policy)
+        c.update(mixed_policy=True,experiment_eligible=False);store.put(db,'cells',key,c)
+    return store.cell(key)
+def acquire(store,exp_id,owner):
+    with store.tx() as db:
+        e=store.get(db,'experiments',exp_id)
+        if e.get('owner') and owner_alive(e['owner']):raise DevConflict('live serial experiment owner already exists')
+        for key,p in db.execute("SELECT id,payload FROM v2_experiments WHERE id!=?",(exp_id,)):
+            other=json.loads(p)
+            if other.get('owner') and owner_alive(other['owner']):raise DevConflict('goal has another live serial owner')
+        if e['cancelled']:raise DevConflict('experiment cancelled')
+        if db.execute("SELECT 1 FROM v2_jobs WHERE state='needs_review'").fetchone():raise DevConflict('goal has unresolved claimed work; no further automatic dispatch')
+        # Recovered claims remain unknown; do not redispatch after a crash.
+        unknown=db.execute("UPDATE v2_jobs SET state='needs_review' WHERE cell IN (SELECT id FROM v2_cells WHERE exp=?) AND state='claimed'",(exp_id,)).rowcount
+        for key,p in db.execute('SELECT id,payload FROM v2_cells WHERE exp=?',(exp_id,)).fetchall():
+            c=json.loads(p)
+            if c['owner'] and not owner_alive(c['owner']):
+                unsettled=db.execute("SELECT 1 FROM v2_jobs WHERE cell=? AND state='needs_review'",(key,)).fetchone()
+                c.update(owner=None,state='needs_review' if unsettled else 'planned',reason='worker_lost_no_claim_retry');store.put(db,'cells',key,c)
+        e.update(owner=owner,state='needs_review' if unknown else 'running');store.put(db,'experiments',exp_id,e)
+        return e
+
+def run(store,exp_id,*,max_cells,budget_file,client=None,runner_factory=None):
+    if type(max_cells) is not int or max_cells<1:raise ValueError('positive explicit max_cells required')
+    declared=validate_budget_file(budget_file)
+    if (client is None or runner_factory is None) and Path(declared.get('ledger_path','/missing')).resolve()!=store.path.resolve():raise ValueError('real dispatch requires the original goal ledger_path binding')
+    owner=process_identity();e=acquire(store,exp_id,owner)
+    try:
+        m=verify_manifest(e)
+        eligible={c['key'] for c in m['cells'][:max_cells]}
+        from .dev_v2_loop import run_cell
+        for slot in m['schedule']:
+            key=slot['cell']
+            if key not in eligible:continue
+            c=store.cell(key)
+            with store.tx() as db:current=store.get(db,'experiments',exp_id)
+            if current['cancelled']:break
+            if c['state'] in {'completed','failed','cancelled','unknown','needs_review','not_started'}:continue
+            if store.goal()['wall_remaining']<=0 or store.goal()['remaining']['executions']<1 or store.goal()['remaining']['dev_calls']<1:
+                store.update_cell(key,state='not_started' if not c['versions'] else 'failed',reason='original_goal_budget_exhausted');continue
+            try:verify_manifest(e)
+            except BaseException as exc:
+                store.update_cell(key,state='needs_review',reason=str(exc));raise
+            run_cell(store,e,m,key,slot['through_version'],owner,client=client,runner_factory=runner_factory)
+            after=store.cell(key)
+            if after['state']=='needs_review':
+                # Infrastructure/unknown never leads to another real dispatch.
+                for row in m['cells']:
+                    cc=store.cell(row['key'])
+                    if cc['state']=='planned':store.update_cell(row['key'],state='not_started',reason='upstream_unknown_quarantined')
+                break
+        with store.tx() as db:
+            states=[json.loads(p)['state'] for p, in db.execute('SELECT payload FROM v2_cells WHERE exp=?',(exp_id,))]
+            current=store.get(db,'experiments',exp_id)
+            if not current['cancelled']:current['state']='needs_review' if 'needs_review' in states else 'planned' if 'planned' in states else 'completed'
+            store.put(db,'experiments',exp_id,current)
+    except BaseException as exc:
+        with store.tx() as db:
+            current=store.get(db,'experiments',exp_id);current.update(state='needs_review',reason=str(exc));store.put(db,'experiments',exp_id,current)
+        raise
+    finally:
+        with store.tx() as db:
+            current=store.get(db,'experiments',exp_id)
+            if current['owner']==owner:current['owner']=None;store.put(db,'experiments',exp_id,current)
+    return snapshot(store,exp_id)
+
+def options():
+    import benchmarks,openarm365_dev_v2
+    return {**task_options(),'policies':list(POLICY_IDS),'cell_budget':CELL_BUDGET,'model':MODEL,'help_budget_range':[0,2],
+        'source_canary':{'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'source_root':str(ROOT)}}
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('command',choices=['create','plan','run','status','cancel','report','export']);p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--selection');p.add_argument('--experiment');p.add_argument('--max-cells',type=int);p.add_argument('--budget-file');p.add_argument('--dry-run',action='store_true');p.add_argument('--output');a=p.parse_args();s=DevV2Store(a.store)
+    if a.command in {'create','plan'}:value=create(s,a.artifacts,json.loads(Path(a.selection).read_bytes()))
+    elif a.command=='run':value=snapshot(s,a.experiment) if a.dry_run else run(s,a.experiment,max_cells=a.max_cells,budget_file=a.budget_file)
+    elif a.command=='status':value=snapshot(s,a.experiment) if a.experiment else list_experiments(s)
+    elif a.command=='cancel':value=cancel(s,a.experiment)
+    elif a.command=='report':
+        from .dev_report import report
+        value=report(s,a.experiment)
+    else:value=s.export_ledger()
+    text=encoded(value)
+    if a.output:Path(a.output).write_text(text+'\n')
+    else:print(text)
+if __name__=='__main__':main()

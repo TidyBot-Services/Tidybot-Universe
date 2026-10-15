@@ -21,16 +21,19 @@ from .v2_advisor import SimGTGLMAdvisorTransport
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=("robocasa", "robosuite"), required=True)
+    parser.add_argument("--suite", choices=("robocasa", "robosuite", "robocasa365"), required=True)
     parser.add_argument("--task", required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--attention-policy", choices=POLICY_IDS, required=True)
+    parser.add_argument('--attention-control-binding',type=Path)
+    parser.add_argument('--attention-control-binding-sha256')
     parser.add_argument("--code", type=Path, required=True)
     parser.add_argument("--approved-policy-sha256", required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--approved-config-sha256", required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--store-path", type=Path)
+    parser.add_argument("--ui-launch-id", help="bind the created run to a persisted UI launch")
     parser.add_argument("--memory-source-run", type=Path,
                         help="persisted source run whose attempts own trusted Memory evidence")
     parser.add_argument("--approved-memory-source-sha256")
@@ -40,6 +43,8 @@ def main() -> int:
                         help="allow at most one provider HTTP call per Advisor request")
     parser.add_argument("--public-lift-progress-check", action="store_true",
                         help="project public SDK before/after lift evidence after guidance")
+    parser.add_argument("--record-replay", action="store_true",
+                        help="capture public RGB attempt video and initial/final frames")
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--assistance-credits", type=int, default=1)
     parser.add_argument("--token-limit", type=int, default=30000)
@@ -53,6 +58,8 @@ def main() -> int:
                         help="v2.1 chain guard: at most 300 seconds for the whole case")
     parser.add_argument("--policy-config", type=Path)
     parser.add_argument("--approved-policy-config-sha256")
+    parser.add_argument("--run-budget", type=Path, help="approved RoboCasa365 daily run budget")
+    parser.add_argument("--approved-run-budget-sha256")
     parser.add_argument("--expected-entry-sha256",
                         help="UI lock digest; reject if files or selected conditions changed")
     parser.add_argument("--demo-prior", type=Path)
@@ -68,19 +75,43 @@ def main() -> int:
     parser.add_argument("--sim-source-root", type=Path)
     parser.add_argument("--agent-source-root", type=Path)
     parser.add_argument("--task-source-root", type=Path)
+    parser.add_argument("--asset-manifest", type=Path)
     parser.add_argument("--sim-python", type=Path)
     parser.add_argument("--agent-python", type=Path)
+    parser.add_argument("--skill-dag", type=Path, help="frozen operator progress DAG; never sent to policy")
+    parser.add_argument("--skill-dag-sha256")
     args = parser.parse_args()
+    from .attention_control import load_binding
+    control_binding = None
+    if args.attention_control_binding is not None:
+        if args.memory_contract is not None:parser.error('frozen formal runs cannot switch Attention policy')
+        control_binding=load_binding(args.attention_control_binding,args.attention_control_binding_sha256)
+    from .task_dag import load_manifest
+    try:
+        skill_dag = load_manifest(args.skill_dag, args.skill_dag_sha256, suite=args.suite, task_id=args.task,
+                                  policy_sha256=getattr(args, "approved_policy_sha256", None))
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
     if args.memory_contract is not None and (not args.single_glm_call
             or args.attempt_deadline_seconds is None or args.whole_case_wall_seconds is None):
         parser.error("frozen Memory entry requires single GLM call and explicit 120/300-second guards")
     if (args.attempt_deadline_seconds is None) != (args.whole_case_wall_seconds is None):
         parser.error("attempt and whole-case deadlines must be supplied together")
+    daily_budget = None
+    if args.run_budget is not None or args.approved_run_budget_sha256 is not None:
+        if args.suite != "robocasa365":
+            parser.error("daily run budget is only supported for RoboCasa365")
+        from .robocasa365.budget import load_run_budget
+        try:
+            daily_budget = load_run_budget(args.run_budget, args.approved_run_budget_sha256,
+                config_sha256=args.approved_config_sha256, policy_sha256=args.approved_policy_sha256)
+        except (ValueError, OSError, TypeError) as error:
+            parser.error(str(error))
     if args.attempt_deadline_seconds is not None and (
-        not 0 < args.attempt_deadline_seconds <= 120
-        or not 0 < args.whole_case_wall_seconds <= 300
+        not 0 < args.attempt_deadline_seconds <= (daily_budget["attempt_wall_seconds"] if daily_budget else 120)
+        or not 0 < args.whole_case_wall_seconds <= (daily_budget["whole_case_wall_seconds"] if daily_budget else 300)
         or args.whole_case_wall_seconds != args.overall_deadline_seconds
-        or args.max_attempts > 4
+        or args.max_attempts > (daily_budget["max_attempts"] if daily_budget else 4)
     ):
         parser.error("formal attempt/whole-case deadlines disagree with approved limits")
     if (args.memory_source_run is None) != (args.approved_memory_source_sha256 is None):
@@ -119,10 +150,20 @@ def main() -> int:
             parser.error("Dev generation receipt has an invalid hypothesis")
         dev_hypothesis_evidence = {"uri": str(args.dev_generation_artifact.resolve()),
                                    "sha256": hashlib.sha256(receipt_bytes).hexdigest()}
-    if args.suite == "robosuite":
+    if args.suite == "robocasa365":
+        from .robocasa365.formal_runner import RoboCasa365FormalSuiteRunner
+        if any(getattr(args, key) is None for key in ("service_source_root", "sim_source_root", "task_source_root", "sim_python", "asset_manifest")):
+            parser.error("RoboCasa365 requires independent Service root, official roots, isolated Python and asset manifest")
+        if args.attempt_deadline_seconds is None or args.whole_case_wall_seconds is None:
+            parser.error("RoboCasa365 requires explicit frozen attempt/whole-case deadlines")
+        runner = RoboCasa365FormalSuiteRunner(service_source_root=args.service_source_root,
+            sim_source_root=args.sim_source_root, task_source_root=args.task_source_root,
+            sim_python=args.sim_python, asset_manifest=args.asset_manifest, record_replay=args.record_replay)
+    elif args.suite == "robosuite":
         if args.service_source_root is None:
             parser.error("Robosuite formal runner requires --service-source-root")
-        runner = RobosuiteFormalSuiteRunner(service_source_root=args.service_source_root)
+        runner = RobosuiteFormalSuiteRunner(service_source_root=args.service_source_root,
+                                             record_replay=args.record_replay)
     else:
         required = ("sim_source_root", "agent_source_root", "task_source_root",
                     "sim_python", "agent_python")
@@ -133,6 +174,7 @@ def main() -> int:
             agent_source_root=args.agent_source_root,
             task_source_root=args.task_source_root,
             sim_python=args.sim_python, agent_python=args.agent_python,
+            record_replay=args.record_replay,
         )
     try:
         entry_lock, policy_config = inspect_formal_entry(
@@ -149,6 +191,7 @@ def main() -> int:
             approved_policy_config_sha256=args.approved_policy_config_sha256,
             memory_contract=args.memory_contract,
             approved_memory_contract_sha256=args.approved_memory_contract_sha256,
+            run_budget=args.run_budget, approved_run_budget_sha256=args.approved_run_budget_sha256,
         )
         if (args.expected_entry_sha256 is not None
                 and entry_lock["sha256"] != args.expected_entry_sha256):
@@ -171,6 +214,13 @@ def main() -> int:
         json.dumps(entry_lock, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8")
     locked_memory_contract = None
+    locked_run_budget = None
+    if args.run_budget is not None:
+        raw_budget = args.run_budget.read_bytes()
+        if hashlib.sha256(raw_budget).hexdigest() != args.approved_run_budget_sha256:
+            parser.error("run budget changed during entry snapshot")
+        locked_run_budget = lock_dir / "run_budget.json"
+        locked_run_budget.write_bytes(raw_budget)
     if args.memory_contract is not None:
         raw_contract = args.memory_contract.read_bytes()
         if hashlib.sha256(raw_contract).hexdigest() != args.approved_memory_contract_sha256:
@@ -184,6 +234,8 @@ def main() -> int:
         config_path=locked_config, approved_config_sha256=args.approved_config_sha256,
         runner=runner, overall_deadline_seconds=args.overall_deadline_seconds,
         store_path=args.store_path, max_attempts=args.max_attempts,
+        ui_launch_id=args.ui_launch_id, skill_dag=skill_dag,
+        attention_control_binding=control_binding,
         memory_evidence_root=memory_evidence_root,
         assistance_credits=args.assistance_credits, token_limit=args.token_limit,
         assistance_mode=AssistanceMode(args.assistance_mode),
@@ -200,13 +252,14 @@ def main() -> int:
         dev_hypothesis_evidence=dev_hypothesis_evidence,
         advisor_transport=(lambda request: SimGTGLMAdvisorTransport(
             ParccClient(timeout_seconds=request.get("provider_timeout_seconds", 90), max_attempts=1), format_attempts=1,
-            strict_usage=locked_memory_contract is not None,
+            strict_usage=locked_memory_contract is not None or args.suite == "robocasa365",
             response_log_dir=lock_dir / "provider_replies", token_budget_limit=args.token_limit)(request)
             ) if args.single_glm_call else None,
         entry_lock=entry_lock,
         approved_policy_config_sha256=args.approved_policy_config_sha256,
         formal_attempt_deadline_seconds=args.attempt_deadline_seconds,
         formal_run_wall_seconds=args.whole_case_wall_seconds,
+        run_budget=locked_run_budget, approved_run_budget_sha256=args.approved_run_budget_sha256,
     )
     if args.summary_path is not None:
         args.summary_path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n")

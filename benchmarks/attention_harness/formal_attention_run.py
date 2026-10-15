@@ -44,6 +44,8 @@ def run_formal_attention(
     public_lift_progress_check: bool = False,
     formal_attempt_deadline_seconds: float | None = None,
     formal_run_wall_seconds: float | None = None,
+    run_budget: Path | None = None,
+    approved_run_budget_sha256: str | None = None,
     **scheduler_options: Any,
 ) -> dict[str, Any]:
     """Use one approved source/config version for every scheduled attempt."""
@@ -56,6 +58,29 @@ def run_formal_attention(
         artifact_root=artifact_root, overall_deadline_seconds=overall_deadline_seconds,
     )
     template.validate()
+    daily_budget = None
+    if suite != "robocasa365" and (run_budget is not None or approved_run_budget_sha256 is not None):
+        raise ValueError("daily run budget is only supported for RoboCasa365")
+    if suite == "robocasa365":
+        from .robocasa365.budget import load_run_budget, limits_for_budget
+        daily_budget = load_run_budget(run_budget, approved_run_budget_sha256,
+                                       config_sha256=approved_config_sha256, policy_sha256=approved_policy_sha256)
+        limits = limits_for_budget(daily_budget)
+        from .robocasa365.config import _config as robocasa365_config, memory_context as robocasa365_memory_context
+        approved365 = robocasa365_config(template)
+        expected365 = robocasa365_memory_context(approved365)
+        if memory_context is not None and memory_context != expected365:
+            raise ValueError("RoboCasa365 Memory scope differs from frozen robot/controller/task")
+        if (scheduler_options.get("max_attempts", 3) > limits["max_attempts"]
+                or scheduler_options.get("assistance_credits", 1) > limits["assistance_credits"]
+                or scheduler_options.get("token_limit", 30000) > 8000
+                or (daily_budget is not None and scheduler_options.get("human_deadline_seconds", 60) > 30)
+                or formal_attempt_deadline_seconds is None or formal_run_wall_seconds is None):
+            raise ValueError("RoboCasa365 requires frozen attempt/help/token budgets and explicit deadlines")
+        memory_context = expected365
+        scheduler_options["strict_admission_budget"] = True
+        if memory_contract is not None:
+            raise ValueError("RoboCasa365 rejects legacy Memory freeze contracts")
     budget_guard = (formal_attempt_deadline_seconds is not None
                     or formal_run_wall_seconds is not None)
     if budget_guard:
@@ -68,12 +93,12 @@ def run_formal_attention(
                 or isinstance(formal_run_wall_seconds, bool)
                 or not isinstance(formal_run_wall_seconds, (int, float))
                 or not math.isfinite(formal_run_wall_seconds)
-                or not 0 < formal_attempt_deadline_seconds <= 120
-                or not 0 < formal_run_wall_seconds <= 300
+                or not 0 < formal_attempt_deadline_seconds <= (daily_budget["attempt_wall_seconds"] if daily_budget else 120)
+                or not 0 < formal_run_wall_seconds <= (daily_budget["whole_case_wall_seconds"] if daily_budget else 300)
                 or formal_run_wall_seconds != overall_deadline_seconds
                 or isinstance(max_attempts, bool)
                 or not isinstance(max_attempts, int)
-                or not 1 <= max_attempts <= 4):
+                or not 1 <= max_attempts <= (daily_budget["max_attempts"] if daily_budget else 4)):
             raise ValueError("formal Attention requires 120/300-second budget guard")
     case_deadline = (time.monotonic() + formal_run_wall_seconds
                      if budget_guard else None)
@@ -92,6 +117,8 @@ def run_formal_attention(
                     "overall_deadline_seconds": float(overall_deadline_seconds),
                     "approved_demo_sha256": scheduler_options.get("approved_demo_sha256"),
                     "approved_policy_config_sha256": approved_policy_config_sha256}
+        if approved_run_budget_sha256 is not None:
+            expected["approved_run_budget_sha256"] = approved_run_budget_sha256
         if memory_contract is not None or approved_memory_contract_sha256 is not None:
             expected["approved_memory_contract_sha256"] = approved_memory_contract_sha256
             expected["memory_contract_content_sha256"] = hashlib.sha256(json.dumps(
@@ -124,6 +151,18 @@ def run_formal_attention(
                                       or not dev_hypothesis.strip()
                                       or len(dev_hypothesis) > 2000):
         raise ValueError("Dev hypothesis must be nonempty text of at most 2000 characters")
+    approved_sim_config = json.loads(config_path.read_text(encoding="utf-8"))
+    robot_configuration = None
+    if suite == 'robocasa365':
+        robot_configuration = {'robot': {'model': 'OpenArm' if approved_sim_config['robot']=='OpenArm365' else approved_sim_config['robot'], 'execution_arm': approved_sim_config.get('execution_arm','right')},
+            'actual_robot_model': approved_sim_config['robot'], 'config_sha256': approved_config_sha256, 'controller': approved_sim_config['controller'],
+            'base': ({'model':'Tidyverse','capability':'mujoco_joint_driven_planar_base'} if approved_sim_config['robot']=='OpenArm365' else {'model': 'Omron', 'capability': 'official_hybrid_mobile_base'})}
+    if suite=='robosuite' and scheduler_options.get('attention_control_binding'):
+        robot_configuration=scheduler_options['attention_control_binding'].get('robot_configuration')
+    if suite == "robocasa" and ("robot" in approved_sim_config or
+            approved_sim_config.get("schema_version") == "attentionbench.robocasa-formal-config.v3"):
+        from .robocasa_native.robot_config import robot_run_configuration
+        robot_configuration = robot_run_configuration(approved_sim_config,approved_config_sha256)
     scheduler_config = {
         "suite": suite, "task_id": task_id, "seed": seed,
         "attention_policy": policy_id, "policy_sha256": approved_policy_sha256,
@@ -142,6 +181,11 @@ def run_formal_attention(
         "formal_run_wall_seconds": formal_run_wall_seconds,
         "entry_sha256": entry_lock["sha256"] if entry_lock else None,
     }
+    if robot_configuration is not None:
+        scheduler_config["robot_configuration"] = robot_configuration
+    if daily_budget is not None:
+        scheduler_config["run_budget"] = daily_budget
+        scheduler_config["approved_run_budget_sha256"] = approved_run_budget_sha256
     scheduler_config_sha256 = hashlib.sha256(json.dumps(
         scheduler_config, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
     ).encode()).hexdigest()
@@ -149,6 +193,8 @@ def run_formal_attention(
         approved = json.loads(config_path.read_text(encoding="utf-8"))
         required = {"suite", "task_id", "perception_mode", "scene_id", "object_set_id",
                     "camera_config_id", "task_variant_id", "camera_names", "task_prompt"}
+        if suite == "robocasa365":
+            required |= {"benchmark", "robot", "controller"}
         if (not isinstance(memory_context, dict) or set(memory_context) != required
                 or memory_context["suite"] != suite or memory_context["task_id"] != task_id
                 or memory_context["perception_mode"] != "sim_gt"
@@ -181,15 +227,24 @@ def run_formal_attention(
                 raise TimeoutError("whole-case wall deadline leaves no safe attempt window")
             attempt_deadline = min(formal_attempt_deadline_seconds, remaining)
         run_id = attempt["attention_run_id"]
+        if scheduler_options.get('attention_control_binding'):
+            from .attention_control import AttentionControl
+            control = AttentionControl(AttentionStore(attempt['store_path']))
+            def attention_boundary(event):
+                control.boundary(run_id, boundary_id=f"sdk:{attempt['attention_attempt_index']}:{event.get('sequence', event.get('event_id'))}",
+                    kind='sdk_action_completed',now=time.time(),unresolved_hint=control.unresolved_hint(run_id),
+                    trace_seconds=event.get('timestamp'),attempt_id=f"attempt:{run_id.removeprefix('run:')}:{attempt['attention_attempt_index']}")
+            runner.attention_boundary_hook = attention_boundary
         index = attempt["attention_attempt_index"]
         attempt_id = f"attempt:{run_id.removeprefix('run:')}:{index}"
         attention_input = public_attention_input(attempt["attention_input"])
         gateway = attempt["memory_gateway"]
-        if isinstance(gateway, MemoryServiceClient):
-            health = gateway.health()
+        client_gateway = gateway.gateway if suite == "robocasa365" else gateway
+        if isinstance(client_gateway, MemoryServiceClient):
+            health = client_gateway.health()
             if (health.get("schema_version") != "attentionbench.memory-service.v2"
                     or "attempt_bound_use_grants" not in health.get("capabilities", [])
-                    or gateway.store_id() != memory_store_id(attempt["store_path"])):
+                    or client_gateway.store_id() != memory_store_id(attempt["store_path"])):
                 raise RuntimeError("formal Memory Service schema or store identity mismatch")
         # Hint-only has no Memory read path, including the availability probe.
         available = (gateway.retrieve(memory_context, now=time.time())
@@ -221,8 +276,13 @@ def run_formal_attention(
         stop_poll = threading.Event()
 
         def watch_interrupt() -> None:
+            next_control_check=0
             while not stop_poll.wait(0.05):
+                if scheduler_options.get('attention_control_binding') and time.monotonic()>=next_control_check:
+                    control.expire(run_id,now=time.time())
+                    next_control_check=time.monotonic()+0.5
                 if attempt["interrupt_check"]():
+                    cancel.operator_action=(AttentionStore(attempt["store_path"]).interrupt_status(run_id) or {}).get("operator_action","stop")
                     cancel.set()
                     return
 
@@ -298,6 +358,7 @@ def run_formal_attention(
             code_path=policy_code_path, code_sha256=approved_policy_sha256,
             hypothesis=dev_hypothesis.strip() if dev_hypothesis else "",
             runtime={"perception_mode": "sim_gt", "score_namespace": "v2/gt_perception_attentionbench",
+                     **({"robot_configuration": robot_configuration} if robot_configuration else {}),
                      "runner_boundary": "formal", "policy_sha256": approved_policy_sha256,
                      "config_sha256": approved_config_sha256,
                      "scheduler_config_sha256": scheduler_config_sha256,
@@ -343,6 +404,7 @@ def run_formal_attention(
         suite=suite, task_id=task_id, seed=seed, artifact_root=artifact_root,
         policy_id=policy_id, attempt_executor=execute,
         runner_boundary_mode="formal",
+        robot_configuration=robot_configuration,
         attempt_budget_seconds=(formal_attempt_deadline_seconds if budget_guard
                                 else overall_deadline_seconds),
         total_execution_seconds=formal_run_wall_seconds,

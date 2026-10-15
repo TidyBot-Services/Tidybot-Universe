@@ -21,6 +21,11 @@ _OPERATIONS = {
     "arm": {"move_delta", "move_to_position", "plan_to_position"},
     "gripper": {"open", "close"},
     "base": {"move_delta"},
+    "left_arm": {"move_to_position", "plan_to_position", "move_joints"},
+    "right_arm": {"move_to_position", "plan_to_position", "move_joints"},
+    "left_gripper": {"open", "close", "grasp"},
+    "right_gripper": {"open", "close", "grasp"},
+    "bimanual": {"state", "move_joints", "begin_handoff", "handoff", "stop", "cancel", "reset"},
 }
 
 
@@ -31,6 +36,7 @@ class FormalPolicyOutcome:
     error: str | None
     elapsed_seconds: float
     process_exit_code: int | None
+    memory_limit_mb: int = 512
 
 
 def _bwrap_prefix(worker_path: Path | None = None) -> list[str]:
@@ -108,7 +114,10 @@ def _json_safe(value: Any) -> Any:
 def execute_formal_policy(*, code: str, sdk: Any, context: dict[str, Any],
                           deadline: float, stderr_path: Path,
                           cancel_check: Callable[[], bool] | None = None,
-                          max_sdk_calls: int = 200) -> FormalPolicyOutcome:
+                          max_sdk_calls: int = 200,
+                          memory_limit_mb: int = 512) -> FormalPolicyOutcome:
+    if type(memory_limit_mb) is not int or memory_limit_mb not in (512, 2048):
+        raise ValueError("formal policy memory limit must be 512 or 2048 MiB")
     if type(max_sdk_calls) is not int or not 1 <= max_sdk_calls <= 200:
         raise ValueError("formal SDK call limit must be 1–200")
     validate_generated_policy(code)
@@ -118,7 +127,7 @@ def execute_formal_policy(*, code: str, sdk: Any, context: dict[str, Any],
     calls = 0
     with stderr_path.open("wb") as stderr_file:
         process = subprocess.Popen(
-            _bwrap_prefix(worker) + ["/usr/bin/python3", "-I", "/worker/worker.py"],
+            _bwrap_prefix(worker) + ["/usr/bin/python3", "-I", "/worker/worker.py", str(memory_limit_mb)],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=stderr_file,
         )
         assert process.stdin is not None and process.stdout is not None
@@ -180,9 +189,9 @@ def execute_formal_policy(*, code: str, sdk: Any, context: dict[str, Any],
                         # ActionResult can carry evaluator-adjacent service info.
                         # Policy code only needs completion, never that object.
                         value = (_json_safe(result)
-                                 if group == "arm" and operation == "plan_to_position"
-                                 else None if group in {"arm", "gripper", "base"}
-                                 else _json_safe(result))
+                                 if group in {"arm", "left_arm", "right_arm"} and operation == "plan_to_position"
+                                 else None if group in {"arm", "gripper", "base", "left_arm", "right_arm", "left_gripper", "right_gripper"}
+                                 else (_json_safe(result) if group != "bimanual" or operation == "state" else None))
                         response = {"ok": True, "value": value}
                     except Exception as exc:
                         response = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:1000]}
@@ -218,4 +227,4 @@ def execute_formal_policy(*, code: str, sdk: Any, context: dict[str, Any],
     if status == "completed" and process.returncode != 0:
         status, error = "failed", f"policy worker exited with code {process.returncode}"
     return FormalPolicyOutcome(status, calls, error, time.monotonic() - started,
-                               process.returncode)
+                               process.returncode, memory_limit_mb)

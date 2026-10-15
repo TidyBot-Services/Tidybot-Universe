@@ -34,7 +34,7 @@ def build_eval_packet(artifact: Path) -> dict[str, Any]:
         raise ValueError("Eval requires a persisted v2 Attention run")
     if (run.get("artifact_dir") != str(run_dir)
             or run.get("formal_eligible") is not False
-            or run.get("suite") not in {"robocasa", "robosuite"}
+            or run.get("suite") not in {"robocasa", "robosuite", "robocasa365"}
             or not isinstance(run.get("attempts"), list)
             or not 0 < len(run["attempts"]) <= 10):
         raise ValueError("Eval run identity or attempt count mismatch")
@@ -90,8 +90,41 @@ def build_eval_packet(artifact: Path) -> dict[str, Any]:
         "generated_policy_sha256": (run.get("generated_policy") or {}).get("sha256"),
         "attempts": attempts,
     }
-    if len(json.dumps(packet, ensure_ascii=False)) > 12_000:
-        raise ValueError("Eval evidence packet exceeds size limit")
+    return _bounded_packet(packet)
+
+
+def _bounded_packet(packet: dict[str, Any]) -> dict[str, Any]:
+    """Compact only after every artifact and native verdict has been verified.
+
+    Keep all attempt identities/digests and a citeable native event. Omitted
+    detail is explicitly counted; the original hashed artifacts remain intact.
+    The existing 12K bound is enforced, including unusually large identities.
+    """
+    size = lambda: len(json.dumps(packet, ensure_ascii=False))
+    if size() <= 12_000:
+        return packet
+    for attempt in packet['attempts']:
+        events = attempt['events']
+        selected = []
+        first_failure = next((event for event in events if event.get('error') or event.get('status') in {'failed', 'timeout', 'cancelled'}), None)
+        for event in ([first_failure] if first_failure else events[:1]) + [event for event in events if event.get('event_id') in {'formal-native-result', 'action-log'}]:
+            if event not in selected:
+                selected.append({**event, **({'error': str(event['error'])[:128]} if event.get('error') else {})})
+        attempt['events'] = selected
+        attempt['event_projection'] = {'available': len(events), 'shown': len(selected), 'omitted': len(events) - len(selected)}
+        stop = attempt.get('sandbox_service_stop')
+        if isinstance(stop, dict):
+            attempt['sandbox_service_stop'] = {key: stop[key] for key in ('reason', 'leader_reaped', 'process_group_gone', 'services') if key in stop}
+            if isinstance(stop.get('services'), dict):
+                attempt['sandbox_service_stop']['services'] = {name: {key: item.get(key) for key in ('leader_reaped', 'process_group_gone')} for name, item in stop['services'].items()}
+    packet['evidence_projection'] = 'bounded_events_after_full_artifact_validation'
+    if size() > 12_000:
+        for attempt in packet['attempts']:
+            for event in attempt['events']:
+                if 'error' in event:
+                    event.pop('error'); event['error_detail_omitted'] = True
+    if size() > 12_000:
+        raise ValueError('Eval evidence packet exceeds size limit')
     return packet
 
 

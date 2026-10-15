@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+printf '%s\n' 'V2-only: historical unverified comparison launcher is disabled; use the authenticated main V2 entry.' >&2
+exit 2
 # Launch curobo_service v1 (cuRobo 0.7.8) on port 7000.
 #
 # Reads the v1 service from /home/truares/文档/curobo_service and runs it under

@@ -111,7 +111,7 @@ def test_failed_episode_persists_linked_raw_and_advisor_traces(
     assert len(AttentionStore(episode_dir / "attention.sqlite3").events()) == event_count
 
 
-def test_successful_episode_keeps_raw_trace_without_advisor_packet(
+def test_successful_episode_keeps_raw_trace_and_authorized_control_projection(
     tmp_path: Path,
 ) -> None:
     episode_dir = _episode_dir(tmp_path, "cube_lift-seed101-success")
@@ -132,7 +132,7 @@ def test_successful_episode_keeps_raw_trace_without_advisor_packet(
 
     store = AttentionStore(episode_dir / "attention.sqlite3")
     assert store.get_raw_trace(link["raw_trace_id"]) is not None
-    assert link["advisor_trace_id"] is None
+    assert store.get_trace(link["advisor_trace_id"])["execution_id"] == link["execution_id"]
     assert store.get_run(link["run_id"])["status"] == "completed"
 
 

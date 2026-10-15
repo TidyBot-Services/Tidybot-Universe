@@ -1,12 +1,14 @@
 """RoboCasa formal-attempt adapter. Formal score eligibility is a separate gate."""
 
 from __future__ import annotations
+from benchmarks.attention_harness.attention_control import boundary_event_sink
 
 import hashlib
 import json
 import math
 import threading
 import time
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Callable
 
@@ -25,7 +27,7 @@ from .mobile_sdk import RobocasaMobileSDK
 from .policy_sandbox import validate_generated_policy
 from ..service_recovery import service_stop_confirmed
 from ..public_station import publish_public_station, save_public_frame
-from ..ui_media import robocasa_camera_frame
+from ..ui_media import AttemptCameraRecording, robocasa_camera_frame, robocasa_human_rgb, rgb_jpeg
 from .safety_monitor import SafetyMonitorBackend
 from .tasks import get_robocasa_task
 
@@ -45,6 +47,18 @@ def _config(request: FormalRunRequest) -> dict[str, Any]:
         raise ValueError("RoboCasa formal runner requires an approved config file")
     request.validate()
     value = json.loads(request.config_path.read_text(encoding="utf-8"))
+    from openarm_bimanual.v2_config import SCHEMA as V2_BIMANUAL_SCHEMA, validate_config as validate_v2_bimanual
+    if isinstance(value,dict) and value.get('schema_version')==V2_BIMANUAL_SCHEMA:
+        return validate_v2_bimanual(request,value)
+    from openarm_bimanual.config import SCHEMA as BIMANUAL_SCHEMA, validate_config as validate_bimanual
+    if isinstance(value,dict) and value.get("schema_version")==BIMANUAL_SCHEMA:
+        return validate_bimanual(request,value)
+    from openarm_mobile.config import SCHEMA as MOBILE_SCHEMA, validate_config as validate_mobile
+    if isinstance(value,dict) and value.get('schema_version')==MOBILE_SCHEMA:
+        return validate_mobile(request,value)
+    from .openarm_config import SCHEMA, validate_config
+    if isinstance(value, dict) and value.get("schema_version") == SCHEMA:
+        return validate_config(request, value)
     required = {
         "schema_version", "suite", "task_id", "seed", "perception_mode",
         "scene_id", "object_set_id", "camera_names", "task_prompt",
@@ -118,7 +132,8 @@ class RobocasaFormalSuiteRunner:
                  task_source_root: Path,
                  sim_python: Path, agent_python: Path,
                  cancel_event: threading.Event | None = None,
-                 policy_start_hook: Callable[[], None] | None = None) -> None:
+                 policy_start_hook: Callable[[], None] | None = None,
+                 record_replay: bool = False) -> None:
         self.sim_source_root = sim_source_root
         self.agent_source_root = agent_source_root
         self.task_source_root = task_source_root
@@ -126,6 +141,7 @@ class RobocasaFormalSuiteRunner:
         self.agent_python = agent_python
         self.cancel_event = cancel_event
         self.policy_start_hook = policy_start_hook
+        self.record_replay = record_replay
 
     def execute(self, request: FormalRunRequest) -> dict[str, Any]:
         request.validate()
@@ -133,6 +149,36 @@ class RobocasaFormalSuiteRunner:
             raise ValueError("formal suite request is not RoboCasa")
         validate_seed(request.seed, allow_heldout=False)
         config = _config(request)
+        from openarm_bimanual.v2_config import SCHEMA as V2_BIMANUAL_SCHEMA
+        if config.get('schema_version')==V2_BIMANUAL_SCHEMA:
+            from openarm_bimanual.v2_runner import V2BimanualOpenArmFormalSuiteRunner
+            routed=V2BimanualOpenArmFormalSuiteRunner(sim_python=self.sim_python,task_source_root=self.task_source_root,
+                cancel_event=self.cancel_event,policy_start_hook=self.policy_start_hook,record_replay=self.record_replay)
+            routed.attention_boundary_hook=getattr(self,'attention_boundary_hook',None)
+            return routed.execute(request)
+        from openarm_bimanual.config import SCHEMA as BIMANUAL_SCHEMA
+        if config.get('schema_version')==BIMANUAL_SCHEMA:
+            from openarm_bimanual.runner import BimanualOpenArmFormalSuiteRunner
+            routed = BimanualOpenArmFormalSuiteRunner(sim_python=self.sim_python,task_source_root=self.task_source_root,
+                cancel_event=self.cancel_event,policy_start_hook=self.policy_start_hook,record_replay=self.record_replay)
+            routed.attention_boundary_hook=getattr(self,'attention_boundary_hook',None)
+            return routed.execute(request)
+        from openarm_mobile.config import SCHEMA as MOBILE_SCHEMA
+        if config.get('schema_version')==MOBILE_SCHEMA:
+            from openarm_mobile.runner import MobileOpenArmFormalSuiteRunner
+            routed = MobileOpenArmFormalSuiteRunner(sim_python=self.sim_python,task_source_root=self.task_source_root,
+                cancel_event=self.cancel_event,policy_start_hook=self.policy_start_hook,
+                record_replay=self.record_replay)
+            routed.attention_boundary_hook=getattr(self,'attention_boundary_hook',None)
+            return routed.execute(request)
+        from .openarm_config import SCHEMA
+        if config.get("schema_version") == SCHEMA:
+            from .openarm_runner import OpenArmFormalSuiteRunner
+            routed = OpenArmFormalSuiteRunner(sim_python=self.sim_python, task_source_root=self.task_source_root,
+                cancel_event=self.cancel_event, policy_start_hook=self.policy_start_hook,
+                record_replay=self.record_replay)
+            routed.attention_boundary_hook=getattr(self,'attention_boundary_hook',None)
+            return routed.execute(request)
         code = request.policy_code_path.read_text(encoding="utf-8")
         validate_generated_policy(code)
         started = time.monotonic()
@@ -153,6 +199,7 @@ class RobocasaFormalSuiteRunner:
             expected_task=config["task_source"], expected_runtime=config["sim_runtime"],
             port_offset=config["port_offset"], log_dir=episode_dir,
             deadline=deadline, cancel_event=self.cancel_event,
+            human_camera=bool(self.record_replay and request.run_id and request.attempt_id),
         )
         sdk_trace: list[dict[str, Any]] = []
         monitor: SafetyMonitorBackend | None = None
@@ -167,8 +214,9 @@ class RobocasaFormalSuiteRunner:
         final_sha: str | None = None
         camera_attestation: list[str] | None = None
         language_attestation: str | None = None
+        recording: AttemptCameraRecording | None = None
         try:
-            with services:
+            with services, ExitStack() as camera_context:
                 client = RobocasaSimClient(request.task_id, base_url=services.sim_url)
                 client.assert_task()
                 action = AgentServerActionBackend(
@@ -201,27 +249,47 @@ class RobocasaFormalSuiteRunner:
                     raise RuntimeError("native success was true immediately after reset")
                 if request.run_id and request.attempt_id:
                     camera_origin = f"ws://127.0.0.1:{5580 + config['port_offset']}"
+                    human_origin = services.human_camera_url
                     publish_public_station(
                         run_dir=request.artifact_root.parent, run_id=request.run_id,
                         attempt_id=request.attempt_id, suite=self.suite,
-                        origin=camera_origin, device_id="maniskill_base",
+                        origin=human_origin or camera_origin,
+                        device_id="human_base_camera" if human_origin else "maniskill_base",
+                        camera_transport="robocasa_human_http" if human_origin else None,
                     )
                     try:
                         save_public_frame(request.artifact_root.parent, suite=self.suite,
-                                          frame=robocasa_camera_frame(camera_origin))
+                                          frame=(rgb_jpeg(robocasa_human_rgb(human_origin)[0]) if human_origin
+                                                 else robocasa_camera_frame(camera_origin)))
                     except Exception:
                         pass  # Camera errors are visible through the UI; native execution proceeds.
+                if self.record_replay:
+                    camera_origin = f"ws://127.0.0.1:{5580 + config['port_offset']}"
+                    recording = camera_context.enter_context(AttemptCameraRecording(
+                        episode_dir, lambda: robocasa_camera_frame(camera_origin, max_wait_seconds=2),
+                        run_dir=request.artifact_root.parent if request.run_id else None,
+                        suite=self.suite, defer_encoding=True,
+                        fetch_rgb=(lambda: robocasa_human_rgb(services.human_camera_url))
+                            if services.human_camera_url else None,
+                        run_id=request.run_id, attempt_id=request.attempt_id,
+                    ))
                 monitor = SafetyMonitorBackend(
                     action, **config["safety_limits"],
                     interrupt_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
                 )
+                def trace_clock() -> float:
+                    now = time.monotonic()
+                    if recording is not None:
+                        recording.bind_trace_origin(now)
+                    return now
+
                 sdk = RobocasaMobileSDK(
                     ModeBoundPerceptionBackend(
                         monitor, mode="sim_gt", target="robocasa_sim",
                         provider=RobocasaGTPerception(
                             client, fixed_camera_names=config["camera_names"],
                         ),
-                    ), action_backend=monitor, event_sink=sdk_trace.append,
+                    ), action_backend=monitor, event_sink=boundary_event_sink(self,sdk_trace), clock=trace_clock,
                 )
                 monitor.observe()
                 initial = sdk.sensors.get_observation()
@@ -256,6 +324,8 @@ class RobocasaFormalSuiteRunner:
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             status = "timeout" if time.monotonic() >= deadline else "failed"
+        if recording is not None:
+            recording.finalize()  # Encoding must not prolong the native Service lifetime.
         stop = services.stop_receipt
         if stop is not None and stop["reason"] == "episode_deadline":
             status, error = "timeout", error or "dedicated RoboCasa Services stopped at episode deadline"

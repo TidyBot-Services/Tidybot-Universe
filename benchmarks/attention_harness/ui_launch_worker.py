@@ -11,6 +11,12 @@ from pathlib import Path
 from .core.store import AttentionStore
 
 
+def diagnostic_enabled(summary):
+    budget = (summary.get("scheduler_config") or {}).get("run_budget") or {}
+    return not (budget.get("schema_version") == "attentionbench.openarm365-run-budget.v1"
+                and budget.get("token_limit") == 0)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store-path", type=Path, required=True)
@@ -38,7 +44,7 @@ def main() -> int:
             reason = f"invalid runner summary: {error}"[:300]
     if summary is None and reason is None:
         reason = f"runner exited {exit_code} without a formal run summary"
-    if summary is not None:
+    if summary is not None and diagnostic_enabled(summary):
         artifact = Path(summary["artifact_dir"]) / "attention_run.json"
         eval_dir = Path(__file__).resolve().parents[2] / "skill-agent-setup" / "claude-code"
         if str(eval_dir) not in sys.path:

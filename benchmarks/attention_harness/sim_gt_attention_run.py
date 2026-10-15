@@ -43,6 +43,10 @@ def run_sim_gt_attention(
     policy_id: str, attempt_executor: AttemptExecutor, max_attempts: int = 3,
     assistance_credits: int = 1, token_limit: int = 30_000,
     store_path: Path | None = None,
+    ui_launch_id: str | None = None,
+    skill_dag: dict[str, Any] | None = None,
+    robot_configuration: dict[str, Any] | None = None,
+    attention_control_binding: dict[str, Any] | None = None,
     policy_config: dict[str, int] | None = None,
     demo_prior: str | None = None,
     approved_demo_sha256: str | None = None,
@@ -72,7 +76,7 @@ def run_sim_gt_attention(
     A demo is an approved, hashed pre-task public SDK artifact manifest.
     Approval is fail-closed unless an external human decision callback exists.
     """
-    if suite not in {"robocasa", "robosuite"}:
+    if suite not in {"robocasa", "robosuite", "robocasa365"}:
         raise ValueError("unsupported sim_gt suite")
     if runner_boundary_mode not in {"trusted_dev", "generated_sandbox", "formal"}:
         raise ValueError("unsupported runner boundary")
@@ -154,6 +158,9 @@ def run_sim_gt_attention(
         random_plan["sha256"] = hashlib.sha256(
             (run_dir / "random_preregistration.json").read_bytes()).hexdigest()
     unified_run_id = f"run:{run_dir.name}"
+    if skill_dag is not None:
+        from .task_dag import validate_dag
+        skill_dag = validate_dag(skill_dag, suite=suite, task_id=task_id)
     store_path = store_path or run_dir / "attention.sqlite3"
     control_store = AttentionStore(store_path)
     control_store.create_run(RunRecord(
@@ -170,8 +177,26 @@ def run_sim_gt_attention(
                                 execution_seconds=(float(total_execution_seconds)
                                                    if total_execution_seconds is not None
                                                    else float(attempt_budget_seconds) * max_attempts)),
-        created_at=clock(),
+        created_at=clock(), robot_configuration=robot_configuration,
     ))
+    from .attention_control import AttentionControl
+    controller = AttentionControl(control_store)
+    if attention_control_binding is not None:
+        controller.bind(unified_run_id, attention_control_binding)
+    policy_cache = {policy_id: policy}
+    def sync_policy(kind, boundary_id):
+        nonlocal policy
+        if attention_control_binding is None:return
+        state = controller.boundary(unified_run_id, boundary_id=boundary_id,
+            kind=kind, now=clock(), unresolved_hint=controller.unresolved_hint(unified_run_id))
+        active_id = state['active_policy']
+        if active_id not in policy_cache:policy_cache[active_id] = build_policy(active_id, **config)
+        policy = policy_cache[active_id]
+    if ui_launch_id is not None:
+        control_store.bind_launch_run(ui_launch_id, unified_run_id)
+    control_store.record_task_plan(unified_run_id, max_attempts=max_attempts)
+    if skill_dag is not None:
+        control_store.bind_task_dag(unified_run_id, skill_dag)
     control_store.transition_run(unified_run_id, RunStatus.RUNNING,
                                  event_key=f"start:{unified_run_id}")
     interrupted = lambda: (control_store.interrupt_status(unified_run_id) or {}).get("state") == "requested"
@@ -188,6 +213,11 @@ def run_sim_gt_attention(
     memory_gateway = memory_gateway or MemoryService(
         AttentionStore(store_path), artifact_root=memory_artifact_root,
     )
+    if suite == "robocasa365":
+        from .robocasa365.memory import ScopedMemoryGateway
+        if memory_applicability_context is None:
+            raise ValueError("RoboCasa365 requires robot/controller-bound Memory scope")
+        memory_gateway = ScopedMemoryGateway(memory_gateway, memory_applicability_context)
     attempts: list[dict[str, Any]] = []
     decisions: list[dict[str, Any]] = []
     requests: list[dict[str, Any]] = []
@@ -209,6 +239,7 @@ def run_sim_gt_attention(
             decisions.append({"before_attempt": 0, "action": "use_demo", "reason": initial.reason,
                               "demo_manifest_sha256": demo_receipt["manifest_sha256"]})
     for index in range(max_attempts):
+        sync_policy('attention_decision', f'before-attempt:{index}')
         if wall_expired():
             stopped_reason = "whole_case_deadline"
             break
@@ -224,6 +255,7 @@ def run_sim_gt_attention(
             )
             stopped_reason = "resource_blocked"
             break
+        control_store.record_executor_dispatch(unified_run_id, index=index, started_at=clock())
         try:
             result = attempt_executor(
                 artifact_root=run_dir / "attempts", store_path=store_path,
@@ -241,6 +273,7 @@ def run_sim_gt_attention(
                 interrupt_check=lambda: interrupted() or wall_expired(),
             )
         except Exception as exc:
+            control_store.record_executor_completed(unified_run_id, index=index, ended_at=clock(), sdk_motion_commands=None)
             reason = f"{type(exc).__name__}: {exc}"[:300]
             control_store.record_work_failure(
                 unified_run_id, work_id=f"trial:{unified_run_id}:{index}",
@@ -265,6 +298,13 @@ def run_sim_gt_attention(
             control_store.transition_run(unified_run_id, RunStatus.FAILED,
                                          event_key=f"finish:{unified_run_id}")
             raise RuntimeError("formal attempt evidence identity mismatch")
+        raw_link = result.get('attention_trace', {}).get('raw_trace_id')
+        raw_audit = control_store.get_raw_trace(raw_link) if raw_link else None
+        motion_count = None
+        if raw_audit and raw_audit.get('run_id') == unified_run_id:
+            from .ui_observability import MOTION_EVENT_TYPES
+            motion_count = sum(event.get('event_type') in MOTION_EVENT_TYPES for event in raw_audit.get('events', []))
+        control_store.record_executor_completed(unified_run_id, index=index, ended_at=clock(), sdk_motion_commands=motion_count)
         attempts.append(result)
         if pending_execution_link is not None:
             store = AttentionStore(store_path)
@@ -316,6 +356,8 @@ def run_sim_gt_attention(
                 stopped_reason = "unsafe_final_attempt"
             elif signals.get("approval_required"):
                 stopped_reason = "approval_required_final_attempt"
+            else:
+                stopped_reason = "max_attempts"
             break
         link = result["attention_trace"]
         store = AttentionStore(store_path)
@@ -348,6 +390,7 @@ def run_sim_gt_attention(
                 all(memory.applicability.get(key) == expected_scope.get(key)
                     for key in ("suite", "task_id", "perception_mode"))):
                 trusted_memory_ids.append(memory_id)
+        sync_policy('attention_decision', f'after-attempt:{index}')
         decision = policy.decide(PolicyContext(
             run_id=link["run_id"], attempt_index=index,
             failure_index=index, consecutive_failures=index + 1,
@@ -361,6 +404,8 @@ def run_sim_gt_attention(
         ))
         decisions.append({
             "after_attempt": index, "action": decision.action.value,
+            "effective_attention_policy": policy.policy_id,
+            "attention_generation": controller.snapshot(unified_run_id)['generation'] if attention_control_binding else 0,
             "reason": decision.reason,
             "request_type": decision.request_type.value if decision.request_type else None,
             "priority": decision.priority.value if decision.priority else None,
@@ -423,6 +468,8 @@ def run_sim_gt_attention(
                 sleeper=sleeper,
             ), clock=clock)
             runtime.open_request(request)
+            if assistance_mode is AssistanceMode.LIVE_HUMAN_FIRST:
+                store.begin_waiting_window(request.request_id, started_at=clock())
             try:
                 if assistance_mode is AssistanceMode.BENCHMARK_PROXY:
                     answered = runtime.resolve_benchmark_proxy(request.request_id)
@@ -438,6 +485,7 @@ def run_sim_gt_attention(
                     )
                     monotonic_limit = monotonic() + human_deadline_seconds + 1.0
                     while True:
+                        sync_policy('human_wait', f'human-wait:{request.request_id}')
                         if interrupted():
                             runtime.cancel(request.request_id)
                             stopped_reason = "emergency_interrupt"
@@ -457,6 +505,7 @@ def run_sim_gt_attention(
                             answered = runtime.handle_deadline(request.request_id)
                             break
                         sleeper(min(0.25, max(0.0, request.deadline_at - clock())))
+                    store.end_waiting_window(request.request_id, ended_at=clock())
                     if stopped_reason in {"emergency_interrupt", "human_request_cancelled",
                                           "human_deadline_clock_stalled"}:
                         break
@@ -477,11 +526,17 @@ def run_sim_gt_attention(
                     request_row["advice"] = advice.artifact()
                 requests.append(request_row)
                 if decision.request_type is RequestType.HINT:
-                    attention_input["advisor_guidance"] = (
-                        advice.guidance if advice is not None else response["content"]
-                    )
+                    guidance = advice.guidance if advice is not None else response["content"]
+                    compilation = None
+                    if responder == "human":
+                        from .hint_compilation import prepare_human_guidance
+                        compilation = prepare_human_guidance(guidance, suite=suite, task_id=task_id, robot=(robot_configuration or {}).get("robot"),guidance_scope=response.get("guidance_scope"))
+                        guidance = compilation["compiled"]
+                        request_row["guidance_compilation"] = compilation
+                    attention_input["advisor_guidance"] = guidance
+                    if response.get("guidance_scope"):attention_input["guidance_scope"]=response["guidance_scope"]
                     store.record_response_use(request.request_id, response_id=answered.response_id,
-                                              use="guidance")
+                                              use="guidance", guidance_compilation=compilation)
                     pending_execution_link = request.request_id
                     raw = store.get_raw_trace(link["raw_trace_id"])
                     if advice is not None and raw and raw["outcome"].get("evaluator_authoritative") is True:
@@ -505,6 +560,10 @@ def run_sim_gt_attention(
                     attention_input["approval_granted"] = True
                     pending_execution_link = request.request_id
             except Exception as exc:
+                if assistance_mode is AssistanceMode.LIVE_HUMAN_FIRST:
+                    window = store.waiting_windows(unified_run_id).get(request.request_id)
+                    if window and window['ended_at'] is None:
+                        store.end_waiting_window(request.request_id, ended_at=clock())
                 rejected_path = run_dir / "advisor_rejections" / f"{index}.json"
                 if rejected_path.is_file():
                     rejected = json.loads(rejected_path.read_bytes())
@@ -558,6 +617,8 @@ def run_sim_gt_attention(
             attempt_id=attempt_id, service_stop=stop,
             service_receipt_sha256=receipt_sha,
         )
+    if attention_control_binding is not None:
+        controller.boundary(unified_run_id,boundary_id='run-ended',kind='run_ended',now=clock())
     control_store.transition_run(
         unified_run_id,
         RunStatus.CANCELLED if stopped_reason == "emergency_interrupt"
@@ -567,6 +628,7 @@ def run_sim_gt_attention(
     )
     summary = {
         "schema_version": "attentionbench.sim-gt-attention-run.v1",
+        "attention_control": controller.snapshot(unified_run_id) if attention_control_binding else None,
         "suite": suite, "task_id": task_id, "seed": seed, "policy_id": policy_id,
         "assistance_mode": assistance_mode.value,
         "policy_config": config, "perception_mode": "sim_gt",

@@ -562,3 +562,19 @@ def test_robocasa_camera_bridge_exposes_only_selected_color_stream(monkeypatch) 
     assert robocasa_camera_frame("ws://127.0.0.1:5580") == jpeg
     with pytest.raises(ValueError, match="unsupported public camera"):
         robocasa_camera_frame("ws://127.0.0.1:5580", device_id="oracle")
+
+
+def test_run_list_avoids_large_event_history_and_preserves_pending_counts(tmp_path, monkeypatch):
+    store, request = populated_store(tmp_path / 'list.sqlite3')
+    run, _, _, _ = records()
+    store.create_run(replace(run, run_id='run-with-no-request', policy_id='autonomous'))
+    original = store.events
+    calls = []
+    def counted(**kwargs):
+        calls.append(kwargs)
+        return original(**kwargs)
+    monkeypatch.setattr(store, 'events', counted)
+    rows = {item['run_id']:item for item in list_runs(store)}
+    assert rows[request.run_id]['pending_hints'] == 1
+    assert rows['run-with-no-request']['pending_hints'] == 0
+    assert len(calls) == 0, 'Run list must not deserialize physical traces to count pending hints'

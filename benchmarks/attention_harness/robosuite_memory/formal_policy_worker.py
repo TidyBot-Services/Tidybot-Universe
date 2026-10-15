@@ -17,6 +17,11 @@ OPERATIONS = {
     "arm": {"move_delta", "move_to_position", "plan_to_position"},
     "gripper": {"open", "close"},
     "base": {"move_delta"},
+    "left_arm": {"move_to_position", "plan_to_position", "move_joints"},
+    "right_arm": {"move_to_position", "plan_to_position", "move_joints"},
+    "left_gripper": {"open", "close", "grasp"},
+    "right_gripper": {"open", "close", "grasp"},
+    "bimanual": {"state", "move_joints", "begin_handoff", "handoff", "stop", "cancel", "reset"},
 }
 
 
@@ -47,8 +52,14 @@ class Proxy:
 def main():
     # Hard limits remain in force even if authored code escapes Python's AST
     # gate. The outer namespace removes network and host workspace access.
+    # This argument is chosen by the parent from the approved camera config,
+    # before any policy source is received. It cannot be raised by policy code.
+    memory_limit_mb = int(sys.argv[1]) if len(sys.argv) == 2 else 512
+    if len(sys.argv) > 2 or memory_limit_mb not in (512, 2048):
+        raise ValueError("unsupported policy memory limit")
     resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
-    resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+    memory_limit = memory_limit_mb * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_AS, (memory_limit, memory_limit))
     resource.setrlimit(resource.RLIMIT_FSIZE, (1024 * 1024, 1024 * 1024))
     request = json.loads(sys.stdin.readline())
     code = request["code"]

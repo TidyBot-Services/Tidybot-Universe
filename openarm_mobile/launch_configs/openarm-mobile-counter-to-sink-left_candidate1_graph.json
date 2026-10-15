@@ -1,0 +1,26 @@
+{
+  "graph_id": "openarm-mobile-counter-to-sink-left",
+  "definition_version": "openarm-mobile-candidate1-2026-10-09",
+  "task_env": "attentionbench-engineering",
+  "formal_eligible": false,
+  "entries": [
+    {
+      "name": "openarm-mobile-counter-to-sink-left",
+      "display_name": "Move to the sink with mobile OpenArm (left)",
+      "description": "Independent native joint-driven chassis and unchanged seed101 task evaluation, with three native 1080p display cameras. Engineering acceptance; no formal multi-seed claim.",
+      "status": "in_progress",
+      "dependencies": [],
+      "attentionbench": {
+        "suite": "robocasa",
+        "task": "counter_to_sink",
+        "seed": 101,
+        "runner_boundary": "formal",
+        "approved_generated_policy": true,
+        "generated_policy_file": "openarm_mobile/policies/counter_to_sink.py",
+        "approved_policy_sha256": "f3bedb7087ebe77f495859590bc7c1a26429feeb14cf0965d5065e366422d3ea",
+        "formal_config_file": "openarm_mobile/launch_configs/counter_to_sink_left_candidate1.json",
+        "approved_config_sha256": "9b7b10e246e58e505deb44238f81347284e441a29ca4bd070935430ba09a2b58"
+      }
+    }
+  ]
+}

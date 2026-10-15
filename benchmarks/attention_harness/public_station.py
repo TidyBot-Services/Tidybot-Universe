@@ -27,22 +27,37 @@ def _atomic_bytes(path: Path, data: bytes) -> None:
 
 def publish_public_station(*, run_dir: Path, run_id: str, attempt_id: str,
                            suite: str, origin: str, camera_name: str | None = None,
-                           device_id: str | None = None) -> dict[str, Any]:
-    if suite not in {"robosuite", "robocasa"}:
+                           device_id: str | None = None, camera_transport: str | None = None,
+                           robot: dict[str, str] | None = None) -> dict[str, Any]:
+    if suite not in {"robosuite", "robocasa", "robocasa365"}:
         raise ValueError("unsupported public station suite")
-    pattern = _LOOPBACK_HTTP if suite == "robosuite" else _LOOPBACK_WS
+    openarm = suite == "robocasa" and camera_transport == "openarm_http"
+    human = suite == "robocasa" and camera_transport == "robocasa_human_http"
+    daily365 = suite == "robocasa365" and camera_transport == "robocasa365_preview"
+    if suite == "robocasa365" and (not daily365 or camera_name != "robot0_agentview_left"):
+        raise ValueError("RoboCasa365 requires its approved public preview camera")
+    if camera_transport is not None and not (openarm or human or daily365):
+        raise ValueError("unsupported camera transport")
+    if openarm and (not isinstance(robot, dict) or robot.get("model") != "OpenArm"
+                   or robot.get("execution_arm") not in {"left", "right", "both"}):
+        raise ValueError("OpenArm camera requires recorded robot identity")
+    pattern = _LOOPBACK_HTTP if suite == "robosuite" or openarm or human or daily365 else _LOOPBACK_WS
     match = pattern.fullmatch(origin)
     if match is None or not 1 <= int(match[1]) <= 65535:
         raise ValueError("public station must use a loopback Service origin")
     if run_id != f"run:{run_dir.name}" or not attempt_id.startswith(f"attempt:{run_dir.name}:"):
         raise ValueError("public station run/attempt identity mismatch")
-    if suite == "robocasa" and device_id not in {"maniskill_base", "maniskill_wrist"}:
+    if suite == "robocasa" and device_id not in ({"openarm_base_camera"} if openarm else {"human_base_camera"} if human else {"maniskill_base", "maniskill_wrist"}):
         raise ValueError("public station needs an approved RoboCasa camera")
     payload = {"schema_version": "attentionbench.public-station.v1", "run_id": run_id,
                "attempt_id": attempt_id, "suite": suite, "origin": origin,
-               "camera_name": camera_name if suite == "robosuite" else None,
+               "camera_name": camera_name if suite in {"robosuite", "robocasa365"} else None,
                "device_id": device_id if suite == "robocasa" else None,
                "published_at": time.time()}
+    if openarm:
+        payload.update(camera_transport=camera_transport, robot=robot)
+    elif human or daily365:
+        payload.update(camera_transport=camera_transport)
     _atomic_bytes(run_dir / "public_station.json",
                   (json.dumps(payload, sort_keys=True) + "\n").encode())
     return payload
@@ -101,7 +116,18 @@ def read_public_station(root: Path, run_id: str, suite: str,
         return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        pattern = _LOOPBACK_HTTP if suite == "robosuite" else _LOOPBACK_WS
+        transport = payload.get("camera_transport")
+        openarm = suite == "robocasa" and transport == "openarm_http"
+        human = suite == "robocasa" and transport == "robocasa_human_http"
+        daily365 = suite == "robocasa365" and transport == "robocasa365_preview"
+        if suite == "robocasa365" and (not daily365 or payload.get("camera_name") != "robot0_agentview_left"):
+            return None
+        if transport is not None and not (openarm or human or daily365):
+            return None
+        if openarm and (payload.get("robot", {}).get("model") != "OpenArm" or
+                       payload.get("robot", {}).get("execution_arm") not in {"left", "right", "both"}):
+            return None
+        pattern = _LOOPBACK_HTTP if suite == "robosuite" or openarm or human or daily365 else _LOOPBACK_WS
         origin = payload.get("origin")
         match = pattern.fullmatch(origin) if isinstance(origin, str) else None
         if (payload.get("schema_version") != "attentionbench.public-station.v1"
@@ -117,8 +143,8 @@ def read_public_station(root: Path, run_id: str, suite: str,
             return None
         if attempt_id not in attempt_ids and not allow_pending:
             return None
-        if suite == "robocasa" and payload.get("device_id") not in {
-                "maniskill_base", "maniskill_wrist"}:
+        if suite == "robocasa" and payload.get("device_id") not in (
+                {"openarm_base_camera"} if openarm else {"human_base_camera"} if human else {"maniskill_base", "maniskill_wrist"}):
             return None
         return payload
     except (OSError, ValueError, TypeError, json.JSONDecodeError):

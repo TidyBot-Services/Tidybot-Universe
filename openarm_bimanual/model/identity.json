@@ -1,0 +1,42 @@
+{
+  "path": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/openarm_bimanual/model/mobile_openarm.urdf",
+  "sha256": "c82a2500c5471449374b4dd8d6037d58209174ffee211bb196a1c691cea45eff",
+  "source_sha256": "c7d1ce0a08359077ffe9230621074ec57a906974ec55c952d130496cbdcba072",
+  "arm_sha256": "ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456",
+  "base_source": "https://github.com/TidyBot-Services/maniskill-tidyverse",
+  "base_source_revision": "fbbac3a0e105001f46a0a63b61ebda51ac771980",
+  "base_visual_sha256": "b8e1b8a3d2e0f3c3257551429085d500d49bad2c9044cc00435aa49eb40ecba9",
+  "installation": {
+    "parent": "base_link",
+    "child": "openarm_body_link0",
+    "xyz_m": [
+      0,
+      0,
+      0.6
+    ],
+    "rpy_rad": [
+      0,
+      0,
+      0
+    ]
+  },
+  "control": "PhysX force-limited planar X/Y/Yaw joint position drives",
+  "base_frame": "X forward, Y left, Z up; joint X/Y in initial mount frame",
+  "mass_kg": 50.0,
+  "inertia_kg_m2": [
+    1.0,
+    1.0,
+    0.5
+  ],
+  "collision_box_m": [
+    0.733,
+    0.523,
+    0.606
+  ],
+  "collision_center_m": [
+    -0.198,
+    0,
+    0.309
+  ],
+  "wheel_traction_model": false
+}

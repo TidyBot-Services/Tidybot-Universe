@@ -5,6 +5,7 @@ Bypasses RobotCollisionChecker API contortions by going through MotionPlanner
 directly (same path v2 service takes).
 """
 from __future__ import annotations
+raise RuntimeError('V2-only: historical unverified diagnostic entry is retired; locked official public API owner required')
 
 import json
 import urllib.request
@@ -22,6 +23,7 @@ def fetch_cuboids() -> list[dict]:
 
 
 def main():
+    raise RuntimeError('V2-only: historical unverified solver diagnostic is retired; use locked official public API diagnostics')
     from curobo.motion_planner import MotionPlanner, MotionPlannerCfg
     from curobo.scene import Scene, Cuboid
 

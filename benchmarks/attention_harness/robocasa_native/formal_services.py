@@ -85,7 +85,8 @@ class DedicatedRobocasaServices:
                  sim_python: Path, agent_python: Path, expected_sim: dict[str, str],
                  expected_agent: dict[str, str], expected_task: dict[str, str],
                  expected_runtime: dict[str, Any], port_offset: int, log_dir: Path,
-                 deadline: float, cancel_event: threading.Event | None = None) -> None:
+                 deadline: float, cancel_event: threading.Event | None = None,
+                 human_camera: bool = False) -> None:
         if not 100 <= port_offset <= 15000:
             raise ValueError("formal RoboCasa port offset must be isolated")
         self.task_id = task_id
@@ -99,6 +100,8 @@ class DedicatedRobocasaServices:
         self.expected_task = expected_task
         self.expected_runtime = expected_runtime
         self.port_offset = port_offset
+        self.human_camera = human_camera
+        self.human_camera_url = f"http://127.0.0.1:{5590 + port_offset}" if human_camera else None
         self.log_dir = log_dir
         self.deadline = deadline
         self.cancel_event = cancel_event
@@ -153,6 +156,8 @@ class DedicatedRobocasaServices:
         raise TimeoutError(f"episode deadline reached during {name} startup")
 
     def __enter__(self) -> "DedicatedRobocasaServices":
+        from curobo_v2.deployment import retired_entry
+        retired_entry('RoboCasa Franka legacy Service/Agent chain')
         self._check_source(self.sim_source_root, self.expected_sim)
         self._check_source(self.agent_source_root, self.expected_agent)
         self._check_source(self.task_source_root, self.expected_task)
@@ -169,7 +174,8 @@ class DedicatedRobocasaServices:
         for port in (5500 + self.port_offset, 8080 + self.port_offset,
                      5555 + self.port_offset, 5570 + self.port_offset,
                      5580 + self.port_offset,
-                     50000 + self.port_offset):
+                     50000 + self.port_offset,
+                     *([5590 + self.port_offset] if self.human_camera else [])):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 if sock.connect_ex(("127.0.0.1", port)) == 0:
                     raise RuntimeError(f"formal RoboCasa port {port} is already occupied")
@@ -183,9 +189,15 @@ class DedicatedRobocasaServices:
         for key in ("PARCC_API_KEY", "LITELLM_KEY"):
             agent_env.pop(key, None)
         agent_env["PYTHONPATH"] = str(self.agent_source_root)
+        sim_entry = ["-m", "maniskill_server"]
+        if self.human_camera:
+            sim_entry = [str(Path(__file__).with_name("human_camera_service.py"))]
+            sim_env["ATTENTIONBENCH_HUMAN_CAMERA_PORT"] = str(5590 + self.port_offset)
+        else:
+            sim_env.pop("ATTENTIONBENCH_HUMAN_CAMERA_PORT", None)
         try:
             self._spawn("simulator", [
-                str(self.sim_python), "-m", "maniskill_server", "--task",
+                str(self.sim_python), *sim_entry, "--task",
                 get_robocasa_task(self.task_id).environment_id,
                 "--port-offset", str(self.port_offset),
                 "--no-mocap-bridge",

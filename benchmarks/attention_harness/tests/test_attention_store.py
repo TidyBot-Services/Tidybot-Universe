@@ -75,11 +75,14 @@ def test_records_are_idempotent_and_survive_restart(tmp_path: Path) -> None:
     path = tmp_path / "attention.sqlite3"
     store, request = populated_store(path)
     store.create_request(request)
-    assert len(store.events()) == 4
+    assert len([e for e in store.events() if e['entity_type']!='run_identity']) == 4
+    identity_events=[e for e in store.events() if e['entity_type']=='run_identity']
+    assert len(identity_events)==1 and identity_events[0]['event_type']=='run.name_created'
 
     restarted = AttentionStore(path)
     recovered = restarted.get_request(request.request_id)
     assert recovered == request
+    assert [e for e in restarted.events() if e['entity_type']=='run_identity']==identity_events
     assert restarted.get_trace("trace-1")["hypothesis"] == "grasp was off-center"
 
 
@@ -194,3 +197,26 @@ def test_cross_linked_trace_and_request_are_rejected(tmp_path: Path) -> None:
         store.put_trace(replace(trace, trace_id="bad-trace", run_id="other-run"))
     with pytest.raises(StateConflictError, match="request links"):
         store.create_request(replace(request, request_id="bad-request", run_id="other-run"))
+
+
+def test_dashboard_reader_does_not_block_executor_commit(tmp_path, monkeypatch):
+    import sqlite3
+    store = AttentionStore(tmp_path / "concurrent.sqlite3")
+    store.enable_concurrent_writes()
+    reader = sqlite3.connect(store.path)
+    reader.execute("BEGIN")
+    reader.execute("SELECT * FROM events").fetchall()
+    connect = store._connect
+    def bounded_connect():
+        connection = connect()
+        connection.execute("PRAGMA busy_timeout = 100")
+        return connection
+    monkeypatch.setattr(store, "_connect", bounded_connect)
+    try:
+        with store._transaction() as writer:
+            writer.execute("INSERT INTO events(event_key,entity_type,entity_id,event_type,payload) VALUES ('concurrent','probe','probe','probe.completed','{}')")
+        assert reader.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0
+    finally:
+        reader.rollback()
+        reader.close()
+    assert any(event["event_key"] == "concurrent" for event in store.events())

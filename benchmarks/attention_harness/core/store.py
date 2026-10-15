@@ -74,7 +74,10 @@ ATTEMPT_TERMINAL_STATES = {
 }
 
 
-class AttentionStore:
+from .dev_store import DevStoreMixin
+
+
+class AttentionStore(DevStoreMixin):
     def __init__(self, path: Path) -> None:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -82,6 +85,15 @@ class AttentionStore:
 
     def close(self) -> None:
         """Compatibility no-op: connections are intentionally short-lived."""
+
+    def enable_concurrent_writes(self) -> None:
+        """Opt in only for the mutable live UI store, never frozen memory snapshots."""
+        connection = self._connect()
+        try:
+            if connection.execute("PRAGMA journal_mode = WAL").fetchone()[0] != "wal":
+                raise RuntimeError("live store could not enable concurrent writes")
+        finally:
+            connection.close()
 
     def record_launch(self, launch_id: str, *, locked: dict[str, Any],
                       log_path: str) -> dict[str, Any]:
@@ -102,6 +114,32 @@ class AttentionStore:
                 "VALUES (?, 'launch', ?, 'launch.started', ?)",
                 (f"launch-started:{launch_id}", launch_id, _json(payload)))
         return payload
+
+    def bind_launch_run(self, launch_id: str, run_id: str) -> None:
+        run = self.get_run(run_id)
+        launch = next((item for item in self.list_launches() if item['launch_id'] == launch_id), None)
+        if run is None or launch is None or launch.get('run_id') not in {None, run_id}:
+            raise StateConflictError('launch/run binding is missing or conflicting')
+        locked = launch['locked']
+        if any(run.get(key) != locked.get(source) for key, source in (
+                ('suite', 'suite'), ('task_id', 'task'), ('seed', 'seed'),
+                ('policy_id', 'attention_policy'), ('assistance_mode', 'assistance_mode'),
+                ('execution_target', 'execution_target'))):
+            raise StateConflictError('launch/run conditions differ')
+        self._insert_launch_binding(launch_id, run_id)
+        if locked.get('source_run_id'):
+            from ..attention_control import AttentionControl
+            AttentionControl(self).link(run_id,locked['source_run_id'],locked['source_relation'],now=run['created_at'])
+
+    def _insert_launch_binding(self, launch_id: str, run_id: str) -> None:
+        with self._transaction() as connection:
+            key = f'launch-run:{launch_id}'
+            row = connection.execute('SELECT payload FROM events WHERE event_key = ?', (key,)).fetchone()
+            payload = {'launch_id': launch_id, 'run_id': run_id}
+            if row is not None:
+                if json.loads(row[0]) != payload: raise StateConflictError('conflicting launch/run binding')
+                return
+            connection.execute("INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) VALUES (?, 'launch', ?, 'launch.run_bound', ?)", (key, launch_id, _json(payload)))
 
     def record_launch_failed(self, launch_id: str, *, reason: str) -> dict[str, Any]:
         payload = {"launch_id": launch_id, "state": "failed", "reason": reason}
@@ -130,18 +168,21 @@ class AttentionStore:
 
     def list_launches(self) -> list[dict[str, Any]]:
         values: dict[str, dict[str, Any]] = {}
-        for event in self.events():
-            if event["entity_type"] == "launch":
-                launch_id = event["entity_id"]
-                if (event["event_type"] == "launch.started"
-                        and values.get(launch_id, {}).get("state") in {"completed", "failed"}):
-                    values[launch_id] = {**values[launch_id], "pid": event["payload"]["pid"]}
-                    continue
-                values[launch_id] = {**values.get(launch_id, {}), **event["payload"]}
+        # Launch status does not need raw traces or SDK sampling payloads.
+        with self._connect() as connection:
+            events = connection.execute("SELECT entity_id,event_type,payload FROM events WHERE entity_type='launch' ORDER BY sequence").fetchall()
+        for launch_id, event_type, raw in events:
+            payload = json.loads(raw)
+            if (event_type == "launch.started"
+                    and values.get(launch_id, {}).get("state") in {"completed", "failed"}):
+                values[launch_id] = {**values[launch_id], "pid": payload["pid"]}
+                continue
+            values[launch_id] = {**values.get(launch_id, {}), **payload}
         return list(values.values())
 
-    def request_interrupt(self, run_id: str, *, event_key: str, requested_at: float) -> dict[str, Any]:
-        """Persist an operator stop request; the runner must acknowledge it separately."""
+    def request_interrupt(self, run_id: str, *, event_key: str, requested_at: float, operator_action: str = 'stop') -> dict[str, Any]:
+        """Persist an operator request; measured executor acknowledgement is separate."""
+        if operator_action not in {"stop", "cancel"}:raise ValueError("invalid operator action")
         with self._transaction() as connection:
             row = connection.execute("SELECT payload FROM runs WHERE id = ?", (run_id,)).fetchone()
             if row is None:
@@ -151,7 +192,7 @@ class AttentionStore:
             existing = self._interrupt_status_in(connection, run_id)
             if existing is not None:
                 return existing
-            payload = {"run_id": run_id, "state": "requested", "requested_at": requested_at}
+            payload = {"run_id": run_id, "state": "requested", "requested_at": requested_at, "operator_action": operator_action}
             connection.execute(
                 "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
                 "VALUES (?, 'control', ?, 'control.interrupt_requested', ?)",
@@ -227,7 +268,7 @@ class AttentionStore:
         return payload
 
     def list_work_items(self, run_id: str) -> list[dict[str, Any]]:
-        return [event["payload"] for event in self.events()
+        return [event["payload"] for event in self.events(entity_types=["work"])
                 if event["entity_type"] == "work" and event["payload"].get("run_id") == run_id]
 
     def record_work_failure(self, run_id: str, *, work_id: str, reason: str,
@@ -247,6 +288,120 @@ class AttentionStore:
                 (event_key, work_id, _json(payload)),
             )
         return payload
+
+    def _audit_event(self, key: str, entity_id: str, event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._transaction() as connection:
+            existing = connection.execute('SELECT payload FROM events WHERE event_key = ?', (key,)).fetchone()
+            if existing is not None:
+                if json.loads(existing[0]) != payload: raise StateConflictError('conflicting audit event')
+                return payload
+            connection.execute("INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) VALUES (?, 'audit', ?, ?, ?)", (key, entity_id, event_type, _json(payload)))
+        return payload
+
+    def record_executor_dispatch(self, run_id: str, *, index: int, started_at: float) -> None:
+        if self.get_run(run_id) is None or isinstance(index, bool) or not isinstance(index, int) or index < 0:
+            raise ValueError('invalid executor audit identity')
+        key = f'executor-dispatch:{run_id}:{index}'
+        payload = {'run_id': run_id, 'index': index, 'started_at': started_at}
+        # Freeze the selected DAG in the same transaction as actual dispatch.
+        # A duplicate dispatch never attaches a newer graph to old execution.
+        with self._transaction() as connection:
+            existing = connection.execute('SELECT payload FROM events WHERE event_key = ?', (key,)).fetchone()
+            if existing is not None:
+                if json.loads(existing[0]) != payload: raise StateConflictError('conflicting audit event')
+                return
+            connection.execute("INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) VALUES (?, 'audit', ?, 'executor.dispatched', ?)", (key, run_id, _json(payload)))
+            graph = connection.execute("SELECT payload FROM events WHERE entity_id = ? AND event_type = 'task_dag.bound' ORDER BY sequence DESC LIMIT 1", (run_id,)).fetchone()
+            if graph:
+                frozen = {'run_id': run_id, 'attempt_id': f"attempt:{run_id.removeprefix('run:')}:{index}",
+                          'index': index, 'captured_at': started_at, 'dag': json.loads(graph[0])['dag']}
+                connection.execute("INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) VALUES (?, 'audit', ?, 'task_dag.snapshot', ?)", (f'dag-snapshot:{run_id}:{index}', run_id, _json(frozen)))
+
+    def bind_task_dag(self, run_id: str, dag: dict[str, Any]) -> None:
+        from ..task_dag import validate_dag
+        run = self.get_run(run_id)
+        if run is None: raise StateConflictError('Skill DAG run does not exist')
+        checked = validate_dag(dag, suite=run['suite'], task_id=run['task_id'])
+        self._audit_event(f"dag-bound:{run_id}:{checked['definition_sha256']}", run_id,
+                          'task_dag.bound', {'run_id': run_id, 'dag': checked})
+
+    def attempt_dag_snapshots(self, run_id: str) -> dict[str, Any]:
+        with self._connect() as connection:
+            rows = connection.execute("SELECT payload FROM events WHERE entity_id = ? AND event_type = 'task_dag.snapshot' ORDER BY sequence", (run_id,)).fetchall()
+        return {value['attempt_id']: value for row in rows if (value := json.loads(row[0])).get('run_id') == run_id}
+
+    def record_task_plan(self, run_id: str, *, max_attempts: int) -> None:
+        if self.get_run(run_id) is None or type(max_attempts) is not int or not 1 <= max_attempts <= 10:
+            raise ValueError('invalid task plan')
+        self._audit_event(f'task-plan:{run_id}', run_id, 'task.plan',
+                          {'run_id': run_id, 'max_attempts': max_attempts, 'source': 'scheduler_locked'})
+
+    def task_plan(self, run_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute('SELECT payload FROM events WHERE event_key = ?', (f'task-plan:{run_id}',)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def executor_attempts(self, run_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute("SELECT event_type, payload FROM events WHERE entity_id = ? AND event_type IN ('executor.dispatched', 'executor.completed') ORDER BY sequence", (run_id,)).fetchall()
+        result = {}
+        for kind, raw in rows:
+            payload = json.loads(raw)
+            index = payload['index']
+            if kind == 'executor.dispatched':
+                result[index] = {'attempt_id': f"attempt:{run_id.removeprefix('run:')}:{index}",
+                                 'index': index, 'started_at': payload['started_at'], 'ended_at': None,
+                                 'status': 'running', 'status_source': 'executor_dispatch'}
+            elif index in result:
+                result[index].update(ended_at=payload['ended_at'], status='unknown', status_source='executor_completion_without_verdict')
+        run = self.get_run(run_id)
+        if run and run['status'] in {'completed', 'failed', 'cancelled'}:
+            for attempt in result.values():
+                if attempt['status'] == 'running':
+                    attempt.update(status='unknown', status_source='terminal_without_attempt_completion')
+        return list(result.values())
+
+    def record_executor_completed(self, run_id: str, *, index: int, ended_at: float,
+                                  sdk_motion_commands: int | None) -> None:
+        if sdk_motion_commands is not None and (isinstance(sdk_motion_commands, bool) or not isinstance(sdk_motion_commands, int) or sdk_motion_commands < 0):
+            raise ValueError('invalid SDK motion count')
+        dispatch = next((event['payload'] for event in self.events() if event['event_key'] == f'executor-dispatch:{run_id}:{index}'), None)
+        if dispatch is None or ended_at < dispatch['started_at']: raise StateConflictError('completion lacks ordered dispatch')
+        self._audit_event(f'executor-completed:{run_id}:{index}', run_id, 'executor.completed',
+            {'run_id': run_id, 'index': index, 'ended_at': ended_at, 'sdk_motion_commands': sdk_motion_commands})
+
+    def executor_counters(self, run_id: str) -> dict[str, int]:
+        events = [event for event in self.events() if event['payload'].get('run_id') == run_id]
+        completed = [event['payload'] for event in events if event['event_type'] == 'executor.completed']
+        return {'attempt_dispatches': sum(event['event_type'] == 'executor.dispatched' for event in events),
+                'sdk_motion_commands': sum(item['sdk_motion_commands'] or 0 for item in completed),
+                'unmeasured_attempts': sum(item['sdk_motion_commands'] is None for item in completed)}
+
+    def begin_waiting_window(self, request_id: str, *, started_at: float) -> dict[str, Any]:
+        request = self.get_request(request_id)
+        if request is None or request.mode.value != 'live_human_first': raise StateConflictError('waiting audit requires live request')
+        payload = {'request_id': request_id, 'run_id': request.run_id, 'started_at': started_at,
+                   'ended_at': None, 'baseline': self.executor_counters(request.run_id),
+                   'coverage': 'scheduler-owned attempt dispatches and completed SDK motion commands; unlogged/external physical actions unobserved',
+                   'robot_actions': None}
+        return self._audit_event(f'waiting-start:{request_id}', request_id, 'waiting.started', payload)
+
+    def end_waiting_window(self, request_id: str, *, ended_at: float) -> dict[str, Any]:
+        start = next((event['payload'] for event in self.events() if event['event_key'] == f'waiting-start:{request_id}'), None)
+        if start is None or ended_at < start['started_at']: raise StateConflictError('waiting end lacks ordered start')
+        counters = self.executor_counters(start['run_id'])
+        payload = {**start, 'ended_at': ended_at, 'end_counters': counters,
+                   'attempt_dispatches': counters['attempt_dispatches'] - start['baseline']['attempt_dispatches'],
+                   'sdk_motion_commands': (None if counters['unmeasured_attempts'] != start['baseline']['unmeasured_attempts']
+                                          else counters['sdk_motion_commands'] - start['baseline']['sdk_motion_commands'])}
+        return self._audit_event(f'waiting-end:{request_id}', request_id, 'waiting.ended', payload)
+
+    def waiting_windows(self, run_id: str) -> dict[str, Any]:
+        windows = {}
+        for event in self.events_for_run(run_id):
+            if event['event_type'] in {'waiting.started', 'waiting.ended'} and event['payload']['run_id'] == run_id:
+                windows[event['entity_id']] = event['payload']
+        return windows
 
     def record_waiting_work(self, request_id: str, *, work_type: str,
                             evidence: list[dict[str, str]]) -> dict[str, Any]:
@@ -284,6 +439,8 @@ class AttentionStore:
 
     def create_run(self, run: RunRecord) -> RunRecord:
         self._insert_immutable("runs", run.run_id, run.artifact(), "run.created")
+        from ..attention_control import AttentionControl
+        AttentionControl(self).ensure_identity(run.run_id)
         return run
 
     def create_attempt(self, attempt: AttemptRecord) -> AttemptRecord:
@@ -318,6 +475,18 @@ class AttentionStore:
                 connection, "runs", run_id, updated.artifact(),
                 event_key, f"run.{status.value}", "run"
             )
+            if status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
+                reservations = connection.execute("SELECT id, credits FROM budget_reservations WHERE run_id = ? AND status = 'reserved'", (run_id,)).fetchall()
+                connection.execute("UPDATE budget_reservations SET status = 'released' WHERE run_id = ? AND status = 'reserved'", (run_id,))
+                for reservation_id, credits in reservations:
+                    connection.execute("INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) VALUES (?, 'run', ?, 'budget.released', ?)",
+                        (f'terminal-release:{reservation_id}', run_id, _json({'reservation_id': reservation_id, 'credits': credits, 'reason': 'run_terminal'})))
+                for request_row in connection.execute('SELECT id, payload FROM requests').fetchall():
+                    request = self._decode_request(json.loads(request_row[1]))
+                    if request.run_id == run_id and request.state in {RequestState.PENDING, RequestState.FALLBACK}:
+                        cancelled = replace(request, state=RequestState.CANCELLED)
+                        self._update_with_event(connection, 'requests', request.request_id,
+                            cancelled.artifact(), f'terminal-cancel:{request.request_id}', 'request.cancelled', 'request')
             return updated
 
     def complete_attempt(
@@ -488,6 +657,7 @@ class AttentionStore:
     def record_response_use(
         self, request_id: str, *, response_id: str, use: str,
         execution_id: str | None = None,
+        guidance_compilation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Record what the runner actually adopted, separately from an answer."""
         if use not in {"guidance", "approval_granted", "approval_denied", "interrupt"}:
@@ -501,6 +671,8 @@ class AttentionStore:
             "request_id": request_id, "response_id": response_id,
             "run_id": request.run_id, "use": use, "execution_id": execution_id,
         }
+        if guidance_compilation is not None:
+            payload["guidance_compilation"] = dict(guidance_compilation)
         event_key = f"response-used:{request_id}"
         with self._transaction() as connection:
             row = connection.execute(
@@ -638,12 +810,31 @@ class AttentionStore:
             if value["memory_id"] == memory_id
         ]
 
-    def events(self, *, after_sequence: int = 0) -> list[dict[str, Any]]:
+    def events_for_run(self,run_id):
+        """UI event stream scoped by materialized run/attempt/trace/request IDs.
+
+        Other runs' physical traces and raw traces are never decoded. The
+        original append order and all versions of the selected entities remain.
+        """
+        ids={run_id}
+        with self._connect() as db:
+            attempts=[r[0] for r in db.execute("SELECT id FROM attempts WHERE json_extract(payload,'$.run_id')=?",(run_id,))]
+            ids.update(attempts)
+            if attempts:
+                ids.update(r[0] for r in db.execute("SELECT id FROM traces WHERE json_extract(payload,'$.attempt_id') IN ("+','.join('?' for _ in attempts)+')',attempts))
+            ids.update(r[0] for r in db.execute("SELECT id FROM requests WHERE json_extract(payload,'$.run_id')=?",(run_id,)))
+        return self.events(entity_ids=sorted(ids))
+
+    def events(self, *, after_sequence: int = 0, entity_ids=None, entity_types=None) -> list[dict[str, Any]]:
         with self._connect() as connection:
+            clauses=['sequence > ?'];arguments=[after_sequence]
+            for column,values in [('entity_id',entity_ids),('entity_type',entity_types)]:
+                if values is not None:
+                    if not values:return []
+                    clauses.append(column+' IN ('+','.join('?' for _ in values)+')');arguments.extend(values)
             rows = connection.execute(
-                "SELECT sequence, event_key, entity_type, entity_id, event_type, payload "
-                "FROM events WHERE sequence > ? ORDER BY sequence",
-                (after_sequence,),
+                "SELECT sequence, event_key, entity_type, entity_id, event_type, payload FROM events WHERE "+
+                ' AND '.join(clauses)+" ORDER BY sequence", arguments,
             ).fetchall()
         return [
             {
@@ -744,7 +935,7 @@ class AttentionStore:
     def settle_assistance(self, reservation_id: str, *, commit: bool) -> None:
         with self._transaction() as connection:
             row = connection.execute(
-                "SELECT status FROM budget_reservations WHERE id = ?", (reservation_id,)
+                "SELECT status, run_id, credits FROM budget_reservations WHERE id = ?", (reservation_id,)
             ).fetchone()
             if row is None:
                 raise StateConflictError(f"reservation {reservation_id!r} does not exist")
@@ -757,6 +948,15 @@ class AttentionStore:
                 "UPDATE budget_reservations SET status = ? WHERE id = ?",
                 (target, reservation_id),
             )
+
+            if not commit:
+                connection.execute(
+                    "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                    "VALUES (?, 'run', ?, 'budget.released', ?)",
+                    (f'release:{reservation_id}', row[1], _json({
+                        'reservation_id': reservation_id, 'credits': row[2],
+                        'reason': 'request_closed'})),
+                )
 
     def budget_status(
         self, run_id: str, *, connection: sqlite3.Connection | None = None
@@ -1012,6 +1212,7 @@ class AttentionStore:
             ),
             created_at=float(payload["created_at"]),
             evaluator_model=payload.get("evaluator_model"),
+            robot_configuration=payload.get("robot_configuration"),
             status=RunStatus(payload["status"]),
             schema_version=payload["schema_version"],
         )

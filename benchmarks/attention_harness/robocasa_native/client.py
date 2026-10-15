@@ -113,6 +113,9 @@ class RobocasaSimClient:
         payload: dict[str, Any] | None = None,
         timeout: float = 30.0,
     ) -> dict[str, Any]:
+        if path.startswith(('/plan', '/action', '/trajectory')):
+            from curobo_v2.deployment import retired_entry
+            retired_entry('RoboCasa unauthenticated simulator planning/action client')
         result = self._transport(method, self.base_url + path, payload, timeout)
         if not isinstance(result, dict):
             raise RobocasaServiceError(f"{path} did not return a JSON object")

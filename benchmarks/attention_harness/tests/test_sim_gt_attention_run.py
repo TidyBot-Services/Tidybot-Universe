@@ -741,3 +741,15 @@ def test_trace_inspection_is_passed_to_next_attempt(tmp_path, suite):
         )
     assert result["native_success"] is True
     assert result["decisions"][0]["action"] == "inspect_trace"
+
+
+def test_unsuccessful_final_attempt_records_max_attempts_reason(tmp_path):
+    result = run_robosuite_attention(
+        task_id="cube_lift", seed=101, artifact_root=tmp_path,
+        policy_id="autonomous", robot_policy=lambda sdk, context: None,
+        adapter_factory=lambda task, camera: _adapter(task, camera, client=FakeClient()),
+        max_attempts=1, assistance_credits=0,
+    )
+    assert result["native_success"] is False
+    assert result["stopped_reason"] == "max_attempts"
+    assert dashboard_snapshot(AttentionStore(Path(result["store"])), result["attempts"][0]["attention_trace"]["run_id"], artifact_root=tmp_path)["eval"]["stopped_reason"] == "max_attempts"

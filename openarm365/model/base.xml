@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="TidyverseBase365">
+  <compiler angle="radian" />
+  <asset>
+    <mesh name="base_visual" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/model/source/tidyverse_base/base_vis.stl" />
+  </asset>
+  <worldbody>
+    <body name="base">
+      <joint name="joint_mobile_forward" type="slide" axis="1 0 0" limited="false" damping="10" />
+      <joint name="joint_mobile_side" type="slide" axis="0 1 0" limited="false" damping="10" />
+      <joint name="joint_mobile_yaw" type="hinge" axis="0 0 1" limited="false" damping="10" />
+      <inertial pos="-.198 0 .2" mass="50" diaginertia="1 1 .5" />
+      <geom name="chassis_collision" type="box" pos="-.198 0 .309" size="0.3665 0.2615 0.303" group="0" />
+      <geom type="mesh" mesh="base_visual" pos="0 0 .47225" contype="0" conaffinity="0" group="1" rgba=".5 .5 .5 1" />
+      <body name="support">
+        <site name="center" size=".005" rgba="0 0 0 0" />
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <velocity name="actuator_mobile_forward" joint="joint_mobile_forward" kv="1000" ctrllimited="true" ctrlrange="-0.15 0.15" forcelimited="true" forcerange="-600.0 600.0" />
+    <velocity name="actuator_mobile_side" joint="joint_mobile_side" kv="1000" ctrllimited="true" ctrlrange="-0.15 0.15" forcelimited="true" forcerange="-600.0 600.0" />
+    <velocity name="actuator_mobile_yaw" joint="joint_mobile_yaw" kv="1000" ctrllimited="true" ctrlrange="-0.3 0.3" forcelimited="true" forcerange="-600.0 600.0" />
+  </actuator>
+  <sensor />
+  <contact />
+  <equality />
+</mujoco>

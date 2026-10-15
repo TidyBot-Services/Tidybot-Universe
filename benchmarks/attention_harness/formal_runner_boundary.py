@@ -68,7 +68,7 @@ class FormalRunRequest:
                     or lock.get("approved_policy_sha256") != self.policy_sha256
                     or lock.get("overall_deadline_seconds") != self.overall_deadline_seconds):
                 raise ValueError("formal request entry lock mismatch")
-        if self.suite not in {"robocasa", "robosuite"}:
+        if self.suite not in {"robocasa", "robosuite", "robocasa365"}:
             raise ValueError("formal runner requires a primary simulator suite")
         if not self.task_id or isinstance(self.seed, bool) or not isinstance(self.seed, int):
             raise ValueError("formal runner requires a task and integer seed")

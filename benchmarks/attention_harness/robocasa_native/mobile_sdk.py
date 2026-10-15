@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+import time
+from typing import Any, Callable
 
 from tidybot_sdk import Arm, CapabilityNotAvailableError, TidyBotSDK
 
@@ -51,8 +52,9 @@ class _BaseFacade:
 class RobocasaMobileSDK(TidyBotSDK):
     """One extra SDK module for mobile-base RoboCasa tasks only."""
 
-    def __init__(self, backend: Any, *, action_backend: Any, event_sink: Any) -> None:
-        super().__init__(backend, event_sink=event_sink)
+    def __init__(self, backend: Any, *, action_backend: Any, event_sink: Any,
+                 clock: Callable[[], float] = time.monotonic) -> None:
+        super().__init__(backend, event_sink=event_sink, clock=clock)
         # Reuse the frozen facade's emitter so IDs and order remain unique
         # across arm, gripper, sensors and the additive base command.
         self.arm = _RobocasaArmFacade(action_backend, self.arm._emitter)

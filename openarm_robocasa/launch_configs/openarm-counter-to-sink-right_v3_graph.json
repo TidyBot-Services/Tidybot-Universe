@@ -1,0 +1,26 @@
+{
+  "graph_id": "openarm-counter-to-sink-right",
+  "definition_version": "openarm-engineering-2026-10-08-v3",
+  "task_env": "attentionbench-engineering",
+  "formal_eligible": false,
+  "entries": [
+    {
+      "name": "openarm-counter-to-sink-right",
+      "display_name": "Move to the sink with OpenArm (right)",
+      "description": "One SDK-only task node. Independent actual scene, contacts and unchanged native evaluation. Left sink seed101 physical probe passed; full runner validation follows. Right task capability remains unaccepted.",
+      "status": "in_progress",
+      "dependencies": [],
+      "attentionbench": {
+        "suite": "robocasa",
+        "task": "counter_to_sink",
+        "seed": 101,
+        "runner_boundary": "formal",
+        "approved_generated_policy": true,
+        "generated_policy_file": "openarm_robocasa/policies/counter_to_sink.py",
+        "approved_policy_sha256": "f761f63086154315381bb2e2bc73946588868db076abbc4fb8d7cc1fe118de3a",
+        "formal_config_file": "openarm_robocasa/launch_configs/counter_to_sink_right_engineering3.json",
+        "approved_config_sha256": "251da29005ffb8f8038bc2ec554882cfef275042705655b95afb510c23007498"
+      }
+    }
+  ]
+}

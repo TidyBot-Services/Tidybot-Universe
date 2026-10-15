@@ -1,0 +1,36 @@
+{
+  "schema": "openarm-robocasa.robot-parameters.v1",
+  "mount_offset_fixture_m": [
+    0.5,
+    -0.6,
+    0.15
+  ],
+  "mount_yaw_offset_rad": 1.5707963267948966,
+  "initial": {
+    "left": [
+      -0.8807242512702942,
+      -1.4092211723327637,
+      -0.49134063720703125,
+      1.8287620544433594,
+      -0.40264543890953064,
+      0.08818630129098892,
+      -0.8314720988273621
+    ],
+    "right": [
+      0.8807532720924558,
+      1.4092484612761271,
+      0.4910723783302829,
+      1.828841604529468,
+      0.40277601436640675,
+      -0.08865088472922646,
+      0.8314841629830906
+    ],
+    "left_gripper": 0.02,
+    "right_gripper": 0.02
+  },
+  "controller_source": "openarm_phase1/acceptance_config.json",
+  "controller_sha256": "f0120618728e75549e7c0bb7d65bb84c8e6813af0dc97e50b48345cd3490c07f",
+  "model_sha256": "ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456",
+  "bootstrap_evidence": "outputs/openarm-robocasa/scene-probe-6/bootstrap.json",
+  "scope": "Original RoboCasa seed101 mount candidate; real HTTP acceptance pending"
+}

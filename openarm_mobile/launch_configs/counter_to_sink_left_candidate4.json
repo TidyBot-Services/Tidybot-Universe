@@ -1,0 +1,100 @@
+{
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "seed": 101,
+  "perception_mode": "sim_gt",
+  "scene_id": "scene:29f6ddc71995db3e0fd6",
+  "camera_names": [
+    "base_camera"
+  ],
+  "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+  "sim_runtime": {
+    "mani_skill_files": {
+      "envs/tasks/mobile_manipulation/robocasa/kitchen.py": "efd64ab206581010a8fa54ca4700bf523d66fdb7670d847d1c3258ee57b6d7a9",
+      "utils/scene_builder/robocasa/fixtures/counter.py": "a02b00e980dff7225f67d359981aca992290419a97b0a1a67a0c4cfc2575c0a2",
+      "utils/scene_builder/robocasa/scene_builder.py": "39b5b2cfa7450edfb107e03af69a4d93d4c42bd4f8abd2b3cc0af17f3a06b3e4",
+      "utils/scene_builder/robocasa/utils/object_utils.py": "9748d629476aaee0bb90cdd466a775f91e12e9f391dd05b48b574493ae99fd46",
+      "utils/scene_builder/robocasa/utils/placement_samplers.py": "8a77323c0933735bfe7acc72df9fa772a07e9846dd406bb479e99c8994cc0b12"
+    },
+    "mani_skill_python_tree_sha256": "d93b88c3b28ed0fb119eeaddda129f72bd2589e41698566fb4ddf21a58525095",
+    "mani_skill_root": "/home/truares/miniconda3/envs/maniskill/lib/python3.11/site-packages/mani_skill",
+    "mani_skill_version": "3.0.0b22",
+    "python_sha256": "f33fe7acf4552a82f53158d00f94fd10a082bb454a1779c3b7f207f7369ef2fe",
+    "python_version": "3.11.15",
+    "task_module_path": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks/__init__.py"
+  },
+  "safety_limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "schema_version": "attentionbench.robocasa-openarm-mobile-config.v1",
+  "robot": {
+    "model": "OpenArm",
+    "execution_arm": "left"
+  },
+  "model_sha256": "222d67c5b7199fb107b94029b5d8756db1b3ed4eecdc7bb2b32648e30281726d",
+  "robot_parameters": {
+    "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/configs/robot_parameters.json",
+    "sha256": "4e69205fae72d8545315293af822263505ca32ec576a14f63be9bd8ae2e0ab9c"
+  },
+  "task_source": {
+    "revision": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+    "tree_sha256": "8f12f69d8a7e4e2948182e8b38f1dca55a85aef376b57d033cca791e2e8b2756",
+    "root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+  },
+  "service_files": {
+    "benchmarks/attention_harness/core/models.py": "e485fd068d91486a5f0bec1cf9724cba555752c028fc18c6dfd3873037c1d828",
+    "benchmarks/attention_harness/core/store.py": "8a5a1b1ff565c25f502c2f324b5ca73f00ca6c36154243e9a09c27509c2533e9",
+    "benchmarks/attention_harness/episode_trace.py": "327118cbffbcd0b49f8535776a08692c8ac51f497b94e2542d7fef56b988c2df",
+    "benchmarks/attention_harness/formal_attention_run.py": "09b9f29d5cb1f9e0d8d7b2c404fc7236bdb5979316e014dbf0fb7b528b0f0cea",
+    "benchmarks/attention_harness/hint_compilation.py": "1a32bf761aa312acb33891b69bfeea5549789ef20e35edc7267ad6c97a68fc87",
+    "benchmarks/attention_harness/live_preview.py": "1cc83986f97ea73752475f2f9d04da8225c93452c89523e8ab2833e2c72211a4",
+    "benchmarks/attention_harness/public_station.py": "c6394da8e59e442b7629fe4b1164fa80b1eed749af6927874638c6ec3d342145",
+    "benchmarks/attention_harness/robocasa_native/formal_runner.py": "ab5dd02c238bfea351024e9717eea06381a59b520ebf56ea51cd58bef4c1590b",
+    "benchmarks/attention_harness/robocasa_native/mobile_sdk.py": "f47053a012fbe9ed6958ba416a21c889ca6ec4f8ebf994f9035e635b67914ee7",
+    "benchmarks/attention_harness/robocasa_native/openarm_backend.py": "d448a53f21c74540c36a157e2e92ecb6108291d7f5f4c9b37681ef2f5f42dd11",
+    "benchmarks/attention_harness/robocasa_native/openarm_config.py": "7b0b15a1d9b87a28c03a663c000a6bf7a3476803bd18fc3be1eb438a58edd1ea",
+    "benchmarks/attention_harness/robocasa_native/openarm_runner.py": "837bc99b0bd933225eac957b082adabe753a737fb2357774aa39def5bb25c820",
+    "benchmarks/attention_harness/robocasa_native/robot_config.py": "53e835e6431a0572fd63bdd1da0c2ab279b00fc53f7995016c88b38ce739daad",
+    "benchmarks/attention_harness/robocasa_native/safety_monitor.py": "4fa8db76d38552561f93e5ba03354cb666d42dcbd722304b64d877c61a8c8fa5",
+    "benchmarks/attention_harness/robosuite_memory/formal_sandbox.py": "75486cbfdeaf17963102e160a0df5fb26d2de7db597e635be089816969e4c656",
+    "benchmarks/attention_harness/service_recovery.py": "90a0facd4530738feea340363fab01c27b61e934faa66904e2ce27d0fb00afbf",
+    "benchmarks/attention_harness/ui/index.html": "b9cbc7381e6dee34a77a1626b80e60738803e95b6c052d3b0d217118a25e02e1",
+    "benchmarks/attention_harness/ui/live.js": "ebc6ad1dbff284fbbc0eda0a9ffd19e018c50b6f3df24f0b227132a4a781bf75",
+    "benchmarks/attention_harness/ui_launch.py": "49e785430487738be8cb7c8d84431341225bc665db483928b41eb42b1e3ae8de",
+    "benchmarks/attention_harness/ui_media.py": "d4726bbe6f0e70ad258f3e24ec01a1f1dea3fe0ce531f7ca97261950d6cc37c8",
+    "benchmarks/attention_harness/ui_server.py": "67a51e33c7cca8c5473037dab66e7b12b0888f5dbf63b22ed4df333e9a9ed4f8",
+    "openarm_mobile/__init__.py": "65bfb046dd592d1fbd0023eb51948cbd9a2bfcc6ae44fde196eb76e8a55e2cad",
+    "openarm_mobile/backend.py": "f17bc19c90869049a1fa584db2a935acc677eff15379b16210dcc52e4705b85b",
+    "openarm_mobile/config.py": "dc99a1d47b7cff9b5bac0af95a42e7b02d80127b337c82e7bb1e7cf5573cb65f",
+    "openarm_mobile/display.py": "ac3fb6cfa3f986bd40bc5d7c59347162a82750e86b693bb1b54f0106709f4e01",
+    "openarm_mobile/kitchen.py": "31a21710a306f0c1509cb73a7cad4fb35ae42b59e70c440f66baf683635c9a83",
+    "openarm_mobile/model.py": "32efeaad47be769fdca8b1122e1aab3addc3fbc3d994d30685cce48345f15c84",
+    "openarm_mobile/model/mobile_openarm.srdf": "1027e47e6fcca02dd5cb578d212f4dd2c962b4e41d7fd0bc1aafbddebc099195",
+    "openarm_mobile/model/mobile_openarm.urdf": "222d67c5b7199fb107b94029b5d8756db1b3ed4eecdc7bb2b32648e30281726d",
+    "openarm_mobile/model/source/tidyverse.urdf": "c7d1ce0a08359077ffe9230621074ec57a906974ec55c952d130496cbdcba072",
+    "openarm_mobile/model/source/tidyverse_base/base_vis.stl": "b8e1b8a3d2e0f3c3257551429085d500d49bad2c9044cc00435aa49eb40ecba9",
+    "openarm_mobile/planning.py": "43e9de7f93fd3baa4dc90a528908e19ada08122b8b26b6592efad211612a98ee",
+    "openarm_mobile/recording.py": "30c0b12fbb759cf3431f63d8c0b15c64006ccdf0858aa9f32b392f8fd4768f35",
+    "openarm_mobile/render_scene.py": "69f36fbf01798e48461c8fe19bc176c4663d788547e7916c8d17db92a5eb5251",
+    "openarm_mobile/runner.py": "e40ea28570e0f6a220083c9c7dbe4edf5436deb0cd2c3fc2d532596c22e8976e",
+    "openarm_mobile/service.py": "1ca4498d75c665f6eceb427bdb4dad99ace2a67d12b38a7c82d6e477b918e2b7",
+    "openarm_mobile/session.py": "9c12de901f7896b9e976096d5c65627ab967b3eb49b63d27579e577d507543be",
+    "openarm_mobile/validate_lifecycle.py": "bf4e1ec2639bec7020b36e90f56e9ab0f4aec8059e1622cb2448c0db8765772e",
+    "openarm_phase0_recheck/validate.py": "a4c6304f39fce642a053e3ee648e2af67a089f1a511b524e92b40d0e35183398",
+    "openarm_phase1/service.py": "b6607ca8667c90b24445da304e95055f28b1b0bf3944bd372911062dd6f0ecca",
+    "openarm_robocasa/camera.py": "621b66d3936143a3a36e4770dfc0d2038826f2a6c0bead0dac1965c8ba97f434",
+    "openarm_robocasa/contact_controller.py": "dc1538dc4cdf09ffd69b7bea6884fe6d38165fe552920b68baf9c7947e680046",
+    "openarm_robocasa/contact_policy.py": "6f1c9cf01bd633627c5dcb013d92dd4d7a290f2f9445426f40e37af84ded63b8",
+    "openarm_robocasa/kitchen.py": "5173aba31f9c140a7e1113be6ed7007a256f78f78f212365e65116100ff67f58",
+    "openarm_robocasa/mimic.py": "6c2eda29ea0f711afacf1ada57aa62782c8c85ca0df36ec00facbd8ec9f8a41a",
+    "openarm_robocasa/planning.py": "22ab51c9dee67a44469807ee5150ca94c1be3982333de042be0e9b32b38dc9ed",
+    "openarm_robocasa/service.py": "bbf3e28753fc83feadfd39a0b7954c8df8ea42a9b92b4909106bb9006054036d",
+    "openarm_robocasa/session.py": "1e57f8e68d76c3bfac9419a4de4fe898a5b88eceb3e65342a7f460c4a4da80ce",
+    "openarm_robocasa/variation.py": "f260dc198cf4a0d541e51a58e1f769ec55680664ec5d7a97250db2993d1d9174",
+    "tidybot_sdk/facade.py": "06f6f4afa65ad38b536ae9be384f154b506514914bd26855f2d8fa519da0aa64"
+  },
+  "object_set_id": "objects:30b8da8d14e995e02588"
+}

@@ -24,6 +24,11 @@ ALLOWED_CALLS = {
     "arm": {"move_delta", "move_to_position", "plan_to_position"},
     "gripper": {"open", "close"},
     "base": {"move_delta"},
+    "left_arm": {"move_to_position", "plan_to_position", "move_joints"},
+    "right_arm": {"move_to_position", "plan_to_position", "move_joints"},
+    "left_gripper": {"open", "close", "grasp"},
+    "right_gripper": {"open", "close", "grasp"},
+    "bimanual": {"move_joints", "state", "begin_handoff", "handoff", "stop", "cancel", "reset"},
 }
 BROKER_CALLS = {**ALLOWED_CALLS, "memory": {"retrieve"}}
 FORBIDDEN_NAMES = {"breakpoint", "compile", "eval", "exec", "getattr", "globals",

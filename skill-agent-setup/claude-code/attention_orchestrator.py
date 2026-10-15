@@ -200,6 +200,13 @@ async def _handle_attention_done(state) -> None:
                 and generation.get("source")
                 and (orch.GRAPH_DIR / "dev_generation.json").is_file()):
             config = {**config, "dev_generation_artifact": str(orch.GRAPH_DIR / "dev_generation.json")}
+        # Capture the selected real graph before dispatch; current global UI graph is never used as a run binding.
+        graph_file = orch.GRAPH_DIR / "graph.json"
+        if graph_file.is_file():
+            import hashlib
+            config = {**config, "skill_graph_file": str(graph_file.resolve()),
+                      "skill_graph_sha256": hashlib.sha256(graph_file.read_bytes()).hexdigest(),
+                      "skill_root": state.skill}
         result = await run_attention_job(config, repo_root=REPO_ROOT)
     except Exception as exc:
         # A missing service, invalid graph contract or timeout is an

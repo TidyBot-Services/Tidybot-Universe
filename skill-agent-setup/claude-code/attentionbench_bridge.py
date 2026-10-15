@@ -132,6 +132,8 @@ def build_attention_command(config: dict[str, Any], *, repo_root: Path) -> list[
             cmd.extend((flag, value))
     if config.get("record_replay") is True:
         cmd.append("--record-replay")
+    from benchmarks.attention_harness.task_dag import graph_command_args
+    cmd.extend(graph_command_args(config, repo_root=root, artifact_root=artifact_root))
     return cmd
 
 
@@ -382,6 +384,8 @@ def _build_formal_command(config: dict[str, Any], *, repo_root: Path) -> list[st
         if config.get("dev_generation_artifact") != expected_receipt:
             raise ValueError("M2 Bridge requires the exact generation receipt")
         cmd.extend(("--expected-entry-sha256", m2_approval["candidate"]["entry_sha256"]))
+    from benchmarks.attention_harness.task_dag import graph_command_args
+    cmd.extend(graph_command_args(config, repo_root=root, artifact_root=artifact_root))
     return cmd
 
 def _verify_approved_policy(config: dict[str, Any], *, repo_root: Path) -> None:

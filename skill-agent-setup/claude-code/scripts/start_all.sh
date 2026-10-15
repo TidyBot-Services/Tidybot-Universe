@@ -99,6 +99,8 @@ start_bg() {
 # --start (默认)
 # ---------------------------------------------------------------------------
 cmd_start() {
+    printf '%s\n' 'V2-only: legacy RoboCasa/AgentServer/base planner stack is retired; authenticated V2 task adapter required. No fallback.' >&2
+    return 2
     echo "=== TidyBot 服务启动 ==="
     echo ""
 

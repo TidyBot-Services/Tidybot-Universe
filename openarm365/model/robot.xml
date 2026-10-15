@@ -1,0 +1,612 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="OpenArm365">
+  <compiler angle="radian" />
+  <asset>
+    <mesh name="openarm_body_link0_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/body/collision/body_link0_symp.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link0_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link0.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link1_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link1.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link2_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link2.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part000.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh1" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part001.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh2" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part002.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh3" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part003.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh4" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part004.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh5" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part005.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh6" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part006.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh7" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part007.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh8" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part008.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh9" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part009.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh10" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part010.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh11" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part011.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh12" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part012.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh13" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part013.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh14" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part014.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh15" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part015.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh16" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part016.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh17" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part017.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh18" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part018.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh19" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part019.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh20" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part020.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh21" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part021.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh22" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part022.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh23" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part023.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh24" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part024.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh25" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part025.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh26" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part026.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh27" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part027.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh28" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part028.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh29" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part029.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh30" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part030.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh31" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part031.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh32" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part032.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh33" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part033.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh34" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part034.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh35" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part035.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh36" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part036.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh37" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part037.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh38" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part038.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh39" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part039.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh40" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part040.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh41" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part041.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh42" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part042.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh43" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part043.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh44" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part044.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh45" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part045.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh46" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part046.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh47" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part047.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh48" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part048.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh49" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part049.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh50" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part050.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh51" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part051.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh52" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part052.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh53" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part053.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh54" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part054.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh55" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part055.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh56" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part056.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh57" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part057.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh58" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part058.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh59" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part059.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh60" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part060.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh61" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part061.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh62" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part062.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link3_mesh63" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part063.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part000.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh1" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part001.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh2" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part002.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh3" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part003.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh4" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part004.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh5" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part005.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh6" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part006.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link4_mesh7" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part007.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part000.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh1" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part001.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh2" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part002.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh3" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part003.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh4" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part004.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh5" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part005.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh6" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part006.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link5_mesh7" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part007.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link6_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link6.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_link7_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link7.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link0_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link0_symp.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link1_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link1_symp.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link2_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link2_symp.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part000.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh1" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part001.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh2" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part002.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh3" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part003.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh4" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part004.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh5" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part005.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh6" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part006.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh7" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part007.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh8" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part008.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh9" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part009.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh10" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part010.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh11" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part011.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh12" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part012.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh13" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part013.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh14" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part014.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh15" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part015.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh16" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part016.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh17" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part017.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh18" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part018.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh19" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part019.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh20" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part020.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh21" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part021.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh22" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part022.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh23" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part023.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh24" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part024.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh25" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part025.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh26" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part026.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh27" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part027.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh28" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part028.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh29" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part029.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh30" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part030.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh31" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part031.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh32" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part032.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh33" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part033.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh34" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part034.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh35" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part035.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh36" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part036.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh37" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part037.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh38" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part038.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh39" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part039.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh40" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part040.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh41" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part041.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh42" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part042.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh43" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part043.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh44" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part044.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh45" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part045.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh46" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part046.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh47" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part047.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh48" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part048.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh49" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part049.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh50" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part050.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh51" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part051.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh52" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part052.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh53" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part053.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh54" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part054.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh55" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part055.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh56" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part056.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh57" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part057.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh58" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part058.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh59" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part059.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh60" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part060.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh61" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part061.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh62" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part062.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link3_mesh63" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part063.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part000.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh1" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part001.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh2" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part002.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh3" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part003.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh4" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part004.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh5" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part005.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh6" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part006.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link4_mesh7" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part007.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part000.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh1" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part001.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh2" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part002.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh3" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part003.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh4" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part004.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh5" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part005.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh6" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part006.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link5_mesh7" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part007.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link6_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link6_symp.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_right_link7_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link7_symp.stl" scale="0.001 0.001 0.001" />
+  </asset>
+  <worldbody>
+    <body name="base">
+      <body name="openarm_body_link0" pos="0 0 .6">
+        <inertial pos="0.0 0.0 0.0" mass="13.89" fullinertia="1.653 1.653 0.051 0.0 0.0 0.0" />
+        <geom name="openarm_body_link0_collision0" type="mesh" mesh="openarm_body_link0_mesh0" pos="0.0 0.0 0.0" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+        <geom name="openarm_body_link0_visual0" type="mesh" mesh="openarm_body_link0_mesh0" pos="0.0 0.0 0.0" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+        <body name="openarm_left_link0" pos="0.0 0.031 0.698" quat="0.7071054825112363 -0.7071080798594735 0.0 0.0">
+          <inertial pos="-0.0009483362816297526 -0.0001580207020448382 0.03076860287587199" mass="1.1432284943239561" fullinertia="0.001128 0.000962 0.00147 4e-06 -3.3e-05 7e-06" />
+          <geom name="openarm_left_link0_collision0" type="mesh" mesh="openarm_left_link0_mesh0" pos="0.0 0.0 0.0" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+          <geom name="openarm_left_link0_visual0" type="mesh" mesh="openarm_left_link0_mesh0" pos="0.0 0.0 0.0" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+          <body name="openarm_left_link1" pos="0.0 0.0 0.0625" quat="1.0 0.0 0.0 0.0">
+            <joint name="openarm_left_joint1" type="hinge" axis="0 0 1" limited="true" range="-3.490659 1.3962629999999998" damping=".2" armature=".01" frictionloss=".1" />
+            <inertial pos="0.0011467657911800769 -3.319987657026362e-05 0.05395284380736254" mass="1.1416684646202298" fullinertia="0.001567 0.001273 0.001016 1e-06 -2.9e-05 -1e-06" />
+            <geom name="openarm_left_link1_collision0" type="mesh" mesh="openarm_left_link1_mesh0" pos="-0.0 0.0 -0.0625" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+            <geom name="openarm_left_link1_visual0" type="mesh" mesh="openarm_left_link1_mesh0" pos="-0.0 0.0 -0.0625" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+            <body name="openarm_left_link2" pos="-0.0301 0.0 0.06" quat="0.7071067811882787 -0.7071067811848163 0.0 0.0">
+              <joint name="openarm_left_joint2" type="hinge" axis="-1 0 0" limited="true" range="-3.3161253267948965 0.17453267320510335" damping=".2" armature=".01" frictionloss=".1" />
+              <inertial pos="0.00839629182351943 2.0145102027597523e-08 0.03256649300522363" mass="0.2775092746011571" fullinertia="0.000359 0.000376 0.000232 -1e-06 -0.000109 -1e-06" />
+              <geom name="openarm_left_link2_collision0" type="mesh" mesh="openarm_left_link2_mesh0" pos="0.0301 0.0 -0.1225" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+              <geom name="openarm_left_link2_visual0" type="mesh" mesh="openarm_left_link2_mesh0" pos="0.0301 0.0 -0.1225" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+              <body name="openarm_left_link3" pos="0.0301 0.0 0.06625" quat="1.0 0.0 0.0 0.0">
+                <joint name="openarm_left_joint3" type="hinge" axis="0 0 1" limited="true" range="-1.570796 1.570796" damping=".2" armature=".01" frictionloss=".1" />
+                <inertial pos="-0.002104752099628911 0.0005549085042607548 0.09047470545721961" mass="1.073863338202347" fullinertia="0.004372 0.004319 0.000661 1e-06 1.1e-05 -3.6e-05" />
+                <geom name="openarm_left_link3_collision0" type="mesh" mesh="openarm_left_link3_mesh0" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual0" type="mesh" mesh="openarm_left_link3_mesh0" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision1" type="mesh" mesh="openarm_left_link3_mesh1" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual1" type="mesh" mesh="openarm_left_link3_mesh1" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision2" type="mesh" mesh="openarm_left_link3_mesh2" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual2" type="mesh" mesh="openarm_left_link3_mesh2" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision3" type="mesh" mesh="openarm_left_link3_mesh3" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual3" type="mesh" mesh="openarm_left_link3_mesh3" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision4" type="mesh" mesh="openarm_left_link3_mesh4" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual4" type="mesh" mesh="openarm_left_link3_mesh4" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision5" type="mesh" mesh="openarm_left_link3_mesh5" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual5" type="mesh" mesh="openarm_left_link3_mesh5" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision6" type="mesh" mesh="openarm_left_link3_mesh6" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual6" type="mesh" mesh="openarm_left_link3_mesh6" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision7" type="mesh" mesh="openarm_left_link3_mesh7" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual7" type="mesh" mesh="openarm_left_link3_mesh7" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision8" type="mesh" mesh="openarm_left_link3_mesh8" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual8" type="mesh" mesh="openarm_left_link3_mesh8" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision9" type="mesh" mesh="openarm_left_link3_mesh9" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual9" type="mesh" mesh="openarm_left_link3_mesh9" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision10" type="mesh" mesh="openarm_left_link3_mesh10" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual10" type="mesh" mesh="openarm_left_link3_mesh10" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision11" type="mesh" mesh="openarm_left_link3_mesh11" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual11" type="mesh" mesh="openarm_left_link3_mesh11" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision12" type="mesh" mesh="openarm_left_link3_mesh12" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual12" type="mesh" mesh="openarm_left_link3_mesh12" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision13" type="mesh" mesh="openarm_left_link3_mesh13" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual13" type="mesh" mesh="openarm_left_link3_mesh13" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision14" type="mesh" mesh="openarm_left_link3_mesh14" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual14" type="mesh" mesh="openarm_left_link3_mesh14" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision15" type="mesh" mesh="openarm_left_link3_mesh15" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual15" type="mesh" mesh="openarm_left_link3_mesh15" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision16" type="mesh" mesh="openarm_left_link3_mesh16" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual16" type="mesh" mesh="openarm_left_link3_mesh16" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision17" type="mesh" mesh="openarm_left_link3_mesh17" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual17" type="mesh" mesh="openarm_left_link3_mesh17" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision18" type="mesh" mesh="openarm_left_link3_mesh18" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual18" type="mesh" mesh="openarm_left_link3_mesh18" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision19" type="mesh" mesh="openarm_left_link3_mesh19" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual19" type="mesh" mesh="openarm_left_link3_mesh19" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision20" type="mesh" mesh="openarm_left_link3_mesh20" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual20" type="mesh" mesh="openarm_left_link3_mesh20" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision21" type="mesh" mesh="openarm_left_link3_mesh21" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual21" type="mesh" mesh="openarm_left_link3_mesh21" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision22" type="mesh" mesh="openarm_left_link3_mesh22" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual22" type="mesh" mesh="openarm_left_link3_mesh22" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision23" type="mesh" mesh="openarm_left_link3_mesh23" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual23" type="mesh" mesh="openarm_left_link3_mesh23" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision24" type="mesh" mesh="openarm_left_link3_mesh24" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual24" type="mesh" mesh="openarm_left_link3_mesh24" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision25" type="mesh" mesh="openarm_left_link3_mesh25" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual25" type="mesh" mesh="openarm_left_link3_mesh25" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision26" type="mesh" mesh="openarm_left_link3_mesh26" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual26" type="mesh" mesh="openarm_left_link3_mesh26" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision27" type="mesh" mesh="openarm_left_link3_mesh27" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual27" type="mesh" mesh="openarm_left_link3_mesh27" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision28" type="mesh" mesh="openarm_left_link3_mesh28" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual28" type="mesh" mesh="openarm_left_link3_mesh28" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision29" type="mesh" mesh="openarm_left_link3_mesh29" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual29" type="mesh" mesh="openarm_left_link3_mesh29" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision30" type="mesh" mesh="openarm_left_link3_mesh30" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual30" type="mesh" mesh="openarm_left_link3_mesh30" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision31" type="mesh" mesh="openarm_left_link3_mesh31" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual31" type="mesh" mesh="openarm_left_link3_mesh31" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision32" type="mesh" mesh="openarm_left_link3_mesh32" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual32" type="mesh" mesh="openarm_left_link3_mesh32" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision33" type="mesh" mesh="openarm_left_link3_mesh33" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual33" type="mesh" mesh="openarm_left_link3_mesh33" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision34" type="mesh" mesh="openarm_left_link3_mesh34" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual34" type="mesh" mesh="openarm_left_link3_mesh34" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision35" type="mesh" mesh="openarm_left_link3_mesh35" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual35" type="mesh" mesh="openarm_left_link3_mesh35" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision36" type="mesh" mesh="openarm_left_link3_mesh36" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual36" type="mesh" mesh="openarm_left_link3_mesh36" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision37" type="mesh" mesh="openarm_left_link3_mesh37" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual37" type="mesh" mesh="openarm_left_link3_mesh37" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision38" type="mesh" mesh="openarm_left_link3_mesh38" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual38" type="mesh" mesh="openarm_left_link3_mesh38" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision39" type="mesh" mesh="openarm_left_link3_mesh39" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual39" type="mesh" mesh="openarm_left_link3_mesh39" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision40" type="mesh" mesh="openarm_left_link3_mesh40" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual40" type="mesh" mesh="openarm_left_link3_mesh40" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision41" type="mesh" mesh="openarm_left_link3_mesh41" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual41" type="mesh" mesh="openarm_left_link3_mesh41" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision42" type="mesh" mesh="openarm_left_link3_mesh42" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual42" type="mesh" mesh="openarm_left_link3_mesh42" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision43" type="mesh" mesh="openarm_left_link3_mesh43" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual43" type="mesh" mesh="openarm_left_link3_mesh43" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision44" type="mesh" mesh="openarm_left_link3_mesh44" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual44" type="mesh" mesh="openarm_left_link3_mesh44" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision45" type="mesh" mesh="openarm_left_link3_mesh45" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual45" type="mesh" mesh="openarm_left_link3_mesh45" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision46" type="mesh" mesh="openarm_left_link3_mesh46" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual46" type="mesh" mesh="openarm_left_link3_mesh46" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision47" type="mesh" mesh="openarm_left_link3_mesh47" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual47" type="mesh" mesh="openarm_left_link3_mesh47" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision48" type="mesh" mesh="openarm_left_link3_mesh48" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual48" type="mesh" mesh="openarm_left_link3_mesh48" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision49" type="mesh" mesh="openarm_left_link3_mesh49" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual49" type="mesh" mesh="openarm_left_link3_mesh49" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision50" type="mesh" mesh="openarm_left_link3_mesh50" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual50" type="mesh" mesh="openarm_left_link3_mesh50" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision51" type="mesh" mesh="openarm_left_link3_mesh51" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual51" type="mesh" mesh="openarm_left_link3_mesh51" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision52" type="mesh" mesh="openarm_left_link3_mesh52" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual52" type="mesh" mesh="openarm_left_link3_mesh52" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision53" type="mesh" mesh="openarm_left_link3_mesh53" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual53" type="mesh" mesh="openarm_left_link3_mesh53" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision54" type="mesh" mesh="openarm_left_link3_mesh54" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual54" type="mesh" mesh="openarm_left_link3_mesh54" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision55" type="mesh" mesh="openarm_left_link3_mesh55" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual55" type="mesh" mesh="openarm_left_link3_mesh55" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision56" type="mesh" mesh="openarm_left_link3_mesh56" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual56" type="mesh" mesh="openarm_left_link3_mesh56" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision57" type="mesh" mesh="openarm_left_link3_mesh57" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual57" type="mesh" mesh="openarm_left_link3_mesh57" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision58" type="mesh" mesh="openarm_left_link3_mesh58" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual58" type="mesh" mesh="openarm_left_link3_mesh58" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision59" type="mesh" mesh="openarm_left_link3_mesh59" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual59" type="mesh" mesh="openarm_left_link3_mesh59" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision60" type="mesh" mesh="openarm_left_link3_mesh60" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual60" type="mesh" mesh="openarm_left_link3_mesh60" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision61" type="mesh" mesh="openarm_left_link3_mesh61" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual61" type="mesh" mesh="openarm_left_link3_mesh61" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision62" type="mesh" mesh="openarm_left_link3_mesh62" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual62" type="mesh" mesh="openarm_left_link3_mesh62" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_left_link3_collision63" type="mesh" mesh="openarm_left_link3_mesh63" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_left_link3_visual63" type="mesh" mesh="openarm_left_link3_mesh63" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <body name="openarm_left_link4" pos="-0.0 0.0315 0.15375" quat="1.0 0.0 0.0 0.0">
+                  <joint name="openarm_left_joint4" type="hinge" axis="0 1 0" limited="true" range="0.0 2.443461" damping=".2" armature=".01" frictionloss=".1" />
+                  <inertial pos="-0.0029006831074562967 -0.03030575826634669 0.06339637422196209" mass="0.6348534566833373" fullinertia="0.000623 0.000511 0.000334 -1e-06 -1.9e-05 3.8e-05" />
+                  <geom name="openarm_left_link4_collision0" type="mesh" mesh="openarm_left_link4_mesh0" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual0" type="mesh" mesh="openarm_left_link4_mesh0" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_left_link4_collision1" type="mesh" mesh="openarm_left_link4_mesh1" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual1" type="mesh" mesh="openarm_left_link4_mesh1" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_left_link4_collision2" type="mesh" mesh="openarm_left_link4_mesh2" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual2" type="mesh" mesh="openarm_left_link4_mesh2" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_left_link4_collision3" type="mesh" mesh="openarm_left_link4_mesh3" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual3" type="mesh" mesh="openarm_left_link4_mesh3" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_left_link4_collision4" type="mesh" mesh="openarm_left_link4_mesh4" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual4" type="mesh" mesh="openarm_left_link4_mesh4" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_left_link4_collision5" type="mesh" mesh="openarm_left_link4_mesh5" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual5" type="mesh" mesh="openarm_left_link4_mesh5" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_left_link4_collision6" type="mesh" mesh="openarm_left_link4_mesh6" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual6" type="mesh" mesh="openarm_left_link4_mesh6" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_left_link4_collision7" type="mesh" mesh="openarm_left_link4_mesh7" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_left_link4_visual7" type="mesh" mesh="openarm_left_link4_mesh7" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <body name="openarm_left_link5" pos="0.0 -0.0315 0.0955" quat="1.0 0.0 0.0 0.0">
+                    <joint name="openarm_left_joint5" type="hinge" axis="0 0 1" limited="true" range="-1.570796 1.570796" damping=".2" armature=".01" frictionloss=".1" />
+                    <inertial pos="-0.003049665024221911 -0.0008866902457326625 0.043079803024980934" mass="0.6156588026168502" fullinertia="0.000423 0.000445 0.000324 8e-06 6e-06 6e-06" />
+                    <geom name="openarm_left_link5_collision0" type="mesh" mesh="openarm_left_link5_mesh0" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual0" type="mesh" mesh="openarm_left_link5_mesh0" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_left_link5_collision1" type="mesh" mesh="openarm_left_link5_mesh1" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual1" type="mesh" mesh="openarm_left_link5_mesh1" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_left_link5_collision2" type="mesh" mesh="openarm_left_link5_mesh2" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual2" type="mesh" mesh="openarm_left_link5_mesh2" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_left_link5_collision3" type="mesh" mesh="openarm_left_link5_mesh3" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual3" type="mesh" mesh="openarm_left_link5_mesh3" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_left_link5_collision4" type="mesh" mesh="openarm_left_link5_mesh4" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual4" type="mesh" mesh="openarm_left_link5_mesh4" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_left_link5_collision5" type="mesh" mesh="openarm_left_link5_mesh5" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual5" type="mesh" mesh="openarm_left_link5_mesh5" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_left_link5_collision6" type="mesh" mesh="openarm_left_link5_mesh6" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual6" type="mesh" mesh="openarm_left_link5_mesh6" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_left_link5_collision7" type="mesh" mesh="openarm_left_link5_mesh7" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_left_link5_visual7" type="mesh" mesh="openarm_left_link5_mesh7" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <body name="openarm_left_link6" pos="0.0375 0.0 0.1205" quat="1.0 0.0 0.0 0.0">
+                      <joint name="openarm_left_joint6" type="hinge" axis="1 0 0" limited="true" range="-0.785398 0.785398" damping=".2" armature=".01" frictionloss=".1" />
+                      <inertial pos="-0.037136587005447405 -0.00033230528343419053 -9.498374522309838e-05" mass="0.475202773187987" fullinertia="0.000143 0.000157 0.000159 -1e-06 1e-06 -1e-06" />
+                      <geom name="openarm_left_link6_collision0" type="mesh" mesh="openarm_left_link6_mesh0" pos="-0.0375 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                      <geom name="openarm_left_link6_visual0" type="mesh" mesh="openarm_left_link6_mesh0" pos="-0.0375 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                      <body name="openarm_left_link7" pos="-0.0375 0.0 0.0" quat="1.0 0.0 0.0 0.0">
+                        <joint name="openarm_left_joint7" type="hinge" axis="0 -1 0" limited="true" range="-1.570796 1.570796" damping=".2" armature=".01" frictionloss=".1" />
+                        <inertial pos="6.875510271106056e-05 -0.01266175250761268 0.06951945409987448" mass="0.4659771327380578" fullinertia="0.000639 0.000497 0.000342 -1e-06 1e-06 -8.9e-05" />
+                        <geom name="openarm_left_link7_collision0" type="mesh" mesh="openarm_left_link7_mesh0" pos="0.0 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                        <geom name="openarm_left_link7_visual0" type="mesh" mesh="openarm_left_link7_mesh0" pos="0.0 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+        <body name="openarm_right_link0" pos="0.0 -0.031 0.698" quat="0.7071054825112363 0.7071080798594735 0.0 0.0">
+          <inertial pos="-0.0009483362816297526 0.0001580207020448382 0.03076860287587199" mass="1.1432284943239561" fullinertia="0.001128 0.000962 0.00147 -4e-06 -3.3e-05 -7e-06" />
+          <geom name="openarm_right_link0_collision0" type="mesh" mesh="openarm_right_link0_mesh0" pos="0.0 0.0 0.0" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+          <geom name="openarm_right_link0_visual0" type="mesh" mesh="openarm_right_link0_mesh0" pos="0.0 0.0 0.0" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+          <body name="openarm_right_link1" pos="0.0 0.0 0.0625" quat="1.0 0.0 0.0 0.0">
+            <joint name="openarm_right_joint1" type="hinge" axis="0 0 1" limited="true" range="-1.396263 3.490659" damping=".2" armature=".01" frictionloss=".1" />
+            <inertial pos="0.0011467657911800769 3.319987657026362e-05 0.05395284380736254" mass="1.1416684646202298" fullinertia="0.001567 0.001273 0.001016 -1e-06 -2.9e-05 1e-06" />
+            <geom name="openarm_right_link1_collision0" type="mesh" mesh="openarm_right_link1_mesh0" pos="-0.0 0.0 -0.0625" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+            <geom name="openarm_right_link1_visual0" type="mesh" mesh="openarm_right_link1_mesh0" pos="-0.0 0.0 -0.0625" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+            <body name="openarm_right_link2" pos="-0.0301 0.0 0.06" quat="0.7071067811882787 0.7071067811848163 0.0 0.0">
+              <joint name="openarm_right_joint2" type="hinge" axis="-1 0 0" limited="true" range="-0.17453267320510335 3.3161253267948965" damping=".2" armature=".01" frictionloss=".1" />
+              <inertial pos="0.00839629182351943 -2.0145102027597523e-08 0.03256649300522363" mass="0.2775092746011571" fullinertia="0.000359 0.000376 0.000232 1e-06 -0.000109 1e-06" />
+              <geom name="openarm_right_link2_collision0" type="mesh" mesh="openarm_right_link2_mesh0" pos="0.0301 0.0 -0.1225" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+              <geom name="openarm_right_link2_visual0" type="mesh" mesh="openarm_right_link2_mesh0" pos="0.0301 0.0 -0.1225" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+              <body name="openarm_right_link3" pos="0.0301 0.0 0.06625" quat="1.0 0.0 0.0 0.0">
+                <joint name="openarm_right_joint3" type="hinge" axis="0 0 1" limited="true" range="-1.570796 1.570796" damping=".2" armature=".01" frictionloss=".1" />
+                <inertial pos="-0.002104752099628911 0.0005549085042607548 0.09047470545721961" mass="1.073863338202347" fullinertia="0.004372 0.004319 0.000661 1e-06 1.1e-05 -3.6e-05" />
+                <geom name="openarm_right_link3_collision0" type="mesh" mesh="openarm_right_link3_mesh0" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual0" type="mesh" mesh="openarm_right_link3_mesh0" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision1" type="mesh" mesh="openarm_right_link3_mesh1" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual1" type="mesh" mesh="openarm_right_link3_mesh1" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision2" type="mesh" mesh="openarm_right_link3_mesh2" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual2" type="mesh" mesh="openarm_right_link3_mesh2" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision3" type="mesh" mesh="openarm_right_link3_mesh3" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual3" type="mesh" mesh="openarm_right_link3_mesh3" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision4" type="mesh" mesh="openarm_right_link3_mesh4" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual4" type="mesh" mesh="openarm_right_link3_mesh4" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision5" type="mesh" mesh="openarm_right_link3_mesh5" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual5" type="mesh" mesh="openarm_right_link3_mesh5" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision6" type="mesh" mesh="openarm_right_link3_mesh6" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual6" type="mesh" mesh="openarm_right_link3_mesh6" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision7" type="mesh" mesh="openarm_right_link3_mesh7" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual7" type="mesh" mesh="openarm_right_link3_mesh7" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision8" type="mesh" mesh="openarm_right_link3_mesh8" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual8" type="mesh" mesh="openarm_right_link3_mesh8" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision9" type="mesh" mesh="openarm_right_link3_mesh9" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual9" type="mesh" mesh="openarm_right_link3_mesh9" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision10" type="mesh" mesh="openarm_right_link3_mesh10" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual10" type="mesh" mesh="openarm_right_link3_mesh10" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision11" type="mesh" mesh="openarm_right_link3_mesh11" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual11" type="mesh" mesh="openarm_right_link3_mesh11" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision12" type="mesh" mesh="openarm_right_link3_mesh12" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual12" type="mesh" mesh="openarm_right_link3_mesh12" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision13" type="mesh" mesh="openarm_right_link3_mesh13" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual13" type="mesh" mesh="openarm_right_link3_mesh13" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision14" type="mesh" mesh="openarm_right_link3_mesh14" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual14" type="mesh" mesh="openarm_right_link3_mesh14" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision15" type="mesh" mesh="openarm_right_link3_mesh15" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual15" type="mesh" mesh="openarm_right_link3_mesh15" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision16" type="mesh" mesh="openarm_right_link3_mesh16" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual16" type="mesh" mesh="openarm_right_link3_mesh16" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision17" type="mesh" mesh="openarm_right_link3_mesh17" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual17" type="mesh" mesh="openarm_right_link3_mesh17" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision18" type="mesh" mesh="openarm_right_link3_mesh18" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual18" type="mesh" mesh="openarm_right_link3_mesh18" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision19" type="mesh" mesh="openarm_right_link3_mesh19" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual19" type="mesh" mesh="openarm_right_link3_mesh19" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision20" type="mesh" mesh="openarm_right_link3_mesh20" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual20" type="mesh" mesh="openarm_right_link3_mesh20" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision21" type="mesh" mesh="openarm_right_link3_mesh21" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual21" type="mesh" mesh="openarm_right_link3_mesh21" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision22" type="mesh" mesh="openarm_right_link3_mesh22" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual22" type="mesh" mesh="openarm_right_link3_mesh22" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision23" type="mesh" mesh="openarm_right_link3_mesh23" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual23" type="mesh" mesh="openarm_right_link3_mesh23" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision24" type="mesh" mesh="openarm_right_link3_mesh24" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual24" type="mesh" mesh="openarm_right_link3_mesh24" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision25" type="mesh" mesh="openarm_right_link3_mesh25" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual25" type="mesh" mesh="openarm_right_link3_mesh25" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision26" type="mesh" mesh="openarm_right_link3_mesh26" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual26" type="mesh" mesh="openarm_right_link3_mesh26" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision27" type="mesh" mesh="openarm_right_link3_mesh27" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual27" type="mesh" mesh="openarm_right_link3_mesh27" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision28" type="mesh" mesh="openarm_right_link3_mesh28" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual28" type="mesh" mesh="openarm_right_link3_mesh28" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision29" type="mesh" mesh="openarm_right_link3_mesh29" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual29" type="mesh" mesh="openarm_right_link3_mesh29" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision30" type="mesh" mesh="openarm_right_link3_mesh30" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual30" type="mesh" mesh="openarm_right_link3_mesh30" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision31" type="mesh" mesh="openarm_right_link3_mesh31" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual31" type="mesh" mesh="openarm_right_link3_mesh31" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision32" type="mesh" mesh="openarm_right_link3_mesh32" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual32" type="mesh" mesh="openarm_right_link3_mesh32" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision33" type="mesh" mesh="openarm_right_link3_mesh33" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual33" type="mesh" mesh="openarm_right_link3_mesh33" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision34" type="mesh" mesh="openarm_right_link3_mesh34" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual34" type="mesh" mesh="openarm_right_link3_mesh34" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision35" type="mesh" mesh="openarm_right_link3_mesh35" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual35" type="mesh" mesh="openarm_right_link3_mesh35" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision36" type="mesh" mesh="openarm_right_link3_mesh36" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual36" type="mesh" mesh="openarm_right_link3_mesh36" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision37" type="mesh" mesh="openarm_right_link3_mesh37" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual37" type="mesh" mesh="openarm_right_link3_mesh37" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision38" type="mesh" mesh="openarm_right_link3_mesh38" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual38" type="mesh" mesh="openarm_right_link3_mesh38" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision39" type="mesh" mesh="openarm_right_link3_mesh39" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual39" type="mesh" mesh="openarm_right_link3_mesh39" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision40" type="mesh" mesh="openarm_right_link3_mesh40" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual40" type="mesh" mesh="openarm_right_link3_mesh40" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision41" type="mesh" mesh="openarm_right_link3_mesh41" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual41" type="mesh" mesh="openarm_right_link3_mesh41" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision42" type="mesh" mesh="openarm_right_link3_mesh42" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual42" type="mesh" mesh="openarm_right_link3_mesh42" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision43" type="mesh" mesh="openarm_right_link3_mesh43" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual43" type="mesh" mesh="openarm_right_link3_mesh43" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision44" type="mesh" mesh="openarm_right_link3_mesh44" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual44" type="mesh" mesh="openarm_right_link3_mesh44" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision45" type="mesh" mesh="openarm_right_link3_mesh45" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual45" type="mesh" mesh="openarm_right_link3_mesh45" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision46" type="mesh" mesh="openarm_right_link3_mesh46" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual46" type="mesh" mesh="openarm_right_link3_mesh46" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision47" type="mesh" mesh="openarm_right_link3_mesh47" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual47" type="mesh" mesh="openarm_right_link3_mesh47" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision48" type="mesh" mesh="openarm_right_link3_mesh48" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual48" type="mesh" mesh="openarm_right_link3_mesh48" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision49" type="mesh" mesh="openarm_right_link3_mesh49" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual49" type="mesh" mesh="openarm_right_link3_mesh49" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision50" type="mesh" mesh="openarm_right_link3_mesh50" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual50" type="mesh" mesh="openarm_right_link3_mesh50" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision51" type="mesh" mesh="openarm_right_link3_mesh51" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual51" type="mesh" mesh="openarm_right_link3_mesh51" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision52" type="mesh" mesh="openarm_right_link3_mesh52" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual52" type="mesh" mesh="openarm_right_link3_mesh52" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision53" type="mesh" mesh="openarm_right_link3_mesh53" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual53" type="mesh" mesh="openarm_right_link3_mesh53" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision54" type="mesh" mesh="openarm_right_link3_mesh54" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual54" type="mesh" mesh="openarm_right_link3_mesh54" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision55" type="mesh" mesh="openarm_right_link3_mesh55" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual55" type="mesh" mesh="openarm_right_link3_mesh55" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision56" type="mesh" mesh="openarm_right_link3_mesh56" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual56" type="mesh" mesh="openarm_right_link3_mesh56" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision57" type="mesh" mesh="openarm_right_link3_mesh57" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual57" type="mesh" mesh="openarm_right_link3_mesh57" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision58" type="mesh" mesh="openarm_right_link3_mesh58" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual58" type="mesh" mesh="openarm_right_link3_mesh58" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision59" type="mesh" mesh="openarm_right_link3_mesh59" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual59" type="mesh" mesh="openarm_right_link3_mesh59" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision60" type="mesh" mesh="openarm_right_link3_mesh60" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual60" type="mesh" mesh="openarm_right_link3_mesh60" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision61" type="mesh" mesh="openarm_right_link3_mesh61" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual61" type="mesh" mesh="openarm_right_link3_mesh61" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision62" type="mesh" mesh="openarm_right_link3_mesh62" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual62" type="mesh" mesh="openarm_right_link3_mesh62" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <geom name="openarm_right_link3_collision63" type="mesh" mesh="openarm_right_link3_mesh63" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                <geom name="openarm_right_link3_visual63" type="mesh" mesh="openarm_right_link3_mesh63" pos="-0.0 -0.0 -0.18875" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                <body name="openarm_right_link4" pos="-0.0 0.0315 0.15375" quat="1.0 0.0 0.0 0.0">
+                  <joint name="openarm_right_joint4" type="hinge" axis="0 1 0" limited="true" range="0.0 2.443461" damping=".2" armature=".01" frictionloss=".1" />
+                  <inertial pos="-0.0029006831074562967 -0.03030575826634669 0.06339637422196209" mass="0.6348534566833373" fullinertia="0.000623 0.000511 0.000334 -1e-06 -1.9e-05 3.8e-05" />
+                  <geom name="openarm_right_link4_collision0" type="mesh" mesh="openarm_right_link4_mesh0" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual0" type="mesh" mesh="openarm_right_link4_mesh0" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_right_link4_collision1" type="mesh" mesh="openarm_right_link4_mesh1" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual1" type="mesh" mesh="openarm_right_link4_mesh1" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_right_link4_collision2" type="mesh" mesh="openarm_right_link4_mesh2" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual2" type="mesh" mesh="openarm_right_link4_mesh2" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_right_link4_collision3" type="mesh" mesh="openarm_right_link4_mesh3" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual3" type="mesh" mesh="openarm_right_link4_mesh3" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_right_link4_collision4" type="mesh" mesh="openarm_right_link4_mesh4" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual4" type="mesh" mesh="openarm_right_link4_mesh4" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_right_link4_collision5" type="mesh" mesh="openarm_right_link4_mesh5" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual5" type="mesh" mesh="openarm_right_link4_mesh5" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_right_link4_collision6" type="mesh" mesh="openarm_right_link4_mesh6" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual6" type="mesh" mesh="openarm_right_link4_mesh6" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <geom name="openarm_right_link4_collision7" type="mesh" mesh="openarm_right_link4_mesh7" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                  <geom name="openarm_right_link4_visual7" type="mesh" mesh="openarm_right_link4_mesh7" pos="0.0 -0.0315 -0.3425" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                  <body name="openarm_right_link5" pos="0.0 -0.0315 0.0955" quat="1.0 0.0 0.0 0.0">
+                    <joint name="openarm_right_joint5" type="hinge" axis="0 0 1" limited="true" range="-1.570796 1.570796" damping=".2" armature=".01" frictionloss=".1" />
+                    <inertial pos="-0.003049665024221911 0.0008866902457326625 0.043079803024980934" mass="0.6156588026168502" fullinertia="0.000423 0.000445 0.000324 -8e-06 6e-06 -6e-06" />
+                    <geom name="openarm_right_link5_collision0" type="mesh" mesh="openarm_right_link5_mesh0" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual0" type="mesh" mesh="openarm_right_link5_mesh0" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_right_link5_collision1" type="mesh" mesh="openarm_right_link5_mesh1" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual1" type="mesh" mesh="openarm_right_link5_mesh1" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_right_link5_collision2" type="mesh" mesh="openarm_right_link5_mesh2" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual2" type="mesh" mesh="openarm_right_link5_mesh2" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_right_link5_collision3" type="mesh" mesh="openarm_right_link5_mesh3" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual3" type="mesh" mesh="openarm_right_link5_mesh3" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_right_link5_collision4" type="mesh" mesh="openarm_right_link5_mesh4" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual4" type="mesh" mesh="openarm_right_link5_mesh4" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_right_link5_collision5" type="mesh" mesh="openarm_right_link5_mesh5" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual5" type="mesh" mesh="openarm_right_link5_mesh5" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_right_link5_collision6" type="mesh" mesh="openarm_right_link5_mesh6" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual6" type="mesh" mesh="openarm_right_link5_mesh6" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <geom name="openarm_right_link5_collision7" type="mesh" mesh="openarm_right_link5_mesh7" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                    <geom name="openarm_right_link5_visual7" type="mesh" mesh="openarm_right_link5_mesh7" pos="-0.0 -0.0 -0.438" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                    <body name="openarm_right_link6" pos="0.0375 0.0 0.1205" quat="1.0 0.0 0.0 0.0">
+                      <joint name="openarm_right_joint6" type="hinge" axis="1 0 0" limited="true" range="-0.785398 0.785398" damping=".2" armature=".01" frictionloss=".1" />
+                      <inertial pos="-0.037136587005447405 0.00033230528343419053 -9.498374522309838e-05" mass="0.475202773187987" fullinertia="0.000143 0.000157 0.000159 1e-06 1e-06 1e-06" />
+                      <geom name="openarm_right_link6_collision0" type="mesh" mesh="openarm_right_link6_mesh0" pos="-0.0375 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                      <geom name="openarm_right_link6_visual0" type="mesh" mesh="openarm_right_link6_mesh0" pos="-0.0375 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                      <body name="openarm_right_link7" pos="-0.0375 0.0 0.0" quat="1.0 0.0 0.0 0.0">
+                        <joint name="openarm_right_joint7" type="hinge" axis="0 1 0" limited="true" range="-1.570796 1.570796" damping=".2" armature=".01" frictionloss=".1" />
+                        <inertial pos="6.875510271106056e-05 0.01266175250761268 0.06951945409987448" mass="0.4659771327380578" fullinertia="0.000639 0.000497 0.000342 1e-06 1e-06 8.9e-05" />
+                        <geom name="openarm_right_link7_collision0" type="mesh" mesh="openarm_right_link7_mesh0" pos="0.0 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="0" friction="1 0.005 0.0001" condim="4" />
+                        <geom name="openarm_right_link7_visual0" type="mesh" mesh="openarm_right_link7_mesh0" pos="0.0 -0.0 -0.5585" quat="1.0 0.0 0.0 0.0" group="1" contype="0" conaffinity="0" rgba=".65 .67 .69 1" />
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <site name="left_center" size=".003" rgba="0 0 0 0" />
+      <site name="right_center" size=".003" rgba="0 0 0 0" />
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="openarm_left_joint1_act" joint="openarm_left_joint1" ctrllimited="true" ctrlrange="-40.0 40.0" />
+    <motor name="openarm_left_joint2_act" joint="openarm_left_joint2" ctrllimited="true" ctrlrange="-40.0 40.0" />
+    <motor name="openarm_left_joint3_act" joint="openarm_left_joint3" ctrllimited="true" ctrlrange="-27.0 27.0" />
+    <motor name="openarm_left_joint4_act" joint="openarm_left_joint4" ctrllimited="true" ctrlrange="-27.0 27.0" />
+    <motor name="openarm_left_joint5_act" joint="openarm_left_joint5" ctrllimited="true" ctrlrange="-7.0 7.0" />
+    <motor name="openarm_left_joint6_act" joint="openarm_left_joint6" ctrllimited="true" ctrlrange="-7.0 7.0" />
+    <motor name="openarm_left_joint7_act" joint="openarm_left_joint7" ctrllimited="true" ctrlrange="-7.0 7.0" />
+    <motor name="openarm_right_joint1_act" joint="openarm_right_joint1" ctrllimited="true" ctrlrange="-40.0 40.0" />
+    <motor name="openarm_right_joint2_act" joint="openarm_right_joint2" ctrllimited="true" ctrlrange="-40.0 40.0" />
+    <motor name="openarm_right_joint3_act" joint="openarm_right_joint3" ctrllimited="true" ctrlrange="-27.0 27.0" />
+    <motor name="openarm_right_joint4_act" joint="openarm_right_joint4" ctrllimited="true" ctrlrange="-27.0 27.0" />
+    <motor name="openarm_right_joint5_act" joint="openarm_right_joint5" ctrllimited="true" ctrlrange="-7.0 7.0" />
+    <motor name="openarm_right_joint6_act" joint="openarm_right_joint6" ctrllimited="true" ctrlrange="-7.0 7.0" />
+    <motor name="openarm_right_joint7_act" joint="openarm_right_joint7" ctrllimited="true" ctrlrange="-7.0 7.0" />
+  </actuator>
+  <sensor />
+  <contact>
+    <exclude body1="openarm_left_link5" body2="openarm_left_link7" />
+    <exclude body1="openarm_right_link5" body2="openarm_right_link7" />
+  </contact>
+  <equality />
+</mujoco>

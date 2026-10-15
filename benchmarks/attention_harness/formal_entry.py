@@ -45,11 +45,18 @@ def inspect_formal_entry(
     approved_policy_config_sha256: str | None = None,
     memory_contract: Path | None = None,
     approved_memory_contract_sha256: str | None = None,
+    run_budget: Path | None = None,
+    approved_run_budget_sha256: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, int] | None]:
+    if suite != "robocasa365" and (run_budget is not None or approved_run_budget_sha256 is not None):
+        raise ValueError("daily run budget is only supported for RoboCasa365")
     if suite == "robosuite":
         get_robosuite_task(task_id)
     elif suite == "robocasa":
         get_robocasa_task(task_id)
+    elif suite == "robocasa365":
+        from .robocasa365.tasks import get_task
+        get_task(task_id)
     else:
         raise ValueError("unsupported formal suite")
     if validate_seed(seed, allow_heldout=False) != "dev":
@@ -78,7 +85,21 @@ def inspect_formal_entry(
         overall_deadline_seconds=overall_deadline_seconds,
     )
     request.validate()
-    (robosuite_config if suite == "robosuite" else robocasa_config)(request)
+    if suite == "robocasa365":
+        from .robocasa365.config import _config as robocasa365_config
+        robocasa365_config(request)
+        from .robocasa365.budget import load_run_budget, limits_for_budget
+        budget = load_run_budget(run_budget, approved_run_budget_sha256,
+                                 config_sha256=approved_config_sha256, policy_sha256=approved_policy_sha256)
+        limits = limits_for_budget(budget)
+        if (max_attempts > limits["max_attempts"] or assistance_credits > limits["assistance_credits"]
+                or token_limit > limits["token_limit"] or overall_deadline_seconds > limits["overall_deadline_seconds"]
+                or (budget is not None and human_deadline_seconds > limits["human_deadline_seconds"])):
+            raise ValueError("RoboCasa365 budget exceeds approved run limits")
+        if memory_contract is not None:
+            raise ValueError("RoboCasa365 does not import legacy Memory freeze contracts")
+    else:
+        (robosuite_config if suite == "robosuite" else robocasa_config)(request)
     demo = _read_approved(demo_prior, approved_demo_sha256, "demo prior")
     if policy_id == "demo_first":
         if demo is None:
@@ -134,6 +155,8 @@ def inspect_formal_entry(
         "human_deadline_seconds": float(human_deadline_seconds),
         "overall_deadline_seconds": float(overall_deadline_seconds),
     }
+    if approved_run_budget_sha256 is not None:
+        identity["approved_run_budget_sha256"] = approved_run_budget_sha256
     if memory_raw is not None:
         identity["approved_memory_contract_sha256"] = approved_memory_contract_sha256
         identity["memory_contract_content_sha256"] = hashlib.sha256(json.dumps(

@@ -65,7 +65,7 @@ def persist_episode_trace(
     finalize_run: bool = True,
     execution_budget_seconds: float | None = None,
 ) -> dict[str, Any]:
-    """Persist a complete raw ledger and, on eligible failure, its projection.
+    """Persist a complete raw ledger and the authorized terminal projection.
 
     The caller writes normal episode artifacts first. This function then hashes
     those files, creates a per-episode Attention store, and returns stable IDs
@@ -237,7 +237,7 @@ def persist_episode_trace(
     # An Advisor packet only exists after the attempt has a persisted terminal
     # state. The complete internal ledger is stored before its safe projection.
     advisor_packet = None
-    if failed and attention_eligible:
+    if attention_eligible:
         advisor_packet = TracePipeline(store).persist(raw, trace_id=advisor_trace_id)
     else:
         store.put_raw_trace(raw)
@@ -310,6 +310,7 @@ def _trace_events(
                 event_id=f"sdk-{index}",
                 sequence=sequence,
                 timestamp=float(item.get("timestamp", 0.0)),
+                timestamp_basis=item.get("timestamp_basis", "unknown"),
                 source=str(item.get("source", "robot_sdk")),
                 event_type=str(item.get("event_type", "sdk.call")),
                 operation=str(item.get("operation", "unknown")),
@@ -419,6 +420,10 @@ def _evidence_refs(
         "trace_context.json": ("execution_context", "application/json"),
         "initial_observation.npz": ("initial_observation", "application/x-npz"),
         "final_observation.npz": ("final_observation", "application/x-npz"),
+        "camera_initial.png": ("camera_initial", "image/png"),
+        "camera_final.png": ("camera_final", "image/png"),
+        "camera_recording.json": ("camera_recording", "application/json"),
+        "bimanual_control.json": ("bimanual_control", "application/json"),
         "stdout.txt": ("stdout", "text/plain"),
         "stderr.txt": ("stderr", "text/plain"),
         "generated_policy.py": ("policy_code", "text/x-python"),
@@ -426,10 +431,11 @@ def _evidence_refs(
     }
     # Recordings are included only when the runner explicitly writes them
     # beside the episode artifacts before this trace is projected.
-    for recording in sorted(episode_dir.glob("advisor_replay.*")):
+    for recording in sorted(episode_dir.glob("advisor_replay*.*")):
         if recording.suffix in {".mp4", ".webm"}:
             public_files[recording.name] = (
-                "advisor_replay", "video/mp4" if recording.suffix == ".mp4" else "video/webm"
+                recording.stem if recording.stem in {'advisor_replay_chest','advisor_replay_wrist','advisor_replay_left_wrist','advisor_replay_right_wrist'} else "advisor_replay",
+                "video/mp4" if recording.suffix == ".mp4" else "video/webm"
             )
     internal_files = {
         "trace.jsonl": ("action_trace", "application/x-ndjson"),

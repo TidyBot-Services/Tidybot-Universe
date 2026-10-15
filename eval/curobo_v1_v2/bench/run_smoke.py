@@ -58,6 +58,7 @@ def run_one(label: str, url: str) -> dict:
 
 
 def main():
+    raise RuntimeError('V2-only: unauthenticated historical V1/V2 comparison execution is disabled')
     ap = argparse.ArgumentParser()
     ap.add_argument("--v1-url", default="http://127.0.0.1:7050")
     ap.add_argument("--v2-url", default="http://127.0.0.1:7051")

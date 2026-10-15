@@ -1,0 +1,95 @@
+{
+  "camera_names": [
+    "base_camera"
+  ],
+  "model_sha256": "ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456",
+  "object_set_id": "objects:30b8da8d14e995e02588",
+  "perception_mode": "sim_gt",
+  "robot": {
+    "execution_arm": "left",
+    "model": "OpenArm"
+  },
+  "robot_parameters": {
+    "path": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/openarm_robocasa/configs/robot_parameters_v5.json",
+    "sha256": "9372e3dba206375a81b7b20564ed8236fb83019cf53fcb164a3aa5adb045c2ea"
+  },
+  "safety_limits": {
+    "max_base_delta_m": 0.3,
+    "max_base_rotation_rad": 0.5,
+    "max_delta_m": 0.25,
+    "max_observed_step_m": 0.5
+  },
+  "scene_id": "scene:29f6ddc71995db3e0fd6",
+  "schema_version": "attentionbench.robocasa-openarm-formal-config.v2",
+  "seed": 101,
+  "service_files": {
+    "benchmarks/attention_harness/core/models.py": "4267629782af0804bd539c43f668f04709c4125c4f758bdda69edffed29e36ad",
+    "benchmarks/attention_harness/core/store.py": "d92e17be04311cd146c93fec376a46ffa9069d66c704988eefc4c1642966f8f9",
+    "benchmarks/attention_harness/formal_attention_run.py": "b60c287e7688bb705438026e0d88fd6ab6aefe81b6f68b4d074b63fc2f54d532",
+    "benchmarks/attention_harness/hint_compilation.py": "9e6621ba457040fe75b851745771921e3270f4581cb47274a5c6be34397c95c5",
+    "benchmarks/attention_harness/public_station.py": "51f5ad6611d38a9eb9ebfceecee36ed4eb1ca3bb1360740cc7c89bbf582e7b58",
+    "benchmarks/attention_harness/robocasa_native/mobile_sdk.py": "f47053a012fbe9ed6958ba416a21c889ca6ec4f8ebf994f9035e635b67914ee7",
+    "benchmarks/attention_harness/robocasa_native/openarm_backend.py": "77b50f7d297639fd8932035a45cb49c08c6b2334d49075770987f6cadc24c820",
+    "benchmarks/attention_harness/robocasa_native/openarm_config.py": "ae96342ecc12d5dac5b75fd20d769d33ad469ecc6e8a9532005f4194dabc741c",
+    "benchmarks/attention_harness/robocasa_native/openarm_runner.py": "6c49df52dd165ad737aab8d5ca0ba32c976088683b86755cc8dab92164bbe7ba",
+    "benchmarks/attention_harness/robocasa_native/robot_config.py": "dd3da9babe43aae85f125e48a897edf9740db134f2350868cb26012264e0d88e",
+    "benchmarks/attention_harness/robocasa_native/safety_monitor.py": "4fa8db76d38552561f93e5ba03354cb666d42dcbd722304b64d877c61a8c8fa5",
+    "benchmarks/attention_harness/robosuite_memory/formal_sandbox.py": "5e4d95382f41cb247c0114f225d0c188e92c7500dac2157ed7cd79e9a7dc33e9",
+    "benchmarks/attention_harness/service_recovery.py": "b02be65e0d686411d3f7cffa65bc50ec9f575adfaa91b115b3b7fd9d78294533",
+    "benchmarks/attention_harness/ui/index.html": "888ce774b796253098ecbdfbcbb81991450186bbe8e44c3b216acd0c482ab71f",
+    "benchmarks/attention_harness/ui/live.js": "ff857caffa8c39e6fa0a35a3f21a0c4ce32915d108b234c858995f55c5b804ed",
+    "benchmarks/attention_harness/ui_launch.py": "e3013896c764a6eff27d93213e7bc651082f5bd18c904e7eca34061a75fbd54b",
+    "benchmarks/attention_harness/ui_media.py": "d4726bbe6f0e70ad258f3e24ec01a1f1dea3fe0ce531f7ca97261950d6cc37c8",
+    "benchmarks/attention_harness/ui_server.py": "9181b828319fb6430c1710c6e903969400b269487a7718ab6353e44886e1a47b",
+    "curobo_v2/client.py": "e4ed30ccd3d8e6a71eab65f69d6abde53c69c38b4020f9b804987b5e7083edc8",
+    "curobo_v2/command_curve.py": "ebb2e80c13491ccc1df8f8468d8578a0044ed45cc82861cafe8415dc7e45f56c",
+    "curobo_v2/deployment.py": "05c92dd8a1cbc4c004a67e74b723056ee7a5a5a2e12d738e0419c2ca4651e260",
+    "curobo_v2/identity.py": "276968f24a63c4b7d141643f9fcbf61c6348fd4a3b69c6c7ab58a0dab8f4223c",
+    "curobo_v2/native_auth.py": "e1af0e292e5d1ec8a458851eb2e045f7ed067c38c54d2979a92dec64bbb9947d",
+    "curobo_v2/native_session.py": "a3fec7f282249f3dfa73cfd18fb376b0975a1ff571d0a5583ec8a66ba3a3e459",
+    "curobo_v2/openarm_sdk.py": "e72d4b3a8ffdc126d32b23da2ca7b966ea802d8466da3f92e19d0ff7fa3fd725",
+    "curobo_v2/sweep.py": "0226b02f8716269f977c699773b176c2ed69745f2556141b14e6055f69b1b31e",
+    "curobo_v2/trusted_deployments.json": "3ed60e25678213e0bb5f75669dc823ff1536f4501d8432b605202eac56f6cec9",
+    "openarm_phase0_recheck/validate.py": "a4c6304f39fce642a053e3ee648e2af67a089f1a511b524e92b40d0e35183398",
+    "openarm_phase1/service.py": "b6607ca8667c90b24445da304e95055f28b1b0bf3944bd372911062dd6f0ecca",
+    "openarm_robocasa/camera.py": "621b66d3936143a3a36e4770dfc0d2038826f2a6c0bead0dac1965c8ba97f434",
+    "openarm_robocasa/contact_controller.py": "dc1538dc4cdf09ffd69b7bea6884fe6d38165fe552920b68baf9c7947e680046",
+    "openarm_robocasa/contact_policy.py": "6f1c9cf01bd633627c5dcb013d92dd4d7a290f2f9445426f40e37af84ded63b8",
+    "openarm_robocasa/kitchen.py": "5173aba31f9c140a7e1113be6ed7007a256f78f78f212365e65116100ff67f58",
+    "openarm_robocasa/mimic.py": "6c2eda29ea0f711afacf1ada57aa62782c8c85ca0df36ec00facbd8ec9f8a41a",
+    "openarm_robocasa/planning.py": "f9a6780b17ee2ab14dd5bbbe9483f2c56ef5c7e6c451dabfd7d1d49d03931cf9",
+    "openarm_robocasa/service.py": "96ba03e0639194467616ccf83cb60658d7eef4186c30f911c26184808ec13174",
+    "openarm_robocasa/session.py": "d43afeaa7c408b18477aceb5f683ae95d7e01f350afb78885135727b478d3e98",
+    "openarm_robocasa/variation.py": "f260dc198cf4a0d541e51a58e1f769ec55680664ec5d7a97250db2993d1d9174",
+    "tidybot_sdk/facade.py": "06f6f4afa65ad38b536ae9be384f154b506514914bd26855f2d8fa519da0aa64"
+  },
+  "suite": "robocasa",
+  "task_id": "counter_to_sink",
+  "task_prompt": "pick the boxed drink from the counter and place it in the sink",
+  "v2_deployment": {
+    "library_root": "/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/runtime/official",
+    "lock_path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r08/runtime-lock.json",
+    "lock_sha256": "a8f3560e3955eb81920a8c3f5b1165027c797a00818d6935f6b9489a2d3819f0",
+    "native_assets": {
+      "bytes": 8485487995,
+      "data_root": "/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/runtime/native-assets/data",
+      "env_root": "/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/runtime/native-assets",
+      "file_count": 70254,
+      "manifest": "/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/reports/native-assets-files.json",
+      "manifest_sha256": "1427e52360e9c2cde87875f612c5fdd3fae03aa48a364a25c417f939d6ec8e22"
+    },
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parameters": {
+      "path": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r08/runtime/project/openarm_robocasa/configs/robot_parameters_v5.json",
+      "sha256": "9372e3dba206375a81b7b20564ed8236fb83019cf53fcb164a3aa5adb045c2ea"
+    },
+    "parent_lock_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "prefix": "/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env",
+    "project_root": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r08/runtime/project",
+    "python": "/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/bin/python3.11",
+    "robot_config": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r08/runtime/project/config/openarm_fixed.yml",
+    "robot_config_sha256": "8563c898740d0e400758a4e03cabbb7deca2a7b1459c9230ce465eadde723694",
+    "schema": "attentionbench.official-v2-deployment.v1",
+    "task_source": "/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/deployments/main-r08/runtime/project/native-task-source"
+  }
+}

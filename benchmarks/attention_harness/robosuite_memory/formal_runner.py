@@ -1,7 +1,9 @@
 """Robosuite v2 formal-attempt adapter; formal scoring remains gated separately."""
 
 from __future__ import annotations
+from benchmarks.attention_harness.attention_control import boundary_event_sink
 
+from contextlib import ExitStack
 import hashlib
 import json
 import math
@@ -18,7 +20,7 @@ from ..robocasa_native.safety_monitor import SafetyMonitorBackend
 from ..robocasa_native.policy_sandbox import validate_generated_policy
 from ..seed_guard import validate_seed
 from ..public_station import publish_public_station, save_public_frame
-from ..ui_media import robosuite_camera_frame
+from ..ui_media import rgb_png, AttemptCameraRecording
 from .adapter import RobosuiteSimGTBackend
 from .formal_sandbox import FormalPolicyOutcome, _json_safe, execute_formal_policy, probe_sandbox
 from .formal_service import DedicatedRobosuiteService
@@ -62,8 +64,8 @@ def _config(request: FormalRunRequest) -> dict[str, Any]:
            for key in ("scene_id", "object_set_id")):
         raise ValueError("formal config requires scene and object identities")
     for name, minimum, maximum in (("horizon", 1, 2000),
-                                   ("camera_height", 32, 1024),
-                                   ("camera_width", 32, 1024)):
+                                   ("camera_height", 32, 2048),
+                                   ("camera_width", 32, 2048)):
         item = value[name]
         if isinstance(item, bool) or not isinstance(item, int) or not minimum <= item <= maximum:
             raise ValueError(f"invalid formal config {name}")
@@ -76,15 +78,24 @@ def _config(request: FormalRunRequest) -> dict[str, Any]:
     return value
 
 
+def _policy_memory_limit_mb(config: dict[str, Any]) -> int:
+    # Native RGB+depth become nested Python lists in the isolated RPC worker.
+    # Keep the original budget for <=1MP; the approved <=2048x2048 camera
+    # needs a bounded 2GiB address space for lossless observation decoding.
+    return 2048 if config["camera_width"] * config["camera_height"] > 1024 * 1024 else 512
+
+
 class RobosuiteFormalSuiteRunner:
     suite = "robosuite"
 
     def __init__(self, *, service_source_root: Path,
                  cancel_event: threading.Event | None = None,
-                 policy_start_hook: Callable[[], None] | None = None) -> None:
+                 policy_start_hook: Callable[[], None] | None = None,
+                 record_replay: bool = False) -> None:
         self.service_source_root = service_source_root
         self.cancel_event = cancel_event
         self.policy_start_hook = policy_start_hook
+        self.record_replay = record_replay
 
     def execute(self, request: FormalRunRequest) -> dict[str, Any]:
         request.validate()
@@ -118,10 +129,11 @@ class RobosuiteFormalSuiteRunner:
         native_evaluated = False
         service_native_success = False
         reset_attestation: dict[str, str] | None = None
+        recording: AttemptCameraRecording | None = None
         initial_sha: str | None = None
         final_sha: str | None = None
         try:
-            with service:
+            with service, ExitStack() as camera_context:
                 adapter = RobosuiteSimGTBackend(
                     request.task_id, service_url=service.base_url,
                     camera_name=config["camera_name"], horizon=config["horizon"],
@@ -145,21 +157,34 @@ class RobosuiteFormalSuiteRunner:
                     )
                     try:
                         save_public_frame(request.artifact_root.parent, suite=self.suite,
-                                          frame=robosuite_camera_frame(
-                                              service.base_url, config["camera_name"]))
+                                          frame=rgb_png(adapter.public_rgb_snapshot()[0]))
                     except Exception:
                         pass  # Camera errors are visible through the UI; native execution proceeds.
+                if self.record_replay and service.base_url:
+                    recording = camera_context.enter_context(AttemptCameraRecording(
+                        episode_dir, lambda: rgb_png(adapter.public_rgb_snapshot()[0]),
+                        fetch_rgb=adapter.public_rgb_snapshot,
+                        run_id=request.run_id, attempt_id=request.attempt_id,
+                        run_dir=request.artifact_root.parent if request.run_id else None,
+                        defer_encoding=True,
+                    ))
                 monitor = SafetyMonitorBackend(
                     adapter, max_delta_m=config["safety_limits"]["max_delta_m"],
                     max_observed_step_m=config["safety_limits"]["max_observed_step_m"],
                     interrupt_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
                 )
+                def trace_clock() -> float:
+                    now = time.monotonic()
+                    if recording is not None:
+                        recording.bind_trace_origin(now)
+                    return now
+
                 sdk = TidyBotSDK(ModeBoundPerceptionBackend(
                     monitor, mode="sim_gt", target="robosuite_sim",
                     provider=RobosuiteGTPerception(
                         adapter, fixed_camera_names=[config["camera_name"]],
                     ),
-                ), event_sink=sdk_trace.append)
+                ), event_sink=boundary_event_sink(self,sdk_trace), clock=trace_clock)
                 monitor.observe()
                 objects = sdk.sensors.find_objects()
                 if self.policy_start_hook is not None:
@@ -171,6 +196,7 @@ class RobosuiteFormalSuiteRunner:
                              "attention_input": request.attention_input or {}},
                     deadline=deadline, stderr_path=episode_dir / "policy.stderr",
                     max_sdk_calls=request.sdk_call_limit or 200,
+                    memory_limit_mb=_policy_memory_limit_mb(config),
                     cancel_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
                 )
                 status, error = outcome.status, outcome.error
@@ -188,6 +214,8 @@ class RobosuiteFormalSuiteRunner:
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             status = "timeout" if time.monotonic() >= deadline else "failed"
+        if recording is not None:
+            recording.finalize()  # Encoding must not keep the native Service watchdog alive.
         stop = service.stop_receipt
         if stop is not None and stop["reason"] == "episode_deadline":
             status = "timeout"

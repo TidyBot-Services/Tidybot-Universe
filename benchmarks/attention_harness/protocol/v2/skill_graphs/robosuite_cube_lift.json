@@ -1,0 +1,26 @@
+{
+  "graph_id": "robosuite-cube_lift-guidance-v1-1",
+  "definition_version": "guidance-v1.1-dev-2026-10-01",
+  "task_env": "attentionbench-engineering",
+  "formal_eligible": false,
+  "entries": [
+    {
+      "name": "cube-lift-guidance-v1-1",
+      "display_name": "立方体抬升",
+      "description": "执行已批准的完整 Public SDK 策略。内部函数和 SDK 动作没有独立 Skill DAG 调度定义或子技能事件；本图仅记录整体任务节点。",
+      "status": "done",
+      "dependencies": [],
+      "attentionbench": {
+        "suite": "robosuite",
+        "task": "cube_lift",
+        "seed": 101,
+        "runner_boundary": "formal",
+        "approved_generated_policy": true,
+        "generated_policy_file": "benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robosuite_cube_lift/policy.py",
+        "approved_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+        "formal_config_file": "benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/configs/robosuite_cube_lift_seed101.json",
+        "approved_config_sha256": "55f26f04602de554eb82fdf20c06063cc4ba96c55184f4d0785dafca4b01f83a"
+      }
+    }
+  ]
+}

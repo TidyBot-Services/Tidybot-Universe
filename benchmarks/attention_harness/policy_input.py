@@ -6,7 +6,7 @@ from typing import Any
 def public_attention_input(value: dict[str, Any] | None) -> dict[str, Any]:
     if value is None:
         return {}
-    allowed = {"demo_prior", "advisor_guidance", "inspected_trace", "memory_ids_to_use", "memory_guidance", "approval_granted"}
+    allowed = {"demo_prior", "advisor_guidance", "inspected_trace", "memory_ids_to_use", "memory_guidance", "approval_granted", "guidance_scope"}
     if not isinstance(value, dict) or set(value) - allowed:
         raise ValueError("attention input contains unsupported fields")
     if any(not isinstance(value.get(key), str) or len(value[key]) > 4000
@@ -23,4 +23,8 @@ def public_attention_input(value: dict[str, Any] | None) -> dict[str, Any]:
                    or len(item) > 4000 for key, item in guidance.items())
             or set(guidance) - set(ids)):
         raise ValueError("memory guidance must match selected bounded IDs")
+    if 'guidance_scope' in value:
+        from openarm_bimanual.hint import validate_scope
+        scope=value['guidance_scope']
+        validate_scope(scope,attempt_id=scope.get('attempt_id') if isinstance(scope,dict) else None)
     return dict(value)

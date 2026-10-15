@@ -1,0 +1,4 @@
+#!/bin/sh
+# Reproducible ordering of the upstream seed101 fixture candidate sets.
+export PYTHONHASHSEED=0
+exec /home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python "$@"

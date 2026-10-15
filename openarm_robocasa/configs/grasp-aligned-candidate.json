@@ -1,0 +1,80 @@
+{
+  "schema": "openarm-robocasa.robot-parameters.v1",
+  "mount_offset_fixture_m": [
+    0.55,
+    -0.5,
+    0.6
+  ],
+  "mount_yaw_offset_rad": 1.5707963267948966,
+  "initial": {
+    "left": [
+      -1.5828322172164917,
+      -0.06710676103830338,
+      1.5528678894042969,
+      1.6687122583389282,
+      -1.570502758026123,
+      0.034661632031202316,
+      1.5706562995910645
+    ],
+    "right": [
+      0.8807544331050363,
+      1.4092485988929182,
+      0.49107286080873214,
+      1.8288416674730266,
+      0.40277617095035817,
+      -0.08865098312812648,
+      0.8314842437456812
+    ],
+    "left_gripper": 0.02,
+    "right_gripper": 0.02
+  },
+  "controller_source": "openarm_phase1/acceptance_config.json",
+  "controller_sha256": "f0120618728e75549e7c0bb7d65bb84c8e6813af0dc97e50b48345cd3490c07f",
+  "model_sha256": "ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456",
+  "bootstrap_evidence": "outputs/openarm-robocasa/scene-probe-10/bootstrap.json",
+  "scope": "Independent seed101 flat-face grasp orientation diagnostic; genuine physics only, original limits and final tolerances unchanged; task capability pending.",
+  "tcp_orientation_mount": {
+    "left": [
+      [
+        -0.12520137431879425,
+        -0.9921313501087874,
+        0.0
+      ],
+      [
+        -0.9921313501087874,
+        0.12520137431879425,
+        0.0
+      ],
+      [
+        0,
+        0,
+        -1
+      ]
+    ],
+    "right": [
+      [
+        0.12520137431879425,
+        0.9921313501087874,
+        0.0
+      ],
+      [
+        0.9921313501087874,
+        -0.12520137431879425,
+        0.0
+      ],
+      [
+        0,
+        0,
+        -1
+      ]
+    ]
+  },
+  "gripper_free_close_m": 0.006,
+  "contact_hold_inset_m": 0.0004,
+  "contact_hold_steps": 12,
+  "contact_hold_finger_damping": 50,
+  "mimic_tendon_damping": 2000.0,
+  "contact_hold_follower_damping": 0,
+  "solver_position_iterations": 32,
+  "solver_velocity_iterations": 8
+}

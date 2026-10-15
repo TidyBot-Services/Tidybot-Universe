@@ -7,6 +7,8 @@ Run with ``python -m benchmarks.attention_harness.ui_server --store PATH``.
 from __future__ import annotations
 
 import argparse
+import os
+import io
 import json
 import secrets
 import time
@@ -27,14 +29,31 @@ from .core.models import RequestType
 from .attention_modes import AssistanceMode, RequestState
 from .ui_summary import comparison_summary
 from .ui_media import (authorized_evidence_path, encoded_observation_frame,
-                       render_evidence, robocasa_camera_frame)
+                       render_evidence, robocasa_camera_frame, robocasa_human_rgb, rgb_jpeg, rgb_png)
 from .ui_launch import load_catalog, public_options, launch_formal_run
 from .ui_eval import eval_snapshot
 from .public_station import read_public_station, read_public_frame, save_public_frame
+from .live_preview import read_preview
+from .hint_compilation import prepare_human_guidance
+from .attention_control import AttentionControl, run_identity
+from .ui_history import UIHistory, name_suffix
+from .dev_attention import DevAttentionControl
+from .fixed_ui import FixedUI
 
 
 UI_DIR = Path(__file__).with_name("ui")
 GRAPH_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
+
+
+def openarm_camera_frame(station):
+    import numpy as np
+    with urlopen(station["origin"] + "/camera", timeout=3) as response:
+        raw = response.read()
+    with np.load(io.BytesIO(raw), allow_pickle=False) as observation:
+        state = json.loads(str(observation["state_json"]))
+        if state.get("robot") != station["robot"]:
+            raise ValueError("OpenArm camera identity differs from locked run")
+        return rgb_png(observation["rgb_u8"])
 
 
 def read_orchestrator_json(base_url: str, path: str) -> Any:
@@ -81,11 +100,15 @@ def read_orchestrator_sessions(base_url: str, graph: str) -> list[dict[str, Any]
 
 
 def list_runs(store: AttentionStore) -> list[dict[str, Any]]:
-    ids = {
-        event["entity_id"]
-        for event in store.events()
-        if event["entity_type"] in {"run", "runs"}
-    }
+    # Sidebar metadata comes from current materialized rows. Reading all event
+    # payloads also parses every physical trace and delays the entire UI.
+    with store._connect() as db:
+        ids=[row[0] for row in db.execute('SELECT id FROM runs')]
+        requests=[json.loads(row[0]) for row in db.execute('SELECT payload FROM requests')]
+    pending={}
+    for request in requests:
+        if request['state'] in {'pending','fallback'}:
+            owner=request['run_id'];pending[owner]=pending.get(owner,0)+1
     runs = [store.get_run(run_id) for run_id in ids]
     return sorted(
         (
@@ -95,6 +118,10 @@ def list_runs(store: AttentionStore) -> list[dict[str, Any]]:
                 "task_id": run["task_id"],
                 "status": run["status"],
                 "created_at": run["created_at"],
+                **run_identity(store,run['run_id']),
+                'attention_control': AttentionControl(store).snapshot(run['run_id']),
+                'pending_hints': pending.get(run['run_id'], 0),
+                'interrupt': store.interrupt_status(run['run_id']),
             }
             for run in runs
             if run is not None
@@ -104,15 +131,117 @@ def list_runs(store: AttentionStore) -> list[dict[str, Any]]:
     )
 
 
+def _recording_summary(root: Path | None, trace: dict[str, Any]) -> dict[str, Any] | None:
+    if root is None:
+        return None
+    evidence = next((e for e in trace.get("evidence", []) if e.get("kind") == "camera_recording"), None)
+    if evidence is None:
+        return None
+    try:
+        path, mime = authorized_evidence_path(root, trace, evidence["evidence_id"])
+        if mime != "application/json" or path.stat().st_size > 524_288:
+            raise ValueError("invalid recording receipt")
+        value = json.loads(path.read_text())
+        if value.get("schema_version") != "attentionbench.camera-recording.v1":
+            raise ValueError("invalid recording schema")
+        summary = {key: value.get(key) for key in ("source", "source_width", "source_height",
+            "status", "reason", "execution_status", "control_interface_status", "duration_seconds", "run_id", "attempt_id",
+            "requested_fps", "frame_count", "sampled_seconds", "initial_frame_saved",
+            "final_frame_saved", "video_saved", "truncated", "error", "views", "actual_capture_fps", "max_gap_seconds")}
+        timing = value.get('replay_timing')
+        if timing is not None:
+            import math
+            if (not isinstance(timing, dict) or timing.get('basis') != 'relative'
+                    or timing.get('event_clock') != 'sdk_completion'):
+                raise ValueError('invalid replay clock')
+            traces, videos = timing.get('frame_trace_seconds'), timing.get('frame_video_seconds')
+            if (not isinstance(traces, list) or not isinstance(videos, list)
+                    or not 1 <= len(traces) <= 5000 or len(traces) != len(videos)
+                    or any(type(t) not in (int, float) or not math.isfinite(t) for t in traces + videos)
+                    or videos[0] != 0 or any(t < 0 for t in videos)
+                    or any(b <= a for a, b in zip(traces, traces[1:]))
+                    or any(b <= a for a, b in zip(videos, videos[1:]))):
+                raise ValueError('invalid replay frame times')
+            summary['replay_timing'] = {'basis': 'relative',
+                'event_clock': 'sdk_completion', 'frame_trace_seconds': traces,
+                'frame_video_seconds': videos}
+        binding = value.get('control_recording')
+        if binding is not None:
+            control = next((e for e in trace.get('evidence', []) if e.get('kind') == 'bimanual_control'), None)
+            if not isinstance(binding, dict) or control is None or binding.get('sha256') != control.get('sha256'):
+                raise ValueError('Invalid hand replay binding')
+            summary['control_recording'] = {'url': f"/api/traces/{quote(trace['trace_id'],safe='')}/evidence/{quote(control['evidence_id'],safe='')}",
+                'sha256':control['sha256'],'schema':binding['schema'],'sample_count':binding['sample_count']}
+        return summary
+    except (OSError, ValueError, KeyError, TypeError):
+        return {"error": "Recording receipt missing or failed validation"}
+
+
+def saved_execution_camera(root, traces, attempt):
+    """Resolve existing Advisor-visible camera evidence without backfilling a run."""
+    if root is None or attempt is None:
+        return None
+    trace = next((t for t in traces if t.get("attempt_id") == attempt["attempt_id"]), None)
+    if trace is None:
+        return None
+    for kind in ("camera_final", "camera_initial"):
+        for evidence in trace.get("evidence", []):
+            if evidence.get("kind") != kind:
+                continue
+            try:
+                _, mime = authorized_evidence_path(root, trace, evidence["evidence_id"])
+                if mime not in {"image/png", "image/jpeg"}:
+                    continue
+                return {"camera_url": f"/api/traces/{quote(trace['trace_id'], safe='')}/evidence/{quote(evidence['evidence_id'], safe='')}",
+                        "camera_attempt_id": attempt["attempt_id"], "camera_source": "saved_evidence",
+                        "camera_image_transform": None if (_recording_summary(root, trace) or {}).get("source") ==
+                            "official_simulator_display_rgb_after_each_control_step" else "flip_y"}
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+    return None
+
+
+def arm_control_options(root,run_id,station):
+    if root is None or station is None or station.get('robot',{}).get('execution_arm')!='both':return None
+    try:
+        index=station['attempt_id'].split(':')[-1]
+        if not index.isdecimal() or not 0<=int(index)<10:return None
+        path=root/run_id.removeprefix('run:')/f'public_control-{index}.json'
+        if path.is_symlink() or path.stat().st_size>16384:return None
+        value=json.loads(path.read_text())
+        if value.get('run_id')!=run_id or value.get('attempt_id')!=station['attempt_id']:return None
+        return value['control']
+    except (OSError,ValueError,KeyError,TypeError):return None
+
+
+def camera_view_options(root,run_id,station):
+    if root is None or station is None:return None
+    try:
+        index=station['attempt_id'].split(':')[-1]
+        if not index.isdecimal() or not 0<=int(index)<10:return None
+        path=root/run_id.removeprefix('run:')/f'public_views-{index}.json'
+        if path.is_symlink() or path.stat().st_size>8192:return None
+        value=json.loads(path.read_text())
+        if value.get('run_id')!=run_id or value.get('attempt_id')!=station['attempt_id']:return None
+        views=value.get('views')
+        if not isinstance(views,dict) or set(views) not in ({'chest','wrist','external'},{'chest','external','left_wrist','right_wrist'}):return None
+        prefix=f"/api/station/preview-frame?run={quote(run_id,safe='')}&attempt={quote(station['attempt_id'],safe='')}"
+        return {key:{'name':str(row['name']),'width':row['width'],'height':row['height'],
+            'preview_url':prefix+'&view='+key} for key,row in views.items()}
+    except (OSError,ValueError,KeyError,TypeError):return None
+
+
 def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Path | None = None,
                        robosuite_url: str | None = None,
                        robocasa_camera_ws: str | None = None) -> dict[str, Any]:
-    """Expose only UI fields; never send native outcome or raw trace to the browser."""
-    projection = AttentionProjection(store).snapshot(run_id)
+    """Expose Advisor projections and separately revalidated Eval outcomes."""
+    run_events = store.events_for_run(run_id)
+    projection = AttentionProjection(store).snapshot(run_id, events=run_events)
     run = store.get_run(run_id)
     assert run is not None
 
     traces = {}
+    # The projection contains all Advisor-visible attempts, not only requests.
     for trace in projection["request_detail"]["traces"]:
         traces[trace["trace_id"]] = {
             "trace_id": trace["trace_id"],
@@ -128,7 +257,7 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
             "events": [
                 {
                     key: event.get(key)
-                    for key in ("timestamp", "event_type", "operation", "status")
+                    for key in ("event_id", "sequence", "timestamp", "timestamp_basis", "event_type", "operation", "status", "arguments")
                 }
                 for event in trace.get("events", [])
             ],
@@ -143,6 +272,8 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
                 for evidence in trace.get("evidence", [])
             ],
             "memory_refs": list(trace.get("memory_refs", [])),
+            "recording": _recording_summary(artifact_root, trace),
+            "projection": {key: trace.get('projection', {}).get(key) for key in ('source_sha256', 'projection_sha256', 'source_complete', 'included_event_count', 'omitted_event_count')},
         }
 
     requests = [
@@ -158,8 +289,11 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
     responses = {}
     uses = {}
     lifecycle = {}
+    budget_events = []
     visible_request_ids = {request["request_id"] for request in requests}
-    for event in store.events():
+    for event in run_events:
+        if event["event_type"] == "budget.released" and event["entity_id"] == run_id:
+            budget_events.append({"sequence": event["sequence"], "event_type": event["event_type"], "payload": event["payload"]})
         if (event["event_type"] in {"response.used", "response.execution_linked"}
                 and event["entity_id"] in visible_request_ids):
             uses[event["entity_id"]] = event["payload"]
@@ -193,6 +327,26 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         {item["attempt_id"] for item in projection["autonomous_work"]["attempts"]},
         allow_pending=run["status"] == "running",
     ) if artifact_root is not None else None
+    latest_attempt = max(projection['autonomous_work']['attempts'], key=lambda item: item['index'], default=None)
+    latest_trace = next((item for item in traces.values() if latest_attempt and item['attempt_id'] == latest_attempt['attempt_id']), None)
+    latest_execution = ({'attempt_id': latest_attempt['attempt_id'], 'execution_id': latest_trace.get('execution_id') if latest_trace else None}
+                        if latest_attempt else None)
+    evaluation = eval_snapshot(artifact_root, run_id, run, store.path) if artifact_root is not None else {'status': 'unavailable'}
+    attempts_by_index = {a['index']: {**a, 'status_source': 'persisted_attempt'}
+                         for a in projection['autonomous_work']['attempts']}
+    for dispatched in store.executor_attempts(run_id):
+        attempts_by_index.setdefault(dispatched['index'], dispatched)
+    attempts = [attempts_by_index[index] for index in sorted(attempts_by_index)]
+    saved_camera = (saved_execution_camera(artifact_root, projection["request_detail"]["traces"],
+                    attempts[-1] if attempts else None)
+                    if run["suite"] == "robocasa365" and public_station is None else None)
+    preview_url = (f"/api/station/preview-frame?run={quote(run_id, safe='')}&attempt={quote(public_station['attempt_id'], safe='')}"
+                   if public_station and (run['suite'] in {'robosuite', 'robocasa365'} or
+                       public_station.get('camera_transport') in {'openarm_http', 'robocasa_human_http'}) else None)
+    from .task_dag import dag_projection
+    attempt_dags = dag_projection(store, run_id, attempts, traces, evaluation.get('native_outcomes', {}))
+    from .ui_observability import response_evidence
+    adoption = response_evidence(requests, responses, uses, traces, projection['autonomous_work']['attempts'], evaluation.get('native_outcomes', {}))
     return {
         "schema_version": "attentionbench.dashboard.v1",
         "run": {
@@ -207,33 +361,47 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
             "developer_model": run.get("developer_model"),
             "evaluator_model": run.get("evaluator_model"),
             "locked": projection["run_context"]["locked"],
+            "robot": (run.get("robot_configuration") or {}).get("robot"),
+            "robot_configuration": run.get("robot_configuration"),
+            **run_identity(store,run_id),
         },
+        'attention_control': AttentionControl(store).snapshot(run_id),
         "resources": resources,
         "attempts": [
             {
                 key: attempt.get(key)
-                for key in ("attempt_id", "index", "started_at", "ended_at", "status")
+                for key in ("attempt_id", "index", "started_at", "ended_at", "status", "status_source")
             }
-            for attempt in projection["autonomous_work"]["attempts"]
+            for attempt in attempts
         ],
+        "task_plan": store.task_plan(run_id),
+        "attempt_dags": attempt_dags,
         "requests": requests,
         "traces": traces,
         "responses": responses,
         "response_uses": uses,
+        "response_evidence": adoption,
+        "waiting_windows": store.waiting_windows(run_id),
         "request_lifecycle": lifecycle,
+        "budget_events": budget_events,
         "station": {**projection["live_station"],
-                    "camera_url": f"/api/station/frame?run={quote(run_id, safe='')}" if (
+                    "latest_execution": latest_execution,
+                    "camera_attempt_id": public_station.get('attempt_id') if public_station else None,
+                    "camera_views": camera_view_options(artifact_root,run_id,public_station),
+                    "arm_control": arm_control_options(artifact_root,run_id,public_station),
+                    "camera_preview_url": preview_url,
+                    "camera_state_url": preview_url.replace('/preview-frame?', '/preview-state?') if preview_url else None,
+                    "camera_url": preview_url if public_station and run['suite'] == 'robocasa365' else f"/api/station/frame?run={quote(run_id, safe='')}" if (
                         public_station is not None or
                         (robosuite_url and run["suite"] == "robosuite") or
                         (robocasa_camera_ws and run["suite"] == "robocasa")
                     ) else None,
-                    "interrupt": store.interrupt_status(run_id)},
+                    "interrupt": store.interrupt_status(run_id), **(saved_camera or {})},
         "work_items": store.list_work_items(run_id),
         "work_source": "attempts_and_persisted_work_events",
         "media_source": "advisor_artifacts" if artifact_root is not None else None,
         "comparison": comparison_summary(store, run_id),
-        "eval": eval_snapshot(artifact_root, run_id, run, store.path)
-                if artifact_root is not None else {"status": "unavailable"},
+        "eval": evaluation,
     }
 
 
@@ -242,10 +410,34 @@ def create_server(
     orchestrator_url: str | None = None, artifact_root: Path | None = None,
     robosuite_url: str | None = None, camera_name: str | None = None,
     robocasa_camera_ws: str | None = None, robocasa_camera_device: str = "maniskill_base",
-    run_catalog: Path | None = None,
+    run_catalog: Path | None = None, dev_v2_bridge=None,
 ) -> ThreadingHTTPServer:
+    if store is not None:
+        # Live snapshots must not block executor evidence or stop acknowledgements.
+        # This explicit opt-in leaves immutable memory SQLite snapshots untouched.
+        store.enable_concurrent_writes()
+        # Only the mutable UI store receives this index. Frozen snapshots keep
+        # their schema untouched; event payloads/history are never rewritten.
+        with store._connect() as db:
+            db.execute('CREATE INDEX IF NOT EXISTS ui_event_entity_sequence ON events(entity_type,entity_id,sequence)')
+            db.execute('CREATE INDEX IF NOT EXISTS ui_event_id_sequence ON events(entity_id,sequence)')
+            db.execute("CREATE INDEX IF NOT EXISTS ui_attempt_run ON attempts(json_extract(payload,'$.run_id'))")
+            db.execute("CREATE INDEX IF NOT EXISTS ui_trace_attempt ON traces(json_extract(payload,'$.attempt_id'))")
+            db.execute("CREATE INDEX IF NOT EXISTS ui_request_run ON requests(json_extract(payload,'$.run_id'))")
+    history = UIHistory(store) if store is not None else None
+    fixed_ui = FixedUI(artifact_root) if artifact_root is not None else None
     control_token = secrets.token_urlsafe(32)
+    human_token = os.environ.get('ATTENTION_HUMAN_APPROVAL_TOKEN','')
+    if human_token and len(human_token)<24:raise ValueError('separate human capability must have at least 24 characters')
     profiles = load_catalog(run_catalog) if run_catalog is not None else []
+
+    from . import dev_loop
+    from .core.dev_store import DevConflict
+    if store is not None:
+        dev_loop.recover_sessions(store)
+        for session in store.list_dev_sessions():
+            if session['state']=='ready' and not session['stop_requested'] and time.time()<session['deadline_at']:
+                dev_loop.spawn_worker(store,session['session_id'])
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, body: bytes, content_type: str, status: HTTPStatus = HTTPStatus.OK,
@@ -267,7 +459,144 @@ def create_server(
                 status,
             )
 
+        def _preview(self, query):
+            run_id = query.get('run', [''])[0]
+            attempt_id = query.get('attempt', [''])[0]
+            run = store.get_run(run_id) if store else None
+            if not run or artifact_root is None or run['suite'] not in {'robosuite', 'robocasa', 'robocasa365'}:
+                raise FileNotFoundError('run-bound public preview unavailable')
+            bound = store.get_attempt(attempt_id)
+            station = read_public_station(artifact_root, run_id, run['suite'],
+                {attempt_id} if bound else set(), allow_pending=run['status'] == 'running')
+            if not station or station['attempt_id'] != attempt_id:
+                raise ValueError('preview no longer belongs to this run/attempt')
+            if run['suite'] == 'robocasa' and station.get('camera_transport') not in {'openarm_http', 'robocasa_human_http'}:
+                raise FileNotFoundError('run-bound public preview unavailable')
+            # Attempt completion/producer receipt ends the stream before human
+            # waiting. No repeated full observation or event history is read.
+            active = run['status'] == 'running' and (bound is None or bound['status'] == 'running')
+            waiting = False
+            camera=query.get('view',[None])[0]
+            if camera is not None and camera not in {'chest','wrist','external','left_wrist','right_wrist'}:
+                raise ValueError('unsupported camera view')
+            packet = read_preview(artifact_root / run_id.removeprefix('run:'), run_id, attempt_id, camera)
+            if packet is None:
+                return {'state': 'waiting' if waiting else 'ended' if not active else 'unavailable',
+                        'run_id': run_id, 'attempt_id': attempt_id, 'age_seconds': None}, None
+            header, frame = packet
+            age = max(0., time.time() - header['captured_at'])
+            state = ('waiting' if waiting else 'ended' if not active or header.get('ended_at')
+                     else 'offline' if header.get('producer_error') else 'stale' if age > 2 else 'live')
+            return {**header, 'state': state, 'age_seconds': round(age, 3)}, frame
+
+        def _fixed_get(self, path):
+            if path in {'/ui/fixed', '/ui/fixed/'}:
+                self._json({'error':'Independent fixed scene entry retired; use the main task UI',
+                            'main_ui':'/ui','history':'/api/fixed'},HTTPStatus.GONE);return True
+            if path=='/ui/fixed.js':
+                self._json({'error':'Independent fixed scene entry retired'},HTTPStatus.GONE);return True
+            if not path.startswith('/api/fixed'):return False
+            if fixed_ui is None:
+                self._json({'error':'Fixed scene requires configured artifact root'},HTTPStatus.SERVICE_UNAVAILABLE);return True
+            try:
+                if path=='/api/fixed':self._json(fixed_ui.snapshot());return True
+                match=re.fullmatch(r'/api/fixed/runs/(fixed-[0-9a-f]{24})/(frame|video|evidence|files/.*)',path)
+                if not match:raise FileNotFoundError('Unknown fixed resource')
+                run_id,kind=match.groups();directory=fixed_ui.directory(run_id)
+                if kind=='evidence':
+                    self._json({'run':fixed_ui.read(run_id),'files':[{'path':str(p.relative_to(directory)),
+                        'url':f'/api/fixed/runs/{run_id}/files/'+quote(str(p.relative_to(directory))) } for p in sorted(directory.rglob('*')) if p.is_file() and not p.name.endswith('.tmp')]});return True
+                relative='preview.jpg' if kind=='frame' else 'physics/simulation.mp4' if kind=='video' else unquote(kind[6:])
+                file=(directory/relative).resolve()
+                if not file.is_relative_to(directory.resolve()) or not file.is_file():raise FileNotFoundError('Fixed artifact unavailable')
+                size=file.stat().st_size;start,end=0,size-1;status=HTTPStatus.OK
+                if kind=='video' and self.headers.get('Range'):
+                    match=re.fullmatch(r'bytes=(\d+)-(\d*)',self.headers['Range'])
+                    if not match or int(match[1])>=size:
+                        self._send(b'','video/mp4',HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,{'Content-Range':f'bytes */{size}'});return True
+                    start=int(match[1]);end=min(int(match[2]) if match[2] else size-1,size-1)
+                    if end<start:raise ValueError('Invalid media range')
+                    status=HTTPStatus.PARTIAL_CONTENT
+                content='image/jpeg' if kind=='frame' else 'video/mp4' if file.suffix=='.mp4' else 'application/json' if file.suffix=='.json' else 'text/plain; charset=utf-8'
+                self.send_response(status);self.send_header('Content-Type',content);self.send_header('Content-Length',str(end-start+1));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Accept-Ranges','bytes')
+                if status==HTTPStatus.PARTIAL_CONTENT:self.send_header('Content-Range',f'bytes {start}-{end}/{size}')
+                self.end_headers()
+                with file.open('rb') as f:
+                    f.seek(start);remaining=end-start+1
+                    while remaining:
+                        chunk=f.read(min(262144,remaining))
+                        if not chunk:break
+                        self.wfile.write(chunk);remaining-=len(chunk)
+            except FileNotFoundError as error:self._json({'error':str(error)},HTTPStatus.NOT_FOUND)
+            except (ValueError,KeyError) as error:self._json({'error':str(error)},HTTPStatus.BAD_REQUEST)
+            except (BrokenPipeError,ConnectionResetError):pass
+            return True
+
+        def _dev_get(self,path):
+            if not path.startswith('/api/dev/'):return False
+            try:
+                if store is None:raise ValueError('Dev store unavailable')
+                match=re.fullmatch(r'/api/dev/sessions/(dev-[0-9a-f]{24})(?:/files/(.+))?',path)
+                if not match:raise FileNotFoundError('Unknown Dev resource')
+                session=store.get_dev_session(match[1])
+                if not match[2]:self._json(history.project('dev',session));return True
+                directory=Path(session['artifact_dir']).resolve()
+                file=(directory/unquote(match[2])).resolve()
+                if not file.is_relative_to(directory) or any(x.startswith('.') for x in file.relative_to(directory).parts) or not file.is_file():raise FileNotFoundError('Dev artifact unavailable')
+                allowed={'session-lock.json','config.json','model-input.json','model-output.json','provider-response.json','public-feedback.json','bundle.json','version.json','policy.py','diff.patch','trace.json','reset_receipt.json','identity.json','native_result.json','sandbox_receipt.json','result.json','recording.json','simulation.mp4','camera_initial.png','camera_final.png'}
+                if file.name not in allowed and file.suffix!='.mp4':raise FileNotFoundError('Artifact is not public UI evidence')
+                size=file.stat().st_size;start,end,status=0,size-1,HTTPStatus.OK
+                if self.headers.get('Range'):
+                    rng=re.fullmatch(r'bytes=(\d+)-(\d*)',self.headers['Range'])
+                    if not rng or int(rng[1])>=size:
+                        self._send(b'', 'application/octet-stream',HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,{'Content-Range':f'bytes */{size}'});return True
+                    start=int(rng[1]);end=min(int(rng[2]) if rng[2] else end,end)
+                    if end<start:raise ValueError('Invalid range')
+                    status=HTTPStatus.PARTIAL_CONTENT
+                content='video/mp4' if file.suffix=='.mp4' else 'image/png' if file.suffix=='.png' else 'application/json' if file.suffix=='.json' else 'text/plain; charset=utf-8'
+                self.send_response(status);self.send_header('Content-Type',content);self.send_header('Content-Length',str(max(0,end-start+1)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Accept-Ranges','bytes')
+                if status==HTTPStatus.PARTIAL_CONTENT:self.send_header('Content-Range',f'bytes {start}-{end}/{size}')
+                self.end_headers()
+                with file.open('rb') as f:
+                    f.seek(start);remaining=end-start+1
+                    while remaining>0:
+                        chunk=f.read(min(262144,remaining))
+                        if not chunk:break
+                        self.wfile.write(chunk);remaining-=len(chunk)
+            except (DevConflict,FileNotFoundError) as error:self._json({'error':str(error)},HTTPStatus.NOT_FOUND)
+            except (ValueError,KeyError) as error:self._json({'error':str(error)},HTTPStatus.BAD_REQUEST)
+            except (BrokenPipeError,ConnectionResetError):pass
+            return True
+
+        def _v2_get(self):
+            if not urlsplit(self.path).path.startswith('/api/dev-v2/'):return False
+            try:
+                if dev_v2_bridge is None:raise FileNotFoundError('isolated Dev v2 bridge not configured')
+                result=dev_v2_bridge.get(self.path)
+                value,content=result[:2];status=result[2] if len(result)>2 else 200;headers=result[3] if len(result)>3 else {}
+                if isinstance(value,Path):
+                    # Reuse the existing range-aware evidence transport below.
+                    size=value.stat().st_size;start=0;end=size-1
+                    if self.headers.get('Range'):
+                        match=re.fullmatch(r'bytes=(\d+)-(\d*)',self.headers['Range'])
+                        if not match or int(match[1])>=size:
+                            self._send(b'',content,416,{'Content-Range':f'bytes */{size}'});return True
+                        start=int(match[1]);end=min(int(match[2]) if match[2] else end,end)
+                        if end<start:raise ValueError('invalid range')
+                        status=206;headers['Content-Range']=f'bytes {start}-{end}/{size}'
+                    headers['Accept-Ranges']='bytes'
+                    with value.open('rb') as f:f.seek(start);raw=f.read(end-start+1)
+                    self._send(raw,content,status,headers)
+                elif content.startswith('application/json'):self._send(json.dumps(value,ensure_ascii=False).encode(),content,status,headers)
+                else:self._send(value.encode() if isinstance(value,str) else value,content,status,headers)
+            except FileNotFoundError as error:self._json({'error':str(error)},404)
+            except (ValueError,KeyError,TypeError,DevConflict) as error:self._json({'error':str(error)},409)
+            return True
+
         def do_GET(self) -> None:
+            if self._v2_get():return
+            if self._dev_get(urlsplit(self.path).path):return
+            if self._fixed_get(urlsplit(self.path).path):return
             parsed = urlsplit(self.path)
             path = parsed.path
             if path in {"/", "/ui"}:
@@ -308,9 +637,41 @@ def create_server(
                 except (URLError, TimeoutError, ValueError) as error:
                     self._json({"error": f"Orchestrator unavailable: {error}"}, HTTPStatus.BAD_GATEWAY)
             elif path == "/api/runs" and store is not None:
-                self._json({"runs": list_runs(store), "launches": store.list_launches()})
+                dev_loop.recover_sessions(store)
+                self._json({"runs": history.project_many('run',list_runs(store)), "launches": store.list_launches(), "dev_sessions": history.project_many('dev',store.list_dev_sessions()) + (dev_v2_bridge.list() if dev_v2_bridge else [])})
             elif path == "/api/run-options" and store is not None:
-                self._json(public_options(profiles))
+                options=public_options(profiles)
+                options['dev_loop']=dev_loop.dev_options(profiles)
+                if dev_v2_bridge:
+                    options['dev_v2']=dev_v2_bridge.options()
+                    options['dev_loop']['profiles']=options['dev_v2']['profiles']+options['dev_loop'].get('profiles',[])
+                    options['dev_loop']['enabled']=True
+                self._json(options)
+            elif path == "/api/station/preview-state" and store is not None:
+                try:
+                    state, _ = self._preview(parse_qs(parsed.query))
+                    self._json(state)
+                except FileNotFoundError as error:
+                    self._json({'error': str(error)}, HTTPStatus.NOT_FOUND)
+                except ValueError as error:
+                    self._json({'error': str(error)}, HTTPStatus.CONFLICT)
+            elif path == "/api/station/preview-frame" and store is not None:
+                try:
+                    state, frame = self._preview(parse_qs(parsed.query))
+                    if frame is None:
+                        raise FileNotFoundError('no saved public preview frame')
+                    query = parse_qs(parsed.query)
+                    unchanged = query.get('after', [None])[0] == str(state['sequence'])
+                    self._send(b'' if unchanged else frame, 'image/jpeg',
+                        HTTPStatus.NO_CONTENT if unchanged else HTTPStatus.OK, extra_headers={
+                            'X-Frame-Sequence': str(state['sequence']),
+                            'X-Frame-Age': str(state['age_seconds']),
+                            'X-Captured-At': str(state['captured_at']),
+                            'X-Preview-State': state['state']})
+                except FileNotFoundError as error:
+                    self._json({'error': str(error)}, HTTPStatus.NOT_FOUND)
+                except ValueError as error:
+                    self._json({'error': str(error)}, HTTPStatus.CONFLICT)
             elif path == "/api/station/frame" and store is not None:
                 try:
                     run_id = parse_qs(urlsplit(self.path).query).get("run", [""])[0]
@@ -337,6 +698,15 @@ def create_server(
                                     with urlopen(public_station["origin"] + "/v1/observation", timeout=3) as response:
                                         frame = encoded_observation_frame(
                                             json.load(response), public_station.get("camera_name"))
+                                    mime = "image/png"
+                                elif public_station.get("camera_transport") == "robocasa_human_http":
+                                    frame = rgb_jpeg(robocasa_human_rgb(public_station["origin"])[0])
+                                    mime = "image/jpeg"
+                                elif public_station.get("camera_transport") == "openarm_http":
+                                    recorded = (run.get("robot_configuration") or {}).get("robot")
+                                    if recorded != public_station["robot"]:
+                                        raise ValueError("OpenArm camera identity differs from recorded run")
+                                    frame = openarm_camera_frame(public_station)
                                     mime = "image/png"
                                 else:
                                     frame = robocasa_camera_frame(
@@ -376,7 +746,15 @@ def create_server(
                     return
                 try:
                     media_path, mime_type = authorized_evidence_path(artifact_root, trace, evidence_id)
-                    payload, served_type = render_evidence(media_path, mime_type)
+                    evidence = next(e for e in trace['evidence'] if e['evidence_id'] == evidence_id)
+                    if evidence.get('kind') == 'bimanual_control' and mime_type == 'application/json':
+                        if media_path.stat().st_size > 8_388_608: raise ValueError('Control replay too large')
+                        from openarm_bimanual.replay import validate_control_recording
+                        payload = media_path.read_bytes()
+                        validate_control_recording(json.loads(payload),run_id=trace['run_id'],attempt_id=trace['attempt_id'])
+                        served_type = 'application/json'
+                    else:
+                        payload, served_type = render_evidence(media_path, mime_type)
                     if served_type.startswith("video/"):
                         byte_range = self.headers.get("Range")
                         if byte_range:
@@ -409,27 +787,180 @@ def create_server(
                     self._json({"error": "invalid run id"}, HTTPStatus.BAD_REQUEST)
                     return
                 try:
-                    self._json(dashboard_snapshot(store, run_id, artifact_root=artifact_root,
-                                                  robosuite_url=robosuite_url,
-                                                  robocasa_camera_ws=robocasa_camera_ws))
+                    snapshot=dashboard_snapshot(store, run_id, artifact_root=artifact_root,
+                                                robosuite_url=robosuite_url,
+                                                robocasa_camera_ws=robocasa_camera_ws)
+                    snapshot['run']=history.project('run',snapshot['run'])
+                    self._json(snapshot)
                 except StateConflictError:
                     self._json({"error": "run not found"}, HTTPStatus.NOT_FOUND)
             else:
                 self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:
+            if urlsplit(self.path).path.startswith('/api/dev-v2/'):
+                if not secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token):
+                    self._json({'error':'control token required'},403);return
+                try:
+                    if dev_v2_bridge is None:raise FileNotFoundError('isolated bridge not configured')
+                    size=int(self.headers.get('Content-Length','0'))
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not 0<size<=32768:raise ValueError('bounded JSON object required')
+                    body=json.loads(self.rfile.read(size))
+                    if not isinstance(body,dict):raise ValueError('JSON object required')
+                    human=bool(human_token and secrets.compare_digest(self.headers.get('X-Attention-Human-Token',''),human_token))
+                    self._json(dev_v2_bridge.post(urlsplit(self.path).path,body,human_authorized=human))
+                except PermissionError as error:self._json({'error':str(error)},403)
+                except FileNotFoundError as error:self._json({'error':str(error)},404)
+                except (ValueError,KeyError,TypeError,DevConflict) as error:self._json({'error':str(error)},409)
+                return
             path = urlsplit(self.path).path
+            if path in {'/api/history/delete','/api/history/restore'}:
+                if not secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token):
+                    self._json({'error':'control token required'},HTTPStatus.FORBIDDEN);return
+                try:
+                    if history is None:raise ValueError('History unavailable')
+                    size=int(self.headers.get('Content-Length','0'))
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not 0<size<=4096:
+                        raise ValueError('bounded JSON body required')
+                    body=json.loads(self.rfile.read(size))
+                    if not isinstance(body,dict) or set(body)!={'kind','record_id'}:raise ValueError('record kind and ID required')
+                    self._json(history.change(body['kind'],body['record_id'],deleted=path.endswith('/delete')))
+                except StateConflictError as error:self._json({'error':str(error)},HTTPStatus.CONFLICT)
+                except (ValueError,KeyError,TypeError) as error:self._json({'error':str(error)},HTTPStatus.BAD_REQUEST)
+                return
+            if path.startswith('/api/fixed'):
+                if not secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token):
+                    self._json({'error':'control token required'},HTTPStatus.FORBIDDEN);return
+                if path=='/api/fixed/start':
+                    self._json({'error':'Independent fixed scene launch retired; use the main task chain'},HTTPStatus.GONE);return
+                try:
+                    if fixed_ui is None:raise ValueError('Fixed scene artifact root is not configured')
+                    size=int(self.headers.get('Content-Length','0'))
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not 0<size<=4096:raise ValueError('JSON body1-4096bytes required')
+                    body=json.loads(self.rfile.read(size))
+                    match=re.fullmatch(r'/api/fixed/runs/(fixed-[0-9a-f]{24})/command',path)
+                    if not match:raise ValueError('Unknown fixed command')
+                    if body.get('action') not in {'stop','cancel'}:
+                        self._json({'error':'Independent fixed scene execution retired'},HTTPStatus.GONE);return
+                    result=fixed_ui.command(match[1],body)
+                    self._json(result,HTTPStatus.ACCEPTED)
+                except RuntimeError as error:self._json({'error':str(error)},HTTPStatus.CONFLICT)
+                except (ValueError,KeyError,TypeError,FileNotFoundError) as error:self._json({'error':str(error)},HTTPStatus.BAD_REQUEST)
+                except Exception as error:self._json({'error':f'Fixed launch failed: {error}'},HTTPStatus.SERVICE_UNAVAILABLE)
+                return
+            if path.startswith('/api/dev/'):
+                if not secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token):
+                    self._json({'error':'control token required'},HTTPStatus.FORBIDDEN);return
+                try:
+                    if store is None or artifact_root is None:raise ValueError('Dev store/artifacts unavailable')
+                    size=int(self.headers.get('Content-Length','0'))
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not 0<size<=4096:raise ValueError('bounded JSON body required')
+                    body=json.loads(self.rfile.read(size))
+                    attention_match=re.fullmatch(r'/api/dev/sessions/(dev-[0-9a-f]{24})/(attention-policy(?:/cancel)?|attention-guidance)',path)
+                    if attention_match:
+                        sid,command=attention_match.groups()
+                        if history.project('dev',store.get_dev_session(sid)).get('history_deleted_at'):
+                            raise DevConflict('Restore this Dev record first')
+                        control=DevAttentionControl(store)
+                        required={'policy_id','request_id','expected_generation'} if command=='attention-policy' else {'request_id'} if command.endswith('/cancel') else {'request_id','content','skip'}
+                        if not isinstance(body,dict) or set(body)!=required:raise ValueError('invalid Dev Attention fields')
+                        if command=='attention-policy':result=control.request(sid,**body)
+                        elif command.endswith('/cancel'):result=control.cancel(sid,body['request_id'])
+                        else:
+                            if type(body['skip']) is not bool:raise ValueError('skip must be boolean')
+                            result=control.guidance(sid,**body)
+                        self._json(result);return
+                    if path=='/api/dev/start':
+                        if not isinstance(body,dict):raise ValueError('Dev selection must be an object')
+                        suffix=name_suffix(body.pop('name_suffix',''))
+                        session=dev_loop.create_session(store,profiles,artifact_root,body)
+                        history.assign_suffix('dev',session['session_id'],suffix)
+                        if history.project('dev',session).get('history_deleted_at'):
+                            raise DevConflict('Restore the deleted record before starting it again')
+                        if session['state']=='ready':dev_loop.spawn_worker(store,session['session_id'])
+                        session=history.project('dev',session)
+                    else:
+                        match=re.fullmatch(r'/api/dev/sessions/(dev-[0-9a-f]{24})/(stop|resume)',path)
+                        if not match or body:raise ValueError('unknown Dev command or extra fields')
+                        if match[2]=='stop':session=store.stop_dev_session(match[1])
+                        else:
+                            if history.project('dev',store.get_dev_session(match[1])).get('history_deleted_at'):
+                                raise DevConflict('Restore the deleted record before resuming it')
+                            dev_loop.recover_sessions(store);store.resume_dev_session(match[1]);session=dev_loop.spawn_worker(store,match[1])
+                    self._json(session,HTTPStatus.ACCEPTED)
+                except (DevConflict,StateConflictError) as error:self._json({'error':str(error)},HTTPStatus.CONFLICT)
+                except (ValueError,TypeError,KeyError,FileNotFoundError) as error:self._json({'error':str(error)},HTTPStatus.BAD_REQUEST)
+                return
             is_response = path.startswith("/api/requests/") and path.endswith("/respond")
+            is_preview = path.startswith("/api/requests/") and path.endswith("/guidance-preview")
             is_defer = path.startswith("/api/requests/") and path.endswith("/defer")
             is_cancel = path.startswith("/api/requests/") and path.endswith("/cancel")
             is_interrupt = path.startswith("/api/runs/") and path.endswith("/interrupt")
             is_dag_start = path == "/api/orchestrator/dispatch"
             is_run_start = path == "/api/runs/start"
-            if store is None or not (is_response or is_defer or is_cancel or is_interrupt or is_dag_start or is_run_start):
+            control_suffix = next((s for s in ('/attention-policy','/attention-policy/cancel','/display-name') if path.startswith('/api/runs/') and path.endswith(s)),None)
+            if store is None or not (is_response or is_preview or is_defer or is_cancel or is_interrupt or is_dag_start or is_run_start or control_suffix):
                 self._json({"error": "unsupported write"}, HTTPStatus.METHOD_NOT_ALLOWED)
                 return
             if not secrets.compare_digest(self.headers.get("X-Attention-Token", ""), control_token):
                 self._json({"error": "control token required"}, HTTPStatus.FORBIDDEN)
+                return
+            if control_suffix:
+                try:
+                    run_id=unquote(path[len('/api/runs/'):-len(control_suffix)]).strip('/')
+                    if not run_id or '/' in run_id or '\\' in run_id:raise ValueError('invalid run ID')
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('JSON body required')
+                    size=int(self.headers.get('Content-Length','0'))
+                    if not 0<size<=4096:raise ValueError('invalid control body size')
+                    body=json.loads(self.rfile.read(size));control=AttentionControl(store)
+                    required={'display_name'} if control_suffix=='/display-name' else {'request_id'} if control_suffix.endswith('/cancel') else {'policy_id','request_id','expected_generation'}
+                    if not isinstance(body,dict) or set(body)!=required:raise ValueError('invalid control fields')
+                    if control_suffix=='/display-name':result=control.rename(run_id,body['display_name'],now=time.time())
+                    elif control_suffix.endswith('/cancel'):result=control.cancel(run_id,body['request_id'],now=time.time())
+                    else:result=control.request(run_id,body['policy_id'],request_id=body['request_id'],expected_generation=body['expected_generation'],now=time.time())
+                    self._json(result)
+                except StateConflictError as error:self._json({'error':str(error)},HTTPStatus.CONFLICT)
+                except (ValueError,KeyError,TypeError) as error:self._json({'error':str(error)},HTTPStatus.BAD_REQUEST)
+                return
+            if is_preview:
+                # A format check has no lifecycle, budget, response or robot side
+                # effects. Infer the task from the stored request, never the caller.
+                request_id = unquote(path[len("/api/requests/"):-len("/guidance-preview")]).strip("/")
+                try:
+                    if not request_id or "/" in request_id or "\\" in request_id:
+                        raise ValueError("invalid request id")
+                    if self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json":
+                        raise ValueError("JSON body required")
+                    size = int(self.headers.get("Content-Length", "0"))
+                    if not 0 < size <= 8192:
+                        raise ValueError("request body must be 1–8192 bytes")
+                    body = json.loads(self.rfile.read(size))
+                    if not isinstance(body, dict) or set(body) not in ({"content"},{"content","guidance_scope"}):
+                        raise ValueError("only guidance content is accepted")
+                    content = body["content"]
+                    if not isinstance(content, str) or not content.strip() or len(content) > 4000:
+                        raise ValueError("hint content must contain 1–4000 characters")
+                    request = store.get_request(request_id)
+                    if request is None:
+                        self._json({"error": "request not found"}, HTTPStatus.NOT_FOUND)
+                        return
+                    if request.mode is not AssistanceMode.LIVE_HUMAN_FIRST or request.request_type is not RequestType.HINT:
+                        raise StateConflictError("only human hint requests support guidance previews")
+                    run = store.get_run(request.run_id)
+                    robot=(run.get('robot_configuration') or {}).get('robot')
+                    scope=body.get('guidance_scope')
+                    if robot and robot.get('execution_arm')=='both':
+                        from openarm_bimanual.hint import validate_scope
+                        scope=validate_scope(scope,attempt_id=request.attempt_id)
+                    elif scope is not None:raise ValueError('This execution mode does not accept hand scope')
+                    receipt = prepare_human_guidance(content.strip(), suite=run["suite"], task_id=run["task_id"],
+                        robot=robot,guidance_scope=scope)
+                    self._json({"run_id": request.run_id, "request_id": request_id,
+                                **{key: receipt[key] for key in ("status", "parameters", "rule")}})
+                except StateConflictError as error:
+                    self._json({"error": str(error)}, HTTPStatus.CONFLICT)
+                except (ValueError, TypeError, json.JSONDecodeError) as error:
+                    self._json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
                 return
             if is_run_start:
                 if not profiles or artifact_root is None:
@@ -445,8 +976,11 @@ def create_server(
                     selection = json.loads(self.rfile.read(size))
                     if not isinstance(selection, dict):
                         raise ValueError("run selection must be an object")
-                    self._json(launch_formal_run(selection, profiles=profiles, store=store,
-                                                 artifact_root=artifact_root))
+                    suffix=name_suffix(selection.pop('name_suffix',''))
+                    launch=launch_formal_run(selection, profiles=profiles, store=store,
+                                             artifact_root=artifact_root)
+                    history.assign_suffix('launch',launch['launch_id'],suffix)
+                    self._json(launch)
                 except (ValueError, TypeError, KeyError, PermissionError, json.JSONDecodeError) as error:
                     self._json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
                 except OSError as error:
@@ -480,15 +1014,21 @@ def create_server(
                     self._json({"error": "invalid run id"}, HTTPStatus.BAD_REQUEST)
                     return
                 try:
+                    size=int(self.headers.get('Content-Length','0'))
+                    if not 0<=size<=512:raise ValueError('bounded interrupt request required')
+                    body=json.loads(self.rfile.read(size)) if size else {}
+                    if not isinstance(body,dict)or set(body)-{'action'}or body.get('action','stop')not in {'stop','cancel'}:raise ValueError('invalid interrupt action')
                     run = store.get_run(run_id)
                     if run is None:
                         self._json({"error": "run not found"}, HTTPStatus.NOT_FOUND)
                         return
-                    if run["execution_target"] not in {"robocasa_sim", "robosuite_sim"}:
+                    if run["execution_target"] not in {"robocasa_sim", "robosuite_sim", "robocasa365_sim"}:
                         raise StateConflictError("only connected simulator runs accept this interrupt")
                     result = store.request_interrupt(run_id, event_key=f"interrupt:{uuid4().hex}",
-                                                     requested_at=time.time())
+                                                     requested_at=time.time(),operator_action=body.get('action','stop'))
                     self._json(result)
+                except (ValueError,TypeError,json.JSONDecodeError) as error:
+                    self._json({'error':str(error)},HTTPStatus.BAD_REQUEST)
                 except StateConflictError as error:
                     self._json({"error": str(error)}, HTTPStatus.CONFLICT)
                 return
@@ -544,7 +1084,7 @@ def create_server(
                     content = "interrupt"
                 runtime = AttentionRuntime(store, None, clock=time.time)
                 updated = runtime.submit_human_response(
-                    request_id, response_id=f"human-response:{uuid4().hex}", content=content,
+                    request_id, response_id=f"human-response:{uuid4().hex}", content=content, guidance_scope=body.get("guidance_scope"),
                 )
                 self._json({"request_id": request_id, "state": updated.state.value,
                             "response_id": updated.response_id})

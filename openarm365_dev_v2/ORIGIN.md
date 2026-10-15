@@ -1,0 +1,1 @@
+V2 environment/owner/worker/runner derived from the corresponding current dirty openarm365_dev sources. Only task/seed/config/start import routing and evidence/live publication are adapted. Planner, executor, world, Safety and evaluator are reused unchanged. Baseline SHA in delivery baseline_manifest.json.

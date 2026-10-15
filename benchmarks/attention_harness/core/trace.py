@@ -99,12 +99,22 @@ class VisibilityProjector:
         # Rebuild the advisor-facing failure from advisor-visible events. A raw
         # failure summary may have been produced with evaluator/oracle context
         # and is therefore never copied across the boundary verbatim.
-        failure = summarize_failure(
-            visible_events,
-            consecutive_failures=(
-                raw.failure.consecutive_failures if raw.failure is not None else 1
-            ),
-        )
+        visible_failure = any(event.status.lower() in {"failed", "error", "timeout", "timed_out", "cancelled", "aborted"} or event.error for event in visible_events)
+        finished = next((event for event in reversed(visible_events)
+                         if event.event_type == "execution.finished"), None)
+        if not visible_failure and finished is not None and finished.status == "completed":
+            failure = FailureSummary(stage="none", error_type="none",
+                                     message="No failed event in the authorized terminal execution trace.",
+                                     consecutive_failures=0,
+                                     last_successful_event_id=finished.event_id,
+                                     classification_source="deterministic_event_rules")
+        else:
+            failure = summarize_failure(
+                visible_events,
+                consecutive_failures=(
+                    raw.failure.consecutive_failures if raw.failure is not None else 1
+                ),
+            )
         failure = FailureSummary(**_sanitize(failure.artifact(), "failure", redacted_paths))
         code = _sanitize(raw.code, "code", redacted_paths)
         outcome = _public_outcome(raw, redacted_paths)

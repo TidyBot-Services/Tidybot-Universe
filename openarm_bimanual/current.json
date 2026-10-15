@@ -1,0 +1,82 @@
+{
+  "catalog": "launch_configs/main-ui-fixed-curobo-v15/catalog.json",
+  "sha256": "70e8da23a91b31d80f0844c0939c360079c9224e0f6b13e01ba7897c383dbeca",
+  "version": "main-ui-fixed-curobo-v15",
+  "previous_daily_pointer": {
+    "catalog": "launch_configs/main-ui-openarm365-v14/catalog.json",
+    "previous_daily_pointer": {
+      "catalog": "launch_configs/main-ui-openarm365-v13/catalog.json",
+      "previous_daily_pointer": {
+        "catalog": "launch_configs/main-ui-openarm365-v12/catalog.json",
+        "previous_daily_pointer": {
+          "catalog": "launch_configs/main-ui-openarm365-v11/catalog.json",
+          "previous_daily_pointer": {
+            "catalog": "launch_configs/main-ui-replay-only-v10/catalog.json",
+            "previous_daily_pointer": {
+              "catalog": "launch_configs/main-ui-camera-style-v9/catalog.json",
+              "previous_daily_pointer": {
+                "catalog": "launch_configs/main-ui-camera-style-v8/catalog.json",
+                "previous_daily_pointer": {
+                  "catalog": "launch_configs/main-ui-365-recording-v7/catalog.json",
+                  "previous_daily_pointer": {
+                    "catalog": "launch_configs/main-ui-365-recording-v6/catalog.json",
+                    "previous_daily_pointer": {
+                      "catalog": "launch_configs/main-ui-365-recording-v5/catalog.json",
+                      "previous_daily_pointer": {
+                        "catalog": "launch_configs/main-ui-365-camera-v4/catalog.json",
+                        "previous_daily_pointer": {
+                          "catalog": "launch_configs/main-ui-365-help9-v2/catalog.json",
+                          "previous_daily_pointer": {
+                            "catalog": "launch_configs/main-ui-365-attempt10-v1/catalog.json",
+                            "previous_daily_pointer": {
+                              "catalog": "launch_configs/stage-one-final-1/catalog.json",
+                              "sha256": "25dc43c9e3c4ab29ccc99f03bd3b453b255eea0c3d2fa2da9012ba9fd56fea2d",
+                              "stage1_accepted": true,
+                              "stage2_enabled": false,
+                              "version": "stage-one-final-1"
+                            },
+                            "sha256": "b1faca6ca036e43fd69a89ee5a3a1f8120d136ea3af5afe6652a293266c10116",
+                            "version": "main-ui-365-attempt10-v1"
+                          },
+                          "sha256": "423335a8e80e76a713e828e06698ed2072d81c4c67cbb55b0d0611faf6278121",
+                          "version": "main-ui-365-help9-v2"
+                        },
+                        "sha256": "85ddbeda176ef87fa0b068458f034063dcac6ef438d2bea5cb40d5993c267b80",
+                        "version": "main-ui-365-camera-v4"
+                      },
+                      "sha256": "db6de5d7c80335db80ebf096a2d1957b9370c7497665ce626fbb25edd0186b48",
+                      "version": "main-ui-365-recording-v5"
+                    },
+                    "sha256": "5f8dbd5ca54e0620eea6d795aaa9b313c04fd0e8404131f39c68183f81ba7656",
+                    "version": "main-ui-365-recording-v6"
+                  },
+                  "sha256": "27489f52da5b999c789a34c39b8268bfc146a6324e09cd9ea5044fe48ebce0c8",
+                  "version": "main-ui-365-recording-v7"
+                },
+                "sha256": "8ae5f0d9473d91da6bb3d51e5ddff0e383f6e52c6497460fcdc5bbb3476af9bd",
+                "version": "main-ui-camera-style-v8"
+              },
+              "sha256": "eec31b6fc7745386d113d6185c2cc23bd074678c86e64596b1c905f7f8fde43b",
+              "version": "main-ui-camera-style-v9"
+            },
+            "sha256": "29459f45ad2340f0e8f436bd6db434135674a3117542e231ea5a4a78184ac706",
+            "version": "main-ui-replay-only-v10"
+          },
+          "sha256": "2c60f27582fb36118434f01196f0ab181b7c3cebefb4f27d3ea3e92d8a7cd636",
+          "version": "main-ui-openarm365-v11"
+        },
+        "sha256": "23aa492445fc0906e239ead17780d69983fe48aac711907b78868eceb56ca09a",
+        "version": "main-ui-openarm365-v12"
+      },
+      "sha256": "fd2a7df98516e57e24f86d88df2fd8cb6c9264ca405e7d7abd2c46d66cfc719e",
+      "version": "main-ui-openarm365-v13"
+    },
+    "sha256": "3e6ced097fef7386401198d23c43542bdcdb9815059df2e290ac7a9f5b6726e3",
+    "version": "main-ui-openarm365-v14"
+  },
+  "fixed_curobo_ui": {
+    "url": "http://127.0.0.1:8769/ui/fixed",
+    "acceptance": "passed",
+    "report": "/home/truares/Documents/Codex/2026-10-11/openarm-curobo-ui/ACCEPTANCE.html"
+  }
+}

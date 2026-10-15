@@ -166,6 +166,7 @@ def print_summary(summary: dict) -> None:
 
 
 def main():
+    raise RuntimeError('V2-only: unauthenticated historical V1/V2 comparison execution is disabled')
     ap = argparse.ArgumentParser()
     ap.add_argument("--cases", default="bench/cases.json")
     ap.add_argument("--v1-url", default="http://127.0.0.1:7050")

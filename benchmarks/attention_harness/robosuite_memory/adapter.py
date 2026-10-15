@@ -26,6 +26,24 @@ class RobosuiteSimGTBackend(RobosuiteRobotBackend):
         super().__init__(task_id, **kwargs)
         self.camera_name = camera_name
 
+    @property
+    def _last_observation(self):
+        return getattr(self, "_preview_source", (None, 0., 0))[0]
+
+    @_last_observation.setter
+    def _last_observation(self, observation):
+        # The inherited reset/step/refresh paths assign here as soon as the
+        # Service returns. Sampling the same observation must not reset its age.
+        previous = getattr(self, "_preview_source", (None, 0., 0))
+        self._preview_source = (observation, time.time(), previous[2] + 1)
+
+    def public_rgb_snapshot(self) -> tuple[np.ndarray, float, int]:
+        observation, captured_at, sequence = getattr(self, "_preview_source", (None, 0., 0))
+        image = observation.get(self.camera_name + "_image") if isinstance(observation, dict) else None
+        if not isinstance(image, np.ndarray) or image.dtype != np.uint8 or image.ndim != 3 or image.shape[2] != 3:
+            raise ValueError("no cached public RGB frame")
+        return image.copy(), captured_at, sequence
+
     def reset_attested(
         self, seed: int, *, variation: dict[str, str] | None = None,
     ) -> tuple[dict[str, np.ndarray], dict[str, str]]:

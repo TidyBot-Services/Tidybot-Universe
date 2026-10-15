@@ -1,0 +1,60 @@
+import json,copy
+from pathlib import Path
+import pytest
+from benchmarks.attention_harness.dev_experiment import *
+from benchmarks.attention_harness.dev_v2_loop import *
+from openarm365_dev_v2.tests.fakes import Client,Runner
+
+def setup(tmp_path,policy='autonomous',key='loop-test'):
+    s=DevV2Store(tmp_path/'s.sqlite');e=create(s,tmp_path/'artifacts',dict(request_key=key,tasks=['open_cabinet'],seeds=[102],policies=[policy]))
+    budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}}))
+    return s,e,budget
+
+def test_fake_complete_revision_keeps_previous_and_billing(tmp_path):
+    s,e,b=setup(tmp_path);client=Client()
+    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=Runner)
+    c=final['cells'][0];assert len(c['versions'])==2 and c['state']=='completed'
+    packet=json.loads(client.inputs[1]['messages'][1]['content'])
+    assert packet['locked_task']['task_id']=='open_cabinet' and packet['locked_task']['seed']==102
+    assert packet['previous_complete_source']==Path(c['versions'][0]['source']['uri']).read_text()
+    assert 'IK planning rejected' in str(packet['public_feedback'])
+    assert all('native_success' not in m['content'] for i in client.inputs for m in i['messages'])
+    assert s.goal()['used']['dev_calls']==2 and s.goal()['used']['executions']==2
+    assert s.export_ledger()['recompute_matches']
+    count=len(client.inputs);run(s,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=Runner)
+    assert len(client.inputs)==count
+
+def test_format_failure_paid_and_revised_without_invalid_execution(tmp_path):
+    s,e,b=setup(tmp_path);client=Client(True)
+    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=Runner)
+    c=final['cells'][0];assert not c['versions'][0]['valid'] and c['versions'][1]['valid']
+    assert s.goal()['used']['provider_tokens']==200 and s.goal()['used']['executions']==1
+    assert 'format invalid' in json.loads(client.inputs[1]['messages'][1]['content'])['public_feedback']['public_error']
+
+def test_independent_success_never_early_stops(tmp_path):
+    s,e,b=setup(tmp_path)
+    class SuccessRunner(Runner):native_success=True
+    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=Client(),runner_factory=SuccessRunner)
+    assert len(final['cells'][0]['versions'])==2 and s.goal()['used']['executions']==2
+@pytest.mark.parametrize('policy',['demo_first','reactive_help'])
+def test_actual_help_job_in_simulated_loop(tmp_path,policy):
+    s,e,b=setup(tmp_path,policy,key='help-loop-'+policy)
+    class HintClient(Client):
+        def chat(self,**kw):
+            if kw['max_tokens']==2048:
+                self.inputs.append(kw)
+                from benchmarks.attention_harness.parcc_client import ParccResponse
+                return ParccResponse('simulated/GLM','Use smaller world deltas based on observations.',None,.01,1,{'total_tokens':100,'prompt_tokens':40,'completion_tokens':60})
+            return super().chat(**kw)
+    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=HintClient(),runner_factory=Runner)
+    assert final['cells'][0]['used']['help_count']==1
+    assert any(j['kind']==('demo' if policy=='demo_first' else 'advisor') for j in final['cells'][0]['jobs'])
+
+def test_unknown_no_retry_and_reservation_retained(tmp_path):
+    s,e,b=setup(tmp_path)
+    class UnknownClient(Client):
+        def chat(self,**kw):self.inputs.append(kw);raise TimeoutError('response unknown')
+    client=UnknownClient()
+    with pytest.raises(TimeoutError):run(s,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=Runner)
+    c=s.cell(e['cells'][0]['key']);assert c['state']=='needs_review' and s.goal()['reserved']['dev_calls']==1
+    assert len(client.inputs)==1

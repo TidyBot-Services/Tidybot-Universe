@@ -1,0 +1,26 @@
+{
+  "graph_id": "robocasa365-pick-place-counter-to-sink-dev101",
+  "definition_version": "main-ui-robocasa365-v1",
+  "task_env": "attentionbench-engineering",
+  "formal_eligible": false,
+  "entries": [
+    {
+      "name": "robocasa365-pick-place-counter-to-sink-dev101",
+      "display_name": "Pick place counter to sink",
+      "description": "Execute the existing approved SDK smoke policy as one task node. Execution completion and native task success are evaluated separately. No inner skill scheduling is claimed.",
+      "dependencies": [],
+      "status": "in_progress",
+      "attentionbench": {
+        "suite": "robocasa365",
+        "task": "pick_place_counter_to_sink",
+        "seed": 101,
+        "runner_boundary": "formal",
+        "approved_generated_policy": true,
+        "generated_policy_file": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/policy_smoke.py",
+        "approved_policy_sha256": "654032d40d9c2bda7e3c0b2d7dc935a30e6a91940cece7e57a6827e1140dca46",
+        "formal_config_file": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/pick_place_counter_to_sink_seed101.json",
+        "approved_config_sha256": "fa7a1e515b7c45ee9c72e4c5bc931b22d4b278b6718b69fa3b2838ec3db6dfb6"
+      }
+    }
+  ]
+}

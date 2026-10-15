@@ -50,7 +50,15 @@ def main() -> int:
                         help="record public Robosuite RGB frames during each attempt")
     parser.add_argument("--agent-url", default="http://127.0.0.1:8080")
     parser.add_argument("--confirm-simulator-agent", action="store_true")
+    parser.add_argument("--skill-dag", type=Path, help="frozen operator progress DAG; never sent to policy")
+    parser.add_argument("--skill-dag-sha256")
     args = parser.parse_args()
+    from .task_dag import load_manifest
+    try:
+        skill_dag = load_manifest(args.skill_dag, args.skill_dag_sha256, suite=args.suite, task_id=args.task,
+                                  policy_sha256=getattr(args, "approved_policy_sha256", None))
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
     if args.attention_policy == "budget_matched_random_escalation" and (
             args.policy_config is None or args.approved_policy_config_sha256 is None):
         parser.error("random escalation requires approved pre-registered policy config")
@@ -83,7 +91,7 @@ def main() -> int:
         assistance_mode=AssistanceMode(args.assistance_mode),
         human_deadline_seconds=args.human_deadline_seconds,
         token_limit=args.token_limit,
-        store_path=args.store_path,
+        store_path=args.store_path, skill_dag=skill_dag,
         policy_config=policy_config,
         demo_prior=None if args.demo_prior is None else args.demo_prior.read_text(),
         approved_demo_sha256=args.approved_demo_sha256,

@@ -346,6 +346,7 @@ class _SDKTraceEmitter:
                 "event_id": f"sdk-{sequence}",
                 "sequence": sequence,
                 "timestamp": round(finished - self._started_at, 6),
+                "timestamp_basis": "relative",
                 "source": source,
                 "event_type": event_type,
                 "operation": operation,

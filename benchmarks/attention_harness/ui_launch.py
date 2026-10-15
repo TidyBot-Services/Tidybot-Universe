@@ -18,10 +18,12 @@ from .seed_guard import validate_seed
 
 
 _TASKS = {"robosuite": {"cube_lift", "cube_stack"},
-          "robocasa": {"counter_to_sink", "counter_to_cab"}}
+          "robocasa": {"counter_to_sink", "counter_to_cab"},
+          "robocasa365": {"pick_place_counter_to_sink", "open_cabinet"}}
 _ROOT_FLAGS = {"robosuite": ("service_source_root",),
                "robocasa": ("sim_source_root", "agent_source_root", "task_source_root",
-                            "sim_python", "agent_python")}
+                            "sim_python", "agent_python"),
+               "robocasa365": ("service_source_root", "sim_source_root", "task_source_root", "sim_python", "asset_manifest")}
 _SELECTION_KEYS = {"profile_id", "seed", "attention_policy", "execution_target",
                    "assistance_mode", "max_attempts", "assistance_credits", "token_limit",
                    "human_deadline_seconds", "overall_deadline_seconds"}
@@ -32,6 +34,9 @@ def load_catalog(path: Path) -> list[dict[str, Any]]:
     profiles = raw.get("profiles") if isinstance(raw, dict) else None
     if not isinstance(profiles, list) or not profiles:
         raise ValueError("run catalog requires nonempty profiles")
+    require_graph = raw.get("require_skill_graph", False)
+    if type(require_graph) is not bool:
+        raise ValueError("run catalog require_skill_graph must be boolean")
     seen = set()
     for profile in profiles:
         if not isinstance(profile, dict) or not isinstance(profile.get("id"), str):
@@ -50,6 +55,18 @@ def load_catalog(path: Path) -> list[dict[str, Any]]:
                                     ("config", "approved_config_sha256")):
             if hashlib.sha256(Path(profile[field]).read_bytes()).hexdigest() != profile.get(digest_field):
                 raise ValueError(f"run profile {field} differs from approved digest")
+        # Existing read-only catalogs remain compatible; current launch catalogs
+        # explicitly require a graph so new runs cannot silently lose binding.
+        if require_graph:
+            profile["require_skill_graph"] = True
+        if require_graph or any(profile.get(key) is not None for key in ("skill_graph_file", "skill_graph_sha256", "skill_root")):
+            from .task_dag import freeze_graph
+            if any(not isinstance(profile.get(key), str) or not profile[key] for key in ("skill_graph_file", "skill_graph_sha256", "skill_root")):
+                raise ValueError("run profile requires complete Skill DAG binding")
+            graph_path = Path(profile["skill_graph_file"])
+            if not graph_path.is_absolute(): raise ValueError("run profile requires absolute Skill DAG path")
+            freeze_graph(graph_path, suite=suite, task_id=task, root_skill=profile["skill_root"],
+                         expected_sha256=profile["skill_graph_sha256"], policy_sha256=profile["approved_policy_sha256"])
         if "demo_prior" in profile:
             prior = Path(profile["demo_prior"])
             if (not prior.is_absolute() or not prior.is_file()
@@ -62,6 +79,10 @@ def load_catalog(path: Path) -> list[dict[str, Any]]:
                     or hashlib.sha256(random_config.read_bytes()).hexdigest()
                     != profile.get("approved_random_policy_config_sha256")):
                 raise ValueError("run profile random policy config differs from approved digest")
+        if "retry_policy_config" in profile:
+            retry_config = Path(profile["retry_policy_config"])
+            if not retry_config.is_absolute() or not retry_config.is_file() or hashlib.sha256(retry_config.read_bytes()).hexdigest() != profile.get("approved_retry_policy_config_sha256"):
+                raise ValueError("run profile retry-k config differs from approved digest")
         approved = json.loads(Path(profile["config"]).read_text(encoding="utf-8"))
         if (approved.get("suite") != suite or approved.get("task_id") != task
                 or isinstance(approved.get("seed"), bool)
@@ -70,12 +91,64 @@ def load_catalog(path: Path) -> list[dict[str, Any]]:
         if validate_seed(approved["seed"], allow_heldout=False) != "dev":
             raise ValueError("run profile requires a development seed")
         profile["seed"] = approved["seed"]
+        if suite == "robocasa365":
+            from .robocasa365.budget import load_run_budget, limits_for_budget
+            budget = load_run_budget(profile.get("run_budget"), profile.get("approved_run_budget_sha256"),
+                config_sha256=profile["approved_config_sha256"], policy_sha256=profile["approved_policy_sha256"])
+            profile["run_limits"] = limits_for_budget(budget)
+            profile["attempt_wall_seconds"] = approved["attempt_wall_seconds"]
+            profile["controller"] = approved["controller"]
+            expected_robot = {"model": "OpenArm" if approved["robot"] == "OpenArm365" else approved["robot"], "execution_arm": approved.get("execution_arm", "right")}
+            if profile.get("robot") is not None and profile["robot"] != expected_robot:
+                raise ValueError("catalog robot disagrees with approved RoboCasa365 configuration")
+            plans = profile.get("random_policy_configs_by_attempts")
+            if plans is not None:
+                if budget is None or not isinstance(plans, dict) or set(plans) != {str(n) for n in range(1, 11)}:
+                    raise ValueError("daily random plans require every approved attempt maximum")
+                for attempts, reference in plans.items():
+                    if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
+                        raise ValueError("invalid daily random plan reference")
+                    plan_path = Path(reference["path"])
+                    if (not plan_path.is_absolute() or not plan_path.is_file()
+                            or hashlib.sha256(plan_path.read_bytes()).hexdigest() != reference["sha256"]):
+                        raise ValueError("daily random plan differs from approved digest")
+                    expected = {"target_request_count": min(1, int(attempts)-1),
+                                "total_failure_slots": int(attempts)-1, "seed": profile["seed"]}
+                    if json.loads(plan_path.read_bytes()) != expected:
+                        raise ValueError("daily random plan disagrees with attempts/seed")
+            budget_plans = profile.get("random_policy_configs_by_budget")
+            if budget_plans is not None:
+                if plans is not None:
+                    raise ValueError("daily random plans must use exactly one registration table")
+                from .robocasa365.budget import validate_budget_random_plans
+                validate_budget_random_plans(budget_plans, budget, seed=profile["seed"])
+        elif any(profile.get(key) is not None for key in ("run_budget", "approved_run_budget_sha256", "random_policy_configs_by_attempts", "random_policy_configs_by_budget")):
+            raise ValueError("daily budget is only supported for RoboCasa365")
+        if suite == "robocasa" and ("robot" in approved or
+                approved.get("schema_version") == "attentionbench.robocasa-formal-config.v3"):
+            from .robocasa_native.robot_config import robot_selection
+            profile["robot"] = robot_selection(approved).artifact()
+            if approved.get('schema_version') in {'attentionbench.robocasa-openarm-mobile-config.v1','attentionbench.robocasa-openarm-bimanual-config.v1'}:
+                profile['base_capability']='Mobile · joint driven'
+            if approved.get('schema_version')=='attentionbench.robocasa-openarm-bimanual-config.v2':
+                profile['base_capability']='Stationary · official V2'
+                profile['certified_bimanual_v2']=True
+                profile['attempt_wall_seconds']=600
+        if suite == "robosuite":
+            profile["camera_width"] = approved.get("camera_width")
+            profile["camera_height"] = approved.get("camera_height")
     return profiles
 
 
 def public_options(profiles: list[dict[str, Any]]) -> dict[str, Any]:
     return {"profiles": [{key: item[key] for key in
                           ("id", "suite", "task", "seed", "execution_target")}
+                         | {key: item.get(key) for key in ("camera_width", "camera_height", "attempt_wall_seconds", "controller", "approved_config_sha256")}
+                         | ({"robot": item["robot"]} if item.get("robot") else {})
+                         | ({"certified_bimanual_v2":True} if item.get("certified_bimanual_v2") else {})
+                         | ({"base_capability":item['base_capability']} if item.get('base_capability') else {})
+                         | ({'attention_switching':True} if item.get('attention_control_binding') else {})
+                         | ({"run_limits":item["run_limits"]} if item.get("run_limits") else {})
                          for item in profiles],
             "attention_policies": list(POLICY_IDS),
             "assistance_modes": [mode.value for mode in AssistanceMode],
@@ -89,8 +162,12 @@ def launch_formal_run(
     store: AttentionStore, artifact_root: Path,
     popen: Callable[..., Any] = subprocess.Popen,
 ) -> dict[str, Any]:
-    if set(selection) != _SELECTION_KEYS:
+    robot_keys = {"robot_model", "execution_arm"}
+    provenance_keys = {'source_run_id','source_relation'} if 'source_run_id' in selection else set()
+    if set(selection) - provenance_keys not in (_SELECTION_KEYS, _SELECTION_KEYS | robot_keys):
         raise ValueError("run selection has missing or unexpected fields")
+    if provenance_keys and (store.get_run(selection['source_run_id']) is None or selection.get('source_relation') not in {'copy','retry','policy_change'}):
+        raise ValueError('source run and relation are required')
     profile = next((item for item in profiles if item["id"] == selection["profile_id"]), None)
     if profile is None:
         raise ValueError("unknown run profile")
@@ -127,12 +204,52 @@ def launch_formal_run(
                                 ("config", "approved_config_sha256")):
         if hashlib.sha256(Path(profile[field]).read_bytes()).hexdigest() != profile[digest_field]:
             raise ValueError(f"approved {field} changed before launch")
+    # Read the hash-bound file again. Public labels do not authorize a robot.
+    approved = json.loads(Path(profile["config"]).read_text(encoding="utf-8"))
+    identity = None
+    if profile["suite"] == "robocasa" and ("robot" in approved or
+            approved.get("schema_version") == "attentionbench.robocasa-formal-config.v3"):
+        from .robocasa_native.robot_config import RobotSelection, robot_selection
+        identity = robot_selection(approved).artifact()
+        if profile.get("robot") is not None and profile["robot"] != identity:
+            raise ValueError("profile robot disagrees with approved config")
+        if robot_keys <= set(selection):
+            chosen = RobotSelection(selection["robot_model"], selection["execution_arm"]).artifact()
+            if chosen != identity:
+                raise ValueError("selected robot or execution arm disagrees with approved config")
+    elif profile["suite"] == "robocasa365" and profile.get("robot"):
+        from .robocasa365.config import validate_config
+        validate_config(approved)
+        identity = {"model": "OpenArm" if approved["robot"]=="OpenArm365" else approved["robot"], "execution_arm":approved.get("execution_arm","right")}
+        if profile["robot"] != identity:
+            raise ValueError("profile robot disagrees with approved RoboCasa365 configuration")
+        if robot_keys <= set(selection) and {"model":selection["robot_model"],"execution_arm":selection["execution_arm"]} != identity:
+            raise ValueError("selected robot or execution arm disagrees with approved RoboCasa365 config")
+    elif robot_keys & set(selection):
+        raise ValueError("this profile has no approved robot selection")
     if "demo_prior" in profile and hashlib.sha256(
         Path(profile["demo_prior"]).read_bytes()).hexdigest() != profile["approved_demo_sha256"]:
         raise ValueError("approved demo prior changed before launch")
     if "random_policy_config" in profile and hashlib.sha256(
         Path(profile["random_policy_config"]).read_bytes()).hexdigest() != profile["approved_random_policy_config_sha256"]:
         raise ValueError("approved random policy config changed before launch")
+    policy_config_field = "random_policy_config" if policy == "budget_matched_random_escalation" else "retry_policy_config" if policy == "retry_k_then_ask" and "retry_policy_config" in profile else None
+    policy_config_digest_field = "approved_random_policy_config_sha256" if policy_config_field == "random_policy_config" else "approved_retry_policy_config_sha256"
+    selected_policy_config = profile[policy_config_field] if policy_config_field else None
+    selected_policy_digest = profile[policy_config_digest_field] if policy_config_field else None
+    if policy_config_field == "random_policy_config" and profile.get("random_policy_configs_by_budget"):
+        reference = profile["random_policy_configs_by_budget"].get(
+            f"{selection['max_attempts']}:{selection['assistance_credits']}")
+        if reference is None:
+            raise ValueError("random plan unavailable for selected attempt/help budget")
+        selected_policy_config, selected_policy_digest = reference["path"], reference["sha256"]
+    elif policy_config_field == "random_policy_config" and profile.get("random_policy_configs_by_attempts"):
+        reference = profile["random_policy_configs_by_attempts"].get(str(selection["max_attempts"]))
+        if reference is None:
+            raise ValueError("random plan unavailable for selected attempt maximum")
+        selected_policy_config, selected_policy_digest = reference["path"], reference["sha256"]
+    if policy_config_field and hashlib.sha256(Path(selected_policy_config).read_bytes()).hexdigest() != selected_policy_digest:
+        raise ValueError("approved policy config changed before launch")
     entry_lock, _ = inspect_formal_entry(
         suite=profile["suite"], task_id=profile["task"], seed=seed,
         policy_id=policy, code=Path(profile["code"]),
@@ -145,10 +262,10 @@ def launch_formal_run(
         human_deadline_seconds=deadline, overall_deadline_seconds=overall,
         demo_prior=Path(profile["demo_prior"]) if policy == "demo_first" else None,
         approved_demo_sha256=profile.get("approved_demo_sha256") if policy == "demo_first" else None,
-        policy_config=Path(profile["random_policy_config"])
-            if policy == "budget_matched_random_escalation" else None,
-        approved_policy_config_sha256=profile.get("approved_random_policy_config_sha256")
-            if policy == "budget_matched_random_escalation" else None,
+        policy_config=Path(selected_policy_config) if policy_config_field else None,
+        approved_policy_config_sha256=selected_policy_digest,
+        run_budget=Path(profile["run_budget"]) if profile.get("run_budget") else None,
+        approved_run_budget_sha256=profile.get("approved_run_budget_sha256"),
     )
     launch_id = f"launch:{uuid4().hex}"
     cmd = [sys.executable, "-m", "benchmarks.attention_harness.formal_attention_cli",
@@ -163,17 +280,33 @@ def launch_formal_run(
            "--token-limit", str(selection["token_limit"]),
            "--assistance-mode", mode.value,
            "--human-deadline-seconds", str(deadline)]
+    cmd.extend(("--ui-launch-id", launch_id))
     cmd.append("--single-glm-call")
+    cmd.append("--record-replay")
     cmd.extend(("--overall-deadline-seconds", str(overall)))
+    if profile["suite"] == "robocasa365":
+        cmd.extend(("--attempt-deadline-seconds", str(approved["attempt_wall_seconds"]), "--whole-case-wall-seconds", str(overall)))
     for field in _ROOT_FLAGS[profile["suite"]]:
         cmd.extend(("--" + field.replace("_", "-"), profile[field]))
     if policy == "demo_first":
         cmd.extend(("--demo-prior", profile["demo_prior"],
                     "--approved-demo-sha256", profile["approved_demo_sha256"]))
-    if policy == "budget_matched_random_escalation":
-        cmd.extend(("--policy-config", profile["random_policy_config"],
-                    "--approved-policy-config-sha256",
-                    profile["approved_random_policy_config_sha256"]))
+    if policy_config_field:
+        cmd.extend(("--policy-config", selected_policy_config,
+                    "--approved-policy-config-sha256", selected_policy_digest))
+    if profile.get("run_budget"):
+        cmd.extend(("--run-budget", profile["run_budget"],
+                    "--approved-run-budget-sha256", profile["approved_run_budget_sha256"]))
+    from .task_dag import graph_command_args
+    dag_args = graph_command_args(profile, repo_root=Path(__file__).resolve().parents[2], artifact_root=artifact_root)
+    cmd.extend(dag_args)
+    if profile.get('attention_control_binding'):
+        from .attention_control import load_binding, validate_launch_binding
+        binding=load_binding(profile['attention_control_binding'],profile['attention_control_binding_sha256'])
+        validate_launch_binding(binding,profile)
+        if policy not in binding['allowed_policies']:raise ValueError('Attention policy outside engineering binding')
+        cmd.extend(('--attention-control-binding',profile['attention_control_binding'],
+                    '--attention-control-binding-sha256',profile['attention_control_binding_sha256']))
     artifact_root.mkdir(parents=True, exist_ok=True)
     log_path = artifact_root / f"{launch_id.replace(':', '-')}.log"
     summary_path = artifact_root / f"{launch_id.replace(':', '-')}.summary.json"
@@ -188,7 +321,16 @@ def launch_formal_run(
               "approved_demo_sha256": profile.get("approved_demo_sha256") if policy == "demo_first" else None,
               "approved_random_policy_config_sha256": profile.get("approved_random_policy_config_sha256")
                   if policy == "budget_matched_random_escalation" else None,
+              "approved_policy_config_sha256": selected_policy_digest,
               "formal_eligible": False}
+    if profile.get("run_budget"):
+        locked["approved_run_budget_sha256"] = profile["approved_run_budget_sha256"]
+    if profile.get('attention_control_binding'):
+        locked['attention_control_binding_sha256']=profile['attention_control_binding_sha256']
+    if identity is not None:
+        locked["robot"] = identity
+    if dag_args:
+        locked['skill_dag'] = {'manifest_path': dag_args[1], 'manifest_sha256': dag_args[3]}
     store.record_launch(launch_id, locked=locked, log_path=str(log_path.resolve()))
     try:
         with log_path.open("wb") as log:

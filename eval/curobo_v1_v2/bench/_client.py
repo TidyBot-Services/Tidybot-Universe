@@ -40,6 +40,7 @@ class CuroboClient:
     _world_pushed: bool = field(default=False)
 
     def _post(self, path: str, body: dict) -> tuple[dict, float]:
+        raise RuntimeError('V2-only: unauthenticated comparison client is retired; no fallback or old service dispatch')
         t0 = time.time()
         req = urllib.request.Request(
             self.url + path,
