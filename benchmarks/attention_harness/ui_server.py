@@ -39,6 +39,7 @@ from .attention_control import AttentionControl, run_identity
 from .ui_history import UIHistory, name_suffix
 from .dev_attention import DevAttentionControl
 from .fixed_ui import FixedUI
+from .memory_view import ACTIONS as MEMORY_ACTIONS, MemoryView
 
 
 UI_DIR = Path(__file__).with_name("ui")
@@ -231,9 +232,40 @@ def camera_view_options(root,run_id,station):
     except (OSError,ValueError,KeyError,TypeError):return None
 
 
+def memory_snapshot(store: AttentionStore, run_id: str, projection: dict[str, Any],
+                    memory_view: MemoryView | None) -> dict[str, Any]:
+    """Memory of one run as the agent saw it: candidates made, versions retrieved, records.
+
+    Records come from the Memory Service itself; this only adds the run's links
+    (which request produced a candidate, which attempt retrieved which version).
+    """
+    traces = projection["request_detail"]["traces"]
+    uses = []
+    for trace in traces:
+        for event in trace.get("events", []):
+            if event.get("event_type") == "attention.memory_retrieval":
+                uses.append({"attempt_id": trace["attempt_id"],
+                             "memory_id": (event.get("arguments") or {}).get("memory_id"),
+                             "memory_version": (event.get("result") or {}).get("memory_version"),
+                             "grant_id": (event.get("result") or {}).get("grant_id")})
+    ingestion = [dict(event["payload"]) for event in store.events_for_run(run_id)
+                 if event["entity_type"] == "memory_ingestion"]
+    ids = list(dict.fromkeys(
+        [item["memory_id"] for item in ingestion if item.get("memory_id")]
+        + [item["memory_id"] for item in uses if item["memory_id"]]
+        + [ref for trace in traces for ref in trace.get("memory_refs", [])]))
+    return {
+        "control": None if memory_view is None else memory_view.public(),
+        "ingestion": ingestion, "uses": uses,
+        "records": {} if memory_view is None else {memory_id: memory_view.detail(memory_id)
+                                                   for memory_id in ids},
+    }
+
+
 def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Path | None = None,
                        robosuite_url: str | None = None,
-                       robocasa_camera_ws: str | None = None) -> dict[str, Any]:
+                       robocasa_camera_ws: str | None = None,
+                       memory_view: MemoryView | None = None) -> dict[str, Any]:
     """Expose Advisor projections and separately revalidated Eval outcomes."""
     run_events = store.events_for_run(run_id)
     projection = AttentionProjection(store).snapshot(run_id, events=run_events)
@@ -384,6 +416,7 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         "response_evidence": adoption,
         "waiting_windows": store.waiting_windows(run_id),
         "request_lifecycle": lifecycle,
+        "memory": memory_snapshot(store, run_id, projection, memory_view),
         "request_dispositions": {request["request_id"]: store.request_disposition(request["request_id"])
                                  for request in requests if request["state"] == "answered"},
         "waiting_activity": store.waiting_activities(run_id),
@@ -416,6 +449,7 @@ def create_server(
     robosuite_url: str | None = None, camera_name: str | None = None,
     robocasa_camera_ws: str | None = None, robocasa_camera_device: str = "maniskill_base",
     run_catalog: Path | None = None, dev_v2_bridge=None,
+    memory_view: MemoryView | None = None,
 ) -> ThreadingHTTPServer:
     if store is not None:
         # Live snapshots must not block executor evidence or stop acknowledgements.
@@ -786,6 +820,20 @@ def create_server(
                     self._json({"error": "evidence not found"}, HTTPStatus.NOT_FOUND)
                 except ValueError as error:
                     self._json({"error": str(error)}, HTTPStatus.CONFLICT)
+            elif path == "/api/memories" and memory_view is not None:
+                try:
+                    self._json({"control": memory_view.public(),
+                                "memories": memory_view.catalogue(
+                                    parse_qs(parsed.query).get("status", [None])[0])})
+                except Exception as error:
+                    self._json({"error": f"Memory unavailable: {error}"}, HTTPStatus.BAD_GATEWAY)
+            elif path.startswith("/api/memories/") and memory_view is not None:
+                memory_id = unquote(path.removeprefix("/api/memories/"))
+                if not memory_id or "/" in memory_id or "\\" in memory_id:
+                    self._json({"error": "invalid memory id"}, HTTPStatus.BAD_REQUEST)
+                    return
+                detail = memory_view.detail(memory_id)
+                self._json(detail, HTTPStatus.NOT_FOUND if "error" in detail else HTTPStatus.OK)
             elif path.startswith("/api/runs/") and store is not None:
                 run_id = unquote(path.removeprefix("/api/runs/"))
                 if not run_id or "/" in run_id or "\\" in run_id:
@@ -794,7 +842,8 @@ def create_server(
                 try:
                     snapshot=dashboard_snapshot(store, run_id, artifact_root=artifact_root,
                                                 robosuite_url=robosuite_url,
-                                                robocasa_camera_ws=robocasa_camera_ws)
+                                                robocasa_camera_ws=robocasa_camera_ws,
+                                                memory_view=memory_view)
                     snapshot['run']=history.project('run',snapshot['run'])
                     self._json(snapshot)
                 except StateConflictError:
@@ -901,11 +950,13 @@ def create_server(
             is_defer = path.startswith("/api/requests/") and path.endswith("/defer")
             is_cancel = path.startswith("/api/requests/") and path.endswith("/cancel")
             is_ignore = path.startswith("/api/requests/") and path.endswith("/ignore")
+            memory_action = next((a for a in MEMORY_ACTIONS if path.startswith("/api/memories/")
+                                  and path.endswith("/" + a)), None)
             is_interrupt = path.startswith("/api/runs/") and path.endswith("/interrupt")
             is_dag_start = path == "/api/orchestrator/dispatch"
             is_run_start = path == "/api/runs/start"
             control_suffix = next((s for s in ('/attention-policy','/attention-policy/cancel','/display-name') if path.startswith('/api/runs/') and path.endswith(s)),None)
-            if store is None or not (is_response or is_preview or is_defer or is_cancel or is_ignore or is_interrupt or is_dag_start or is_run_start or control_suffix):
+            if store is None or not (is_response or is_preview or is_defer or is_cancel or is_ignore or is_interrupt or is_dag_start or is_run_start or control_suffix or memory_action):
                 self._json({"error": "unsupported write"}, HTTPStatus.METHOD_NOT_ALLOWED)
                 return
             if not secrets.compare_digest(self.headers.get("X-Attention-Token", ""), control_token):
@@ -1038,6 +1089,36 @@ def create_server(
                 except StateConflictError as error:
                     self._json({"error": str(error)}, HTTPStatus.CONFLICT)
                 return
+            if memory_action:
+                memory_id = unquote(path[len("/api/memories/"):-len("/" + memory_action)]).strip("/")
+                if not memory_id or "/" in memory_id or "\\" in memory_id:
+                    self._json({"error": "invalid memory id"}, HTTPStatus.BAD_REQUEST)
+                    return
+                if memory_view is None:
+                    self._json({"error": "Memory is not connected to this server"},
+                               HTTPStatus.SERVICE_UNAVAILABLE)
+                    return
+                try:
+                    size = int(self.headers.get("Content-Length", "0"))
+                    if (self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json"
+                            or not 0 < size <= 2048):
+                        raise ValueError("bounded JSON body required")
+                    body = json.loads(self.rfile.read(size))
+                    if not isinstance(body, dict) or set(body) - {"actor", "reason", "expires_at"}:
+                        raise ValueError("body needs actor and reason (and expires_at for expiry)")
+                    record = memory_view.operate(memory_id, memory_action, actor=body.get("actor"),
+                                                 reason=body.get("reason"),
+                                                 expires_at=body.get("expires_at"))
+                    self._json({"memory_id": memory_id, "action": memory_action, "memory": record})
+                except PermissionError as error:
+                    self._json({"error": str(error)}, HTTPStatus.FORBIDDEN)
+                except (ValueError, TypeError, json.JSONDecodeError) as error:
+                    self._json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
+                except Exception as error:
+                    # The service refuses illegal transitions (for example re-enabling a rollback).
+                    conflict = "StateConflict" in type(error).__name__
+                    self._json({"error": str(error)}, HTTPStatus.CONFLICT if conflict else HTTPStatus.BAD_GATEWAY)
+                return
             suffix = ("/respond" if is_response else "/defer" if is_defer
                       else "/ignore" if is_ignore else "/cancel")
             request_id = unquote(path[len("/api/requests/"):-len(suffix)]).strip("/")
@@ -1124,6 +1205,14 @@ def main() -> None:
     parser.add_argument("--robocasa-camera-ws", help="ManiSkill camera bridge URL, e.g. ws://127.0.0.1:5580")
     parser.add_argument("--robocasa-camera-device", default="maniskill_base",
                         help="camera bridge device ID: maniskill_base or maniskill_wrist")
+    parser.add_argument("--memory-service-url",
+                        help="Memory Service origin; keys come from ATTENTION_MEMORY_API_KEY and "
+                             "ATTENTION_MEMORY_OPERATOR_KEY (operator key enables lifecycle actions)")
+    parser.add_argument("--memory-local", action="store_true",
+                        help="show the Memory kept in this run store (read-only unless "
+                             "--memory-local-operator)")
+    parser.add_argument("--memory-local-operator", action="store_true",
+                        help="allow disable/enable/rollback/expiry on the local Memory (development)")
     args = parser.parse_args()
     if args.host not in {"127.0.0.1", "localhost", "::1"}:
         parser.error("this local operator console binds only to loopback")
@@ -1148,7 +1237,21 @@ def main() -> None:
             parser.error("--robocasa-camera-ws must be a ws(s) origin without a path")
     if args.robocasa_camera_device not in {"maniskill_base", "maniskill_wrist"}:
         parser.error("--robocasa-camera-device must be maniskill_base or maniskill_wrist")
-    server = create_server(store=store, host=args.host, port=args.port,
+    memory_view = None
+    if args.memory_service_url and args.memory_local:
+        parser.error("choose --memory-service-url or --memory-local, not both")
+    if args.memory_service_url:
+        api_key = os.environ.get("ATTENTION_MEMORY_API_KEY", "")
+        if not api_key:
+            parser.error("--memory-service-url requires ATTENTION_MEMORY_API_KEY")
+        memory_view = MemoryView.service(
+            args.memory_service_url, api_key=api_key,
+            operator_key=os.environ.get("ATTENTION_MEMORY_OPERATOR_KEY") or None)
+    elif args.memory_local:
+        if store is None:
+            parser.error("--memory-local requires --store")
+        memory_view = MemoryView.local(args.store, operate=args.memory_local_operator)
+    server = create_server(store=store, host=args.host, port=args.port, memory_view=memory_view,
                            orchestrator_url=args.orchestrator_url,
                            artifact_root=args.artifact_root, robosuite_url=args.robosuite_url,
                            camera_name=args.camera_name,

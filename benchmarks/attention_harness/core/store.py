@@ -656,6 +656,13 @@ class AttentionStore(DevStoreMixin):
     def get_trace(self, trace_id: str) -> dict[str, Any] | None:
         return self._get_payload("traces", trace_id)
 
+    def get_raw_trace_by_execution(self, execution_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT payload FROM raw_traces WHERE json_extract(payload, '$.execution_id') = ?",
+                (execution_id,)).fetchone()
+        return None if row is None else json.loads(row[0])
+
     def get_raw_trace(self, raw_trace_id: str) -> dict[str, Any] | None:
         return self._get_payload("raw_traces", raw_trace_id)
 

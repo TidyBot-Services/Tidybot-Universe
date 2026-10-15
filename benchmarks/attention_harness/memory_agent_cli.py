@@ -51,10 +51,17 @@ def main() -> int:
     validate.add_argument("--max-delta-m", type=float, default=0.25)
     validate.add_argument("--max-observed-step-m", type=float, default=0.5)
     validate.add_argument("--promote", action="store_true", help="ask the Memory Service to apply its promotion gate")
+    validate.add_argument("--decide", action="store_true",
+                          help="ask the Memory Service for the verdict: trusted, or rejected with the failed gates")
     report = commands.add_parser("report")
     report.add_argument("memory_id")
     promote = commands.add_parser("promote")
     promote.add_argument("memory_id")
+    evaluate = commands.add_parser("evaluate", help="close a finished validation: trusted or rejected")
+    evaluate.add_argument("memory_id")
+    sweep = commands.add_parser("sweep", help="create candidates for adopted, executed hints of a run")
+    sweep.add_argument("--store-path", type=Path, required=True)
+    sweep.add_argument("--run-id", required=True)
     args = parser.parse_args()
     key = os.environ.get(args.api_key_env, "")
     agent = MemoryAgent(MemoryServiceClient(args.service_url, api_key=key))
@@ -151,8 +158,18 @@ def main() -> int:
             args.memory_id, executor=executor, cases=cases,
             assistance_credits=args.assistance_credits,
         )
-        if args.promote:
+        if args.decide:
+            value = {"impact": value, "memory": agent.finalize(args.memory_id).artifact(),
+                     "decision": agent.service.decision(args.memory_id)}
+        elif args.promote:
             value = {"impact": value, "memory": agent.request_promotion(args.memory_id).artifact()}
+    elif args.command == "evaluate":
+        value = {"memory": agent.finalize(args.memory_id).artifact(),
+                 "decision": agent.service.decision(args.memory_id)}
+    elif args.command == "sweep":
+        from .core.store import AttentionStore
+        from .memory_ingestion import MemoryIngestion
+        value = MemoryIngestion(AttentionStore(args.store_path), agent.service).sweep(args.run_id)
     else:
         value = agent.request_promotion(args.memory_id).artifact()
     print(json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False))

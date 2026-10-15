@@ -63,6 +63,7 @@ class MemoryGateway(Protocol):
     def impact_report(self, memory_id: str) -> dict[str, Any]: ...
     def list_pairs(self, memory_id: str) -> list[dict[str, Any]]: ...
     def promote(self, memory_id: str) -> MemoryRecord: ...
+    def evaluate(self, memory_id: str) -> MemoryRecord: ...
 
 
 class MemoryAgent:
@@ -253,6 +254,14 @@ class MemoryAgent:
 
     def request_promotion(self, memory_id: str) -> MemoryRecord:
         return self.service.promote(memory_id)
+
+    def finalize(self, memory_id: str) -> MemoryRecord:
+        """Ask the Service for the verdict on a fully validated candidate.
+
+        Unlike promotion this never leaves a failed candidate pending: the
+        Service promotes it to trusted or rejects it with the failed gates.
+        """
+        return self.service.evaluate(memory_id)
 
     @staticmethod
     def _default_distiller(source: dict[str, Any]) -> MemoryDraft:

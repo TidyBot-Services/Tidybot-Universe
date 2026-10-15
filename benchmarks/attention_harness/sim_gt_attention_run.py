@@ -29,7 +29,7 @@ from .core.policies import DecisionAction, PolicyContext, build_policy
 from .demo_prior import verify_demo_prior
 from .core.runtime import AttentionRuntime
 from .core.store import AttentionStore
-from .memory_agent import MemoryAgent
+from .memory_ingestion import MemoryIngestion
 from .parcc_advisor import parse_advisor_advice
 from .policy_input import public_attention_input
 from .seed_guard import validate_seed
@@ -314,6 +314,17 @@ def run_sim_gt_attention(
             decisions.append({"before_attempt": 0, "action": "use_demo", "reason": initial.reason,
                               "demo_manifest_sha256": demo_receipt["manifest_sha256"]})
 
+    ingestion = MemoryIngestion(control_store, memory_gateway, clock=clock)
+
+    def note_ingestion(outcome: dict[str, Any]) -> None:
+        """Mirror a Memory ingestion decision onto the request's summary row."""
+        for row in requests:
+            if row.get("request_id") == outcome["request_id"]:
+                row["memory_ingestion"] = {key: outcome[key] for key in outcome
+                                           if key not in {"request_id", "run_id"}}
+                if outcome["decision"] == "ingested":
+                    row["candidate_memory_id"] = outcome["memory_id"]
+
     # -- request lifecycle helpers ----------------------------------------------
     def account(outstanding) -> dict[str, Any]:
         """Charge an answered request exactly once and return its stored response."""
@@ -370,12 +381,6 @@ def run_sim_gt_attention(
                 outstanding.request_id, response_id=response["response_id"],
                 use="guidance", guidance_compilation=compilation)
             pending_execution_link = outstanding.request_id
-            raw = control_store.get_raw_trace(outstanding.link["raw_trace_id"])
-            if "advice" in row and raw and raw["outcome"].get("evaluator_authoritative") is True:
-                candidate = MemoryAgent(memory_gateway).ingest_answered_hint(
-                    outstanding.request_id,
-                    memory_id=f"candidate:{outstanding.link['attempt_id']}")
-                row["candidate_memory_id"] = candidate.memory_id
             return None
         if request_type is RequestType.INTERRUPT:
             control_store.record_response_use(
@@ -579,7 +584,11 @@ def run_sim_gt_attention(
                 pending_execution_link,
                 execution_id=result["attention_trace"]["execution_id"],
             )
-            pending_execution_link = None
+            linked_request, pending_execution_link = pending_execution_link, None
+            if any(row.get("request_id") == linked_request and row.get("request_type") == "hint"
+                   for row in requests):
+                # The guided execution has finished: only now is there an outcome to record.
+                note_ingestion(ingestion.ingest(linked_request))
         signals = safety_signals(result) if safety_signals else {}
         if not isinstance(signals, dict) or set(signals) - {"unsafe", "approval_required"} or any(
             not isinstance(v, bool) for v in signals.values()
@@ -804,6 +813,8 @@ def run_sim_gt_attention(
             break
     finish_outstanding()
     flow.close()
+    for outcome in ingestion.sweep(unified_run_id):
+        note_ingestion(outcome)
     if interrupted():
         stopped_reason = "emergency_interrupt"
     if stopped_reason == "emergency_interrupt":

@@ -1,3 +1,11 @@
+<!-- memory-lifecycle-v2-20261016 -->
+## Memory 生命周期 v2：工程验收中（第 2 步完成）
+
+事件驱动入库（回复被采用且指导后的执行结束才生成候选，人类与 Advisor 回复都入库，记录指导后结果与 human attention，决定持久化、可补跑）；验证裁决 `evaluate`（门槛全过→trusted，否则→rejected 并保存失败门槛与影响报告）；服务新增 enable、目录、使用记录、状态历史接口，并修复禁用→启用→再禁用的事件键冲突；UI 后端新增 Memory 目录/详情/操作接口与 run 快照 `memory`（operator 权限与读权限分离，不进浏览器）。设计与边界见 `docs/attentionbench_memory_lifecycle.md`。
+
+验证：Memory 服务仓库测试 54→77；harness 新增 `test_memory_ingestion`（5）、`test_ui_memory`（7）；harness 全量 1291 通过，与基线相同的 56 项失败，无新增。**这是工程验收**：验证的触发仍为人工，真实仿真器上的配对验证与拒绝路径未重跑，前端界面未做。Memory 服务仓库在分支 `attentionbench/baseline-20261015` 上有未提交的本步改动。
+<!-- /memory-lifecycle-v2-20261016 -->
+
 <!-- request-mechanism-v2-20261016 -->
 ## 请求机制 v2（异步、等待期工作、approval、interrupt）：工程验收中（第 1 步完成，未提交本步改动）
 
