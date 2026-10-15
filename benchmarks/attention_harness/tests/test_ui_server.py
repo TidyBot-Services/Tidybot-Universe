@@ -129,7 +129,7 @@ def test_dashboard_snapshot_uses_persisted_requests_without_oracle(tmp_path) -> 
     assert snapshot["requests"][0]["request_id"] == request.request_id
     assert snapshot["attempts"][0]["status"] == "failed"
     assert snapshot["work_source"] == "attempts_and_persisted_work_events"
-    assert snapshot["resources"]["tokens"]["reserved"] is None
+    assert snapshot["resources"]["tokens"]["reserved"] == 0.0  # tracked now; nothing is held
     encoded = json.dumps(snapshot)
     assert "native_success" not in encoded
     assert "internal://oracle" not in encoded

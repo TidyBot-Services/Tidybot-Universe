@@ -1073,6 +1073,69 @@ class AttentionStore(DevStoreMixin):
             return None
         return {key: value for key, value in json.loads(row[0]).items() if key != "run_id"}
 
+    @staticmethod
+    def _gpu_item(limit: float, consumed: float) -> dict[str, Any]:
+        # limit 0 means "not budgeted": usage is still recorded and shown.
+        if limit <= 0:
+            return {"limit": 0.0, "used": consumed, "remaining": 0.0, "budgeted": False}
+        return {"limit": limit, "used": consumed, "remaining": limit - consumed, "budgeted": True}
+
+    RESERVABLE = ("tokens", "execution_seconds", "gpu_seconds")
+
+    @staticmethod
+    def _ensure_reservations(connection: sqlite3.Connection) -> None:
+        # Created on first use, never at open: frozen Memory snapshots stay byte-identical.
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS resource_reservations ("
+            "id TEXT PRIMARY KEY, run_id TEXT NOT NULL, resource TEXT NOT NULL, "
+            "amount REAL NOT NULL, status TEXT NOT NULL)")
+
+    def reserve_resource(self, run_id: str, *, resource: str, amount: float,
+                         reservation_id: str) -> None:
+        """Hold part of a budget for work that is about to run (released when it ends)."""
+        if resource not in self.RESERVABLE:
+            raise ValueError(f"resource cannot be reserved: {resource}")
+        if isinstance(amount, bool) or not isinstance(amount, (int, float)) or not amount > 0:
+            raise ValueError("reservation amount must be positive")
+        with self._transaction() as connection:
+            self._ensure_reservations(connection)
+            if connection.execute("SELECT 1 FROM resource_reservations WHERE id = ?",
+                                  (reservation_id,)).fetchone() is not None:
+                return
+            status = self.resource_status(run_id, connection=connection)[resource]
+            reserved = connection.execute(
+                "SELECT COALESCE(SUM(amount), 0) FROM resource_reservations "
+                "WHERE run_id = ? AND resource = ? AND status = 'reserved'",
+                (run_id, resource)).fetchone()[0]
+            budgeted = status.get("budgeted", True)
+            if budgeted and status["used"] + reserved + amount > status["limit"] + 1e-9:
+                raise StateConflictError(f"{resource} budget exhausted")
+            connection.execute(
+                "INSERT INTO resource_reservations(id, run_id, resource, amount, status) "
+                "VALUES (?, ?, ?, ?, 'reserved')", (reservation_id, run_id, resource, float(amount)))
+
+    def release_resource(self, reservation_id: str) -> None:
+        with self._transaction() as connection:
+            exists = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'resource_reservations'"
+            ).fetchone()
+            if exists is None:
+                return
+            connection.execute("UPDATE resource_reservations SET status = 'released' "
+                               "WHERE id = ? AND status = 'reserved'", (reservation_id,))
+
+    def resource_reservations(self, run_id: str) -> dict[str, float]:
+        """Amount currently held per resource (execution time, tokens, GPU time)."""
+        with self._connect() as connection:
+            if connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'resource_reservations'"
+            ).fetchone() is None:
+                return {}
+            rows = connection.execute(
+                "SELECT resource, SUM(amount) FROM resource_reservations "
+                "WHERE run_id = ? AND status = 'reserved' GROUP BY resource", (run_id,)).fetchall()
+        return {resource: float(total) for resource, total in rows}
+
     def has_reservation(self, reservation_id: str) -> bool:
         with self._connect() as connection:
             return connection.execute("SELECT 1 FROM budget_reservations WHERE id = ?",
@@ -1164,8 +1227,8 @@ class AttentionStore(DevStoreMixin):
                 raise StateConflictError("token budget exhausted")
             if execution_seconds > status["execution_seconds"]["remaining"]:
                 raise StateConflictError("execution-time budget exhausted")
-            if gpu_seconds > status["gpu_seconds"]["remaining"]:
-                raise StateConflictError("GPU-time budget exhausted")
+            # GPU time is measured after an attempt ran: record it as it was and
+            # let the scheduler stop before the next attempt when a budget is spent.
             connection.execute(
                 "INSERT INTO resource_usage(event_key, run_id, tokens, execution_seconds, gpu_seconds) "
                 "VALUES (?, ?, ?, ?, ?)",
@@ -1206,7 +1269,7 @@ class AttentionStore(DevStoreMixin):
                 "assistance": self.budget_status(run_id, connection=active),
                 "tokens": item(int(budget["token_limit"]), int(used[0])),
                 "execution_seconds": item(float(budget["execution_seconds"]), float(used[1])),
-                "gpu_seconds": item(float(budget.get("gpu_seconds", 0.0)), float(used[2])),
+                "gpu_seconds": self._gpu_item(float(budget.get("gpu_seconds", 0.0)), float(used[2])),
             }
         finally:
             if owned:

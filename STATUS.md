@@ -1,9 +1,17 @@
+<!-- ui-backend-resources-20261016 -->
+## UI 后端：资源预留、GPU 计量、运行条件锁定（第 3 步完成）
+
+执行时间与 token 在占用期间显示为 reserved（预留表仅在首次使用时创建，不改动冻结快照）；GPU 时间按主机 GPU 利用率加权秒数计量，预算为 0 表示“不设预算但照样记录”，无读数时为“未追踪”，设了预算则在下一次尝试前以 `resource_blocked` 停止；`/api/run-options` 增加 `execution_targets`（真机标为不可用及原因）、`request_modes`、GPU 上限，启动选择可带 `request_mode`/`gpu_seconds` 并随 run 锁定；快照新增 `lock`（固定条件、是否可切策略、是否可参与排名）、`autonomous_work`（运行中/等待中仍继续/因资源、失败、依赖而阻塞）、每个请求的服务端 `permitted_actions`。
+
+验证：新增 `tests/test_resources_and_lock.py` 17 项；harness 全量 1309 通过，与基线相同的 56 项失败，无新增。工程验收，不是正式实验验收；前端未改。剩余工作与验收标准见 `docs/attentionbench_handoff_plan.md`。
+<!-- /ui-backend-resources-20261016 -->
+
 <!-- memory-lifecycle-v2-20261016 -->
 ## Memory 生命周期 v2：工程验收中（第 2 步完成）
 
 事件驱动入库（回复被采用且指导后的执行结束才生成候选，人类与 Advisor 回复都入库，记录指导后结果与 human attention，决定持久化、可补跑）；验证裁决 `evaluate`（门槛全过→trusted，否则→rejected 并保存失败门槛与影响报告）；服务新增 enable、目录、使用记录、状态历史接口，并修复禁用→启用→再禁用的事件键冲突；UI 后端新增 Memory 目录/详情/操作接口与 run 快照 `memory`（operator 权限与读权限分离，不进浏览器）。设计与边界见 `docs/attentionbench_memory_lifecycle.md`。
 
-验证：Memory 服务仓库测试 54→77；harness 新增 `test_memory_ingestion`（5）、`test_ui_memory`（7）；harness 全量 1291 通过，与基线相同的 56 项失败，无新增。**这是工程验收**：验证的触发仍为人工，真实仿真器上的配对验证与拒绝路径未重跑，前端界面未做。Memory 服务仓库在分支 `attentionbench/baseline-20261015` 上有未提交的本步改动。
+验证：Memory 服务仓库测试 54→77；harness 新增 `test_memory_ingestion`（5）、`test_ui_memory`（7）；harness 全量 1291 通过，与基线相同的 56 项失败，无新增。**这是工程验收**：验证的触发仍为人工，真实仿真器上的配对验证与拒绝路径未重跑，前端界面未做。已本地提交（未 push）：主仓库 `be7c2f0`，Memory 服务仓库 `15968a3`（分支均为 `attentionbench/baseline-20261015`）。
 <!-- /memory-lifecycle-v2-20261016 -->
 
 <!-- request-mechanism-v2-20261016 -->

@@ -89,10 +89,16 @@ class RequestFlow:
 
     def open(self, request: AttentionRequestRecord, decision: PolicyDecision,
              runtime: AttentionRuntime, *, failure_slot: int, trace_id: str,
-             link: dict[str, Any], blocking_reason: str | None) -> OutstandingRequest:
+             link: dict[str, Any], blocking_reason: str | None,
+             token_reservation: int = 0) -> OutstandingRequest:
         if self.outstanding is not None:
             raise RuntimeError("only one request may be outstanding")
         runtime.open_request(request)
+        if token_reservation > 0:
+            # The Advisor call can spend up to this much; shown as reserved until it ends.
+            self.store.reserve_resource(request.run_id, resource="tokens",
+                                        amount=token_reservation,
+                                        reservation_id=self._token_hold(request.request_id))
         outstanding = OutstandingRequest(
             request=request, decision=decision, runtime=runtime, failure_slot=failure_slot,
             trace_id=trace_id, link=link, blocking_reason=blocking_reason,
@@ -198,7 +204,13 @@ class RequestFlow:
         if outstanding is not None and outstanding.future is not None:
             wait([outstanding.future], timeout=timeout)
 
+    @staticmethod
+    def _token_hold(request_id: str) -> str:
+        return f"tokens:{request_id}"
+
     def release(self) -> None:
+        if self.outstanding is not None:
+            self.store.release_resource(self._token_hold(self.outstanding.request_id))
         self.outstanding = None
 
     def close(self) -> None:

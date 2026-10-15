@@ -53,6 +53,8 @@ def main() -> int:
     parser.add_argument("--human-deadline-seconds", type=float, default=60.0)
     parser.add_argument("--request-mode", choices=("async", "blocking"), default="async",
                         help="async keeps working while a request is pending; blocking waits")
+    parser.add_argument("--gpu-seconds-limit", type=float, default=0.0,
+                        help="GPU-time budget in utilization-weighted seconds (0 = not budgeted)")
     parser.add_argument("--overall-deadline-seconds", type=float, default=300.0)
     parser.add_argument("--attempt-deadline-seconds", type=float,
                         help="v2.1 chain guard: at most 120 seconds per simulator attempt")
@@ -242,7 +244,7 @@ def main() -> int:
         assistance_credits=args.assistance_credits, token_limit=args.token_limit,
         assistance_mode=AssistanceMode(args.assistance_mode),
         human_deadline_seconds=args.human_deadline_seconds,
-        request_mode=args.request_mode,
+        request_mode=args.request_mode, gpu_seconds_limit=args.gpu_seconds_limit,
         policy_config=policy_config,
         demo_prior=None if args.demo_prior is None else args.demo_prior.read_text(),
         approved_demo_sha256=args.approved_demo_sha256,

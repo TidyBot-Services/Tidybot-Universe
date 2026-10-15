@@ -391,7 +391,8 @@ def test_dashboard_snapshot_exposes_explanation_disposition_and_waiting_work(tmp
     assert snapshot["request_dispositions"][request["request_id"]]["disposition"] == "accepted"
     assert [a["activity"] for a in snapshot["waiting_activity"]] == ["autonomous_retry"]
     assert snapshot["scheduler_options"] == {
-        "request_mode": "async", "approval_rules": {}, "assistance_mode": "benchmark_proxy"}
+        "request_mode": "async", "approval_rules": {}, "assistance_mode": "benchmark_proxy",
+        "gpu_seconds_limit": 0.0}
 
 
 def test_ignore_endpoint_routes_a_pending_human_request_to_the_advisor(tmp_path):

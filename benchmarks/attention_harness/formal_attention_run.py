@@ -177,6 +177,7 @@ def run_formal_attention(
                               if scheduler_options.get("demo_prior") else None),
         "memory_context": memory_context,
         "request_mode": scheduler_options.get("request_mode", "async"),
+        "gpu_seconds_limit": float(scheduler_options.get("gpu_seconds_limit", 0.0)),
         "approval_rules": approved_sim_config.get("approval_rules") or {},
         "overall_deadline_seconds": overall_deadline_seconds,
         "formal_attempt_deadline_seconds": formal_attempt_deadline_seconds,

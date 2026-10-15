@@ -30,11 +30,12 @@ from .demo_prior import verify_demo_prior
 from .core.runtime import AttentionRuntime
 from .core.store import AttentionStore
 from .memory_ingestion import MemoryIngestion
+from .gpu_meter import GpuMeter
 from .parcc_advisor import parse_advisor_advice
 from .policy_input import public_attention_input
 from .seed_guard import validate_seed
 from .service_recovery import service_stop_confirmed
-from .v2_advisor import SimGTAdvisorProxy, SimGTGLMAdvisorTransport
+from .v2_advisor import SIM_GT_MAX_TOKENS, SimGTAdvisorProxy, SimGTGLMAdvisorTransport
 
 
 AttemptExecutor = Callable[..., dict[str, Any]]
@@ -131,6 +132,9 @@ def run_sim_gt_attention(
     strict_admission_budget: bool = False,
     request_mode: str = "async",
     approval_rules: dict[str, Any] | None = None,
+    gpu_seconds_limit: float = 0.0,
+    gpu_sampler: Callable[[], float | None] | None = None,
+    gpu_sample_interval: float = 1.0,
     runner_boundary_mode: str = "trusted_dev",
     sleeper: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.time,
@@ -150,6 +154,9 @@ def run_sim_gt_attention(
         raise ValueError("unsupported runner boundary")
     if request_mode not in REQUEST_MODES:
         raise ValueError(f"request_mode must be one of {REQUEST_MODES}")
+    if (isinstance(gpu_seconds_limit, bool) or not isinstance(gpu_seconds_limit, (int, float))
+            or not math.isfinite(gpu_seconds_limit) or gpu_seconds_limit < 0):
+        raise ValueError("GPU-time budget must be a non-negative number (0 = not budgeted)")
     assistance_mode = AssistanceMode(assistance_mode)
     if human_deadline_seconds is None:
         human_deadline_seconds = MODE_SPECS[AssistanceMode.LIVE_HUMAN_FIRST].human_deadline_seconds
@@ -243,7 +250,7 @@ def run_sim_gt_attention(
         evaluator_model="native_evaluator", assistance_mode=assistance_mode,
         execution_target=f"{suite}_sim",
         budget=AssistanceBudget(assistance_credits=assistance_credits,
-                                token_limit=token_limit,
+                                token_limit=token_limit, gpu_seconds=float(gpu_seconds_limit),
                                 execution_seconds=(float(total_execution_seconds)
                                                    if total_execution_seconds is not None
                                                    else float(attempt_budget_seconds) * max_attempts)),
@@ -302,7 +309,8 @@ def run_sim_gt_attention(
                        human_deadline_seconds=human_deadline_seconds, request_mode=request_mode)
     control_store.record_scheduler_options(unified_run_id, {
         "request_mode": request_mode, "approval_rules": dict(approval_rules or {}),
-        "assistance_mode": assistance_mode.value})
+        "assistance_mode": assistance_mode.value, "gpu_seconds_limit": float(gpu_seconds_limit)})
+    gpu_usage: list[dict[str, Any]] = []
     if public_demo:
         initial = policy.decide(PolicyContext(
             run_id=str(run_dir), attempt_index=0, failure_index=0,
@@ -509,6 +517,17 @@ def run_sim_gt_attention(
             )
             stopped_reason = "resource_blocked"
             break
+        gpu_budget = control_store.resource_status(unified_run_id)["gpu_seconds"]
+        if gpu_budget["budgeted"] and gpu_budget["remaining"] <= 0:
+            typical = (max(item["gpu_seconds"] for item in gpu_usage if item["gpu_seconds"])
+                       if any(item["gpu_seconds"] for item in gpu_usage) else 1.0)
+            control_store.record_work_block(
+                unified_run_id, work_id=f"trial:{unified_run_id}:{index}",
+                resource="gpu_seconds", required=typical, remaining=0.0,
+                event_key=f"work-block-gpu:{unified_run_id}:{index}",
+            )
+            stopped_reason = "resource_blocked"
+            break
         waiting_on = flow.outstanding
         if waiting_on is not None and waiting_on.activity_count > 0:
             # An attempt already ran while this request was open: collect the reply now.
@@ -527,6 +546,11 @@ def run_sim_gt_attention(
                 detail={"request_type": waiting_on.request.request_type.value})
             waiting_on.activity_count += 1
         control_store.record_executor_dispatch(unified_run_id, index=index, started_at=clock())
+        # Hold the attempt's execution time while it runs and meter the GPU it keeps busy.
+        attempt_hold = f"exec:{unified_run_id}:{index}"
+        control_store.reserve_resource(unified_run_id, resource="execution_seconds",
+                                       amount=attempt_budget_seconds, reservation_id=attempt_hold)
+        meter = GpuMeter(gpu_sampler, interval=gpu_sample_interval).start()
         try:
             result = attempt_executor(
                 artifact_root=run_dir / "attempts", store_path=store_path,
@@ -557,6 +581,14 @@ def run_sim_gt_attention(
                                              event_key=f"finish:{unified_run_id}")
                 raise RuntimeError(f"formal attempt rejected: {reason}") from exc
             break
+        finally:
+            control_store.release_resource(attempt_hold)
+            gpu = meter.stop()
+            gpu_usage.append({"attempt_index": index, **gpu})
+            if gpu["gpu_seconds"]:
+                control_store.consume_resources(
+                    unified_run_id, gpu_seconds=float(gpu["gpu_seconds"]),
+                    event_key=f"gpu:{unified_run_id}:{index}")
         if result.get("task_id") != task_id or result.get("seed") != seed or result.get("perception_mode") != "sim_gt":
             raise ValueError("attempt executor returned mismatched task/seed/perception")
         if result.get("execution_target") != f"{suite}_sim":
@@ -754,7 +786,10 @@ def run_sim_gt_attention(
             ), clock=clock)
             outstanding = flow.open(
                 request, decision, runtime, failure_slot=index, trace_id=trace_id,
-                link=link, blocking_reason=blocking_reason)
+                link=link, blocking_reason=blocking_reason,
+                token_reservation=min(
+                    SIM_GT_MAX_TOKENS,
+                    int(control_store.resource_status(unified_run_id)["tokens"]["remaining"])))
             if blocking_reason is not None:
                 if decision.request_type is RequestType.APPROVAL:
                     # The gated action stays withheld; only read-only work may run.
@@ -894,6 +929,7 @@ def run_sim_gt_attention(
         "decisions": decisions, "requests": requests,
         "safety_signals": monitored_attempts,
         "request_mode": request_mode,
+        "gpu_usage": gpu_usage,
         "approval_rules": dict(approval_rules or {}),
         "request_dispositions": {row["request_id"]: control_store.request_disposition(row["request_id"])
                                  for row in requests if "request_id" in row and row.get("status") is None},

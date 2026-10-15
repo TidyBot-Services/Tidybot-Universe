@@ -24,6 +24,8 @@ _ROOT_FLAGS = {"robosuite": ("service_source_root",),
                "robocasa": ("sim_source_root", "agent_source_root", "task_source_root",
                             "sim_python", "agent_python"),
                "robocasa365": ("service_source_root", "sim_source_root", "task_source_root", "sim_python", "asset_manifest")}
+# Optional, and locked with the run once it starts.
+_OPTIONAL_SELECTION_KEYS = {"request_mode", "gpu_seconds"}
 _SELECTION_KEYS = {"profile_id", "seed", "attention_policy", "execution_target",
                    "assistance_mode", "max_attempts", "assistance_credits", "token_limit",
                    "human_deadline_seconds", "overall_deadline_seconds"}
@@ -152,9 +154,20 @@ def public_options(profiles: list[dict[str, Any]]) -> dict[str, Any]:
                          for item in profiles],
             "attention_policies": list(POLICY_IDS),
             "assistance_modes": [mode.value for mode in AssistanceMode],
+            # Where the work runs is a choice of its own, separate from who assists.
+            "execution_targets": [
+                {"id": "simulation", "available": any(
+                    str(item["execution_target"]).endswith("_sim") for item in profiles),
+                 "profiles": [item["id"] for item in profiles
+                              if str(item["execution_target"]).endswith("_sim")]},
+                {"id": "real_robot", "available": False,
+                 "reason": "No attested real-robot runner or independent hardware safety "
+                           "system is configured; this build runs simulators only."},
+            ],
+            "request_modes": [{"id": "async", "default": True}, {"id": "blocking", "default": False}],
             "limits": {"max_attempts": 10, "assistance_credits": 10,
                        "token_limit": 100000, "human_deadline_seconds": 600,
-                       "overall_deadline_seconds": 600}}
+                       "overall_deadline_seconds": 600, "gpu_seconds": 86400}}
 
 
 def launch_formal_run(
@@ -164,8 +177,15 @@ def launch_formal_run(
 ) -> dict[str, Any]:
     robot_keys = {"robot_model", "execution_arm"}
     provenance_keys = {'source_run_id','source_relation'} if 'source_run_id' in selection else set()
-    if set(selection) - provenance_keys not in (_SELECTION_KEYS, _SELECTION_KEYS | robot_keys):
+    optional_keys = _OPTIONAL_SELECTION_KEYS & set(selection)
+    if set(selection) - provenance_keys - optional_keys not in (_SELECTION_KEYS, _SELECTION_KEYS | robot_keys):
         raise ValueError("run selection has missing or unexpected fields")
+    request_mode = selection.get("request_mode", "async")
+    if request_mode not in {"async", "blocking"}:
+        raise ValueError("invalid request mode")
+    gpu_limit = selection.get("gpu_seconds", 0)
+    if isinstance(gpu_limit, bool) or not isinstance(gpu_limit, (int, float)) or not 0 <= gpu_limit <= 86400:
+        raise ValueError("invalid GPU-time budget")
     if provenance_keys and (store.get_run(selection['source_run_id']) is None or selection.get('source_relation') not in {'copy','retry','policy_change'}):
         raise ValueError('source run and relation are required')
     profile = next((item for item in profiles if item["id"] == selection["profile_id"]), None)
@@ -279,7 +299,9 @@ def launch_formal_run(
            "--assistance-credits", str(selection["assistance_credits"]),
            "--token-limit", str(selection["token_limit"]),
            "--assistance-mode", mode.value,
-           "--human-deadline-seconds", str(deadline)]
+           "--human-deadline-seconds", str(deadline),
+           "--request-mode", request_mode,
+           "--gpu-seconds-limit", str(float(gpu_limit))]
     cmd.extend(("--ui-launch-id", launch_id))
     cmd.append("--single-glm-call")
     cmd.append("--record-replay")

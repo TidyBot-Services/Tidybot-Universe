@@ -40,6 +40,7 @@ from .ui_history import UIHistory, name_suffix
 from .dev_attention import DevAttentionControl
 from .fixed_ui import FixedUI
 from .memory_view import ACTIONS as MEMORY_ACTIONS, MemoryView
+from .gpu_meter import COVERAGE as GPU_COVERAGE
 
 
 UI_DIR = Path(__file__).with_name("ui")
@@ -262,6 +263,65 @@ def memory_snapshot(store: AttentionStore, run_id: str, projection: dict[str, An
     }
 
 
+def permitted_actions(request: dict[str, Any], deferred: bool, now: float) -> list[str]:
+    """What an operator may still do with a request, decided here rather than in the page."""
+    expired = request.get("deadline_at") is not None and now >= request["deadline_at"]
+    if request["mode"] != "live_human_first" or request["state"] != "pending" or expired:
+        return []
+    reply = {"hint": "respond_hint", "approval": "approve_or_deny", "interrupt": "confirm_interrupt"}
+    return [reply[request["request_type"]], *([] if deferred else ["defer"]), "ignore", "cancel"]
+
+
+def run_lock(store: AttentionStore, run: dict[str, Any], run_id: str) -> dict[str, Any]:
+    """The conditions fixed when the run started, and whether they can still change."""
+    options = store.scheduler_options(run_id) or {}
+    switchable = False
+    try:
+        control = AttentionControl(store).snapshot(run_id)
+        switchable = bool(control.get("binding")) and not control.get("read_only")
+    except StateConflictError:
+        pass
+    mode = AssistanceMode(run["assistance_mode"])
+    from .attention_modes import MODE_SPECS
+    return {
+        "locked": run["status"] != "created",
+        "conditions": {
+            "suite": run["suite"], "task_id": run["task_id"], "seed": run["seed"],
+            "policy_id": run["policy_id"], "assistance_mode": run["assistance_mode"],
+            "execution_target": run["execution_target"],
+            "request_mode": options.get("request_mode"),
+            "approval_rules": options.get("approval_rules"),
+            "budget": run["budget"],
+        },
+        # An engineering binding lets an operator switch policy mid-run; such a run is not comparable.
+        "policy_switchable": switchable,
+        "ranking_eligible": MODE_SPECS[mode].primary_ranking_eligible and not switchable,
+    }
+
+
+def autonomous_work(attempts: list[dict[str, Any]], requests: list[dict[str, Any]],
+                    work_items: list[dict[str, Any]]) -> dict[str, Any]:
+    """What the agent is doing on its own, and what holds it back (resources, failures, replies)."""
+    open_requests = [request for request in requests if request["state"] in {"pending", "fallback"}]
+    blocked = [{"kind": "resource", **item} for item in work_items if item.get("state") == "blocked"]
+    blocked += [{"kind": "failure", **item} for item in work_items if item.get("state") == "failed"]
+    continuing = []
+    for request in open_requests:
+        waits = str((request.get("explanation") or {}).get("while_waiting", "")).startswith("The agent waits")
+        entry = {"request_id": request["request_id"], "request_type": request["request_type"],
+                 "state": request["state"]}
+        # A gated request holds work back; an asynchronous one lets work continue.
+        (blocked.append({"kind": "dependency", "depends_on": request["request_id"],
+                         "waiting_for": request["request_type"]})
+         if waits else continuing.append(entry))
+    return {
+        "running": [a for a in attempts if a.get("status") == "running"],
+        "completed": sum(1 for a in attempts if a.get("status") not in {None, "running"}),
+        "continuing_while_waiting": continuing,
+        "blocked": blocked,
+    }
+
+
 def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Path | None = None,
                        robosuite_url: str | None = None,
                        robocasa_camera_ws: str | None = None,
@@ -335,7 +395,11 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
                 and event["entity_id"] in visible_request_ids):
             lifecycle.setdefault(event["entity_id"], []).append({
                 "event_type": event["event_type"], "payload": event["payload"]})
+    now = time.time()
     for request in requests:
+        request["permitted_actions"] = permitted_actions(
+            request, any(item["event_type"] == "request.deferred"
+                         for item in lifecycle.get(request["request_id"], [])), now)
         response_id = request.get("response_id")
         if response_id:
             response = store.get_response(response_id)
@@ -346,12 +410,15 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
                 }
 
     budgets = projection["resource_budget"]
+    held = store.resource_reservations(run_id)
     resources = {
         key: {
             "limit": value["limit"],
             "used": value["used"],
-            "reserved": value.get("reserved") if key == "assistance" else None,
+            "reserved": value.get("reserved") if key == "assistance" else held.get(key, 0.0),
             "remaining": value["remaining"],
+            **({"budgeted": value["budgeted"], "coverage": GPU_COVERAGE}
+               if key == "gpu_seconds" else {}),
         }
         for key, value in budgets.items()
     }
@@ -417,6 +484,8 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         "waiting_windows": store.waiting_windows(run_id),
         "request_lifecycle": lifecycle,
         "memory": memory_snapshot(store, run_id, projection, memory_view),
+        "lock": run_lock(store, run, run_id),
+        "autonomous_work": autonomous_work(attempts, requests, store.list_work_items(run_id)),
         "request_dispositions": {request["request_id"]: store.request_disposition(request["request_id"])
                                  for request in requests if request["state"] == "answered"},
         "waiting_activity": store.waiting_activities(run_id),
