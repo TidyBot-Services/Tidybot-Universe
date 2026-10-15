@@ -19,6 +19,9 @@ from uuid import uuid4
 from attention_memory_service import MemoryService, MemoryServiceClient
 
 from .attention_modes import AssistanceMode, MODE_SPECS, RequestState
+from .request_flow import (
+    ABORTED, ANSWERED, CANCELLED, ERROR, REQUEST_MODES, RequestFlow, WAITING,
+)
 from .core.advisor import AdvisorTransport
 from .core.assessment import assess_trace
 from .core.models import AssistanceBudget, AttentionRequestRecord, MemoryStatus, RequestType, RunRecord, RunStatus
@@ -36,6 +39,69 @@ from .v2_advisor import SimGTAdvisorProxy, SimGTGLMAdvisorTransport
 
 AttemptExecutor = Callable[..., dict[str, Any]]
 SafetySignals = Callable[[dict[str, Any]], dict[str, bool]]
+
+
+_WHY = {
+    "request_after_each_failure": "The attempt failed and this policy asks after every failure.",
+    "retry_threshold_2_reached": "The attempt failed again after the allowed retries.",
+    "budget_matched_random_slot": "This failure slot was pre-registered for escalation.",
+    "repeated_grounded_failure": "The same visible failure repeated.",
+    "same_failure_after_code_change": "The same visible failure repeated even after the code changed.",
+    "unchanged_repeated_failure": "The same visible failure repeated and the code did not change.",
+    "repeated_failure_code_unknown": "The same visible failure repeated.",
+    "cause_unknown_after_inspection": "The visible trace does not show the cause, even after inspection.",
+    "cause_unresolved": "The visible trace does not resolve the cause after repeated failures.",
+    "irreversible_action_requires_approval": "An action crossed a soft limit and was withheld before it ran.",
+}
+_ASK = {
+    "hint": "A short written hint for the next attempt.",
+    "approval": "Approve or deny the withheld action so the next attempt may perform it.",
+    "interrupt": "Safety escalation: the robot was stopped; no action is requested.",
+}
+
+
+def build_request_explanation(decision, *, trace: dict[str, Any], trace_id: str,
+                              blocking_reason: str | None,
+                              withheld: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Structured statement of why the agent asks, what it asks for and what the Advisor sees."""
+    request_type = decision.request_type.value
+    evidence = [str(item["evidence_id"]) for item in trace.get("evidence", [])
+                if isinstance(item, dict) and item.get("evidence_id")][:8]
+    explanation = {
+        "why": _WHY.get(decision.reason, decision.reason.replace("_", " ")),
+        "reason_code": decision.reason,
+        "assistance_requested": _ASK[request_type],
+        "evidence_shown": {
+            "trace_id": trace_id, "evidence_ids": evidence,
+            "event_ids": list(decision.event_ids),
+            "projection_sha256": (trace.get("projection") or {}).get("projection_sha256"),
+        },
+        "agent_hypothesis": trace.get("hypothesis") or None,
+        "hypothesis_status": trace.get("hypothesis_status", "unknown"),
+        "while_waiting": ("The agent continues with safe work and applies the reply at the next attempt boundary."
+                          if blocking_reason is None else
+                          f"The agent waits for the reply ({blocking_reason.replace('_', ' ')})."),
+    }
+    if withheld:
+        explanation["withheld_actions"] = [
+            {key: value for key, value in item.items() if key in {"rule", "action", "limit_m", "distance_m", "delta_m", "command"}}
+            for item in withheld[:4]]
+    return explanation
+
+
+def input_for_action(action: DecisionAction, *, public_demo, trusted_memory_ids: list[str],
+                     trace: dict[str, Any], assessment) -> dict[str, Any]:
+    """Public input for the next attempt implied by a non-request decision."""
+    value: dict[str, Any] = {"demo_prior": public_demo} if public_demo else {}
+    if action is DecisionAction.RETRIEVE_MEMORY:
+        value["memory_ids_to_use"] = trusted_memory_ids[:8]
+    elif action is DecisionAction.INSPECT_TRACE:
+        # Only the projected Advisor trace, never evaluator internals.
+        value["inspected_trace"] = json.dumps({
+            "failure": trace.get("failure"),
+            "assessment": assessment.artifact() if assessment else None,
+        }, ensure_ascii=False, default=str)[:4000]
+    return value
 
 
 def run_sim_gt_attention(
@@ -63,6 +129,8 @@ def run_sim_gt_attention(
     whole_case_deadline_monotonic: float | None = None,
     fresh_advisor_cache: bool = False,
     strict_admission_budget: bool = False,
+    request_mode: str = "async",
+    approval_rules: dict[str, Any] | None = None,
     runner_boundary_mode: str = "trusted_dev",
     sleeper: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.time,
@@ -80,6 +148,8 @@ def run_sim_gt_attention(
         raise ValueError("unsupported sim_gt suite")
     if runner_boundary_mode not in {"trusted_dev", "generated_sandbox", "formal"}:
         raise ValueError("unsupported runner boundary")
+    if request_mode not in REQUEST_MODES:
+        raise ValueError(f"request_mode must be one of {REQUEST_MODES}")
     assistance_mode = AssistanceMode(assistance_mode)
     if human_deadline_seconds is None:
         human_deadline_seconds = MODE_SPECS[AssistanceMode.LIVE_HUMAN_FIRST].human_deadline_seconds
@@ -228,6 +298,11 @@ def run_sim_gt_attention(
     tokens_used = 0
     stopped_reason: str | None = None
     pending_execution_link: str | None = None
+    flow = RequestFlow(store=control_store, clock=clock, monotonic=monotonic, sleeper=sleeper,
+                       human_deadline_seconds=human_deadline_seconds, request_mode=request_mode)
+    control_store.record_scheduler_options(unified_run_id, {
+        "request_mode": request_mode, "approval_rules": dict(approval_rules or {}),
+        "assistance_mode": assistance_mode.value})
     if public_demo:
         initial = policy.decide(PolicyContext(
             run_id=str(run_dir), attempt_index=0, failure_index=0,
@@ -238,6 +313,180 @@ def run_sim_gt_attention(
             attention_input["demo_prior"] = public_demo
             decisions.append({"before_attempt": 0, "action": "use_demo", "reason": initial.reason,
                               "demo_manifest_sha256": demo_receipt["manifest_sha256"]})
+
+    # -- request lifecycle helpers ----------------------------------------------
+    def account(outstanding) -> dict[str, Any]:
+        """Charge an answered request exactly once and return its stored response."""
+        nonlocal credits_used, tokens_used
+        response = control_store.get_response(
+            control_store.get_request(outstanding.request_id).response_id)
+        if not outstanding.summary.get("accounted"):
+            credits_used += 1
+            tokens_used += int((response.get("token_usage") or {}).get("total_tokens") or 0)
+            outstanding.summary["accounted"] = True
+        return response
+
+    def request_row(outstanding, response: dict[str, Any]) -> dict[str, Any]:
+        row = {
+            "request_id": outstanding.request_id, "response_id": response["response_id"],
+            "failure_slot": outstanding.failure_slot,
+            "request_type": outstanding.request.request_type.value,
+            "responder": response["responder"],
+            "token_usage": response.get("token_usage") or {},
+            "cached": response.get("cached"),
+            "request_mode": "blocking" if outstanding.blocking_reason else "async",
+            "blocking_reason": outstanding.blocking_reason,
+            "waiting_activities": outstanding.activity_count,
+            "explanation": outstanding.request.explanation,
+        }
+        if response["responder"] == "advisor_proxy":
+            row["advice"] = parse_advisor_advice(
+                response["content"], request_type=outstanding.request.request_type.value).artifact()
+        return row
+
+    def apply_answer(outstanding) -> str | None:
+        """Adopt an answered request. Returns a stop reason when the run must end."""
+        nonlocal attention_input, pending_execution_link
+        response = account(outstanding)
+        responder = response["responder"]
+        row = request_row(outstanding, response)
+        requests.append(row)
+        request_type = outstanding.request.request_type
+        if request_type is RequestType.HINT:
+            guidance = row["advice"]["guidance"] if "advice" in row else response["content"]
+            compilation = None
+            if responder == "human":
+                from .hint_compilation import prepare_human_guidance
+                compilation = prepare_human_guidance(
+                    guidance, suite=suite, task_id=task_id,
+                    robot=(robot_configuration or {}).get("robot"),
+                    guidance_scope=response.get("guidance_scope"))
+                guidance = compilation["compiled"]
+                row["guidance_compilation"] = compilation
+            attention_input["advisor_guidance"] = guidance
+            if response.get("guidance_scope"):
+                attention_input["guidance_scope"] = response["guidance_scope"]
+            control_store.record_response_use(
+                outstanding.request_id, response_id=response["response_id"],
+                use="guidance", guidance_compilation=compilation)
+            pending_execution_link = outstanding.request_id
+            raw = control_store.get_raw_trace(outstanding.link["raw_trace_id"])
+            if "advice" in row and raw and raw["outcome"].get("evaluator_authoritative") is True:
+                candidate = MemoryAgent(memory_gateway).ingest_answered_hint(
+                    outstanding.request_id,
+                    memory_id=f"candidate:{outstanding.link['attempt_id']}")
+                row["candidate_memory_id"] = candidate.memory_id
+            return None
+        if request_type is RequestType.INTERRUPT:
+            control_store.record_response_use(
+                outstanding.request_id, response_id=response["response_id"], use="interrupt")
+            return "independent_safety_interrupt"
+        approved = (response["content"] == "approve" if responder == "human"
+                    else approval_granted(row) if approval_granted else False)
+        control_store.record_response_use(
+            outstanding.request_id, response_id=response["response_id"],
+            use="approval_granted" if approved else "approval_denied")
+        if approved is not True:
+            return "approval_not_granted"
+        attention_input["approval_granted"] = True
+        pending_execution_link = outstanding.request_id
+        return None
+
+    def advisor_failure(outstanding, exc: BaseException) -> str:
+        rejected_path = run_dir / "advisor_rejections" / f"{outstanding.failure_slot}.json"
+        if rejected_path.is_file():
+            rejected = json.loads(rejected_path.read_bytes())
+            requests.append({"request_id": outstanding.request_id,
+                             "status": "invalid_provider_usage",
+                             "failure_slot": outstanding.failure_slot,
+                             "provider_total_tokens_observed": rejected["provider_total_tokens_observed"],
+                             "cached": rejected["cached"], "artifact_path": str(rejected_path),
+                             "artifact_sha256": hashlib.sha256(rejected_path.read_bytes()).hexdigest()})
+        flow.cancel()
+        return f"advisor_error:{type(exc).__name__}: {exc}"
+
+    def on_tick(outstanding) -> str | None:
+        if outstanding.awaits_human:
+            sync_policy('human_wait', f'human-wait:{outstanding.request_id}')
+        return "emergency_interrupt" if interrupted() else None
+
+    def settle(*, block: bool) -> tuple[bool, str | None]:
+        """Collect the outstanding request. Returns (finished, stop_reason)."""
+        outstanding = flow.outstanding
+        status = flow.status(block=block, on_tick=on_tick)
+        if status == WAITING:
+            if outstanding.awaits_human:
+                sync_policy('human_wait', f'human-wait:{outstanding.request_id}')
+            return False, None
+        flow.end_window()
+        try:
+            if status == ANSWERED:
+                stop = apply_answer(outstanding)
+            elif status == CANCELLED:
+                stop = "human_request_cancelled"
+            elif status == ABORTED:
+                flow.cancel()
+                stop = outstanding.abort_reason
+            else:
+                stop = advisor_failure(outstanding, outstanding.error)
+        except Exception as exc:
+            stop = advisor_failure(outstanding, exc)
+        flow.release()
+        return True, stop
+
+    def record_interrupt_escalation(decision, index, link, trace, trace_id) -> None:
+        """A safety stop is raised as a CRITICAL inbox item; it never waits and costs no credit."""
+        explanation = build_request_explanation(
+            decision, trace=trace, trace_id=trace_id, blocking_reason=None)
+        explanation["while_waiting"] = "The robot was stopped before this escalation was raised."
+        request = AttentionRequestRecord(
+            request_id=f"attention-request:{run_dir.name}:{index}:interrupt",
+            run_id=link["run_id"], attempt_id=link["attempt_id"], trace_id=trace_id,
+            request_type=RequestType.INTERRUPT, reason=decision.reason,
+            priority=decision.priority, created_at=clock(), deadline_at=None,
+            mode=assistance_mode, explanation=explanation)
+        runtime = AttentionRuntime(control_store, None, clock=clock)
+        runtime.open_request(request, reserve_credit=False)
+        answered = runtime.close_with_system_response(
+            request.request_id, responder="safety_policy",
+            content="interrupt_applied: the robot was stopped; no further attempt will run")
+        control_store.record_response_use(
+            request.request_id, response_id=answered.response_id, use="interrupt")
+        requests.append({
+            "request_id": request.request_id, "response_id": answered.response_id,
+            "failure_slot": index, "request_type": "interrupt", "responder": "safety_policy",
+            "token_usage": {}, "cached": False, "credit_exempt": True,
+            "request_mode": "blocking", "blocking_reason": "interrupt_applied_before_request",
+            "waiting_activities": 0, "explanation": explanation})
+
+    def finish_outstanding() -> None:
+        """No attempt remains: close the open request without leaving credit or tokens unaccounted."""
+        outstanding = flow.outstanding
+        if outstanding is None:
+            return
+        current = control_store.get_request(outstanding.request_id)
+        if current.state in {RequestState.PENDING, RequestState.FALLBACK} and outstanding.future is None:
+            flow.cancel()
+        else:
+            flow.drain()
+            current = control_store.get_request(outstanding.request_id)
+            if current.state is RequestState.ANSWERED:
+                response = account(outstanding)
+                row = request_row(outstanding, response)
+                succeeded = bool(attempts and attempts[-1]["native_success"] and stopped_reason is None)
+                reason = ("native_success_first" if succeeded
+                          else "attempts_exhausted" if stopped_reason == "max_attempts"
+                          else "stopped_before_use")
+                control_store.record_response_ignored(
+                    outstanding.request_id, reason=reason, ignored_at=clock())
+                row["disposition"] = "ignored"
+                row["ignored_reason"] = reason
+                requests.append(row)
+            else:
+                flow.cancel()
+        flow.end_window()
+        flow.release()
+
     for index in range(max_attempts):
         sync_policy('attention_decision', f'before-attempt:{index}')
         if wall_expired():
@@ -255,6 +504,23 @@ def run_sim_gt_attention(
             )
             stopped_reason = "resource_blocked"
             break
+        waiting_on = flow.outstanding
+        if waiting_on is not None and waiting_on.activity_count > 0:
+            # An attempt already ran while this request was open: collect the reply now.
+            _, stop = settle(block=False)
+            if stop is not None:
+                stopped_reason = stop
+                break
+            waiting_on = flow.outstanding
+        if waiting_on is not None:
+            activity = ("memory_retrieval" if attention_input.get("memory_ids_to_use")
+                        else "trace_inspection" if attention_input.get("inspected_trace")
+                        else "autonomous_retry")
+            control_store.record_waiting_activity(
+                waiting_on.request_id, sequence=waiting_on.activity_count, activity=activity,
+                attempt_index=index, robot_motion=True,
+                detail={"request_type": waiting_on.request.request_type.value})
+            waiting_on.activity_count += 1
         control_store.record_executor_dispatch(unified_run_id, index=index, started_at=clock())
         try:
             result = attempt_executor(
@@ -281,6 +547,7 @@ def run_sim_gt_attention(
             )
             stopped_reason = "attempt_executor_failed"
             if runner_boundary_mode == "formal":
+                flow.cancel()
                 control_store.transition_run(unified_run_id, RunStatus.FAILED,
                                              event_key=f"finish:{unified_run_id}")
                 raise RuntimeError(f"formal attempt rejected: {reason}") from exc
@@ -295,6 +562,7 @@ def run_sim_gt_attention(
             or result.get("attention_trace", {}).get("attempt_id")
                 != f"attempt:{run_dir.name}:{index}"
         ):
+            flow.cancel()
             control_store.transition_run(unified_run_id, RunStatus.FAILED,
                                          event_key=f"finish:{unified_run_id}")
             raise RuntimeError("formal attempt evidence identity mismatch")
@@ -307,8 +575,7 @@ def run_sim_gt_attention(
         control_store.record_executor_completed(unified_run_id, index=index, ended_at=clock(), sdk_motion_commands=motion_count)
         attempts.append(result)
         if pending_execution_link is not None:
-            store = AttentionStore(store_path)
-            store.link_response_execution(
+            control_store.link_response_execution(
                 pending_execution_link,
                 execution_id=result["attention_trace"]["execution_id"],
             )
@@ -320,6 +587,8 @@ def run_sim_gt_attention(
             raise ValueError("safety signals must be independent boolean flags")
         if result.get("safety_unsafe") is True:
             signals["unsafe"] = True
+        if result.get("approval_required") is True:
+            signals["approval_required"] = True
         monitored_attempts.append(signals)
         if signals.get("unsafe"):
             decisions.append({
@@ -366,7 +635,8 @@ def run_sim_gt_attention(
         if trace is None:
             stopped_reason = "no_advisor_safe_trace"
             break
-        if signals.get("approval_required") and assistance_credits - credits_used <= 0:
+        if (signals.get("approval_required") and flow.outstanding is None
+                and assistance_credits - credits_used <= 0):
             stopped_reason = "approval_required_no_budget"
             break
         assessment = None if random_plan else assess_trace(trace, previous_traces)
@@ -391,17 +661,21 @@ def run_sim_gt_attention(
                     for key in ("suite", "task_id", "perception_mode"))):
                 trusted_memory_ids.append(memory_id)
         sync_policy('attention_decision', f'after-attempt:{index}')
-        decision = policy.decide(PolicyContext(
-            run_id=link["run_id"], attempt_index=index,
-            failure_index=index, consecutive_failures=index + 1,
-            assistance_remaining=assistance_credits - credits_used,
-            evidence_count=len(trace.get("evidence", [])),
-            has_hypothesis=bool(trace.get("hypothesis")),
-            matching_memory_count=len(trusted_memory_ids),
-            unsafe=signals.get("unsafe", False),
-            approval_required=signals.get("approval_required", False),
-            assessment=assessment,
-        ))
+
+        def policy_context(*, pending: int) -> PolicyContext:
+            return PolicyContext(
+                run_id=link["run_id"], attempt_index=index,
+                failure_index=index, consecutive_failures=index + 1,
+                assistance_remaining=assistance_credits - credits_used - pending,
+                evidence_count=len(trace.get("evidence", [])),
+                has_hypothesis=bool(trace.get("hypothesis")),
+                matching_memory_count=len(trusted_memory_ids),
+                unsafe=signals.get("unsafe", False),
+                approval_required=signals.get("approval_required", False),
+                assessment=assessment, pending_requests=pending,
+            )
+
+        decision = policy.decide(policy_context(pending=(1 if flow.outstanding is not None else 0)))
         decisions.append({
             "after_attempt": index, "action": decision.action.value,
             "effective_attention_policy": policy.policy_id,
@@ -419,26 +693,25 @@ def run_sim_gt_attention(
             "trusted_memory_ids": trusted_memory_ids if decision.action is DecisionAction.RETRIEVE_MEMORY else [],
             "safety_artifact": result.get("safety_artifact") if signals else None,
             "monitor_signals": dict(signals),
+            "waiting_for_request": flow.outstanding.request_id if flow.outstanding else None,
         })
         if decision.action is DecisionAction.STOP:
             stopped_reason = decision.reason
+            if decision.request_type is RequestType.INTERRUPT:
+                record_interrupt_escalation(decision, index, link, trace, trace_id)
             break
         if signals.get("approval_required") and decision.request_type is not RequestType.APPROVAL:
             stopped_reason = "approval_required_policy_cannot_proceed"
             break
-        attention_input = {"demo_prior": public_demo} if public_demo else {}
-        if decision.action is DecisionAction.RETRIEVE_MEMORY:
-            attention_input["memory_ids_to_use"] = trusted_memory_ids[:8]
-        elif decision.action is DecisionAction.INSPECT_TRACE:
-            # Only the projected Advisor trace, never evaluator internals.
-            attention_input["inspected_trace"] = json.dumps({
-                "failure": trace.get("failure"),
-                "assessment": assessment.artifact() if assessment else None,
-            }, ensure_ascii=False, default=str)[:4000]
-        elif decision.action is DecisionAction.REQUEST:
+        attention_input = input_for_action(
+            decision.action, public_demo=public_demo,
+            trusted_memory_ids=trusted_memory_ids, trace=trace, assessment=assessment)
+        if decision.action is DecisionAction.REQUEST:
             if control_store.resource_status(unified_run_id)["tokens"]["remaining"] <= 0:
                 stopped_reason = "advisor_token_budget_exhausted"
                 break
+            blocking_reason = flow.blocking_reason(
+                decision, attempts_after=max_attempts - index - 1)
             request = AttentionRequestRecord(
                 request_id=f"attention-request:{run_dir.name}:{index}",
                 run_id=link["run_id"], attempt_id=link["attempt_id"], trace_id=trace_id,
@@ -447,6 +720,9 @@ def run_sim_gt_attention(
                 deadline_at=(clock() + human_deadline_seconds
                              if assistance_mode is AssistanceMode.LIVE_HUMAN_FIRST else None),
                 mode=assistance_mode,
+                explanation=build_request_explanation(
+                    decision, trace=trace, trace_id=trace_id, blocking_reason=blocking_reason,
+                    withheld=result.get("approval_requests")),
             )
             provider_timeout = None
             if strict_admission_budget:
@@ -455,8 +731,8 @@ def run_sim_gt_attention(
                 if provider_timeout <= 0:
                     stopped_reason = "whole_case_deadline"
                     break
-            runtime = AttentionRuntime(store, SimGTAdvisorProxy(
-                store, transport=advisor_transport or default_glm_transport(
+            runtime = AttentionRuntime(control_store, SimGTAdvisorProxy(
+                control_store, transport=advisor_transport or default_glm_transport(
                     strict_usage=strict_admission_budget, response_log_dir=run_dir / "provider_replies",
                     token_budget_limit=token_limit - tokens_used),
                 cache_path=advisor_cache_path,
@@ -467,119 +743,67 @@ def run_sim_gt_attention(
                 latency_seconds=MODE_SPECS[AssistanceMode.BENCHMARK_PROXY].proxy_latency_seconds,
                 sleeper=sleeper,
             ), clock=clock)
-            runtime.open_request(request)
-            if assistance_mode is AssistanceMode.LIVE_HUMAN_FIRST:
-                store.begin_waiting_window(request.request_id, started_at=clock())
-            try:
-                if assistance_mode is AssistanceMode.BENCHMARK_PROXY:
-                    answered = runtime.resolve_benchmark_proxy(request.request_id)
-                else:
+            outstanding = flow.open(
+                request, decision, runtime, failure_slot=index, trace_id=trace_id,
+                link=link, blocking_reason=blocking_reason)
+            if blocking_reason is not None:
+                if decision.request_type is RequestType.APPROVAL:
+                    # The gated action stays withheld; only read-only work may run.
+                    control_store.record_waiting_activity(
+                        request.request_id, sequence=outstanding.activity_count,
+                        activity="approval_gate_hold", attempt_index=index, robot_motion=False,
+                        detail={"withheld_rules": [item.get("rule") for item in
+                                                   result.get("approval_requests") or []]})
+                    outstanding.activity_count += 1
+                if assistance_mode is AssistanceMode.LIVE_HUMAN_FIRST:
                     # A bounded, read-only job is the only work eligible during
-                    # a human wait. It consumes Advisor-visible evidence only;
-                    # no simulator or robot action is dispatched.
-                    visible_evidence = trace.get("evidence", [])[:8]
-                    store.record_waiting_work(
+                    # a blocking human wait. It consumes Advisor-visible evidence
+                    # only; no simulator or robot action is dispatched.
+                    control_store.record_waiting_work(
                         request.request_id, work_type="visible_evidence_index",
                         evidence=[{"sha256": item["sha256"], "kind": item["kind"]}
-                                  for item in visible_evidence],
+                                  for item in trace.get("evidence", [])[:8]],
                     )
-                    monotonic_limit = monotonic() + human_deadline_seconds + 1.0
-                    while True:
-                        sync_policy('human_wait', f'human-wait:{request.request_id}')
-                        if interrupted():
-                            runtime.cancel(request.request_id)
-                            stopped_reason = "emergency_interrupt"
-                            break
-                        current = store.get_request(request.request_id)
-                        if current.state is RequestState.ANSWERED:
-                            answered = current
-                            break
-                        if current.state is RequestState.CANCELLED:
-                            stopped_reason = "human_request_cancelled"
-                            break
-                        if monotonic() >= monotonic_limit and clock() < request.deadline_at:
-                            runtime.cancel(request.request_id)
-                            stopped_reason = "human_deadline_clock_stalled"
-                            break
-                        if clock() >= request.deadline_at:
-                            answered = runtime.handle_deadline(request.request_id)
-                            break
-                        sleeper(min(0.25, max(0.0, request.deadline_at - clock())))
-                    store.end_waiting_window(request.request_id, ended_at=clock())
-                    if stopped_reason in {"emergency_interrupt", "human_request_cancelled",
-                                          "human_deadline_clock_stalled"}:
-                        break
-                response = store.get_response(answered.response_id)
-                credits_used += 1
-                usage = response.get("token_usage") or {}
-                tokens_used += int(usage.get("total_tokens") or 0)
-                responder = response["responder"]
-                advice = (parse_advisor_advice(response["content"], request_type=decision.request_type.value)
-                          if responder == "advisor_proxy" else None)
-                request_row = {
-                    "request_id": request.request_id, "response_id": answered.response_id,
-                    "failure_slot": index,
-                    "responder": responder, "token_usage": usage,
-                    "cached": response.get("cached"),
-                }
-                if advice is not None:
-                    request_row["advice"] = advice.artifact()
-                requests.append(request_row)
-                if decision.request_type is RequestType.HINT:
-                    guidance = advice.guidance if advice is not None else response["content"]
-                    compilation = None
-                    if responder == "human":
-                        from .hint_compilation import prepare_human_guidance
-                        compilation = prepare_human_guidance(guidance, suite=suite, task_id=task_id, robot=(robot_configuration or {}).get("robot"),guidance_scope=response.get("guidance_scope"))
-                        guidance = compilation["compiled"]
-                        request_row["guidance_compilation"] = compilation
-                    attention_input["advisor_guidance"] = guidance
-                    if response.get("guidance_scope"):attention_input["guidance_scope"]=response["guidance_scope"]
-                    store.record_response_use(request.request_id, response_id=answered.response_id,
-                                              use="guidance", guidance_compilation=compilation)
-                    pending_execution_link = request.request_id
-                    raw = store.get_raw_trace(link["raw_trace_id"])
-                    if advice is not None and raw and raw["outcome"].get("evaluator_authoritative") is True:
-                        candidate = MemoryAgent(memory_gateway).ingest_answered_hint(
-                            request.request_id, memory_id=f"candidate:{link['attempt_id']}",
-                        )
-                        requests[-1]["candidate_memory_id"] = candidate.memory_id
-                elif decision.request_type is RequestType.INTERRUPT:
-                    store.record_response_use(request.request_id, response_id=answered.response_id,
-                                              use="interrupt")
-                    stopped_reason = "independent_safety_interrupt"
+                _, stop = settle(block=True)
+                if stop is not None:
+                    stopped_reason = stop
                     break
-                else:
-                    approved = (response["content"] == "approve" if responder == "human"
-                                else approval_granted(requests[-1]) if approval_granted else False)
-                    store.record_response_use(request.request_id, response_id=answered.response_id,
-                                              use="approval_granted" if approved else "approval_denied")
-                    if approved is not True:
-                        stopped_reason = "approval_not_granted"
-                        break
-                    attention_input["approval_granted"] = True
-                    pending_execution_link = request.request_id
-            except Exception as exc:
-                if assistance_mode is AssistanceMode.LIVE_HUMAN_FIRST:
-                    window = store.waiting_windows(unified_run_id).get(request.request_id)
-                    if window and window['ended_at'] is None:
-                        store.end_waiting_window(request.request_id, ended_at=clock())
-                rejected_path = run_dir / "advisor_rejections" / f"{index}.json"
-                if rejected_path.is_file():
-                    rejected = json.loads(rejected_path.read_bytes())
-                    requests.append({"request_id": request.request_id,
-                                     "status": "invalid_provider_usage", "failure_slot": index,
-                                     "provider_total_tokens_observed": rejected["provider_total_tokens_observed"],
-                                     "cached": rejected["cached"], "artifact_path": str(rejected_path),
-                                     "artifact_sha256": hashlib.sha256(rejected_path.read_bytes()).hexdigest()})
-                current = store.get_request(request.request_id)
-                if current is not None and current.state is RequestState.PENDING:
-                    runtime.cancel(request.request_id)
-                stopped_reason = f"advisor_error:{type(exc).__name__}: {exc}"
-                break
-        elif decision.action not in {DecisionAction.RETRY, DecisionAction.CONTINUE}:
+            else:
+                # Asynchronous: pick the safe work to do while the reply is pending.
+                sync_policy('attention_decision', f'while-waiting:{index}')
+                waiting = policy.decide(policy_context(pending=1))
+                decisions.append({
+                    "after_attempt": index, "action": waiting.action.value,
+                    "effective_attention_policy": policy.policy_id,
+                    "attention_generation": decisions[-1]["attention_generation"],
+                    "reason": waiting.reason, "request_type": None, "priority": None,
+                    "decision_source": decisions[-1]["decision_source"],
+                    "event_ids": list(waiting.event_ids), "evidence_ids": list(waiting.evidence_ids),
+                    "prior_trace_ids": list(waiting.prior_trace_ids),
+                    "prior_event_ids": list(waiting.prior_event_ids),
+                    "assessment": decisions[-1]["assessment"],
+                    "trusted_memory_ids": (trusted_memory_ids
+                                           if waiting.action is DecisionAction.RETRIEVE_MEMORY else []),
+                    "safety_artifact": None, "monitor_signals": dict(signals),
+                    "waiting_for_request": request.request_id,
+                })
+                if waiting.action is DecisionAction.STOP:
+                    stopped_reason = waiting.reason
+                    break
+                if waiting.action not in {DecisionAction.RETRY, DecisionAction.CONTINUE,
+                                          DecisionAction.INSPECT_TRACE,
+                                          DecisionAction.RETRIEVE_MEMORY}:
+                    stopped_reason = f"unsupported_decision:{waiting.action.value}"
+                    break
+                attention_input = input_for_action(
+                    waiting.action, public_demo=public_demo,
+                    trusted_memory_ids=trusted_memory_ids, trace=trace, assessment=assessment)
+        elif decision.action not in {DecisionAction.RETRY, DecisionAction.CONTINUE,
+                                     DecisionAction.RETRIEVE_MEMORY, DecisionAction.INSPECT_TRACE}:
             stopped_reason = f"unsupported_decision:{decision.action.value}"
             break
+    finish_outstanding()
+    flow.close()
     if interrupted():
         stopped_reason = "emergency_interrupt"
     if stopped_reason == "emergency_interrupt":
@@ -599,11 +823,16 @@ def run_sim_gt_attention(
                 stop = receipt.get("service_stop")
         if runner_boundary_mode == "formal" and attempts:
             last_formal = attempts[-1].get("formal_runner_result") or {}
+            expected_stop_reason = "operator_cancel"
+            if (isinstance(stop, dict)
+                    and stop.get("mechanism") == "authenticated_v2_native_process_group"):
+                operator_action = (control_store.interrupt_status(unified_run_id) or {}).get("operator_action", "stop")
+                expected_stop_reason = "operator_stop" if operator_action == "stop" else "operator_cancel"
             if (attempts[-1].get("status") != "cancelled"
                     or last_formal.get("status") != "cancelled"):
                 ack_state = "too_late"
                 stopped_reason = "interrupt_too_late"
-            elif stop is None or stop.get("reason") != "operator_cancel":
+            elif stop is None or stop.get("reason") != expected_stop_reason:
                 ack_state = "stop_unconfirmed"
             else:
                 ack_state = "stopped" if service_stop_confirmed(stop, suite) else "stop_unconfirmed"
@@ -653,6 +882,10 @@ def run_sim_gt_attention(
         } for r in attempts],
         "decisions": decisions, "requests": requests,
         "safety_signals": monitored_attempts,
+        "request_mode": request_mode,
+        "approval_rules": dict(approval_rules or {}),
+        "request_dispositions": {row["request_id"]: control_store.request_disposition(row["request_id"])
+                                 for row in requests if "request_id" in row and row.get("status") is None},
         "resource_usage": {"assistance_credits": credits_used, "tokens": tokens_used},
         "stopped_reason": stopped_reason,
         "store": str(store_path.resolve()), "artifact_dir": str(run_dir.resolve()),
@@ -693,7 +926,8 @@ def run_robocasa_attention(
     robot_policy: Callable[..., None], backend_factory: Callable[[], Any],
     client_factory: Callable[[str], Any], hypothesis: str = "",
     runtime_variation: dict[str, Any] | None = None,
-    replay_camera_ws: str | None = None, **kwargs: Any,
+    replay_camera_ws: str | None = None,
+    approval_rules: dict[str, Any] | None = None, **kwargs: Any,
 ) -> dict[str, Any]:
     """RoboCasa binding for the shared seven-policy scheduler."""
     from .robocasa_native.safety_monitor import SafetyMonitorBackend
@@ -703,7 +937,9 @@ def run_robocasa_attention(
         backend = backend_factory()
         if callable(getattr(backend, "set_interrupt_check", None)):
             backend.set_interrupt_check(attempt["interrupt_check"])
-        monitor = SafetyMonitorBackend(backend, interrupt_check=attempt["interrupt_check"])
+        monitor = SafetyMonitorBackend(
+            backend, interrupt_check=attempt["interrupt_check"], approval_rules=approval_rules,
+            approval_granted=attempt["attention_input"].get("approval_granted") is True)
         result = run_robocasa_sim_gt_episode(
             task_id=task_id, seed=seed, policy=robot_policy, policy_id=policy_id,
             perception_mode="sim_gt", action_backend=monitor,
@@ -717,12 +953,14 @@ def run_robocasa_attention(
             attempt_id=result["attention_trace"]["attempt_id"],
         ))
         result["safety_unsafe"] = bool(monitor.violations)
+        result["approval_required"] = bool(monitor.approvals_required)
+        result["approval_requests"] = list(monitor.approvals_required)
         return result
 
     return run_sim_gt_attention(
         suite="robocasa", task_id=task_id, seed=seed,
         artifact_root=artifact_root, policy_id=policy_id,
-        attempt_executor=execute, **kwargs,
+        attempt_executor=execute, approval_rules=approval_rules, **kwargs,
     )
 
 
@@ -731,7 +969,8 @@ def run_robosuite_attention(
     robot_policy: Callable[..., None], adapter_factory: Callable[[str, str], Any],
     camera_name: str = "agentview", hypothesis: str = "",
     runtime_variation: dict[str, Any] | None = None,
-    record_replay: bool = False, **kwargs: Any,
+    record_replay: bool = False,
+    approval_rules: dict[str, Any] | None = None, **kwargs: Any,
 ) -> dict[str, Any]:
     """Robosuite binding for the same scheduler and decision semantics."""
     from .robocasa_native.safety_monitor import SafetyMonitorBackend
@@ -739,7 +978,9 @@ def run_robosuite_attention(
 
     def execute(**attempt: Any) -> dict[str, Any]:
         adapter = adapter_factory(task_id, camera_name)
-        monitor = SafetyMonitorBackend(adapter, interrupt_check=attempt["interrupt_check"])
+        monitor = SafetyMonitorBackend(
+            adapter, interrupt_check=attempt["interrupt_check"], approval_rules=approval_rules,
+            approval_granted=attempt["attention_input"].get("approval_granted") is True)
         try:
             result = run_robosuite_sim_gt_episode(
                 task_id=task_id, seed=seed, policy=robot_policy,
@@ -755,6 +996,8 @@ def run_robosuite_attention(
                 attempt_id=result["attention_trace"]["attempt_id"],
             ))
             result["safety_unsafe"] = bool(monitor.violations)
+            result["approval_required"] = bool(monitor.approvals_required)
+            result["approval_requests"] = list(monitor.approvals_required)
             return result
         finally:
             adapter.close()
@@ -762,7 +1005,7 @@ def run_robosuite_attention(
     return run_sim_gt_attention(
         suite="robosuite", task_id=task_id, seed=seed,
         artifact_root=artifact_root, policy_id=policy_id,
-        attempt_executor=execute, **kwargs,
+        attempt_executor=execute, approval_rules=approval_rules, **kwargs,
     )
 
 

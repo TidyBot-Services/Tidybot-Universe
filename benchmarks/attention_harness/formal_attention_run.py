@@ -176,6 +176,8 @@ def run_formal_attention(
         "demo_prior_sha256": (hashlib.sha256(scheduler_options["demo_prior"].encode()).hexdigest()
                               if scheduler_options.get("demo_prior") else None),
         "memory_context": memory_context,
+        "request_mode": scheduler_options.get("request_mode", "async"),
+        "approval_rules": approved_sim_config.get("approval_rules") or {},
         "overall_deadline_seconds": overall_deadline_seconds,
         "formal_attempt_deadline_seconds": formal_attempt_deadline_seconds,
         "formal_run_wall_seconds": formal_run_wall_seconds,
@@ -395,6 +397,8 @@ def run_formal_attention(
             "attention_trace": link, "formal_runner_result": formal,
             "safety_artifact": formal["artifacts"]["safety"]["uri"],
             "safety_unsafe": safety["unsafe_attempts"] > 0,
+            "approval_required": bool(safety.get("approvals_required")),
+            "approval_requests": list(safety.get("approvals_required") or []),
             "memory_ids": selected, "available_memory_ids": list(by_id),
             "memory_use_grants": grants,
             "sdk_budget_exhausted": memory_contract is not None and sdk_calls_remaining == 0,
@@ -405,6 +409,7 @@ def run_formal_attention(
         policy_id=policy_id, attempt_executor=execute,
         runner_boundary_mode="formal",
         robot_configuration=robot_configuration,
+        approval_rules=approved_sim_config.get("approval_rules") or None,
         attempt_budget_seconds=(formal_attempt_deadline_seconds if budget_guard
                                 else overall_deadline_seconds),
         total_execution_seconds=formal_run_wall_seconds,

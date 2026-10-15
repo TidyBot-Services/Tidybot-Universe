@@ -1,3 +1,13 @@
+<!-- request-mechanism-v2-20261016 -->
+## 请求机制 v2（异步、等待期工作、approval、interrupt）：工程验收中（第 1 步完成，未提交本步改动）
+
+对照 timeline.md 的缺口审计，先固定基线再改请求机制。基线：主仓库分支 `attentionbench/baseline-20261015`（`60cb9c0`、`824ffd4`，仅代码/测试/文档；`outputs/`、`openarm_phase*`、`openarm_bimanual/launch_configs` 等运行产物未入库），Memory 仓库同名分支 `d76c6ed`；均未 push。基线树测试：harness 1250 通过 / 56 失败 / 10 跳过，失败集中在 OpenArm、`agent_actions_v2`、`fixed_ui`、curobo 部署，清单见 `outputs/baseline-failures-20261015.txt`，之后只比对“新增失败”。8769 运行的 `candidate-eval-agent` 与主工作区的 Dev v2 后端/UI 已分叉，**未合并**；两边正式路径上唯一差异（`operator_stop` 识别 5 行）已移植进主仓库。
+
+本步实现（设计见 `docs/attentionbench_request_mechanism.md`）：请求默认异步，等待期间安排安全工作（自主重试/检查 trace/检索 Memory，`waiting.activity` 事件）并保留 `--request-mode blocking` 作为消融基线；同时最多 1 个未完成请求；回复在边界并入，未被采用的回复记为 `ignored`（disposition，独立于状态）；操作员可忽略挂起的人类请求（`POST /api/requests/{id}/ignore`，转 AdvisorProxy fallback）；请求带 `explanation`（为什么问/要什么/给 Advisor 看什么证据）；approval 信号来自独立安全监控的软限位（动作被扣下、未执行，规则在已批准 config 的可选键 `approval_rules`）；interrupt 先停机再作为 CRITICAL 请求入收件箱（不调 Advisor、不占 credit）。
+
+验证：新增 `tests/test_async_requests.py` 24 项、策略 1 项；全量 harness 与基线比对，新增失败 5 项均为旧测试固化了“每次失败都串行提问”的语义，其中 M4 矩阵测试已改为按实际模式断言，另两处预算/历史测试显式用 `request_mode="blocking"`，复跑通过。**这是工程验收，不是正式实验验收**：`scheduler_config` 新增 `request_mode/approval_rules`，现有七策略冻结包的源码字节锁和摘要已失效，需重新冻结；`execution_authorized=false` 不变。默认不配置 approval 规则，因此默认运行里 approval 不会触发。仅在仿真器上验证，未接真机。
+<!-- /request-mechanism-v2-20261016 -->
+
 <!-- operator-ui-merge-20261015 -->
 ## 操作员版主界面已合并进主仓库工作区：工程验证通过；8769 已切换到新 UI；未提交；正式实验验收未做
 

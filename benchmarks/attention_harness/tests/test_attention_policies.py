@@ -82,3 +82,15 @@ def test_trace_gate_is_hint_only_and_full_planner_routes_all_actions() -> None:
 def test_unknown_policy_is_rejected() -> None:
     with pytest.raises(KeyError):
         build_policy("not-a-policy")
+
+
+@pytest.mark.parametrize("policy_id", [p for p in POLICY_IDS if p not in {"autonomous", "demo_first"}])
+def test_no_policy_asks_again_while_a_request_is_pending(policy_id) -> None:
+    config = ({"target_request_count": 3, "total_failure_slots": 3, "seed": 1}
+              if policy_id == "budget_matched_random_escalation" else {})
+    policy = build_policy(policy_id, **config)
+    for failure in range(3):
+        decision = policy.decide(context(
+            failure_index=failure, consecutive_failures=failure + 1, pending_requests=1,
+            has_hypothesis=False, evidence_count=0))
+        assert decision.action is not DecisionAction.REQUEST

@@ -65,7 +65,8 @@ def _config(request: FormalRunRequest) -> dict[str, Any]:
         "sim_service", "agent_service", "task_source", "sim_runtime",
         "port_offset", "safety_limits",
     }
-    if not isinstance(value, dict) or set(value) != required:
+    # approval_rules is optional so already-approved configs keep their digest.
+    if not isinstance(value, dict) or not required <= set(value) <= required | {"approval_rules"}:
         raise ValueError("RoboCasa formal config has missing or unexpected fields")
     if (value["schema_version"] != "attentionbench.robocasa-formal-config.v3"
             or value["suite"] != "robocasa"
@@ -122,6 +123,9 @@ def _config(request: FormalRunRequest) -> dict[str, Any]:
     } or any(isinstance(item, bool) or not isinstance(item, (int, float))
              or not math.isfinite(item) or item <= 0 for item in limits.values())):
         raise ValueError("RoboCasa formal config requires finite safety limits")
+    from .safety_monitor import validate_approval_rules
+    validate_approval_rules(value.get("approval_rules"), max_delta_m=limits["max_delta_m"],
+                            max_base_delta_m=limits["max_base_delta_m"])
     return value
 
 
@@ -276,6 +280,8 @@ class RobocasaFormalSuiteRunner:
                 monitor = SafetyMonitorBackend(
                     action, **config["safety_limits"],
                     interrupt_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
+                    approval_rules=config.get("approval_rules"),
+                    approval_granted=(request.attention_input or {}).get("approval_granted") is True,
                 )
                 def trace_clock() -> float:
                     now = time.monotonic()

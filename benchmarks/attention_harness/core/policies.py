@@ -35,6 +35,9 @@ class PolicyContext:
     approval_required: bool = False
     demo_available: bool = False
     assessment: TraceAssessment | None = None
+    # Requests already opened and not yet resolved. At most one request is
+    # outstanding per run, so a pending request turns another ask into safe work.
+    pending_requests: int = 0
 
 
 @dataclass(frozen=True)
@@ -73,6 +76,8 @@ def _request(
 ) -> PolicyDecision:
     if context.assistance_remaining <= 0:
         return PolicyDecision(DecisionAction.RETRY, "assistance_budget_exhausted")
+    if context.pending_requests > 0:
+        return PolicyDecision(DecisionAction.RETRY, "request_already_pending")
     return PolicyDecision(DecisionAction.REQUEST, reason, request_type, priority)
 
 
@@ -189,7 +194,8 @@ def _trace_decision(context: PolicyContext, *, full: bool) -> PolicyDecision:
             return _request(context, RequestType.HINT, "repeated_grounded_failure")
         return PolicyDecision(DecisionAction.RETRY, "safe_grounded_retry")
     if not a.evidence_sufficient:
-        if context.consecutive_failures >= 2:
+        # With a request already pending the safe work is to keep inspecting.
+        if context.consecutive_failures >= 2 and context.pending_requests == 0:
             decision = _trace_request(context, "cause_unknown_after_inspection")
         else:
             decision = PolicyDecision(DecisionAction.INSPECT_TRACE, "insufficient_visible_evidence")

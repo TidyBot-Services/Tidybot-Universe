@@ -93,7 +93,7 @@ def test_formal_packet_has_actual_or_unknown_hypothesis_and_bounded_history(tmp_
         suite="robosuite", task_id="cube_lift", seed=101, artifact_root=tmp_path / "runs",
         policy_id="reactive_help", policy_code_path=code, approved_policy_sha256=_sha(code),
         config_path=config, approved_config_sha256=_sha(config), runner=runner,
-        max_attempts=3, assistance_credits=2, dev_hypothesis=None,
+        max_attempts=3, assistance_credits=2, dev_hypothesis=None, request_mode="blocking",
         advisor_transport=lambda request: captured.append(json.loads(request["messages"][1]["content"]))
         or json.dumps({"schema_version": "attentionbench.advisor-advice.v1", "request_type": "hint",
                        "diagnosis": "visible failure", "guidance": "retry safely", "caution": "stay safe",

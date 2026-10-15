@@ -282,6 +282,7 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
             for key in (
                 "request_id", "attempt_id", "trace_id", "request_type", "reason",
                 "priority", "created_at", "deadline_at", "mode", "state", "response_id",
+                "explanation",
             )
         }
         for request in projection["attention_inbox"]
@@ -298,7 +299,7 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
                 and event["entity_id"] in visible_request_ids):
             uses[event["entity_id"]] = event["payload"]
         if (event["event_type"] in {"request.deferred", "request.timeout_observed",
-                                    "request.fallback", "request.cancelled"}
+                                    "request.fallback", "request.cancelled", "request.ignored"}
                 and event["entity_id"] in visible_request_ids):
             lifecycle.setdefault(event["entity_id"], []).append({
                 "event_type": event["event_type"], "payload": event["payload"]})
@@ -383,6 +384,10 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
         "response_evidence": adoption,
         "waiting_windows": store.waiting_windows(run_id),
         "request_lifecycle": lifecycle,
+        "request_dispositions": {request["request_id"]: store.request_disposition(request["request_id"])
+                                 for request in requests if request["state"] == "answered"},
+        "waiting_activity": store.waiting_activities(run_id),
+        "scheduler_options": store.scheduler_options(run_id),
         "budget_events": budget_events,
         "station": {**projection["live_station"],
                     "latest_execution": latest_execution,
@@ -895,11 +900,12 @@ def create_server(
             is_preview = path.startswith("/api/requests/") and path.endswith("/guidance-preview")
             is_defer = path.startswith("/api/requests/") and path.endswith("/defer")
             is_cancel = path.startswith("/api/requests/") and path.endswith("/cancel")
+            is_ignore = path.startswith("/api/requests/") and path.endswith("/ignore")
             is_interrupt = path.startswith("/api/runs/") and path.endswith("/interrupt")
             is_dag_start = path == "/api/orchestrator/dispatch"
             is_run_start = path == "/api/runs/start"
             control_suffix = next((s for s in ('/attention-policy','/attention-policy/cancel','/display-name') if path.startswith('/api/runs/') and path.endswith(s)),None)
-            if store is None or not (is_response or is_preview or is_defer or is_cancel or is_interrupt or is_dag_start or is_run_start or control_suffix):
+            if store is None or not (is_response or is_preview or is_defer or is_cancel or is_ignore or is_interrupt or is_dag_start or is_run_start or control_suffix):
                 self._json({"error": "unsupported write"}, HTTPStatus.METHOD_NOT_ALLOWED)
                 return
             if not secrets.compare_digest(self.headers.get("X-Attention-Token", ""), control_token):
@@ -1032,15 +1038,21 @@ def create_server(
                 except StateConflictError as error:
                     self._json({"error": str(error)}, HTTPStatus.CONFLICT)
                 return
-            suffix = "/respond" if is_response else "/defer" if is_defer else "/cancel"
+            suffix = ("/respond" if is_response else "/defer" if is_defer
+                      else "/ignore" if is_ignore else "/cancel")
             request_id = unquote(path[len("/api/requests/"):-len(suffix)]).strip("/")
             if not request_id or "/" in request_id or "\\" in request_id:
                 self._json({"error": "invalid request id"}, HTTPStatus.BAD_REQUEST)
                 return
-            if is_defer or is_cancel:
+            if is_defer or is_cancel or is_ignore:
                 try:
                     if is_defer:
                         self._json(store.defer_request(request_id, deferred_at=time.time()))
+                    elif is_ignore:
+                        # The operator declines to answer: the AdvisorProxy fallback takes over
+                        # at once instead of waiting for the deadline.
+                        updated = AttentionRuntime(store, None, clock=time.time).decline(request_id)
+                        self._json({"request_id": request_id, "state": updated.state.value})
                     else:
                         request = store.get_request(request_id)
                         if request is None or request.mode is not AssistanceMode.LIVE_HUMAN_FIRST:

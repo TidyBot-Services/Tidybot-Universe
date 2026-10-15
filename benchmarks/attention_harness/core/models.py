@@ -362,6 +362,9 @@ class AttentionRequestRecord:
     state: RequestState = RequestState.PENDING
     response_id: str | None = None
     schema_version: str = SCHEMA_VERSION
+    # Why the agent is asking, what it asks for and which Advisor-visible
+    # evidence backs it. Empty for records created before this field existed.
+    explanation: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _required(self.request_id, "request_id")
@@ -370,7 +373,10 @@ class AttentionRequestRecord:
             raise ValueError("request deadline precedes creation")
 
     def artifact(self) -> dict[str, Any]:
-        return _artifact(self)
+        value = _artifact(self)
+        if not self.explanation:
+            value.pop("explanation", None)
+        return value
 
 
 @dataclass(frozen=True)

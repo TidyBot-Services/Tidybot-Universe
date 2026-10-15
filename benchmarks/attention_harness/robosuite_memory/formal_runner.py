@@ -47,7 +47,8 @@ def _config(request: FormalRunRequest) -> dict[str, Any]:
         "camera_name", "horizon", "camera_height", "camera_width",
         "scene_id", "object_set_id", "service_revision", "safety_limits",
     }
-    if not isinstance(value, dict) or set(value) != required:
+    # approval_rules is optional so already-approved configs keep their digest.
+    if not isinstance(value, dict) or not required <= set(value) <= required | {"approval_rules"}:
         raise ValueError("formal config has missing or unexpected fields")
     if (value["schema_version"] != "attentionbench.robosuite-formal-config.v1"
             or value["suite"] != "robosuite"
@@ -75,6 +76,9 @@ def _config(request: FormalRunRequest) -> dict[str, Any]:
     if any(isinstance(item, bool) or not isinstance(item, (int, float))
            or not math.isfinite(item) or item <= 0 for item in limits.values()):
         raise ValueError("formal safety limits must be finite and positive")
+    from ..robocasa_native.safety_monitor import validate_approval_rules
+    validate_approval_rules(value.get("approval_rules"), max_delta_m=limits["max_delta_m"],
+                            max_base_delta_m=0.3)
     return value
 
 
@@ -172,6 +176,8 @@ class RobosuiteFormalSuiteRunner:
                     adapter, max_delta_m=config["safety_limits"]["max_delta_m"],
                     max_observed_step_m=config["safety_limits"]["max_observed_step_m"],
                     interrupt_check=lambda: bool(self.cancel_event and self.cancel_event.is_set()),
+                    approval_rules=config.get("approval_rules"),
+                    approval_granted=(request.attention_input or {}).get("approval_granted") is True,
                 )
                 def trace_clock() -> float:
                     now = time.monotonic()

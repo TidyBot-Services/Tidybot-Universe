@@ -24,12 +24,42 @@ class SafetyViolation(RuntimeError):
     pass
 
 
+class ApprovalRequired(RuntimeError):
+    """A soft limit was crossed: the action is withheld, never executed, pending approval."""
+
+
+# Soft rules sit inside the hard envelope. Crossing a hard limit is an unsafe
+# violation; crossing a soft rule only needs an explicit approval.
+APPROVAL_RULES = ("soft_max_delta_m", "soft_max_base_delta_m", "gripper_release_after_grasp")
+
+
+def validate_approval_rules(rules: Any, *, max_delta_m: float, max_base_delta_m: float) -> dict[str, Any]:
+    if rules is None:
+        return {}
+    if not isinstance(rules, dict) or set(rules) - set(APPROVAL_RULES):
+        raise ValueError("unsupported approval rules")
+    checked: dict[str, Any] = {}
+    for name, limit in (("soft_max_delta_m", max_delta_m), ("soft_max_base_delta_m", max_base_delta_m)):
+        if name in rules:
+            value = rules[name]
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(value) or not 0 < value < limit):
+                raise ValueError(f"{name} must be positive and below the hard limit {limit}")
+            checked[name] = float(value)
+    if "gripper_release_after_grasp" in rules:
+        if rules["gripper_release_after_grasp"] is not True:
+            raise ValueError("gripper_release_after_grasp must be true when configured")
+        checked["gripper_release_after_grasp"] = True
+    return checked
+
+
 class SafetyMonitorBackend:
     def __init__(
         self, backend: RobotBackend, *, max_delta_m: float = 0.25,
         max_observed_step_m: float = 0.5, max_base_delta_m: float = 0.3,
         max_base_rotation_rad: float = 0.5,
         interrupt_check: Callable[[], bool] | None = None,
+        approval_rules: dict[str, Any] | None = None, approval_granted: bool = False,
     ) -> None:
         if not all(math.isfinite(value) and value > 0 for value in (
             max_delta_m, max_observed_step_m, max_base_delta_m, max_base_rotation_rad,
@@ -43,6 +73,11 @@ class SafetyMonitorBackend:
         self.max_base_rotation_rad = max_base_rotation_rad
         self.events: list[dict[str, Any]] = []
         self.violations: list[dict[str, Any]] = []
+        self.approval_rules = validate_approval_rules(
+            approval_rules, max_delta_m=max_delta_m, max_base_delta_m=max_base_delta_m)
+        self.approval_granted = bool(approval_granted)
+        self.approvals_required: list[dict[str, Any]] = []
+        self._grasp_closed = False
         self._last_position: np.ndarray | None = None
 
     @property
@@ -53,6 +88,18 @@ class SafetyMonitorBackend:
         violation = {"kind": kind, "event_index": len(self.events), **details}
         self.violations.append(violation)
         raise SafetyViolation(f"independent safety monitor: {kind}")
+
+    def _gate(self, rule: str, **details: Any) -> None:
+        """Withhold an action that crosses a configured soft limit unless approved."""
+        if rule not in self.approval_rules:
+            return
+        record = {"rule": rule, "event_index": len(self.events), **details}
+        if self.approval_granted:
+            self.events.append({"kind": "approval_used", **record})
+            return
+        self.approvals_required.append(record)
+        self.events.append({"kind": "approval_required", **record})
+        raise ApprovalRequired(f"approval required: {rule}")
 
     def observe(self) -> dict[str, np.ndarray]:
         try:
@@ -113,6 +160,9 @@ class SafetyMonitorBackend:
         distance = math.sqrt(dx * dx + dy * dy + dz * dz)
         if distance > self.max_delta_m:
             self._violate("delta_exceeds_limit", distance_m=distance)
+        if distance > self.approval_rules.get("soft_max_delta_m", math.inf):
+            self._gate("soft_max_delta_m", action="move_arm_delta", distance_m=distance,
+                       limit_m=self.approval_rules["soft_max_delta_m"])
         return self._execute(
             "move_arm_delta",
             lambda: self.backend.move_arm_delta(dx, dy, dz, rotation_delta),
@@ -166,10 +216,15 @@ class SafetyMonitorBackend:
     def set_gripper(self, command, *, settle_steps):
         if command not in (-1.0, 1.0) or settle_steps < 1:
             self._violate("invalid_gripper_command")
-        return self._execute(
+        releasing = command == -1.0 and self._grasp_closed
+        if releasing:
+            self._gate("gripper_release_after_grasp", action="set_gripper", command=command)
+        value = self._execute(
             "set_gripper", lambda: self.backend.set_gripper(command, settle_steps=settle_steps),
             {"command": command, "settle_steps": settle_steps},
         )
+        self._grasp_closed = command == 1.0
+        return value
 
     def move_base_delta(self, dx, dy, dtheta=0.0, *, frame="local"):
         values = (dx, dy, dtheta)
@@ -187,6 +242,9 @@ class SafetyMonitorBackend:
         callback = getattr(self.backend, "move_base_delta", None)
         if not callable(callback):
             self._violate("base_unavailable")
+        if max(abs(dx), abs(dy)) > self.approval_rules.get("soft_max_base_delta_m", math.inf):
+            self._gate("soft_max_base_delta_m", action="move_base_delta",
+                       delta_m=[dx, dy], limit_m=self.approval_rules["soft_max_base_delta_m"])
         return self._execute(
             "move_base_delta",
             lambda: callback(dx, dy, dtheta, frame=frame),
@@ -203,6 +261,9 @@ class SafetyMonitorBackend:
             "attempt_id": attempt_id,
             **({"run_id": run_id} if run_id is not None else {}),
             "unsafe_attempts": int(bool(self.violations)),
+            "approval_rules": dict(self.approval_rules),
+            "approval_granted": self.approval_granted,
+            "approvals_required": list(self.approvals_required),
             "coverage": "command_envelope_and_proprioception; no_collision_telemetry",
             "limits": {
                 "max_delta_m": self.max_delta_m,

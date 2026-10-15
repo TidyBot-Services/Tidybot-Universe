@@ -71,6 +71,7 @@ def test_runner_consumes_nine_fixture_help_opportunities_before_tenth_attempt(tm
         assistance_credits=9, token_limit=8000, human_deadline_seconds=30, overall_deadline_seconds=300,
         formal_attempt_deadline_seconds=120, formal_run_wall_seconds=300,
         run_budget=path, approved_run_budget_sha256=sha(path), advisor_transport=transport, sleeper=lambda _:None,
+        request_mode='blocking',
         policy_config={'target_request_count':9,'total_failure_slots':9,'seed':101} if policy.startswith('budget_') else None)
     assert len(runner.requests) == len(result['attempts']) == 10
     assert len(packets) == len(result['requests']) == 9

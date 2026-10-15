@@ -36,6 +36,10 @@ def main() -> int:
     parser.add_argument("--assistance-mode", choices=[mode.value for mode in AssistanceMode],
                         default=AssistanceMode.BENCHMARK_PROXY.value)
     parser.add_argument("--human-deadline-seconds", type=float, default=60.0)
+    parser.add_argument("--request-mode", choices=("async", "blocking"), default="async",
+                        help="async keeps working while a request is pending; blocking waits")
+    parser.add_argument("--approval-rules", type=Path,
+                        help="JSON soft limits that withhold an action until approved")
     parser.add_argument("--token-limit", type=int, default=30000)
     parser.add_argument("--policy-config", type=Path, help="JSON decision-policy parameters")
     parser.add_argument("--approved-policy-config-sha256", help="pre-registered random policy config digest")
@@ -90,6 +94,9 @@ def main() -> int:
         max_attempts=args.max_attempts, assistance_credits=args.assistance_credits,
         assistance_mode=AssistanceMode(args.assistance_mode),
         human_deadline_seconds=args.human_deadline_seconds,
+        request_mode=args.request_mode,
+        approval_rules=(None if args.approval_rules is None
+                        else json.loads(args.approval_rules.read_text())),
         token_limit=args.token_limit,
         store_path=args.store_path, skill_dag=skill_dag,
         policy_config=policy_config,

@@ -500,7 +500,18 @@ def test_full_trace_interrupt_records_evidence_without_advisor_wait(tmp_path, mo
         result = run_robosuite_attention(
             **common, adapter_factory=lambda task, camera: _adapter(task, camera, client=FakeClient()))
     assert result["stopped_reason"] == "trace_safety_interrupt"
-    assert result["requests"] == []
+    # The stop is raised as a CRITICAL inbox item answered by the safety policy:
+    # it never waits for the Advisor and costs no assistance credit.
+    assert len(result["requests"]) == 1
+    escalation = result["requests"][0]
+    assert escalation["request_type"] == "interrupt"
+    assert escalation["responder"] == "safety_policy"
+    assert escalation["credit_exempt"] is True
+    assert escalation["explanation"]["evidence_shown"]["evidence_ids"]
+    assert result["resource_usage"]["assistance_credits"] == 0
+    store = AttentionStore(Path(result["store"]))
+    assert store.get_request(escalation["request_id"]).priority.value == "critical"
+    assert store.request_disposition(escalation["request_id"])["disposition"] == "accepted"
     assert result["decisions"][0]["request_type"] == "interrupt"
     assert result["decisions"][0]["priority"] == "critical"
     assert result["decisions"][0]["decision_source"] == "projected_public_trace"

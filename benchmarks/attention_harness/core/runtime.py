@@ -27,7 +27,11 @@ class AttentionRuntime:
         self.proxy = proxy
         self.clock = clock
 
-    def open_request(self, request: AttentionRequestRecord) -> AttentionRequestRecord:
+    def open_request(self, request: AttentionRequestRecord, *,
+                     reserve_credit: bool = True) -> AttentionRequestRecord:
+        """Create the request; interrupts are safety escalations and reserve no credit."""
+        if not reserve_credit:
+            return self.store.create_request(request)
         reservation_id = self._reservation_id(request.request_id)
         self.store.reserve_assistance(
             request.run_id, credits=1, reservation_id=reservation_id
@@ -108,6 +112,39 @@ class AttentionRuntime:
             )
         return self._resolve_proxy(fallback, trace_packet=trace_packet, public_images=public_images)
 
+    def decline(self, request_id: str, *, actor: str = "operator") -> AttentionRequestRecord:
+        """Operator ignores a pending human request; the AdvisorProxy fallback takes over."""
+        request = self._request(request_id)
+        if request.mode is not AssistanceMode.LIVE_HUMAN_FIRST:
+            raise StateConflictError("benchmark-proxy requests have no human to ignore them")
+        return self.store.decline_request(request_id, declined_at=self.clock(), actor=actor)
+
+    def resolve_fallback(
+        self,
+        request_id: str,
+        *,
+        trace_packet: Mapping[str, Any] | AdvisorTracePacket | None = None,
+        public_images: Sequence[str] = (),
+    ) -> AttentionRequestRecord:
+        """Answer a request already routed to fallback (deadline, or operator ignored it)."""
+        request = self._request(request_id)
+        if request.state is not RequestState.FALLBACK:
+            raise StateConflictError("request is not waiting for AdvisorProxy fallback")
+        return self._resolve_proxy(request, trace_packet=trace_packet, public_images=public_images)
+
+    def close_with_system_response(
+        self, request_id: str, *, responder: str, content: str,
+    ) -> AttentionRequestRecord:
+        """Answer a safety escalation that needs no assistance credit (already applied)."""
+        request = self._request(request_id)
+        response = AttentionResponseRecord(
+            response_id=f"system-response:{request_id}", request_id=request_id,
+            responder=responder, content=content, created_at=self.clock(),
+        )
+        return self.store.transition_request(
+            request_id, RequestState.ANSWERED, response=response,
+            event_key=f"system-answer:{request_id}")
+
     def cancel(self, request_id: str) -> AttentionRequestRecord:
         request = self._request(request_id)
         updated = self.store.transition_request(
@@ -115,7 +152,8 @@ class AttentionRuntime:
             RequestState.CANCELLED,
             event_key=f"cancel:{request_id}",
         )
-        self.store.settle_assistance(self._reservation_id(request.request_id), commit=False)
+        if self.store.has_reservation(self._reservation_id(request.request_id)):
+            self.store.settle_assistance(self._reservation_id(request.request_id), commit=False)
         return updated
 
     def _resolve_proxy(

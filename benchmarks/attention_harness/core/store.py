@@ -379,7 +379,7 @@ class AttentionStore(DevStoreMixin):
 
     def begin_waiting_window(self, request_id: str, *, started_at: float) -> dict[str, Any]:
         request = self.get_request(request_id)
-        if request is None or request.mode.value != 'live_human_first': raise StateConflictError('waiting audit requires live request')
+        if request is None: raise StateConflictError('waiting audit requires an existing request')
         payload = {'request_id': request_id, 'run_id': request.run_id, 'started_at': started_at,
                    'ended_at': None, 'baseline': self.executor_counters(request.run_id),
                    'coverage': 'scheduler-owned attempt dispatches and completed SDK motion commands; unlogged/external physical actions unobserved',
@@ -589,51 +589,63 @@ class AttentionStore(DevStoreMixin):
         event_key: str,
     ) -> AttentionRequestRecord:
         with self._transaction() as connection:
-            existing_event = connection.execute(
-                "SELECT payload FROM events WHERE event_key = ?", (event_key,)
-            ).fetchone()
-            if existing_event is not None:
-                return self._decode_request(json.loads(existing_event[0])["request"])
-            row = connection.execute(
-                "SELECT payload FROM requests WHERE id = ?", (request_id,)
-            ).fetchone()
-            if row is None:
-                raise StateConflictError(f"request {request_id!r} does not exist")
-            current = self._decode_request(json.loads(row[0]))
-            if state not in REQUEST_TRANSITIONS[current.state]:
-                raise StateConflictError(
-                    f"illegal request transition {current.state.value} -> {state.value}"
-                )
-            if state is RequestState.ANSWERED and response is None:
-                raise StateConflictError("answered transition requires a response")
-            if response is not None:
-                if response.request_id != request_id:
-                    raise StateConflictError("response belongs to a different request")
-                self._insert_immutable_tx(
-                    connection,
-                    "responses",
-                    response.response_id,
-                    response.artifact(),
-                )
-            updated = replace(
-                current,
-                state=state,
-                response_id=response.response_id if response else current.response_id,
+            return self._transition_request_tx(
+                connection, request_id, state, response=response, event_key=event_key)
+
+    def _transition_request_tx(
+        self,
+        connection: sqlite3.Connection,
+        request_id: str,
+        state: RequestState,
+        *,
+        response: AttentionResponseRecord | None = None,
+        event_key: str,
+    ) -> AttentionRequestRecord:
+        existing_event = connection.execute(
+            "SELECT payload FROM events WHERE event_key = ?", (event_key,)
+        ).fetchone()
+        if existing_event is not None:
+            return self._decode_request(json.loads(existing_event[0])["request"])
+        row = connection.execute(
+            "SELECT payload FROM requests WHERE id = ?", (request_id,)
+        ).fetchone()
+        if row is None:
+            raise StateConflictError(f"request {request_id!r} does not exist")
+        current = self._decode_request(json.loads(row[0]))
+        if state not in REQUEST_TRANSITIONS[current.state]:
+            raise StateConflictError(
+                f"illegal request transition {current.state.value} -> {state.value}"
             )
-            connection.execute(
-                "UPDATE requests SET payload = ? WHERE id = ?",
-                (_json(updated.artifact()), request_id),
+        if state is RequestState.ANSWERED and response is None:
+            raise StateConflictError("answered transition requires a response")
+        if response is not None:
+            if response.request_id != request_id:
+                raise StateConflictError("response belongs to a different request")
+            self._insert_immutable_tx(
+                connection,
+                "responses",
+                response.response_id,
+                response.artifact(),
             )
-            payload = {
-                "request": updated.artifact(),
-                "response": response.artifact() if response else None,
-            }
-            connection.execute(
-                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
-                "VALUES (?, 'request', ?, ?, ?)",
-                (event_key, request_id, f"request.{state.value}", _json(payload)),
-            )
-            return updated
+        updated = replace(
+            current,
+            state=state,
+            response_id=response.response_id if response else current.response_id,
+        )
+        connection.execute(
+            "UPDATE requests SET payload = ? WHERE id = ?",
+            (_json(updated.artifact()), request_id),
+        )
+        payload = {
+            "request": updated.artifact(),
+            "response": response.artifact() if response else None,
+        }
+        connection.execute(
+            "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+            "VALUES (?, 'request', ?, ?, ?)",
+            (event_key, request_id, f"request.{state.value}", _json(payload)),
+        )
+        return updated
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         return self._get_payload("runs", run_id)
@@ -683,6 +695,9 @@ class AttentionStore(DevStoreMixin):
                 if existing != payload:
                     raise StateConflictError("response use has already been recorded differently")
                 return existing
+            if connection.execute("SELECT 1 FROM events WHERE event_key = ?",
+                                  (f"response-ignored:{request_id}",)).fetchone() is not None:
+                raise StateConflictError("response was already marked ignored")
             connection.execute(
                 "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
                 "VALUES (?, 'response_use', ?, 'response.used', ?)",
@@ -895,6 +910,110 @@ class AttentionStore(DevStoreMixin):
                 (key, request_id, _json(payload)))
         return payload
 
+    IGNORE_REASONS = frozenset({
+        "native_success_first", "run_ended", "attempts_exhausted", "superseded",
+        "stopped_before_use", "operator_declined",
+    })
+
+    def request_disposition(self, request_id: str) -> dict[str, Any] | None:
+        """What the agent did with an answered request: accepted, ignored or undecided."""
+        with self._connect() as connection:
+            for event_key, label in ((f"response-used:{request_id}", "accepted"),
+                                     (f"response-ignored:{request_id}", "ignored")):
+                row = connection.execute("SELECT payload FROM events WHERE event_key = ?",
+                                         (event_key,)).fetchone()
+                if row is not None:
+                    return {"disposition": label, **json.loads(row[0])}
+        return None
+
+    def record_response_ignored(self, request_id: str, *, reason: str,
+                                ignored_at: float) -> dict[str, Any]:
+        """Record that an answered request's response was never applied to an execution."""
+        if reason not in self.IGNORE_REASONS:
+            raise ValueError(f"unsupported ignore reason: {reason}")
+        request = self.get_request(request_id)
+        if request is None or request.state is not RequestState.ANSWERED or not request.response_id:
+            raise StateConflictError("only an answered request can be marked ignored")
+        payload = {"request_id": request_id, "response_id": request.response_id,
+                   "run_id": request.run_id, "reason": reason, "ignored_at": ignored_at}
+        key = f"response-ignored:{request_id}"
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM events WHERE event_key = ?", (key,)).fetchone()
+            if row is not None:
+                return json.loads(row[0])
+            if connection.execute("SELECT 1 FROM events WHERE event_key = ?",
+                                  (f"response-used:{request_id}",)).fetchone() is not None:
+                raise StateConflictError("response was already adopted")
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'response_use', ?, 'response.ignored', ?)",
+                (key, request_id, _json(payload)))
+        return payload
+
+    def decline_request(self, request_id: str, *, declined_at: float,
+                        actor: str = "operator") -> AttentionRequestRecord:
+        """Operator ignores a pending human request: record it and route it to fallback atomically."""
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM requests WHERE id = ?",
+                                     (request_id,)).fetchone()
+            if row is None:
+                raise StateConflictError("request not found")
+            request = self._decode_request(json.loads(row[0]))
+            key = f"request-ignored:{request_id}"
+            already = connection.execute("SELECT 1 FROM events WHERE event_key = ?", (key,)).fetchone()
+            if already is None:
+                if request.mode.value != "live_human_first":
+                    raise StateConflictError("only human requests can be ignored by an operator")
+                if request.state is not RequestState.PENDING:
+                    raise StateConflictError("only a pending request can be ignored")
+                if request.deadline_at is not None and declined_at >= request.deadline_at:
+                    raise StateConflictError("request deadline has elapsed")
+                payload = {"request_id": request_id, "run_id": request.run_id, "actor": actor,
+                           "ignored_at": declined_at, "deadline_at": request.deadline_at,
+                           "reason": "operator_declined"}
+                connection.execute(
+                    "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                    "VALUES (?, 'request', ?, 'request.ignored', ?)",
+                    (key, request_id, _json(payload)))
+            return self._transition_request_tx(
+                connection, request_id, RequestState.FALLBACK,
+                event_key=f"human-decline:{request_id}")
+
+    WAITING_ACTIVITIES = frozenset({
+        "autonomous_retry", "trace_inspection", "memory_retrieval", "evidence_index",
+        "approval_gate_hold",
+    })
+
+    def record_waiting_activity(self, request_id: str, *, sequence: int, activity: str,
+                                attempt_index: int | None, robot_motion: bool,
+                                detail: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Persist one safe job the agent ran while a request was outstanding."""
+        if activity not in self.WAITING_ACTIVITIES:
+            raise ValueError(f"unsupported waiting activity: {activity}")
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 0:
+            raise ValueError("waiting activity sequence must be a non-negative integer")
+        request = self.get_request(request_id)
+        if request is None:
+            raise StateConflictError("waiting activity requires an existing request")
+        payload = {"activity_id": f"waiting:{request_id}:{sequence}", "run_id": request.run_id,
+                   "request_id": request_id, "sequence": sequence, "activity": activity,
+                   "attempt_index": attempt_index, "robot_motion": bool(robot_motion),
+                   "detail": dict(detail or {}), "state": "completed"}
+        key = f"waiting-activity:{request_id}:{sequence}"
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM events WHERE event_key = ?", (key,)).fetchone()
+            if row is not None:
+                return json.loads(row[0])
+            connection.execute(
+                "INSERT INTO events(event_key, entity_type, entity_id, event_type, payload) "
+                "VALUES (?, 'waiting_activity', ?, 'waiting.activity', ?)",
+                (key, request_id, _json(payload)))
+        return payload
+
+    def waiting_activities(self, run_id: str) -> list[dict[str, Any]]:
+        return [event["payload"] for event in self.events(entity_types=["waiting_activity"])
+                if event["payload"].get("run_id") == run_id]
+
     def reserve_assistance(
         self, run_id: str, *, credits: int, reservation_id: str
     ) -> dict[str, int]:
@@ -931,6 +1050,26 @@ class AttentionStore(DevStoreMixin):
                 (reservation_id, run_id, credits),
             )
             return self.budget_status(run_id, connection=connection)
+
+    def record_scheduler_options(self, run_id: str, options: dict[str, Any]) -> dict[str, Any]:
+        """Persist the scheduler options that shaped a run (request mode, approval rules)."""
+        if self.get_run(run_id) is None:
+            raise StateConflictError("run not found")
+        payload = {"run_id": run_id, **options}
+        return self._audit_event(f"scheduler-options:{run_id}", run_id, "run.scheduler_options", payload)
+
+    def scheduler_options(self, run_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT payload FROM events WHERE event_key = ?",
+                                     (f"scheduler-options:{run_id}",)).fetchone()
+        if row is None:
+            return None
+        return {key: value for key, value in json.loads(row[0]).items() if key != "run_id"}
+
+    def has_reservation(self, reservation_id: str) -> bool:
+        with self._connect() as connection:
+            return connection.execute("SELECT 1 FROM budget_reservations WHERE id = ?",
+                                      (reservation_id,)).fetchone() is not None
 
     def settle_assistance(self, reservation_id: str, *, commit: bool) -> None:
         with self._transaction() as connection:
@@ -1187,6 +1326,7 @@ class AttentionStore(DevStoreMixin):
             state=RequestState(payload["state"]),
             response_id=payload.get("response_id"),
             schema_version=payload["schema_version"],
+            explanation=dict(payload.get("explanation") or {}),
         )
 
     @staticmethod

@@ -86,7 +86,11 @@ def test_formal_decision_and_execution_matrix(tmp_path, suite, task, policy):
         assert len(sent) == len(summary["requests"]) == 1
         request = summary["requests"][0]
         slot = request["failure_slot"]
-        assert runner.requests[slot + 1].attention_input["advisor_guidance"] == "retry using public trace"
+        # An asynchronous request lets one autonomous attempt run first; a
+        # request with a single attempt left waits (blocking) for its reply.
+        landing = slot + (2 if request["request_mode"] == "async" else 1)
+        assert runner.requests[landing].attention_input["advisor_guidance"] == "retry using public trace"
+        assert "advisor_guidance" not in runner.requests[slot + 1].attention_input or landing == slot + 1
         assert summary["resource_usage"] == {"assistance_credits": 1, "tokens": 11}
         events = AttentionStore(Path(summary["store"])).events()
         assert any(row["event_type"] == "response.execution_linked" for row in events)
