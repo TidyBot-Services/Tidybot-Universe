@@ -43,3 +43,10 @@
 - 调度语义变了：`reactive_help` 等“失败就问”的策略在异步下每两次尝试最多问一次；10 次尝试配 9 credit 的每日 RoboCasa365 run 不再用满 9 次。需要旧语义时用 `--request-mode blocking`。
 - `scheduler_config`（进入 `scheduler_config_sha256`）新增 `request_mode` 与 `approval_rules`，**现有冻结包的运行时源码字节锁、策略/配置摘要均已失效，七策略包需重新冻结、重新审阅**；`execution_authorized` 仍为 false。
 - 本机制只在仿真器（sim_gt）开发/正式 runner 上验证。真机的物理急停与 approval 信号来源另需专门接入。
+
+
+## 7. 只读复现、消融与生命周期读模型（2026-10-16 工程更新）
+
+`--advisor-replay-only` 未命中报 advisor_cache_miss，不调用 provider、不创建缓存。`--no-memory-enabled` 关闭检索/使用；`--no-trace-evidence` 关闭规划器 trace assessment，Advisor 只收到失败摘要/失败历史且无事件/证据/图片。formal scheduler_config 与 run summary 记录开关，旧冻结源码锁不因此有效。
+
+`python -m benchmarks.attention_harness.request_lifecycle --store-path <sqlite> --run-id <run>` 只读输出持久事件时间线，快照字段 request_timeline 与 CLI 同源；旧事件缺少时钟时明确 null，不补签。`random_matching --source-run <attention_run.json> --suite ... --task ... --seed ... --output-dir <新目录>` 从同cell终态完整规划器的持久请求派生随机目标并输出精确SHA，不自动批准/执行实验。崩溃回收只处理有本 PID namespace/boot 身份且确认监督进程死亡的launch，旧/跨namespace身份不猜测。以上为工程实现与测试，真实服务/真人与正式实验仍依交接验收门禁。

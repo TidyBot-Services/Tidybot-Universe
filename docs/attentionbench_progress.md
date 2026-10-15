@@ -1,3 +1,123 @@
+<!-- d-ui-acceptance-20261016-0310 -->
+## D 真实 UI 持久化链：部分完成且被明确阻塞（2026-10-16）
+
+本地真实浏览器针对 disposable SQLite 副本完成合成请求 Ignore 与 Defer，B5 timeline分别持久记录 `pending→ignored→fallback` 和 `pending→deferred`；UI 上 Memory lifecycle 的 disable、reload、rollback、reload也成功。截图/JSON/日志及早期409尝试均保存在 `outputs/handoff-execution-20261016/C/browser-e2e/`，续测 Defer 的脚本与证据在 `outputs/handoff-execution-20261016/D/browser-continuation/`。所有测试数据标记为synthetic，不能当live-human或Memory efficacy证据。
+
+后续 E/M1 preflight 观察到8769/8082/8775当前均未监听、8772 PID3315894仍在；没有操作这些服务。已核对 1280×900 和390×844 CSS viewport screenshots；capture bytes分别1265×889与375×812，元数据哈希吻合，只证明 synthetic rolled_back Memory 的布局。`test_live_ui.cjs` 全量两边均279项且测试SHA一致：current 173 pass/105 fail/1 cancelled，baseline 189/89/1；current-only 19、baseline-only 3，`DECISION-06` 两边均 cancelled。差集保留，不能称回归通过；请求操作类 fixture 缺少当前 renderer 要求的服务端 `permitted_actions`。合成 Advisor response、Ignore/Defer 与 Memory lifecycle 不证明真人回复或 Memory efficacy。对比报告见 `outputs/handoff-execution-20261016/D/live-ui-failure-comparison-20261015T191736459569Z/REPORT.md`；18770/18771 已停止，8769仍为主树PID220418。
+<!-- /d-ui-acceptance-20261016-0310 -->
+
+<!-- c-host-acceptance-20261016-0304 -->
+## C host 验收完成：8769 已条件式切至主工作树（2026-10-16 03:04 +08:00）
+
+本次仅 C host 启动兼容、临时端口与条件式切换；仓库仍 `attentionbench/baseline-20261015@aef9ca86af7663ffcf2bb23e4d3057f37944daa1`，原有 dirty 源保留。以下此前“host待验/未重启”条目是历史，本段为本次 C host 最新证据；不改变其他板块、M1–M6或正式资格。
+
+- **源与临时服务通过**：643个代码/测试/UI文件与 `C/bridge-compat/checks-metadata.json` 完全匹配；旧12+331 Python（1 deselected）、36+14+6 Node成绩只按原源绑定引用，未把旧28 socket结果转签。新临时主代码 `127.0.0.1:18769` / PID215134于03:00:22–03:00:23实际运行，25项GET通过、exit0且端口释放。按HANDOFF exact argv仅改port/cwd/PYTHONPATH，复用真实路径；先只读Online Backup23库，临时前后155表schema/行完全一致。
+- **新空闲守卫与8769切换通过**：03:01:42重新核验原PID905496/candidate-eval-agent的真实argv/cwd与94项完整环境（仅内存，不落盘凭据）；10条run全终态，62条launch PID/PGID均不存在，26 sessions含1 planned、117 jobs仅113 settled/4 needs_review、无活动owner/worker。03:01:42.715向原UI发SIGINT，消失后原argv重启为主工作树 **PID220418**；仅cwd/PYTHONPATH变化，其他应用参数/环境逐项相同。旧UI非本执行器子进程，exit code不可wait，已如实记录；新UI持续服务中。
+- **API与账本通过**：新服务25项GET：15×200、5×206（原回放及4路视角Range）、5×404（预期terminal_saved/no_frame）；覆盖 `/ui/`、`/api/run-options`、Dev options/experiments、runs、既有snapshot/cell view/live/多视角/录像、planned只读view。dev_v2保持enabled、2 profiles、7 policies、per_run_budget；额外 `/ui/live.js` 200且SHA与主树一致。紧邻pre/post **23库/155表/1335行** 的schema、行数、逐行SHA列表/逐表row hash完全一致；planned实验/cell原始payload、API session和该SQLite文件字节SHA相同，goal/预算/用量原样保留。
+- **保全与边界**：旧candidate目录4265个manifest范围文件、1600个既有C证据文件、643源码文件及原脚本/catalog未改。切换成功，**回滚未触发**，旧目录保留可回滚。两个验收helper的字段/pycache范围错误及原失败证据均保留并在RESULT解释，不是部署失败；未改业务源或历史manifest。未POST、审批、启动planned/新实验/模型/模拟器，未操作8082/8772/8775、Git refs/commit/push。
+
+证据入口：`outputs/handoff-execution-20261016/C/host-acceptance-20261015T185736Z/RESULT.md`；实际进程/退出与切换 `attempt2/{temporary-lifecycle.json,switch-result.json}`，新守卫 `immediate-pre-switch/`、`post-switch/`，统一算法及155表对照 `attempt2/{switch_common.py,database-comparison.json}`，原API/临时/正式响应与保全记录同目录。**C本次host验收完成，整个handoff goal仍未完成**；下一步交回主聊天按既定验收包处理后续板块，本执行不进入D–H，不宣称真实任务/正式实验验收。
+<!-- /c-host-acceptance-20261016-0304 -->
+
+<!-- handoff-A-independent-20261016-final -->
+## A 第 3 步独立全量复验：验收完成（工程回归，2026-10-16）
+
+本轮两仓库仍为 `attentionbench/baseline-20261015`：主 `aef9ca86af7663ffcf2bb23e4d3057f37944daa1`、Memory `15968a37fb55b0f7ad323dcd265729dfa13621ab`。实际接手时已有后续 B/C 等未提交代码与新增测试，全部保留；不把当前 dirty 源称为原提交。用户指定的两条原命令已在原工作目录完整结束：harness **1387 passed / 56 failed / 10 skipped，364.47s，exit 1**；失败 node ID 与固定 56 项基线精确相同，**新增 `[]` / 基线不再失败 `[]`**。Memory collect-only **77 项 / exit 0**，全量 **77 passed / 56.73s / exit 0**，与历史 77 项口径无差异。当前 harness 1453 项比历史 1375 多 78 项，均是已有后续新增测试，无原测试移除。
+
+另以原提交的干净临时 worktree 独立复验：普通 `/tmp` 路径首轮 **82 failed / 1283 passed / 10 skipped**，额外 26 项是本地产物/绝对路径依赖与一次 0.5s 墙钟测试波动；原日志保留。随后只在测试子进程挂载命名空间中保留原路径，原 `openarm_phase*`、launch_configs、outputs **只读挂入**，源码仍取临时 worktree；26 项全部通过，再完整复跑得到 **1309 passed / 原 56 failed / 10 skipped，330.33s，exit 1**，两向 node ID 差集均 `[]`。6183 个 tracked 文件测试前匹配原提交、测试后无漂移；引用该 worktree 的 Memory 全量亦 **77 passed / 52.89s / exit 0**。未改源码、断言、历史锁或失败基线。
+
+证据：`outputs/handoff-A-independent-20261015T183243Z/RESULT.md`、`comparison.json`、两套完整失败 node ID 清单、完整日志/命令/退出码、`preservation.json`；固定基线 SHA256 仍 `f48c51fad1ccb35678b1cbfc780936841a967042669548e462fcfbe15cb195f9`。本轮 tracked 修改仅此三份状态文档的新增说明；旧文档字节与历史证据保留，暂存区/两个 HEAD 不变，未 commit/amend/push。临时 worktree `/tmp/attentionbench-A-step3-20261015T183243Z` 保留供复查。
+
+本结论只关闭 A 的独立工程回归，不代表真实运行服务、机器人/模拟器或正式实验验收；未操作 8769、凭据、远端、付费模型、审批、M1–M6 或 formal_eligible，也未执行 B–H。原沙箱 EPERM/中断说明保留为历史；其他板块原有阻塞不因本轮解除。下一步将 A 的完整证据交回主聊天，后续范围沿用其原验收包。
+<!-- /handoff-A-independent-20261016-final -->
+
+<!-- c-bridge-compat-20261016 -->
+## C 启动兼容代码补缺已验证；总验收部分完成且被明确阻塞（2026-10-16）
+
+主仓库仍 `attentionbench/baseline-20261015@aef9ca86af7663ffcf2bb23e4d3057f37944daa1`，Memory 仍 `15968a37fb55b0f7ad323dcd265729dfa13621ab`。本轮仅 C，不启动 E/F/G/H、模型/模拟器或浏览器任务，不提交/推送，不写 Git refs，保留原工作树与候选目录。
+
+- **代码和无 socket 回归通过**：`ui_server.py` 接受并初始化原服务的 `--dev-v2-root` / `--dev-v2-per-run-budget` 及可选 authorization，保留显式共享 goal bridge/独立 human 审批；两路配置互斥。Daily POST 兼容通用 bridge 参数。实测又发现首个实验的 materialization CLI 无 experiment 可推断独立 goal，已按 selection 的原有限额显式绑定，避免误读/创建默认 GOAL。preview、Qwen→GLM review 和多视角保留，预算/用量/时钟/截止不重置。
+- **实际证据**：`outputs/handoff-execution-20261016/C/bridge-compat/`：新增测试 **12 passed / exit0**，Dev/审批/恢复/旧goal/evaluator/多视角组合 **331 passed / 1 deselected / exit0**（仅原有 Service-manifest CLI epoch 外部依赖未跑）。Node workspace **36**、evaluator **14**、Attention **6**，语法检查均 exit0。`checks-metadata.json` 给出精确 argv/env/exit 与源码前后 SHA，`source_unchanged=true`。是临时 SQLite + 内存 HTTP 合同及离线 create 子进程，无真实监听/API/模型/模拟器验收；不将 task-03 的529或调用者旧28 socket成绩转签给本轮新源。
+- **host 已可见，尚待新源临时端口验证及切换**：调用者 `C/host-pre-switch.json` 已核实 PID905496/candidate-eval-agent、原 argv/cwd/selected env、10终态run与62条launch的pid/pgid均无活动worker；保留1条planned/owner null/jobs空/used=0，不启动或修改。8082模拟服务及8772/8775独立UI勿动。host原socket回归28passed/exit0；主树原argv probe exit2是本轮修复输入，原失败日志保留。
+- **C 尚未全项通过**：本轮business未操作真实8769。调用者须先在host临时端口以除port外同一参数组合（cwd/PYTHONPATH指主树、其余原环境保留）成功启动并读原API，验证新源实际transport；再按已有授权重新核对紧邻切换空闲/worker、逐表行哈希和回滚守卫，才能有条件切换。旧22表哈希和4265文件清单原字节保留，不刷新/补签。步骤和调用者原事实见 `C/bridge-compat/HOST_HANDOFF.md`。
+
+`C/bridge-compat/preservation.json` 核对旧候选4265文件、host证据和历史基线无变化；可审增量 `bridge.delta.patch`，累计 `task.patch` / `task-source-manifest.json` 延续task-03原基准（三份dirty文档用before-*.md、tracked源码用HEAD、新文件用空基线）。C整体仍为**部分完成且被明确阻塞**，整个goal未完成；D真实浏览器交互、M1–M6和正式准入状态不因本轮代码通过而改变。
+<!-- /c-bridge-compat-20261016 -->
+
+<!-- handoff-execution-20261016 -->
+## 交接执行：部分完成且被明确阻塞（A完成、B定向工程通过，2026-10-16）
+
+已独立核验 `outputs/step3-direct-verification-20261016/run-metadata.json`、完整日志与失败清单：主 `aef9ca86` / Memory `15968a3`；harness **1309 passed / 56 failed / 10 skipped，exit 1**，56 个失败 node ID 与固定基线精确相同（新增 0、修复 0）；Memory **77 passed，exit 0**。12 个第 3 步代码/测试文件的 commit blob、测试前后及本轮工作树 SHA256 全部一致；整体 `tracked_source_unchanged=false` 源于原有三份文档差异，不是测试中业务代码改变。新核验清单：`outputs/handoff-execution-20261016/A-audit.json`。
+
+**A 已完成，B1–B5 已实现并通过定向工程验收；后续状态见下方最终索引。** 以下受限沙箱 72/527、EPERM 和缺少绑定的旧归档结论仅为历史；旧 RESULT、基线与原证据保持原字节。完整 unrestricted 证据闭合了 A 的版本绑定和回归门槛，无需在本受限环境重跑原全量。此结论仅为工程回归，不代表真实服务或正式实验验收；M1–M6 与正式准入不变。
+
+### B1：Run 崩溃回收工程测试通过
+新增 `run_recovery.py`，UI 启动和列表触发原子清理；新 launch 记录 PID namespace/boot 身份，仅本命名空间中确认死亡才回收，旧/跨 namespace/权限未知不猜测。pending/fallback 取消、未消费 credit 退还、资源释放、等待结束、run/launch scheduler_lost 终态在同一事务中提交。`B1-final.log`：14 passed / exit 0（含既有 store 8 项）；重启幂等、存活/未知不动、已消费 credit 保留和失败回滚通过。历史 launch 缺少 namespace 时保持原状态，真实宿主崩溃恢复未核实。固定范围见 `outputs/handoff-execution-20261016/B-acceptance.md`。下一项 B2 缓存只读重放。
+
+### B2：Advisor 只读缓存重放工程测试通过
+`SimGTAdvisorProxy(replay_only=True)` 对共享缓存用 SQLite mode=ro，未命中直接 `advisor_cache_miss`，不调用 provider、不创建缓存/目录；本地缓存同样只读。两 CLI `--advisor-replay-only`，formal scheduler_config 和 run scheduler_options/summary 均留账，重放不初始化默认认证 client。`outputs/handoff-execution-20261016/B2.log`：13 passed / exit 0（含既有 Advisor 回归）。下一项 B3 消融开关。
+
+### B3：Memory / trace-evidence 消融工程测试通过
+`memory_enabled` / `trace_evidence` 默认 true，两个 CLI 提供 `--no-memory-enabled` / `--no-trace-evidence`，进入 scheduler_config、scheduler_options 和 summary。Memory off 覆盖两个 native binding、planner 选择与 formal executor；trace off 不执行 assess_trace，规划器仅基于失败摘要/次数，Advisor 用字段白名单移除事件/证据/assessment/图像（包括历史包），独立安全监控与审批保持。`outputs/handoff-execution-20261016/B3.log`：19 passed / exit 0，实际包无对应内容及 formal executor 门槛通过。
+
+### B4：随机次数匹配工具工程测试通过
+`random_matching.py` 函数与 CLI 从同 suite/task/seed 完整规划器的终态 run 派生，交叉核对原 summary 和只读数据库请求集合，排除 interrupt；输出 policy_config.json、精确字节 SHA 与 match.json 来源账本，拒绝错误 cell、非终态、遗漏请求及覆盖已有产物目录。`outputs/handoff-execution-20261016/B4.log`：6 passed / exit 0。匹配请求目标，不保证提前成功/资源终止后的实际请求数；没有执行实验。
+
+### B5：请求生命周期时间线工程测试通过；B 定向组合通过
+新增 `request_lifecycle.py`，只读 CLI 和快照 `request_timeline` 共用持久事件，记录七类时刻、回复延迟、采用回复、execution/candidate 链；新状态转换持久化时刻，历史缺钟明确 null，不回填旧事件。`B5.log` 18 passed / exit 0。五项组合 `B-combined-final.log` **116 passed / 1 deselected / exit 0**（仅排除需 socket 的 endpoint）；首轮 2 failed / 114 passed 保留，已修复默认 scheduler_options 的兼容形状，以及新增重放测试误用了两份不同源码导致的合法 miss；未改任何既有测试断言或基线。新开关全量写 formal scheduler_config / run summary，非默认值才扩展原 scheduler_options。B1–B5 实现与定向工程包通过；HTTP endpoint、完整 unrestricted B 全量和真实服务未验收，不沿用 A 的全量成绩冒充 B。
+
+开始 C 静态分叉合并，冻结包 `outputs/handoff-execution-20261016/C/ACCEPTANCE.md`。当前 socket EPERM、仅可见隔离 PID，宿主空闲/worker/启动任务未核实，禁止重启 8769；继续静态三方分析和代码合并。`candidate-fontfix` 为未版本化快照，不能把目录存在视作 Git 公共祖先；差异表与原 operator 前像 merge 结果已存档。
+
+### 本轮最终验收索引：部分完成且被明确阻塞
+
+- **A 验收完成（工程回归）**：unrestricted 1309 passed / 固定 56 failed / 10 skipped，exit 1；node ID 差集新增0/修复0；Memory 77 passed / exit 0；12 源/测试字节绑定已核验，旧 EPERM 报告与基线不改。
+- **B1–B5 已实现，定向工程验收通过**：崩溃回收（本 namespace 身份守卫、原子清理及自定义 UI 启动/列表接线）、缓存只读重放、Memory/trace 开关、同 cell 随机次数预注册、持久请求时间线都有新增测试。最终组合 **529 passed / 3 deselected / exit 0，296.84s**，源码运行前后完全一致，详 `outputs/handoff-execution-20261016/C/final/regression-metadata.json`。该组包含 Dev v2、旧审批/恢复、评审、B 全部新增和相关既有回归；不是完整 harness unrestricted 复跑，不把 A 的完整成绩转签给新源。
+- **C 代码桥补缺及无socket回归通过；总验收部分完成且被明确阻塞**：原三方合并/祖先证据保持；新12项+331项Python（1项外部依赖deselected）及36+14+6 Node合同通过。调用者host已可见并完成预检；本轮未操作8769，仍待本轮新源host临时端口/transport与有条件切换/新逐表哈希。详本页顶部更新及 `outputs/handoff-execution-20261016/C/bridge-compat/HOST_HANDOFF.md`。
+- **D 界面/真实浏览器验收部分完成**：synthetic Ignore/Defer、Advisor response/Memory lifecycle持久化与1280/390视口截图已存档；full `test_live_ui.cjs` 双边279项、测试SHA相同，但 current 173 pass/105 fail/1 cancelled、baseline 189/89/1，失败名19 current-only、3 baseline-only，故不称回归通过。详 D 最新报告。
+- **E 仅当前 M1 复核，未通过**：`test_m1_entry.py` **32 passed / exit 0**。新鲜seed101真实交接中，Robosuite使用指定干净Service SHA完成一次handoff并回收进程组，原生成功false；RoboCasa入口锁匹配但V2-only守卫在Service启动前拒绝，未绕过或重试。未推进M2–M6。v112审计仍为**50/50有效槽、170 attempts、原生成功0/50、comparison_bias_gate=false**；原包无最低native成功数，不加门槛，不改历史签名。
+- **F/G/H 未越过前置验收**：F 未生成新350配置/锁、review或execution authorization；当前阻塞含E/M1未完成、D失败集合有差异、源码/旧冻结锁变化、linked Git refs只读、精确源码审批未形成。G按序仍停在 step 1 之前；未做G实验provider call/simulator attempt或消费，E/M1那次Robosuite尝试单独记账；账号余额和模型认证未核实。主矩阵上限1,433,600 tokens / 350 credits / 1400 attempts / 105000s。真人需内部用户实际参与，held-out另行冻结授权。H只读审计独立旧checkout `benchmark-test@433bcefc`，未迁移/运行。
+
+精确命令/退出码/差集/源码 SHA/补丁/分支错误与逐项报告入口：`outputs/handoff-execution-20261016/RESULT.md`。主分支仍 `attentionbench/baseline-20261015@aef9ca86`；Memory `15968a37` 未修改。专用分支创建 exit128（linked Git refs 只读），没有 add/commit/push/PR。已有用户改动与旧证据保留。当前收尾是**部分完成且被明确阻塞**，不宣布整个 goal、真实服务或正式实验验收完成。
+
+本轮工程读模型与主链（可编辑；不代表正式准入）：
+
+```mermaid
+flowchart LR
+  UI[本地 UI] <--> Store[AttentionStore / 请求时间线]
+  Scheduler[当前调度器] --> Store
+  Scheduler --> Runtime[请求 runtime / trace 与 Memory 开关]
+  Runtime --> Cache[Advisor 只读重放或有界 provider]
+  Store --> Candidate[回复采用 → 执行关联 → Memory 候选]
+  Candidate --> Memory[Memory Service / 独立验证与生命周期]
+  UI <--> Memory
+  Recovery[本 namespace 死亡确认 / 原子回收] --> Store
+  Admission[新冻结与审批门禁：尚未通过] -.-> Scheduler
+```
+
+<!-- /handoff-execution-20261016 -->
+
+以下旧交接记录为历史，以本页最新执行记录为准。
+
+<!-- handoff-resume-20261016 -->
+## 恢复交接 A：部分完成且被明确阻塞（2026-10-16 最新）
+
+已实际执行，未停在只读建议。主仓库 `attentionbench/baseline-20261015@aef9ca86`，独立 Memory 同名分支 `15968a37`。固定验收包和本轮证据入口：`outputs/handoff-resume-20261016/{ACCEPTANCE.md,RESULT.md}`；用户授权原文保存于同目录 `AUTHORIZATION.md`，既有改动与旧证据保留。
+
+归档工程回归**内容比较通过**：完整日志为 1309 passed / 56 failed / 10 skipped，Memory 77 passed，失败 node id 与原基线逐项一致（新增/缺失均 0）。但成功归档无原命令/退出码/版本绑定；旧 scope 的 12 路径与当前 commit 一致，只绑定另一次已中断的沙箱运行，不能补签成功归档。本轮按原命令复验 harness 得到部分 **72 failed / 527 passed / exit 2**（120 秒后中断），Memory **2 passed / exit 2**（90 秒后中断），均未完成全量。41 个观察到的基线外失败与旧受限部分集合相同，不是可外推的完整回归差异；测试前后双仓库 tracked SHA 一致，旧 manifest 66 文件核验全部通过。
+
+第 3 步定向 `test_resources_and_lock.py` **18 passed / exit 0**（最终日志 4.25s），不替代全量回归。实际限制：IPv4/NETLINK_ROUTE/socketpair send 均 EPERM；专用分支与 `824ffd4` 同沙箱基线 worktree 因 linked Git `.git` 只读均 exit 128。宿主服务/活动任务/worker 在当前隔离视图中未核实，数据库索引不能替代运行绑定，未重启 8769。A 的版本绑定与全量回归仍被明确阻塞，B–H 未启动；既有 M1–M6 口径、主链架构与 `formal_eligible=false` 不变，未取得真实服务或正式实验验收。
+<!-- /handoff-resume-20261016 -->
+
+以下 `handoff-A-recheck-20261016` 为上一轮历史记录；本轮状态以上述恢复核验为准。
+
+<!-- handoff-A-recheck-20261016 -->
+## 交接任务 A 独立复验：部分完成且被明确阻塞（未新增提交）
+
+第 3 步代码已由核查期间的外部提交 `aef9ca8` 保存，本轮在同分支独立复测，未新增提交。harness 原全量命令在第 600 项 Memory ASGI 测试挂起；已结束 599 项映射到 72 个失败，其中 **41 个 node id 不在原 56 项基线内**，不能视为完整失败集合。定向复跑确认 41 failed（8 项 socket EPERM，33 项 bubblewrap NETLINK_ROUTE socket EPERM），第 3 步新增测试 **18 passed**。纯 asyncio 探针复现 self-pipe 写入 EPERM 后无法唤醒。Memory 服务仍为 `attentionbench/baseline-20261015@15968a3`，完整原命令同样挂起，90 秒中断后 2 passed / exit 2，未达到 77 passed 基线。
+
+本轮“完整回归且无新增失败”未通过，工程验收被执行环境权限阻塞，不代表真实服务或正式实验验收；未进入后续任务或推进 M1–M6。证据 `outputs/handoff-A-step3-20261016/RESULT.md`，含两组原命令/日志、部分失败集合、41 项失败原文、18 项通过结果与 worker stderr；原失败基线哈希保持。下一步须在允许测试所需 socket/进程隔离的环境完整复测并逐项对照，当前不提升权限或改测试规避限制。
+<!-- /handoff-A-recheck-20261016 -->
+
 <!-- ui-backend-resources-20261016 -->
 ## UI 后端：资源预留、GPU 计量、运行条件锁定（第 3 步完成）
 
