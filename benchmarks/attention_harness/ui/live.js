@@ -3026,7 +3026,8 @@
       if(!target || target.view!==chosenView || target.seconds>duration)return '';
       const role=moment.role==='before'?'Before':moment.role==='after'?'After':'Moment';
       const label=`${moment.moment_id||`#${index+1}`} ${role}`;
-      return `<button type="button" class="op-moment-marker" data-selected-moment data-moment-request="${esc(request.request_id)}" data-moment-index="${index}" style="left:${(target.seconds/duration*100).toFixed(2)}%" aria-label="Selected moment ${esc(label)} · ${esc(MOMENT_VIEWS[chosenView])} · ${replayTime(target.seconds)}" title="${esc(moment.note||label)}">${esc(label)}</button>`;
+      const pct=target.seconds/duration*100,edge=pct<10?' op-moment-edge-start':pct>90?' op-moment-edge-end':'';
+      return `<button type="button" class="op-moment-marker${edge}" data-selected-moment data-moment-request="${esc(request.request_id)}" data-moment-index="${index}" style="left:${(target.seconds/duration*100).toFixed(2)}%" aria-label="Selected moment ${esc(label)} · ${esc(MOMENT_VIEWS[chosenView])} · ${replayTime(target.seconds)}" title="${esc(moment.note||label)}">${esc(label)}</button>`;
     })).join('');
   }
   function jumpToSelectedMoment(snapshot,request,moment) {
