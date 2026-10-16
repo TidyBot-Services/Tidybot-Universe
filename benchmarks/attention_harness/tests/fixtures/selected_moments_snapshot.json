@@ -1,0 +1,37 @@
+{
+  "run": {"run_id": "moments-run"},
+  "attempts": [{"attempt_id": "attempt-1", "index": 0}],
+  "traces": {
+    "trace-1": {
+      "attempt_id": "attempt-1",
+      "recording": {
+        "views": {
+          "external": {"name": "Overview"},
+          "left_wrist": {"name": "Left wrist"}
+        },
+        "replay_timing": {
+          "basis": "relative",
+          "frame_trace_seconds": [8.2, 8.6],
+          "frame_video_seconds": [8.4, 8.8]
+        }
+      },
+      "evidence": [
+        {"kind": "advisor_replay", "mime_type": "video/mp4", "media_url": "/external.mp4"},
+        {"kind": "advisor_replay_left_wrist", "mime_type": "video/mp4", "media_url": "/left_wrist.mp4"}
+      ]
+    }
+  },
+  "requests": [
+    {
+      "request_id": "targeted-1",
+      "attempt_id": "attempt-1",
+      "selected_moments": [
+        {"moment_id": "m1", "event_id": "event-1", "view": "external", "frame_index": 12, "video_seconds": 8.4, "trace_seconds": 8.2, "role": "before", "note": "close() started"},
+        {"moment_id": "m2", "event_id": "event-1", "view": "left_wrist", "frame_index": 13, "video_seconds": 8.8, "trace_seconds": 8.6, "role": "after", "note": "close() completed"}
+      ],
+      "localization": {"status": "targeted", "reason": null}
+    },
+    {"request_id": "generic-1", "attempt_id": "attempt-1", "localization": {"status": "generic_fallback", "reason": "relative timestamp unavailable"}},
+    {"request_id": "legacy-1", "attempt_id": "attempt-1"}
+  ]
+}

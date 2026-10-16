@@ -9,7 +9,7 @@ function api(){return vm.runInNewContext(block+'\n({operatorSettings,operatorAIR
 });}
 test('EVAL UI 01 enabled Qwen and old disabled task-check text',()=>{
  const snapshot={run:{run_id:'a',suite:'robocasa365',execution_target:'robocasa365_sim',robot:{model:'OpenArm365',execution_arm:'both'},seed:102},task_plan:{},attention_control:{active_policy:'reactive_help',read_only:true},dev_session:{model:'parcc/GLM'},dev_v2:{},dev_eval_enabled:true};
- const on=api().operatorSettings(snapshot);assert.match(on,/HumanProxy<\/span><b>Qwen/);assert.match(on,/Answers review and hint requests/);assert.match(on,/the simulator still decides success/);
+ const on=api().operatorSettings(snapshot);assert.match(on,/Eval agent<\/span><b>Qwen/);assert.match(on,/Reviews the recording and camera views/);assert.match(on,/the simulator still decides success/);
  delete snapshot.dev_eval_enabled;const off=api().operatorSettings(snapshot);assert.match(off,/Simulator's own task check/);assert.doesNotMatch(off,/Qwen/);
 });
 for(const [status,passed,label] of [['completed',true,'Looks right'],['completed',false,'Problems found'],['failed',false,'Review unavailable'],['timeout',false,'Review unavailable'],['skipped_budget',false,'Review unavailable']]){
@@ -52,13 +52,13 @@ test('EVAL UI 03 vision reviews are unchanged',()=>{
 test('EVAL UI 01 and 05 flag the fallback only once a review was text-only',()=>{
  const base={run:{run_id:'a',suite:'robocasa365',execution_target:'robocasa365_sim',robot:{model:'OpenArm365',execution_arm:'both'},seed:102},task_plan:{},attention_control:{active_policy:'reactive_help',read_only:true},dev_v2:{experiment_id:'e'},dev_eval_enabled:true,attempts:[],resources:{executions:{used:2,limit:3},eval_calls:{used:2,limit:3}}};
  const fine={...base,dev_session:{model:'parcc/GLM',versions:[{version:1,evaluator_review:{status:'completed',passed:false,mode:'vision'}}]}};
- assert.match(api().operatorSettings(fine),/HumanProxy<\/span><b>Qwen/);assert.doesNotMatch(api().operatorSettings(fine),/op-warn|text only/);
+ assert.match(api().operatorSettings(fine),/Eval agent<\/span><b>Qwen/);assert.doesNotMatch(api().operatorSettings(fine),/op-warn|text only/);
  assert.doesNotMatch(api().operatorResources(fine),/text-only/);
  const fell={...base,dev_session:{model:'parcc/GLM',versions:[{version:1,evaluator_review:textOnly()},{version:2,evaluator_review:textOnly({fallback_reason:'qwen_skipped_after_vision_timeout'})}]}};
  const s=api().operatorSettings(fell);
- assert.match(s,/HumanProxy<\/span><b>GLM · text only/);assert.match(s,/op-field op-warn/);assert.match(s,/Qwen was unavailable, so recordings were not reviewed visually/);assert.match(s,/the simulator still decides success/);
- assert.match(api().operatorResources(fell),/data-text-only-note/);assert.match(api().operatorResources(fell),/2 HumanProxy answers were text-only \(Qwen unavailable\)/);
- fell.dev_session.versions.pop();assert.match(api().operatorResources(fell),/1 HumanProxy answer was text-only/);
+ assert.match(s,/Eval agent<\/span><b>GLM · text only/);assert.match(s,/op-field op-warn/);assert.match(s,/Qwen was unavailable, so recordings were not reviewed visually/);assert.match(s,/the simulator still decides success/);
+ assert.match(api().operatorResources(fell),/data-text-only-note/);assert.match(api().operatorResources(fell),/2 Eval agent reviews were text-only \(Qwen unavailable\)/);
+ fell.dev_session.versions.pop();assert.match(api().operatorResources(fell),/1 Eval agent review was text-only/);
  const bare={...base,dev_session:{model:'parcc/GLM'}};                                   // no versions yet: must not throw
  assert.match(api().operatorSettings(bare),/<b>Qwen/);assert.doesNotMatch(api().operatorResources(bare),/text-only/);
 });

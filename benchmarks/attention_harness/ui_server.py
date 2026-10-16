@@ -377,7 +377,7 @@ def dashboard_snapshot(store: AttentionStore, run_id: str, *, artifact_root: Pat
             for key in (
                 "request_id", "attempt_id", "trace_id", "request_type", "reason",
                 "priority", "created_at", "deadline_at", "mode", "state", "response_id",
-                "explanation",
+                "explanation", "selected_moments", "localization",
             )
         }
         for request in projection["attention_inbox"]

@@ -717,7 +717,7 @@
         if (active) link?.setAttribute('aria-current', 'true');
         else link?.removeAttribute('aria-current');
       });
-      if(status)status.textContent=selected?.error||(selected?.pending?'Loading replay…':selected?.seeking?'Seeking to frame…':selected?.mode==='cursor'?`Replay position restored · ${replayTime(selected.seconds)}`:selected?`Located ${replayTime(selected.seconds)} · ${selected.mode==='sample'?'Synchronized sample frame':'Approximate position (legacy recording)'}`:'SDK call completion times · authorized trace');
+      if(status)status.textContent=selected?.error||(selected?.pending?'Loading replay…':selected?.seeking?'Seeking to frame…':selected?.mode==='cursor'?`Replay position restored · ${replayTime(selected.seconds)}`:selected?`Located ${replayTime(selected.seconds)} · ${selected.mode==='moment'?'Selected keyframe':selected.mode==='sample'?'Synchronized sample frame':'Approximate position (legacy recording)'}`:'SDK call completion times · authorized trace');
     };
     const seek = () => {
       const selected = replaySelections.get(key);
@@ -765,18 +765,21 @@
       const selected = replaySelections.get(key);
       if (selected?.pending || selected?.seeking) { selected.pending = false; selected.seeking = false; video.dataset.replayRestoring='false'; selected.error = 'Replay failed to load; seeking is unavailable'; showSelection(); }
     };
-    rows.forEach(row => row.addEventListener('click', event => {
-      if (event.target.closest('[data-replay-link]')) event.preventDefault();
-      if (!row.hasAttribute('data-replay-seconds')) return;
+    video.requestReplaySeek = (seconds, mode, index) => {
+      if (!Number.isFinite(seconds) || seconds < 0) return;
       video.dataset.replayRestoring='true';
-      replaySelections.set(key, {index:row.dataset.replayEvent,
-        seconds:Number(row.dataset.replaySeconds), mode:row.dataset.replayMode, pending:true});
+      replaySelections.set(key, {index, seconds, mode, pending:true});
       video.preload = 'auto';
       video.pause();
       if (video.error) {
         const selected = replaySelections.get(key); selected.pending = false; video.dataset.replayRestoring='false'; selected.error = 'Replay failed to load; seeking is unavailable';
       } else seek();
       showSelection();
+    };
+    rows.forEach(row => row.addEventListener('click', event => {
+      if (event.target.closest('[data-replay-link]')) event.preventDefault();
+      if (!row.hasAttribute('data-replay-seconds')) return;
+      video.requestReplaySeek(Number(row.dataset.replaySeconds), row.dataset.replayMode, row.dataset.replayEvent);
       row.scrollIntoView({block:'nearest', inline:'nearest'});
     }));
     seek(); showSelection();
@@ -1782,7 +1785,7 @@
             <label class="ab-launch-field"><span>Dispatch</span><select name="v2_start"><option value="yes">Start real model and simulation</option><option value="no">Create only · no resource dispatch</option></select></label><label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''} required></label>
             <label class="ab-launch-field">Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
             <label class="ab-launch-field">Attention policy<select name="v2_policy"><option value="all">All seven · frozen comparison</option>${(options?.dev_v2?.policies||[]).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field op-eval-toggle"><input name="eval_agent_enabled" type="checkbox" checked ${options?.dev_v2?.eval_agent_supported===false?'disabled':''}>HumanProxy — simulated human; answers review and hint requests from the recording</label>
+            <label class="ab-launch-field op-eval-toggle"><input name="eval_agent_enabled" type="checkbox" checked ${options?.dev_v2?.eval_agent_supported===false?'disabled':''}>Eval agent — reviews the recording and camera views</label>
             <label class="ab-launch-field">Help count / credits<input name="help_count" type="number" min="0" max="2" value="2"></label>
             <label class="ab-launch-field">Human approval wait (seconds)<input name="human_wait_seconds" type="number" min="1" max="600" value="60"></label>
           </div><details><summary>Independent resource limits</summary><p>Each column is frozen at creation. Units: counts, tokens, credits, seconds.</p><table><thead><tr><th>Resource</th><th>Cell limit</th><th>Experiment limit</th></tr></thead><tbody>${Object.entries(options?.dev_v2?.default_cell_budget||{}).map(([k,v])=>`<tr><td>${esc(label(k))}</td><td><input aria-label="Cell ${esc(k)}" data-v2-cell="${k}" type="number" min="0" value="${v}"></td><td><input aria-label="Experiment ${esc(k)}" data-v2-experiment="${k}" type="number" min="0" value="${options?.dev_v2?.goal_limits?.[k]??v}"></td></tr>`).join('')}</tbody></table></details>
@@ -2414,7 +2417,7 @@
     const hintSummary = historicalHint && `<div class="request-card ab-submitted-hint" data-request-hint-summary data-hint-source="${historicalHint.source}"><header><strong>${esc(historicalHint.title)}</strong><span>${esc(requestAttempt(snapshot,request))} · Help request · ${esc(requestState(request))}</span></header><blockquote>${esc(historicalHint.preview)}</blockquote></div>`;
     const summary = historicalHint ? showHint ? submittedHint(snapshot,request,true) : hintSummary : `<div class="request-card"><span class="label">${esc(requestAttempt(snapshot,request))} · ${esc(requestType(request))}${active ? '' : ` · ${esc(requestState(request))}`}</span>${priority ? `<span class="ab-request-priority" data-request-priority>${esc(priority)}</span>` : ''}<h4 data-request-reason>${esc(requestReason(request,trace))}</h4>${active ? `<p class="ab-request-question">${question}</p>` : ''}${hasHypothesis ? `<p class="ab-request-hypothesis" data-request-hypothesis>Current hypothesis: ${esc(hypothesis)}</p>` : ''}${active ? `<p class="ab-countdown" data-reply-countdown data-deadline="${esc(request.deadline_at ?? '')}" data-expired="${replyExpired(request)}" role="status">${esc(countdown(request))}</p>` : ''}</div>`;
     return `<div class="ab-request-context">${summary}
-      <div class="evidence-card"><span class="label">Execution evidence</span><div class="ab-request-evidence-links">${related.map(a => { const hasReplay = Object.values(snapshot.traces).some(t => t.attempt_id === a.attempt_id && (t.evidence || []).some(e => e.media_url && e.mime_type?.startsWith('video/'))); return `<button type="button" data-history-select="${esc(a.attempt_id)}">View attempt ${esc(a.index + 1)}${hasReplay ? ' replay' : ' actions'}</button>`; }).join('')}</div>${!videos ? `<p class="ab-request-gap">${events.length ? 'No video recorded. Expand the evidence to view recorded actions.' : 'No visible actions recorded; the failure location is unknown.'}</p>` : ''}${technical}</div></div>${active || historicalHint || !showHint ? '' : submittedHint(snapshot,request)}${actions}`;
+      <div class="evidence-card"><span class="label">Execution evidence</span>${selectedMomentDetails(snapshot,request)}<div class="ab-request-evidence-links">${related.map(a => { const hasReplay = Object.values(snapshot.traces).some(t => t.attempt_id === a.attempt_id && (t.evidence || []).some(e => e.media_url && e.mime_type?.startsWith('video/'))); return `<button type="button" data-history-select="${esc(a.attempt_id)}">View attempt ${esc(a.index + 1)}${hasReplay ? ' replay' : ' actions'}</button>`; }).join('')}</div>${!videos ? `<p class="ab-request-gap">${events.length ? 'No video recorded. Expand the evidence to view recorded actions.' : 'No visible actions recorded; the failure location is unknown.'}</p>` : ''}${technical}</div></div>${active || historicalHint || !showHint ? '' : submittedHint(snapshot,request)}${actions}`;
   }
   function feedbackShortcut(snapshot) {
     const node=flowModel(snapshot).nodes.findLast(n=>n.kind==='response');
@@ -2841,7 +2844,7 @@
       ${field('Where it runs',simulator?`${benchmark} simulator`:'Real robot',run.seed == null?'Scene seed not recorded':`Scene seed ${run.seed}`)}
       ${field('Help strategy',policyTitle(policy),`${operatorPolicy(snapshot)} · ${snapshot.dev_v2 || (snapshot.dev_session && !snapshot.attention_control?.binding) || run.assistance_mode !== 'live_human_first' ? 'an automatic advisor answers' : 'a person answers'}`,true,changeable?'<details class="op-strategy" data-persist-detail="operator-strategy"><summary>Change</summary><div data-policy-host></div></details>':'')}
       ${field('Dev agent',snapshot.dev_session?(model&&!/^formal-|-policy$/.test(model)?model:'AI-written plan'):'Fixed plan',snapshot.dev_session?'AI rewrites its plan after each attempt':'Uses an approved fixed plan')}
-      ${snapshot.dev_eval_enabled?(textOnlyReviews(snapshot).length?field('HumanProxy','GLM · text only','Qwen was unavailable, so recordings were not reviewed visually · the simulator still decides success').replace('class="op-field','class="op-field op-warn'):field('HumanProxy','Qwen',"Answers review and hint requests from the recording and camera views · the simulator still decides success")):field('HumanProxy',"Simulator's own task check",'Success is decided by the simulator, not by an AI model')}</div></section>`;
+      ${snapshot.dev_eval_enabled?(textOnlyReviews(snapshot).length?field('Eval agent','GLM · text only','Qwen was unavailable, so recordings were not reviewed visually · the simulator still decides success').replace('class="op-field','class="op-field op-warn'):field('Eval agent','Qwen',"Reviews the recording and camera views · the simulator still decides success")):field('Eval agent',"Simulator's own task check",'Success is decided by the simulator, not by an AI model')}</div></section>`;
   }
   function operatorWaiting(snapshot) {
     const control = snapshot.attention_control;
@@ -2991,6 +2994,80 @@
   function operatorQuickReplies() {
     return `<div class="op-chips">${['Move more slowly','Wrong object picked','Target is out of reach','Looks fine, try again'].map(text=>`<button type="button" data-hint-preset="operator" data-preset-text="${esc(text)}">${text}</button>`).join('')}</div>`;
   }
+  const MOMENT_VIEWS={external:'Overview',side:'Side',top:'Top-down',left_wrist:'Left wrist',right_wrist:'Right wrist'};
+  function selectedMoments(request) {
+    return Array.isArray(request?.selected_moments) ? request.selected_moments.filter(moment=>moment && typeof moment==='object' &&
+      Object.hasOwn(MOMENT_VIEWS,moment.view) && Number.isFinite(moment.video_seconds) && moment.video_seconds>=0) : [];
+  }
+  function momentReplayInfo(snapshot,request,moment) {
+    const attempt=snapshot.attempts?.find(a=>a.attempt_id===request.attempt_id);
+    const trace=Object.values(snapshot.traces||{}).find(t=>t.attempt_id===attempt?.attempt_id);
+    if(!attempt || !trace || !selectedMoments(request).includes(moment))return null;
+    if(trace.recording?.views && !trace.recording.views[moment.view])return null;
+    if(!trace.recording?.views && moment.view!=='external')return null;
+    const kind=moment.view==='external'?'advisor_replay':`advisor_replay_${moment.view}`;
+    if(!(trace.evidence||[]).some(e=>e.media_url && e.mime_type?.startsWith('video/') && (!trace.recording?.views || e.kind===kind)))return null;
+    return {attemptId:attempt.attempt_id,view:moment.view,seconds:moment.video_seconds};
+  }
+  function selectedMomentDetails(snapshot,request) {
+    const moments=selectedMoments(request);
+    const reason=request?.localization?.status==='generic_fallback' && request.localization.reason ? ` · ${esc(request.localization.reason)}` : '';
+    if(!moments.length)return `<p class="op-moment-generic" data-moment-generic>Generic request${reason}</p>`;
+    return `<div class="op-moments" data-request-moments="${esc(request.request_id)}"><strong>Selected moments</strong><ul>${moments.map((moment,index)=>{
+      const target=momentReplayInfo(snapshot,request,moment),role=moment.role==='before'?'Before':moment.role==='after'?'After':'Moment';
+      const label=`${moment.moment_id||`#${index+1}`} · ${MOMENT_VIEWS[moment.view]} · ${role} · ${replayTime(moment.video_seconds)}${Number.isInteger(moment.frame_index)?` · frame ${moment.frame_index}`:''}`;
+      return `<li><button type="button" data-selected-moment data-moment-request="${esc(request.request_id)}" data-moment-index="${index}" ${target?'':'disabled title="No recording for this view"'}>${esc(label)}</button>${moment.note?`<small>${esc(moment.note)}</small>`:''}</li>`;
+    }).join('')}</ul></div>`;
+  }
+  function selectedMomentMarkerHTML(snapshot,attemptId,chosenView,duration) {
+    if(!(Number.isFinite(duration) && duration>0))return '';
+    return (snapshot.requests||[]).filter(request=>request.attempt_id===attemptId).flatMap(request=>selectedMoments(request).map((moment,index)=>{
+      const target=momentReplayInfo(snapshot,request,moment);
+      if(!target || target.view!==chosenView || target.seconds>duration)return '';
+      const role=moment.role==='before'?'Before':moment.role==='after'?'After':'Moment';
+      const label=`${moment.moment_id||`#${index+1}`} ${role}`;
+      return `<button type="button" class="op-moment-marker" data-selected-moment data-moment-request="${esc(request.request_id)}" data-moment-index="${index}" style="left:${(target.seconds/duration*100).toFixed(2)}%" aria-label="Selected moment ${esc(label)} · ${esc(MOMENT_VIEWS[chosenView])} · ${replayTime(target.seconds)}" title="${esc(moment.note||label)}">${esc(label)}</button>`;
+    })).join('');
+  }
+  function jumpToSelectedMoment(snapshot,request,moment) {
+    const target=momentReplayInfo(snapshot,request,moment);
+    if(!target)return false;
+    const shown=view.querySelector('[data-execution-viewer]')?.dataset.replayAttempt;
+    if(shown!==target.attemptId || cameraChoice(snapshot)!==target.view) {
+      stored(`attention.history:${snapshot.run.run_id}`,target.attemptId);
+      cameraChoices.set(cameraContext(snapshot),target.view);
+      render(snapshot);
+    }
+    const video=view.querySelector('[data-execution-viewer] video[data-history-replay]');
+    if(!video?.requestReplaySeek)return false;
+    video.requestReplaySeek(target.seconds,'moment');
+    view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});
+    return true;
+  }
+  function bindSelectedMomentControls(snapshot) {
+    view.querySelectorAll('[data-request-moments] [data-selected-moment]').forEach(button=>button.addEventListener('click',()=>{
+      const request=(snapshot.requests||[]).find(r=>r.request_id===button.dataset.momentRequest);
+      jumpToSelectedMoment(snapshot,request,selectedMoments(request)[Number(button.dataset.momentIndex)]);
+    }));
+    const panel=view.querySelector('[data-execution-viewer]');
+    const video=panel?.querySelector('video[data-history-replay]');
+    const scrubber=video?.nextElementSibling?.querySelector('.ab-replay-scrubber');
+    if(!scrubber)return;
+    const refresh=()=>{
+      scrubber.querySelectorAll('[data-selected-moment]').forEach(marker=>marker.remove());
+      const chosenView=panel.querySelector('[data-camera-view][aria-pressed="true"]')?.dataset.cameraView||'external';
+      scrubber.insertAdjacentHTML('beforeend',selectedMomentMarkerHTML(snapshot,panel.dataset.replayAttempt,chosenView,video.duration));
+    };
+    scrubber.addEventListener('click',event=>{
+      const marker=event.target.closest('[data-selected-moment]');
+      if(!marker)return;
+      const request=(snapshot.requests||[]).find(r=>r.request_id===marker.dataset.momentRequest);
+      jumpToSelectedMoment(snapshot,request,selectedMoments(request)[Number(marker.dataset.momentIndex)]);
+    });
+    video.addEventListener('loadedmetadata',refresh,{signal:video.industrialTransportAbort?.signal});
+    video.addEventListener('durationchange',refresh,{signal:video.industrialTransportAbort?.signal});
+    refresh();
+  }
   function operatorHelpHistory(snapshot) {
     const seen=new Set();
     const rows=snapshot.requests.filter(r=>{if(seen.has(r.request_id))return false;seen.add(r.request_id);return true;}).sort((a,b)=>(a.created_at || 0)-(b.created_at || 0));
@@ -2998,8 +3075,8 @@
       const attempt=snapshot.attempts.find(a=>a.attempt_id===request.attempt_id),response=snapshot.responses?.[request.response_id];
       const k=attempt?attempt.index+1:null;
       const seconds=response?.created_at!=null && request.created_at!=null ? Math.max(0,Math.round(response.created_at-request.created_at)) : null;
-      const author=response?.responder==='advisor_proxy'?'Advisor':response?.responder==='human'?'You':'Operator';
-      return `<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`;
+      const author=response?.responder==='advisor_proxy'?'Advisor (simulated human)':response?.responder==='human'?'You':'Operator';
+      return `<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`;
     }).join('');
     const hint=snapshot.dev_session && !snapshot.dev_v2 && snapshot.attention_control?.hint;
     const devReply=hint?.content?`<li><div><b>After attempt ${Math.max(1,hint.version-1)}</b><small>${hint.answered_at != null && hint.created_at != null ? `Answered in ${humanDuration(hint.answered_at-hint.created_at)}`:'Answered'}</small></div><div><p class="op-asked">Asked: "Attempt ${Math.max(1,hint.version-1)} failed. How should I fix it?"</p><span class="op-who">You</span><div class="op-clamp" data-operator-copy>${esc(hint.content)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button></div></li>`:'';
@@ -3037,7 +3114,7 @@
     const kFormat=value=>value==null?'—':Number(value)>=1000?`${Math.round(Number(value)/100)/10}k`:number(value);
     const tokens=resources.tokens;
     const textOnlyCount=textOnlyReviews(snapshot).length;
-    const reviewNote=snapshot.dev_eval_enabled && textOnlyCount?`<strong class="op-warn-text" data-text-only-note>${textOnlyCount} HumanProxy answer${textOnlyCount===1?' was':'s were'} text-only (Qwen unavailable)</strong> `:'';
+    const reviewNote=snapshot.dev_eval_enabled && textOnlyCount?`<strong class="op-warn-text" data-text-only-note>${textOnlyCount} Eval agent review${textOnlyCount===1?' was':'s were'} text-only (Qwen unavailable)</strong> `:'';
     const ledger=snapshot.dev_v2?.ledger;
     const exportLink=snapshot.dev_v2?`<a href="/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/export.csv" target="_blank" rel="noopener">Download data (CSV)</a>`:'';
     // Wall-clock time keeps running after a run has ended; it only matters when it is why the run ended.
@@ -3323,6 +3400,7 @@
     bindReplayTimeline(snapshot);
     bindIndustrialReplayControls();
     bindOperatorPresentation();
+    bindSelectedMomentControls(snapshot);
     bindOperatorEnhancements(snapshot,previousRun!==run.run_id);
     const replayForPolicy=view.querySelector('video[data-history-replay]');if(replayForPolicy)updateReplayPolicy(snapshot,replayForPolicy);
     view.querySelectorAll('[data-policy-marker-seconds]').forEach(b=>b.addEventListener('click',()=>{const v=view.querySelector('video[data-history-replay]');if(v&&b.dataset.policyMarkerSeconds!==''){v.pause();v.currentTime=Number(b.dataset.policyMarkerSeconds);}}));
@@ -3774,7 +3852,8 @@
       const request={request_id:requestId,response_id:responseId,run_id:s.session_id,attempt_id:before?.attempt_id||after?.attempt_id,
         trace_id:Object.values(snapshot.traces).find(t=>t.attempt_id===before?.attempt_id)?.trace_id,
         request_type:'hint',state:help?'answered':terminal?'cancelled':'pending',mode:'automatic',created_at:helpJob?.reserved_at??null,
-        reason:decision?.reason||'Recorded assistance',deadline_at:null};
+        reason:decision?.reason||'Recorded assistance',deadline_at:null,
+        selected_moments:help?.selected_moments,localization:help?.localization};
       if(help?.rejected){request.state='rejected';request.reason='Advisor response rejected: '+(help.reason||'Public help boundary rejected the response');}
       snapshot.requests.push(request);
       if(help && !help.rejected) {
