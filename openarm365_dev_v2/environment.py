@@ -48,9 +48,46 @@ def pose(task_id):
         try: yield
         finally: OpenArm365.initial_pose_override=old
 
+def _rounded(value):
+    if isinstance(value,dict):return {str(k):_rounded(v) for k,v in value.items()}
+    if isinstance(value,(list,tuple)):return [_rounded(v) for v in value]
+    if hasattr(value,'tolist'):return _rounded(value.tolist())
+    if isinstance(value,float):return round(value,6)
+    return value if isinstance(value,(int,str,bool)) or value is None else str(value)
+
+def canonical_regions(regions):
+    """Reset regions in an order fixed by their geometry, named geom_0, geom_1, ... in that order.
+
+    Upstream robocasa/models/fixtures/counter.py builds the candidate top geometries with
+    ``list(set(valid_geoms))``. The elements hash by memory address, so which of the left and
+    right regions is called geom_0 changes from reset to reset no matter how the random
+    generators are seeded, and the later ``rng.choice`` then lands on either side. Ordering by
+    the regions' own offsets and sizes removes that dependence on addresses.
+    """
+    if not isinstance(regions,dict):return regions
+    ordered=sorted(regions.values(),key=lambda region:json.dumps(_rounded(region),sort_keys=True))
+    return {f'geom_{i}':region for i,region in enumerate(ordered)}
+
+@contextmanager
+def deterministic_counter_regions():
+    """Apply canonical_regions to Counter.get_reset_regions for the length of the context."""
+    try:
+        from robocasa.models.fixtures.counter import Counter
+    except ModuleNotFoundError:
+        # No simulator installed (unit tests). The real worker imports robocasa before it builds
+        # the environment, so the patch is always applied where scenes are generated.
+        yield
+        return
+    original=Counter.get_reset_regions
+    def get_reset_regions(self,*args,**kwargs):
+        return canonical_regions(original(self,*args,**kwargs))
+    Counter.get_reset_regions=get_reset_regions
+    try:yield
+    finally:Counter.get_reset_regions=original
+
 @contextmanager
 def rng_epoch(seed,env=None):
-    """New experiment reset contract: deterministic entropy fallback and reset RNG."""
+    """New experiment reset contract: deterministic entropy fallback, reset RNG and region order."""
     factory=np.random.default_rng
     np.random.seed(seed);random.seed(seed)
     if env is not None:env.rng=factory(seed)
@@ -60,7 +97,8 @@ def rng_epoch(seed,env=None):
         calls.append({'entropy_replaced':seed_arg is None,'callers':[f.filename+':'+str(f.lineno) for f in traceback.extract_stack(limit=5)[:-1]]})
         return factory(seed if seed_arg is None else seed_arg)
     np.random.default_rng=seeded_default
-    try:yield calls
+    try:
+        with deterministic_counter_regions():yield calls
     finally:np.random.default_rng=factory
 
 def create_env(env_name, **kw):

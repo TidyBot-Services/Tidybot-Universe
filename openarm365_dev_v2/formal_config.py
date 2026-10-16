@@ -28,13 +28,18 @@ def _check_budget(attempt_wall_seconds, whole_case_wall_seconds, sdk_call_limit)
 def make_formal_config(task_id, seed, lock, *, attempt_wall_seconds, whole_case_wall_seconds,
                        sdk_call_limit, layout_id=11, style_id=34, expected_source_root=None,
                        scene_reset_seed=None, scene_contract=None):
+    # Reproducible reset is not optional in a formal configuration: without it the same task and
+    # seed lands on different physical scenes, and policies are no longer compared on the same scene.
+    if scene_reset_seed is None:
+        scene_reset_seed = seed
+    if scene_reset_seed != seed:
+        raise ValueError('scene reset seed must equal the configuration seed')
     _check_budget(attempt_wall_seconds, whole_case_wall_seconds, sdk_call_limit)
     c = copy.deepcopy(make_dev_config(task_id, seed, lock, layout_id, style_id,
                                       expected_source_root=expected_source_root))
     c.update(schema_version=SCHEMA, runner_boundary='formal', attempt_wall_seconds=attempt_wall_seconds,
              whole_case_wall_seconds=whole_case_wall_seconds, sdk_call_limit=sdk_call_limit)
-    if scene_reset_seed is not None:
-        c['scene_reset_seed'] = scene_reset_seed
+    c['scene_reset_seed'] = scene_reset_seed
     if scene_contract is not None:
         c['scene_contract'] = scene_contract
     return c
@@ -47,6 +52,8 @@ def validate_formal_config(c, *, expected_source_root=None):
         raise ValueError('formal configuration must declare the formal boundary')
     if 'eval_agent' in c:
         raise ValueError('recording review is a Dev option, not part of a formal configuration')
+    if c.get('scene_reset_seed') != c.get('seed') or type(c.get('scene_reset_seed')) is not int:
+        raise ValueError('a formal configuration requires reproducible reset (scene_reset_seed equal to the seed)')
     _check_budget(c.get('attempt_wall_seconds'), c.get('whole_case_wall_seconds'), c.get('sdk_call_limit'))
     # Everything except the boundary and the three budget fields is validated by the Dev
     # validator on the equivalent Dev view, so identity, lock, scene and robot checks stay single-sourced.

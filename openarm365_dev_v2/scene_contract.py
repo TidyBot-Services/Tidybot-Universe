@@ -30,14 +30,31 @@ def compare(reference,actual,tolerance=1e-6):
   else:differences.append({'field':path,'reason':'nonnumeric_value'})
  walk(reference,actual,'state')
  return {'matched':not differences,'tolerance':tolerance,'differences':differences,'raw_sha256':fingerprint(actual),'normalized_sha256':fingerprint(actual,True)}
-def validate(ref,task,state):
+SCHEMA_V1='attentionbench.public-scene-contract.v1'
+SCHEMA_V2='attentionbench.public-scene-contract.v2'
+def load_contract(ref):
  p=Path(ref['uri'])
  if hashlib.sha256(p.read_bytes()).hexdigest()!=ref['sha256']:raise ValueError('scene contract digest drift')
  contract=json.loads(p.read_bytes())
- if contract['schema']!='attentionbench.public-scene-contract.v1' or contract['tolerance']!=1e-6:raise ValueError('unregistered scene tolerance')
+ if contract['schema'] not in (SCHEMA_V1,SCHEMA_V2) or contract['tolerance']!=1e-6:raise ValueError('unregistered scene tolerance')
+ return contract
+def seed_entry(contract,task,seed):
+ """v2 contract: one registered public-state fingerprint per (task, seed); a missing seed is refused, never skipped."""
+ if contract['schema']!=SCHEMA_V2:raise ValueError('seed-keyed scene contract required')
+ try:return contract['tasks'][task]['seeds'][str(seed)]
+ except KeyError:raise ValueError(f'scene contract has no reference for {task} seed {seed}') from None
+def validate(ref,task,state,seed=None):
+ contract=load_contract(ref)
+ if contract['schema']==SCHEMA_V2:
+  if type(seed) is not int:raise ValueError('seed-keyed scene contract requires the configuration seed')
+  expected=seed_entry(contract,task,seed)['normalized_sha256']
+  actual=fingerprint(state,True);matched=actual==expected
+  return {'matched':matched,'tolerance':contract['tolerance'],'comparison':'normalized_sha256',
+          'differences':[] if matched else [{'field':'state','reason':'fingerprint_mismatch','reference':expected,'actual':actual}],
+          'raw_sha256':fingerprint(state),'normalized_sha256':actual,'contract':ref,'task_id':task,'seed':seed,
+          'status':'verified' if matched else 'scene_contract_mismatch'}
  result=compare(contract['tasks'][task]['state'],state,contract['tolerance'])
  return {**result,'contract':ref,'task_id':task,'status':'verified' if result['matched'] else 'scene_contract_mismatch'}
-
 def fixture_state(env):
     """Actual world body poses, including Floor/Wall without a yaw property."""
     import numpy as np

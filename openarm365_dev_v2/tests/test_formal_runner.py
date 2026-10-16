@@ -280,3 +280,15 @@ def test_run_budget_loads_through_the_shared_loader_and_sets_the_limits(env):
 def test_run_budget_outside_the_envelope_or_unbound_is_refused(env, change):
     with pytest.raises(ValueError):
         validate_formal_run_budget(run_budget(env, **change), sha(env.config), sha(env.policy))
+
+
+def test_formal_config_requires_reproducible_reset(env):
+    assert env.formal['scene_reset_seed'] == env.formal['seed']
+    without = {k: v for k, v in env.formal.items() if k != 'scene_reset_seed'}
+    with pytest.raises(ValueError, match='reproducible reset'):
+        validate_formal_config(without)
+    with pytest.raises(ValueError, match='reproducible reset'):
+        validate_formal_config(dict(env.formal, scene_reset_seed=env.formal['seed'] + 1))
+    with pytest.raises(ValueError, match='scene reset seed'):
+        make_formal_config(env.dev['task_id'], env.dev['seed'], env.dev['dev_lock'],
+                           scene_reset_seed=env.dev['seed'] + 1, **BUDGET)

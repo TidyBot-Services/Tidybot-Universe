@@ -21,7 +21,7 @@
 | 要求 | 状态 | 依据 |
 |---|---|---|
 | ≥2 个稳定任务 | ⚠️ | 两个任务已注册。是否“稳定”取决于有没有成功：已有 13 个真实 cell（7 种策略各至少 1 个）原生全部失败（文档） |
-| 可重复的成功/失败/重置闭环 | ❌ | **场景不可复现**，见 §3-1 |
+| 可重复的成功/失败/重置闭环 | ⚠️ | 场景不可复现已查明并修复（见 `attentionbench_seed_reproducibility.md`），实验需显式开启 `reproducible_reset`；成功一端仍未验证 |
 | SDK 可见信息边界、oracle 隔离 | ✓ | 求助边界做了字段与文本过滤（`reward`、`evaluator`、`native_success`、`private` 等），Eval agent 注明“never task scoring”（本轮读码） |
 | 开发 / held-out 划分 | ⚠️ | 开发 seed 101–125；**没有 held-out 定义** |
 | 预算、超时 | ✓ | 每 cell 预算与实验总预算显式，预留结算可重算（本轮读码）；数值待小验证实测后再定 |
@@ -50,7 +50,7 @@
 
 ## 3. 关键发现
 
-1. **同 seed 的初始场景不一致（阻塞，公平性）。** 文档记录水槽任务 5 次重置对比为 [匹配、失配、失配、失配、匹配]，目标物体 y 差 1.18 米。**本轮独立复现**：冒烟的三次 seed 101 重置，attempt2 的目标物体在 y=-2.3935，attempt3、4 在 y=-1.211（差 1.1825 m，与历史数值一致）。也就是说同一个“任务×seed”会落到不同的物理场景，策略之间不再是公平比较。Dev 引擎已有 `scene_contract` 机制能把失配的执行标为 `condition_invalid`，但现有配置**都没有启用它**（本轮干跑确认），且柜门的 D3 从未跑过。根因“未完全核实”。
+1. **同 seed 的初始场景不一致（已于 2026-10-16 查明并修复，见 `attentionbench_seed_reproducibility.md`；以下为发现时的描述）。** 文档记录水槽任务 5 次重置对比为 [匹配、失配、失配、失配、匹配]，目标物体 y 差 1.18 米。**本轮独立复现**：冒烟的三次 seed 101 重置，attempt2 的目标物体在 y=-2.3935，attempt3、4 在 y=-1.211（差 1.1825 m，与历史数值一致）。也就是说同一个“任务×seed”会落到不同的物理场景，策略之间不再是公平比较。Dev 引擎已有 `scene_contract` 机制能把失配的执行标为 `condition_invalid`，但现有配置**都没有启用它**（本轮干跑确认），且柜门的 D3 从未跑过。根因“未完全核实”。
 2. **完整规划器在普通矩阵里被削弱。** approval 被拒、interrupt 不可达、Memory 为空，等待期工作只在专用通道。若主矩阵走普通通道，“核心方法”与 `trace_aware_hint_only` 的差别只剩 inspect-trace。若要保住三功能，只能走完整规划器专用通道，但那条通道的真实验收是“部分完成、受阻”。
 3. **没有缓存与重复。** AdvisorProxy 的“相同条件可复现”目前靠温度 0。
 4. **准入机制缺失。** Dev 通道结果永远是 `formal_eligible=false`。要把它当主实验数据，需要定义冻结、签字与准入的方式。
@@ -81,7 +81,8 @@
  "seeds": [101, 102, 103],
  "policies": ["autonomous", "reactive_help", "full_trace_aware_attention_planner"],
  "help_budget": 2, "max_versions": 3, "target_depth": 3,
- "target_valid_executions": 3, "coverage": "strict_full_depth"}
+ "target_valid_executions": 3, "coverage": "strict_full_depth",
+ "reproducible_reset": true}
 ```
 
 **为什么是这三种策略**：`autonomous` 是零求助的下限；`reactive_help` 在每次失败后都求助，是“求助最多能帮多少”的上限；完整规划器是核心方法（普通通道，缺三功能，见 §3-2）。三者之间如果连上限都没有成功，说明没有空间。
@@ -102,7 +103,7 @@
 | 编号 | 规则 | 结果含义 |
 |---|---|---|
 | R1 空间 | 18 个 cell 中至少 1 个出现独立评测的原生成功 | 是：可以设计主矩阵。否：停止，用失败分类定位根因（环境、SDK 原语还是策略），再决定改任务、改 SDK 或加部分进度读数 |
-| R2 场景 | 统计每个（任务，seed）初始场景指纹的不一致率 | 任何不一致：主矩阵被阻塞，必须先修或启用场景契约，并给出被拒绝重置的成本 |
+| R2 场景 | 统计每个（任务，seed）初始场景指纹的不一致率（修复后应为 0） | 任何不一致：说明修复在真实实验里没有生效，主矩阵被阻塞 |
 | R3 基础设施 | `unknown`、`needs_review` ≤ 1 个 cell；账本收据重算无误；无残留进程 | 否则先修 |
 | R4 求助链 | `reactive_help` 的 cell 至少 1 次 Advisor 结算，且求助文本出现在下一版模型输入 | 否则求助链有断点 |
 | R5 成本 | 记录每个 cell 的 token 与墙钟 | 用实测替换 §4 的估算 |

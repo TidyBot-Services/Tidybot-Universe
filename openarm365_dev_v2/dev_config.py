@@ -91,8 +91,10 @@ def validate_dev_config(c,*,expected_source_root=None):
         expected['scene_reset_seed']=c['scene_reset_seed']
     if 'scene_contract' in c:
         from .scene_contract import validate
-        ref=c['scene_contract'];contract=json.loads(Path(ref['uri']).read_bytes())
-        validate(ref,c['task_id'],contract['tasks'][c['task_id']]['state'])
+        from .scene_contract import load_contract,seed_entry,SCHEMA_V2
+        ref=c['scene_contract'];contract=load_contract(ref)
+        if contract['schema']==SCHEMA_V2:seed_entry(contract,c['task_id'],c['seed'])
+        else:validate(ref,c['task_id'],contract['tasks'][c['task_id']]['state'])
         if 'scene_reset_seed' not in c:raise ValueError('scene contract requires reproducible reset')
         expected['scene_contract']=ref
     if 'eval_agent' in c:

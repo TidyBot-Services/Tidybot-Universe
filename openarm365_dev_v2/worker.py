@@ -86,7 +86,7 @@ def main():
                 perception={'source':'official_public_sim_gt','values':values})
         from .scene_contract import capture_state,validate
         scene_state=capture_state(env)
-        condition=validate(c['scene_contract'],c['task_id'],scene_state) if 'scene_contract' in c else None
+        condition=validate(c['scene_contract'],c['task_id'],scene_state,c['seed']) if 'scene_contract' in c else None
         (args.evidence/'scene-condition.json').write_text(json.dumps({'state':scene_state,'validation':condition},sort_keys=True,indent=2)+'\n')
         scene=env.model.get_xml()
         (args.evidence/'scene.xml').write_text(scene)
