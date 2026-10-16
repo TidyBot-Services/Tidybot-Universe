@@ -2506,8 +2506,14 @@
   }
   // Attention mechanism presentation: server permissions and persisted records.
   let memoryCatalogue = null, memorySelected = null, memoryMessage = '';
+  // The server decides what may still be done with a request (permitted_actions). A server or
+  // record that predates the field keeps the controls it always had; actions added later, such as
+  // ignoring a request, are only ever shown when the server says they exist.
+  const LEGACY_REQUEST_ACTIONS = new Set(['respond_hint','approve_or_deny','confirm_interrupt','defer','cancel']);
   function requestAllowed(request, action) {
-    return Array.isArray(request?.permitted_actions) && request.permitted_actions.includes(action);
+    if (!request) return false;
+    if (!Array.isArray(request.permitted_actions)) return LEGACY_REQUEST_ACTIONS.has(action);
+    return request.permitted_actions.includes(action);
   }
   function requestMechanismDetails(snapshot, chosen) {
     const rows = snapshot.request_timeline?.requests || [];
@@ -2551,7 +2557,12 @@
   }
   function bindAttentionPanels(snapshot,chosen) {
     const region=view.querySelector('[data-core-region="request"]');
-    if(region && !snapshot.dev_session) region.insertAdjacentHTML('beforeend',requestMechanismDetails(snapshot,chosen)+memoryPanel(snapshot));
+    if(region && !snapshot.dev_session) {
+      // Folded while idle so the request region stays compact; open when someone has to act.
+      const waiting=actionableRequests(snapshot).length>0;
+      // A sibling after the region, not inside it: the idle request region has a height budget.
+      region.insertAdjacentHTML('afterend',`<details class="panel ab-attention-mechanism" data-attention-mechanism data-persist-detail="attention-mechanism:${esc(snapshot.run.run_id)}"${waiting?' open':''}><summary>Evidence, explanations and Memory</summary>${requestMechanismDetails(snapshot,chosen)}${memoryPanel(snapshot)}</details>`);
+    }
     if(!snapshot.dev_session) {
       view.querySelector('[data-run-settings]')?.insertAdjacentHTML('beforeend',attentionRunContext(snapshot));
       view.querySelector('[data-resource-details]')?.insertAdjacentHTML('beforeend',resourceContext(snapshot));
@@ -2909,7 +2920,7 @@
   function operatorOverview(snapshot) {
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','How is it going?')}${operatorOutcome(snapshot)}${operatorFlow(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','How is it going?')}${operatorOutcome(snapshot)}${operatorFlow(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -3095,6 +3106,90 @@
   function devV2LedgerDetails(snapshot) {
     const c=snapshot.dev_v2,g=c.ledger.goal,base=`/api/dev-v2/experiments/${encodeURIComponent(c.experiment_id)}`;
     return `<details data-persist-detail="v2-ledger:${esc(c.key)}"><summary>Experiment ledger & exports</summary><p>${esc(c.mode==='interactive'?'Interactive session · excluded from comparison':'Frozen experimental policy')} · Development only</p><p>Goal: <code>${esc(c.ledger.goal_id)}</code> · Experiment: <code>${esc(c.experiment_id)}</code></p><p><a href="${base}/export.json" target="_blank">Export JSON</a> · <a href="${base}/export.csv" target="_blank">Export CSV</a> · <a href="${base}/ledger.json" target="_blank">Resource ledger</a></p><p>Recomputed ledger: ${c.ledger.recompute_matches?'matches':'MISMATCH · review required'}</p><pre>${esc(JSON.stringify({limits:g.limits,used:g.used,reserved:g.reserved},null,2))}</pre></details>`;
+  }
+
+  // Attention efficiency: task progress per unit of human attention.
+  // Progress is the native pass/fail of each attempt (no partial credit is recorded).
+  // Attention is the time between a help request and a person's reply, plus the logical credit each reply costs.
+  function attentionLedger(snapshot) {
+    const attempts=[...snapshot.attempts].sort((a,b)=>a.index-b.index);
+    const succeeded=a=>snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true||a.status==='succeeded';
+    const solved=attempts.find(succeeded)||null;
+    const rows=[], control=snapshot.attention_control, dev=snapshot.dev_session;
+    if (dev && !snapshot.dev_v2) {
+      const events=control?.events||[];
+      for (const e of events.filter(x=>x.kind==='hint_requested')) {
+        const closed=events.find(x=>x.request_id===e.request_id && /^hint_(answered|skipped)$/.test(x.kind));
+        rows.push({id:e.request_id,kind:'hint',reason:control?.hint?.request_id===e.request_id?control.hint.reason:null,requestedAt:e.at,answeredAt:closed&&closed.kind==='hint_answered'?closed.at:null,state:closed?closed.kind.slice(5):'pending',responder:'human',nextIndex:e.version});
+      }
+    } else if (dev) {
+      for (const job of (dev.jobs||[]).filter(j=>['advisor','demo','cache'].includes(j.kind)).sort((a,b)=>a.version-b.version))
+        rows.push({id:job.job_id||`${job.kind}:${job.version}`,kind:job.kind==='demo'?'demo':'advisor',reason:null,requestedAt:null,answeredAt:null,state:job.state==='settled'?'answered':'pending',responder:'advisor',nextIndex:job.version-1});
+    } else {
+      for (const r of snapshot.requests||[]) {
+        const response=snapshot.responses?.[r.response_id], linked=snapshot.response_evidence?.[r.request_id]?.association?.attempt_id;
+        const from=attempts.find(a=>a.attempt_id===r.attempt_id), next=attempts.find(a=>a.attempt_id===linked);
+        rows.push({id:r.request_id,kind:r.request_type||'hint',reason:r.reason,requestedAt:r.created_at,answeredAt:response?.created_at??null,state:response?'answered':r.state,responder:response?.responder==='human'?'human':response?'advisor':(r.mode==='live_human_first'?'human':'advisor'),nextIndex:next?next.index:from?from.index+1:null});
+      }
+    }
+    const now=Date.now()/1000;
+    for (const row of rows) {
+      row.seconds=row.responder==='human'&&row.requestedAt!=null?(row.answeredAt!=null?Math.max(0,row.answeredAt-row.requestedAt):row.state==='pending'?Math.max(0,now-row.requestedAt):0):0;
+      const next=attempts.find(a=>a.index===row.nextIndex);
+      row.effect=row.state!=='answered'?(row.state==='pending'?'awaiting_reply':'no_reply'):!next?'waiting':succeeded(next)?'fixed':next.status==='running'?'running':'still_failed';
+    }
+    const humanSeconds=rows.reduce((t,r)=>t+r.seconds,0);
+    const humanRows=rows.filter(r=>r.responder==='human'&&r.state==='answered').length;
+    const credits=snapshot.resources?.help_count||snapshot.resources?.assistance||null;
+    const judged=rows.filter(r=>r.effect==='fixed'||r.effect==='still_failed');
+    const maximum=snapshot.dev_session?.budget?.executions??snapshot.task_plan?.max_attempts??attempts.length;
+    return {rows,attempts,solved,attemptsRun:attempts.length,maximum,humanSeconds,humanRows,requests:rows.length,
+      credits:credits&&credits.used!=null?credits:{used:rows.length,limit:null},hits:rows.filter(r=>r.effect==='fixed').length,judged:judged.length,
+      anyHuman:rows.some(r=>r.responder==='human'),terminal:isTerminal(snapshot)||(dev&&['stopped','budget_exhausted','failed','needs_review','completed','cancelled'].includes(dev.state))};
+  }
+  function attentionTime(seconds) {
+    const v=Math.max(0,Number(seconds)||0);
+    return v<60?`${Math.round(v)}s`:operatorTime(v);
+  }
+  function attentionFrontier(snapshot) {
+    const policies=snapshot.comparison?.policies||[];
+    if (!policies.length) return '';
+    const useTime=policies.some(p=>p.average_human_seconds>0), key=useTime?'average_human_seconds':'average_assistance_used';
+    const xmax=Math.max(1,...policies.map(p=>Number(p[key])||0))*1.15, W=560, H=230, L=48, R=16, T=14, B=40;
+    const x=v=>L+(Number(v)||0)/xmax*(W-L-R), y=v=>T+(1-v)*(H-T-B);
+    const active=snapshot.attention_control?.active_policy||snapshot.run.policy_id;
+    const dots=policies.map(p=>{
+      const cx=x(p[key]),cy=y(p.success_rate),on=p.policy_id===active;
+      return `<g class="op-frontier-pt${on?' active':''}"><circle cx="${cx}" cy="${cy}" r="${on?8:6}"/><text x="${cx+(cx>W-120?-12:12)}" y="${cy+4}" text-anchor="${cx>W-120?'end':'start'}">${esc(policyTitle(p.policy_id))} · ${Math.round(p.success_rate*100)}% (${p.successes}/${p.runs})</text></g>`;
+    }).join('');
+    const grid=[0,.5,1].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end">${v*100}%</text>`).join('');
+    const ticks=[0,.5,1].map(f=>`<text x="${x(xmax*f)}" y="${H-20}" text-anchor="middle">${useTime?attentionTime(xmax*f):number(xmax*f)}</text>`).join('');
+    return `<div class="op-frontier" data-attention-frontier><h4>Success vs. human attention <small>across finished runs of this task · each dot is one help strategy</small></h4><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Success rate against average ${useTime?'human time':'help requests'} per run"><g class="op-frontier-grid">${grid}</g>${ticks}<text x="${(L+W-R)/2}" y="${H-3}" text-anchor="middle" class="op-frontier-axis">${useTime?'Average human time per run':'Average help requests per run'} →</text>${dots}</svg>${snapshot.comparison.comparable?'':'<p class="minor">These strategies were not run on the same seeds, so read the chart as a rough guide, not a fair comparison.</p>'}</div>`;
+  }
+  function attentionEfficiency(snapshot) {
+    const g=attentionLedger(snapshot);
+    const state=g.solved?'solved':g.terminal?'unsolved':'running';
+    const progress={solved:'Solved ✓',unsolved:'Not solved',running:'In progress'}[state];
+    const progressNote=g.solved?`on attempt ${g.solved.index+1} of ${g.maximum||'?'}`:g.attemptsRun?`${g.attemptsRun} attempt${g.attemptsRun===1?'':'s'} so far`:'no attempt yet';
+    const spent=g.humanSeconds>0||g.anyHuman?attentionTime(g.humanSeconds):'0s';
+    const who=!g.requests?'no help requested':g.anyHuman?`${g.requests} request${g.requests===1?'':'s'} · ${g.humanRows} answered by a person`:`${g.requests} request${g.requests===1?'':'s'} · answered by the automatic advisor`;
+    let rate, rateNote;
+    if (g.solved && !g.requests) { rate='No help needed'; rateNote='solved with zero human attention'; }
+    else if (g.solved && g.humanSeconds>0) { rate=`${(60/g.humanSeconds).toFixed(g.humanSeconds<6?0:1)}`; rateNote='tasks solved per human-minute'; }
+    else if (g.solved) { rate=`1 per ${g.requests}`; rateNote=`task solved per help request${g.requests===1?'':'s'}`; }
+    else { rate='0'; rateNote=g.requests?`tasks solved · ${g.anyHuman?spent+' of human time':g.requests+' help request'+(g.requests===1?'':'s')} spent`:'tasks solved so far'; }
+    const hit=g.judged?`${g.hits} / ${g.judged}`:'—';
+    const effect={fixed:['✓ Next attempt succeeded','good'],still_failed:['✕ Next attempt still failed','bad'],running:['● Next attempt running','mid'],waiting:['… Waiting for the next attempt','mid'],awaiting_reply:['● Waiting for a reply','mid'],no_reply:['— No reply given','mid']};
+    const kind={hint:'Hint',approval:'Approval',interrupt:'Interrupt',advisor:'Automatic advisor',demo:'Example'};
+    const table=g.rows.length?`<table class="op-attn-table" data-attention-requests><thead><tr><th>#</th><th>Help</th><th>Why it was asked</th><th>Attention spent</th><th>Effect</th></tr></thead><tbody>${g.rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(kind[r.kind]||label(r.kind))}<small>${r.responder==='human'?'person':'automatic'}</small></td><td>${esc(r.reason?label(r.reason):'—')}</td><td>${r.responder==='human'?`${attentionTime(r.seconds)}${r.state==='pending'?' · waiting':''}`:'1 credit'}</td><td class="${effect[r.effect][1]}">${effect[r.effect][0]}</td></tr>`).join('')}</tbody></table>`:`<p class="op-attn-empty">${g.terminal?'No help was requested in this run.':'No help has been requested yet. Once the robot asks, each request shows up here with the attention it cost and what happened next.'}</p>`;
+    const credits=Number(g.credits.limit)>0?` · credits ${g.credits.used} / ${g.credits.limit}`:'';
+    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><h4>Attention efficiency <small>Was the human attention worth it?</small></h4>
+      <div class="op-attn-kpis"><div class="op-attn-kpi"><span>Task progress</span><b data-kpi="progress">${progress}</b><small>${esc(progressNote)}</small></div>
+      <div class="op-attn-kpi"><span>Human attention spent</span><b data-kpi="spent">${esc(spent)}</b><small>${esc(who)}${esc(credits)}</small></div>
+      <div class="op-attn-kpi headline"><span>Progress per attention</span><b data-kpi="rate">${esc(rate)}</b><small>${esc(rateNote)}</small></div>
+      <div class="op-attn-kpi"><span>Help that paid off</span><b data-kpi="hit">${hit}</b><small>${g.judged?'requests followed by a solved attempt':'no help has been judged yet'}</small></div></div>
+      <details class="op-attn-more" data-persist-detail="attention-efficiency"><summary>Each help request and how strategies compare</summary>${table}${attentionFrontier(snapshot)}
+      <p class="op-attn-foot">Progress per attention = tasks solved ÷ human attention. Attention is the time from a help request to a person's reply; automatic-advisor replies count as credits, not human time. Task progress is pass/fail per attempt; no partial credit is recorded.</p></details></div>`;
   }
 
   function resourceDetails(snapshot = null) {

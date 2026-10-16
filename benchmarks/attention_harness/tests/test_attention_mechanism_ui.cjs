@@ -11,7 +11,14 @@ test('request controls derive from server actions; disposition does not rename s
  assert.match(html,/answered · Reply ignored/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
  assert.match(html,/data-ignore-request/);assert.doesNotMatch(html,/data-defer-request|data-cancel-request/);
  assert.equal(api().requestAllowed({...request,permitted_actions:[]},'ignore'),false);
- assert.equal(api().requestAllowed({},'respond_hint'),false);
+ // A request without permitted_actions (older server or record) keeps the controls it always had;
+ // only an action that did not exist before, ignoring, requires the server to name it.
+ for(const action of ['respond_hint','approve_or_deny','confirm_interrupt','defer','cancel'])assert.equal(api().requestAllowed({request_id:'old'},action),true,action);
+ assert.equal(api().requestAllowed({request_id:'old'},'ignore'),false);
+ // When the server does send the list it is authoritative, including for the long-standing actions.
+ for(const action of ['respond_hint','approve_or_deny','defer','cancel','ignore'])assert.equal(api().requestAllowed({permitted_actions:[]},action),false,action);
+ assert.equal(api().requestAllowed({permitted_actions:['defer']},'respond_hint'),false);
+ assert.equal(api().requestAllowed(null,'respond_hint'),false);
 });
 test('timeline shows persisted reply, execution and candidate identities',()=>{
  const request={request_id:'r',request_type:'hint',state:'answered'};
