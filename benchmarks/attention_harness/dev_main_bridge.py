@@ -139,6 +139,10 @@ class DevMainBridge:
         selection.update(goal_key=self.goal_key,goal_limits=g['limits'],wall_limit=g['wall_limit'],cell_budget=budget,
             coverage='budget_limited',target_depth=depth,target_valid_executions=depth,max_versions=depth,
             reproducible_reset=True,planner_features=dict(human_wait_seconds=v.get('human_wait_seconds',60),memory=self.memory))
+        if selection['mode']=='experiment':
+            # Experiment mode starts every cell from the registered physical scene; seeds without a reference are refused at creation.
+            from openarm365_dev_v2.scene_contract import registered_contract_ref
+            selection['scene_contract']=registered_contract_ref()
         # An operator may lower the wall for this particular experiment, without
         # changing the persistent goal deadline or the immutable old goal row.
         e=experiments.create(self.store,self.artifacts,selection)

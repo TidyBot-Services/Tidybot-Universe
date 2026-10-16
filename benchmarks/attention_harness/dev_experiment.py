@@ -1,7 +1,7 @@
 """Persistent, serial, public-only Dev experiments; no formal approvals minted."""
 import argparse,copy,hashlib,json,os,time
 from pathlib import Path
-from .dev_configuration import FIELDS,normalize_configuration,configured_budget,worst_slot
+from .dev_configuration import FIELDS,normalize_configuration,configured_budget,worst_slot,require_scene_gate
 from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded,experiment_goal
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .dev_loop import immutable,sha,process_identity,owner_alive
@@ -45,6 +45,7 @@ def create(store,artifact_root,selection):
     if mode=='interactive' and (len(tasks),len(seeds),len(policies))!=(1,1,1):raise ValueError('interactive session has one task/seed/policy')
     for t in tasks:
         for seed in seeds:validate_selection(t,seed)
+    require_scene_gate(mode,selection,tasks,seeds)
     help_budget=selection.get('help_budget',1)
     if type(help_budget) is not int or not 0<=help_budget<=2:raise ValueError('help budget must be 0–2')
     trace_visible=selection.get('trace_visible',True)

@@ -80,7 +80,7 @@ def main():
     from openarm365_dev_v2.scene_contract import validate
     for ref in pre['scene_replay_states']:
         state=json.loads(checked(ref).read_bytes())
-        if not validate(pre['scene_contract'],pre['task_id'],state)['matched']:raise DevConflict('D3 scene prerequisites failed; no validation dispatch')
+        if not validate(pre['scene_contract'],pre['task_id'],state,pre.get('seed'))['matched']:raise DevConflict('D3 scene prerequisites failed; no validation dispatch')
     if len(pre['scene_replay_states'])!=2 or pre['scene_replay_states'][0]['uri']==pre['scene_replay_states'][1]['uri']:raise DevConflict('two independent original scene replays required')
     s=DevV2Store(LEDGER);c=s.cell(a.cell)
     with s.tx() as db:

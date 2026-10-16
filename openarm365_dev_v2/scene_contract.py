@@ -32,6 +32,14 @@ def compare(reference,actual,tolerance=1e-6):
  return {'matched':not differences,'tolerance':tolerance,'differences':differences,'raw_sha256':fingerprint(actual),'normalized_sha256':fingerprint(actual,True)}
 SCHEMA_V1='attentionbench.public-scene-contract.v1'
 SCHEMA_V2='attentionbench.public-scene-contract.v2'
+REGISTERED_CONTRACT=Path(__file__).resolve().parent/'scene_contracts'/'dev-seeds-101-103-v2-20261016.json'
+REGISTERED_SHA256="44a386e908fd94a5bef2359fac364ab047d4c97940050dc17895245bbac7fd63"
+def registered_contract_ref():
+ """Reference to the contract registered for development experiments. Pinned by digest in code: editing the file without
+ re-registering it here fails closed instead of silently changing what counts as the same scene."""
+ digest=hashlib.sha256(REGISTERED_CONTRACT.read_bytes()).hexdigest()
+ if digest!=REGISTERED_SHA256:raise ValueError('registered scene contract changed without re-registration')
+ return {'uri':str(REGISTERED_CONTRACT),'sha256':digest}
 def load_contract(ref):
  p=Path(ref['uri'])
  if hashlib.sha256(p.read_bytes()).hexdigest()!=ref['sha256']:raise ValueError('scene contract digest drift')

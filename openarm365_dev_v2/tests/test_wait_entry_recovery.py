@@ -28,7 +28,7 @@ def fixture(tmp_path):
     limits={k:2*v for k,v in budget.items()};store=DevV2Store(tmp_path/'ledger.sqlite');store.ensure_goal(gid,limits,7200)
     memory=dict(base_url='http://127.0.0.1:1',store_id='controlled-authority',namespace='controlled-namespace')
     b=main.DevMainBridge(store.path,tmp_path/'artifacts',key,memory)
-    body=dict(start=False,selection=dict(request_key='controlled-recovery',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[125],policies=[planner.POLICY],mode='experiment',help_budget=0,human_wait_seconds=600,
+    body=dict(start=False,selection=dict(request_key='controlled-recovery',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[101],policies=[planner.POLICY],mode='experiment',help_budget=0,human_wait_seconds=600,
         configuration=dict(goal_id=key,experiment_budget=limits,cell_budget=budget,max_iterations=1,wall_seconds=7200)))
     e=b.create(body);c=e['cells'][0]
     root=Path(e['artifact_dir'])/'cells'/c['key'];root.mkdir(parents=True)

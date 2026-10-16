@@ -1,0 +1,71 @@
+{
+ "provenance": {
+  "built": "2026-10-16",
+  "hook": "scene_reset_seed == seed (canonical region order)",
+  "layout_style": [
+   11,
+   34
+  ],
+  "note": "dev seeds 101-103 only; other seeds have no reference and are refused, not skipped",
+  "probe": "/home/truares/\u684c\u9762/AttentionBench-Workspace/development/Tidybot-Universe-attention-native/outputs/seed-probe-20261016",
+  "seeds_covered": [
+   101,
+   102,
+   103
+  ],
+  "sources": [
+   "accept.jsonl",
+   "cabinet_extra_101.jsonl",
+   "cabinet_extra_102.jsonl",
+   "cabinet_extra_103.jsonl"
+  ]
+ },
+ "schema": "attentionbench.public-scene-contract.v2",
+ "tasks": {
+  "open_cabinet": {
+   "seeds": {
+    "101": {
+     "fresh_processes": 20,
+     "normalized_sha256": "ab3b0e4a9338a83598180c686778189e8ff45e9bca5b885911222eb16cd54dc2",
+     "raw_sha256": "351d75c10b56d279a6f6c0d8faa0a4b982454dd60b86d31dca1438dd3496202c",
+     "resets": 60
+    },
+    "102": {
+     "fresh_processes": 20,
+     "normalized_sha256": "9fe7be04ba3d574d4b85479f4d9cd7758f046fc2f718ce5249119e334df9c244",
+     "raw_sha256": "6fc101bc16d449aaa9d36017ee27b571053f38de6a288a9a8531231a2f52cef8",
+     "resets": 60
+    },
+    "103": {
+     "fresh_processes": 20,
+     "normalized_sha256": "2330fffa583f545f47d808fb8ac8328ee2daa8e37d8015d9fd0acf4af3594525",
+     "raw_sha256": "19ec05ca02c96764afe2a3f24b247c949283482f0382d1bdc3f8d2cb647b0817",
+     "resets": 60
+    }
+   }
+  },
+  "pick_place_counter_to_sink": {
+   "seeds": {
+    "101": {
+     "fresh_processes": 20,
+     "normalized_sha256": "1526f4a1d93b589f848eb2718014f4585b002fdbb62fd6c12933b52ea8435a12",
+     "raw_sha256": "4b8301a7bf568cc74428f6df4d6ee462286c63eaa5319277426908a059209bde",
+     "resets": 40
+    },
+    "102": {
+     "fresh_processes": 20,
+     "normalized_sha256": "d844035e63a67adae07bbd799f76af4e86fb2b07b7c095cc01be606d7399fbae",
+     "raw_sha256": "ac45a0dfeb6ac46c98912be1f7e62da13b5aec4da4096e4ed88a61e6afe2b12f",
+     "resets": 40
+    },
+    "103": {
+     "fresh_processes": 20,
+     "normalized_sha256": "4203d8d6e2a8431d90247752cb6a85bccad5f432e585537afca9c9ea6739eda3",
+     "raw_sha256": "0b83d3fc87f882887e2f13cdb9278dcb9f229392853a997e15c7b8c2009ae9c1",
+     "resets": 40
+    }
+   }
+  }
+ },
+ "tolerance": 1e-06
+}

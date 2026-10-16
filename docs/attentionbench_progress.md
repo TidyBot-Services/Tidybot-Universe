@@ -1,3 +1,11 @@
+<!-- week1-scene-gate-20261016 -->
+## 第 1 周场景门收尾：补测、Dev v2 强制开启、held-out 登记（2026-10-16）
+
+柜门补测完成：seed 101–103 每个 20 个新进程、60 次重置，各只有 1 个指纹，与阶段 3 逐位一致（水槽此前已是每 seed 20 进程）。`dev_experiment.create` 在实验模式下经 `require_scene_gate` 强制 `reproducible_reset: true` 和覆盖所选（任务，seed）的 `scene_contract`，缺任何一项在分发前拒绝；主桥（`dev_main_bridge`，UI 创建实验的路径）自动带上已登记的契约，因此 UI 里实验模式现在只能选 seed 101–103；新增按 seed 登记指纹的 v2 契约并登记了两个任务 × seed 101–103（`openarm365_dev_v2/scene_contracts/`）。held-out 固定为 1001–1010（`HELD_OUT_SEEDS`），开发路径拒绝；这些编号没有跑过任何东西。
+
+没做/没验证：旧的 daily 桥（独立 `configuration` 写法，`daily_dev_v2`）不受该门约束，因为它无法表达这两项；其余 22 个开发 seed 的指纹和契约条目；固定动作 rollout 指纹；柜门在真实 worker 里与契约的首次比对；HumanProxy、review 请求、协议文档。测试：根目录 conftest 对其余测试关闭该门（它们用模拟 runner），只有 `scene_gate` 标记的测试用真实检查。全部改动未提交。详见 `docs/attentionbench_seed_reproducibility.md` 第 4–5 节。
+<!-- /week1-scene-gate-20261016 -->
+
 <!-- p3-ui-20261016 -->
 ## P3：补回 Attention efficiency，修请求/回复面板的 19 个前端失败
 

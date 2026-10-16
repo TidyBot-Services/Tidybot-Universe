@@ -101,9 +101,16 @@ def make_bridge(tmp_path):
     limits={k:2*v for k,v in budget.items()};s.ensure_goal(gid,limits,7200)
     memory_settings=dict(base_url='http://127.0.0.1:1',store_id='controlled-authority',namespace='controlled-namespace')
     b=DevMainBridge(s.path,tmp_path/'artifacts',key,memory_settings)
-    body=dict(start=False,selection=dict(request_key='controlled-main-bridge',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[125],policies=[POLICY],mode='experiment',help_budget=0,human_wait_seconds=1,
+    body=dict(start=False,selection=dict(request_key='controlled-main-bridge',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[101],policies=[POLICY],mode='experiment',help_budget=0,human_wait_seconds=1,
         configuration=dict(goal_id=key,experiment_budget=limits,cell_budget=budget,max_iterations=1,wall_seconds=7200)))
     return b,body
+
+
+@pytest.mark.scene_gate
+def test_main_bridge_experiment_refuses_seeds_without_a_registered_scene_reference(tmp_path):
+    b,body=make_bridge(tmp_path);body['selection']['seeds']=[125]
+    with pytest.raises(ValueError,match='seed 125'):b.create(body)
+    assert b.list()==[] or not any(row for row in b.list() if row.get('selection',{}).get('seeds')==[125])
 
 
 def test_main_bridge_maps_actual_frozen_configuration_and_no_clock_on_refresh(tmp_path):
@@ -112,7 +119,9 @@ def test_main_bridge_maps_actual_frozen_configuration_and_no_clock_on_refresh(tm
     m=json.loads(Path(e['manifest']['uri']).read_bytes())
     assert m['target_depth']==m['target_valid_executions']==m['max_versions']==1
     assert m['planner_features']['memory']==b.memory and m['planner_features']['human_wait_seconds']==1
-    assert {v['seed'] for v in m['configs'].values()}=={125}
+    assert {v['seed'] for v in m['configs'].values()}=={101}
+    from openarm365_dev_v2.scene_contract import registered_contract_ref
+    assert all(v['scene_contract']==registered_contract_ref() and v['scene_reset_seed']==v['seed'] for v in m['configs'].values())
     assert {v['sdk_call_limit'] for v in m['configs'].values()}=={80}
     b.list();b.get('/api/dev-v2/options');assert b.store.goal(b.goal_id)['real_started_at'] is None
     assert b.create(body)['experiment_id']==e['experiment_id']

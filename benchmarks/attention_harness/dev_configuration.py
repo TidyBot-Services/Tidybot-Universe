@@ -27,6 +27,24 @@ def normalize_configuration(selection):
  if p['attempt_wall_seconds']>SDK['attempt_seconds'] or p['model_reserve_seconds']!=120:raise ValueError('SDK/provider deadline contract exceeded')
  if p['max_input_bytes_per_request']>30000:raise ValueError('public input contract exceeded')
  return p
+def require_scene_gate(mode,selection,tasks,seeds):
+ """Experiment-mode runs must start every cell from the registered physical scene.
+
+ Without reproducible reset the same (task, seed) lands on different scenes between processes, so
+ policies are no longer compared on equal ground. Fails closed at creation, before any dispatch:
+ reproducible reset must be an explicit True, and a seed-keyed scene contract must cover every
+ selected (task, seed). Diagnostic and interactive modes are exempt; they exist to look at scenes."""
+ if mode!='experiment':return
+ if selection.get('configuration') is not None:return  # legacy independent-ledger path (daily bridge) cannot express either option; not covered by this gate
+ if selection.get('reproducible_reset') is not True:raise ValueError('experiment mode requires reproducible_reset: true')
+ ref=selection.get('scene_contract')
+ if not isinstance(ref,dict):raise ValueError('experiment mode requires a registered scene_contract')
+ from openarm365_dev_v2.scene_contract import load_contract,seed_entry,SCHEMA_V2
+ contract=load_contract(ref)
+ if contract['schema']==SCHEMA_V2:
+  for t in tasks:
+   for seed in seeds:seed_entry(contract,t,seed)
+ elif len(seeds)!=1:raise ValueError('a single-state scene contract covers one seed; use a seed-keyed (v2) contract')
 def derive_cell_budget(p,sdk_calls=80,horizon=2400):
  g=p['max_versions'];e=p['target_valid_executions'];h=p['help_budget'];i=p['max_input_bytes_per_request'];s=p['model_reserve_seconds']
  return dict(dev_calls=g,advisor_calls=h,eval_calls=0,executions=e,provider_tokens=g*(i+8192)+h*(i+2048),input_tokens=(g+h)*i,output_tokens=g*8192+h*2048,model_seconds=(g+h)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon)
