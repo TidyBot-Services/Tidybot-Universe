@@ -1,0 +1,34 @@
+{
+  "action_trace": [
+    {
+      "operation": "get_observation",
+      "source": "sensors",
+      "status": "completed"
+    },
+    {
+      "operation": "find_objects",
+      "source": "sensors",
+      "status": "completed"
+    },
+    {
+      "operation": "get_observation",
+      "source": "sensors",
+      "status": "completed"
+    },
+    {
+      "operation": "open",
+      "source": "left_gripper",
+      "status": "completed"
+    },
+    {
+      "operation": "get_observation",
+      "source": "sensors",
+      "status": "completed"
+    },
+    {
+      "operation": "move_delta",
+      "source": "left_arm",
+      "status": "failed"
+    }
+  ]
+}

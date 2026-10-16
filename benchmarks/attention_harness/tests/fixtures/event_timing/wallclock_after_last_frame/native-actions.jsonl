@@ -1,0 +1,2 @@
+{"command": -1.0, "event": "gripper_intent", "request_id": "84b76a30a3074643967720d0652a466e", "sequence": 0, "side": "left"}
+{"event": "receipt", "physical_side": "left", "request_id": "84b76a30a3074643967720d0652a466e", "sequence": 20, "start_sequence": 0, "status": "completed"}

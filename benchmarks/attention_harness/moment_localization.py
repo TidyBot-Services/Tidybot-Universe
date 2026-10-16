@@ -17,7 +17,7 @@ def locate_event(event, replay_timing):
     """
     stamp = event.get('timestamp') if isinstance(event, dict) else None
     if not isinstance(event, dict) or event.get('timestamp_basis') != 'relative' or isinstance(stamp, bool) or not isinstance(stamp, (int, float)) or not math.isfinite(stamp) or stamp < 0:
-        return {'status': 'unavailable', 'reason': 'no_relative_timestamp'}
+        return {'status': 'unavailable', 'reason': event.get('event_timing_reason', 'no_relative_timestamp') if isinstance(event, dict) else 'no_relative_timestamp'}
     if not isinstance(replay_timing, dict):
         return {'status': 'unavailable', 'reason': 'recording_time_mapping_missing'}
     traces = replay_timing.get('frame_trace_seconds')

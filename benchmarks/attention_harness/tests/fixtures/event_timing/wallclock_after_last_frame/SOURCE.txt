@@ -1,0 +1,1 @@
+New real recording made on 2026-10-17 with the fixed pipeline (scripted free model reply, real simulator): task pick_place_counter_to_sink, seed 101, v1. The public events carry wall-clock timestamps; the failing move_delta completes about 35 s after the last recorded frame.

@@ -1,0 +1,9 @@
+{"request": {"group": "sensors", "operation": "get_observation", "request_id": "35b3a21dc6674bbaa79f6b6334ed1b45"}, "response": {"ok": true, "request_id": "35b3a21dc6674bbaa79f6b6334ed1b45", "sequence": 0}}
+{"request": {"group": "sensors", "operation": "find_objects", "request_id": "52bb3096a70c44fd899704ab8c2b7cc2"}, "response": {"ok": true, "request_id": "52bb3096a70c44fd899704ab8c2b7cc2", "sequence": 0}}
+{"request": {"group": "sensors", "operation": "get_observation", "request_id": "34f2025e855340db9e6d45d759643c07"}, "response": {"ok": true, "request_id": "34f2025e855340db9e6d45d759643c07", "sequence": 0}}
+{"request": {"group": "left_gripper", "operation": "open", "request_id": "8609ccb34c5f470d8b7bfd432b176da0"}, "response": {"ok": true, "request_id": "8609ccb34c5f470d8b7bfd432b176da0", "sequence": 20}}
+{"request": {"group": "sensors", "operation": "get_observation", "request_id": "feb21b3c0d41417a8bd02a63d7573855"}, "response": {"ok": true, "request_id": "feb21b3c0d41417a8bd02a63d7573855", "sequence": 20}}
+{"request": {"group": "left_arm", "operation": "move_delta", "request_id": "bbfda8fe6aaf4de08dee1e79c25151b4"}, "response": {"ok": false, "request_id": "bbfda8fe6aaf4de08dee1e79c25151b4", "sequence": 61}}
+{"request": {"group": "owner", "operation": "observe", "request_id": "9c1658789c9c41e28a5f966e2c65b59d"}, "response": {"ok": true, "request_id": "9c1658789c9c41e28a5f966e2c65b59d", "sequence": 61}}
+{"request": {"group": "owner", "operation": "observe", "request_id": "be8e9af5cc9d44c2b2c4901341618ec7"}, "response": {"ok": true, "request_id": "be8e9af5cc9d44c2b2c4901341618ec7", "sequence": 61}}
+{"request": {"group": "owner", "operation": "evaluate", "request_id": "48f9c11970d44e5b9a135d692c06e85f"}, "response": {"ok": true, "request_id": "48f9c11970d44e5b9a135d692c06e85f", "sequence": 61}}

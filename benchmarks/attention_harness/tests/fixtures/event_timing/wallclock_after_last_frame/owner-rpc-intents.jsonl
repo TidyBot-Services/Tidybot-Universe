@@ -1,0 +1,10 @@
+{"args": [], "group": "sensors", "kwargs": {}, "operation": "get_observation", "request_id": "5d611f6b5c4f42b68e8741880cba8c5a"}
+{"args": [], "group": "sensors", "kwargs": {}, "operation": "find_objects", "request_id": "eb1510845eb64668bc968baba14c89ae"}
+{"args": [], "group": "sensors", "kwargs": {}, "operation": "get_observation", "request_id": "82864e70f08143cb88e3fd6d46a07ad4"}
+{"args": [], "group": "left_gripper", "kwargs": {}, "operation": "open", "request_id": "84b76a30a3074643967720d0652a466e"}
+{"args": [], "group": "sensors", "kwargs": {}, "operation": "get_observation", "request_id": "9393663b32a64210965cebb9a90c49b5"}
+{"args": [-0.013511286655743249, -0.05, -0.04727232501053513], "group": "left_arm", "kwargs": {}, "operation": "move_delta", "request_id": "80c776d0bd7542939969251bebff779c"}
+{"args": [], "group": "owner", "kwargs": {}, "operation": "observe", "request_id": "33c712adb8424a9c9bb94d4afae133c6"}
+{"args": [], "group": "left_gripper", "kwargs": {}, "operation": "open", "request_id": "84b76a30a3074643967720d0652a466e"}
+{"args": [], "group": "owner", "kwargs": {}, "operation": "observe", "request_id": "fae86c19b7d34c09a0aa82258223d22e"}
+{"args": [], "group": "owner", "kwargs": {}, "operation": "evaluate", "request_id": "b3759f5bd1a34e18968cb4ac324e3e70"}

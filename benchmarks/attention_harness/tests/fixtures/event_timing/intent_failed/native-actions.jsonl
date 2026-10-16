@@ -1,0 +1,3 @@
+{"event": "gripper_intent", "request_id": "8609ccb34c5f470d8b7bfd432b176da0", "sequence": 0}
+{"event": "receipt", "request_id": "8609ccb34c5f470d8b7bfd432b176da0", "sequence": 20, "start_sequence": 0}
+{"command_curve": {"step_budget": 41}, "event": "intent", "request_id": "bbfda8fe6aaf4de08dee1e79c25151b4", "start_sequence": 20}

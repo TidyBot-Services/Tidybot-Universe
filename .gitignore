@@ -23,6 +23,7 @@ logs/
 logs_env*/
 *.archive_*/
 /artifacts/attentionbench*/
+/outputs/event-timing-check-20261017/
 
 # Per-machine agent / Claude Code config (not part of repo state)
 .claude/

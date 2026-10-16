@@ -1,0 +1,60 @@
+{
+ "action_trace": [
+  {
+   "operation": "get_observation",
+   "source": "sensors",
+   "status": "completed",
+   "timestamp": 49.09220795199508,
+   "timestamp_basis": "relative",
+   "arguments": {}
+  },
+  {
+   "operation": "find_objects",
+   "source": "sensors",
+   "status": "completed",
+   "timestamp": 49.09376777999569,
+   "timestamp_basis": "relative",
+   "arguments": {}
+  },
+  {
+   "operation": "get_observation",
+   "source": "sensors",
+   "status": "completed",
+   "timestamp": 49.09519730899774,
+   "timestamp_basis": "relative",
+   "arguments": {}
+  },
+  {
+   "operation": "open",
+   "source": "left_gripper",
+   "status": "completed",
+   "timestamp": 50.488764651003294,
+   "timestamp_basis": "relative",
+   "arguments": {}
+  },
+  {
+   "operation": "get_observation",
+   "source": "sensors",
+   "status": "completed",
+   "timestamp": 50.4907604809996,
+   "timestamp_basis": "relative",
+   "arguments": {}
+  },
+  {
+   "operation": "move_delta",
+   "source": "left_arm",
+   "status": "failed",
+   "timestamp": 85.75103591399966,
+   "timestamp_basis": "relative",
+   "arguments": {
+    "dx": -0.013511286655743249,
+    "dy": -0.05,
+    "dz": -0.04727232501053513
+   },
+   "error": {
+    "message": "PlanningRejected: cuRoboV2 planning rejected: official_motion_planner_non_success",
+    "type": "RuntimeError"
+   }
+  }
+ ]
+}

@@ -1,0 +1,5 @@
+{"group": "sensors", "operation": "find_objects", "request_id": "b2144535f7554b67b5be55afcef75003"}
+{"group": "sensors", "operation": "get_observation", "request_id": "41e3e4d953204a478e56cff56315ec44"}
+{"group": "left_arm", "operation": "move_delta", "request_id": "97df266f8c9842a3a1b4c5abc9f32db2"}
+{"group": "owner", "operation": "observe", "request_id": "c28a11f0568e4d0d976e60746f2c708a"}
+{"group": "owner", "operation": "evaluate", "request_id": "3a327c1ef9124d4a8abf6ff72613b3e4"}

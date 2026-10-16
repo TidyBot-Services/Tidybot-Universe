@@ -1,5 +1,5 @@
 """Model→contained native execution→public feedback→full-source revision."""
-import difflib,json,os,re,threading,time,inspect,subprocess,sys,signal
+import difflib,json,math,os,re,threading,time,inspect,subprocess,sys,signal
 from pathlib import Path
 from .dev_loop import immutable as write_immutable,sha,public_feedback,numbers,process_identity,validation_diagnostic
 from .dev_help import public_screen,decide,AdvisorProvider,DemoProvider,HumanProvider,policy_parameters
@@ -419,6 +419,31 @@ def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailab
         raise
 
 
+def events_for_moment_selection(episode_dir, trace, exec_version):
+    """Make private selection copies; never change the public feedback rows."""
+    from .event_timing import derive_event_times
+    derived = derive_event_times(episode_dir, trace)
+    events = []
+    for i, (row, result) in enumerate(zip(trace, derived)):
+        copy = {**row, 'event_id': f'v{exec_version}:{i}'}
+        stamp = row.get('timestamp')
+        if result['status'] == 'derived':
+            # The control-step derivation wins: a wall-clock stamp can fall after the last recorded frame
+            # (planning or a rejected call takes time while the simulator does not step), which would be
+            # reported as outside the sampled range although the scene is unchanged since the last frame.
+            copy.update(timestamp=result['timestamp'], timestamp_basis='relative',
+                        physical_sequence=result['physical_sequence'])
+        elif (row.get('timestamp_basis') == 'relative' and type(stamp) in (int, float)
+                and math.isfinite(stamp) and stamp >= 0):
+            pass  # No derivation possible: an existing public relative timestamp is still usable.
+        else:
+            copy.pop('timestamp', None)
+            copy.pop('timestamp_basis', None)
+            copy['event_timing_reason'] = result['reason']
+        events.append(copy)
+    return events
+
+
 def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifact,client,hypothesis,decision):
     from . import dev_advisor_proxy as advisor
     from .v2_evaluator import build_eval_evidence
@@ -434,7 +459,7 @@ def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifac
     trace=evidence.get('public_feedback',{}).get('action_trace',[])
     event_ids=decision.get('event_ids',[])
     if cell['policy_id']=='full_trace_aware_attention_planner' and event_ids:
-        events=[{**row,'event_id':f'v{exec_version}:{i}'} for i,row in enumerate(trace)]
+        events=events_for_moment_selection(bundle['artifact_dir'],trace,exec_version)
         timing=execution['receipt'].get('recording',{}).get('replay_timing')
         episode_root=Path(bundle['artifact_dir'])
         views=['external']+[view for view in ('left_wrist','right_wrist','side','top') if (episode_root/'recording_views'/view/'frames.jsonl').is_file()]
