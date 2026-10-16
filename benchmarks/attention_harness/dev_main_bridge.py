@@ -139,6 +139,12 @@ class DevMainBridge:
         selection.update(goal_key=self.goal_key,goal_limits=g['limits'],wall_limit=g['wall_limit'],cell_budget=budget,
             coverage='budget_limited',target_depth=depth,target_valid_executions=depth,max_versions=depth,
             reproducible_reset=True,planner_features=dict(human_wait_seconds=v.get('human_wait_seconds',60),memory=self.memory))
+        # This pre-existing independently budgeted bridge predates automatic Eval.
+        # Keep its immutable goal allocation readable; new experiments default
+        # both independent roles on unless they explicitly choose otherwise.
+        from .eval_agent import default_config as eval_default
+        from .dev_advisor_proxy import default_config as advisor_default
+        selection.update(eval_agent=eval_default(False),advisor_proxy=advisor_default(False))
         if selection['mode']=='experiment':
             # Experiment mode starts every cell from the registered physical scene; seeds without a reference are refused at creation.
             from openarm365_dev_v2.scene_contract import registered_contract_ref

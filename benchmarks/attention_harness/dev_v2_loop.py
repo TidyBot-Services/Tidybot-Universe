@@ -24,13 +24,17 @@ def checked(ref):
     if sha(ref['uri'])!=ref['sha256']:raise DevConflict('immutable evidence digest mismatch')
     return Path(ref['uri'])
 def job_for(cell,version,kind):return next((j for j in cell['jobs'] if j['version']==version and j['kind']==kind),None)
+def eval_ref(receipt):return receipt.get('eval_review') or receipt.get('review')
 def screen_model_packet(packet):
     # The single named AI-opinion field is explicit protocol metadata. Screen its
     # contents normally; do not loosen public_screen's restrictions for any text.
     copy=dict(packet)
     if 'public_feedback' in copy:
         feedback=dict(copy['public_feedback'])
-        review=feedback.pop('human_proxy_review',None)
+        review=None
+        for name in ('eval_review','human_proxy_review','evaluator_review'):
+            value=feedback.pop(name,None)
+            if value is not None and review is None:review=value
         if review is not None:
             # Text-only reviews (no recording viewed) carry passed=None and mode='text_only'; the 2-key vision form stays valid.
             keys=set(review) if isinstance(review,dict) else set()
@@ -157,7 +161,7 @@ def contained_provider(store,key,kind,request,directory,deadline):
             with store.tx() as db:store.event(db,'planner_provider_cleanup',{'cell':key,'kind':kind,'pid':process.pid,'returncode':process.returncode,'reaped':process.poll() is not None})
         log.close()
 
-def feedback_for(cell):
+def _public_feedback_for(cell):
     if not cell['versions']:return {},cell.get('initial_source',''),0,[]
     if cell.get('runtime',{}).get('public_failure_rule'):
         prior=[];failures=0
@@ -183,19 +187,43 @@ def feedback_for(cell):
     else:feedback={'execution_status':'failed','public_error':last['validation_error'],'action_trace':[]}
     return feedback,checked(last['source']).read_text(),failures,prior[:-1]
 
+def feedback_for(cell):
+    feedback,source,failures,prior=_public_feedback_for(cell)
+    if not cell['versions']:return feedback,source,failures,prior
+    verdicts=[]
+    for version in cell['versions']:
+        job=job_for(cell,version['version'],'eval')
+        if job and job['state']=='settled' and eval_ref(job.get('receipt',{})):
+            record=json.loads(checked(eval_ref(job['receipt'])).read_bytes())
+            if record.get('status')=='completed' and type(record.get('passed')) is bool:
+                verdicts.append(record['passed'])
+            else:verdicts.append(None)
+        else:verdicts.append(None)
+    if verdicts[-1] is not None:
+        review=requested_eval(cell)
+        feedback={**feedback,'eval_review':review}
+        failures=0
+        for verdict in reversed(verdicts):
+            if verdict is False:failures+=1
+            else:break
+    return feedback,source,failures,prior
+
 def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None):
     public_screen(previous);screen_model_packet({'public_feedback':feedback});public_screen(attention)
     # Explicit public task + SDK packet; resource paths and evaluator excluded.
     t=get_task(config['task_id']);public_cfg={k:config[k] for k in ['task_id','official_env','task_prompt','seed','robot','execution_arm','controller','layout_id','style_id','scene_id','horizon','sdk_call_limit','attempt_wall_seconds','perception_mode']}
     f=dict(feedback)
+    legacy=f.pop('human_proxy_review',None)
+    older=f.pop('evaluator_review',None)
+    legacy=legacy if legacy is not None else older
+    if legacy is not None and 'eval_review' not in f:f['eval_review']=legacy
     if not trace_visible:f.pop('action_trace',None)
     packet={'locked_task':public_cfg,'previous_complete_source':previous,'public_feedback':f,'attention_control':attention,'remaining_budget':remaining}
     if source_size_limit_bytes:packet['source_size_limit_bytes']=source_size_limit_bytes
     screen_model_packet(packet)
     opinion=''
-    if 'human_proxy_review' in f:
-        textonly=f['human_proxy_review'].get('mode')=='text_only'
-        opinion=('\nTEXT-ONLY review of your previous attempt (nobody viewed the recording; simulated-human opinion, may be wrong): ' if textonly else '\nHumanProxy review of your previous attempt, which you requested (simulated-human opinion, may be wrong): ')+json.dumps(f['human_proxy_review'],ensure_ascii=False)
+    if 'eval_review' in f:
+        opinion='\nEval agent verdict and feedback for your previous attempt: '+json.dumps(f['eval_review'],ensure_ascii=False)
     return [{'role':'system','content':t.system_prompt()+opinion},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
 
 def hp_result(text,record):
@@ -210,25 +238,17 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         from .dev_planner_memory import load_memory
         config=m['configs'][f"{cell['task_id']}:{cell['seed']}"]
         memory,_=load_memory(store,key,version,previous,config,cell['planner_features']['memory'],directory)
-    from . import human_proxy as hp
-    config=m['configs'][f"{cell['task_id']}:{cell['seed']}"];proxy=hp.from_config(config)
-    if proxy and cell.get('planner_features'):raise DevConflict('HumanProxy requests are not supported together with the planner wait-work features')
-    last_dir=directory.parent/f'v{version-1}'
+    from . import dev_advisor_proxy as advisor
+    config=m['configs'][f"{cell['task_id']}:{cell['seed']}"];proxy=advisor.from_config(config)
+    features=cell.get('planner_features') or {}
+    if proxy and features and (features.get('human_wait_seconds',0)>0 or features.get('background_seconds',0)>0 or features.get('approval_rule')!='none'):
+        raise DevConflict('Advisor is incompatible with planner waiting preparation and approval')
     if decision_path.exists():decision=json.loads(decision_path.read_bytes())
     else:
-        common=dict(demo_available=remaining>0,memory=memory,trace_visible=m['trace_visible'],review_available=proxy is not None)
-        round1_path=directory/'decision-round1.json'
-        decision=json.loads(round1_path.read_bytes()) if round1_path.exists() else decide(policy,params,version,feedback,failures,prior,help_remaining=int(remaining),**common)
-        if decision['action']=='request' and decision['request_type']=='review':
-            # Round 1 asked to see the result of the last version: run the review (charged to the shared request
-            # budget), then decide again with its pass/fail outcome as the only new policy input.
-            if proxy is None:raise DevConflict('review requested without a HumanProxy')
-            immutable(round1_path,decision)
-            record=proxy_answer(store,key,'review',version-1,version-1,config,proxy,owner,last_dir/'evaluator-review.json',m,client)
-            outcome={'passed':record['passed'] is True,'feedback':record['feedback'] if record['status']=='completed' else ''}
-            now=store.cell(key);remaining2=max(0,now['budget']['help_count']-now['used']['help_count'])
-            decision=decide(policy,params,version,feedback,failures,prior,help_remaining=int(remaining2),requests_made=('review',),review=outcome,**{**common,'demo_available':remaining2>0})
-            decision['preceded_by']='review';remaining=remaining2
+        eval_review=feedback.get('eval_review')
+        decision=decide(policy,params,version,feedback,failures,prior,help_remaining=int(remaining),
+            demo_available=remaining>0,memory=memory,trace_visible=m['trace_visible'],eval_review=eval_review,
+            eval_available=eval_review is not None,diagnostic_fallback=m['selection']['mode'] in ('interactive','diagnostic'))
     ref=immutable(directory/'decision.json',decision);help_record=None
     action=decision['action']
     help_path=directory/'help.json'
@@ -245,15 +265,15 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         if not job.get('actual'):store.claim(job['job_id'],owner)
         help_record=immutable(directory/'help.json',demo);store.settle(job['job_id'],{'help_count':1,'help_credits':1,'help_wait_seconds':0},{'help':help_record,'source':demo['source']})
     elif action=='request' and proxy is not None:
-        if decision['request_type']!='hint':raise DevConflict('only a hint can follow a review')
+        if decision['request_type']!='hint':raise DevConflict('only hint requests are supported')
         hypothesis=cell['versions'][-1]['reason'] if cell['versions'] else None
-        record=proxy_answer(store,key,'hint',version-1,version,config,proxy,owner,directory/'human-proxy-hint.json',m,client,hypothesis)
+        record=advisor_answer(store,key,version-1,version,config,proxy,owner,directory/'advisor-hint.json',client,hypothesis,decision)
         text=record['feedback'] if record['status']=='completed' else ''
         try:hint=hp_result(text,record)
         except ValueError:hint={'provider':'human_proxy','content':'','rejected':True,'reason':'public help boundary rejected response'}
-        help_record=immutable(directory/'help.json',{**hint,'human_proxy':{'uri':str(directory/'human-proxy-hint.json'),'sha256':sha(directory/'human-proxy-hint.json')}})
+        help_record=immutable(directory/'help.json',{**hint,'advisor_proxy':{'uri':str(directory/'advisor-hint.json'),'sha256':sha(directory/'advisor-hint.json')},'selected_moments':record['selected_moments'],'localization':record['localization']})
     elif action=='request':
-        if decision['request_type']!='hint':raise DevConflict('review request needs a HumanProxy')
+        if decision['request_type']!='hint':raise DevConflict('only hint requests are supported')
         provider=AdvisorProvider();msgs=provider.messages(cell['task_id'],previous,feedback,m['trace_visible'])
         if cell.get('planner_features'):
             advisor_packet=json.loads(msgs[-1]['content']);advisor_packet['memory']=memory['entries']
@@ -287,7 +307,7 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         settings=cell['planner_features']['memory']
         DevMemory(client_for(settings),settings,config).recheck(json.loads(memory_path.read_bytes()))
     approval_id=None
-    if cell.get('planner_features'):
+    if cell.get('planner_features') and cell['planner_features'].get('approval_rule')!='none':
         from .dev_planner import wait_for_approval
         approval_id=wait_for_approval(store,key,version,checked(record['source']).read_text(),config,owner,directory,cell['planner_features'],feedback_for(cell)[0],real_action=runner_factory is None)
     if approval_id:
@@ -349,10 +369,9 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         raise
     finally:
         done.set();watcher.join(2);store.update_cell(key,active_episode=None,active_version=None)
-    # No automatic review: a review happens only when the policy requests it (see attention()).
 
 class HumanProxyInvalid(Exception):
-    """Vision was unavailable after retries: the cell is marked condition_invalid, never answered text-only."""
+    """Eval vision was unavailable after retries: the cell is condition_invalid."""
 
 def proxy_client(client):
     if client is not None:return client
@@ -362,83 +381,143 @@ def proxy_client(client):
         if path.is_file():credential=path.read_text().strip()
     return ParccClient(api_key=credential,max_attempts=1,timeout_seconds=90)
 
-def proxy_answer(store,key,kind,exec_version,job_version,config,proxy,owner,artifact,m,client,hypothesis=None):
-    """One HumanProxy request (review or hint), reserved, claimed and settled in the shared ledger.
-
-    The recording and frames are those of version exec_version. Review jobs use kind 'eval' (the legacy ledger name
-    for review requests) and hint jobs use kind 'advisor'; both draw on help_count/help_credits, so review and hint
-    share one request budget, and each records its own logical human seconds. Returns the saved record."""
-    from . import human_proxy as hp
-    from .v2_evaluator import build_eval_evidence,assert_public
-    job_kind='eval' if kind=='review' else 'advisor'
-    cell=store.cell(key);artifact=Path(artifact)
-    existing=job_for(cell,job_version,job_kind)
-    if existing and existing['state']=='settled':
-        record=json.loads(artifact.read_bytes())
-        if record.get('status')=='invalid_vision_unavailable':raise HumanProxyInvalid(record['error'])
-        return record
-    if existing and existing['state'] in {'claimed','needs_review'}:raise DevConflict('existing claim cannot be redispatched')
-    execute_job=job_for(cell,exec_version,'execute')
-    if not execute_job or execute_job['state']!='settled':raise DevConflict('a request needs a settled execution to look at')
-    bundle=json.loads(checked(execute_job['receipt']['bundle']).read_bytes());episode_root=Path(bundle['artifact_dir'])
-    evidence=build_eval_evidence(episode_root,config)
-    if kind=='hint' and hypothesis:
-        try:public_screen(hypothesis);assert_public(hypothesis);evidence['agent_hypothesis']=hypothesis[:1500]
-        except (ValueError,AssertionError):evidence['omissions'].append('agent hypothesis rejected by public evidence boundary')
-    bound=hp.worst_case_input_bound(evidence);seconds=cell.get('runtime',{}).get('model_reserve_seconds',hp.MODEL_RESERVE_SECONDS)
-    recording_seconds=(execute_job.get('actual') or {}).get('execution_seconds',0)
-    logical=hp.logical_seconds(kind,recording_seconds,proxy)
-    human_key='review_human_seconds' if kind=='review' else 'hint_human_seconds'
-    reservation={'eval_calls' if kind=='review' else 'advisor_calls':1,'provider_tokens':bound+hp.MAX_TOKENS,'input_tokens':bound,'output_tokens':hp.MAX_TOKENS,
-                 'model_seconds':seconds,'help_count':1,'help_credits':1,'help_wait_seconds':seconds,human_key:logical}
-    if store.goal_for_cell(key)['wall_remaining']<seconds:raise DevBudgetExhausted('insufficient request time budget')
+def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailable=False):
+    """Automatic, non-attention Eval after a settled execution."""
+    from . import eval_agent as eva
+    from .v2_evaluator import build_eval_evidence
+    cell=store.cell(key);existing=job_for(cell,version,'eval')
+    if existing and existing['state']=='settled':return json.loads(checked(eval_ref(existing['receipt'])).read_bytes())
+    if existing and existing['state'] in {'claimed','needs_review'}:raise DevConflict('existing Eval claim cannot be redispatched')
+    execution=job_for(cell,version,'execute')
+    if not execution or execution['state']!='settled':raise DevConflict('Eval needs a settled execution')
+    bundle=json.loads(checked(execution['receipt']['bundle']).read_bytes())
+    evidence=build_eval_evidence(bundle['artifact_dir'],config)
+    bound=len(json.dumps({k:v for k,v in evidence.items() if k!='frames'},ensure_ascii=False).encode())+len(evidence['frames'])*eva.FRAME_TOKEN_BOUND+4096
+    seconds=cell.get('runtime',{}).get('model_reserve_seconds',120)
+    reservation={'eval_calls':1,'provider_tokens':bound+eva.MAX_TOKENS,'input_tokens':bound,'output_tokens':eva.MAX_TOKENS,'model_seconds':seconds}
     store.reserve_check(key,reservation) if not existing else None
-    job=store.reserve(key,job_version,job_kind,reservation)
-    store.claim(job['job_id'],owner)
-    allow_text=m['selection']['mode'] in ('interactive','diagnostic')
-    cache_dir=Path(cell['artifact_dir']).parent.parent/'human-proxy-cache'
+    job=store.reserve(key,version,'eval',reservation);store.claim(job['job_id'],owner)
     try:
-        record=hp.ask(kind,evidence,proxy,proxy_client(client),cache_dir=cache_dir,allow_text_only=allow_text)
-    except hp.HumanProxyUnavailable as exc:
-        record={'schema_version':hp.SCHEMA,'kind':kind,'status':'invalid_vision_unavailable','error':str(exc)[:300],'passed':False,'feedback':'','mode':'vision','model':proxy['model'],'frames':[{k:f[k] for k in ('filename','sha256','view') if k in f} for f in evidence['frames']],'usage':{}}
+        record=eva.ask(evidence,eva.from_config(config),proxy_client(client),cache_dir=Path(cell['artifact_dir']).parent.parent/'eval-cache')
         immutable(artifact,record)
-        # Attempts may have been paid for; the reservation is retained and the cell can no longer yield formal data.
-        store.settle(job['job_id'],job['reservation'],{'review':{'uri':str(artifact),'sha256':sha(artifact)},'usage_accounting':'reservation_retained','invalid':'human_proxy_vision_unavailable'})
-        raise HumanProxyInvalid(record['error'])
-    except Exception:
-        # Unknown cost is charged at reservation and the job stays settled-with-error: no silent retry.
-        store.settle(job['job_id'],job['reservation'],{'review_error':'provider_failure','usage_accounting':'reservation_retained'})
+        actual=dict(reservation);usage=record['usage']
+        if record['cache_hit']:actual.update(provider_tokens=0,input_tokens=0,output_tokens=0,model_seconds=0)
+        elif all(type(usage.get(k)) is int and usage[k]>=0 for k in ('total_tokens','prompt_tokens','completion_tokens')) and usage['total_tokens']==usage['prompt_tokens']+usage['completion_tokens']:
+            actual.update(provider_tokens=usage['total_tokens'],input_tokens=usage['prompt_tokens'],output_tokens=usage['completion_tokens'],model_seconds=min(seconds,record['latency_seconds']))
+        store.settle(job['job_id'],actual,{'eval_review':{'uri':str(artifact),'sha256':sha(artifact)},'cache_hit':record['cache_hit']})
+        return record
+    except eva.EvalUnavailable as exc:
+        record={'schema_version':'attentionbench.eval-agent.v2','status':'unavailable_diagnostic' if allow_unavailable else 'invalid_vision_unavailable',
+            'passed':None,'feedback':'Eval vision unavailable; public failure fallback' if allow_unavailable else '',
+            'error':str(exc)[:300],'mode':'unavailable','model':config['eval_agent']['model'],'frames':[],'usage':{}}
+        immutable(artifact,record)
+        store.settle(job['job_id'],job['reservation'],{'eval_review':{'uri':str(artifact),'sha256':sha(artifact)},'usage_accounting':'reservation_retained'})
+        if not allow_unavailable:raise HumanProxyInvalid(str(exc))
+        return record
+    except BaseException as exc:
+        store.unknown(job['job_id'],f'{type(exc).__name__}: {exc}',None)
         raise
-    record['requested']=True;record['request_type']=kind
-    record['logical_human_seconds']=logical;record['recording_seconds']=recording_seconds
-    record['answer_latency_seconds']=proxy['answer_latency_seconds']
-    if kind=='hint':
-        try:public_screen(record['feedback'])
-        except ValueError:record.update(status='rejected',feedback='')
-    immutable(artifact,record)
-    actual=dict(reservation);u=record['usage'];values=[u.get(k) for k in ('total_tokens','prompt_tokens','completion_tokens')]
-    if record['cache_hit']:actual.update(provider_tokens=0,input_tokens=0,output_tokens=0,model_seconds=0,help_wait_seconds=0)
-    else:
-        if all(type(v) is int and v>=0 for v in values) and values[0]==values[1]+values[2] and all(v<=reservation[k] for v,k in zip(values,('provider_tokens','input_tokens','output_tokens'))):
-            actual.update(provider_tokens=values[0],input_tokens=values[1],output_tokens=values[2])
-        actual['model_seconds']=min(seconds,record['latency_seconds']);actual['help_wait_seconds']=actual['model_seconds']
-    store.settle(job['job_id'],actual,{'review':{'uri':str(artifact),'sha256':sha(artifact)},'cache_hit':record['cache_hit'],'usage_accounting':'cache_replay' if record['cache_hit'] else 'measured' if actual['provider_tokens']!=reservation['provider_tokens'] else 'reservation_retained'})
-    return record
 
-def requested_review(cell):
-    """The review of the last version, only if the policy requested it and it was answered and usable."""
-    if not cell['versions']:return None
-    last=cell['versions'][-1];path=Path(last['source']['uri']).parent/'evaluator-review.json'
-    if not path.is_file():return None
+
+def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifact,client,hypothesis,decision):
+    from . import dev_advisor_proxy as advisor
+    from .v2_evaluator import build_eval_evidence
+    from .moment_localization import select_moments,validate_selected_moments
+    cell=store.cell(key);existing=job_for(cell,job_version,'advisor')
+    if existing and existing['state']=='settled':return json.loads(checked(existing['receipt'].get('advisor_answer') or existing['receipt']['review']).read_bytes())
+    if existing and existing['state'] in {'claimed','needs_review'}:raise DevConflict('existing Advisor claim cannot be redispatched')
+    execution=job_for(cell,exec_version,'execute')
+    if not execution or execution['state']!='settled':raise DevConflict('hint needs a settled execution')
+    bundle=json.loads(checked(execution['receipt']['bundle']).read_bytes());evidence=build_eval_evidence(bundle['artifact_dir'],config)
+    if hypothesis:
+        public_screen(hypothesis);evidence['agent_hypothesis']=hypothesis[:1500]
+    trace=evidence.get('public_feedback',{}).get('action_trace',[])
+    event_ids=decision.get('event_ids',[])
+    if cell['policy_id']=='full_trace_aware_attention_planner' and event_ids:
+        events=[{**row,'event_id':f'v{exec_version}:{i}'} for i,row in enumerate(trace)]
+        timing=execution['receipt'].get('recording',{}).get('replay_timing')
+        episode_root=Path(bundle['artifact_dir'])
+        views=['external']+[view for view in ('left_wrist','right_wrist','side','top') if (episode_root/'recording_views'/view/'frames.jsonl').is_file()]
+        def journal(path):
+            try:return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+            except (OSError,ValueError):return []
+        base_rows=journal(episode_root/'recording_frames'/'frames.jsonl');view_map={}
+        views=['external']+[view for view in views[1:] if journal(episode_root/'recording_views'/view/'frames.jsonl')]
+        if timing and len(base_rows)==len(timing.get('frame_trace_seconds',[])):
+            for view in views[1:]:
+                rows=journal(episode_root/'recording_views'/view/'frames.jsonl')
+                if not rows:continue
+                view_map[view]={}
+                for index,base in enumerate(base_rows):
+                    best=min(enumerate(rows),key=lambda pair:abs(pair[1].get('physical_sequence',0)-base.get('physical_sequence',0)))
+                    view_map[view][index]={'frame_index':best[0],'video_seconds':timing['frame_video_seconds'][index],'trace_seconds':best[1].get('trace_seconds',timing['frame_trace_seconds'][index])}
+        # A wrist-view index has no time meaning until its sample correspondence is known.
+        views=['external']+[view for view in views[1:] if view in view_map]
+        selected,localization=select_moments(events,event_ids,timing,available_views=views,max_frames=proxy['max_selected_frames'],view_index_map=view_map)
+    else:selected,localization=[],{'status':'generic_fallback','reason':'policy_uses_full_trace' if cell['policy_id']!='full_trace_aware_attention_planner' else 'no_selected_events'}
+    selected_frames=[]
+    if localization['status']=='targeted':
+        for moment in selected:
+            folder=episode_root/'recording_frames' if moment['view']=='external' else episode_root/'recording_views'/moment['view']
+            rows=base_rows if moment['view']=='external' else journal(folder/'frames.jsonl')
+            if moment['frame_index']>=len(rows) or not isinstance(rows[moment['frame_index']].get('file'),str):
+                selected=[];localization={'status':'generic_fallback','reason':'selected_frame_missing'};break
+            path=folder/rows[moment['frame_index']]['file']
+            if path.is_symlink() or not path.is_file() or path.parent!=folder:
+                selected=[];localization={'status':'generic_fallback','reason':'selected_frame_missing'};break
+            selected_frames.append({'moment_id':moment['moment_id'],'filename':str(path.relative_to(episode_root)),
+                'view':moment['view'],'sha256':sha(path)})
+    if localization['status']=='targeted':evidence['frames']=selected_frames
+    else:selected_frames=[]
+    validate_selected_moments(selected,localization)
+    evidence['selected_moments']=selected;evidence['localization']=localization
+    if localization['status']=='targeted':
+        evidence['public_feedback']['action_trace']=[row for i,row in enumerate(trace) if f'v{exec_version}:{i}' in event_ids]
+    evidence['question']=question_for(decision.get('context',{}).get('assessment'))
+    public_screen({k:v for k,v in evidence.items() if k!='frames'})
+    bound=advisor.worst_case_input_bound(evidence);seconds=cell.get('runtime',{}).get('model_reserve_seconds',120)
+    recording_seconds=(execution.get('actual') or {}).get('execution_seconds',0)
+    logical=advisor.logical_seconds(recording_seconds,proxy,selected_moments=selected,targeted=localization['status']=='targeted')
+    reservation={'advisor_calls':1,'provider_tokens':bound+advisor.MAX_TOKENS,'input_tokens':bound,'output_tokens':advisor.MAX_TOKENS,'model_seconds':seconds,'help_count':1,'help_credits':1,'help_wait_seconds':seconds,'hint_human_seconds':logical}
+    store.reserve_check(key,reservation) if not existing else None
+    job=store.reserve(key,job_version,'advisor',reservation);store.claim(job['job_id'],owner)
     try:
-        value=json.loads(path.read_bytes())
-        if value.get('schema_version')!='attentionbench.human-proxy.v1' or value.get('requested') is not True or value.get('status')!='completed':return None
-        review={k:value[k] for k in ('passed','feedback')}
-        if value.get('mode')=='text_only':review['mode']='text_only'
-        public_screen(review)
-        if not isinstance(review['feedback'],str) or (type(review['passed']) is not bool and not (review['passed'] is None and review.get('mode')=='text_only')):return None
-        return review
-    except (OSError,ValueError,KeyError):return None
+        record=advisor.ask(evidence,proxy,proxy_client(client),cache_dir=Path(cell['artifact_dir']).parent.parent/'advisor-cache')
+        record.update(requested=True,request_type='hint',selected_moments=selected,selected_frame_manifest=selected_frames,localization=localization,question=evidence['question'],logical_human_seconds=logical,recording_seconds=recording_seconds,answer_latency_seconds=proxy['answer_latency_seconds'])
+        immutable(artifact,record)
+        actual=dict(reservation);usage=record['usage']
+        if record['cache_hit']:actual.update(provider_tokens=0,input_tokens=0,output_tokens=0,model_seconds=0,help_wait_seconds=0)
+        elif all(type(usage.get(k)) is int and usage[k]>=0 for k in ('total_tokens','prompt_tokens','completion_tokens')) and usage['total_tokens']==usage['prompt_tokens']+usage['completion_tokens']:
+            actual.update(provider_tokens=usage['total_tokens'],input_tokens=usage['prompt_tokens'],output_tokens=usage['completion_tokens'],model_seconds=min(seconds,record['latency_seconds']),help_wait_seconds=min(seconds,record['latency_seconds']))
+        store.settle(job['job_id'],actual,{'advisor_answer':{'uri':str(artifact),'sha256':sha(artifact)},'cache_hit':record['cache_hit']})
+        return record
+    except BaseException as exc:
+        store.unknown(job['job_id'],f'{type(exc).__name__}: {exc}',None)
+        raise
+
+
+def question_for(assessment):
+    category=(assessment or {}).get('failure_type','unknown') if isinstance(assessment,dict) else 'unknown'
+    templates={'code_validation':'Which public SDK or syntax error should the next code version fix?',
+        'sdk_usage':'Which SDK call or argument should the next version correct?',
+        'planning_execution':'Which motion command should the next version revise?',
+        'task_incomplete':'What task step should the next version complete?',
+        'grasp':'What change to the grasp call should the next version try?',
+        'placement':'What change to the placement call should the next version try?',
+        'transport':'What change to the transport call should the next version try?',
+        'perception':'What public observation should the next version use to locate the target?',
+        'unknown':'Which trace-grounded repair should the next version try?'}
+    return templates.get(category,'Which trace-grounded repair should the next version try?')
+
+
+def requested_eval(cell):
+    """Read only the automatic Eval job; legacy requested reviews are not verdicts."""
+    if not cell['versions']:return None
+    last=cell['versions'][-1];job=job_for(cell,last['version'],'eval')
+    if job and job['state']=='settled' and eval_ref(job.get('receipt',{})):
+        value=json.loads(checked(eval_ref(job['receipt'])).read_bytes())
+        if value.get('status')=='completed':return {k:value[k] for k in ('passed','feedback')}
+    return None
 
 def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=None):
     from .dev_experiment import verify_manifest
@@ -459,14 +538,25 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             if cell.get('pending_policy'):
                 store.update_cell(key,policy_id=cell['pending_policy'],pending_policy=None,policy_segments=cell['policy_segments']+[cell['pending_policy']])
                 cell=store.cell(key)
-            if 'goal_id' in m and len(cell['versions'])>=m['target_depth'] and sum(j['kind']=='execute' and j['state']=='settled' for j in cell['jobs'])>=m['target_valid_executions'] and not any(j['kind']=='model' and j['state']=='settled' and j['version']>len(cell['versions']) for j in cell['jobs']):
-                store.update_cell(key,state='completed',reason='target_G_E_reached');return
             last=cell['versions'][-1] if cell['versions'] else None
             if last and last['valid'] and ('goal_id' not in m or sum(j['kind']=='execute' and j['state']=='settled' for j in cell['jobs'])<m['target_valid_executions']):
                 job=job_for(cell,last['version'],'execute')
                 if not job:
                     execute(store,key,last['version'],last,config,owner,root/f"v{last['version']}",runner_factory,client);continue
                 if job['state']!='settled':raise DevConflict('unsettled execution never redispatched')
+            if last and last['valid'] and job_for(store.cell(key),last['version'],'execute') and job_for(store.cell(key),last['version'],'execute')['state']=='settled' and not job_for(store.cell(key),last['version'],'eval') and config.get('eval_agent',{}).get('enabled'):
+                eval_answer(store,key,last['version'],config,owner,root/f"v{last['version']}"/'eval-review.json',client,
+                    allow_unavailable=m['selection']['mode'] in ('interactive','diagnostic'));continue
+            if last and last['valid'] and config.get('eval_agent',{}).get('enabled'):
+                eval_job=job_for(store.cell(key),last['version'],'eval')
+                if eval_job and eval_job['state']!='settled':raise DevConflict('unsettled Eval cannot be bypassed')
+                if eval_job and eval_job['state']=='settled' and eval_ref(eval_job.get('receipt',{})):
+                    eval_record=json.loads(checked(eval_ref(eval_job['receipt'])).read_bytes())
+                    if eval_record.get('status')=='invalid_vision_unavailable':
+                        store.update_cell(key,state='condition_invalid',reason='eval_vision_unavailable');return
+                verdict=requested_eval(store.cell(key))
+                if verdict and verdict['passed'] is True:
+                    store.update_cell(key,state='completed',reason='eval_passed');return
             count=len(cell['versions'])
             if 'goal_id' in m:
                 executions=sum(j['kind']=='execute' and j['state']=='settled' for j in cell['jobs'])
@@ -487,8 +577,6 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             if 'goal_id' in m:
                 for resource in ['model_seconds','execution_seconds','help_wait_seconds']:
                     remaining[resource]=max(0,cell['budget'][resource]-sum(j['reservation'].get(resource,0) for j in store.cell(key)['jobs'] if j['state']=='settled'))
-            review=requested_review(store.cell(key))
-            if review is not None:feedback={**feedback,'human_proxy_review':review}
             messages=model_messages(config,previous,feedback,packet,remaining,m['trace_visible'],m.get('source_size_limit_bytes'))
             if cell.get('planner_features') and cell['planner_features']['memory'] and not (job_for(store.cell(key),version,'model') or {}).get('actual'):
                 from .dev_planner_memory import load_memory
@@ -523,7 +611,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 feedback_ref=immutable(directory/'candidate-public-feedback.json',feedback)
                 stage_candidate(store,key,version,help_ref,src,feedback_ref,directory)
     except HumanProxyInvalid as exc:
-        store.update_cell(key,state='condition_invalid',reason='human_proxy_vision_unavailable: '+str(exc)[:200])
+        store.update_cell(key,state='condition_invalid',reason='eval_vision_unavailable: '+str(exc)[:200])
     except PlannerActionBlocked as exc:
         store.update_cell(key,state='cancelled' if 'cancelled' in str(exc) else 'failed',reason=str(exc))
     except DevBudgetExhausted as exc:

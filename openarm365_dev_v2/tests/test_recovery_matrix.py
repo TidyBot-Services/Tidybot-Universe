@@ -3,7 +3,7 @@ import json,time,copy
 from pathlib import Path
 import pytest
 from openarm365_dev_v2.tests.test_iteration import setup,selection,HintClient
-from openarm365_dev_v2.tests.fakes import Client,Runner
+from openarm365_dev_v2.tests.fakes import Client,Runner,EvalRunner
 from benchmarks.attention_harness.dev_experiment import create,run,acquire,verify_manifest,DevConflict
 from benchmarks.attention_harness.dev_configuration import normalize_configuration,derive_cell_budget,worst_slot
 from benchmarks.attention_harness.dev_ledger import RESOURCES,DevV2Store
@@ -62,7 +62,7 @@ def test_R12_atomic_allocations(tmp_path):
 @pytest.mark.parametrize('after',[False,True])
 @pytest.mark.parametrize('policy,help_version',[('reactive_help',2),('retry_k_then_ask',3)])
 def test_R5_R9_paid_help(tmp_path,monkeypatch,after,policy,help_version):
- s,e,b=setup(tmp_path,{**selection(),'policies':[policy],'help_budget':1});cl=HintClient();original=loop.immutable;hit=[]
+ s,e,b=setup(tmp_path,{**selection(),'policies':[policy],'help_budget':1,'eval_agent':{'enabled':True}});cl=HintClient();original=loop.immutable;hit=[]
  def injected(path,value):
   path=Path(path)
   if path.name=='help.json' and path.parent.name=='v'+str(help_version) and not hit:
@@ -71,10 +71,10 @@ def test_R5_R9_paid_help(tmp_path,monkeypatch,after,policy,help_version):
    raise RuntimeError('paid_help_local_crash')
   return original(path,value)
  monkeypatch.setattr(loop,'immutable',injected)
- with pytest.raises(RuntimeError,match='paid_help'):run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=Runner)
+ with pytest.raises(RuntimeError,match='paid_help'):run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=EvalRunner)
  paid=s.cell(e['cells'][0]['key'])['used']['advisor_calls'];assert paid==1
  count=len(cl.inputs);monkeypatch.setattr(loop,'immutable',original)
- f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=Runner);c=f['cells'][0]
+ f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=EvalRunner);c=f['cells'][0]
  assert c['used']['advisor_calls']==paid and len(cl.inputs)-count==4-help_version
  v=c['versions'][help_version-1];h=json.loads(Path(v['help']['uri']).read_text());inp=json.loads(Path(v['model_input']['uri']).read_text())
  assert json.loads(inp['messages'][1]['content'])['attention_control']['help']['content']==h['content']

@@ -29,11 +29,14 @@ def configuration(value):
     if not isinstance(value, dict) or set(value) - set(DEFAULT):
         raise ValueError('bounded planner configuration required')
     p = {**DEFAULT, **value}
-    if p['schema'] != DEFAULT['schema'] or p['approval_rule'] != 'generated_motion_policy':
+    if p['schema'] != DEFAULT['schema'] or p['approval_rule'] not in {'generated_motion_policy','none'}:
         raise ValueError('unsupported planner permission rule')
     for key, maximum in [('human_wait_seconds', 600), ('background_seconds', 5)]:
-        if type(p[key]) is not int or not 1 <= p[key] <= maximum:
+        minimum=0 if p['approval_rule']=='none' else 1
+        if type(p[key]) is not int or not minimum <= p[key] <= maximum:
             raise ValueError('bounded positive planner duration required: ' + key)
+    if p['approval_rule']=='none' and (p['human_wait_seconds'] or p['background_seconds']):
+        raise ValueError('memory-only planner cannot prepare or wait for approval')
     m = p['memory']
     if m is not None:
         if not isinstance(m, dict) or set(m) != {'base_url', 'store_id', 'namespace'}:

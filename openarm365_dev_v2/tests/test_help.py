@@ -1,10 +1,11 @@
 import pytest
 from benchmarks.attention_harness.dev_help import *
 FAIL={'execution_status':'failed','public_error':'RuntimeError: motion rejected','action_trace':[{'source':'left_arm','operation':'move_delta','status':'failed','arguments':{},'error':{'message':'IK planning rejected'}}]}
+EVAL_FAILED={'passed':False,'feedback':'trace event #0: motion rejected'}
 @pytest.mark.parametrize('policy',POLICY_IDS)
 def test_all_policy_decisions(policy):
     p=policy_parameters(policy)
-    result=decide(policy,p,2,FAIL,1,help_remaining=1)
+    result=decide(policy,p,2,FAIL,1,help_remaining=1,eval_review=EVAL_FAILED,eval_available=True)
     assert result['policy_id']==policy and result['action'] in {v.value for v in DecisionAction}
     assert result['formal_eligible'] is False
 @pytest.mark.parametrize('bad',['native_success','reward','_check_success','hidden','private','hidden_state','eval_diagnosis'])
@@ -23,17 +24,20 @@ def test_demo_first_before_v1_and_actual_fixed_source():
         assert DemoProvider().result(demo)['content']==Path(demo['source']['uri']).read_text()
 def test_retry_and_random_parameters():
     with pytest.raises(ValueError):policy_parameters('budget_matched_random_escalation',{})
-    assert decide('retry_k_then_ask',{'k':2},2,FAIL,1,help_remaining=1)['action']=='retry'
-    assert decide('retry_k_then_ask',{'k':2},3,FAIL,2,help_remaining=1)['action']=='request'
+    assert decide('retry_k_then_ask',{'k':2},2,FAIL,1,help_remaining=1,eval_review=EVAL_FAILED,eval_available=True)['action']=='retry'
+    assert decide('retry_k_then_ask',{'k':2},3,FAIL,2,help_remaining=1,eval_review=EVAL_FAILED,eval_available=True)['action']=='request'
     params={'target_request_count':1,'total_failure_slots':2,'seed':101}
-    seq=[decide('budget_matched_random_escalation',params,i+2,FAIL,i+1,help_remaining=1)['action'] for i in range(2)]
+    seq=[decide('budget_matched_random_escalation',params,i+2,FAIL,i+1,help_remaining=1,eval_review=EVAL_FAILED,eval_available=True)['action'] for i in range(2)]
     assert seq.count('request')==1
-    assert seq==[decide('budget_matched_random_escalation',params,i+2,FAIL,i+1,help_remaining=1)['action'] for i in range(2)]
-def test_reactive_only_public_failure():
+    assert seq==[decide('budget_matched_random_escalation',params,i+2,FAIL,i+1,help_remaining=1,eval_review=EVAL_FAILED,eval_available=True)['action'] for i in range(2)]
+def test_reactive_only_eval_confirmed_failure():
     assert decide('reactive_help',{},1,{},0,help_remaining=1)['action']=='continue'
-    assert decide('reactive_help',{},2,FAIL,1,help_remaining=1)['action']=='request'
+    assert decide('reactive_help',{},2,FAIL,1,help_remaining=1)['action']=='continue'
+    assert decide('reactive_help',{},2,FAIL,1,help_remaining=1,eval_review=EVAL_FAILED,eval_available=True)['action']=='request'
+    fallback=decide('reactive_help',{},2,FAIL,1,help_remaining=1,diagnostic_fallback=True)
+    assert fallback['request_type']=='hint' and fallback['context']['eval_fallback']
 def test_trace_and_memory_branches():
-    r=decide('autonomous',{},2,{'execution_status':'failed','action_trace':[]},1,help_remaining=1)
+    r=decide('autonomous',{},2,{'execution_status':'failed','action_trace':[]},1,help_remaining=1,eval_review=EVAL_FAILED,eval_available=True)
     assert r['action']=='inspect_trace' and r['public_trace_summary']==[]
     memory={**EMPTY_MEMORY,'entries':[{'content':'Use world delta bounded to .05m.'}],'explicit_registry_authorization':True}
     r=decide('full_trace_aware_attention_planner',{},2,FAIL,1,memory=memory)

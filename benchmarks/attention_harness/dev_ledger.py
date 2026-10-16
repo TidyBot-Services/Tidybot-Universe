@@ -4,26 +4,24 @@ from contextlib import contextmanager
 from pathlib import Path
 from .core.dev_store import DevConflict,DevBudgetExhausted
 GOAL='3a82df131d394774bc1ae9d881895133'
-RESOURCES=('dev_calls','advisor_calls','eval_calls','provider_tokens','input_tokens','output_tokens','executions','sdk_calls','control_steps','help_credits','help_count','help_wait_seconds','model_seconds','execution_seconds','review_human_seconds','hint_human_seconds')
+RESOURCES=('dev_calls','advisor_calls','eval_calls','provider_tokens','input_tokens','output_tokens','executions','sdk_calls','control_steps','help_credits','help_count','help_wait_seconds','model_seconds','execution_seconds','hint_human_seconds')
 # Resources introduced after the first ledgers: a budget/limit dict may omit them (read as 0).
-OPTIONAL=('eval_calls','review_human_seconds','hint_human_seconds')
-HUMAN_SECONDS=('review_human_seconds','hint_human_seconds')
-LIMITS=dict(dev_calls=28,advisor_calls=14,eval_calls=28,provider_tokens=500000,input_tokens=500000,output_tokens=500000,executions=28,sdk_calls=2240,control_steps=67200,help_credits=28,help_count=28,help_wait_seconds=7200,model_seconds=7200,execution_seconds=7200,review_human_seconds=7200,hint_human_seconds=7200)
+OPTIONAL=('eval_calls','hint_human_seconds')
+HUMAN_SECONDS=('hint_human_seconds',)
+LIMITS=dict(dev_calls=28,advisor_calls=14,eval_calls=28,provider_tokens=500000,input_tokens=500000,output_tokens=500000,executions=28,sdk_calls=2240,control_steps=67200,help_credits=28,help_count=28,help_wait_seconds=7200,model_seconds=7200,execution_seconds=7200,hint_human_seconds=7200)
 def fill_optional(b):
     """Read a budget/limit dict written before the optional resources existed: absent ones are 0."""
-    return {**{k:0 for k in OPTIONAL if k not in b},**b}
+    return {**{k:0 for k in OPTIONAL if k not in b},**{k:v for k,v in b.items() if k!='review_human_seconds'}}
 def complete_resources(b):
     """True when b names every required resource (optional ones may be absent) and nothing unknown."""
-    return set(RESOURCES)-set(OPTIONAL)<=set(b)<=set(RESOURCES)
+    return set(RESOURCES)-set(OPTIONAL)<=set(b)<=set(RESOURCES)|{'review_human_seconds'}
 def attention_cost(used,*,request_weight=1.0,second_weight=1/60):
-    """Recompute the shared review+hint attention cost from the two recorded quantities under any weighting.
-    Request units (help_credits) and logical human seconds are stored separately so the weights can change after
-    a run; the defaults (1 per request, 1 per human minute) are a placeholder until the weights are frozen."""
-    seconds=used.get('review_human_seconds',0)+used.get('hint_human_seconds',0)
-    return request_weight*used.get('help_credits',0)+second_weight*seconds
+    """Advisor hint request units and logical human seconds; Eval is compute only."""
+    seconds=used.get('hint_human_seconds',0)
+    return request_weight*used.get('advisor_calls',0)+second_weight*seconds
 def encoded(x):return json.dumps(x,ensure_ascii=False,sort_keys=True,allow_nan=False)
 def cost(x):
-    if not isinstance(x,dict) or any(k not in RESOURCES or type(v) not in (int,float) or not math.isfinite(v) or v<0 for k,v in x.items()):raise ValueError('finite nonnegative resource cost required')
+    if not isinstance(x,dict) or any(k not in RESOURCES and k!='review_human_seconds' or type(v) not in (int,float) or not math.isfinite(v) or v<0 for k,v in x.items()):raise ValueError('finite nonnegative resource cost required')
     if any(type(v) is not int for k,v in x.items() if k not in {'help_credits','help_wait_seconds','model_seconds','execution_seconds','review_human_seconds','hint_human_seconds'}):raise ValueError('integer resource count required')
     return x
 def resource_equal(left,right):
@@ -211,6 +209,13 @@ class DevV2Store:
             if state=='reserved':
                 db.execute("UPDATE v2_jobs SET state='released' WHERE id=?",(j['job_id'],));continue
             if j.get('owner') and owner_alive(j['owner']):continue
+            if 'help_count' not in j['reservation']:
+                # New automatic Eval is a mandatory completion signal. A lost
+                # claimed call cannot be fabricated or silently skipped.
+                j['reason']='automatic Eval interrupted; cost retained for review'
+                db.execute("UPDATE v2_jobs SET state='needs_review',payload=? WHERE id=?",(encoded(j),j['job_id']))
+                c=self.get(db,'cells',j['cell']);c.update(state='needs_review',reason=j['reason']);self.put(db,'cells',j['cell'],c)
+                continue
             c=self.get(db,'cells',j['cell']);directory=Path(c['artifact_dir'])/f"v{j['version']}"
             try:
                 if not (directory/'evaluator-review.json').exists():write_review(directory,empty_review({},'failed','Review worker interrupted; reserved usage retained'))

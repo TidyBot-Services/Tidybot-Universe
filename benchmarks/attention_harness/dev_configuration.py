@@ -15,11 +15,18 @@ def normalize_configuration(selection):
  if 'reproducible_reset' in p and type(p['reproducible_reset']) is not bool:raise ValueError('boolean reset contract required')
  if 'planner_features' in p:
   from .dev_planner import configuration,POLICY
-  p['planner_features']=configuration(p['planner_features'])
+  features=p['planner_features']
+  if isinstance(features,dict) and set(features)=={'memory'}:
+   features={**features,'human_wait_seconds':0,'background_seconds':0,'approval_rule':'none'}
+  p['planner_features']=configuration(features)
   if selection.get('policies')!=[POLICY]:raise ValueError('planner features require only the full planner policy')
  if 'human_proxy' in selection:
-  from .human_proxy import normalize
-  p['human_proxy']=normalize(selection['human_proxy'])
+  raise ValueError('legacy human_proxy can be read but not configured for a new v3 experiment')
+ from .eval_agent import normalize as normalize_eval,default_config as eval_default
+ from .dev_advisor_proxy import normalize as normalize_advisor,default_config as advisor_default
+ p['eval_agent']=normalize_eval(selection.get('eval_agent',eval_default(False))) if not (isinstance(selection.get('eval_agent'),dict) and set(selection['eval_agent'])=={'enabled','model'}) else normalize_eval({'enabled':selection['eval_agent']['enabled']})
+ p['advisor_proxy']=normalize_advisor(selection.get('advisor_proxy',advisor_default(False)))
+ if p['eval_agent']['model']==p['advisor_proxy']['model']:raise ValueError('Eval and Advisor models must differ')
  p['help_budget']=selection.get('help_budget',1)
  for k in ['target_depth','target_valid_executions','max_versions','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request']:
   if type(p[k]) is not int or p[k]<1:raise ValueError('positive integer configuration required: '+k)
@@ -50,14 +57,12 @@ def require_scene_gate(mode,selection,tasks,seeds):
  elif len(seeds)!=1:raise ValueError('a single-state scene contract covers one seed; use a seed-keyed (v2) contract')
 def derive_cell_budget(p,sdk_calls=80,horizon=2400):
  g=p['max_versions'];e=p['target_valid_executions'];h=p['help_budget'];i=p['max_input_bytes_per_request'];s=p['model_reserve_seconds']
- proxy=p.get('human_proxy') or {}
- if proxy.get('enabled'):
-  # Every request is a vision request: reserve ten frames plus the answer, review and hint share h request units.
-  from .human_proxy import FRAME_TOKEN_BOUND,MAX_TOKENS,DEFAULT_READING_SECONDS
-  frames=10*FRAME_TOKEN_BOUND+4096;reading=max(proxy.get('reading_seconds',DEFAULT_READING_SECONDS).values())
-  review=dict(eval_calls=h,provider_tokens=g*(i+8192)+h*(i+frames+MAX_TOKENS),input_tokens=(g+h)*i+h*frames,output_tokens=g*8192+h*MAX_TOKENS,review_human_seconds=h*(p['attempt_wall_seconds']+reading),hint_human_seconds=h*(p['attempt_wall_seconds']+reading))
- else:review=dict(eval_calls=0,provider_tokens=g*(i+8192)+h*(i+2048),input_tokens=(g+h)*i,output_tokens=g*8192+h*2048,review_human_seconds=0,hint_human_seconds=0)
- return dict(dev_calls=g,advisor_calls=h,executions=e,model_seconds=(g+h)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon,**review)
+ from .eval_agent import FRAME_TOKEN_BOUND,MAX_TOKENS
+ eval_count=e if p.get('eval_agent',{}).get('enabled') else 0
+ advisor=p.get('advisor_proxy') or {}
+ reading=advisor.get('reading_seconds',30)
+ provider_tokens=g*(i+8192)+eval_count*(i+10*FRAME_TOKEN_BOUND+MAX_TOKENS)+h*(i+1024)
+ return dict(dev_calls=g,advisor_calls=h,eval_calls=eval_count,executions=e,provider_tokens=provider_tokens,input_tokens=(g+h+eval_count)*i+eval_count*10*FRAME_TOKEN_BOUND,output_tokens=g*8192+eval_count*MAX_TOKENS+h*1024,model_seconds=(g+h+eval_count)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,hint_human_seconds=h*(p['attempt_wall_seconds']+reading) if advisor.get('enabled') else 0,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon)
 
 def configured_budget(p):
  required=derive_cell_budget(p,SDK['sdk_calls'],SDK['control_steps']);b=p.get('cell_budget',required);cost(b)
@@ -67,4 +72,4 @@ def configured_budget(p):
  minimum=derive_cell_budget({**p,'max_versions':1,'target_valid_executions':1,'help_budget':0})
  if any(b[k]<v for k,v in minimum.items()):raise ValueError('zero capacity budget refused')
  return b
-def worst_slot(p):return (2*p['model_reserve_seconds']+p['attempt_wall_seconds']+p['startup_cleanup_seconds']+p.get('planner_features',{}).get('human_wait_seconds',0)+2*p.get('planner_features',{}).get('background_seconds',0))
+def worst_slot(p):return ((2+int(p.get('eval_agent',{}).get('enabled',False)))*p['model_reserve_seconds']+p['attempt_wall_seconds']+p['startup_cleanup_seconds']+p.get('planner_features',{}).get('human_wait_seconds',0)+2*p.get('planner_features',{}).get('background_seconds',0))

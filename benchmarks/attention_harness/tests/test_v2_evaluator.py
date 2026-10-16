@@ -108,7 +108,7 @@ def test_review_immutable_text_only_and_disabled(tmp_path):
     other=tmp_path/'disabled';other.mkdir()
     assert ev.review_execution(other,{**CFG,'eval_agent':{'enabled':False}},None)['status']=='disabled'
 
-def test_interrupted_review_settled_without_quarantine(tmp_path):
+def test_interrupted_eval_claim_requires_review(tmp_path):
     s,e,_=setup_run(tmp_path)
     key=e['cells'][0]['key'];owner={'pid':999999999,'start_ticks':'0','boot_id':'missing'}
     directory=tmp_path/'cell';directory.mkdir()
@@ -117,9 +117,11 @@ def test_interrupted_review_settled_without_quarantine(tmp_path):
     s.claim(job['job_id'],owner)
     with s.tx() as db:s.recover_evals(db)
     c=s.cell(key)
-    assert c['state']=='running' and c['jobs'][0]['state']=='settled' and c['used']['eval_calls']==1
+    assert c['state']=='needs_review' and c['jobs'][0]['state']=='needs_review'
+    assert c['used']['eval_calls']==0 and s.goal()['reserved']['eval_calls']==1
+    assert 'automatic Eval interrupted' in c['reason']
     assert s.export_ledger()['recompute_matches']
-    assert json.loads((directory/'v1'/'evaluator-review.json').read_text())['status']=='failed'
+    assert not (directory/'v1'/'eval-review.json').exists()
 
 def test_model_contamination_never_written_or_injected(tmp_path):
     root=evidence_dir(tmp_path,1)

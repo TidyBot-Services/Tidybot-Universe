@@ -1,0 +1,5 @@
+# Selected moments data contract
+
+`help` request records contain `selected_moments` and `localization`. Each moment has exactly `moment_id`, `event_id`, `view`, `frame_index`, `video_seconds`, `trace_seconds`, `role`, and `note`. Views are `external`, `side`, `top`, `left_wrist`, or `right_wrist`; roles are `before` or `after`. Indices are zero based and times are finite nonnegative seconds. `localization.status` is `targeted` or `generic_fallback`; fallback requires a reason and an empty moment list.
+
+The mapping matches `ui/live.js` `replayTarget`: the sample is the last `frame_trace_seconds` value not after the event completion. Missing, malformed, nonmonotonic, or out of range mappings cannot locate an event. For equal before and after samples, before moves back one sample; at the first sample only after remains. The configured frame limit defaults to four. Wrist views have priority. A targeted request is allowed only for the full planner and only when every selected event can be located; all other cases send the complete public trace. AdvisorProxy is currently text only, so moment records describe timestamps and views but do not imply that it saw images.

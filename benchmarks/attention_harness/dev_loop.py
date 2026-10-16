@@ -102,6 +102,12 @@ def event_projection(e):
     operation=e.get('operation')
     if operation not in OPERATIONS:return None
     p={'operation':operation,'status':e.get('status','unknown')}
+    # SDK call completion time is public and shares the recorder's relative clock.
+    # Preserve it so replay and selected moments can use the same mapping.
+    if e.get('timestamp_basis') in {'relative','epoch'} and type(e.get('timestamp')) in (int,float):
+        import math
+        if math.isfinite(e['timestamp']):
+            p['timestamp_basis']=e['timestamp_basis'];p['timestamp']=e['timestamp']
     if e.get('source') in {'left_arm','right_arm','left_gripper','right_gripper','bimanual','sensors'}:p['source']=e['source']
     if e.get('physical_arm') in {'left','right','both'}:p['physical_arm']=e['physical_arm']
     if p['status'] not in ('completed','failed','started','succeeded','unknown'):p['status']='unknown'

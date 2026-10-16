@@ -5,19 +5,14 @@ from benchmarks.attention_harness.dev_ledger import DevV2Store,RESOURCES,GOAL
 from benchmarks.attention_harness.dev_experiment import create,run,verify_manifest,DevConflict,MODEL
 from benchmarks.attention_harness.dev_configuration import derive_cell_budget,normalize_configuration
 from benchmarks.attention_harness.dev_v2_loop import provider_call,process_identity,feedback_for
-from openarm365_dev_v2.tests.fakes import Client,Runner
-from benchmarks.attention_harness.parcc_client import ParccResponse
+from openarm365_dev_v2.tests.fakes import Client,Runner,EvalRunner,FailedEvalClient
 
 def selection(key='iteration-test',**kw):return dict(request_key=key,tasks=['open_cabinet'],seeds=[101],policies=['autonomous'],target_depth=3,target_valid_executions=3,max_versions=5,help_budget=2,coverage='strict_full_depth',**kw)
 def setup(tmp_path,sel=None):
  s=DevV2Store(tmp_path/'s.sqlite');e=create(s,tmp_path/'a',sel or selection());m=verify_manifest(e)
  b=tmp_path/'budget.json';b.write_text(json.dumps(dict(goal_id=m['goal_id'],ledger_path=str(s.path.resolve()),experiment_id=e['experiment_id'],manifest_sha256=e['manifest']['sha256'],limits=m['goal_limits'],wall_limit=m['wall_limit'])))
  return s,e,b
-class HintClient(Client):
- def chat(self,**kw):
-  if kw['max_tokens']==2048:
-   self.inputs.append(kw);return ParccResponse('simulated/GLM','Use smaller world deltas.',None,.01,1,dict(total_tokens=100,prompt_tokens=40,completion_tokens=60))
-  return super().chat(**kw)
+class HintClient(FailedEvalClient):pass
 def test_empty_constructor_and_multigoal(tmp_path):
  s=DevV2Store(tmp_path/'s.sqlite')
  with s.tx() as db:assert db.execute('SELECT COUNT(*) FROM v2_goals').fetchone()[0]==0
@@ -28,8 +23,11 @@ def test_empty_constructor_and_multigoal(tmp_path):
  with pytest.raises(DevConflict):create(s,tmp_path/'a',{**selection('separate-goal-a'),'target_depth':4})
 def test_formula():
  p=normalize_configuration(selection());b=derive_cell_budget(p,80,2400)
- assert b['provider_tokens']==255056 and b['input_tokens']==210000 and b['execution_seconds']==1620
- assert b['model_seconds']==840 and b['output_tokens']==45056 and b['control_steps']==7200
+ assert b['provider_tokens']==253008 and b['input_tokens']==210000 and b['execution_seconds']==1620
+ assert b['model_seconds']==840 and b['output_tokens']==43008 and b['control_steps']==7200
+ assert b['advisor_calls']==p['help_budget']==2
+ assert 255056-b['provider_tokens']==p['help_budget']*1024
+ assert 45056-b['output_tokens']==p['help_budget']*1024
 @pytest.mark.parametrize('depth',[1,3,4])
 def test_depth_and_trigger_reachability(tmp_path,depth):
  s,e,b=setup(tmp_path,{**selection(),'target_depth':depth,'target_valid_executions':depth})
@@ -43,9 +41,10 @@ def test_strict_insufficient_zero_records(tmp_path):
  with s.tx() as db:assert db.execute('SELECT COUNT(*) FROM v2_cells').fetchone()[0]==0 and db.execute('SELECT COUNT(*) FROM v2_goals').fetchone()[0]==0
 @pytest.mark.parametrize('policy',['autonomous','demo_first','reactive_help','retry_k_then_ask','budget_matched_random_escalation','trace_aware_hint_only','full_trace_aware_attention_planner'])
 def test_seven_behavior_input_chain(tmp_path,policy):
- s,e,b=setup(tmp_path,{**selection(),'policies':[policy]});cl=HintClient()
- f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=Runner);c=f['cells'][0]
+ s,e,b=setup(tmp_path,{**selection(),'policies':[policy],'eval_agent':{'enabled':True}});cl=HintClient()
+ f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=EvalRunner);c=f['cells'][0]
  assert len(c['versions'])==3 and c['used']['executions']==3
+ assert c['used']['eval_calls']==3
  helps=[j for j in c['jobs'] if j['kind'] in {'demo','advisor'}]
  if policy=='autonomous':assert not helps
  else:assert helps

@@ -25,9 +25,7 @@ def policy_parameters(policy,parameters=None):
     if policy not in POLICY_IDS:raise ValueError('unknown policy')
     p=copy.deepcopy(DEFAULT_PARAMETERS.get(policy,{}) if parameters is None else parameters)
     required={'k'} if policy=='retry_k_then_ask' else {'target_request_count','total_failure_slots','seed'} if policy=='budget_matched_random_escalation' else set()
-    # Random escalation may also preregister how many of its requests are reviews (default 0 = all hints,
-    # the pre-review behaviour); everything else needs the exact key set.
-    allowed=required|({'target_review_count'} if policy=='budget_matched_random_escalation' else set())
+    allowed=required
     if not isinstance(p,dict) or not required<=set(p)<=allowed or any(type(v) is not int for v in p.values()):raise ValueError('complete preregistered integer policy parameters required')
     build_policy(policy,**p)
     return p
@@ -65,35 +63,32 @@ class HumanProvider(HelpProvider):
     def result(self,text):
         if not isinstance(text,str) or not text.strip() or len(text)>2000:raise ValueError('bounded nonempty human help required')
         public_screen(text);return {'provider':'human','content':text}
-def decide(policy,parameters,version,feedback,failures,prior=(),*,help_remaining=0,demo_available=False,memory=None,trace_visible=True,unsafe=False,approval_required=False,review_available=False,review=None,requests_made=()):
-    """review: the HumanProxy answer ({'passed','feedback'}) if one was requested at this boundary. Only its pass/fail
-    outcome enters the policy context; requests_made lists request types already answered at this boundary."""
-    requests_made=tuple(requests_made)
-    if any(r not in ('review','hint') for r in requests_made):raise ValueError('unknown request type')
-    if review is not None:
-        public_screen(review)
-        if 'review' not in requests_made:raise ValueError('a review outcome requires a requested review')
-    outcome=None if review is None else ('passed' if review.get('passed') is True else 'failed')
+def decide(policy,parameters,version,feedback,failures,prior=(),*,help_remaining=0,demo_available=False,memory=None,trace_visible=True,unsafe=False,approval_required=False,eval_review=None,eval_available=False,diagnostic_fallback=False):
+    """Decide from the independent Eval verdict; public failure is diagnostic fallback only."""
+    if eval_review is not None:public_screen(eval_review)
     public_screen(feedback);public_screen(list(prior));memory=EMPTY_MEMORY if memory is None else memory;public_screen(memory)
     parameters=policy_parameters(policy,parameters)
     if memory['entries'] and not memory.get('explicit_registry_authorization'):raise ValueError('Memory registry grant required')
-    failed=bool(feedback.get('public_failure')) or feedback.get('execution_status') in {'failed','timeout','timed_out'}
-    packet=feedback_packet(feedback,version)
-    assessment=assess_trace(packet,[feedback_packet(f,i) for i,f in enumerate(prior)]) if failed else None
+    verdict='passed' if eval_review and eval_review.get('passed') is True else 'failed' if eval_review and eval_review.get('passed') is False else 'unknown'
+    fallback=not eval_available and diagnostic_fallback
+    failed=(verdict=='failed') if eval_available else (bool(feedback.get('public_failure')) or feedback.get('execution_status') in {'failed','timeout','timed_out'}) if fallback else False
+    packet=feedback_packet(feedback,max(0,version-1))
+    assessment=assess_trace(packet,[feedback_packet(f,i) for i,f in enumerate(prior,1)]) if failed else None
     ctx=PolicyContext(run_id='dev-policy',attempt_index=version-1,failure_index=max(0,failures-1),consecutive_failures=failures,
         assistance_remaining=help_remaining,evidence_count=len(packet['events']),has_hypothesis=bool(feedback.get('public_error')),
         matching_memory_count=len(memory['entries']),unsafe=unsafe,approval_required=approval_required,
-        demo_available=demo_available,assessment=assessment,review_available=bool(review_available),requests_made=requests_made,review_outcome=outcome)
+        demo_available=demo_available,assessment=assessment,eval_verdict=verdict,eval_fallback=fallback)
     # Reactive asks only after a public failure; demo runs before v1.
     should=failed or unsafe or approval_required or (policy=='demo_first' and version==1) or bool(memory['entries'])
     decision=build_policy(policy,**parameters).decide(ctx) if should else None
     action=decision.action if decision else DecisionAction.CONTINUE
-    result={'policy_id':policy,'parameters':parameters,'context':asdict(ctx),'requests_made':list(requests_made),'action':action.value,
-            'reason':decision.reason if decision else 'no_public_failure','trace_visible':trace_visible,
+    result={'policy_id':policy,'parameters':parameters,'context':asdict(ctx),'action':action.value,
+            'reason':decision.reason if decision else 'no_eval_failure','trace_visible':trace_visible,
             'request_type':decision.request_type.value if decision and decision.request_type else None,
             'formal_eligible':False}
-    # Do not put independent evaluation in the context; assessment is public-only.
-    if action is DecisionAction.REQUEST and decision.request_type not in (RequestType.HINT,RequestType.REVIEW):
+    if decision:
+        result['event_ids']=list(decision.event_ids);result['evidence_ids']=list(decision.evidence_ids)
+    if action is DecisionAction.REQUEST and decision.request_type is not RequestType.HINT:
         result.update(action='stop',reason='approval_request_rejected_no_authorization',approval_rejected=True)
     if action is DecisionAction.INSPECT_TRACE:result['public_trace_summary']=feedback.get('action_trace',[]) if trace_visible else []
     if action is DecisionAction.RETRIEVE_MEMORY:result['memory']=copy.deepcopy(memory['entries'])

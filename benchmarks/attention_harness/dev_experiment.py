@@ -28,10 +28,14 @@ def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     return b
 
 def create(store,artifact_root,selection):
-    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','human_proxy'}|FIELDS
+    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy'}|FIELDS
     if not isinstance(selection,dict) or set(selection)-allowed:raise ValueError('bounded explicit experiment selection required')
     v3=bool(set(selection)&FIELDS)
-    configuration=normalize_configuration(selection) if v3 else None
+    if v3:
+        from .eval_agent import default_config as eval_default
+        from .dev_advisor_proxy import default_config as advisor_default
+        configuration=normalize_configuration(selection)
+    else:configuration=None
     key=selection.get('request_key')
     import re
     if not isinstance(key,str) or not re.fullmatch('[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
@@ -83,13 +87,23 @@ def create(store,artifact_root,selection):
         normalized.update(cell_budget=budget,goal_limits=goal_limits,wall_limit=wall_limit)
     if legacy_configuration is not None:normalized['configuration']=legacy_configuration
     if 'human_proxy' in selection:
-        if 'eval_agent' in selection:raise ValueError('human_proxy replaces the legacy eval_agent field; give one')
+        if 'eval_agent' in selection or 'advisor_proxy' in selection or v3:
+            raise ValueError('legacy human_proxy cannot be combined with independent Eval/Advisor settings')
         from .human_proxy import normalize
         normalized['human_proxy']=normalize(selection['human_proxy'])
-    if 'eval_agent' in selection:
+    if v3:
+        normalized['eval_agent']=copy.deepcopy(configuration['eval_agent'])
+        normalized['advisor_proxy']=copy.deepcopy(configuration['advisor_proxy'])
+    elif 'eval_agent' in selection:
         review=selection['eval_agent']
         if not isinstance(review,dict) or set(review)!={'enabled','model'} or type(review['enabled']) is not bool or review['model']!='parcc/Qwen':raise ValueError('explicit Qwen review configuration required')
-        normalized['eval_agent']=dict(review)
+        if 'advisor_proxy' in selection:
+            from .eval_agent import normalize as normalize_eval
+            normalized['eval_agent']=normalize_eval({'enabled':review['enabled']})
+        else:normalized['eval_agent']=dict(review)  # old standalone config remains readable
+    if not v3 and 'advisor_proxy' in selection:
+        from .dev_advisor_proxy import normalize
+        normalized['advisor_proxy']=normalize(selection['advisor_proxy'])
     if 'name_suffix' in selection:
         from .ui_history import name_suffix
         normalized['name_suffix']=name_suffix(selection['name_suffix'])
@@ -114,6 +128,8 @@ def create(store,artifact_root,selection):
         for config in configs.values():config['eval_agent']=dict(normalized['eval_agent'])
     if 'human_proxy' in normalized:
         for config in configs.values():config['human_proxy']=copy.deepcopy(normalized['human_proxy'])
+    if 'advisor_proxy' in normalized:
+        for config in configs.values():config['advisor_proxy']=copy.deepcopy(normalized['advisor_proxy'])
     cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
     # Fixed schedule: first cell verifies v1→v2, then all remaining cells v1,
     # then their v2. Coverage is preserved before remaining iteration slots.

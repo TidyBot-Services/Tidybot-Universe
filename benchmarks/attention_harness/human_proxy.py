@@ -1,7 +1,10 @@
-"""HumanProxy: the one simulated human that answers review and hint requests in benchmark mode.
+"""Legacy HumanProxy configuration and artifact reader.
 
-It replaces the former Eval agent (recording review) and text-only Advisor (hint) with a single vision role:
-same model configuration, same information boundary, two request types.
+New Dev v2 runs use eval_agent for automatic vision verdicts and
+dev_advisor_proxy for text-only hints. This module remains importable so old
+configuration and ledger artifacts can still be read without rewriting them.
+
+The functions below implement the historical merged protocol only.
 
 Information boundary = what a human sees in the UI request detail: the recording and multi-view frames
 (external/overview, side, top, left_wrist, right_wrist), the public trace and the agent's own hypothesis. Native

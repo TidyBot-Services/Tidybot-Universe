@@ -99,11 +99,14 @@ def validate_dev_config(c,*,expected_source_root=None):
         expected['scene_contract']=ref
     if 'eval_agent' in c:
         review=c['eval_agent']
-        if not isinstance(review,dict) or set(review)!={'enabled','model'} or type(review['enabled']) is not bool or review['model']!='parcc/Qwen':raise ValueError('invalid recording review configuration')
-        expected['eval_agent']=dict(review)
+        from benchmarks.attention_harness.eval_agent import normalize as normalize_eval
+        expected['eval_agent']=dict(review) if isinstance(review,dict) and set(review)=={'enabled','model'} and type(review['enabled']) is bool and review['model']=='parcc/Qwen' else normalize_eval(review)
     if 'human_proxy' in c:
         from benchmarks.attention_harness.human_proxy import normalize
-        if 'eval_agent' in c:raise ValueError('human_proxy replaces eval_agent')
         expected['human_proxy']=normalize(c['human_proxy'])
+    if 'advisor_proxy' in c:
+        from benchmarks.attention_harness.dev_advisor_proxy import normalize
+        expected['advisor_proxy']=normalize(c['advisor_proxy'])
+    if 'eval_agent' in expected and 'advisor_proxy' in expected and expected['eval_agent']['model']==expected['advisor_proxy']['model']:raise ValueError('Eval and Advisor models must differ')
     if c!=expected or any(type(c[k]) is not type(v) for k,v in expected.items()):raise ValueError('Dev configuration mismatch')
     return c

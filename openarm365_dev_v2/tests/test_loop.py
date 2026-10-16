@@ -3,10 +3,12 @@ from pathlib import Path
 import pytest
 from benchmarks.attention_harness.dev_experiment import *
 from benchmarks.attention_harness.dev_v2_loop import *
-from openarm365_dev_v2.tests.fakes import Client,Runner
+from openarm365_dev_v2.tests.fakes import Client,Runner,EvalRunner,FailedEvalClient
 
-def setup(tmp_path,policy='autonomous',key='loop-test'):
-    s=DevV2Store(tmp_path/'s.sqlite');e=create(s,tmp_path/'artifacts',dict(request_key=key,tasks=['open_cabinet'],seeds=[102],policies=[policy]))
+def setup(tmp_path,policy='autonomous',key='loop-test',eval_enabled=False):
+    selection=dict(request_key=key,tasks=['open_cabinet'],seeds=[102],policies=[policy])
+    if eval_enabled:selection['eval_agent']={'enabled':True,'model':'parcc/Qwen'}
+    s=DevV2Store(tmp_path/'s.sqlite');e=create(s,tmp_path/'artifacts',selection)
     budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}}))
     return s,e,budget
 
@@ -38,16 +40,11 @@ def test_independent_success_never_early_stops(tmp_path):
     assert len(final['cells'][0]['versions'])==2 and s.goal()['used']['executions']==2
 @pytest.mark.parametrize('policy',['demo_first','reactive_help'])
 def test_actual_help_job_in_simulated_loop(tmp_path,policy):
-    s,e,b=setup(tmp_path,policy,key='help-loop-'+policy)
-    class HintClient(Client):
-        def chat(self,**kw):
-            if kw['max_tokens']==2048:
-                self.inputs.append(kw)
-                from benchmarks.attention_harness.parcc_client import ParccResponse
-                return ParccResponse('simulated/GLM','Use smaller world deltas based on observations.',None,.01,1,{'total_tokens':100,'prompt_tokens':40,'completion_tokens':60})
-            return super().chat(**kw)
-    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=HintClient(),runner_factory=Runner)
+    s,e,b=setup(tmp_path,policy,key='help-loop-'+policy,eval_enabled=policy=='reactive_help')
+    client=FailedEvalClient()
+    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=EvalRunner)
     assert final['cells'][0]['used']['help_count']==1
+    if policy=='reactive_help':assert 'eval' in client.role_calls and 'advisor' in client.role_calls
     assert any(j['kind']==('demo' if policy=='demo_first' else 'advisor') for j in final['cells'][0]['jobs'])
 
 def test_unknown_no_retry_and_reservation_retained(tmp_path):

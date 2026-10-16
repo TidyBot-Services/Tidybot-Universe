@@ -25,3 +25,30 @@ class Runner:
         rec={**ids,'elapsed_seconds':.01,'control_steps':2,'sdk_call_budget':{'limit':r.sdk_call_limit,'requested':2,'dispatched':2}}
         artifacts={n:immutable(ep/(n+'.json'),v) for n,v in [('native_result',native),('trace',trace),('sandbox_receipt',rec),('safety',ids)]}
         return {'schema_version':'attentionbench.formal-runner-result.v1',**binding,'status':'failed','native_evaluator':native,'native_success':self.native_success,'artifacts':artifacts,'sandbox':{'process_isolated':True,'sdk_rpc_only':True,'deadline_enforced':True,'action_cancellation_verified':True},'infrastructure_failure':False,'outcome_unknown':False,'artifact_dir':str(ep),'recording':{'status':'simulated_no_video'},'formal_eligible':False}
+
+class EvalRunner(Runner):
+    """Provide a tiny public recording frame so the fake vision Eval can run."""
+    def execute(self,r):
+        from PIL import Image
+        result=super().execute(r)
+        frames=Path(result['artifact_dir'])/'recording_frames'
+        frames.mkdir()
+        Image.new('RGB',(8,8),(1,2,3)).save(frames/'000000.jpg')
+        return result
+
+class FailedEvalClient(Client):
+    """Keep Dev inputs separate while returning a failed Eval and a plain Advisor hint."""
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.role_calls=[]
+    def chat(self,**kw):
+        prompt=kw['messages'][0]['content']
+        usage={'total_tokens':100,'prompt_tokens':40,'completion_tokens':60}
+        if prompt.startswith('You are the system Eval agent'):
+            self.role_calls.append('eval')
+            return ParccResponse(kw['model'],'EVAL_RESULT: {"passed": false, "feedback": "frame #1 shows the motion failed"}',None,.01,1,usage)
+        if prompt.startswith('You are a human-like robotics advisor') or prompt.startswith('Give a concise actionable repair hint'):
+            self.role_calls.append('advisor')
+            self.inputs.append(kw)
+            return ParccResponse(kw['model'],'Use smaller world deltas based on observations.',None,.01,1,usage)
+        return super().chat(**kw)

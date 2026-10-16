@@ -117,7 +117,7 @@ def _journal(path):
         return []
 
 
-def _extra_view_frames(root, main, events):
+def _extra_view_frames(root, main, events, timing=None):
     """Frames from every camera view, at most 10 in total: the main view at the start, the key moment (the first
     failed action, else the middle) and the end; each other view at the key moment, and the fixed external angles
     also at the end. Returns None when the run has no extra views, so the original selection applies."""
@@ -136,7 +136,10 @@ def _extra_view_frames(root, main, events):
     key_index = n // 2
     for i, event in enumerate(events):
         if event.get('status') == 'failed' or event.get('error'):
-            key_index = round(i * (n - 1) / max(1, len(events) - 1)); break
+            from .moment_localization import locate_event
+            target=locate_event(event,timing)
+            key_index=target['frame_index'] if target['status']=='located' and target['frame_index']<n else round(i * (n - 1) / max(1, len(events) - 1))
+            break
     key_index = max(0, min(n - 1, key_index))
     main_indices = sorted({0, key_index, (key_index + n - 1) // 2, n - 1})
     result, views = _Frames(), {}
@@ -181,6 +184,10 @@ def build_eval_evidence(execution_dir, config):
         except (ValueError, KeyError, TypeError, AssertionError):
             evidence['omissions'].append(name + ' rejected by public evidence boundary')
     candidates = sorted(p for p in (root / 'recording_frames').glob('*.jpg') if _file(root, p.relative_to(root)))
+    timing_path=_file(root,'camera_recording.json')
+    try:timing=json.loads(timing_path.read_bytes()).get('replay_timing') if timing_path else None
+    except (OSError,ValueError):timing=None
+    evidence['frame_localization']='recording_mapping' if timing else 'event_order_fallback:recording_mapping_missing'
     views = {}  # candidate path -> view label
     if candidates:
         n = len(candidates)
@@ -190,12 +197,15 @@ def build_eval_evidence(execution_dir, config):
         # include nearby frames before filling remaining uniformly spaced slots.
         for i, event in enumerate(events):
             if event.get('status') == 'failed' or event.get('error'):
-                middle = round(i * (n-1) / max(1, len(events)-1))
+                from .moment_localization import locate_event
+                target=locate_event(event,timing)
+                middle = target['frame_index'] if target['status']=='located' and target['frame_index']<n else round(i * (n-1) / max(1, len(events)-1))
+                if target['status']!='located':evidence['frame_localization']='event_order_fallback:'+target['reason']
                 for j in (middle, middle-1, middle+1):
                     if 0 <= j < n and len(indices) < 10: indices.add(j)
         for j in (round(i * (n-1) / 9) for i in range(10)):
             if len(indices) < 10: indices.add(j)
-        extras = _extra_view_frames(root, candidates, evidence.get('public_feedback', {}).get('action_trace', []))
+        extras = _extra_view_frames(root, candidates, evidence.get('public_feedback', {}).get('action_trace', []),timing)
         if extras:
             candidates = extras
         else:
