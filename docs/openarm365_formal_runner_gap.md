@@ -67,3 +67,23 @@
 
 - G9 的方向：基础策略是 **一个固定策略读 hint**（建议），还是别的形式。这决定阶段 4。
 - 预算：OpenArm365 的单次尝试 480 秒是否作为 formal 上限，还是要缩短（缩短会降低成功率，但降低成本）。
+
+## 8. 阶段 2 状态（2026-10-16，假 owner 测试，无模拟器）
+
+已完成并测试（`openarm365_dev_v2/tests/test_formal_runner.py`，23 项）：
+
+| 差距 | 处理 |
+|---|---|
+| G1 入口锁 | `OpenArm365FormalSuiteRunner.allow_entry_lock=True`，锁原样写入 trace 与 result，通过 `run_with_formal_boundary` 的核对；Dev runner 仍拒绝 |
+| G2 attention_input | 策略 context 增加 `attention_input` 与 `demo_steps`，并写 `policy_context.json`；无求助时为空字典 |
+| G3 / G13 配置 | 新增 `openarm365_dev_v2/formal_config.py`（`attentionbench.openarm365-formal-config.v2`），身份、机器人、场景、锁与 Dev 配置同源，只改边界和三个预算字段；`robocasa365/config.py::validate_config` 已分发该 schema |
+| G4 预算 | 三个预算字段（单次尝试秒数、整体秒数、SDK 次数）是配置项，范围限定在 Dev v2 已验证的包络内（尝试 ≤480 s、整体 ≤1800 s、SDK ≤80）；请求超出冻结值被拒 |
+| G5 标记 | `runner_boundary` 在 formal 为 `formal`，Dev 保持 `dev_loop` |
+| G10 注册 | `formal_attention_cli.robocasa365_runner_class(config)` 按配置 schema 选 runner |
+| G11 Memory 范围 | `memory_context` 对 formal 配置给出 OpenArm365 / BASIC 范围，且与 Dev 配置相同 |
+
+Dev runner 只增加了 4 个可覆盖的钩子（`load_config`、`budgets`、`policy_context`、`allow_entry_lock`/`runner_boundary`），默认行为不变。变异检查：去掉入口锁或 attention_input 的实现后，对应 3 项测试按预期失败。
+
+回归（名字集合，非计数）：harness 失败集合 = 基线 56 + 已知的 `test_openarm_lock_preserves_virtualenv_invocation_path`，无新增；Dev v2 仍为 3 个失败与 57 个错误（Service 字节漂移、`openarm365_dev` 配置 re-pin、缺历史数据库），均与本阶段无关。
+
+**仍未做**：G8（独立 Safety 的稳健性核对）、G9（会读 hint 的固定基础策略）、approval 软限位在 OpenArm365 上的钩子、formal 的多次尝试预算文件（`robocasa365/budget.py` 现在对 365 只放行 2 次尝试 / 1 credit 的上限，350 格矩阵需要 P5 时定义新的预算 schema）、8769 的两个入口重新指向新 runner。没有任何真实模拟器运行。

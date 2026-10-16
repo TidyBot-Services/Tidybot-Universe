@@ -19,6 +19,18 @@ from .robosuite_memory.formal_runner import RobosuiteFormalSuiteRunner
 from .v2_advisor import SimGTGLMAdvisorTransport
 
 
+def robocasa365_runner_class(config_path):
+    """The RoboCasa365 suite runner for this frozen config: the V2 dual-arm OpenArm365 runner for
+    its formal config, the PandaOmron runner for every other (existing) config."""
+    from .robocasa365.formal_runner import RoboCasa365FormalSuiteRunner
+    if config_path is not None:
+        schema = json.loads(Path(config_path).read_bytes()).get("schema_version")
+        if schema == "attentionbench.openarm365-formal-config.v2":
+            from openarm365_dev_v2.formal_runner import OpenArm365FormalSuiteRunner
+            return OpenArm365FormalSuiteRunner
+    return RoboCasa365FormalSuiteRunner
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=("robocasa", "robosuite", "robocasa365"), required=True)
@@ -159,12 +171,12 @@ def main() -> int:
         dev_hypothesis_evidence = {"uri": str(args.dev_generation_artifact.resolve()),
                                    "sha256": hashlib.sha256(receipt_bytes).hexdigest()}
     if args.suite == "robocasa365":
-        from .robocasa365.formal_runner import RoboCasa365FormalSuiteRunner
+        runner_class = robocasa365_runner_class(args.config)
         if any(getattr(args, key) is None for key in ("service_source_root", "sim_source_root", "task_source_root", "sim_python", "asset_manifest")):
             parser.error("RoboCasa365 requires independent Service root, official roots, isolated Python and asset manifest")
         if args.attempt_deadline_seconds is None or args.whole_case_wall_seconds is None:
             parser.error("RoboCasa365 requires explicit frozen attempt/whole-case deadlines")
-        runner = RoboCasa365FormalSuiteRunner(service_source_root=args.service_source_root,
+        runner = runner_class(service_source_root=args.service_source_root,
             sim_source_root=args.sim_source_root, task_source_root=args.task_source_root,
             sim_python=args.sim_python, asset_manifest=args.asset_manifest, record_replay=args.record_replay)
     elif args.suite == "robosuite":

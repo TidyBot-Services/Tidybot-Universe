@@ -13,29 +13,45 @@ def write(path,value):
 
 class OpenArm365DevRunnerV2:
     suite='robocasa365'
+    # The formal subclass overrides these; the defaults are the Dev behaviour.
+    runner_boundary='dev_loop'
+    allow_entry_lock=False
     def __init__(self,*,service_source_root,sim_python,sim_source_root,task_source_root,asset_manifest,
                  record_replay=True,independent_evaluation=True,service_process_observer=None,episode_observer=None,memory_validation=None):
         if not independent_evaluation:raise ValueError('Dual-arm Dev requires independent evaluation')
         self.python=sim_python;self.process_observer=service_process_observer;self.episode_observer=episode_observer
         self.cancel_event=threading.Event();self.memory_validation=memory_validation
 
-    def execute(self,request):
-        if request.entry_lock is not None:raise ValueError('Dev-only runner cannot claim an approved formal entry')
-        c=validate_config(json.loads(request.config_path.read_bytes()))
-        if request.task_id!=c['task_id'] or request.seed!=c['seed']:raise ValueError('Locked 365 task/seed mismatch')
+    def load_config(self,request):
+        return validate_config(json.loads(request.config_path.read_bytes()))
+
+    def budgets(self,request,c):
+        """(attempt seconds, SDK call limit) for this attempt; raises when outside the frozen envelope."""
         limit=request.sdk_call_limit or c['sdk_call_limit']
         seconds=request.effective_attempt_deadline_seconds
         if not 0<seconds<=480 or not 0<limit<=80:raise ValueError('Dual-arm execution exceeds frozen budgets')
+        return seconds,limit
+
+    def policy_context(self,request,c,ready,validation_public,episode):
+        return {'robot':'OpenArm365','task_id':c['task_id'],'task_prompt':c['task_prompt'],
+            'perception_mode':'sim_gt','capabilities':ready['capabilities'],
+            **({'memory_validation':validation_public} if validation_public else {})}
+
+    def execute(self,request):
+        if request.entry_lock is not None and not self.allow_entry_lock:raise ValueError('Dev-only runner cannot claim an approved formal entry')
+        c=self.load_config(request)
+        if request.task_id!=c['task_id'] or request.seed!=c['seed']:raise ValueError('Locked 365 task/seed mismatch')
+        seconds,limit=self.budgets(request,c)
         started=time.monotonic();deadline=started+seconds
         episode=request.artifact_root/('openarm365-dev-'+uuid.uuid4().hex[:12]);episode.mkdir(parents=True,exist_ok=False)
         ids=dict(run_id=request.run_id,attempt_id=request.attempt_id)
         if self.episode_observer:self.episode_observer(str(episode.resolve()))
         binding=dict(suite=self.suite,task_id=request.task_id,seed=c['seed'],policy_sha256=request.policy_sha256,
-            config_sha256=request.config_sha256,entry_lock=None,**ids)
+            config_sha256=request.config_sha256,entry_lock=request.entry_lock,**ids)
         (episode/'policy.py').write_bytes(request.policy_code_path.read_bytes())
         (episode/'config.json').write_bytes(request.config_path.read_bytes())
         recording_context=dict(**ids,camera_name='robot0_agentview_left',started_monotonic=started,
-            origin='native_pipe://owned-openarm365-v2',dev_version=request.attempt_id.rsplit(':',1)[-1])
+            origin='native_pipe://owned-openarm365-v2',dev_version=(request.attempt_id or 'attempt:0').rsplit(':',1)[-1])
         write(episode/'recording_context.json',recording_context)
         owner=NativeOwner(python=self.python,config=episode/'config.json',evidence=episode,deadline=deadline,
             cancel_check=self.cancel_event.is_set,process_observer=self.process_observer)
@@ -55,9 +71,7 @@ class OpenArm365DevRunnerV2:
                 status='condition_invalid';error='scene_contract_mismatch';native={'evaluated':False,'native_success':False,'reason':error}
             else:
                 outcome=execute_formal_policy(code=request.policy_code_path.read_text(),sdk=build_sdk(owner,event),
-                    context={'robot':'OpenArm365','task_id':c['task_id'],'task_prompt':c['task_prompt'],
-                        'perception_mode':'sim_gt','capabilities':ready['capabilities'],
-                        **({'memory_validation':validation_public} if validation_public else {})},
+                    context=self.policy_context(request,c,ready,validation_public,episode),
                     deadline=deadline,stderr_path=episode/'policy-stderr.txt',cancel_check=self.cancel_event.is_set,max_sdk_calls=limit)
                 status,error=outcome.status,outcome.error
                 unknown=any(e.get('error',{}).get('type')=='OutcomeUnknown' for e in events)
@@ -101,7 +115,7 @@ class OpenArm365DevRunnerV2:
         artifacts={}
         trace=dict(schema_version='attentionbench.formal-trace.v1',**binding,status=status,sdk_events=events,
             backend_steps=public_steps,robot='OpenArm365',execution_arm='both',controller=c['controller'],
-            perception_mode='sim_gt',error=error,runner_boundary='dev_loop')
+            perception_mode='sim_gt',error=error,runner_boundary=self.runner_boundary)
         if validation_receipt and outcome is not None:trace['memory_validation']=validation_receipt
         receipt=dict(**ids,elapsed_seconds=time.monotonic()-started,deadline_seconds=seconds,service_stop=cleanup,
             sandbox_probe=probe,policy_process=outcome.__dict__ if outcome else None,camera_recording=recording,control_steps=max((r.get('sequence',0) for r in owner.ledger),default=0),
@@ -113,7 +127,7 @@ class OpenArm365DevRunnerV2:
         for name,value in [('trace',trace),('sandbox_receipt',receipt),('safety',safety),('native_result',native)]:
             artifacts[name]=write(episode/(name+'.json'),value)
         result=dict(schema_version='attentionbench.formal-runner-result.v1',**binding,status=status,error=error,
-            runner_boundary='dev_loop',formal_eligible=False,native_success=native['native_success'],native_evaluator=native,
+            runner_boundary=self.runner_boundary,formal_eligible=False,native_success=native['native_success'],native_evaluator=native,
             control_interface_status=recording_context['control_interface_status'],infrastructure_failure=not attested,
             outcome_unknown=unknown,sandbox={'process_isolated':probe is not None,'sdk_rpc_only':probe is not None,
                 'deadline_enforced':True,'action_cancellation_verified':cleanup['leader_reaped'] and cleanup['process_group_gone'] and cleanup['planner_process_groups_gone']},

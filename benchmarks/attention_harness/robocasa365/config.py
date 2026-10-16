@@ -40,6 +40,9 @@ def validate_config(value):
     if isinstance(value, dict) and value.get("schema_version") == "attentionbench.openarm365-config.v1":
         from openarm365.config import validate_config as validate_openarm
         return validate_openarm(value)
+    if isinstance(value, dict) and value.get("schema_version") == "attentionbench.openarm365-formal-config.v2":
+        from openarm365_dev_v2.formal_config import validate_formal_config
+        return validate_formal_config(value)
     if not isinstance(value, dict) or set(value) != set(EXPECTED) | {
         "task_id",
         "official_env",
