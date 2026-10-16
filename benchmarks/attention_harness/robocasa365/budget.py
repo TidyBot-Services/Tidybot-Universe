@@ -26,6 +26,9 @@ def load_run_budget(path, digest, *, config_sha256, policy_sha256):
     if isinstance(value, dict) and value.get("schema_version") == "attentionbench.openarm365-run-budget.v1":
         from openarm365.budget import validate_run_budget
         return validate_run_budget(value,config_sha256,policy_sha256)
+    if isinstance(value, dict) and value.get("schema_version") == "attentionbench.openarm365-formal-run-budget.v2":
+        from openarm365_dev_v2.formal_config import validate_formal_run_budget
+        return validate_formal_run_budget(value, config_sha256, policy_sha256)
     if not isinstance(value, dict) or set(value) != set(DAILY_CONDITIONS) | {"approved_config_sha256s", "approved_policy_sha256"}:
         raise ValueError("invalid RoboCasa365 daily run budget")
     conditions = {DAILY_CONDITIONS["schema_version"]: DAILY_CONDITIONS,
@@ -43,6 +46,9 @@ def load_run_budget(path, digest, *, config_sha256, policy_sha256):
 
 
 def limits_for_budget(value):
+    if value is not None and value["schema_version"] == "attentionbench.openarm365-formal-run-budget.v2":
+        return {**{key: value[key] for key in ("max_attempts", "assistance_credits", "token_limit", "human_deadline_seconds")},
+                "overall_deadline_seconds": value["whole_case_wall_seconds"]}
     if value is not None and value["schema_version"] == "attentionbench.openarm365-run-budget.v1":
         return {key:value[key] for key in PHASE1_LIMITS}
     limits = dict(PHASE1_LIMITS)

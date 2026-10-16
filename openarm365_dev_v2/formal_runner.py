@@ -32,6 +32,12 @@ class OpenArm365FormalSuiteRunner(OpenArm365DevRunnerV2):
             raise ValueError('OpenArm365 attempt deadline exceeds the frozen attempt wall')
         return seconds, limit
 
+    def safety_record(self, record):
+        # The scheduler's contract names the monitor by its independence from the policy. The native
+        # per-physics-step monitor runs in the simulator process, outside the policy sandbox; keep
+        # its kind in `monitor` so the label does not hide which monitor produced the evidence.
+        return {**record, 'source': 'independent_safety_monitor', 'monitor': record['source']}
+
     def policy_context(self, request, c, ready, validation_public, episode):
         from benchmarks.attention_harness.policy_input import public_attention_input
         from benchmarks.attention_harness.robocasa365.formal_runner import public_demo_steps

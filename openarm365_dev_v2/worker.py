@@ -18,7 +18,7 @@ def main():
     try:
         import numpy as np
         from scipy.spatial.transform import Rotation
-        from .dev_config import validate_dev_config as validate_config
+        from .formal_config import validate_native_config as validate_config
         from openarm365_dev.identity import OfficialEnvironmentIdentity
         from .environment import create_env,tcp_pose,PHYSICAL_TO_NATIVE
         from openarm365_dev.planner import MujocoV2Planner

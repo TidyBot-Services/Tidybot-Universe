@@ -32,6 +32,9 @@ class OpenArm365DevRunnerV2:
         if not 0<seconds<=480 or not 0<limit<=80:raise ValueError('Dual-arm execution exceeds frozen budgets')
         return seconds,limit
 
+    def safety_record(self,record):
+        return record
+
     def policy_context(self,request,c,ready,validation_public,episode):
         return {'robot':'OpenArm365','task_id':c['task_id'],'task_prompt':c['task_prompt'],
             'perception_mode':'sim_gt','capabilities':ready['capabilities'],
@@ -121,8 +124,8 @@ class OpenArm365DevRunnerV2:
             sandbox_probe=probe,policy_process=outcome.__dict__ if outcome else None,camera_recording=recording,control_steps=max((r.get('sequence',0) for r in owner.ledger),default=0),
             sdk_call_budget={'limit':limit,'requested':outcome.call_count if outcome else 0,
                 'dispatched':min(outcome.call_count,limit) if outcome else 0},outcome_unknown=unknown)
-        safety=dict(**ids,source='native_per_physics_step_monitor',monitor_available=attested,
-            unsafe_attempts=int(bool(violations)),violations=violations,events=[],limits=c['safety_limits'])
+        safety=self.safety_record(dict(**ids,source='native_per_physics_step_monitor',monitor_available=attested,
+            unsafe_attempts=int(bool(violations)),violations=violations,events=[],limits=c['safety_limits']))
         native=dict(native,**ids,status=status)
         for name,value in [('trace',trace),('sandbox_receipt',receipt),('safety',safety),('native_result',native)]:
             artifacts[name]=write(episode/(name+'.json'),value)

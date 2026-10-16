@@ -16,7 +16,8 @@ from benchmarks.attention_harness.robocasa365.config import _config, memory_cont
 from benchmarks.attention_harness.robocasa365.formal_runner import RoboCasa365FormalSuiteRunner
 from openarm365_dev_v2 import formal_runner as formal_module, runner as runner_module
 from openarm365_dev_v2.dev_config import validate_dev_config
-from openarm365_dev_v2.formal_config import SCHEMA, make_formal_config, validate_formal_config
+from openarm365_dev_v2.formal_config import (RUN_BUDGET_SCHEMA, SCHEMA, make_formal_config, validate_formal_config,
+                                             validate_formal_run_budget, validate_native_config)
 from openarm365_dev_v2.tests.test_planner_features import SENSOR, setup
 
 BUDGET = dict(attempt_wall_seconds=120, whole_case_wall_seconds=300, sdk_call_limit=40)
@@ -225,3 +226,57 @@ def test_memory_scope_is_bound_to_the_openarm365_robot_and_controller(env):
     # The same scope the Dev config yields, so Memory written for one is not silently another robot's.
     assert context == memory_context(env.dev)
     ScopedMemoryGateway(SimpleNamespace(), context)
+
+
+def test_the_native_worker_check_accepts_dev_and_formal_configurations(env):
+    assert validate_native_config(env.dev) == env.dev
+    assert validate_native_config(env.formal) == env.formal
+    with pytest.raises(ValueError):
+        validate_native_config(dict(env.formal, controller='OSC'))
+
+
+def test_formal_safety_evidence_uses_the_scheduler_label_and_keeps_the_monitor_kind(env, fake_native):
+    formal = formal_module.OpenArm365FormalSuiteRunner(
+        service_source_root='', sim_python='', sim_source_root='', task_source_root='', asset_manifest='')
+    result = formal.execute(make_request(env))
+    safety = json.loads(Path(result['artifacts']['safety']['uri']).read_bytes())
+    assert safety['source'] == 'independent_safety_monitor' and safety['monitor'] == 'native_per_physics_step_monitor'
+    assert isinstance(safety['unsafe_attempts'], int)
+    dev_path = env.tmp / 'dev-config.json'
+    dev_path.write_text(json.dumps(env.dev, sort_keys=True))
+    dev = runner_module.OpenArm365DevRunnerV2(
+        service_source_root='', sim_python='', sim_source_root='', task_source_root='', asset_manifest='')
+    dev_result = dev.execute(make_request(env, config_path=dev_path, config_sha256=sha(dev_path)))
+    dev_safety = json.loads(Path(dev_result['artifacts']['safety']['uri']).read_bytes())
+    assert dev_safety['source'] == 'native_per_physics_step_monitor' and 'monitor' not in dev_safety
+
+
+def run_budget(env, **kw):
+    value = dict(schema_version=RUN_BUDGET_SCHEMA, suite='robocasa365', formal_eligible=False, max_attempts=4,
+                 assistance_credits=1, token_limit=4096, human_deadline_seconds=30, attempt_wall_seconds=280,
+                 whole_case_wall_seconds=300, approved_config_sha256s=[sha(env.config)],
+                 approved_policy_sha256=sha(env.policy))
+    value.update(kw)
+    return value
+
+
+def test_run_budget_loads_through_the_shared_loader_and_sets_the_limits(env):
+    from benchmarks.attention_harness.robocasa365.budget import limits_for_budget, load_run_budget
+    path = env.tmp / 'budget.json'
+    path.write_text(json.dumps(run_budget(env), sort_keys=True))
+    budget = load_run_budget(path, sha(path), config_sha256=sha(env.config), policy_sha256=sha(env.policy))
+    assert limits_for_budget(budget) == dict(max_attempts=4, assistance_credits=1, token_limit=4096,
+                                             human_deadline_seconds=30, overall_deadline_seconds=300)
+    with pytest.raises(ValueError, match='digest'):
+        load_run_budget(path, '0' * 64, config_sha256=sha(env.config), policy_sha256=sha(env.policy))
+
+
+@pytest.mark.parametrize('change', [dict(attempt_wall_seconds=481), dict(whole_case_wall_seconds=601),
+                                    dict(attempt_wall_seconds=300, whole_case_wall_seconds=200),
+                                    dict(max_attempts=11), dict(token_limit=8001), dict(human_deadline_seconds=31),
+                                    dict(max_attempts=True), dict(formal_eligible=True),
+                                    dict(approved_policy_sha256='0' * 64), dict(approved_config_sha256s=['0' * 64]),
+                                    dict(approved_config_sha256s=[]), dict(extra=1)])
+def test_run_budget_outside_the_envelope_or_unbound_is_refused(env, change):
+    with pytest.raises(ValueError):
+        validate_formal_run_budget(run_budget(env, **change), sha(env.config), sha(env.policy))
