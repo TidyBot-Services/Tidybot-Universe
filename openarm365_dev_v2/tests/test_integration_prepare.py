@@ -67,7 +67,7 @@ def test_prepare_600_freezes_derived_budget_and_is_idempotent_without_clock(prep
     assert manifest['cell_budget']['help_wait_seconds']==1320
     assert manifest['planner_features']['human_wait_seconds']==600
     assert manifest['max_versions']==manifest['target_valid_executions']==2
-    assert len(manifest['cells'])==2 and manifest['goal_limits']==before['limits']
+    assert len(manifest['cells'])==2 and manifest['goal_limits']=={**before['limits'],'eval_calls':before['limits'].get('eval_calls',0)}
     with store.tx() as db:
         assert db.execute('SELECT COUNT(*) FROM v2_events').fetchone()[0]==event_count
         assert db.execute('SELECT COUNT(*) FROM v2_goals').fetchone()[0]==1
@@ -99,7 +99,8 @@ def test_prepare_invalid_wait_refused_before_any_immutable_artifacts(prepared_en
     integration.prepare(args)
 
 
-@pytest.mark.parametrize('resource',RESOURCES)
+# Prepared plans reserve no recording-evaluator calls (cell budget 0), so that resource cannot run short.
+@pytest.mark.parametrize('resource',[r for r in RESOURCES if r!='eval_calls'])
 def test_prepare_original_resource_remaining_insufficient(prepared_env,resource):
     store,state,args=prepared_env
     required=2*derive_cell_budget(plan())[resource]

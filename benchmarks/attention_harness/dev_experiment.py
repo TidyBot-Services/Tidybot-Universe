@@ -151,9 +151,9 @@ def create(store,artifact_root,selection):
                 if ep.get('goal_id')!=goal_id:continue
                 for cp, in db.execute('SELECT payload FROM v2_cells WHERE exp=?',(ep['experiment_id'],)):
                     for k,v in json.loads(cp)['budget'].items():allocated[k]+=v
-            if any(allocated[k]+len(cells)*budget[k]>goal_limits[k] for k in RESOURCES):raise ValueError('shared goal allocation exceeds limits')
+            if any(allocated[k]+len(cells)*budget[k]>goal_limits.get(k,0) for k in RESOURCES):raise ValueError('shared goal allocation exceeds limits')
             existing=db.execute('SELECT payload FROM v2_goals WHERE id=?',(goal_id,)).fetchone()
-            if existing and (json.loads(existing[0])['limits']!=goal_limits or json.loads(existing[0])['wall_limit']!=wall_limit):raise DevConflict('immutable goal budget conflict')
+            if existing and (({**json.loads(existing[0])['limits'],'eval_calls':json.loads(existing[0])['limits'].get('eval_calls',0)}!={**goal_limits,'eval_calls':goal_limits.get('eval_calls',0)}) or json.loads(existing[0])['wall_limit']!=wall_limit):raise DevConflict('immutable goal budget conflict')  # goals authorized before eval_calls existed allow none
             if not existing:store.put(db,'goals',goal_id,dict(limits=goal_limits,used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=wall_limit,opening=[]))
         # Guard simultaneous same-key creators without permitting conditions drift.
         row=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(exp_id,)).fetchone()

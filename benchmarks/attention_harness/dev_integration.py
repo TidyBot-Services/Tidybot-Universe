@@ -60,7 +60,7 @@ def epoch():
     for r in manifest:
         name=r.get('relative_path') or r.get('path')
         p=Path(name) if Path(name).is_absolute() else SERVICE/name
-        actual=sha(p)
+        actual=sha(resolve(p))
         if actual!=r['after_sha256']:raise ValueError('Service final contract bytes drifted: '+str(p))
         service_files[str(p)]=actual
     return dict(schema='attentionbench.main-integration-epoch.v1',goal_id=GOAL_ID,ledger=str(LEDGER),
@@ -215,7 +215,7 @@ def rebind_prepared():
             if ui_selection['tasks']!=initial['selection']['tasks'] or ui_selection['seeds']!=initial['selection']['seeds'] or ui_selection['human_wait_seconds']!=prepared['wait_seconds'] or json.loads((STATE/'memory.json').read_bytes())!=initial['planner_features']['memory']:
                 raise DevConflict('original UI selection/Memory binding changed')
             experiments.validate_fairness(old_manifest)
-            if old_manifest['goal_limits']!=evidence['goal']['limits'] or old_manifest['wall_limit']!=evidence['goal']['wall_limit']:
+            if {**old_manifest['goal_limits'],'eval_calls':old_manifest['goal_limits'].get('eval_calls',0)}!={**evidence['goal']['limits'],'eval_calls':evidence['goal']['limits'].get('eval_calls',0)} or old_manifest['wall_limit']!=evidence['goal']['wall_limit']:
                 raise DevConflict('original goal allocation binding differs')
             required_wall=len(old_manifest['cells'])*(old_manifest['cell_budget']['model_seconds']+old_manifest['cell_budget']['execution_seconds']+old_manifest['max_versions']*old_manifest['planner_features']['human_wait_seconds'])
             if store._goal(db,GOAL_ID)['wall_remaining']<required_wall:raise DevBudgetExhausted('original remaining wall insufficient for prepared plan')
@@ -310,7 +310,7 @@ def prepare(args):
         for state,j in store.goal_jobs(db,GOAL_ID):
             if state in {'reserved','claimed','needs_review'} and db.execute('SELECT exp FROM v2_cells WHERE id=?',(j['cell'],)).fetchone()[0]==eid:
                 for k,v in j['reservation'].items():own_held[k]+=v
-        if any(allocated[k]+n*budget[k]>o['goal_limits'][k] for k in RESOURCES):raise DevBudgetExhausted('shared goal allocation exceeds original limits')
+        if any(allocated[k]+n*budget[k]>o['goal_limits'].get(k,0) for k in RESOURCES):raise DevBudgetExhausted('shared goal allocation exceeds original limits')
         if any(max(0,n*budget[k]-own_used[k]-own_held[k])>g['remaining'][k] for k in RESOURCES):raise DevBudgetExhausted('original goal remaining resources insufficient for prepared plan')
         required_wall=n*(budget['model_seconds']+budget['execution_seconds']+p['max_versions']*p['planner_features']['human_wait_seconds'])
         if g.get('real_finished_at') or g['wall_remaining']<required_wall:raise DevBudgetExhausted('original goal remaining wall insufficient for prepared plan')

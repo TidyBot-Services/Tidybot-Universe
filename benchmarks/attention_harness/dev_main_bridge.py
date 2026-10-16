@@ -131,7 +131,8 @@ class DevMainBridge:
         if v['policies']!=[POLICY]:raise ValueError('this acceptance bridge only dispatches the full planner')
         if not self.memory:raise ValueError('isolated Memory authority required for three-feature run')
         limits=configuration['experiment_budget'];budget=configuration['cell_budget'];n=len(v['tasks'])*len(v['seeds'])
-        if set(limits)!=set(RESOURCES) or any(limits[k]>g['limits'][k] or n*budget[k]>limits[k] for k in RESOURCES):raise ValueError('selection exceeds cumulative authorized goal')
+        if set(limits)==set(RESOURCES)-{'eval_calls'}:limits={**limits,'eval_calls':0}  # goals authorized before eval_calls existed allow none
+        if set(limits)!=set(RESOURCES) or any(limits[k]>g['limits'].get(k,0) or n*budget[k]>limits[k] for k in RESOURCES):raise ValueError('selection exceeds cumulative authorized goal')
         if not 0<configuration['wall_seconds']<=g['wall_limit']:raise ValueError('wall exceeds original authorization')
         selection={k:v[k] for k in ('request_key','tasks','seeds','policies','mode','help_budget')}
         depth=configuration['max_iterations']
