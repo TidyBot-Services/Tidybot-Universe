@@ -12,7 +12,7 @@ def test_probe_and_goal_allocation(tmp_path):
  # Explicit room for probe, per matrix cell worst-case plus probe allocation.
  from benchmarks.attention_harness.dev_configuration import normalize_configuration,derive_cell_budget
  from benchmarks.attention_harness.dev_probe import PROBE_BUDGET
- cb=derive_cell_budget(normalize_configuration(sel));sel['goal_limits']={k:2*v+PROBE_BUDGET[k] for k,v in cb.items()}
+ cb=derive_cell_budget(normalize_configuration(sel));sel['goal_limits']={k:2*v+PROBE_BUDGET.get(k,0) for k,v in cb.items()}
  class ProbeRunner(Runner):
   def execute(self,r):
    result=super().execute(r);ep=Path(result['artifact_dir']);result['status']='completed'

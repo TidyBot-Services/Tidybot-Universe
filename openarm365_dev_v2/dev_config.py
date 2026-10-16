@@ -101,5 +101,9 @@ def validate_dev_config(c,*,expected_source_root=None):
         review=c['eval_agent']
         if not isinstance(review,dict) or set(review)!={'enabled','model'} or type(review['enabled']) is not bool or review['model']!='parcc/Qwen':raise ValueError('invalid recording review configuration')
         expected['eval_agent']=dict(review)
+    if 'human_proxy' in c:
+        from benchmarks.attention_harness.human_proxy import normalize
+        if 'eval_agent' in c:raise ValueError('human_proxy replaces eval_agent')
+        expected['human_proxy']=normalize(c['human_proxy'])
     if c!=expected or any(type(c[k]) is not type(v) for k,v in expected.items()):raise ValueError('Dev configuration mismatch')
     return c

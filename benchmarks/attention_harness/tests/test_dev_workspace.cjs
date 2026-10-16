@@ -92,7 +92,7 @@ for(const kind of ['formal','dev1','dev2'])test(`OPERATOR-01 presentation: six f
  assert.match(html,/Help strategy<\/span><b>Reactive help<\/b><small>Ask for help after each failed attempt · /);
  if(kind==='formal')assert.match(html,/Dev agent<\/span><b>Fixed plan<\/b><small>Uses an approved fixed plan/);
  else assert.match(html,/Dev agent<\/span><b>GLM<\/b><small>AI rewrites its plan after each attempt/);
- assert.match(html,/Eval agent<\/span><b>Simulator's own task check<\/b><small>Success is decided by the simulator, not by an AI model/);assert.doesNotMatch(html,/How the robot improves|Who judges success/);
+ assert.match(html,/HumanProxy<\/span><b>Simulator's own task check<\/b><small>Success is decided by the simulator, not by an AI model/);assert.doesNotMatch(html,/How the robot improves|Who judges success/);
  assert.doesNotMatch(html,/<pre|<code|Run details|Configuration locked|false|data-policy-host/);
  assert.match(html,kind==='formal'?/Uses an approved fixed plan/:/AI rewrites its plan after each attempt/);
 });

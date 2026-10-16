@@ -39,6 +39,12 @@ class PolicyContext:
     # outstanding per run, so a pending request turns another ask into safe work.
     pending_requests: int = 0
     trace_evidence: bool = True
+    # Review support. Without it (review_available False) policies keep the legacy hint-only behaviour.
+    review_available: bool = False
+    # Request types already answered at this version boundary, e.g. ("review",).
+    requests_made: tuple[str, ...] = ()
+    # Outcome of a review requested at this boundary: "passed", "failed" or None (not requested).
+    review_outcome: str | None = None
 
 
 @dataclass(frozen=True)
@@ -104,11 +110,24 @@ class DemoFirstPolicy:
         return PolicyDecision(DecisionAction.RETRY, "no_online_assistance")
 
 
+def _review_then_hint(context: PolicyContext, reason: str) -> PolicyDecision:
+    """Review the last version first; only a failed review leads to a hint."""
+    if not context.review_available:
+        return _request(context, RequestType.HINT, reason)
+    if "review" not in context.requests_made:
+        return _request(context, RequestType.REVIEW, reason + "_review_first")
+    if context.review_outcome == "passed":
+        return PolicyDecision(DecisionAction.CONTINUE, "review_confirms_success")
+    if "hint" in context.requests_made:
+        return PolicyDecision(DecisionAction.RETRY, "hint_already_given")
+    return _request(context, RequestType.HINT, "review_reported_failure")
+
+
 class ReactiveHelpPolicy:
     policy_id = "reactive_help"
 
     def decide(self, context: PolicyContext) -> PolicyDecision:
-        return _request(context, RequestType.HINT, "request_after_each_failure")
+        return _review_then_hint(context, "request_after_each_failure")
 
 
 class RetryKThenAskPolicy:
@@ -122,13 +141,14 @@ class RetryKThenAskPolicy:
     def decide(self, context: PolicyContext) -> PolicyDecision:
         if context.consecutive_failures < self.k:
             return PolicyDecision(DecisionAction.RETRY, f"retry_before_threshold_{self.k}")
-        return _request(context, RequestType.HINT, f"retry_threshold_{self.k}_reached")
+        return _review_then_hint(context, f"retry_threshold_{self.k}_reached")
 
 
 class BudgetMatchedRandomEscalationPolicy:
     policy_id = "budget_matched_random_escalation"
 
-    def __init__(self, *, target_request_count: int, total_failure_slots: int, seed: int) -> None:
+    def __init__(self, *, target_request_count: int, total_failure_slots: int, seed: int,
+                 target_review_count: int = 0) -> None:
         if isinstance(total_failure_slots, bool) or not isinstance(total_failure_slots, int) or total_failure_slots < 0:
             raise ValueError("total_failure_slots must be non-negative")
         if (isinstance(target_request_count, bool) or not isinstance(target_request_count, int)
@@ -144,9 +164,26 @@ class BudgetMatchedRandomEscalationPolicy:
             key=lambda slot: hashlib.sha256(f"{seed}:{slot}".encode()).digest(),
         )
         self.selected_slots = frozenset(ranked[:target_request_count])
+        # The review/hint mix is matched to the full planner: which selected slots ask for a review is
+        # fixed by the same preregistered hash, so the mix never depends on what happens at run time.
+        if (isinstance(target_review_count, bool) or not isinstance(target_review_count, int)
+                or not 0 <= target_review_count <= target_request_count):
+            raise ValueError("target review count must fit within the request count")
+        self.target_review_count = target_review_count
+        by_review_hash = sorted(
+            self.selected_slots,
+            key=lambda slot: hashlib.sha256(f"{seed}:review:{slot}".encode()).digest(),
+        )
+        self.review_slots = frozenset(by_review_hash[:target_review_count])
 
     def decide(self, context: PolicyContext) -> PolicyDecision:
         if context.failure_index in self.selected_slots:
+            if context.review_available and context.failure_index in self.review_slots:
+                if "review" in context.requests_made:  # one request per slot
+                    return PolicyDecision(DecisionAction.RETRY, "random_slot_request_made")
+                return _request(context, RequestType.REVIEW, "budget_matched_random_review_slot")
+            if context.requests_made:
+                return PolicyDecision(DecisionAction.RETRY, "random_slot_request_made")
             return _request(context, RequestType.HINT, "budget_matched_random_slot")
         return PolicyDecision(DecisionAction.RETRY, "random_slot_not_selected")
 
@@ -189,7 +226,7 @@ def _trace_decision(context: PolicyContext, *, full: bool) -> PolicyDecision:
         if full and context.matching_memory_count:
             return PolicyDecision(DecisionAction.RETRIEVE_MEMORY, "trusted_memory_matches")
         if context.consecutive_failures >= 2:
-            return _trace_request(context, "cause_unresolved")
+            return _trace_request(context, "cause_unresolved", full=full)
         return PolicyDecision(DecisionAction.RETRY, "failure_summary_retry")
     if a is None:
         # Compatibility for callers that have not supplied a projected packet.
@@ -198,12 +235,14 @@ def _trace_decision(context: PolicyContext, *, full: bool) -> PolicyDecision:
         if context.evidence_count == 0 or not context.has_hypothesis:
             return PolicyDecision(DecisionAction.INSPECT_TRACE, "trace_needs_inspection")
         if context.consecutive_failures >= 2:
+            if full and context.review_available and "review" not in context.requests_made:
+                return _request(context, RequestType.REVIEW, "repeated_grounded_failure_review_first")
             return _request(context, RequestType.HINT, "repeated_grounded_failure")
         return PolicyDecision(DecisionAction.RETRY, "safe_grounded_retry")
     if not a.evidence_sufficient:
         # With a request already pending the safe work is to keep inspecting.
         if context.consecutive_failures >= 2 and context.pending_requests == 0:
-            decision = _trace_request(context, "cause_unknown_after_inspection")
+            decision = _trace_request(context, "cause_unknown_after_inspection", full=full)
         else:
             decision = PolicyDecision(DecisionAction.INSPECT_TRACE, "insufficient_visible_evidence")
     elif full and context.matching_memory_count:
@@ -212,20 +251,26 @@ def _trace_decision(context: PolicyContext, *, full: bool) -> PolicyDecision:
         decision = _trace_request(context,
                             "same_failure_after_code_change" if a.code_changed else
                             "unchanged_repeated_failure" if a.code_changed is False else
-                            "repeated_failure_code_unknown")
+                            "repeated_failure_code_unknown", full=full)
     elif a.locally_repairable:
         decision = PolicyDecision(DecisionAction.RETRY, "visible_local_repair_candidate")
     elif context.consecutive_failures >= 2:
-        decision = _trace_request(context, "cause_unresolved")
+        decision = _trace_request(context, "cause_unresolved", full=full)
     else:
         decision = PolicyDecision(DecisionAction.INSPECT_TRACE, "cause_needs_inspection")
     return PolicyDecision(decision.action, decision.reason, decision.request_type,
                           decision.priority, **refs)
 
 
-def _trace_request(context: PolicyContext, reason: str) -> PolicyDecision:
+def _trace_request(context: PolicyContext, reason: str, *, full: bool = False) -> PolicyDecision:
+    if context.review_outcome == "passed" and full:
+        return PolicyDecision(DecisionAction.CONTINUE, "review_confirms_success")
     if context.assistance_remaining <= 0:
         return PolicyDecision(DecisionAction.STOP, "unresolved_failure_no_assistance_budget")
+    # Only the full method chooses the request type: look at the result first when the cause is unknown,
+    # then ask for advice. The hint-only gate can never request a review.
+    if full and context.review_available and "review" not in context.requests_made:
+        return _request(context, RequestType.REVIEW, reason + "_review_first")
     return _request(context, RequestType.HINT, reason)
 
 
@@ -254,6 +299,7 @@ def build_policy(policy_id: str, **config: int) -> AttentionPolicy:
             target_request_count=config["target_request_count"],
             total_failure_slots=config["total_failure_slots"],
             seed=config.get("seed", 0),
+            target_review_count=config.get("target_review_count", 0),
         )
     if policy_id == "trace_aware_hint_only":
         return TraceAwareHintOnlyPolicy()

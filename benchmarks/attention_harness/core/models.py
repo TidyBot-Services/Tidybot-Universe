@@ -31,6 +31,7 @@ class AttemptStatus(str, Enum):
 
 
 class RequestType(str, Enum):
+    REVIEW = "review"  # "did my last version work?" answered by the HumanProxy; main matrix
     HINT = "hint"
     APPROVAL = "approval"
     INTERRUPT = "interrupt"

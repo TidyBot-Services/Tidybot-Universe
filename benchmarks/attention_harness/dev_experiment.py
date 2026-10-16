@@ -2,7 +2,7 @@
 import argparse,copy,hashlib,json,os,time
 from pathlib import Path
 from .dev_configuration import FIELDS,normalize_configuration,configured_budget,worst_slot,require_scene_gate
-from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded,experiment_goal
+from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded,experiment_goal,complete_resources,fill_optional
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .dev_loop import immutable,sha,process_identity,owner_alive
 from .dev_tasks import get_task,validate_selection,options as task_options
@@ -28,7 +28,7 @@ def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     return b
 
 def create(store,artifact_root,selection):
-    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent'}|FIELDS
+    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','human_proxy'}|FIELDS
     if not isinstance(selection,dict) or set(selection)-allowed:raise ValueError('bounded explicit experiment selection required')
     v3=bool(set(selection)&FIELDS)
     configuration=normalize_configuration(selection) if v3 else None
@@ -60,7 +60,7 @@ def create(store,artifact_root,selection):
         from .dev_ledger import cost,resource_equal
         for budget_name in ('experiment_budget','cell_budget'):
             cost(legacy_configuration[budget_name])
-            if set(legacy_configuration[budget_name]) not in (set(RESOURCES),set(RESOURCES)-{'eval_calls'}):raise ValueError('complete resource budget required')
+            if not complete_resources(legacy_configuration[budget_name]):raise ValueError('complete resource budget required')
         if type(legacy_configuration['max_iterations']) is not int or legacy_configuration['max_iterations']<1:raise ValueError('positive max iterations required')
         g=store.goal()
         if store.goal_id!=legacy_configuration['goal_id'] or not resource_equal(g['limits'],legacy_configuration['experiment_budget']) or g['wall_limit']!=legacy_configuration['wall_seconds']:raise ValueError('experiment must bind its independent ledger')
@@ -71,7 +71,7 @@ def create(store,artifact_root,selection):
         budget=configured_budget(configuration)
         n=len(tasks)*len(seeds)*len(policies)
         goal_limits=configuration.get('goal_limits',{k:n*v for k,v in budget.items()})
-        if set(goal_limits)==set(RESOURCES)-{'eval_calls'}:goal_limits={**goal_limits,'eval_calls':0}
+        if complete_resources(goal_limits):goal_limits=fill_optional(goal_limits)
         __import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
         if set(goal_limits)!=set(RESOURCES) or any(n*budget[k]>goal_limits[k] for k in RESOURCES):raise ValueError('goal allocation exceeds limits')
         wait_wall=configuration['max_versions']*configuration.get('planner_features',{}).get('human_wait_seconds',0)
@@ -82,6 +82,10 @@ def create(store,artifact_root,selection):
         normalized.update({k:configuration[k] for k in FIELDS if k in configuration})
         normalized.update(cell_budget=budget,goal_limits=goal_limits,wall_limit=wall_limit)
     if legacy_configuration is not None:normalized['configuration']=legacy_configuration
+    if 'human_proxy' in selection:
+        if 'eval_agent' in selection:raise ValueError('human_proxy replaces the legacy eval_agent field; give one')
+        from .human_proxy import normalize
+        normalized['human_proxy']=normalize(selection['human_proxy'])
     if 'eval_agent' in selection:
         review=selection['eval_agent']
         if not isinstance(review,dict) or set(review)!={'enabled','model'} or type(review['enabled']) is not bool or review['model']!='parcc/Qwen':raise ValueError('explicit Qwen review configuration required')
@@ -108,6 +112,8 @@ def create(store,artifact_root,selection):
     if legacy_configuration is not None:budget=dict(legacy_configuration['cell_budget'])
     if 'eval_agent' in normalized:
         for config in configs.values():config['eval_agent']=dict(normalized['eval_agent'])
+    if 'human_proxy' in normalized:
+        for config in configs.values():config['human_proxy']=copy.deepcopy(normalized['human_proxy'])
     cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
     # Fixed schedule: first cell verifies v1→v2, then all remaining cells v1,
     # then their v2. Coverage is preserved before remaining iteration slots.
@@ -154,7 +160,7 @@ def create(store,artifact_root,selection):
                     for k,v in json.loads(cp)['budget'].items():allocated[k]+=v
             if any(allocated[k]+len(cells)*budget[k]>goal_limits.get(k,0) for k in RESOURCES):raise ValueError('shared goal allocation exceeds limits')
             existing=db.execute('SELECT payload FROM v2_goals WHERE id=?',(goal_id,)).fetchone()
-            if existing and (({**json.loads(existing[0])['limits'],'eval_calls':json.loads(existing[0])['limits'].get('eval_calls',0)}!={**goal_limits,'eval_calls':goal_limits.get('eval_calls',0)}) or json.loads(existing[0])['wall_limit']!=wall_limit):raise DevConflict('immutable goal budget conflict')  # goals authorized before eval_calls existed allow none
+            if existing and ((fill_optional(json.loads(existing[0])['limits'])!=fill_optional(goal_limits)) or json.loads(existing[0])['wall_limit']!=wall_limit):raise DevConflict('immutable goal budget conflict')  # goals authorized before eval_calls existed allow none
             if not existing:store.put(db,'goals',goal_id,dict(limits=goal_limits,used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=wall_limit,opening=[]))
         # Guard simultaneous same-key creators without permitting conditions drift.
         row=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(exp_id,)).fetchone()
@@ -273,7 +279,7 @@ def wait_recovery(store, db, exp_id):
     if e['cancelled'] or e['state'] not in {'planned','running'}:reject('experiment stopped or unresolved')
     g=store._goal(db,gid)
     if g.get('real_finished_at') or g['wall_remaining']<=0 or g['real_started_at'] is None:reject('original authorization expired/unknown')
-    if any(g['used'][k]+g['reserved'][k]>g['limits'][k] for k in RESOURCES):reject('original resources exceeded')
+    if any(g['used'].get(k,0)+g['reserved'][k]>g['limits'].get(k,0) for k in RESOURCES):reject('original resources exceeded')
     for state,j in jobs:
         if state not in {'reserved','claimed','needs_review','settled','released'}:reject('unknown job state')
         if state=='needs_review' or state in {'reserved','claimed'} and j not in waits:reject('paid/other hold or unknown work')

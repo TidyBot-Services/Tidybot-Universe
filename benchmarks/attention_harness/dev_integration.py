@@ -20,7 +20,7 @@ from .dev_main_bridge import DevMainBridge
 from .dev_configuration import normalize_configuration, derive_cell_budget, configured_budget
 from .core.dev_store import DevConflict, DevBudgetExhausted
 from .legacy_paths import resolve
-from .dev_ledger import RESOURCES
+from .dev_ledger import RESOURCES,fill_optional
 from .dev_tasks import validate_selection
 from .dev_v2_loop import immutable
 from . import dev_experiment as experiments
@@ -215,7 +215,7 @@ def rebind_prepared():
             if ui_selection['tasks']!=initial['selection']['tasks'] or ui_selection['seeds']!=initial['selection']['seeds'] or ui_selection['human_wait_seconds']!=prepared['wait_seconds'] or json.loads((STATE/'memory.json').read_bytes())!=initial['planner_features']['memory']:
                 raise DevConflict('original UI selection/Memory binding changed')
             experiments.validate_fairness(old_manifest)
-            if {**old_manifest['goal_limits'],'eval_calls':old_manifest['goal_limits'].get('eval_calls',0)}!={**evidence['goal']['limits'],'eval_calls':evidence['goal']['limits'].get('eval_calls',0)} or old_manifest['wall_limit']!=evidence['goal']['wall_limit']:
+            if fill_optional(old_manifest['goal_limits'])!=fill_optional(evidence['goal']['limits']) or old_manifest['wall_limit']!=evidence['goal']['wall_limit']:
                 raise DevConflict('original goal allocation binding differs')
             required_wall=len(old_manifest['cells'])*(old_manifest['cell_budget']['model_seconds']+old_manifest['cell_budget']['execution_seconds']+old_manifest['max_versions']*old_manifest['planner_features']['human_wait_seconds'])
             if store._goal(db,GOAL_ID)['wall_remaining']<required_wall:raise DevBudgetExhausted('original remaining wall insufficient for prepared plan')

@@ -50,7 +50,7 @@ def validate_formal_config(c, *, expected_source_root=None):
         raise ValueError('OpenArm365 formal configuration required')
     if c.get('runner_boundary') != 'formal':
         raise ValueError('formal configuration must declare the formal boundary')
-    if 'eval_agent' in c:
+    if 'eval_agent' in c or 'human_proxy' in c:
         raise ValueError('recording review is a Dev option, not part of a formal configuration')
     if c.get('scene_reset_seed') != c.get('seed') or type(c.get('scene_reset_seed')) is not int:
         raise ValueError('a formal configuration requires reproducible reset (scene_reset_seed equal to the seed)')

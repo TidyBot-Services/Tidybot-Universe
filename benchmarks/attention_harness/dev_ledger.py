@@ -4,17 +4,32 @@ from contextlib import contextmanager
 from pathlib import Path
 from .core.dev_store import DevConflict,DevBudgetExhausted
 GOAL='3a82df131d394774bc1ae9d881895133'
-RESOURCES=('dev_calls','advisor_calls','eval_calls','provider_tokens','input_tokens','output_tokens','executions','sdk_calls','control_steps','help_credits','help_count','help_wait_seconds','model_seconds','execution_seconds')
-LIMITS=dict(dev_calls=28,advisor_calls=14,eval_calls=28,provider_tokens=500000,input_tokens=500000,output_tokens=500000,executions=28,sdk_calls=2240,control_steps=67200,help_credits=28,help_count=28,help_wait_seconds=7200,model_seconds=7200,execution_seconds=7200)
+RESOURCES=('dev_calls','advisor_calls','eval_calls','provider_tokens','input_tokens','output_tokens','executions','sdk_calls','control_steps','help_credits','help_count','help_wait_seconds','model_seconds','execution_seconds','review_human_seconds','hint_human_seconds')
+# Resources introduced after the first ledgers: a budget/limit dict may omit them (read as 0).
+OPTIONAL=('eval_calls','review_human_seconds','hint_human_seconds')
+HUMAN_SECONDS=('review_human_seconds','hint_human_seconds')
+LIMITS=dict(dev_calls=28,advisor_calls=14,eval_calls=28,provider_tokens=500000,input_tokens=500000,output_tokens=500000,executions=28,sdk_calls=2240,control_steps=67200,help_credits=28,help_count=28,help_wait_seconds=7200,model_seconds=7200,execution_seconds=7200,review_human_seconds=7200,hint_human_seconds=7200)
+def fill_optional(b):
+    """Read a budget/limit dict written before the optional resources existed: absent ones are 0."""
+    return {**{k:0 for k in OPTIONAL if k not in b},**b}
+def complete_resources(b):
+    """True when b names every required resource (optional ones may be absent) and nothing unknown."""
+    return set(RESOURCES)-set(OPTIONAL)<=set(b)<=set(RESOURCES)
+def attention_cost(used,*,request_weight=1.0,second_weight=1/60):
+    """Recompute the shared review+hint attention cost from the two recorded quantities under any weighting.
+    Request units (help_credits) and logical human seconds are stored separately so the weights can change after
+    a run; the defaults (1 per request, 1 per human minute) are a placeholder until the weights are frozen."""
+    seconds=used.get('review_human_seconds',0)+used.get('hint_human_seconds',0)
+    return request_weight*used.get('help_credits',0)+second_weight*seconds
 def encoded(x):return json.dumps(x,ensure_ascii=False,sort_keys=True,allow_nan=False)
 def cost(x):
     if not isinstance(x,dict) or any(k not in RESOURCES or type(v) not in (int,float) or not math.isfinite(v) or v<0 for k,v in x.items()):raise ValueError('finite nonnegative resource cost required')
-    if any(type(v) is not int for k,v in x.items() if k not in {'help_credits','help_wait_seconds','model_seconds','execution_seconds'}):raise ValueError('integer resource count required')
+    if any(type(v) is not int for k,v in x.items() if k not in {'help_credits','help_wait_seconds','model_seconds','execution_seconds','review_human_seconds','hint_human_seconds'}):raise ValueError('integer resource count required')
     return x
 def resource_equal(left,right):
     # Receipt order can differ from chronological settlement; compare floating
     # seconds at numerical precision while all count/token totals stay exact.
-    seconds={'model_seconds','execution_seconds','help_wait_seconds','help_credits'}
+    seconds={'model_seconds','execution_seconds','help_wait_seconds','help_credits','review_human_seconds','hint_human_seconds'}
     return all(math.isclose(left.get(k,0),right.get(k,0),rel_tol=0,abs_tol=1e-9) if k in seconds else left.get(k,0)==right.get(k,0) for k in RESOURCES)
 def experiment_goal(experiment):
     legacy=(experiment.get('selection',{}).get('configuration') or {}).get('goal_id')
@@ -67,12 +82,12 @@ class DevV2Store:
     def event(db,kind,value):db.execute('INSERT INTO v2_events(at,kind,payload) VALUES (?,?,?)',(time.time(),kind,encoded(value)))
     def ensure_goal(self,goal_id,limits,wall_limit):
         cost(limits)
-        if not isinstance(goal_id,str) or not goal_id or set(limits) not in (set(RESOURCES),set(RESOURCES)-{'eval_calls'}) or type(wall_limit) not in (int,float) or not math.isfinite(wall_limit) or wall_limit<=0:raise ValueError('complete goal budget required')
+        if not isinstance(goal_id,str) or not goal_id or not complete_resources(limits) or type(wall_limit) not in (int,float) or not math.isfinite(wall_limit) or wall_limit<=0:raise ValueError('complete goal budget required')
         with self.tx() as db:
             row=db.execute('SELECT payload FROM v2_goals WHERE id=?',(goal_id,)).fetchone()
             if row:
                 old=json.loads(row[0])
-                if ({**old['limits'],'eval_calls':old['limits'].get('eval_calls',0)}!={**limits,'eval_calls':limits.get('eval_calls',0)}) or old['wall_limit']!=wall_limit:raise DevConflict('immutable goal budget conflict')
+                if fill_optional(old['limits'])!=fill_optional(limits) or old['wall_limit']!=wall_limit:raise DevConflict('immutable goal budget conflict')
             else:self.put(db,'goals',goal_id,dict(limits=limits,used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=wall_limit,opening=[]))
     @staticmethod
     def cell_goal(db,c):return experiment_goal(DevV2Store.get(db,'experiments',c['experiment_id']))
@@ -239,7 +254,7 @@ class DevV2Store:
             for state,p in db.execute("SELECT state,payload FROM v2_jobs WHERE cell=?",(key,)):
                 if state in {'reserved','claimed','needs_review'}:
                     for k,v in json.loads(p)['reservation'].items():held[k]+=v
-            if g.get('real_finished_at') or g['wall_remaining']<=0 or any(v>g['remaining'][k] or c['used'][k]+held[k]+v>c['budget'][k] for k,v in reservation.items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
+            if g.get('real_finished_at') or g['wall_remaining']<=0 or any(v>g['remaining'][k] or c['used'].get(k,0)+held[k]+v>c['budget'].get(k,0) for k,v in reservation.items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
     def export_ledger(self,goal_id=None):
         with self.tx() as db:
             ids=[r[0] for r in db.execute('SELECT id FROM v2_goals ORDER BY rowid')]

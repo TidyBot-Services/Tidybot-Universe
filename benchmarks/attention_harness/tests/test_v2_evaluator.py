@@ -11,7 +11,7 @@ from benchmarks.attention_harness.dev_loop import public_feedback
 from benchmarks.attention_harness.dev_help import public_screen
 from benchmarks.attention_harness.dev_ledger import DevV2Store,RESOURCES,LIMITS
 from benchmarks.attention_harness.dev_experiment import create,run,GOAL,verify_manifest
-from benchmarks.attention_harness.dev_v2_loop import model_messages,eval_after_execution
+from benchmarks.attention_harness.dev_v2_loop import model_messages
 from benchmarks.attention_harness.parcc_client import ParccResponse
 from openarm365_dev_v2.tests.fakes import Client,Runner
 
@@ -99,73 +99,6 @@ class ReviewClient(Client):
             return ParccResponse(kw['model'],self.text,None,.01,1,USAGE)
         return super().chat(**kw)
 
-@pytest.mark.parametrize('error',[RuntimeError('review exploded'),TimeoutError('review timed out'),None])
-def test_review_failure_cannot_change_cell_native_or_next_model(tmp_path,error):
-    s,e,b=setup_run(tmp_path)
-    class SuccessRunner(Runner):native_success=True
-    client=ReviewClient(error)
-    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=SuccessRunner)
-    c=final['cells'][0];assert c['state']=='completed' and len(c['versions'])==2
-    assert len(client.inputs)==2 and len(client.review_inputs)==2
-    assert c['used']['eval_calls']==2 and s.goal()['reserved']['eval_calls']==0
-    jobs=[j for j in c['jobs'] if j['kind']=='eval'];assert all(j['state']=='settled' for j in jobs)
-    review=json.loads((Path(c['versions'][0]['source']['uri']).parent/'evaluator-review.json').read_text())
-    assert review['status']==('timeout' if isinstance(error,TimeoutError) else 'failed' if error else 'completed')
-    assert review['passed'] is (None if error is None else False)   # no recording => no visual verdict
-    assert review['mode']=='text_only' and review['model']=='parcc/GLM' and review['fallback_reason']=='no_frames'
-    assert not client.probe_inputs and all(r['model']=='parcc/GLM' for r in client.review_inputs)
-    for j in c['jobs']:
-        if j['kind']=='execute':assert json.loads(Path(j['receipt']['native_result']['uri']).read_text())['native_success'] is True
-    packet=json.loads(client.inputs[1]['messages'][1]['content'])
-    if error is None:
-        public_screen(packet['public_feedback']['evaluator_review'])
-        assert packet['public_feedback']['evaluator_review']['mode']=='text_only'
-        assert 'TEXT-ONLY review of your previous attempt (nobody viewed the recording' in client.inputs[1]['messages'][0]['content']
-    else:   # an unavailable review is not an opinion: Dev gets nothing instead of a fake 'failed'
-        assert 'evaluator_review' not in packet['public_feedback']
-        assert 'review of your previous attempt' not in client.inputs[1]['messages'][0]['content']
-    assert s.export_ledger()['recompute_matches']
-    from benchmarks.attention_harness.dev_report import report,report_csv
-    r=report(s,e['experiment_id']);assert not r['cells'][0]['resource_errors']
-    assert 'eval_calls' in report_csv(r).splitlines()[0]
-    manifest=verify_manifest(e)
-    assert manifest['configs']['open_cabinet:102']['eval_agent']['enabled'] is True
-
-def test_advisor_input_unchanged_and_only_dev_gets_review(tmp_path):
-    s,e,b=setup_run(tmp_path,policy='reactive_help')
-    class HintClient(ReviewClient):
-        def chat(self,**kw):
-            if not is_review(kw) and not is_probe(kw) and kw['max_tokens']==2048:
-                self.inputs.append(kw)
-                assert 'evaluator_review' not in str(kw['messages'])
-                return ParccResponse('simulated/GLM','Use measured deltas.',None,.01,1,{'total_tokens':100,'prompt_tokens':40,'completion_tokens':60})
-            return super().chat(**kw)
-    run(s,e['experiment_id'],max_cells=1,budget_file=b,client=HintClient(),runner_factory=Runner)
-    assert s.goal()['used']['advisor_calls']==1
-
-def test_skipped_budget_and_old_experiment_no_review(tmp_path):
-    s,e,b=setup_run(tmp_path/'new')
-    key=e['cells'][0]['key']
-    with s.tx() as db:
-        c=s.get(db,'cells',key);c['budget']['eval_calls']=0;s.put(db,'cells',key,c)
-    client=ReviewClient();final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=Runner)
-    assert not client.review_inputs and final['cells'][0]['state']=='completed'
-    for v in final['cells'][0]['versions']:
-        assert json.loads((Path(v['source']['uri']).parent/'evaluator-review.json').read_text())['status']=='skipped_budget'
-    old,e,b=setup_run(tmp_path/'old',False);client=ReviewClient()
-    final=run(old,e['experiment_id'],max_cells=1,budget_file=b,client=client,runner_factory=Runner)
-    assert not client.review_inputs
-    assert all(not (Path(v['source']['uri']).parent/'evaluator-review.json').exists() for v in final['cells'][0]['versions'])
-    # Simulate old stored payloads without the newly introduced resource, read-only normalization.
-    with old.tx() as db:
-        g=old.get(db,'goals',old.goal_id);g['limits'].pop('eval_calls');g['used'].pop('eval_calls');old.put(db,'goals',old.goal_id,g)
-    assert old.export_ledger()['recompute_matches'] and old.goal()['remaining']['eval_calls']==0
-
-def test_feedback_screen_rejects_contaminated_opinion(tmp_path):
-    s,e,_=setup_run(tmp_path)
-    config=verify_manifest(e)['configs']['open_cabinet:102']
-    with pytest.raises(ValueError):model_messages(config,'',{'evaluator_review':{'passed':True,'feedback':'native_success true'}},{},{})
-
 def test_review_immutable_text_only_and_disabled(tmp_path):
     root=evidence_dir(tmp_path/'execution',0)
     review=ev.review_execution(root,CFG,ReviewClient())
@@ -187,29 +120,6 @@ def test_interrupted_review_settled_without_quarantine(tmp_path):
     assert c['state']=='running' and c['jobs'][0]['state']=='settled' and c['used']['eval_calls']==1
     assert s.export_ledger()['recompute_matches']
     assert json.loads((directory/'v1'/'evaluator-review.json').read_text())['status']=='failed'
-
-def test_ui_view_exposes_review_only_for_operators(tmp_path):
-    from benchmarks.attention_harness.daily_dev_v2 import DailyDevV2
-    s,e,b=setup_run(tmp_path);final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=ReviewClient(),runner_factory=Runner)
-    bridge=DailyDevV2.__new__(DailyDevV2)
-    view=bridge.view(s,final['cells'][0])
-    assert all(v['evaluator_review']['status']=='completed' for v in view['versions'])
-    assert view['ledger']['recompute_matches'] and view['ledger']['goal']['used']['eval_calls']==2
-
-def test_malformed_response_is_settled_and_feedback_is_fail_closed(tmp_path):
-    s,e,b=setup_run(tmp_path)
-    class Malformed(ReviewClient):
-        def chat(self,**kw):
-            if is_review(kw):
-                self.review_inputs.append(kw)
-                return ParccResponse(ev.MODEL,'unexpected content',None,.01,1,USAGE)
-            return super().chat(**kw)
-    final=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=Malformed(),runner_factory=Runner)
-    c=final['cells'][0];assert c['state']=='completed'
-    assert all(j['state']=='settled' for j in c['jobs'] if j['kind']=='eval')
-    for v in c['versions']:
-        r=json.loads((Path(v['source']['uri']).parent/'evaluator-review.json').read_text());assert not r['passed'] and r['status']=='failed'
-    assert s.export_ledger()['recompute_matches']
 
 def test_model_contamination_never_written_or_injected(tmp_path):
     root=evidence_dir(tmp_path,1)
@@ -308,32 +218,6 @@ def test_text_only_review_cannot_claim_a_visual_verdict(tmp_path):
     lying=ReviewClient(probe_error=TimeoutError('timed out'),text='EVAL_RESULT: {"passed": true, "feedback": "The door is clearly open in frame #3."}')
     _,r=run_review(tmp_path,lying)
     assert r['passed'] is None and r['feedback'].startswith('Text-only review: no recording was viewed.')
-
-def test_loop_helpers_understand_text_only_reviews(tmp_path):
-    from benchmarks.attention_harness.dev_v2_loop import screen_model_packet,previous_review,sticky_text_only
-    ok={'passed':None,'feedback':'Text-only review: no recording was viewed.','mode':'text_only'}
-    screen_model_packet({'public_feedback':{'evaluator_review':ok}})
-    screen_model_packet({'public_feedback':{'evaluator_review':{'passed':True,'feedback':'x'}}})                # old 2-key form
-    for bad in ({'passed':None,'feedback':'x'},{'passed':None,'feedback':'x','mode':'vision'},{'passed':'yes','feedback':'x','mode':'text_only'},
-                {'passed':True,'feedback':'x','mode':'telepathy'},{'passed':True,'feedback':'x','extra':1}):
-        with pytest.raises(ValueError):screen_model_packet({'public_feedback':{'evaluator_review':bad}})
-    v1=tmp_path/'v1';v2=tmp_path/'v2';v1.mkdir();v2.mkdir()
-    cell=lambda d:{'versions':[{'source':{'uri':str(d/'policy.py')}}]}
-    assert previous_review({'versions':[]}) is None
-    def write(d,**kw):(d/'evaluator-review.json').write_text(json.dumps(kw))
-    write(v1,status='completed',passed=None,feedback='Text-only review: x',mode='text_only',fallback_reason='qwen_unreachable')
-    assert previous_review(cell(v1))=={'passed':None,'feedback':'Text-only review: x','mode':'text_only'}
-    write(v1,status='completed',passed=False,feedback='trace event #1',mode='vision')
-    assert previous_review(cell(v1))=={'passed':False,'feedback':'trace event #1'}
-    write(v1,status='failed',passed=False,feedback='AI review unavailable.')
-    assert previous_review(cell(v1)) is None
-    write(v1,status='completed',passed=None,feedback='x',mode='vision')
-    assert previous_review(cell(v1)) is None
-    # sticky: only a slow vision call (after a good probe) makes later attempts skip Qwen
-    assert sticky_text_only(v2,1) is False
-    for reason,expected in (('qwen_vision_timeout',True),('qwen_skipped_after_vision_timeout',True),('qwen_unreachable',False),('no_frames',False),(None,False)):
-        write(v1,status='completed',fallback_reason=reason);assert sticky_text_only(v2,2) is expected
-
 
 def test_probe_and_reviews_leave_a_reasoning_model_room_to_answer(tmp_path):
     """Qwen reasons before it answers: an 8-token probe came back with no final content and was misread as an outage."""

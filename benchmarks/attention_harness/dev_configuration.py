@@ -1,6 +1,6 @@
 """Experiment-specific coverage and worst-case resource arithmetic (no dispatch)."""
 import math
-from .dev_ledger import cost,RESOURCES
+from .dev_ledger import cost,RESOURCES,complete_resources,fill_optional
 from .dev_tasks import SDK
 FIELDS={'planner_features','scene_contract','reproducible_reset','goal_key','goal_limits','wall_limit','cell_budget','target_depth','target_valid_executions','max_versions','coverage','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request','public_failure_rule'}
 PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_failure':True,'execution_statuses':['failed','timeout','timed_out'],'public_errors':True,'completion_signal':'none_registered','no_declared_completion_is_failure':True}
@@ -17,6 +17,9 @@ def normalize_configuration(selection):
   from .dev_planner import configuration,POLICY
   p['planner_features']=configuration(p['planner_features'])
   if selection.get('policies')!=[POLICY]:raise ValueError('planner features require only the full planner policy')
+ if 'human_proxy' in selection:
+  from .human_proxy import normalize
+  p['human_proxy']=normalize(selection['human_proxy'])
  p['help_budget']=selection.get('help_budget',1)
  for k in ['target_depth','target_valid_executions','max_versions','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request']:
   if type(p[k]) is not int or p[k]<1:raise ValueError('positive integer configuration required: '+k)
@@ -47,10 +50,18 @@ def require_scene_gate(mode,selection,tasks,seeds):
  elif len(seeds)!=1:raise ValueError('a single-state scene contract covers one seed; use a seed-keyed (v2) contract')
 def derive_cell_budget(p,sdk_calls=80,horizon=2400):
  g=p['max_versions'];e=p['target_valid_executions'];h=p['help_budget'];i=p['max_input_bytes_per_request'];s=p['model_reserve_seconds']
- return dict(dev_calls=g,advisor_calls=h,eval_calls=0,executions=e,provider_tokens=g*(i+8192)+h*(i+2048),input_tokens=(g+h)*i,output_tokens=g*8192+h*2048,model_seconds=(g+h)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon)
+ proxy=p.get('human_proxy') or {}
+ if proxy.get('enabled'):
+  # Every request is a vision request: reserve ten frames plus the answer, review and hint share h request units.
+  from .human_proxy import FRAME_TOKEN_BOUND,MAX_TOKENS,DEFAULT_READING_SECONDS
+  frames=10*FRAME_TOKEN_BOUND+4096;reading=max(proxy.get('reading_seconds',DEFAULT_READING_SECONDS).values())
+  review=dict(eval_calls=h,provider_tokens=g*(i+8192)+h*(i+frames+MAX_TOKENS),input_tokens=(g+h)*i+h*frames,output_tokens=g*8192+h*MAX_TOKENS,review_human_seconds=h*(p['attempt_wall_seconds']+reading),hint_human_seconds=h*(p['attempt_wall_seconds']+reading))
+ else:review=dict(eval_calls=0,provider_tokens=g*(i+8192)+h*(i+2048),input_tokens=(g+h)*i,output_tokens=g*8192+h*2048,review_human_seconds=0,hint_human_seconds=0)
+ return dict(dev_calls=g,advisor_calls=h,executions=e,model_seconds=(g+h)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon,**review)
+
 def configured_budget(p):
  required=derive_cell_budget(p,SDK['sdk_calls'],SDK['control_steps']);b=p.get('cell_budget',required);cost(b)
- if set(b)==set(RESOURCES)-{'eval_calls'}:b={**b,'eval_calls':0}
+ if complete_resources(b):b=fill_optional(b)
  if set(b)!=set(RESOURCES):raise ValueError('complete cell budget required')
  if p['coverage']=='strict_full_depth' and any(b[k]<v for k,v in required.items()):raise ValueError('strict cell budget below worst-case requirement')
  minimum=derive_cell_budget({**p,'max_versions':1,'target_valid_executions':1,'help_budget':0})

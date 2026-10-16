@@ -16,7 +16,7 @@ from . import dev_experiment as experiments
 from .core.dev_store import DevConflict, DevBudgetExhausted
 from .dev_capabilities import execution_environment
 from .dev_configuration import derive_cell_budget, normalize_configuration
-from .dev_ledger import DevV2Store, RESOURCES
+from .dev_ledger import DevV2Store, RESOURCES, complete_resources, fill_optional
 from .dev_loop import sha, process_identity, owner_alive
 from .dev_planner import PlannerControl, POLICY
 from .dev_tasks import TASKS
@@ -115,7 +115,7 @@ class DevMainBridge:
         for other in goal_experiments:
             for row in other['cells']:
                 for k,v in row['budget'].items():allocated[k]+=v
-        can_create=not recovery and not active and not unresolved and not unknown_owner and enough and all(allocated[k]+minimum[k]<=g['limits'][k] and minimum[k]<=g['remaining'][k] for k in RESOURCES)
+        can_create=not recovery and not active and not unresolved and not unknown_owner and enough and all(allocated[k]+minimum[k]<=g['limits'].get(k,0) and minimum[k]<=g['remaining'][k] for k in RESOURCES)
         scope=[dict(task_id=row['task_id'],seed=row['seed'],state=row['state']) for row in cells]
         return dict(phase=phase,can_start=can_start,can_create_new=can_create,can_stop=own_active and not terminal,
             start_label='Start prepared experiment' if prepared else 'Continue experiment',
@@ -127,11 +127,11 @@ class DevMainBridge:
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('selection and explicit start required')
         v=body['selection'];configuration=v['configuration'];g=self.store.goal(self.goal_id)
         if configuration['goal_id']!=self.goal_key:raise ValueError('this UI is bound to the existing goal; no new budget')
-        if v.get('eval_agent',{}).get('enabled'):raise ValueError('independent recording evaluator is not configured in this isolated bridge')
+        if v.get('eval_agent',{}).get('enabled') or v.get('human_proxy',{}).get('enabled'):raise ValueError('HumanProxy requests are not configured in this isolated bridge')
         if v['policies']!=[POLICY]:raise ValueError('this acceptance bridge only dispatches the full planner')
         if not self.memory:raise ValueError('isolated Memory authority required for three-feature run')
         limits=configuration['experiment_budget'];budget=configuration['cell_budget'];n=len(v['tasks'])*len(v['seeds'])
-        if set(limits)==set(RESOURCES)-{'eval_calls'}:limits={**limits,'eval_calls':0}  # goals authorized before eval_calls existed allow none
+        if complete_resources(limits):limits=fill_optional(limits)  # goals authorized before eval_calls existed allow none
         if set(limits)!=set(RESOURCES) or any(limits[k]>g['limits'].get(k,0) or n*budget[k]>limits[k] for k in RESOURCES):raise ValueError('selection exceeds cumulative authorized goal')
         if not 0<configuration['wall_seconds']<=g['wall_limit']:raise ValueError('wall exceeds original authorization')
         selection={k:v[k] for k in ('request_key','tasks','seeds','policies','mode','help_budget')}

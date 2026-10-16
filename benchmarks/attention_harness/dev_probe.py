@@ -28,7 +28,7 @@ def create_probe(store,parent):
   for cp,ep in db.execute('SELECT c.payload,e.payload FROM v2_cells c JOIN v2_experiments e ON c.exp=e.id'):
    if json.loads(ep).get('goal_id',GOAL)==m['goal_id']:
     for k,v in json.loads(cp)['budget'].items():total[k]+=v
-  if any(total[k]+PROBE_BUDGET[k]>m['goal_limits'][k] for k in RESOURCES):raise ValueError('probe allocation exceeds goal limits')
+  if any(total[k]+PROBE_BUDGET.get(k,0)>m['goal_limits'].get(k,0) for k in RESOURCES):raise ValueError('probe allocation exceeds goal limits')
   store.put(db,'experiments',eid,pe)
   for i,row in enumerate(cells):
    b={k:0 for k in RESOURCES};b.update(executions=1,sdk_calls=80,control_steps=2400,execution_seconds=540)

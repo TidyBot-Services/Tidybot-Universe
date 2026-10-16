@@ -24,7 +24,11 @@ def analyze_cell(c,planned,manifest_ref):
         actual=dict(job['actual'])
         try:
             receipt=job['receipt']
-            if job['kind'] in {'model','advisor'}:
+            if job['kind'] in {'eval','advisor'} and 'review' in receipt:
+                # HumanProxy request (review = kind eval, hint = kind advisor): the saved answer must match its settlement.
+                answer=read(receipt['review'])
+                if receipt.get('usage_accounting')=='measured' and (actual['provider_tokens'],actual['input_tokens'],actual['output_tokens'])!=tuple(answer['usage'][k] for k in ('total_tokens','prompt_tokens','completion_tokens')):raise ValueError('HumanProxy usage/settlement differs')
+            elif job['kind'] in {'model','advisor'}:
                 output=read(receipt['response']);usage=output['usage']
                 if actual['provider_tokens']!=usage['total_tokens'] or actual['input_tokens']!=usage['prompt_tokens'] or actual['output_tokens']!=usage['completion_tokens']:raise ValueError('provider usage/settlement differs')
                 if receipt.get('provider_response') and read(receipt['provider_response'])['body']['usage']!=usage:raise ValueError('provider wire usage differs')
