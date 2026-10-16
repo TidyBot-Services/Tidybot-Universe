@@ -1,3 +1,9 @@
+<!-- legacy-paths-p1-p2-20261016 -->
+## 路径回退、成果提交、8769 恢复（0b + P1 + P2）
+
+工作区整理后桌面只保留 3 个软链接，其余旧绝对路径失效。新增 `legacy_paths.py`：旧 Desktop 路径缺失时到 Workspace 按 `path-map.tsv` 的 `move` 行或目录名查找，用于 catalog 加载和 `dev_integration`，不改任何已记录路径或冻结文件；回归 1394 通过 / 57 失败 = 基线 56 + `openarm365_dev` 冻结配置按旧绝对路径固定源文件哈希的键（需下次冻结时重新固定，未动）。B/C/D 的成果拆成 5 个本地提交（`55f2872`..`adf1b85`，未 push）；用户改写的 7 个 OpenArm 模型文件（会改变被锁定的哈希）未提交。8769 由 systemd 用户服务 `attentionbench-8769` 重启，原 argv，数据库 23 库/154 表/1333 行逐表哈希前后一致，接口冒烟全通过；原进程环境未保存，只复原了 PYTHONPATH 等并经 `with-litellm.sh` 注入模型 key。**已知回归**：旧 8769 上的 “Attention efficiency” 区块（昨晚 23:11 才加）不在主工作区 live.js 中。证据 `outputs/p2-8769-restore-20261016/`。
+<!-- /legacy-paths-p1-p2-20261016 -->
+
 <!-- d-ui-acceptance-20261016-0310 -->
 ## D 真实 UI 持久化链：部分完成且被明确阻塞（2026-10-16）
 
