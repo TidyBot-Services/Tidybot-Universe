@@ -13,7 +13,7 @@
   "controller": "BASIC",
   "dev_adapter_sources": {
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/__init__.py": "9c362d510a5d2038d58c039cb1c206b864f1f52393c9e7a5247610007e35a7f8",
-    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/attachment.py": "a01cd434a34c4b1bbb3f88fc2f8b0e149249fdc2e1920780a605b4a2d9de60c5",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/attachment.py": "a42f5e8f7be16682454401534f68745e000d660d0915106aa918786787cb013f",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/base_motion.py": "2847df8935d83faedef6193cc6938f7a00e6d75fe2d521c1ab75fb774305f142",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/config.py": "09bcfe55a36ddd3d0181f6d920307b5e129ddcd59b2c85589c968b460093f067",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/environment.py": "43b05710ac81dd9bb6d82528f1c6c9661193d9a700c3c65536b5c5006f1e106a",

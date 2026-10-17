@@ -41,7 +41,9 @@ straight, including for translation-only calls. The default and explicit
 
 ## 可移动物体接触豁免
 
-附着诊断开关 `ATTN_DIAG_ATTACHMENT_DUMP=1` 默认关闭；设置为其它值（包括空字符串）会报错。开启后，每次构造非空附着规划上下文都会在该次运行的 evidence 目录写 `attachment-dump-*.json`。文件包含目标 body 及后代的全部 geom、与目标 geom 相关的所有 MuJoCo 接触（包括正距离接触及法向/六维接触力）、每个目标 geom 到非目标且非机器人 geom 的 5 cm 距离查询及最近 10 项、全局最近 10 项、最终 `support_names` 和各世界形状的纳入/排除原因。距离等于 5 cm 时为查询上限，不能推断更远的精确距离。`overlapping_cover_cells` 当前为 `null`，因为本地没有服务端在起点判定的附着覆盖单元与障碍逐项碰撞结果。该开关只写诊断文件，不改变 `support_names` 判定或规划请求；未设置时不写文件。
+附着规划的 `support_names` 保留原有 `dist ≤ 0` 接触判定，并补充固定件邻近判定：世界 inventory 中，非被夹物体及其后代、非机器人 body，且自身到 world 的祖先均无关节的碰撞 geom，只要到被夹物体任一碰撞 geom 的原生 MuJoCo `mj_geomDistance` ≤ `SUPPORT_PROXIMITY_M = 0.010` m，就将该固定件 body 的世界形状列为支撑面；结果按 body id 排序。静置物体常因 MuJoCo 接触 margin 悬在支撑面上方 1.5–6 mm，虽无 `dist ≤ 0` 接触，仍需识别下方固定件。服务端仅放行从初始高度向上离开的支撑面接触，且接触点 separation 不小于 −0.1 mm；向下或侧向穿入仍判碰撞。`SingleArmAttachment` 仍要求支撑名属于世界且不含被夹物体形状。
+
+附着诊断开关 `ATTN_DIAG_ATTACHMENT_DUMP=1` 默认关闭；设置为其它值（包括空字符串）会报错。开启后，每次构造非空附着规划上下文都会在该次运行的 evidence 目录写 `attachment-dump-*.json`。文件包含目标 body 及后代的全部 geom、与目标 geom 相关的所有 MuJoCo 接触（包括正距离接触及法向/六维接触力）、每个目标 geom 到非目标且非机器人 geom 的 5 cm 距离查询及最近 10 项、全局最近 10 项、最终 `support_names` 和各世界形状的纳入/排除原因；邻近纳入项的 reason 为 `proximity_within_10mm`，并记录 `proximity_distance_m`。距离等于 5 cm 时为查询上限，不能推断更远的精确距离。`overlapping_cover_cells` 当前为 `null`，因为本地没有服务端在起点判定的附着覆盖单元与障碍逐项碰撞结果。未设置诊断开关时不写文件。
 
 `contact_exempt_objects` 默认为 `none`，可由 `ATTN_DIAG_CONTACT_EXEMPT` 覆盖最终值。最终值为 `movable_objects` 时，物理监控允许机器人手指、手掌、连杆或车体与任务 `obj_body_id` 中具有独立 free joint 的物体及其子 body 接触，包括目标物、`distr_counter` 和 `distr_sink`。机器人碰台面、柜子、咖啡机、墙、地板、水槽等固定件仍会中止；机器人自碰撞和其他物理监控判据保持原样。底座路径预检查继续使用完整世界。
 

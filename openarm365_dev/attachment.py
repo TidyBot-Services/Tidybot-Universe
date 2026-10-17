@@ -8,6 +8,11 @@ import mujoco
 from .world import is_descendant
 from .environment import tcp_pose
 
+# Resting objects often hover 1.5–6 mm above a support in MuJoCo's contact margin.
+SUPPORT_PROXIMITY_M = 0.010
+# MuJoCo returns distmax when shapes are farther apart; keep it above the rule.
+SUPPORT_DISTANCE_QUERY_MAX_M = 0.011
+
 def bilateral_contacts(env):
     sim=env.sim;objects=set(getattr(env,'obj_body_id',{}).values());result={'left':{},'right':{}}
     for index,c in enumerate(sim.data.contact):
@@ -39,23 +44,58 @@ def nearest_distances(rows,limit=10):
     return sorted(rows,key=lambda row:(row['distance_m'],row['object_geom_id'],row['other_geom_id']))[:limit]
 
 
-def support_decisions(inventory,contacts,support_names):
-    """Explain the unchanged support rule using already measured contacts."""
+def proximity_support_distances(inventory,object_body_id,robot_body_id,
+                                geom_bodyid,body_parentid,body_jntnum,distance):
+    """Return nearest eligible fixed-body distances, ordered by body id."""
+    def descendant(bid,root):
+        while bid>0:
+            if bid==root:return True
+            bid=int(body_parentid[bid])
+        return root==0
+
+    def fixed(bid):
+        while bid>0:
+            if body_jntnum[bid]:return False
+            bid=int(body_parentid[bid])
+        return True
+
+    object_geoms=sorted({shape['geom_id'] for shape in inventory
+        if descendant(int(geom_bodyid[shape['geom_id']]),object_body_id)})
+    if not object_geoms:return {}
+    result={}
+    for shape in sorted(inventory,key=lambda row:(row['body_id'],row['geom_id'])):
+        bid=int(shape['body_id'])
+        if (descendant(bid,object_body_id) or descendant(bid,robot_body_id)
+                or not fixed(bid)):
+            continue
+        gid=shape['geom_id']
+        nearest=min(distance(obj,gid) for obj in object_geoms)
+        if nearest<=SUPPORT_PROXIMITY_M:
+            result[bid]=min(nearest,result.get(bid,nearest))
+    return dict(sorted(result.items()))
+
+
+def support_decisions(inventory,contacts,support_names,proximity_distances=None):
+    """Explain contact and fixed-body proximity support selection."""
+    proximity_distances=proximity_distances or {}
     selected=set(support_names);result=[]
     for shape in inventory:
         matches=[c for c in contacts if c['other_body_id']==shape['body_id']]
         eligible=[c for c in matches if c['distance_m']<=0]
-        if shape['name'] in selected:reason='nonpositive_contact_with_object'
+        distance=proximity_distances.get(shape['body_id'])
+        if shape['name'] in selected and eligible:reason='nonpositive_contact_with_object'
+        elif shape['name'] in selected and distance is not None:reason='proximity_within_10mm'
         elif eligible:reason='nonpositive_contact_but_body_not_selected'
         elif matches:reason='positive_distance_contacts_filtered'
         else:reason='no_contact_with_object'
         result.append(dict(name=shape['name'],body_id=shape['body_id'],
             included=shape['name'] in selected,reason=reason,
-            contact_indices=[c['contact_index'] for c in matches]))
+            contact_indices=[c['contact_index'] for c in matches],
+            proximity_distance_m=distance))
     return result
 
 
-def dump_attachment(env,signature,world,context,attachment,evidence):
+def dump_attachment(env,signature,world,context,attachment,evidence,proximity_distances):
     sim=env.sim;m=sim.model;native_model=m._model;native_data=sim.data._data
     bid=signature['target_id'];robot=m.body_name2id('robot0_openarm_body_link0')
     object_gids=[gid for gid in range(m.ngeom) if is_descendant(m,int(m.geom_bodyid[gid]),bid)]
@@ -97,7 +137,7 @@ def dump_attachment(env,signature,world,context,attachment,evidence):
         distance_query_limit_m=.05,nearest_10=nearest_distances(distances),
         nearest_10_per_object_geom=per_geom,
         support_names=context['support_names'],
-        support_decisions=support_decisions(world['inventory'],contacts,context['support_names']),
+        support_decisions=support_decisions(world['inventory'],contacts,context['support_names'],proximity_distances),
         attachment_geometry=attachment.artifact(),overlapping_cover_cells=None)
     evidence=Path(evidence);evidence.mkdir(parents=True,exist_ok=True)
     path=evidence/f'attachment-dump-{time.time_ns()}.json'
@@ -117,13 +157,20 @@ def planner_context(env,signature,world,tools,evidence=None):
         bodies=[int(m.geom_bodyid[g]) for g in (c.geom1,c.geom2)]
         for first,other in [bodies,bodies[::-1]]:
             if is_descendant(m,first,bid) and not is_descendant(m,other,bid):support_ids.add(other)
+    proximity_distances=proximity_support_distances(
+        world['inventory'],bid,m.body_name2id('robot0_openarm_body_link0'),
+        m.geom_bodyid,m.body_parentid,m.body_jntnum,
+        lambda obj,other:float(mujoco.mj_geomDistance(m._model,env.sim.data._data,
+            obj,other,SUPPORT_DISTANCE_QUERY_MAX_M,None)))
+    support_ids.update(proximity_distances)
     context=dict(signature,object_pose=(local@target).tolist(),tcp_object_transform=(np.linalg.inv(tcp)@target).tolist(),
         tool_frame=f'openarm_{side}_hand_tcp',
         shape_names=[c['name'] for c in world['inventory'] if is_descendant(m,c['body_id'],bid)],
-        support_names=[c['name'] for c in world['inventory'] if c['body_id'] in support_ids])
+        support_names=[c['name'] for c in sorted(world['inventory'],key=lambda row:(row['body_id'],row['geom_id']))
+            if c['body_id'] in support_ids])
     from curobo_v2.attachment import SingleArmAttachment
     attachment=SingleArmAttachment(context,world['cuboids'],tools)
     if dump:
         if evidence is None:raise ValueError('Attachment dump requires an evidence directory')
-        dump_attachment(env,signature,world,context,attachment,evidence)
+        dump_attachment(env,signature,world,context,attachment,evidence,proximity_distances)
     return context
