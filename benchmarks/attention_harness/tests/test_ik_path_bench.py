@@ -178,7 +178,7 @@ def test_diagnostic_files_collects_urdf_meshes_and_reports_missing(tmp_path):
 
 def test_deployed_urdf_all_meshes_exist_and_are_registered():
     project = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/'
-                   'openarm-dev-integration/deployment-03/runtime/project')
+                   'openarm-dev-integration/deployment-04/runtime/project')
     config = project / 'config/openarm_fixed.yml'
     assets = project / 'curobo_v2/service/curobo_service/assets'
     document = yaml.safe_load(config.read_text())
