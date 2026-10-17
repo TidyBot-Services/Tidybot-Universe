@@ -1,5 +1,6 @@
 """Authenticated official V2 planning from real MuJoCo state, with no fallback."""
 import json
+import os
 from pathlib import Path
 import numpy as np
 import yaml
@@ -88,7 +89,16 @@ class MujocoV2Planner:
         local=np.linalg.inv(mount_pose(self.env));pos=(local@np.r_[position,1])[:3]
         rot=local[:3,:3]@orientation;quat=Rotation.from_matrix(rot).as_quat()[[3,0,1,2]].tolist()
         active=[f'openarm_{side}_joint{i}' for i in range(1,8)]
-        return self.plan('/plan',dict(targets={f'openarm_{side}_hand_tcp':dict(position=pos.tolist(),quaternion_wxyz=quat)}),active,epoch)
+        mode=os.environ.get('ATTN_PLANNER_MODE','plan')
+        if mode not in {'plan','ik_path'}:
+            raise ValueError('ATTN_PLANNER_MODE must be plan or ik_path')
+        extra=dict(targets={f'openarm_{side}_hand_tcp':dict(position=pos.tolist(),quaternion_wxyz=quat)})
+        if mode=='ik_path':
+            raw=os.environ.get('ATTN_IK_CANDIDATES','1')
+            if not raw.isdecimal() or int(raw)<1:
+                raise ValueError('ATTN_IK_CANDIDATES must be a positive integer')
+            extra['ik_candidates']=int(raw)
+        return self.plan('/plan' if mode=='plan' else '/plan/ik_path',extra,active,epoch)
     def claim(self,pid,epoch):
         def op():
             self.client.attest()
