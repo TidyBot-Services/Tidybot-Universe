@@ -78,6 +78,29 @@ class PlannerAdapter:
                 targets=targets,active_joints=active_joints,locked_joints=locked_joints)
             return self._result(result,joint_names)
 
+    def plan_ik_path(self, env_id, current_q, *, targets, joint_names=None,
+                     active_joints=None, locked_joints=None, attachment=None,
+                     max_joint_jump=.35, minimum_duration=.5, ik_candidates=1):
+        with self._lock:
+            current = self._planner.named(current_q, joint_names)
+            self._ensure_world(env_id)
+            self._planner.set_attachment(attachment)
+            result = self._planner.plan_ik_path(
+                current, targets=targets, active_joints=active_joints,
+                locked_joints=locked_joints, max_joint_jump=max_joint_jump,
+                minimum_duration=minimum_duration, ik_candidates=ik_candidates)
+            response = self._result(result, joint_names)
+            response.update(ik_candidates=ik_candidates,
+                            ik_candidate_distances=self._planner.last_ik_path_metrics.get('candidate_distances', []),
+                            ik_candidate_reasons=self._planner.last_ik_path_metrics.get('candidate_reasons', []),
+                            ik_selected_joint_distance_rad=self._planner.last_ik_path_metrics.get('selected_joint_distance_rad'),
+                            ik_selected_max_joint_change_rad=self._planner.last_ik_path_metrics.get('selected_max_joint_change_rad'),
+                            ik_selection_seconds=self._planner.last_ik_path_metrics.get('selection_seconds'),
+                            ik_seconds=self._planner.last_ik_path_metrics.get('ik_seconds'))
+            response['source'] = 'ik_path'
+            response['trajectory_derivatives_source'] = 'analytic stationary-endpoint quintic joint path'
+            return response
+
     def plan_joints(self, env_id, current_q, target_q, joint_names=None, active_joints=None, locked_joints=None, attachment=None):
         with self._lock:
             current = self._planner.named(current_q,joint_names)

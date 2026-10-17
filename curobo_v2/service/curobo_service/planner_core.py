@@ -188,25 +188,10 @@ class CuroboPlanner:
 
     def _select(self, q: np.ndarray, active_joints: list[str] | None = None,
                 tool_frames: list[str] | None = None, locked_joints: dict | None = None):
+        active, tools, locks = self.check_selection(q, active_joints, tool_frames, locked_joints)
         from curobo.motion_planner import MotionPlanner, MotionPlannerCfg
         from curobo.collision_checking import RobotCollisionChecker, RobotCollisionCheckerCfg
         from curobo.types import DeviceCfg
-        active = self.joint_names if active_joints is None else active_joints
-        if not active or len(set(active)) != len(active) or not set(active) <= set(self.joint_names):
-            raise ValueError("Invalid active joint selection")
-        locks = dict(self._locks)
-        if locked_joints:
-            if not set(locked_joints) <= set(self._locks):
-                raise ValueError("Only configured gripper/base locks may be updated")
-            for name, value in locked_joints.items():
-                node = self._joints[name].find("limit")
-                if not np.isfinite(value) or not float(node.get("lower")) <= value <= float(node.get("upper")):
-                    raise ValueError("Lock value outside URDF limits")
-            locks.update(locked_joints)
-        locks.update({n: float(q[i]) for i, n in enumerate(self.joint_names) if n not in active})
-        tools = tuple(self.tool_frames if tool_frames is None else tool_frames)
-        if not tools or len(set(tools)) != len(tools) or not set(tools) <= set(self.tool_frames):
-            raise ValueError("Exactly one entry for each selected configured tool frame is required")
         capacity = max(256, 1 << max(0, len(self._world_cuboids) - 1).bit_length())
         search=self.settings.get('pose_search')
         # Official Kinematics.update_kinematics_config explicitly supports
@@ -270,6 +255,27 @@ class CuroboPlanner:
         checker.update_world(self._scene())
         return planner, checker
 
+    def check_selection(self, q: np.ndarray, active_joints: list[str] | None = None,
+                        tool_frames: list[str] | None = None, locked_joints: dict | None = None):
+        """The same selection checks as _select, before GPU model construction."""
+        active = self.joint_names if active_joints is None else active_joints
+        if not active or len(set(active)) != len(active) or not set(active) <= set(self.joint_names):
+            raise ValueError("Invalid active joint selection")
+        locks = dict(self._locks)
+        if locked_joints:
+            if not set(locked_joints) <= set(self._locks):
+                raise ValueError("Only configured gripper/base locks may be updated")
+            for name, value in locked_joints.items():
+                node = self._joints[name].find("limit")
+                if not np.isfinite(value) or not float(node.get("lower")) <= value <= float(node.get("upper")):
+                    raise ValueError("Lock value outside URDF limits")
+            locks.update(locked_joints)
+        locks.update({n: float(q[i]) for i, n in enumerate(self.joint_names) if n not in active})
+        tools = tuple(self.tool_frames if tool_frames is None else tool_frames)
+        if not tools or len(set(tools)) != len(tools) or not set(tools) <= set(self.tool_frames):
+            raise ValueError("Exactly one entry for each selected configured tool frame is required")
+        return active, tools, locks
+
     def _refresh_measured_model(self,planner,checker,robot):
         from curobo.types import DeviceCfg
         current=planner.kinematics.config.kinematics_config
@@ -314,6 +320,16 @@ class CuroboPlanner:
     def _goal(self, targets: dict):
         from curobo.types import Pose, GoalToolPose
         poses = {}
+        for name, (p, quat) in self.check_targets(targets).items():
+            poses[name] = Pose(position=torch.as_tensor(p[None], device=self._device),
+                               quaternion=torch.as_tensor(quat[None], device=self._device))
+        return GoalToolPose.from_poses(poses, num_goalset=1)
+
+    def check_targets(self, targets: dict):
+        """Validate _goal inputs without creating cuRobo tensors."""
+        if not targets or not set(targets) <= set(self.tool_frames):
+            raise ValueError("Unknown target tool frame")
+        checked = {}
         for name, target in targets.items():
             if any(isinstance(v,(bool,np.bool_)) for v in target["position"]):
                 raise ValueError("Boolean target positions are invalid")
@@ -324,9 +340,8 @@ class CuroboPlanner:
             quat = np.asarray(self.default_quaternion if value is None else value, np.float32)
             if p.shape != (3,) or quat.shape != (4,) or not np.isfinite(p).all() or not np.isfinite(quat).all() or abs(np.linalg.norm(quat)-1) > 1e-5:
                 raise ValueError("Target requires finite xyz and a unit wxyz quaternion")
-            poses[name] = Pose(position=torch.as_tensor(p[None], device=self._device),
-                               quaternion=torch.as_tensor(quat[None], device=self._device))
-        return GoalToolPose.from_poses(poses, num_goalset=1)
+            checked[name] = p, quat
+        return checked
 
     def validate(self, trajectory: np.ndarray, planner, checker, *, measured_start=True) -> bool:
         samples = [trajectory[0]]
@@ -560,6 +575,176 @@ class CuroboPlanner:
             self.last_failure = "ik_tool_endpoint_error"
             return None
         return solution
+
+    def plan_ik_path(self, current_q, *, targets, active_joints, locked_joints=None,
+                     max_joint_jump=.35, minimum_duration=.5, ik_candidates=1):
+        """One public IK solve followed by a locally generated certified path."""
+        from curobo_v2.ik_path import quintic_path, ranked_ik_candidates
+        from curobo_v2.sweep import certify_trajectory
+        from .solver_evidence import summarize
+
+        self.last_timing = None; self.last_derivatives = None; self.last_failure = None
+        self.last_validation = None; self.last_solver_diagnostics = []
+        self.last_ik_path_metrics = {}
+        tool = CuroboPlanner.check_ik_path_request(self, targets, active_joints,
+                                                   max_joint_jump, minimum_duration,
+                                                   ik_candidates=ik_candidates)
+        current = self.named(current_q)
+        started = time.monotonic()
+        planner, checker = self._select(current, active_joints, tool_frames=[tool], locked_joints=locked_joints)
+        if not self.validate(current[None], planner, checker):
+            self.last_failure = 'start_state_collision_or_constraint_violation'
+            return None
+        solve_started = time.monotonic()
+        result = planner.ik_solver.solve_pose(
+            self._goal(targets), current_state=self._state(current[None], planner), return_seeds=ik_candidates)
+        self.last_ik_path_metrics['ik_seconds'] = time.monotonic() - solve_started
+        self.last_solver_diagnostics.append(dict(stage='ik_public_api_result', **summarize(result)))
+        selection_started = time.monotonic()
+        if result is None or not bool(result.success.any()):
+            self.last_failure = 'official_ik_non_success'
+            if result is not None and result.solution is not None:
+                unchosen = result.solution[0].detach().cpu().numpy()
+                if unchosen.shape == (ik_candidates, planner.action_dim):
+                    current_active = current[[self.joint_names.index(n) for n in planner.joint_names]]
+                    _, distances, _ = ranked_ik_candidates(current_active, planner.joint_names,
+                        active_joints, unchosen, np.zeros(ik_candidates, dtype=bool))
+                    self.last_ik_path_metrics['candidate_distances'] = distances
+            self.last_ik_path_metrics.setdefault('candidate_distances', [])
+            self.last_ik_path_metrics['candidate_reasons'] = ([] if result is None else
+                ['official_ik_non_success'] * ik_candidates)
+            self.last_ik_path_metrics['selection_seconds'] = time.monotonic() - selection_started
+            return None
+        values = result.solution[0].detach().cpu().numpy()
+        successes = result.success[0].detach().cpu().numpy()
+        if values.shape != (ik_candidates, planner.action_dim):
+            self.last_failure = 'ik_invalid_solution'
+            self.last_ik_path_metrics['selection_seconds'] = time.monotonic() - selection_started
+            return None
+        current_active = current[[self.joint_names.index(n) for n in planner.joint_names]]
+        order, distances, changes = ranked_ik_candidates(
+            current_active, planner.joint_names, active_joints, values, successes)
+        self.last_ik_path_metrics['candidate_distances'] = distances
+        candidate_reasons = ['official_ik_non_success' if not ok else
+                             'ik_invalid_solution' if distance is None else None
+                             for ok, distance in zip(successes, distances)]
+        self.last_ik_path_metrics['candidate_reasons'] = candidate_reasons
+        failures = []
+        solution = None
+        jump = None
+        for index in order:
+            candidate = current.copy()
+            for name, value in zip(planner.joint_names, values[index]):
+                candidate[self.joint_names.index(name)] = value
+            if np.any(candidate < self.limits[:, 0]) or np.any(candidate > self.limits[:, 1]):
+                failures.append('ik_joint_limits')
+                candidate_reasons[index] = failures[-1]
+                continue
+            # For multiple candidates, reject large jumps before costly geometry checks.
+            # k=1 retains the original check order and failure reason.
+            if ik_candidates > 1 and changes[index] > max_joint_jump:
+                failures.append('ik_path_joint_jump')
+                candidate_reasons[index] = failures[-1]
+                continue
+            if ik_candidates > 1 and not self._validate_tool_endpoints(candidate, targets, planner):
+                failures.append('ik_tool_endpoint_error')
+                candidate_reasons[index] = failures[-1]
+                continue
+            if not self.validate(candidate[None], planner, checker, measured_start=False):
+                failures.append('ik_geometry_validation_failed')
+                candidate_reasons[index] = failures[-1]
+                continue
+            if ik_candidates == 1 and not self._validate_tool_endpoints(candidate, targets, planner):
+                failures.append('ik_tool_endpoint_error')
+                candidate_reasons[index] = failures[-1]
+                continue
+            if ik_candidates == 1 and changes[index] > max_joint_jump:
+                if self.last_validation is not None:
+                    self.last_validation['ik_path_max_joint_change'] = changes[index]
+                failures.append('ik_path_joint_jump')
+                candidate_reasons[index] = failures[-1]
+                continue
+            solution, jump = candidate, changes[index]
+            candidate_reasons[index] = 'selected'
+            self.last_ik_path_metrics.update(selected_joint_distance_rad=distances[index],
+                                             selected_max_joint_change_rad=jump,
+                                             selected_candidate_index=index)
+            break
+        self.last_ik_path_metrics['selection_seconds'] = time.monotonic() - selection_started
+        if solution is None:
+            if not order:
+                self.last_failure = 'ik_invalid_solution'
+            elif len(set(failures)) == 1:
+                self.last_failure = failures[0]
+            else:
+                self.last_failure = 'ik_path_no_feasible_candidate'
+            return None
+        self.last_validation['ik_path_max_joint_change'] = jump
+        bounds = {'velocity': np.array([float(self._joints[n].find('limit').get('velocity'))
+                                        for n in self.joint_names]),
+                  'acceleration': np.full(len(self.joint_names), float(self._config['kinematics']['cspace']['max_acceleration'])),
+                  'jerk': np.full(len(self.joint_names), float(self._config['kinematics']['cspace']['max_jerk']))}
+        path_started = time.monotonic()
+        trajectory, times, derivatives = quintic_path(
+            current, solution, dt=self.interpolation_dt, minimum_duration=minimum_duration,
+            speed=bounds['velocity'], acceleration=float(bounds['acceleration'][0]),
+            jerk=float(bounds['jerk'][0]))
+        self.last_ik_path_metrics['trajectory_generation_seconds'] = time.monotonic() - path_started
+        if not self.validate(trajectory, planner, checker):
+            self.last_failure = 'trajectory_validation_failed'
+            return None
+        self.last_validation['ik_path_max_joint_change'] = jump
+        evidence = {}
+        for name, values in derivatives.items():
+            maximum = np.max(np.abs(values), axis=0)
+            evidence[name] = {'result': 'PASS' if np.all(maximum <= bounds[name]) else 'FAIL',
+                              'maximum_absolute': maximum.tolist(), 'limits': bounds[name].tolist()}
+        self.last_validation['official_derivative_limits'] = evidence
+        if any(row['result'] == 'FAIL' for row in evidence.values()):
+            self.last_failure = 'official_derivative_limit_violation'
+            return None
+        self.last_timing = {'dt_seconds': self.interpolation_dt,
+                            'time_from_start_seconds': times.tolist()}
+        self.last_derivatives = derivatives
+        candidate = dict(status='success', joint_names=self.joint_names,
+                         trajectory=trajectory.tolist(), time_from_start_seconds=times.tolist(),
+                         trajectory_derivatives={k: v.tolist() for k, v in derivatives.items()})
+        locks = next(model[3] for model in self._models.values() if model[0] is planner)
+        certificate_started = time.monotonic()
+        receipt, motion = certify_trajectory(
+            candidate, urdf=self._config['kinematics']['urdf_path'], world=self._world_cuboids,
+            locks=locks, attachment=self._attachment_context, position_limits=self.limits,
+            maximum_speed=dict(zip(self.joint_names, bounds['velocity'])),
+            max_acceleration=float(bounds['acceleration'][0]), max_jerk=float(bounds['jerk'][0]))
+        self.last_ik_path_metrics.update(certification_seconds=time.monotonic() - certificate_started,
+                                         total_seconds=time.monotonic() - started,
+                                         certificate_checks=receipt.get('queries'))
+        self.last_validation['continuous_geometry'] = receipt
+        self.last_validation['continuous_motion'] = motion
+        if receipt['result'] != 'PASS' or motion['result'] != 'PASS':
+            self.last_validation['collision_free'] = False
+            self.last_failure = 'service_continuous_command_validation_rejected'
+            return None
+        return trajectory
+
+    def check_ik_path_request(self, targets, active_joints, max_joint_jump=.35,
+                              minimum_duration=.5, ik_candidates=1):
+        """Validate the IK path route's arm and scalar bounds before GPU use."""
+        if (not np.isfinite(max_joint_jump) or max_joint_jump <= 0
+                or not np.isfinite(minimum_duration) or minimum_duration <= 0):
+            raise ValueError('IK path bounds must be positive and finite')
+        maximum = 64 if getattr(self, 'settings', {}).get('pose_search') is not None else 16
+        if type(ik_candidates) is not int or not 1 <= ik_candidates <= maximum:
+            raise ValueError(f'ik_candidates must be an integer between 1 and {maximum}')
+        if (len(targets) != 1 or active_joints is None or len(active_joints) != 7
+                or len(set(active_joints)) != 7):
+            raise ValueError('IK path requires one target and exactly seven active arm joints')
+        tool = next(iter(targets))
+        side = tool.removeprefix('openarm_').removesuffix('_hand_tcp')
+        if (tool != f'openarm_{side}_hand_tcp' or side not in ('left', 'right')
+                or set(active_joints) != {f'openarm_{side}_joint{i}' for i in range(1, 8)}):
+            raise ValueError('IK path target and active joints must belong to the same arm')
+        return tool
 
     def fk(self, q, locked_joints=None, active_joints=None) -> dict:
         current = self.named(q)

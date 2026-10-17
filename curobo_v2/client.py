@@ -81,7 +81,7 @@ class V2Client:
 
     def call(self, path: str, body=None):
         if path not in {"/warmup", "/health", "/world/cuboids", "/world/envs", "/plan",
-                        "/plan/joint", "/plan/ik", "/plan/cooperative", "/fk",
+                        "/plan/joint", "/plan/ik", "/plan/ik_path", "/plan/cooperative", "/fk",
                         "/plan/validate_base_path", "/diagnostics/jacobian"}:
             raise IdentityError("Undeclared V2 endpoint: " + path)
         row = {"time_ns": time.time_ns(), "path": path, "request": body,

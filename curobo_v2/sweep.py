@@ -15,6 +15,11 @@ from .client import PlanningRejected
 
 SCHEMA='attentionbench.continuous-command-geometry.v1'
 CLEARANCE=.005
+# Upper bound on physics-engine queries per certificate. Recorded accepted certificates need 1100-6500 queries; the cap
+# only stops a runaway search. It was 4096 together with a 2 s wall-clock limit: the wall-clock limit made the same
+# command pass or fail with machine load, and ordinary 2-5 cm forward moves need about 6500 queries and 3.5 s.
+# A certificate that runs out of queries stays unverified and the command is rejected; the clearance test is unchanged.
+MAX_QUERIES=100000
 PADDING=2e-5
 _evidence=None
 
@@ -183,13 +188,13 @@ class SweepValidator:
         return total
 
     def certify(self,response,*,deadline=None,cancel_check=lambda:False):
-        started=time.monotonic();deadline=started+2. if deadline is None else min(deadline,started+2.)
+        started=time.monotonic();deadline=float('inf') if deadline is None else deadline
         curve=CommandCurve(response);coeff=curve.coefficients
         controls=np.array([sum(coeff[:,i]*math.comb(k,i)/math.comb(5,i)for i in range(k+1))for k in range(6)]).transpose(1,0,2)
         stack=[(controls[i],float(curve.times[i]),float(curve.times[i+1]),0)for i in range(len(controls))][::-1]
         checks=leaves=depth_max=0;bound_max=step_max=0.;closure_max=[0.,0.];failure=None
         while stack:
-            if cancel_check()or time.monotonic()>=deadline or checks>=4096:
+            if cancel_check()or time.monotonic()>=deadline or checks>=MAX_QUERIES:
                 failure=dict(reason='continuous_certificate_canceled_or_budget_exceeded',remaining_intervals=len(stack));break
             control,start,end,depth=stack.pop();left,right,mid=split(control);delta=np.max(abs(control-mid),axis=0)+1e-12;full_delta=abs(self.mapping)@delta;bound=float(np.max(self.weights@full_delta));threshold=CLEARANCE+2*bound+PADDING
             for shape in self.shapes:shape.contact_offset=threshold;shape.rest_offset=0.
@@ -253,7 +258,7 @@ def certify_trajectory(response,*,urdf,world,locks,attachment,position_limits,ma
     try:
         curve=CommandCurve(response)
         motion=curve.certify_motion(position_limits=position_limits,maximum_speed=maximum_speed,max_acceleration=max_acceleration,max_jerk=max_jerk)
-        receipt=SweepValidator(urdf,response['joint_names'],world,locks,attachment).certify(response,deadline=started+2.)
+        receipt=SweepValidator(urdf,response['joint_names'],world,locks,attachment).certify(response)
     except Exception as exc:
         receipt['failure']=dict(reason='service_continuous_validator_exception',error=f'{type(exc).__name__}: {exc}')
     if _evidence is not None:

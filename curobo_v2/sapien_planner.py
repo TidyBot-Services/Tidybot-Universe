@@ -1,6 +1,7 @@
 """V2 adapter for an existing SAPIEN kitchen and its unchanged physical rig."""
 from __future__ import annotations
 import json
+import os
 from pathlib import Path
 import time
 import numpy as np
@@ -137,7 +138,16 @@ class SapienV2Planner:
         position=(local@np.r_[target,1])[:3];rotation=local[:3,:3]@orientation
         quat=Rotation.from_matrix(rotation).as_quat()[[3,0,1,2]].tolist()
         active=[f'openarm_{side}_joint{i}'for i in range(1,8)]
-        return self._plan('/plan',dict(targets={f'openarm_{side}_hand_tcp':dict(position=position.tolist(),quaternion_wxyz=quat)}),
+        mode=os.environ.get('ATTN_PLANNER_MODE','plan')
+        if mode not in {'plan','ik_path'}:
+            raise ValueError('ATTN_PLANNER_MODE must be plan or ik_path')
+        extra=dict(targets={f'openarm_{side}_hand_tcp':dict(position=position.tolist(),quaternion_wxyz=quat)})
+        if mode=='ik_path':
+            raw=os.environ.get('ATTN_IK_CANDIDATES','1')
+            if not raw.isdecimal() or int(raw)<1:
+                raise ValueError('ATTN_IK_CANDIDATES must be a positive integer')
+            extra['ik_candidates']=int(raw)
+        return self._plan('/plan' if mode=='plan' else '/plan/ik_path',extra,
                           active_joints=active,epoch=epoch)
 
     def claim(self, plan_id, *, epoch):

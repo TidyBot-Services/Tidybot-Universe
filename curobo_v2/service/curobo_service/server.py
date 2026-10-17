@@ -142,6 +142,23 @@ class PlanRequest(JointOptions):
         return self
 
 
+class IKPathRequest(PlanRequest):
+    max_joint_jump: float = Field(.35, gt=0)
+    minimum_duration: float = Field(.5, gt=0)
+    ik_candidates: int = Field(1, ge=1)
+
+    @model_validator(mode='after')
+    def arm_target(self):
+        if self.targets is None or len(self.targets) != 1 or self.active_joints is None:
+            raise ValueError('IK path requires one named tool target and seven active arm joints')
+        import yaml
+        service = yaml.safe_load(open(Config.ROBOT_CFG)).get('service', {})
+        maximum = 64 if service.get('pose_search') is not None else 16
+        if self.ik_candidates > maximum:
+            raise ValueError(f'ik_candidates must be at most {maximum}')
+        return self
+
+
 class JointPlanRequest(JointOptions):
     attachment: Optional[SingleAttachmentRequest | CooperativeAttachmentRequest] = None
     env_id: Optional[str] = None
@@ -285,6 +302,22 @@ def create_app() -> FastAPI:
                 joint_names=req.joint_names, targets=None if req.targets is None else {k:v.model_dump() for k,v in req.targets.items()},
                 active_joints=req.active_joints, locked_joints=req.locked_joints, attachment=None if req.attachment is None else req.attachment.model_dump(),
             )
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+
+    @app.post("/plan/ik_path")
+    def plan_ik_path(req: IKPathRequest):
+        try:
+            return planner.plan_ik_path(
+                env_id=_env(req.env_id), current_q=req.current_q,
+                targets={k: v.model_dump() for k, v in req.targets.items()},
+                joint_names=req.joint_names, active_joints=req.active_joints,
+                locked_joints=req.locked_joints,
+                attachment=None if req.attachment is None else req.attachment.model_dump(),
+                max_joint_jump=req.max_joint_jump, minimum_duration=req.minimum_duration,
+                ik_candidates=req.ik_candidates)
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:

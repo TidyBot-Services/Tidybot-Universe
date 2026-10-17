@@ -6,6 +6,8 @@ are reversed relative to physical arm sides. Base goals remain zero throughout.
 from contextlib import contextmanager
 import copy
 import json
+import math
+import os
 import random
 from pathlib import Path
 import numpy as np
@@ -24,6 +26,14 @@ def initial_joints(task_id):
     p['right']=[.4,.8,0.,.8,0.,0.,0.]
     return p
 
+def diagnostic_joint_kp():
+    """Joint-position gain; the default 300 is unchanged. ATTN_DIAG_JOINT_KP is a diagnostic-only override."""
+    raw=os.environ.get('ATTN_DIAG_JOINT_KP','300')
+    try:value=float(raw)
+    except ValueError:raise ValueError('ATTN_DIAG_JOINT_KP must be a positive finite number') from None
+    if not math.isfinite(value) or value<=0:raise ValueError('ATTN_DIAG_JOINT_KP must be a positive finite number')
+    return int(value) if value==int(value) else value
+
 def controller_config():
     from openarm365.robot import controller_config as old_config
     c=copy.deepcopy(old_config())
@@ -32,7 +42,7 @@ def controller_config():
     # Change only command interpretation after reset, never qpos or joint limits.
     joint={'type':'JOINT_POSITION','input_type':'delta',
         'input_max':1,'input_min':-1,'output_max':.05,'output_min':-.05,
-        'kp':300,'damping_ratio':1,'impedance_mode':'fixed',
+        'kp':diagnostic_joint_kp(),'damping_ratio':1,'impedance_mode':'fixed',
         'gripper':{'type':'GRIP'},'interpolation':None,'ramp_ratio':.2}
     c['body_parts']['right']=copy.deepcopy(joint)
     c['body_parts']['left']=copy.deepcopy(joint)

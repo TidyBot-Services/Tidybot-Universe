@@ -1,5 +1,5 @@
 """Native MuJoCo tracking of one-use authenticated V2 command curves."""
-import hashlib,json,math,os,time,uuid
+import hashlib,json,math,os,re,time,uuid
 from pathlib import Path
 import xml.etree.ElementTree as E
 import numpy as np
@@ -7,6 +7,33 @@ from curobo_v2.command_curve import sample_for_original_drive
 from curobo_v2.client import PlanningRejected
 from .environment import PHYSICAL_TO_NATIVE,tcp_pose
 from .world import is_descendant
+
+def diagnostic_settle_steps():
+    raw=os.environ.get('ATTN_DIAG_SETTLE_STEPS','20')
+    if not re.fullmatch(r'[0-9]+',raw) or int(raw)<=0:
+        raise ValueError('ATTN_DIAG_SETTLE_STEPS must be a positive integer')
+    return int(raw)
+
+def diagnostic_tracking_bound():
+    raw=os.environ.get('ATTN_DIAG_TRACKING_BOUND','0.004')
+    if not re.fullmatch(r'\+?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?',raw):
+        raise ValueError('ATTN_DIAG_TRACKING_BOUND must be a positive finite decimal')
+    try: value=float(raw)
+    except ValueError as exc:raise ValueError('ATTN_DIAG_TRACKING_BOUND must be a positive finite decimal') from exc
+    if not math.isfinite(value) or value<=0:
+        raise ValueError('ATTN_DIAG_TRACKING_BOUND must be a positive finite decimal')
+    return value
+
+def official_timing_exceeds_ceiling(count,settle_steps):
+    return count-settle_steps+20>100
+
+def tracking_error_event(request_id,settle_steps,bound,names,target,current,qvel):
+    errors=np.asarray(current)-np.asarray(target)
+    maximum=int(np.argmax(abs(errors)))
+    return dict(event='tracking_error',request_id=request_id,settle_steps=settle_steps,bound=bound,
+        error=float(abs(errors[maximum])),joint_errors={name:float(value) for name,value in zip(names,errors)},
+        max_error_joint=names[maximum],target=np.asarray(target).tolist(),current_state=np.asarray(current).tolist(),
+        qvel=None if qvel is None else np.asarray(qvel).tolist())
 
 class NativeExecutor:
     def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None):
@@ -116,24 +143,34 @@ class NativeExecutor:
 
     def apply(self,response,*,request_id):
         self.check_live()
+        settle_steps=diagnostic_settle_steps();bound=diagnostic_tracking_bound()
         plan_id=response['plan_id']
         response=self.planner.claim(plan_id,self.epoch)
         dt=float(self.env.control_timestep)
-        count=math.ceil(response['time_from_start_seconds'][-1]/dt)+20
-        if count>100:raise PlanningRejected('Official timing exceeds 100-control-step action ceiling')
+        count=math.ceil(response['time_from_start_seconds'][-1]/dt)+settle_steps
+        if official_timing_exceeds_ceiling(count,settle_steps):raise PlanningRejected('Official timing exceeds 100-control-step action ceiling')
         kin=self.planner.spec['robot_cfg']['kinematics']['cspace']
         samples,certificate=sample_for_original_drive(response,joint_names=self.planner.names,
             maximum_speed=self.max_speed,position_limits=self.limits,max_acceleration=kin['max_acceleration'],
-            max_jerk=kin['max_jerk'],dt=dt,step_budget=count,settle_steps=20)
+            max_jerk=kin['max_jerk'],dt=dt,step_budget=count,settle_steps=settle_steps)
         self.active_request=request_id;start=self.sequence;before=self.planner.state().copy()
         self.log(self.journal,dict(event='intent',request_id=request_id,epoch=self.epoch,
             plan_id=plan_id,start_sequence=start,command_curve=certificate))
         self.moving=True
         try:
             for target in samples[1:]:self.goals=target.copy();self.control_step()
-            for _ in range(20):self.control_step()
-            error=float(np.max(abs(self.planner.state()-samples[-1])))
-            if error>.004:raise RuntimeError('Native joint tracking exceeds 4mrad endpoint bound')
+            for _ in range(settle_steps):self.control_step()
+            current=self.planner.state()
+            error=float(np.max(abs(current-samples[-1])))
+            if error>bound:
+                try:
+                    r=self.env.robots[0]
+                    qvel=np.asarray(self.env.sim.data.qvel[r._ref_arm_joint_vel_indexes],float)
+                    if not np.all(np.isfinite(qvel)):qvel=None
+                except (AttributeError,IndexError,KeyError,TypeError):qvel=None
+                self.log(self.journal,tracking_error_event(request_id,settle_steps,bound,
+                    self.planner.names,samples[-1],current,qvel))
+                raise RuntimeError('Native joint tracking exceeds 4mrad endpoint bound')
             receipt=dict(status='completed',request_id=request_id,epoch=self.epoch,start_sequence=start,
                 sequence=self.sequence,physics_steps=self.physics_steps,before_qpos=before.tolist(),
                 after_qpos=self.planner.state().tolist(),maximum_endpoint_joint_error_rad=error)
@@ -165,6 +202,9 @@ class NativeExecutor:
         if (delta.shape!=(3,) or rotation.shape!=(3,) or not np.isfinite(np.r_[delta,rotation]).all()
                 or np.any(abs(delta)>.05) or np.any(abs(rotation)>.5)):
             raise ValueError('World-frame deltas limited to .05m/.5rad per coordinate')
+        import os
+        if os.environ.get('ATTN_PLANNER_MODE','plan')=='ik_path' and np.any(rotation!=0):
+            raise ValueError('IK path move_delta preserves the current tool orientation')
         if self.any_object_contact() and not self.held:raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')
         current=tcp_pose(self.env,side)
         response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch)
