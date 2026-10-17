@@ -33,6 +33,12 @@ actual quintic joint-space path against the geometry. The tool path need not be
 straight, including for translation-only calls. The default and explicit
 `plan` modes keep their existing routing.
 
+## 可移动物体接触豁免
+
+`contact_exempt_objects` 默认为 `none`，可由 `ATTN_DIAG_CONTACT_EXEMPT` 覆盖最终值。最终值为 `movable_objects` 时，物理监控允许机器人手指、手掌、连杆或车体与任务 `obj_body_id` 中具有独立 free joint 的物体及其子 body 接触，包括目标物、`distr_counter` 和 `distr_sink`。机器人碰台面、柜子、咖啡机、墙、地板、水槽等固定件仍会中止；机器人自碰撞和其他物理监控判据保持原样。底座路径预检查继续使用完整世界。
+
+`native-actions.jsonl` 的 `contact_exemption` 事件在最终豁免开启时写 `physical_monitor_allows_movable_contacts: true`。已有 `movable_contact_begin/end` 事件仍记录接触开始和结束，沿用每动作 200 条上限。`native-physics.jsonl` 仅在豁免开启且该步有放行接触时写 `expected_movable_contacts`，每项为 `[机器人 geom 名, 物体 geom 名, 距离 m]`。默认关闭时物理日志字段和原接触失败规则不变。
+
 The real reset receipts verify a 19-dimensional native composite vector: both
 7-joint arms, independent gripper channels and a zero-held 3-channel base at reset.
 Policy code cannot access that raw

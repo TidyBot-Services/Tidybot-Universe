@@ -79,6 +79,18 @@ def test_default_apply_retains_original_budget_steps_and_receipt(monkeypatch):
         maximum_endpoint_joint_error_rad=.0009999999999999992)
 
 
+@pytest.mark.parametrize('mode,expected',[('movable_objects',True),('none',False)])
+def test_contact_exemption_journal_monitor_receipt(monkeypatch,mode,expected):
+    obj,_,events,_=fake_apply(monkeypatch,position=[.011,.02])
+    obj.planner.contact_exemption_mode=mode
+    obj.planner.claim=lambda plan,epoch:{'plan_id':plan,'time_from_start_seconds':[.02],
+        'contact_exemption':{'mode':mode}}
+    executor.NativeExecutor.apply(obj,{'plan_id':'p'},request_id='req')
+    audit=next(row for row in events if row['event']=='contact_exemption')
+    assert ('physical_monitor_allows_movable_contacts' in audit) is expected
+    if expected:assert audit['physical_monitor_allows_movable_contacts'] is True
+
+
 @pytest.mark.parametrize('source,value', [('default', .35), ('override', .8)])
 def test_ik_path_jump_recorded_in_intent_journal(monkeypatch, source, value):
     obj,_,events,_=fake_apply(monkeypatch,position=[.011,.02])

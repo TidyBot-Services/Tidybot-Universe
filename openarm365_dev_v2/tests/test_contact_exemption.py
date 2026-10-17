@@ -1,5 +1,5 @@
 """Offline collision-world, config and contact-event regression."""
-import hashlib,json
+import hashlib,json,sys
 from types import SimpleNamespace
 import numpy as np
 import pytest
@@ -7,7 +7,17 @@ from curobo_v2.sapien_world import WorldError
 from openarm365_dev import world as wm
 from openarm365_dev import planner as pm
 from openarm365_dev.base_motion import check_chassis_path
-from openarm365_dev.executor import contact_transitions,bounded_contact_events,CONTACT_EVENT_LIMIT
+from openarm365_dev.executor import (NativeExecutor,contact_transitions,bounded_contact_events,
+    is_expected_movable_contact,CONTACT_EVENT_LIMIT)
+
+@pytest.fixture(autouse=True)
+def fake_mujoco_if_unavailable(monkeypatch):
+    try:import mujoco
+    except ModuleNotFoundError:
+        geoms=SimpleNamespace(mjGEOM_BOX=6,mjGEOM_SPHERE=2,mjGEOM_ELLIPSOID=4,
+            mjGEOM_CAPSULE=3,mjGEOM_CYLINDER=5,mjGEOM_PLANE=0,mjGEOM_MESH=7)
+        monkeypatch.setitem(sys.modules,'mujoco',SimpleNamespace(mjtGeom=geoms,
+            mj_contactForce=lambda model,data,index,force:force.__setitem__(0,2.5)))
 
 class Model:
     ngeom=5;nbody=7
@@ -107,3 +117,129 @@ def test_contact_edges_and_cap():
     accepted,dropped=bounded_contact_events(list(range(10)),CONTACT_EVENT_LIMIT-3)
     assert accepted==[0,1,2] and dropped==7
     assert bounded_contact_events([1],CONTACT_EVENT_LIMIT)==([],1)
+
+class ContactModel:
+    nbody=10
+    body_parentid=np.array([0,0,1,1,0,4,0,0,0,0])
+    body_weldid=np.arange(10)
+    body_jntadr=np.array([0,0,0,0,0,0,1,2,0,0])
+    body_jntnum=np.array([0,0,0,0,1,0,1,1,0,0])
+    jnt_type=np.array([0,0,0])
+    geom_bodyid=np.array([2,3,4,5,6,7,8,9])
+    names=['world','robot0_openarm_body_link0','finger','palm','obj_g6',
+           'obj_child','distr_counter','distr_sink','counter','chassis']
+    geoms=['openarm_left_finger_collision0','openarm_left_palm_collision0',
+           'banana','banana_child','counter_distractor','sink_distractor','counter_top','chassis_geom']
+    _model=object()
+    def body_name2id(self,name):return self.names.index(name)
+    def body_id2name(self,bid):return self.names[bid]
+    def geom_id2name(self,gid):return self.geoms[gid]
+    def get_joint_qvel_addr(self,name):return 1
+
+def contact_executor(monkeypatch,geom1,geom2,mode):
+    from openarm365_dev import executor as em
+    from openarm365_dev import attachment
+    import mujoco
+    model=ContactModel()
+    data=SimpleNamespace(qpos=np.zeros(10),qvel=np.zeros(10),_data=object(),
+        contact=[SimpleNamespace(geom1=geom1,geom2=geom2,dist=-.0001)])
+    env=SimpleNamespace(sim=SimpleNamespace(model=model,data=data),
+        obj_body_id={'obj':4,'distr_counter':6,'distr_sink':7,'counter':8})
+    robot=SimpleNamespace(_ref_arm_joint_vel_indexes=[0],_ref_base_joint_pos_indexes=[0,1,2],
+        _ref_gripper_joint_pos_indexes={'right':[3,4],'left':[5,6]},
+        gripper={'right':SimpleNamespace(joints=['g1','g2']),
+                 'left':SimpleNamespace(joints=['g3','g4'])})
+    env.robots=[robot]
+    monkeypatch.setattr(attachment,'bilateral_contacts',lambda env:{'left':set(),'right':set()})
+    monkeypatch.setattr(em,'tcp_pose',lambda env,side:np.eye(4))
+    monkeypatch.setattr(mujoco,'mj_contactForce',lambda model,data,index,force:force.__setitem__(0,2.5))
+    planner=SimpleNamespace(state=lambda:np.zeros(1),names=['joint'],
+        chassis_binding={'native_geom':'chassis_geom'},contact_exemption_mode=mode)
+    executor=NativeExecutor.__new__(NativeExecutor)
+    executor.env=env;executor.planner=planner;executor.physics_steps=0;executor.robot_root=1
+    executor.limits=np.array([[-1.,1.]]);executor.max_speed={'joint':1.}
+    executor.base_hold=np.zeros(3);executor.base_moving=False;executor.base_arm_start=None
+    executor.gripper_limits={side:np.array([[0.,.044,1.],[0.,.044,1.]]) for side in ('left','right')}
+    executor.grasp_counts={'left':{},'right':{}};executor.held=None;executor.gripping=False
+    executor.contact_active={};executor.contact_event_count=0;executor.contact_event_overflow=0
+    executor.active_request='req';executor.physics='physics';executor.journal='journal'
+    rows=[];executor.log=lambda path,value:rows.append((path,json.loads(json.dumps(value,sort_keys=True))))
+    return executor,rows
+
+@pytest.mark.parametrize('geom1,geom2,allowed',[
+    (0,2,True),       # left finger / banana
+    (1,3,True),       # palm / descendant of banana free-joint body
+    (0,4,True),       # counter distractor
+    (5,1,True),       # sink distractor, reversed contact ordering
+    (7,2,True),       # chassis / banana
+    (0,6,False),      # finger / fixed counter
+    (1,6,False),      # palm / fixed counter
+    (7,6,False),      # chassis / fixed counter
+])
+def test_monitor_movable_boundary(monkeypatch,geom1,geom2,allowed):
+    executor,rows=contact_executor(monkeypatch,geom1,geom2,'movable_objects')
+    if allowed:executor.monitor()
+    else:
+        with pytest.raises(RuntimeError,match='Unexpected physical robot/world contact'):
+            executor.monitor()
+    physics=[row for path,row in rows if path=='physics'][0]
+    assert bool(physics['unexpected_contacts']) is not allowed
+    assert ('expected_movable_contacts' in physics) is allowed
+    journal=[row for path,row in rows if path=='journal']
+    assert [row['event'] for row in journal]==(['movable_contact_begin'] if allowed else [])
+    if allowed:
+        robot_geom=geom1 if geom1 in (0,1,7) else geom2
+        object_geom=geom2 if robot_geom==geom1 else geom1
+        assert physics['expected_movable_contacts']==[
+            [executor.env.sim.model.geom_id2name(robot_geom),
+             executor.env.sim.model.geom_id2name(object_geom),-.0001]]
+        executor.env.sim.data.contact=[]
+        executor.monitor()
+        assert [row['event'] for path,row in rows if path=='journal']==[
+            'movable_contact_begin','movable_contact_end']
+
+def test_monitor_default_contact_rule_and_row_shape(monkeypatch):
+    executor,rows=contact_executor(monkeypatch,0,2,'none')
+    with pytest.raises(RuntimeError,match='Unexpected physical robot/world contact'):
+        executor.monitor()
+    physics=[row for path,row in rows if path=='physics'][0]
+    assert physics['unexpected_contacts']==[['openarm_left_finger_collision0','banana',-.0001]]
+    assert set(physics)=={'request_id','physics_step','qpos','qvel','base_qpos','gripper_qpos',
+        'gripper_qvel','tcp','unexpected_contacts','bilateral_contact_objects'}
+    assert 'expected_movable_contacts' not in physics
+    executor,rows=contact_executor(monkeypatch,0,2,'none');executor.gripping=True
+    executor.monitor()
+    assert [row for path,row in rows if path=='physics'][0]['unexpected_contacts']==[]
+    executor,rows=contact_executor(monkeypatch,1,2,'none');executor.gripping=True
+    with pytest.raises(RuntimeError,match='Unexpected physical robot/world contact'):
+        executor.monitor()
+    executor,rows=contact_executor(monkeypatch,7,6,'none')
+    executor.monitor()  # Historical default does not inspect chassis-only contacts.
+    assert [row for path,row in rows if path=='physics'][0]['unexpected_contacts']==[]
+
+def test_enabled_fixed_contact_is_unexpected_even_when_gripping(monkeypatch):
+    executor,rows=contact_executor(monkeypatch,0,6,'movable_objects')
+    executor.gripping=True  # The fixed counter body is deliberately in obj_body_id.
+    with pytest.raises(RuntimeError,match='Unexpected physical robot/world contact'):
+        executor.monitor()
+    physics=[row for path,row in rows if path=='physics'][0]
+    assert physics['unexpected_contacts']==[['openarm_left_finger_collision0','counter_top',-.0001]]
+    assert 'expected_movable_contacts' not in physics
+
+@pytest.mark.parametrize('mode',['none','movable_objects'])
+def test_existing_robot_self_contact_still_aborts(monkeypatch,mode):
+    executor,rows=contact_executor(monkeypatch,0,1,mode)
+    with pytest.raises(RuntimeError,match='Unexpected physical robot/world contact'):
+        executor.monitor()
+    assert [row for path,row in rows if path=='physics'][0]['unexpected_contacts']==[
+        ['openarm_left_finger_collision0','openarm_left_palm_collision0',-.0001]]
+
+def test_pure_contact_classifier_uses_free_joint_roots():
+    model=ContactModel()
+    roots=tuple(wm.movable_object_roots(SimpleNamespace(sim=SimpleNamespace(model=model),
+        obj_body_id={'obj':4,'distr_counter':6,'distr_sink':7,'counter':8})).values())
+    assert roots==(6,7,4)
+    assert is_expected_movable_contact(model,2,5,'openarm_left_finger_collision0',1,'chassis_geom',roots)
+    assert is_expected_movable_contact(model,9,6,'chassis_geom',1,'chassis_geom',roots)
+    assert not is_expected_movable_contact(model,2,8,'openarm_left_finger_collision0',1,'chassis_geom',roots)
+    assert not is_expected_movable_contact(model,8,4,'counter_top',1,'chassis_geom',roots)

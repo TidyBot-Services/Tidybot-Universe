@@ -6,7 +6,7 @@ import numpy as np
 from curobo_v2.command_curve import sample_for_original_drive
 from curobo_v2.client import PlanningRejected
 from .environment import PHYSICAL_TO_NATIVE,tcp_pose
-from .world import is_descendant
+from .world import is_descendant,movable_object_roots
 from .base_motion import check_exact_base_path, base_joint_delta, validate_delta, guard_base_and_arms
 
 CONTACT_EVENT_LIMIT=200
@@ -24,10 +24,15 @@ def bounded_contact_events(events,already_recorded,limit=CONTACT_EVENT_LIMIT):
     available=max(0,limit-already_recorded)
     return events[:available],len(events)-min(len(events),available)
 
+def is_expected_movable_contact(model,robot_body,other_body,robot_geom_name,
+                                robot_root,chassis_name,movable_roots):
+    """Classify one oriented robot/object pair using the observed-contact boundary."""
+    return ((is_descendant(model,robot_body,robot_root) or robot_geom_name==chassis_name)
+            and any(is_descendant(model,other_body,root) for root in movable_roots))
+
 def observed_movable_contacts(env,robot_root,chassis_name):
     """Read MuJoCo contacts without changing any physical collision decision."""
     import mujoco
-    from .world import movable_object_roots
     sim=env.sim;m=sim.model;roots=movable_object_roots(env);observed={}
     for index,con in enumerate(sim.data.contact):
         if con.dist>=0:continue
@@ -35,8 +40,8 @@ def observed_movable_contacts(env,robot_root,chassis_name):
         b1,b2=int(m.geom_bodyid[g1]),int(m.geom_bodyid[g2])
         for robot_geom,other_geom,robot_body,other_body in ((g1,g2,b1,b2),(g2,g1,b2,b1)):
             robot_name=m.geom_id2name(robot_geom) or ''
-            if not (is_descendant(m,robot_body,robot_root) or robot_name==chassis_name):continue
-            if not any(is_descendant(m,other_body,root) for root in roots.values()):continue
+            if not is_expected_movable_contact(m,robot_body,other_body,robot_name,
+                    robot_root,chassis_name,roots.values()):continue
             force=np.zeros(6);mujoco.mj_contactForce(m._model,sim.data._data,index,force)
             observed[(robot_geom,other_geom)]={'robot_geom_name':robot_name,
                 'object_body_name':m.body_id2name(other_body),
@@ -154,12 +159,17 @@ class NativeExecutor:
                     Rotation.from_matrix(relative[:3,:3]@self.held_transform[:3,:3].T).magnitude()>.03):
                 raise RuntimeError('Measured object/hand transform exceeds original 4mm/0.03rad bound')
         objects=set(getattr(self.env,'obj_body_id',{}).values())
-        contact_now=observed_movable_contacts(self.env,self.robot_root,
-            self.planner.chassis_binding.get('native_geom',''))
+        chassis_name=self.planner.chassis_binding.get('native_geom','')
+        contact_now=observed_movable_contacts(self.env,self.robot_root,chassis_name)
+        exemption_enabled=getattr(self.planner,'contact_exemption_mode','none')=='movable_objects'
+        movable_roots=tuple(movable_object_roots(self.env).values()) if exemption_enabled else ()
+        expected_movable_contacts=[]
         for con in sim.data.contact:
             g1,g2=int(con.geom1),int(con.geom2);b1,b2=int(sim.model.geom_bodyid[g1]),int(sim.model.geom_bodyid[g2])
             a=is_descendant(sim.model,b1,self.robot_root);b=is_descendant(sim.model,b2,self.robot_root)
-            if con.dist>=0 or not (a or b):continue
+            chassis1=exemption_enabled and sim.model.geom_id2name(g1)==chassis_name
+            chassis2=exemption_enabled and sim.model.geom_id2name(g2)==chassis_name
+            if con.dist>=0 or not (a or b or chassis1 or chassis2):continue
             if a and b:
                 if sim.model.body_weldid[b1]==sim.model.body_weldid[b2]:continue
                 n1=sim.model.geom_id2name(g1) or '';n2=sim.model.geom_id2name(g2) or ''
@@ -167,6 +177,18 @@ class NativeExecutor:
                     any(f'openarm_{s}_' in n1 and f'openarm_{s}_' in n2 for s in ('left','right')))
                 if opposing_fingers:continue
                 contacts.append([n1,n2,float(con.dist)]);continue
+            if exemption_enabled:
+                expected=False
+                for robot_geom,other_geom,robot_body,other_body in ((g1,g2,b1,b2),(g2,g1,b2,b1)):
+                    robot_name=sim.model.geom_id2name(robot_geom) or ''
+                    if is_expected_movable_contact(sim.model,robot_body,other_body,robot_name,
+                            self.robot_root,chassis_name,movable_roots):
+                        expected_movable_contacts.append([robot_name,sim.model.geom_id2name(other_geom),float(con.dist)])
+                        expected=True
+                        break
+                if expected:continue
+                contacts.append([sim.model.geom_id2name(g1),sim.model.geom_id2name(g2),float(con.dist)])
+                continue
             robot_geom=g1 if a else g2;other_body=b2 if a else b1
             robot_name=sim.model.geom_id2name(robot_geom) or ''
             allowed=('finger' in robot_name and
@@ -182,6 +204,7 @@ class NativeExecutor:
             gripper_qvel={side:v.tolist() for side,v in gripper_v.items()},
             tcp={side:tcp_pose(self.env,side).tolist() for side in PHYSICAL_TO_NATIVE},unexpected_contacts=contacts)
         row['bilateral_contact_objects']={side:sorted(values) for side,values in bilateral.items()}
+        if expected_movable_contacts:row['expected_movable_contacts']=expected_movable_contacts
         self.log(self.physics,row)
         if contacts:raise RuntimeError('Unexpected physical robot/world contact')
 
@@ -210,7 +233,10 @@ class NativeExecutor:
                 max_joint_jump_source=response['max_joint_jump_source'])
         self.log(self.journal,intent)
         if response.get('contact_exemption'):
-            self.log(self.journal,dict(event='contact_exemption',request_id=request_id,**response['contact_exemption']))
+            audit=dict(event='contact_exemption',request_id=request_id,**response['contact_exemption'])
+            if getattr(self.planner,'contact_exemption_mode','none')=='movable_objects':
+                audit['physical_monitor_allows_movable_contacts']=True
+            self.log(self.journal,audit)
         self.contact_event_count=0;self.contact_event_overflow=0
         self.moving=True
         try:
