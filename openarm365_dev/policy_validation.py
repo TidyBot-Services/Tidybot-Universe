@@ -8,6 +8,7 @@ OPERATIONS = {
     "left_gripper": {"open", "close"},
     "right_gripper": {"open", "close"},
     "bimanual": {"move_joints"},
+    "base": {"move_delta"},
 }
 
 

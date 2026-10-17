@@ -15,17 +15,17 @@ are separate evidence and are not counted as this RoboCasa365 Dev loop.
 | Task / scene | pick_place_counter_to_sink, seed 101, layout 11, style 34 | Same catalog task/seed/layout/style |
 | Robot / arm | OpenArm365, physical left and right | PandaOmron, right |
 | Native arm mapping | physical left → native right; physical right → native left | Existing single-arm mapping |
-| Public SDK | sensors, left_arm, right_arm, left_gripper, right_gripper, bimanual | Existing sensors/arm/gripper/base/torso |
+| Public SDK | sensors, left_arm, right_arm, left_gripper, right_gripper, bimanual, base | Existing sensors/arm/gripper/base/torso |
 | Translation / rotation | WORLD-frame delta, ≤0.05 m / 0.5 rad per coordinate | Base-frame delta; existing bounds |
 | Joint vector | 14 values: physical left joints 1–7, then right 1–7 | No new absolute-joint interface |
 | Controller | BASIC composite; JOINT_POSITION kp=1500 by default, torque limits unchanged; reset uses delta zero hold, execution uses absolute goals | Existing catalog controller |
 | Gripper | Two independent original parallel grippers, 2 physical joints each; open/close have no parameters | Existing settle_steps API |
 | Gripper command | 1 mm inside original [0, 44 mm] limits; measured state never clamped | Existing convention |
-| Base | Stationary, monitored at every physics step; drift ≤1 mm / 1 mrad | Existing mobile capability |
+| Base | `base.move_delta(dx,dy,dyaw)` in current robot frame; ≤0.20 m norm / 0.3 rad; 2 cm chassis path clearance; uncommanded drift ≤1 mm / 1 mrad | Existing mobile capability |
 | Limits | 80 SDK calls, 2,400 control steps, 480 s per attempt | Existing 40-call Dev policy limit |
 
 The real reset receipts verify a 19-dimensional native composite vector: both
-7-joint arms, independent gripper channels and a stationary 3-channel base.
+7-joint arms, independent gripper channels and a zero-held 3-channel base at reset.
 Policy code cannot access that raw
 vector. The executor uses actual native controller split indices and rejects
 an arm dimension other than seven. Scene assets, official source commits, model

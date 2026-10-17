@@ -107,6 +107,8 @@ def build_sdk(owner,record_event):
                 event['physical_arm']=group.split('_')[0]
                 event['arguments']=dict(zip(('dx','dy','dz','rotation_delta'),args));event['arguments'].update(kwargs)
             elif group=='bimanual':event['arguments']={'target_qpos':args[0] if args else kwargs.get('target_qpos')}
+            elif group=='base':
+                event['arguments']=dict(zip(('dx','dy','dyaw'),args));event['arguments'].update(kwargs)
             try:
                 value=owner.rpc(group,operation,args,kwargs)
                 event.update(status='completed',result=value);record_event(event);return value

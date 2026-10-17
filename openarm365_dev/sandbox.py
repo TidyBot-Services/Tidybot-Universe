@@ -140,6 +140,13 @@ def _json_safe(value: Any) -> Any:
     raise TypeError(f"unsupported SDK return type {type(value).__name__}")
 
 
+def _meter_sdk_call(calls: int, limit: int) -> int:
+    """Every authorized RPC, including base motion, spends one SDK call."""
+    if calls + 1 > limit:
+        raise RuntimeError("policy exceeded SDK call limit")
+    return calls + 1
+
+
 def execute_formal_policy(
     *,
     code: str,
@@ -220,9 +227,9 @@ def execute_formal_policy(
                     if kind != "call" or operation not in _OPERATIONS.get(group, ()):
                         error = "policy worker sent unauthorized SDK RPC"
                         break
-                    calls += 1
-                    if calls > max_sdk_calls:
-                        error = "policy exceeded SDK call limit"
+                    try: calls = _meter_sdk_call(calls, max_sdk_calls)
+                    except RuntimeError as exc:
+                        error = str(exc)
                         break
                     args, kwargs = message.get("args"), message.get("kwargs")
                     if not isinstance(args, list) or not isinstance(kwargs, dict):
@@ -239,7 +246,7 @@ def execute_formal_policy(
                             if group == "arm" and operation == "plan_to_position"
                             else (
                                 None
-                                if group in {"left_arm", "right_arm", "left_gripper", "right_gripper", "bimanual"}
+                                if group in {"left_arm", "right_arm", "left_gripper", "right_gripper", "bimanual", "base"}
                                 else _json_safe(result)
                             )
                         )

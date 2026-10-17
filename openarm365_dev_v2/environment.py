@@ -1,7 +1,8 @@
 """Unchanged OpenArm MJCF with two torque-limited absolute joint controllers.
 
 This new dev profile never enables the retired raw-action service. Native labels
-are reversed relative to physical arm sides. Base goals remain zero throughout.
+are reversed relative to physical arm sides. Reset keeps base velocity zero;
+the executor can command bounded, checked base movement afterward.
 """
 from contextlib import contextmanager
 import copy

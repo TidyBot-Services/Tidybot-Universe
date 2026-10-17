@@ -74,7 +74,7 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
        camera_names=['robot0_agentview_left','gripper0_right_eye_in_hand'],horizon=SDK['control_steps'],
        sdk_call_limit=SDK['sdk_calls'],attempt_wall_seconds=SDK['attempt_seconds'],whole_case_wall_seconds=1800,
        asset_manifest_sha256=sha(ASSETS),object_set_id='robocasa365:pretrain:'+sha(ASSETS),
-       base_mode='stationary',runner_boundary='dev_loop',execution_controller_input='absolute',
+       base_mode='commanded_motion',runner_boundary='dev_loop',execution_controller_input='absolute',
        reset_controller_input='delta',global_random_seed=seed,gripper_command_endpoints_m=[.001,.043],
        dev_lock=lock)
     from .environment import initial_joints

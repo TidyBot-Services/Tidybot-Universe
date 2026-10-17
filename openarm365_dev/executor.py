@@ -7,6 +7,7 @@ from curobo_v2.command_curve import sample_for_original_drive
 from curobo_v2.client import PlanningRejected
 from .environment import PHYSICAL_TO_NATIVE,tcp_pose
 from .world import is_descendant
+from .base_motion import check_chassis_path, validate_delta, guard_base_and_arms
 
 def diagnostic_settle_steps():
     raw=os.environ.get('ATTN_DIAG_SETTLE_STEPS','20')
@@ -44,7 +45,11 @@ class NativeExecutor:
         self.parts=env.robots[0].composite_controller._action_split_indexes
         if any(self.parts[n][1]-self.parts[n][0]!=7 for n in ('left','right')):
             raise ValueError('Native dual-arm joint controller layout mismatch')
+        if (self.parts['base'][1]-self.parts['base'][0]!=3 or
+                env.robots[0].composite_controller.part_controllers['base'].name!='JOINT_VELOCITY'):
+            raise ValueError('Native 3-axis velocity base controller layout mismatch')
         self.base_initial=env.sim.data.qpos[env.robots[0]._ref_base_joint_pos_indexes].copy()
+        self.base_hold=self.base_initial.copy();self.base_moving=False;self.base_arm_start=None
         self.robot_root=env.sim.model.body_name2id('robot0_openarm_body_link0')
         xml=E.parse(planner.spec['robot_cfg']['kinematics']['urdf_path']).getroot()
         joints={j.get('name'):j for j in xml.findall('joint')}
@@ -77,6 +82,8 @@ class NativeExecutor:
             indices=[self.planner.names.index(f'openarm_{side}_joint{i}') for i in range(1,8)]
             start,end=self.parts[native];a[start:end]=self.goals[indices]
             start,end=self.parts[native+'_gripper'];a[start:end]=self.grips[side]
+        if self.base_moving:
+            start,end=self.parts['base'];a[start:end]=self.base_command
         return a
 
     def monitor(self):
@@ -87,7 +94,7 @@ class NativeExecutor:
         if np.any(abs(v)>np.array([self.max_speed[n] for n in self.planner.names])):
             raise RuntimeError('Measured native joint velocity exceeded URDF limit')
         base=sim.data.qpos[r._ref_base_joint_pos_indexes]
-        if np.max(abs(base-self.base_initial))>.001:raise RuntimeError('Stationary base drift exceeded 1mm/1mrad')
+        guard_base_and_arms(base,self.base_hold,q,self.base_arm_start if self.base_moving else None)
         gripper_q={side:np.asarray(sim.data.qpos[r._ref_gripper_joint_pos_indexes[native]],float) for side,native in PHYSICAL_TO_NATIVE.items()}
         gripper_v={side:np.array([sim.data.qvel[sim.model.get_joint_qvel_addr(name)] for name in r.gripper[native].joints])
             for side,native in PHYSICAL_TO_NATIVE.items()}
@@ -186,6 +193,73 @@ class NativeExecutor:
         if self.any_object_contact() and not self.held:raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
         response=self.planner.plan_joints(target,side=side,epoch=self.epoch)
         return self.apply(response,request_id=request_id)
+
+    def base_move(self,dx,dy,dyaw,*,request_id):
+        self.check_live()
+        delta=validate_delta(dx,dy,dyaw)
+        from .world import snapshot
+        before=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
+        if np.max(abs(before-self.base_hold))>.001:
+            raise RuntimeError('Uncommanded base drift exceeded 1mm/1mrad')
+        world=snapshot(self.env,chassis_binding=self.planner.chassis_binding)
+        try: collision=check_chassis_path(world,self.planner.chassis_binding,delta)
+        except PlanningRejected as exc:
+            self.log(self.journal,dict(event='base_collision_rejected',request_id=request_id,
+                before_base_qpos=before.tolist(),delta=delta.tolist(),world_sha256=world['world_sha256'],reason=str(exc)))
+            raise
+        theta=float(before[2]-self.base_initial[2]);ct,st=math.cos(theta),math.sin(theta)
+        target=before+np.array([ct*delta[0]-st*delta[1],st*delta[0]+ct*delta[1],delta[2]])
+        arm_before=self.planner.state().copy();self.goals=arm_before.copy()
+        self.base_arm_start=arm_before;self.active_request=request_id;start=self.sequence
+        self.log(self.journal,dict(event='base_intent',request_id=request_id,epoch=self.epoch,
+            start_sequence=start,before_base_qpos=before.tolist(),target_base_qpos=target.tolist(),
+            delta_body=delta.tolist(),collision_check=collision,arm_before_qpos=arm_before.tolist()))
+        self.base_moving=True;self.moving=True;self.base_command=np.zeros(3)
+        started=time.monotonic()
+        try:
+            # At 20 Hz, 80 steps allow a .20 m / .30 rad command to settle.
+            # The native controller maps normalized actions to .15/.15/.30
+            # velocity actuators and rotates XY actions back to reset axes.
+            for _ in range(80):
+                actual=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float)
+                error=target-actual
+                if np.linalg.norm(error[:2])<=.005 and abs(error[2])<=.005:break
+                desired=np.clip(4.0*error,[-.12,-.12,-.24],[.12,.12,.24])
+                angle=float(actual[2]-self.base_initial[2]);co,si=math.cos(angle),math.sin(angle)
+                normalized=desired/np.array([.15,.15,.3])
+                self.base_command=np.array([co*normalized[0]-si*normalized[1],
+                    si*normalized[0]+co*normalized[1],normalized[2]])
+                if np.any(abs(self.base_command)>1+1e-9):
+                    raise RuntimeError('Base closed-loop command exceeds native action bounds')
+                self.control_step()
+            self.base_command=np.zeros(3)
+            # Require two zero-command settling steps, counted against horizon.
+            for _ in range(2):self.control_step()
+            after=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
+            final_error=target-after;arm_change=self.planner.state()-arm_before
+            result=dict(status='completed',request_id=request_id,epoch=self.epoch,start_sequence=start,
+                sequence=self.sequence,physics_steps=self.physics_steps,before_base_qpos=before.tolist(),
+                after_base_qpos=after.tolist(),target_base_qpos=target.tolist(),
+                base_error=final_error.tolist(),arm_joint_change=arm_change.tolist(),
+                elapsed_seconds=time.monotonic()-started,collision_check=collision)
+            self.log(self.journal,dict(event='base_tracking',**result))
+            if np.linalg.norm(final_error[:2])>.005 or abs(final_error[2])>.005:
+                raise RuntimeError('Base motion failed to converge within 5mm/5mrad')
+            if np.max(abs(arm_change))>.004:
+                raise RuntimeError('Arm joint drift during base motion exceeded 4mrad')
+            self.base_hold=after.copy();self.planner.prepared.clear();self.planner.ledger.invalidate('base_moved')
+            self.log(self.journal,dict(event='receipt',**result));return result
+        except BaseException as exc:
+            after=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
+            self.log(self.journal,dict(event='base_failure',request_id=request_id,start_sequence=start,
+                sequence=self.sequence,before_base_qpos=before.tolist(),after_base_qpos=after.tolist(),
+                target_base_qpos=target.tolist(),base_error=(target-after).tolist(),
+                arm_joint_change=(self.planner.state()-arm_before).tolist(),
+                elapsed_seconds=time.monotonic()-started,collision_check=collision,
+                reason=f'{type(exc).__name__}: {exc}'))
+            self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('base_failure');raise
+        finally:
+            self.base_command=np.zeros(3);self.base_moving=False;self.moving=False;self.base_arm_start=None;self.active_request=None
 
     def any_object_contact(self):
         sim=self.env.sim;objects=set(getattr(self.env,'obj_body_id',{}).values())

@@ -107,7 +107,7 @@ def main():
             'openarm365_dev_v2':openarm365_dev_v2.__file__,'worker':__file__,'loaded_python_files':sorted({str(Path(mod.__file__).resolve()) for mod in sys.modules.values() if getattr(mod,'__file__',None) and Path(mod.__file__).suffix=='.py'}),'cwd':os.getcwd(),
             'python':sys.executable,'official_planner_lock':c['dev_lock']},indent=2))
         send({'kind':'ready' ,'episode_id':episode,'initial_observation':observe(),'scene_state':scene_state,'scene_condition':condition,
-            'capabilities':{'robot':'OpenArm365','execution_arm':'both','base_mode':'stationary',
+            'capabilities':{'robot':'OpenArm365','execution_arm':'both','base_mode':'commanded_motion',
                 'arm_frame':'world','controller':'BASIC / authenticated V2 joint trajectories','formal_eligible':False}})
         for line in sys.stdin:
             if stop.is_set() or time.monotonic()>=args.deadline:break
@@ -140,6 +140,8 @@ def main():
                 elif group in {'left_arm','right_arm'}:
                     side=group.split('_')[0]
                     executor.move_delta(side,*request['args'],**request['kwargs'],request_id=rid)
+                elif group=='base':
+                    executor.base_move(*request['args'],**request['kwargs'],request_id=rid)
                 elif group in {'left_gripper','right_gripper'}:
                     if request['args'] or request['kwargs']:raise ValueError('Gripper open/close takes no arguments')
                     executor.gripper(group.split('_')[0],-1. if operation=='open' else 1.,request_id=rid)
