@@ -26,9 +26,9 @@ class MujocoV2Planner:
         self.env=env;self.evidence=Path(evidence);self.evidence.mkdir(parents=True,exist_ok=True)
         self.contact_exemption_configured=contact_exempt_objects
         self.contact_exemption_mode=contact_exemption_mode(contact_exempt_objects)
-        lock_path=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-04/runtime-lock.json')
+        lock_path=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime-lock.json')
         lock,sha=load_lock(lock_path)
-        if sha!='6e289e0db4025f47e629fb807b963ca384af3f3543a406696a64912b600d000e':
+        if sha!='0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0':
             raise IdentityError('OpenArm365 dual-arm deployment lock changed')
         verify_files(lock);verify_client_imports(lock)
         config=Path(lock['project_root'])/'config/openarm_fixed.yml'

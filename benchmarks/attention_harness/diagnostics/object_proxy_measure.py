@@ -15,8 +15,8 @@ from scipy.optimize import minimize
 from scipy.spatial import ConvexHull
 from scipy.spatial.transform import Rotation
 
-DEFAULT_ROBOT_CONFIG = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-04/runtime/project/config/openarm_fixed.yml')
-DEFAULT_ASSETS = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-04/runtime/project/curobo_v2/service/curobo_service/assets')
+DEFAULT_ROBOT_CONFIG = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/config/openarm_fixed.yml')
+DEFAULT_ASSETS = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/curobo_v2/service/curobo_service/assets')
 
 
 def hull_volume(points):

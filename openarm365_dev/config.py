@@ -4,8 +4,8 @@ from pathlib import Path
 
 PROFILE_ID='robocasa365-openarm-dual-counter-sink-dev'
 SCHEMA='attentionbench.openarm365-dual-dev-config.v1'
-LOCK=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-04/runtime-lock.json')
-LOCK_SHA='6e289e0db4025f47e629fb807b963ca384af3f3543a406696a64912b600d000e'
+LOCK=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime-lock.json')
+LOCK_SHA='0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0'
 
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
