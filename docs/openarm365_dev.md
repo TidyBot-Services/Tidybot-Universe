@@ -24,6 +24,15 @@ are separate evidence and are not counted as this RoboCasa365 Dev loop.
 | Base | `base.move_delta(dx,dy,dyaw)` in current robot frame; ≤0.20 m norm / 0.3 rad; 2 cm chassis path clearance; uncommanded drift ≤1 mm / 1 mrad | Existing mobile capability |
 | Limits | 80 SDK calls, 2,400 control steps, 480 s per attempt | Existing 40-call Dev policy limit |
 
+## `ik_path` move_delta
+
+With `ATTN_PLANNER_MODE=ik_path`, `move_delta(dx,dy,dz, rotation_delta)`
+targets the requested tool **endpoint pose**. The service checks the endpoint
+within 4 mm position and 0.03 rad orientation, then continuously certifies the
+actual quintic joint-space path against the geometry. The tool path need not be
+straight, including for translation-only calls. The default and explicit
+`plan` modes keep their existing routing.
+
 The real reset receipts verify a 19-dimensional native composite vector: both
 7-joint arms, independent gripper channels and a zero-held 3-channel base at reset.
 Policy code cannot access that raw

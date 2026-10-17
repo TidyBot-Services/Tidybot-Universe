@@ -27,7 +27,8 @@ def policy_source(shift,tilt=False):
          'calls = 0']
     if tilt:
         # Reset mount yaw is pi on registered seeds: robot +y maps to world -y.
-        # Two world-frame rotations respect the 0.5 rad SDK coordinate bound.
+        # Two world-frame rotations respect the 0.5 rad SDK coordinate bound;
+        # both plan and ik_path modes accept them (plan may hit the 8 s deadline).
         src += ['left_arm.move_delta(0, 0, 0, [0, -0.39269908169872414, 0])',
                 'calls += 1',
                 'left_arm.move_delta(0, 0, 0, [0, -0.39269908169872414, 0])',

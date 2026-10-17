@@ -102,7 +102,11 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
   --out outputs/grasp-chain-seed102
 ```
 
-先用 `--dry-run` 打印策略，完全不启动模拟器。真实运行由用户显式执行，写 `results.json` 和 `results.md`；按公开动作回执分阶段列出底座、张爪、预抓取、下探、闭爪、抬升和物体上升判定，并汇总 `continuous-*.json` 的认证次数/耗时及首个失败。每段 WORLD 位移拆为严格小于 0.05 m 的 SDK 调用；底座位移拆为每次不超过 0.20 m、0.30 rad，并按 SE(2) 合成保持目标终点。`--tilt` 在底座动作前用两次 WORLD y 轴各 -π/8 rad 转动，合计绕初始机器人 +y 轴约 45°；注册 seed 的初始 mount yaw 为 π。默认保持初始末端姿态。`--tilt` 需要 `ATTN_PLANNER_MODE=plan`，因为 `ik_path` 诊断模式拒绝旋转增量。
+先用 `--dry-run` 打印策略，完全不启动模拟器。真实运行由用户显式执行，写 `results.json` 和 `results.md`；按公开动作回执分阶段列出底座、张爪、预抓取、下探、闭爪、抬升和物体上升判定，并汇总 `continuous-*.json` 的认证次数/耗时及首个失败。每段 WORLD 位移拆为严格小于 0.05 m 的 SDK 调用；底座位移拆为每次不超过 0.20 m、0.30 rad，并按 SE(2) 合成保持目标终点。`--tilt` 在底座动作前用两次 WORLD y 轴各 -π/8 rad 转动，合计绕初始机器人 +y 轴约 45°；注册 seed 的初始 mount yaw 为 π。默认保持初始末端姿态。`--tilt` 可用 `ATTN_PLANNER_MODE=plan` 或 `ATTN_PLANNER_MODE=ik_path`；真实探针中 `plan` 模式的旋转规划曾触及客户端 8 s 上限而超时，`ik_path` 仍须通过 IK、关节跳变及认证检查。
+
+### `ik_path` 模式下的旋转语义
+
+`ik_path` 模式下 `move_delta(dx,dy,dz, rotation_delta)` 保证的是末端目标**终点位姿**：服务端对位置误差使用 ≤4 mm、姿态误差使用 ≤0.03 rad 的校验，并对实际关节空间五次多项式路径做连续几何认证。它不保证末端走直线；只平移时也不保证直线。旋转不会绕过原有碰撞、关节跳变或身份检查。
 
 seed 102 reset 实测：`robot0_left_eef_pos ≈ [0.411192,-2.279444,1.089394]` m，`obj_pos ≈ [0.496910,-2.377295,0.934829]` m；两者均为公开 WORLD 坐标。`mount_pose` 平移约 `[0.812481,-1.767212,0.600000]` m、旋转约 `Rz(π)`；世界点到机器人系为 `p_robot=R_mountᵀ(p_world-t_mount)`，反向为 `p_world=R_mount p_robot+t_mount`。公开 observation 暂无 base pose 字段，探针只用 WORLD 末端/物体位置算 WORLD 手臂位移；底座命令直接用给定机器人系位移。
 

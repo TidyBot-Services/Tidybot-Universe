@@ -6,7 +6,9 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from scipy.spatial.transform import Rotation
 
+from openarm365_dev import executor as executor_module
 from openarm365_dev import planner as planner_module
 
 
@@ -94,6 +96,41 @@ def test_ik_path_reaches_client_and_ledger(monkeypatch, planner, raw, count):
     assert planner.ledger.issued[0][0]['source'] == 'ik_path'
     assert planner.ledger.issued[0][1]['epoch'] == 7
     assert json.loads((planner.evidence / 'trajectory-0001.json').read_text())['source'] == 'ik_path'
+
+
+@pytest.mark.parametrize('mode, path', [(None, '/plan'), ('plan', '/plan'),
+                                      ('ik_path', '/plan/ik_path')])
+def test_rotating_move_delta_routes_pose_target(monkeypatch, planner, mode, path):
+    if mode is None:
+        monkeypatch.delenv('ATTN_PLANNER_MODE', raising=False)
+    else:
+        monkeypatch.setenv('ATTN_PLANNER_MODE', mode)
+    monkeypatch.delenv('ATTN_IK_CANDIDATES', raising=False)
+    current = np.eye(4)
+    current[:3, 3] = [.1, .2, .3]
+    monkeypatch.setattr(executor_module, 'tcp_pose', lambda env, side: current)
+    executor = executor_module.NativeExecutor.__new__(executor_module.NativeExecutor)
+    executor.env = object()
+    executor.planner = planner
+    executor.epoch = 'test-epoch'
+    executor.held = None
+    executor.check_live = lambda: None
+    executor.any_object_contact = lambda: False
+    executor.apply = lambda response, *, request_id: (response, request_id)
+
+    response, request_id = executor.move_delta('left', .01, -.02, .03,
+                                               [0, np.pi / 8, 0], request_id='rotate')
+    expected = expected_body()
+    expected['targets'] = {'openarm_left_hand_tcp': dict(
+        position=[.1 + .01, .2 - .02, .3 + .03],
+        quaternion_wxyz=Rotation.from_rotvec([0, np.pi / 8, 0]).as_quat()[[3, 0, 1, 2]].tolist())}
+    if mode == 'ik_path':
+        expected['ik_candidates'] = 1
+    assert planner.client.calls[-1] == (path, expected)
+    if mode != 'ik_path':
+        assert json.dumps(planner.client.calls[-1][1]).encode() == json.dumps(expected).encode()
+    assert response['source'] == ('ik_path' if mode == 'ik_path' else 'motion_gen')
+    assert request_id == 'rotate'
 
 
 @pytest.mark.parametrize('bad', ['0', '-2', '1.5', 'abc', ' 4', ''])

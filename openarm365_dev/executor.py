@@ -327,9 +327,6 @@ class NativeExecutor:
         if (delta.shape!=(3,) or rotation.shape!=(3,) or not np.isfinite(np.r_[delta,rotation]).all()
                 or np.any(abs(delta)>.05) or np.any(abs(rotation)>.5)):
             raise ValueError('World-frame deltas limited to .05m/.5rad per coordinate')
-        import os
-        if os.environ.get('ATTN_PLANNER_MODE','plan')=='ik_path' and np.any(rotation!=0):
-            raise ValueError('IK path move_delta preserves the current tool orientation')
         if self.any_object_contact() and not self.held:raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')
         current=tcp_pose(self.env,side)
         response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch)
