@@ -17,7 +17,7 @@ def make_config():
         attempt_wall_seconds=480,whole_case_wall_seconds=1800,
         initial_joint_targets=initial_joints(),base_mode='stationary',runner_boundary='dev_loop',
         execution_controller_input='absolute',reset_controller_input='delta',global_random_seed=101,
-        gripper_command_endpoints_m=[.001,.043],formal_eligible=False,
+        gripper_command_endpoints_m=[.001,.043],formal_eligible=False,contact_exempt_objects='none',
         planner_lock={'path':str(LOCK),'sha256':LOCK_SHA})
     c['dev_adapter_sources']={str(p.resolve()):sha(p) for p in sorted(Path(__file__).parent.glob('*.py'))}
     return c

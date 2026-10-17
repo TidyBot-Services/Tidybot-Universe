@@ -85,3 +85,25 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
 `results.json` 列出目标物体每个真实碰撞 geom 的类型、尺寸、世界姿态；mesh 的凸包体积及轴对齐/定向盒体积；全部 geom 合并后的凸包与数值最小定向盒；16 个代理盒的世界姿态、尺寸、体积以及代理/真实比值。盒体积**求和会重复计算重叠**，不等于严格并集体积。曲面 geom 用有限表面采样近似整体凸包；定向盒由凸包面/边候选加局部数值优化得到。报告还列出双指间距、指垫厚度、夹持轴、水平每 15° 的牛奶投影宽度与余量、forward_down_45 的估计方向，以及所用机器人配置里的左指碰撞球和指尖球包络开口估计。球的开口估计使用指垫远端三分之一的球和配置的 buffer，仅用于比较规划几何与实体几何；无法代替接触仿真或抓取成功判定。
 
 测量脚本的 `--dry-run` 只打印参数与零步进约束，不加载 MuJoCo。若官方模型/资产 identity 核验在当前沙箱失败，脚本原样报错，不跳过身份检查；需要在与 Dev v2 worker 相同的已认证环境运行正式测量。
+
+## 可移动物体接触豁免与 seed 102 抓取链路
+
+Dev v2 冻结配置增加 `contact_exempt_objects`，取值 `none`（默认）或 `movable_objects`。诊断环境变量 `ATTN_DIAG_CONTACT_EXEMPT=none|movable_objects` 覆盖配置值；未设置时使用配置，非法值在启动规划器前报错。运行回执的 `contact_exemption.configured/source/mode` 说明配置值、来源和最终值。豁免只作用于 cuRobo 的手臂规划世界；MuJoCo 物理接触和底座路径预检查仍使用完整世界。对象必须同时在任务的 `obj_body_id` 中、具有独立 free joint；固定柜体、水槽、台面、车体和机器人不进入豁免集合。被夹持对象以 `entity:<body_id>:shape:<geom_id>` 名称重新进入规划世界，作为已有 `attachment.shape_names` 的附着几何；`support_names` 仍指向完整保留的支撑面。
+
+规划器的 `world-*.json` 写出 `exempted_geoms`、`exempted_objects`、豁免前后盒数及哈希。`trajectory-*.json` 的 `contact_exemption` 和 `world_receipt.contact_exemption`、`native-actions.jsonl` 的 `contact_exemption` 事件记录实际豁免名单及两个哈希。物理日志在机器人与任务可移动物体的接触开始/结束时写 `movable_contact_begin` / `movable_contact_end`，含 `physical_step`、`robot_geom_name`、`object_body_name`、`contact_force_n`、`distance_m`。每次动作最多 200 条；多出的事件由 `movable_contact_overflow` 记录 `dropped`。这些事件不改变原接触失败判据。
+
+`grasp_chain_probe.py` 默认 seed 102，但必须显式给出机器人 mount 系的 `--base-shift DX,DY,DYAW`。应先从可达性扫描中选择**完整车体路径检查通过、目标中心和上方 5 cm 可达**的候选；扫描提示 DY≈0.30 m 可作为首个候选，不保证轨迹可达。命令示例（在 worktree 根目录执行，使用新输出目录）：
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" \
+  /home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python -m \
+  benchmarks.attention_harness.diagnostics.grasp_chain_probe \
+  --seed 102 --base-shift 0,0.30,0 --exempt movable_objects \
+  --out outputs/grasp-chain-seed102
+```
+
+先用 `--dry-run` 打印策略，完全不启动模拟器。真实运行由用户显式执行，写 `results.json` 和 `results.md`；按公开动作回执分阶段列出底座、张爪、预抓取、下探、闭爪、抬升和物体上升判定，并汇总 `continuous-*.json` 的认证次数/耗时及首个失败。每段 WORLD 位移拆为严格小于 0.05 m 的 SDK 调用；底座位移拆为每次不超过 0.20 m、0.30 rad，并按 SE(2) 合成保持目标终点。`--tilt` 在底座动作前用两次 WORLD y 轴各 -π/8 rad 转动，合计绕初始机器人 +y 轴约 45°；注册 seed 的初始 mount yaw 为 π。默认保持初始末端姿态。`--tilt` 需要 `ATTN_PLANNER_MODE=plan`，因为 `ik_path` 诊断模式拒绝旋转增量。
+
+seed 102 reset 实测：`robot0_left_eef_pos ≈ [0.411192,-2.279444,1.089394]` m，`obj_pos ≈ [0.496910,-2.377295,0.934829]` m；两者均为公开 WORLD 坐标。`mount_pose` 平移约 `[0.812481,-1.767212,0.600000]` m、旋转约 `Rz(π)`；世界点到机器人系为 `p_robot=R_mountᵀ(p_world-t_mount)`，反向为 `p_world=R_mount p_robot+t_mount`。公开 observation 暂无 base pose 字段，探针只用 WORLD 末端/物体位置算 WORLD 手臂位移；底座命令直接用给定机器人系位移。
+
+当前 `wt-exempt` 工作树的已冻结 `openarm365/model/identity.json` 还要求本地副本 `openarm_phase0_recheck/model/compat_v6/robot.urdf`，但该文件在这个工作树中缺失。因此本沙箱内的 `make_lock` 会按原有身份检查报 `native robot model identity drift`，真实探针会在创建实验时停止。运行前需要按原身份清单恢复工作树的完整模型副本；探针不会跳过或放宽该检查。本阶段未启动 worker、服务、GPU 或物理动作。

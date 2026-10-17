@@ -12,9 +12,19 @@ from curobo_v2.trajectory import TrajectoryLedger
 from .environment import joint_address, mount_pose, tcp_pose
 from .world import snapshot
 
+def contact_exemption_mode(configured):
+    if configured not in ('none','movable_objects'):
+        raise ValueError('contact_exempt_objects must be none or movable_objects')
+    override=os.environ.get('ATTN_DIAG_CONTACT_EXEMPT')
+    if override is not None and override not in ('none','movable_objects'):
+        raise ValueError('ATTN_DIAG_CONTACT_EXEMPT must be none or movable_objects')
+    return override if override is not None else configured
+
 class MujocoV2Planner:
-    def __init__(self, env, *, evidence, deadline, cancel_check):
+    def __init__(self, env, *, evidence, deadline, cancel_check, contact_exempt_objects='none'):
         self.env=env;self.evidence=Path(evidence);self.evidence.mkdir(parents=True,exist_ok=True)
+        self.contact_exemption_configured=contact_exempt_objects
+        self.contact_exemption_mode=contact_exemption_mode(contact_exempt_objects)
         lock_path=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime-lock.json')
         lock,sha=load_lock(lock_path)
         if sha!='7e2611af4cbff327de0d794f55a42db88894b1a9dcbe16ff76e1e46590998304':
@@ -42,10 +52,32 @@ class MujocoV2Planner:
         try:return operation()
         except BaseException:
             self.failed=True;self.ledger.invalidate('planner_failure');self.owner.close('planner_failure');raise
+    def world_snapshot(self):
+        if self.contact_exemption_mode=='none':
+            return snapshot(self.env,chassis_binding=self.chassis_binding)
+        from .world import movable_object_roots
+        roots=movable_object_roots(self.env)
+        held=self.attachment_provider()
+        attached=held['target_id'] if held else None
+        return snapshot(self.env,chassis_binding=self.chassis_binding,
+            exempt_body_ids=set(roots.values()),attached_body_id=attached)
     def upload(self):
-        world=snapshot(self.env,chassis_binding=self.chassis_binding);self.sequence+=1
+        world=self.world_snapshot();self.sequence+=1
         (self.evidence/f'world-{self.sequence:04d}.json').write_text(json.dumps(world,indent=2)+'\n')
         receipt=self.client.call('/world/cuboids',dict(env_id='robocasa365',cuboids=world['cuboids']))
+        if (self.contact_exemption_mode!='none' or self.contact_exemption_configured!='none'
+                or os.environ.get('ATTN_DIAG_CONTACT_EXEMPT') is not None):
+            from .world import movable_object_roots
+            roots=movable_object_roots(self.env)
+            held=self.attachment_provider()
+            audit=dict(mode=self.contact_exemption_mode,configured=self.contact_exemption_configured,
+                source='ATTN_DIAG_CONTACT_EXEMPT' if os.environ.get('ATTN_DIAG_CONTACT_EXEMPT') is not None else 'config',
+                objects=[{'name':name,'body_id':bid} for name,bid in roots.items()
+                    if self.contact_exemption_mode!='none' and (not held or bid!=held['target_id'])],
+                attached_object=next((name for name,bid in roots.items() if held and bid==held['target_id']),None),
+                exempted_geom_count=world.get('exempted_geom_count',0),world_sha256=world['world_sha256'],
+                world_sha256_unexempted=world.get('world_sha256_unexempted',world['world_sha256']))
+            receipt={**receipt,'contact_exemption':audit}
         return world,receipt
     def prepare(self, active):
         def op():
@@ -78,6 +110,7 @@ class MujocoV2Planner:
             pid=self.ledger.issue(response,epoch=epoch,state=body['current_q'],world=world['cuboids'],
                 identity=self.client.identity,attachment=attachment)
             response.update(plan_id=pid,epoch=epoch,world_receipt=receipt)
+            if 'contact_exemption' in receipt:response['contact_exemption']=receipt['contact_exemption']
             (self.evidence/f'trajectory-{self.sequence:04d}.json').write_text(json.dumps(response,indent=2)+'\n')
             return response
         return self.guard(op)
@@ -102,7 +135,7 @@ class MujocoV2Planner:
     def claim(self,pid,epoch):
         def op():
             self.client.attest()
-            return self.ledger.claim(pid,epoch=epoch,state=self.state(),world=snapshot(self.env,chassis_binding=self.chassis_binding)['cuboids'],
+            return self.ledger.claim(pid,epoch=epoch,state=self.state(),world=self.world_snapshot()['cuboids'],
                 identity=self.client.identity,attachment=self.attachment_provider())
         return self.guard(op)
     def close(self):

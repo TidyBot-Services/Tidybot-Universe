@@ -9,6 +9,41 @@ from .environment import PHYSICAL_TO_NATIVE,tcp_pose
 from .world import is_descendant
 from .base_motion import check_chassis_path, validate_delta, guard_base_and_arms
 
+CONTACT_EVENT_LIMIT=200
+
+def contact_transitions(previous,current,physical_step):
+    """Pure edge detector; keys identify robot/object geom pairs."""
+    rows=[]
+    for key in sorted(set(previous)-set(current)):
+        rows.append(dict(event='movable_contact_end',physical_step=physical_step,**previous[key]))
+    for key in sorted(set(current)-set(previous)):
+        rows.append(dict(event='movable_contact_begin',physical_step=physical_step,**current[key]))
+    return rows
+
+def bounded_contact_events(events,already_recorded,limit=CONTACT_EVENT_LIMIT):
+    available=max(0,limit-already_recorded)
+    return events[:available],len(events)-min(len(events),available)
+
+def observed_movable_contacts(env,robot_root,chassis_name):
+    """Read MuJoCo contacts without changing any physical collision decision."""
+    import mujoco
+    from .world import movable_object_roots
+    sim=env.sim;m=sim.model;roots=movable_object_roots(env);observed={}
+    for index,con in enumerate(sim.data.contact):
+        if con.dist>=0:continue
+        g1,g2=int(con.geom1),int(con.geom2)
+        b1,b2=int(m.geom_bodyid[g1]),int(m.geom_bodyid[g2])
+        for robot_geom,other_geom,robot_body,other_body in ((g1,g2,b1,b2),(g2,g1,b2,b1)):
+            robot_name=m.geom_id2name(robot_geom) or ''
+            if not (is_descendant(m,robot_body,robot_root) or robot_name==chassis_name):continue
+            if not any(is_descendant(m,other_body,root) for root in roots.values()):continue
+            force=np.zeros(6);mujoco.mj_contactForce(m._model,sim.data._data,index,force)
+            observed[(robot_geom,other_geom)]={'robot_geom_name':robot_name,
+                'object_body_name':m.body_id2name(other_body),
+                'contact_force_n':float(force[0]),'distance_m':float(con.dist)}
+            break
+    return observed
+
 def diagnostic_settle_steps():
     raw=os.environ.get('ATTN_DIAG_SETTLE_STEPS','20')
     if not re.fullmatch(r'[0-9]+',raw) or int(raw)<=0:
@@ -59,6 +94,7 @@ class NativeExecutor:
             for k in ('lower','upper','velocity')] for i in (1,2)]) for side in PHYSICAL_TO_NATIVE}
         self.moving=False;self.gripping=False;self.active_request=None
         self.held=None;self.held_transform=None;self.grasp_counts={'left':{},'right':{}}
+        self.contact_active={};self.contact_event_count=0;self.contact_event_overflow=0
         self.planner.attachment_provider=lambda:self.held.copy() if self.held else None
         self.journal=self.evidence/'native-actions.jsonl';self.physics=self.evidence/'native-physics.jsonl'
         self._step2=env.sim.step2
@@ -118,6 +154,8 @@ class NativeExecutor:
                     Rotation.from_matrix(relative[:3,:3]@self.held_transform[:3,:3].T).magnitude()>.03):
                 raise RuntimeError('Measured object/hand transform exceeds original 4mm/0.03rad bound')
         objects=set(getattr(self.env,'obj_body_id',{}).values())
+        contact_now=observed_movable_contacts(self.env,self.robot_root,
+            self.planner.chassis_binding.get('native_geom',''))
         for con in sim.data.contact:
             g1,g2=int(con.geom1),int(con.geom2);b1,b2=int(sim.model.geom_bodyid[g1]),int(sim.model.geom_bodyid[g2])
             a=is_descendant(sim.model,b1,self.robot_root);b=is_descendant(sim.model,b2,self.robot_root)
@@ -135,6 +173,10 @@ class NativeExecutor:
                 ((self.gripping and any(is_descendant(sim.model,other_body,obj) for obj in objects)) or
                  (self.held and is_descendant(sim.model,other_body,self.held['target_id']))))
             if not allowed:contacts.append([sim.model.geom_id2name(g1),sim.model.geom_id2name(g2),float(con.dist)])
+        events,dropped=bounded_contact_events(contact_transitions(self.contact_active,contact_now,self.physics_steps),self.contact_event_count)
+        for event in events:self.log(self.journal,dict(request_id=self.active_request,**event))
+        self.contact_event_count+=len(events);self.contact_event_overflow+=dropped
+        self.contact_active=contact_now
         row=dict(request_id=self.active_request,physics_step=self.physics_steps,qpos=q.tolist(),qvel=v.tolist(),
             base_qpos=base.tolist(),gripper_qpos={side:v.tolist() for side,v in gripper_q.items()},
             gripper_qvel={side:v.tolist() for side,v in gripper_v.items()},
@@ -163,6 +205,9 @@ class NativeExecutor:
         self.active_request=request_id;start=self.sequence;before=self.planner.state().copy()
         self.log(self.journal,dict(event='intent',request_id=request_id,epoch=self.epoch,
             plan_id=plan_id,start_sequence=start,command_curve=certificate))
+        if response.get('contact_exemption'):
+            self.log(self.journal,dict(event='contact_exemption',request_id=request_id,**response['contact_exemption']))
+        self.contact_event_count=0;self.contact_event_overflow=0
         self.moving=True
         try:
             for target in samples[1:]:self.goals=target.copy();self.control_step()
@@ -184,7 +229,10 @@ class NativeExecutor:
             self.log(self.journal,dict(event='receipt',**receipt));return receipt
         except BaseException:
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('native_failure');raise
-        finally:self.moving=False;self.active_request=None
+        finally:
+            if self.contact_event_overflow:self.log(self.journal,dict(event='movable_contact_overflow',
+                request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))
+            self.moving=False;self.active_request=None
 
     def move_joints(self,target,*,side,request_id):
         self.check_live()
@@ -215,6 +263,7 @@ class NativeExecutor:
             start_sequence=start,before_base_qpos=before.tolist(),target_base_qpos=target.tolist(),
             delta_body=delta.tolist(),collision_check=collision,arm_before_qpos=arm_before.tolist()))
         self.base_moving=True;self.moving=True;self.base_command=np.zeros(3)
+        self.contact_event_count=0;self.contact_event_overflow=0
         started=time.monotonic()
         try:
             # At 20 Hz, 80 steps allow a .20 m / .30 rad command to settle.
@@ -259,6 +308,8 @@ class NativeExecutor:
                 reason=f'{type(exc).__name__}: {exc}'))
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('base_failure');raise
         finally:
+            if self.contact_event_overflow:self.log(self.journal,dict(event='movable_contact_overflow',
+                request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))
             self.base_command=np.zeros(3);self.base_moving=False;self.moving=False;self.base_arm_start=None;self.active_request=None
 
     def any_object_contact(self):
@@ -288,6 +339,7 @@ class NativeExecutor:
         self.check_live()
         if side not in PHYSICAL_TO_NATIVE or command not in (-1.,1.):raise ValueError('Explicit physical gripper/command required')
         self.active_request=request_id;self.gripping=True;self.moving=True;start=self.sequence
+        self.contact_event_count=0;self.contact_event_overflow=0
         self.log(self.journal,dict(event='gripper_intent',request_id=request_id,side=side,command=command,sequence=start))
         try:
             if command<0 and self.held and self.held['holder']==side:
@@ -309,7 +361,10 @@ class NativeExecutor:
             self.log(self.journal,dict(event='receipt',**result));return result
         except BaseException:
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('gripper_failure');raise
-        finally:self.active_request=None;self.gripping=False;self.moving=False
+        finally:
+            if self.contact_event_overflow:self.log(self.journal,dict(event='movable_contact_overflow',
+                request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))
+            self.active_request=None;self.gripping=False;self.moving=False
 
     def close(self):
         self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('stop')

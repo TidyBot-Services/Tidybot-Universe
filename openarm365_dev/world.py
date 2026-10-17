@@ -32,9 +32,27 @@ def is_descendant(model, bid, root):
         bid=int(model.body_parentid[bid])
     return root==0
 
-def snapshot(env, *, chassis_binding=None):
+def movable_object_roots(env):
+    """Only independent free-joint task objects may leave the arm planner world."""
+    m=env.sim.model;robot=m.body_name2id('robot0_openarm_body_link0')
+    result={}
+    for name,raw in sorted(getattr(env,'obj_body_id',{}).items()):
+        bid=int(raw)
+        if bid<=0 or bid>=m.nbody or is_descendant(m,bid,robot):
+            raise WorldError('Invalid movable object body: '+name)
+        joints=[int(m.jnt_type[j]) for j in range(int(m.body_jntadr[bid]),int(m.body_jntadr[bid]+m.body_jntnum[bid]))]
+        # mjJNT_FREE is 0. Fixed fixtures in obj_body_id remain obstacles.
+        if joints==[0]:result[name]=bid
+    return result
+
+def snapshot(env, *, chassis_binding=None, exempt_body_ids=None, attached_body_id=None):
     sim=env.sim;m=sim.model;root=m.body_name2id('robot0_openarm_body_link0')
     transform=np.linalg.inv(mount_pose(env));cuboids=[];inventory=[];excluded=[]
+    requested=set(exempt_body_ids or ());exempted=[];full_cuboids=[];full_inventory=[]
+    if requested and (not requested<=set(movable_object_roots(env).values())):
+        raise WorldError('Collision exemption includes a nonmovable or unregistered body')
+    if attached_body_id is not None and attached_body_id not in requested:
+        raise WorldError('Attached body must be a registered exemptable object')
     for gid in range(m.ngeom):
         if not (m.geom_contype[gid] or m.geom_conaffinity[gid]):continue
         bid=int(m.geom_bodyid[gid]);name=m.geom_id2name(gid) or 'unnamed'
@@ -53,11 +71,28 @@ def snapshot(env, *, chassis_binding=None):
         center,half=shape_box(m,gid)
         pose=np.eye(4);pose[:3,:3]=sim.data.geom_xmat[gid].reshape(3,3);pose[:3,3]=sim.data.geom_xpos[gid]
         box=transformed_box(f'mujoco:{gid}:{name}',center,half,pose,transform)
-        cuboids.append(box);inventory.append({'name':box['name'],'geom_id':gid,'body_id':bid,
-            'body_name':m.body_id2name(bid),'geom_type':int(m.geom_type[gid]),'source':'actual MuJoCo collision geometry'})
+        item={'name':box['name'],'geom_id':gid,'body_id':bid,
+            'body_name':m.body_id2name(bid),'geom_type':int(m.geom_type[gid]),'source':'actual MuJoCo collision geometry'}
+        full_cuboids.append(box);full_inventory.append(item)
+        if attached_body_id is not None and is_descendant(m,bid,attached_body_id):
+            box=dict(box,name=f'entity:{attached_body_id}:shape:{gid}')
+            item=dict(item,name=box['name'])
+        if any(is_descendant(m,bid,obj) for obj in requested if obj!=attached_body_id):
+            exempted.append({'name':box['name'],'geom_id':gid,'body_name':item['body_name'],
+                'reason':'registered movable object arm-planning contact exemption'})
+        else:cuboids.append(box);inventory.append(item)
     if not cuboids or len(cuboids)>4096:raise WorldError('Collision world empty or exceeds authenticated endpoint bounds')
     if chassis_binding and sum(x['name']==chassis_binding['native_geom'] for x in excluded)!=1:
         raise WorldError('Authenticated chassis shape missing or ambiguous')
     identity={'cuboids':cuboids,'planner_from_world':transform.tolist()}
-    return {**identity,'inventory':inventory,'excluded_robot_geoms':excluded,
+    result={**identity,'inventory':inventory,'excluded_robot_geoms':excluded,
         'complete_shape_count':len(cuboids),'world_sha256':hashlib.sha256(json.dumps(identity,sort_keys=True,allow_nan=False).encode()).hexdigest()}
+    if exempt_body_ids is not None:
+        full_identity={'cuboids':full_cuboids,'planner_from_world':transform.tolist()}
+        result.update(exempted_geoms=exempted,exempted_geom_count=len(exempted),
+            exempted_objects=[{'name':name,'body_id':bid} for name,bid in movable_object_roots(env).items()
+                if bid in requested and bid!=attached_body_id],
+            complete_shape_count_unexempted=len(full_cuboids),
+            world_sha256_unexempted=hashlib.sha256(json.dumps(full_identity,sort_keys=True,allow_nan=False).encode()).hexdigest(),
+            unexempted_inventory=full_inventory,unexempted_cuboids=full_cuboids)
+    return result

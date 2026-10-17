@@ -76,13 +76,16 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
        asset_manifest_sha256=sha(ASSETS),object_set_id='robocasa365:pretrain:'+sha(ASSETS),
        base_mode='commanded_motion',runner_boundary='dev_loop',execution_controller_input='absolute',
        reset_controller_input='delta',global_random_seed=seed,gripper_command_endpoints_m=[.001,.043],
-       dev_lock=lock)
+       dev_lock=lock,contact_exempt_objects='none')
     from .environment import initial_joints
     c['initial_joint_targets']=initial_joints(task_id)
     return c
 def validate_dev_config(c,*,expected_source_root=None):
     if not isinstance(c,dict):raise ValueError('Dev config required')
     expected=make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root)
+    if c.get('contact_exempt_objects') not in ('none','movable_objects'):
+        raise ValueError('contact_exempt_objects must be none or movable_objects')
+    expected['contact_exempt_objects']=c['contact_exempt_objects']
     seconds=c.get('attempt_wall_seconds')
     if type(seconds) is not int or not 1<=seconds<=SDK['attempt_seconds']:raise ValueError('SDK attempt wall exceeded')
     expected['attempt_wall_seconds']=seconds

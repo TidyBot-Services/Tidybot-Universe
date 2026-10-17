@@ -1,4 +1,5 @@
 import copy,json
+import hashlib
 from pathlib import Path
 from unittest.mock import patch,MagicMock
 import pytest
@@ -16,6 +17,19 @@ def test_task_config(lock,task,seed):
     if task=='open_cabinet':assert 'sink' not in prompt and 'Panda' not in prompt
     assert c['robot']=='OpenArm365' and c['execution_arm']=='both'
     assert c['sdk_call_limit']==80 and c['horizon']==2400
+    assert c['contact_exempt_objects']=='none'
+
+def test_contact_exemption_is_frozen_and_hashed(monkeypatch):
+    # The worktree intentionally omits some copied native model files; config
+    # field validation can be checked without weakening production lock checks.
+    monkeypatch.setattr(dev_config,'verify_lock',lambda *args,**kwargs: None)
+    c=dev_config.make_dev_config('pick_place_counter_to_sink',102,{'path':'fixture','sha256':'fixture'})
+    enabled=dict(c,contact_exempt_objects='movable_objects')
+    assert dev_config.validate_dev_config(enabled)==enabled
+    digest=lambda x:hashlib.sha256(json.dumps(x,sort_keys=True,allow_nan=False).encode()).hexdigest()
+    assert digest(c)!=digest(enabled)
+    with pytest.raises(ValueError,match='contact_exempt_objects'):
+        dev_config.validate_dev_config(dict(c,contact_exempt_objects='fixture'))
 @pytest.mark.parametrize('seed',[-1,0,100,126,True,101.0,'101',None])
 def test_seed_rejected(lock,seed):
     with pytest.raises(ValueError):dev_config.make_dev_config('open_cabinet',seed,lock)
