@@ -1,0 +1,298 @@
+"""Read-only seed-101 reachability scan using the planner core's single-target IK."""
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from pathlib import Path
+
+from .ik_path_bench import diagnostic_files, request_inputs
+
+FIXTURE = Path(__file__).resolve().parents[1] / 'tests/fixtures/ik_path_world.json'
+# Recorded public SDK initial pose, xyzw; see reference_ladder.py. It is not in the fixture.
+WORLD_INITIAL_TCP = (0.4381810091, -2.2771536622, 1.0893940270)
+WORLD_INITIAL_XYZW = (0.0773645919, 0.7601851670, -0.3816544795, -0.5200702741)
+WORLD_MILK = (0.4246760939, -2.3935140080, 0.9621218952)
+WORLD_STEP6_CURRENT = (0.485, -2.316, 1.022)  # rounded observed position
+WORLD_STEP6_DELTA = (0.0089, -0.0083, -0.0138)  # rounded command
+POSITION_TOLERANCE_M = .004
+ORIENTATION_TOLERANCE_RAD = .03
+ROLLS_DEG = (0, 90, 180, 270)
+
+
+def add(a, b):
+    return tuple(x + y for x, y in zip(a, b))
+
+
+def sub(a, b):
+    return tuple(x - y for x, y in zip(a, b))
+
+
+def dot(a, b):
+    return sum(x*y for x, y in zip(a, b))
+
+
+def cross(a, b):
+    return (a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0])
+
+
+def unit(v):
+    n = math.sqrt(dot(v, v))
+    if n < 1e-12:
+        raise ValueError('zero direction')
+    return tuple(x/n for x in v)
+
+
+def quat_mul(a, b):
+    aw, ax, ay, az = a
+    bw, bx, by, bz = b
+    return (aw*bw-ax*bx-ay*by-az*bz,
+            aw*bx+ax*bw+ay*bz-az*by,
+            aw*by-ax*bz+ay*bw+az*bx,
+            aw*bz+ax*by-ay*bx+az*bw)
+
+
+def quat_conj(q):
+    return (q[0], -q[1], -q[2], -q[3])
+
+
+def rotate(q, v):
+    return quat_mul(quat_mul(q, (0., *v)), quat_conj(q))[1:]
+
+
+def matrix_quat(x, y, z):
+    """Convert column basis to unit wxyz quaternion."""
+    m = ((x[0], y[0], z[0]), (x[1], y[1], z[1]), (x[2], y[2], z[2]))
+    trace = m[0][0] + m[1][1] + m[2][2]
+    if trace > 0:
+        s = math.sqrt(trace + 1) * 2
+        q = (.25*s, (m[2][1]-m[1][2])/s, (m[0][2]-m[2][0])/s, (m[1][0]-m[0][1])/s)
+    else:
+        i = max(range(3), key=lambda k: m[k][k])
+        j, k = (i+1)%3, (i+2)%3
+        s = math.sqrt(1 + m[i][i] - m[j][j] - m[k][k]) * 2
+        v = [0., 0., 0.]
+        v[i] = .25*s
+        v[j] = (m[j][i] + m[i][j])/s
+        v[k] = (m[k][i] + m[i][k])/s
+        q = ((m[k][j]-m[j][k])/s, *v)
+    return unit(q)
+
+
+def orientation_for_axis(axis, roll_deg):
+    """Tool +z follows axis; roll is around that tool z axis."""
+    z = unit(axis)
+    reference = (0., 0., 1.) if abs(z[2]) < .9 else (1., 0., 0.)
+    x = unit(sub(reference, tuple(dot(reference, z)*v for v in z)))
+    y = cross(z, x)
+    base = matrix_quat(x, y, z)
+    a = math.radians(roll_deg)/2
+    return unit(quat_mul(base, (math.cos(a), 0., 0., math.sin(a))))
+
+
+def orientations(initial_wxyz):
+    answer = [{'name': 'initial', 'quaternion_wxyz': list(unit(initial_wxyz)),
+               'tool_z_base': list(rotate(unit(initial_wxyz), (0., 0., 1.)))}]
+    axes = {'forward_horizontal': (1., 0., 0.),
+            'forward_down_45': unit((1., 0., -1.)), 'vertical_down': (0., 0., -1.)}
+    for name, axis in axes.items():
+        for roll in ROLLS_DEG:
+            answer.append({'name': f'{name}_roll_{roll}',
+                           'quaternion_wxyz': list(orientation_for_axis(axis, roll)),
+                           'tool_z_base': list(axis)})
+    return answer
+
+
+def object_bbox_center(world):
+    """Fixture has one generic 'obj_g*' group, but no semantic milk pose."""
+    shapes = [c for c in world if c['name'].split(':')[-1].startswith('obj_g')]
+    if not shapes:
+        raise ValueError('Fixture has no obj_g* bounding boxes; cannot locate milk proxy')
+    # Centers of rotated cuboids bound the object only approximately. The midpoint
+    # of their center extrema avoids claiming that this is the physical object pose.
+    center = [sum((min(c['center'][i] for c in shapes), max(c['center'][i] for c in shapes)))/2
+              for i in range(3)]
+    return center, [c['name'] for c in shapes]
+
+
+def grid(center):
+    """7 x 7 x 4 = 196 TCP positions in robot-base coordinates."""
+    return [{'id': f'x{ix:+d}_y{iy:+d}_z{iz}',
+             'position_base_m': [round(center[0]+ix*.04, 9),
+                                 round(center[1]+iy*.04, 9),
+                                 round(center[2]+iz*.05, 9)],
+             'offset_m': [round(ix*.04, 9), round(iy*.04, 9), round(iz*.05, 9)]}
+            for ix in range(-3, 4) for iy in range(-3, 4) for iz in range(4)]
+
+
+def world_to_base(point_world, fk_initial):
+    """T_base_world = T_base_tcp(q0) * inverse(T_world_tcp(recorded))."""
+    qb = unit(fk_initial['quaternion_wxyz'])
+    qw = unit((WORLD_INITIAL_XYZW[3], *WORLD_INITIAL_XYZW[:3]))
+    q_base_world = unit(quat_mul(qb, quat_conj(qw)))
+    return add(fk_initial['position'], rotate(q_base_world, sub(point_world, WORLD_INITIAL_TCP))), q_base_world
+
+
+def summarize(rows, poses, points):
+    matrix = []
+    by_key = {(r['mode'], r['orientation'], r['point']): r for r in rows}
+    for pose in poses:
+        cells = {}
+        for mode in ('without_collision', 'with_collision'):
+            selected = [by_key[(mode, pose['name'], p['id'])] for p in points if p['id'] != 'step6']
+            passed = [r for r in selected if r['success']]
+            coords = [r['position_base_m'] for r in passed]
+            cells[mode] = {'success': len(passed), 'total': len(selected),
+                           'rate': len(passed)/len(selected) if selected else 0.,
+                           'reachable_bounds_base_m': None if not coords else
+                           {'min': [min(p[i] for p in coords) for i in range(3)],
+                            'max': [max(p[i] for p in coords) for i in range(3)]}}
+        matrix.append({'orientation': pose['name'], **cells})
+    ranked = sorted(matrix, key=lambda row: (row['with_collision']['success'],
+                                             row['without_collision']['success']), reverse=True)[:5]
+    sixth = [{'orientation': pose['name'],
+              **{mode: by_key[(mode, pose['name'], 'step6')]
+                 for mode in ('without_collision', 'with_collision')}} for pose in poses]
+    return {'matrix': matrix, 'step6': sixth, 'promising': ranked}
+
+
+def render_markdown(report):
+    s = report['summary']
+    side_label = {'left': '左', 'right': '右'}[report.get('side', 'left')]
+    lines = [f'# Seed 101 {side_label}臂 IK 可达性图', '',
+             '坐标系：目标、网格和范围均为机器人底座系，单位 m；姿态为 wxyz。',
+             '“无碰撞”列仅清空外部世界；planner core 仍检查自碰撞和终点几何。',
+             f"初始 FK（底座系）：{report['fk_initial_base']}",
+             f"物体网格中心：{report['object_proxy']['center_base_m']}（obj_g* 碰撞盒中心的范围中点，仅为物体位置代理）",
+             f"物体盒中心与给定世界物体位置换算值相距 {report['object_proxy']['distance_to_recorded_m']:.4f} m。",
+             f"世界到机器人底座旋转（wxyz）：{report['world_to_base_quaternion_wxyz']}。",
+             f"第 6 步目标（底座系）：{report['step6_target_base_m']}；原始世界系位置和位移为四舍五入记录。",
+             f"服务默认容差：位置 ≤{POSITION_TOLERANCE_M} m，姿态 ≤{ORIENTATION_TOLERANCE_RAD} rad；单点 core.solve_ik，q0 每次相同。",
+             '', '| 姿态 | 无碰撞 | 带碰撞 | 无碰撞可达范围 min → max (m) | 带碰撞可达范围 min → max (m) |',
+             '| --- | ---: | ---: | --- | --- |']
+    def cell(c):
+        return f"{c['success']}/{c['total']} ({c['rate']:.1%})"
+    def bounds(c):
+        b = c['reachable_bounds_base_m']
+        return '—' if b is None else f"{b['min']} → {b['max']}"
+    for row in s['matrix']:
+        a, b = row['without_collision'], row['with_collision']
+        lines.append(f"| {row['orientation']} | {cell(a)} | {cell(b)} | {bounds(a)} | {bounds(b)} |")
+    lines += ['', '## 第 6 步目标', '', '| 姿态 | 无碰撞 | 带碰撞 |', '| --- | --- | --- |']
+    def result(r):
+        return '成功' if r['success'] else '失败：' + str(r['reason'] or '未给出原因')
+    for row in s['step6']:
+        lines.append(f"| {row['orientation']} | {result(row['without_collision'])} | {result(row['with_collision'])} |")
+    lines += ['', '## 带碰撞成功数排名前五', '']
+    lines += [f"- {r['orientation']}：带碰撞 {cell(r['with_collision'])}；无碰撞 {cell(r['without_collision'])}。"
+              for r in s['promising']]
+    wins = sum(r['with_collision']['success'] for r in s['matrix'])
+    free = sum(r['without_collision']['success'] for r in s['matrix'])
+    lines += ['', f'结论：本次网格中无碰撞成功 {free} 点姿态组合，带碰撞成功 {wins} 点姿态组合；'
+              '单点 IK 失败只能说明本次求解未获服务认可的解，不能单凭失败判定关节极限、障碍物或姿态是唯一原因。',
+              '', '逐目标结果和失败原因见 results.json。']
+    return '\n'.join(lines) + '\n'
+
+
+def run(args, fixture, world, center):
+    import curobo_v2.identity as identity
+    import yaml
+    import curobo
+
+    config_path, assets = args.robot_config.resolve(), args.assets_dir.resolve()
+    document = yaml.safe_load(config_path.read_text())
+    files = diagnostic_files(config_path, assets, document, args.fixture)
+    identity._service_context = ({'assets_root': str(assets), 'files': files,
+                                  'library_root': str(Path(curobo.__file__).resolve().parent.parent),
+                                  'diagnostic_mode': 'diagnostic-read-only'}, str(config_path))
+    from curobo_v2.service.curobo_service.planner import PlannerAdapter
+    from curobo_v2.service.curobo_service.world import WorldStore
+    adapter = PlannerAdapter('cuda:0', WorldStore(max_envs=8))
+    core = adapter._planner
+    contract = core.identity['contract']
+    if (contract['position_tolerance_m'] != POSITION_TOLERANCE_M
+            or contract['orientation_tolerance_rad'] != ORIENTATION_TOLERANCE_RAD):
+        raise ValueError('Runtime endpoint tolerances differ from this diagnostic report')
+    body, world, attachment, tool = request_inputs(core, fixture, args.side)
+    if attachment is not None:
+        raise ValueError('Expected seed-101 uncarried scene; attachment is present')
+    q0 = core.named(body['current_q'], body['joint_names'])
+    core.check_selection(q0, body['active_joints'], [tool], body['locked_joints'])
+    adapter.push_world(body['env_id'], world)
+    initial = core.fk(q0, body['locked_joints'], body['active_joints'])[tool]
+    obj_base, q_base_world = world_to_base(WORLD_MILK, initial)
+    step6_world = add(WORLD_STEP6_CURRENT, WORLD_STEP6_DELTA)
+    step6_base, _ = world_to_base(step6_world, initial)
+    points = grid(center) + [{'id': 'step6', 'position_base_m': list(step6_base), 'offset_m': None}]
+    poses = orientations(initial['quaternion_wxyz'])
+    # Keep the genuine scene and empty scene in separate batches.
+    rows = []
+    for mode, scene in (('without_collision', []), ('with_collision', world)):
+        core.set_collision_world(scene)
+        core.set_attachment(None)
+        for pose in poses:
+            for point in points:
+                target = {tool: {'position': point['position_base_m'],
+                                 'quaternion_wxyz': pose['quaternion_wxyz']}}
+                try:
+                    core.check_targets(target)
+                    solution = core.solve_ik(current_q=q0, targets=target,
+                                             active_joints=body['active_joints'],
+                                             locked_joints=body['locked_joints'])
+                    success = solution is not None
+                    reason = None if success else core.last_failure or 'unknown_ik_failure'
+                    diagnostics = core.last_solver_diagnostics
+                except Exception as exc:
+                    success, reason, diagnostics = False, f'{type(exc).__name__}: {exc}', []
+                rows.append({'mode': mode, 'orientation': pose['name'], 'point': point['id'],
+                             'position_base_m': point['position_base_m'], 'success': success,
+                             'reason': reason, 'solver_diagnostics': diagnostics})
+    discrepancy = math.sqrt(dot(sub(obj_base, center), sub(obj_base, center)))
+    if discrepancy > .10:
+        raise ValueError(f'Initial-pose frame registration disagrees with obj_g* proxy by {discrepancy:.3f} m')
+    report = {'fixture': str(args.fixture.resolve()), 'side': args.side,
+              'coordinate_frame': contract['frame'],
+              'q0': body['current_q'], 'joint_names': body['joint_names'],
+              'locked_joints': body['locked_joints'], 'world_cuboids': len(world),
+              'fk_initial_base': initial, 'world_to_base_quaternion_wxyz': q_base_world,
+              'transform_source': 'FK(q0) and recorded initial world TCP position/quaternion from reference_ladder.py',
+              'object_proxy': {'source': 'obj_g* cuboid center extrema midpoint',
+                               'center_base_m': center, 'cuboids': len([c for c in world if c['name'].split(':')[-1].startswith('obj_g')]),
+                               'recorded_object_base_m': obj_base, 'distance_to_recorded_m': discrepancy},
+              'step6_target_world_m': step6_world, 'step6_target_base_m': step6_base,
+              'tolerances': {'position_m': POSITION_TOLERANCE_M, 'orientation_rad': ORIENTATION_TOLERANCE_RAD},
+              'orientations': poses, 'points': points, 'rows': rows,
+              'summary': summarize(rows, poses, points)}
+    return report
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--dry-run', action='store_true', help='Count targets without importing cuRobo or constructing a model')
+    parser.add_argument('--out', type=Path, default=Path('reachability-map-results'))
+    parser.add_argument('--side', choices=('left', 'right'), default='left')
+    parser.add_argument('--fixture', type=Path, default=FIXTURE)
+    parser.add_argument('--robot-config', type=Path)
+    parser.add_argument('--assets-dir', type=Path)
+    args = parser.parse_args(argv)
+    fixture = json.loads(args.fixture.read_text())
+    world = fixture['world']['cuboids'] if isinstance(fixture['world'], dict) else fixture['world']
+    center, names = object_bbox_center(world)
+    npoints, nposes = len(grid(center))+1, 1+3*len(ROLLS_DEG)
+    if args.dry_run:
+        print(json.dumps({'side': args.side, 'frame': 'robot base', 'object_proxy_center_base_m': center,
+                          'object_cuboids': len(names), 'grid_positions': npoints-1,
+                          'extra_step6_positions': 1, 'orientations': nposes,
+                          'collision_modes': 2, 'ik_targets': npoints*nposes*2}, ensure_ascii=False))
+        return
+    if args.robot_config is None or args.assets_dir is None:
+        parser.error('real runs require --robot-config and --assets-dir')
+    report = run(args, fixture, world, center)
+    args.out.mkdir(parents=True, exist_ok=True)
+    (args.out/'results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    (args.out/'results.md').write_text(render_markdown(report))
+    print(f"Wrote {args.out/'results.json'} and {args.out/'results.md'}")
+
+
+if __name__ == '__main__':
+    main()
