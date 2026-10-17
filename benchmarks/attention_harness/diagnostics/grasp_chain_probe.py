@@ -14,31 +14,44 @@ def parse_quat(value):
     norm=math.sqrt(sum(x*x for x in parts))
     return tuple(x/norm for x in parts)
 
-def rotation_steps(current_xyzw,target_xyzw):
+def valid_rotation_step(value):
+    step=float(value)
+    if not math.isfinite(step) or not 0 < step <= .5:
+        raise ValueError('rotation step must be finite and in (0, 0.5] rad')
+    return step
+
+def rotation_vector_steps(rv,rotation_step=.45):
+    rotation_step=valid_rotation_step(rotation_step)
+    n=math.floor(max(abs(float(v)) for v in rv)/rotation_step)+1
+    return [tuple(float(v/n) for v in rv)]*n
+def rotation_steps(current_xyzw,target_xyzw,rotation_step=.45):
     from scipy.spatial.transform import Rotation
     delta=(Rotation.from_quat(target_xyzw)*Rotation.from_quat(current_xyzw).inv()).as_rotvec()
-    n=max(1,math.ceil(max(abs(float(x)) for x in delta)/.5))
-    return [tuple(float(x/n) for x in delta)]*n
+    return rotation_vector_steps(delta,rotation_step)
 
-def approach_steps(current_pos,target_pos,current_xyzw,target_xyzw,sequence):
+def approach_steps(current_pos,target_pos,current_xyzw,target_xyzw,sequence,rotation_step=.45):
     """Ideal open-loop step sizes; generated policies remeasure after every step."""
     from scipy.spatial.transform import Rotation
+    rotation_step=valid_rotation_step(rotation_step)
     distance=math.dist(current_pos,target_pos)
     rv=(Rotation.from_quat(target_xyzw)*Rotation.from_quat(current_xyzw).inv()).as_rotvec()
     if sequence=='translate-first':
         n=math.floor(distance/.045)+1 if distance else 0
         translation=[(tuple((target_pos[j]-current_pos[j])/n for j in range(3)),(0.,0.,0.))]*n if n else []
-        turns=math.floor(max(abs(float(v)) for v in rv)/.45)+1
+        turns=len(rotation_vector_steps(rv,rotation_step))
         return translation+[((0.,0.,0.),tuple(float(v/turns) for v in rv))]*turns
     if sequence=='combined':
-        n=max(1,math.ceil(distance/.045),math.ceil(max(abs(float(v)) for v in rv)/.45))
+        n=max(1,math.ceil(distance/.045),math.ceil(max(abs(float(v)) for v in rv)/rotation_step))
         return [(tuple((target_pos[j]-current_pos[j])/n for j in range(3)),
                  tuple(float(v/n) for v in rv))]*n
     raise ValueError('approach_steps requires translate-first or combined')
 
-def sequenced_policy_source(shift,quat,oracle=None,*,sequence):
+def sequenced_policy_source(shift,quat,oracle=None,*,sequence,rotation_step=.45):
     if sequence not in ('translate-first','combined'):raise ValueError('unknown sequence')
-    old=oriented_policy_source(shift,quat,oracle)
+    rotation_step=valid_rotation_step(rotation_step)
+    step_literal='0.45' if rotation_step==.45 else repr(rotation_step)
+    rotation_bound='0.5' if rotation_step==.45 else step_literal
+    old=oriented_policy_source(shift,quat,oracle,rotation_step=rotation_step)
     prefix=old.split("rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)\n",1)[0]
     suffix="grasp_z = (oracle_z[0]+oracle_z[1])/2\n"+old.split("grasp_z = (oracle_z[0]+oracle_z[1])/2\n",1)[1]
     lines=[]
@@ -61,13 +74,13 @@ def sequenced_policy_source(shift,quat,oracle=None,*,sequence):
                   '    left_arm.move_delta(step[0],step[1],step[2])', '    calls += 1',
                   '    obs_open = sensors.get_observation()', '    calls += 1',
                   "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
-                  'turns = int(max(abs(v) for v in rv)/0.45)+1',
+                  f'turns = int(max(abs(v) for v in rv)/{step_literal})+1',
                   "assert calls+2*turns <= 75, 'SDK call budget exceeded'",
                   'for k in range(turns):',
                   "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
                   '    step = [v/(turns-k) for v in rv]',
                   '    correction = [pre[j]-obs_open[\'robot0_left_eef_pos\'][j] for j in range(3)]',
-                  "    assert max(abs(v) for v in step) <= 0.5, 'rotation coordinate bound'",
+                  f"    assert max(abs(v) for v in step) <= {rotation_bound}, 'rotation coordinate bound'",
                   "    assert sum(v*v for v in correction)**0.5 < 0.05, 'rotation drift correction bound'",
                   '    left_arm.move_delta(correction[0],correction[1],correction[2],step)',
                   '    calls += 1', '    obs_open = sensors.get_observation()', '    calls += 1']
@@ -76,7 +89,7 @@ def sequenced_policy_source(shift,quat,oracle=None,*,sequence):
                   'distance = sum((pre[j]-eef[j])**2 for j in range(3))**0.5',
                   "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
                   'travel = distance/0.045',
-                  'turn = max(abs(v) for v in rv)/0.45',
+                  f'turn = max(abs(v) for v in rv)/{step_literal}',
                   'travel_n = int(travel) if travel == int(travel) else int(travel)+1',
                   'turn_n = int(turn) if turn == int(turn) else int(turn)+1',
                   'n = max(1,travel_n,turn_n)',
@@ -87,7 +100,7 @@ def sequenced_policy_source(shift,quat,oracle=None,*,sequence):
                   "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
                   '    turn_step = [v/(n-k) for v in rv]',
                   "    assert sum(v*v for v in step)**0.5 < 0.05, 'combined translation bound'",
-                  "    assert max(abs(v) for v in turn_step) <= 0.45, 'combined rotation bound'",
+                  f"    assert max(abs(v) for v in turn_step) <= {step_literal}, 'combined rotation bound'",
                   '    left_arm.move_delta(step[0],step[1],step[2],turn_step)',
                   '    calls += 1', '    obs_open = sensors.get_observation()', '    calls += 1']
     lines += ['obs_pre = obs_open',"eef = obs_pre['robot0_left_eef_pos']"]
@@ -95,8 +108,11 @@ def sequenced_policy_source(shift,quat,oracle=None,*,sequence):
     validate_generated_policy(source)
     return source
 
-def oriented_policy_source(shift,quat,oracle=None):
+def oriented_policy_source(shift,quat,oracle=None,*,rotation_step=.45):
     """Generated SDK policy; oracle is read once by the host at reset."""
+    rotation_step=valid_rotation_step(rotation_step)
+    step_literal='0.45' if rotation_step==.45 else repr(rotation_step)
+    rotation_bound='0.5' if rotation_step==.45 else step_literal
     moves=base_steps(shift)
     src=['from robot_sdk import sensors, base, left_arm, left_gripper',
          'calls = 0', f'grasp_quat = {[float(v) for v in quat]!r}']
@@ -126,12 +142,12 @@ def oriented_policy_source(shift,quat,oracle=None):
             'left_gripper.open()', 'calls += 1',
             'obs_open = sensors.get_observation()', 'calls += 1',
             "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
-            'turns = int(max(abs(v) for v in rv)/0.45)+1',
+            f'turns = int(max(abs(v) for v in rv)/{step_literal})+1',
             "assert calls + 2*turns <= 75, 'SDK call budget exceeded'",
             'for k in range(turns):',
             "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
             '    step = [v/(turns-k) for v in rv]',
-            "    assert max(abs(v) for v in step) <= 0.5, 'rotation coordinate bound'",
+            f"    assert max(abs(v) for v in step) <= {rotation_bound}, 'rotation coordinate bound'",
             '    left_arm.move_delta(0.0,0.0,0.0,step)',
             '    calls += 1',
             '    obs_open = sensors.get_observation()', '    calls += 1',
@@ -439,6 +455,8 @@ def main(argv=None):
     p.add_argument('--tilt',action='store_true')
     p.add_argument('--grasp-quat',help='world TCP target quaternion x,y,z,w')
     p.add_argument('--sequence',choices=('rotate-first','translate-first','combined'),default='rotate-first')
+    p.add_argument('--rotation-step',type=valid_rotation_step,default=.45,metavar='RAD',
+                   help='maximum rotation vector coordinate per step in (0, 0.5] rad (default: 0.45)')
     p.add_argument('--oracle-from-reset',action='store_true',help='read target geometry once at real reset; diagnostic only')
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
@@ -460,16 +478,18 @@ def main(argv=None):
             (args.out/'oracle-reset'/'fixture.json').write_text(json.dumps(fixture,ensure_ascii=False,indent=2)+'\n')
         if args.oracle_from_reset and args.dry_run:
             oracle={'position_world_m':[0.,0.,0.], 'z_range_world_m':[0.,0.]}
-        source=(oriented_policy_source(shift,quat,oracle) if args.sequence=='rotate-first' else
-                sequenced_policy_source(shift,quat,oracle,sequence=args.sequence)) if quat else policy_source(shift,args.tilt)
+        source=(oriented_policy_source(shift,quat,oracle,rotation_step=args.rotation_step) if args.sequence=='rotate-first' else
+                sequenced_policy_source(shift,quat,oracle,sequence=args.sequence,rotation_step=args.rotation_step)) if quat else policy_source(shift,args.tilt)
     except ValueError as exc:p.error('invalid --base-shift or policy: '+str(exc))
     if args.dry_run:
         if args.oracle_from_reset:print('# 使用仿真真值,仅诊断；dry-run 不执行 reset，真实运行时注入几何常量')
         if quat:
+            step_literal='0.45' if args.rotation_step==.45 else repr(args.rotation_step)
             print(f'# sequence={args.sequence}; base_steps={len(base_steps(shift))}; approach_steps 在张手后的公开位姿和目标位置确定')
-            print('# rotate-first: rotation=floor(max_rotation_coordinate/0.45)+1，translation=floor(distance/0.045)+1')
-            print('# translate-first: translation=floor(distance/0.045)+1，rotation=floor(max_rotation_coordinate/0.45)+1')
-            print('# combined: N=max(1,ceil(distance/0.045),ceil(max_rotation_coordinate/0.45))')
+            print(f'# rotate-first: rotation=floor(max_rotation_coordinate/{step_literal})+1，translation=floor(distance/0.045)+1')
+            print(f'# translate-first: translation=floor(distance/0.045)+1，rotation=floor(max_rotation_coordinate/{step_literal})+1')
+            print(f'# combined: N=max(1,ceil(distance/0.045),ceil(max_rotation_coordinate/{step_literal}))')
+            print('# SDK 调用数估计：上限 80；提供 --dry-run-state 后按旋转/平移及约 4 步下探估算，估计调用数 > 70 时警告')
             if args.dry_run_state:
                 try:
                     state=json.loads(args.dry_run_state.read_text())
@@ -477,12 +497,17 @@ def main(argv=None):
                     from scipy.spatial.transform import Rotation
                     rv=(Rotation.from_quat(quat)*Rotation.from_quat(initial_q).inv()).as_rotvec()
                     distance=math.dist(pos,pre)
-                    turns=math.floor(max(abs(float(v)) for v in rv)/.45)+1
+                    turns=len(rotation_vector_steps(rv,args.rotation_step))
                     travel=math.floor(distance/.045)+1 if distance else 0
                     counts={'rotate-first':turns+travel,
-                            'translate-first':len(approach_steps(pos,pre,initial_q,quat,'translate-first')),
-                            'combined':len(approach_steps(pos,pre,initial_q,quat,'combined'))}
+                            'translate-first':len(approach_steps(pos,pre,initial_q,quat,'translate-first',args.rotation_step)),
+                            'combined':len(approach_steps(pos,pre,initial_q,quat,'combined',args.rotation_step))}
                     print(f'# dry-run approach step counts: {json.dumps(counts,ensure_ascii=False)}')
+                    estimated={name:len(base_steps(shift))+12+(0 if args.oracle_from_reset else 1)+2*count+8
+                               for name,count in counts.items()}
+                    print(f'# dry-run SDK call estimates (limit 80): {json.dumps(estimated,ensure_ascii=False)}')
+                    for name,calls in estimated.items():
+                        if calls>70:print(f'# 警告：{name} 估计调用数 {calls} > 70（上限 80）')
                 except (OSError,ValueError,KeyError,TypeError) as exc:p.error('invalid --dry-run-state: '+str(exc))
         print(source,end='');return 0
     old=os.environ.get('ATTN_DIAG_CONTACT_EXEMPT')
