@@ -144,3 +144,23 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
 seed 102 reset 实测：`robot0_left_eef_pos ≈ [0.411192,-2.279444,1.089394]` m，`obj_pos ≈ [0.496910,-2.377295,0.934829]` m；两者均为公开 WORLD 坐标。`mount_pose` 平移约 `[0.812481,-1.767212,0.600000]` m、旋转约 `Rz(π)`；世界点到机器人系为 `p_robot=R_mountᵀ(p_world-t_mount)`，反向为 `p_world=R_mount p_robot+t_mount`。公开 observation 暂无 base pose 字段，探针只用 WORLD 末端/物体位置算 WORLD 手臂位移；底座命令直接用给定机器人系位移。
 
 当前 `wt-exempt` 工作树的已冻结 `openarm365/model/identity.json` 还要求本地副本 `openarm_phase0_recheck/model/compat_v6/robot.urdf`，但该文件在这个工作树中缺失。因此本沙箱内的 `make_lock` 会按原有身份检查报 `native robot model identity drift`，真实探针会在创建实验时停止。运行前需要按原身份清单恢复工作树的完整模型副本；探针不会跳过或放宽该检查。本阶段未启动 worker、服务、GPU 或物理动作。
+
+### 持物搬运诊断（可选）
+
+`grasp_chain_probe --carry --carry-base-shift auto --oracle-from-reset` 在既有抓取和 10 cm 抬起之后追加 `carry_lift`、`carry_base`、`carry_xy`、`lower`、`release`、`retreat`、`observe`。`--carry` 默认关闭；关闭时生成策略与此前逐字节一致。也可指定 `--carry-base-shift DX,DY,DYAW`（机器人 mount 系）。`auto` 把 reset 的 `sink_pos−banana_pos` 转为抓取后 mount 系位移；`base.move_delta` 拆分为每次平移 ≤0.20 m、转角 ≤0.30 rad 并保持 SE(2) 终点。搬运升到水槽边沿顶面上方 0.20 m，水平移到水槽目标中心，降到边沿上方 0.08 m，松爪后上抬 0.10 m。所有新增臂动作使用原 SDK、规划证书和物理监控；手臂水平步长 <0.05 m，竖直升/降每步 <0.03 m 或 ≤0.03 m。
+
+`--carry --oracle-from-reset --dry-run --dry-run-reset` 只做 reset，不启动物理步进，打印水槽边沿高度、来源、`sink_pos`、auto 位移、香蕉抓取时与水槽移位后的 mount 相对位置，以及待执行策略。边沿高度从 reset 原生 MuJoCo 水槽 main 固定碰撞盒的最大 z 计算；没有对应盒时退回 `sink_pos` 的 z 并明确标明。这些几何均标注“使用仿真真值,仅诊断”。正常 `--dry-run` 行为不变。真实执行目录的 `native_result.json` 被原样读取到 `results.json` 的 `native_success` 和 `native_status`；`object_final_pos` 来自最终公开观测，`object_in_sink` 只按水槽碰撞盒 XY 投影与低于边沿的 z 做启发式判定，不代替原生评估器。
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" \
+  XDG_CACHE_HOME=/tmp/attn-carry-cache NUMBA_CACHE_DIR=/tmp/attn-carry-numba \
+  /home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python -m \
+  benchmarks.attention_harness.diagnostics.grasp_chain_probe \
+  --seed 102 --base-shift 0,0.25,0 \
+  --grasp-quat 0.3007057995042732,0.9537169507482269,0,0 \
+  --oracle-from-reset --sequence translate-first --rotation-step 0.15 \
+  --exempt movable_objects --grasp-z-offset-mm 5 --lift-step-m 0.025 \
+  --carry --carry-base-shift auto --dry-run --dry-run-reset
+```
+
+seed 102 只读 reset 实测：`sink_pos=[0.2999998883,-1.7962400050,0.9861874579]` m；main 固定碰撞盒 13 个，边沿顶面 `1.0186950289` m；`auto=(+0.1969099291,-0.5810548409,0)`。mount 旋转为 `Rz(π)`，所以世界系 `sink−banana=(-0.1969099291,+0.5810548409)` m 映到 mount 系后符号翻转。抓取时香蕉与移位后水槽的 mount XY 均为 `[0.3155711446,0.3600824950]` m。以上仅为只读可达性自检，未执行新增物理阶段或获得原生成功结果。

@@ -3,6 +3,27 @@ import pytest
 from benchmarks.attention_harness.diagnostics.grasp_chain_probe import base_steps,policy_source,summarize,markdown,rotation_steps,rotation_vector_steps,approach_steps,oriented_policy_source,sequenced_policy_source,main
 from openarm365_dev.policy_validation import validate_generated_policy
 
+def test_carry_auto_geometry_and_policy_bounds():
+    import numpy as np
+    from benchmarks.attention_harness.diagnostics.grasp_chain_probe import carry_auto_shift,carry_policy_source
+    mount=np.eye(4);mount[:2,:2]=-np.eye(2)
+    mount[:3,3]=[.8124809619968811,-1.7672123507688546,.6]
+    banana=[.4969098174320634,-2.37729484580756,.9348288902306693]
+    sink=[.2999998883379904,-1.7962400049525014,.9861874579216556]
+    shift=carry_auto_shift(mount,banana,sink)
+    assert shift==pytest.approx((.196909929094,-.581054840855,0.))
+    assert carry_auto_shift(mount,banana,sink,math.pi/2)==pytest.approx((-.581054840855,-.196909929094,0.))
+    source=sequenced_policy_source((0,.25,0),(.3007057995042732,.9537169507482269,0,0),
+        {'position_world_m':banana,'z_range_world_m':[.92,.96]},sequence='translate-first',rotation_step=.15)
+    sink_truth={'sink_pos_world_m':sink,'sink_rim_top_world_m':1.0186950289094834}
+    carried=carry_policy_source(source,sink_truth,shift)
+    assert carried.startswith(source)
+    assert len(base_steps(shift))==4
+    assert "assert calls+n+1 <= 80" in carried
+    assert "assert calls+2*n <= 80" in carried
+    assert "left_gripper.open()" in carried
+    validate_generated_policy(carried)
+
 def test_steps_compose_and_policy_is_sdk_valid():
     for shift in ((0,.3,0),(.3,.2,.4),(-.4,.5,-.6)):
         steps=base_steps(shift);x=y=yaw=0.
@@ -42,6 +63,14 @@ def test_public_summary_from_real_feedback_shape(tmp_path):
     assert row['object_lifted_5cm'] is True
     assert row['stages'][-1]['object_position']==[0,0,.96]
     assert '上升至少 5 cm' in markdown(row)
+    carry={'sink_pos_world_m':[0,0,1.], 'sink_rim_top_world_m':1.02,
+           'sink_rim_top_source':'reset sink main fixed collision boxes',
+           'sink_xy_aabb_world_m':[[-.2,.2],[-.2,.2]]}
+    carried=summarize(tmp_path,102,(0,.3,0),'movable_objects',False,1.,carry=carry)
+    assert [s['stage'] for s in carried['stages'][-7:]]==[
+        'carry_lift','carry_base','carry_xy','lower','release','retreat','observe']
+    assert carried['stages'][-1]['public_status']=='not_reached'
+    assert carried['native_success'] is None and carried['object_final_pos']==[0,0,.96]
 
 
 def test_rotation_split_and_oriented_policy(capsys):

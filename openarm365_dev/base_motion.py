@@ -91,7 +91,7 @@ def _copy_mjdata(model, source):
     return copy.copy(source)
 
 
-def check_exact_base_path(env, world, binding, delta, base_initial, *, source_data=None):
+def check_exact_base_path(env, world, binding, delta, base_initial, *, source_data=None, held_body_id=None):
     """Sweep native geoms with FK and exact MuJoCo distances on copied data."""
     import mujoco
     from .world import is_descendant, shape_box
@@ -119,12 +119,32 @@ def check_exact_base_path(env, world, binding, delta, base_initial, *, source_da
                 if (model.geom_contype[gid] or model.geom_conaffinity[gid]) and gid not in expected}
     if len(obstacles) != len(complete) or set(obstacles) != complete:
         raise PlanningRejected('Complete unexempted collision world is missing')
+    held_geoms = []
+    if held_body_id is not None:
+        from .world import movable_object_roots
+        held_body_id = int(held_body_id)
+        if held_body_id not in movable_object_roots(env).values():
+            raise PlanningRejected('Held body is not a registered free object')
+        held_geoms = [gid for gid in obstacles
+                      if is_descendant(model, int(model.geom_bodyid[gid]), held_body_id)]
+        if not held_geoms:
+            raise PlanningRejected('Held object has no collision geoms in complete world')
+        obstacles = [gid for gid in obstacles if gid not in held_geoms]
+        robots += held_geoms
     if len(robots) == 0 or len(obstacles) == 0:
         raise PlanningRejected('Collision inventory is empty')
 
     start_data = _copy_mjdata(native_model, sim.data._data if source_data is None else source_data)
     trial_data = _copy_mjdata(native_model, start_data)
     mujoco.mj_forward(native_model, start_data)
+    if held_geoms:
+        from scipy.spatial.transform import Rotation as _Rotation
+        held_joint = int(model.body_jntadr[held_body_id])
+        held_qadr = int(model.jnt_qposadr[held_joint])
+        root_position = start_data.xpos[root].copy()
+        root_rotation = start_data.xmat[root].reshape(3, 3).copy()
+        held_position = start_data.qpos[held_qadr:held_qadr+3].copy()
+        held_quat = start_data.qpos[held_qadr+3:held_qadr+7].copy()
     bounds = {gid: shape_box(model, gid) for gid in robots+obstacles}
     world_boxes = [_geom_aabb(start_data, gid, *bounds[gid]) for gid in obstacles]
     world_centers = np.asarray([box[0] for box in world_boxes])
@@ -147,6 +167,14 @@ def check_exact_base_path(env, world, binding, delta, base_initial, *, source_da
     for index in range(samples+1):
         if index:
             trial_data.qpos[qpos_indexes] = before + native_delta*(index/samples)
+            if held_geoms:
+                mujoco.mj_forward(native_model, trial_data)
+                rotation = trial_data.xmat[root].reshape(3, 3) @ root_rotation.T
+                trial_data.qpos[held_qadr:held_qadr+3] = (
+                    trial_data.xpos[root] + rotation @ (held_position-root_position))
+                quat_xyzw = (_Rotation.from_matrix(rotation) *
+                             _Rotation.from_quat([*held_quat[1:], held_quat[0]])).as_quat()
+                trial_data.qpos[held_qadr+3:held_qadr+7] = [quat_xyzw[3], *quat_xyzw[:3]]
             mujoco.mj_forward(native_model, trial_data)
             sample_data = trial_data
         else:

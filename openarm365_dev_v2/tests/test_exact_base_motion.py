@@ -1,4 +1,6 @@
 """Exact distance rules and an isolated native MuJoCo data-copy sweep."""
+import hashlib
+import json
 from types import SimpleNamespace
 
 import mujoco
@@ -71,6 +73,16 @@ def test_exact_geom_distance_and_copy_preserves_live_data():
     clear = check_exact_base_path(env,world,binding,(0,0,0),np.zeros(3))
     assert clear['status'] == 'clear'
     assert clear['start_minimum_clearance_m'] == pytest.approx(.04)
+    # Stable audit serialization from the pre-carry non-held path; elapsed time
+    # is the only intentionally variable field.
+    def canonical(value):
+        if isinstance(value,float):return round(value,9)
+        if isinstance(value,dict):return {key:canonical(item) for key,item in value.items()}
+        if isinstance(value,list):return [canonical(item) for item in value]
+        return value
+    stable={key:value for key,value in clear.items() if key!='elapsed_seconds'}
+    encoded=json.dumps(canonical(stable),sort_keys=True,separators=(',',':'))
+    assert hashlib.sha256(encoded.encode()).hexdigest()=='3db80ee804f18053fdafd71bebf2012c1530fef825c9955aed45a5a0587a08f4'
     assert check_exact_base_path(env,dict(world,inventory=[],
         unexempted_inventory=world['inventory'],exempted_geom_count=1),
         binding,(0,0,0),np.zeros(3))['status']=='clear'
@@ -81,6 +93,43 @@ def test_exact_geom_distance_and_copy_preserves_live_data():
     assert audit['distance_calculations'] > 0
     assert np.array_equal(data.qpos,before_qpos)
     assert np.array_equal(data.geom_xpos,before_geom)
+
+
+@pytest.mark.parametrize('other_free', [False, True])
+def test_held_object_is_swept_against_fixed_and_free_obstacles(other_free):
+    other_joint = '<freejoint/>' if other_free else ''
+    xml = f'''<mujoco><worldbody>
+      <body name="robot0_openarm_body_link0">
+        <joint type="slide" axis="1 0 0"/><joint type="slide" axis="0 1 0"/>
+        <joint type="hinge" axis="0 0 1"/>
+        <geom name="mobilebase0_chassis_collision" type="sphere" size=".02"/>
+        <geom name="finger" type="sphere" pos=".08 -.035 0" size=".02"/>
+      </body>
+      <body name="held" pos=".08 0 0"><freejoint/>
+        <geom name="banana" type="sphere" size=".025"/>
+      </body>
+      <body name="other" pos=".22 .035 0">{other_joint}
+        <geom name="obstacle" type="sphere" size=".015"/>
+      </body>
+    </worldbody></mujoco>'''
+    native=mujoco.MjModel.from_xml_string(xml)
+    data=mujoco.MjData(native);mujoco.mj_forward(native,data)
+    model=ModelAdapter(native)
+    env=SimpleNamespace(sim=SimpleNamespace(model=model,data=SimpleNamespace(_data=data,qpos=data.qpos)),
+        robots=[SimpleNamespace(_ref_base_joint_pos_indexes=np.array([0,1,2]))],
+        obj_body_id={'obj':model.body_name2id('held'), **({'other':model.body_name2id('other')} if other_free else {})})
+    world=dict(excluded_robot_geoms=[dict(geom_id=i,name=model.geom_id2name(i)) for i in (0,1)],
+        inventory=[dict(geom_id=i,name=model.geom_id2name(i)) for i in (2,3)],world_sha256='small')
+    binding=dict(native_geom='mobilebase0_chassis_collision')
+    before=data.qpos.copy()
+    with pytest.raises(BasePathRejected,match='finger versus banana'):
+        check_exact_base_path(env,world,binding,(0,0,0),np.zeros(3))
+    clear=check_exact_base_path(env,world,binding,(0,0,0),np.zeros(3),held_body_id=model.body_name2id('held'))
+    assert clear['status']=='clear' and clear['world_obstacle_geoms']==1
+    with pytest.raises(BasePathRejected,match='banana versus obstacle') as caught:
+        check_exact_base_path(env,world,binding,(.14,0,0),np.zeros(3),held_body_id=model.body_name2id('held'))
+    assert caught.value.collision_check['first_violation_pair']['sample_index']>0
+    assert np.array_equal(data.qpos,before)
 
 
 @pytest.mark.parametrize('gap', [.012,.002])

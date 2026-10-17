@@ -376,7 +376,9 @@ class NativeExecutor:
         if np.max(abs(before-self.base_hold))>.001:
             raise RuntimeError('Uncommanded base drift exceeded 1mm/1mrad')
         world=snapshot(self.env,chassis_binding=self.planner.chassis_binding)
-        try: collision=check_exact_base_path(self.env,world,self.planner.chassis_binding,delta,self.base_initial)
+        held=getattr(self,'held',None)
+        try: collision=check_exact_base_path(self.env,world,self.planner.chassis_binding,delta,self.base_initial,
+            **({'held_body_id':held['target_id']} if held else {}))
         except PlanningRejected as exc:
             self.log(self.journal,dict(event='base_collision_rejected',request_id=request_id,
                 before_base_qpos=before.tolist(),delta=delta.tolist(),world_sha256=world['world_sha256'],

@@ -325,6 +325,74 @@ def base_steps(shift):
         n+=1
         if n>100:raise ValueError('base shift requires more than 100 SDK calls')
 
+def carry_auto_shift(mount_pose_world, banana_pos, sink_pos, grasp_base_yaw=0.):
+    """Move the mount by sink minus banana, expressed in the initial mount frame."""
+    import numpy as np
+    mount=np.asarray(mount_pose_world,float)
+    delta=np.asarray(sink_pos,float)-np.asarray(banana_pos,float)
+    if mount.shape!=(4,4) or delta.shape!=(3,) or not np.isfinite(mount).all() or not np.isfinite(delta).all():
+        raise ValueError('invalid mount or target positions')
+    local=mount[:3,:3].T@delta
+    c,s=math.cos(grasp_base_yaw),math.sin(grasp_base_yaw)
+    local[:2]=[c*local[0]+s*local[1],-s*local[0]+c*local[1]]
+    return (float(local[0]),float(local[1]),0.)
+
+def carry_policy_source(source, sink, shift):
+    """Append a diagnostic placement after the original held checkpoint."""
+    moves=base_steps(shift) if any(shift) else []
+    target=sink['sink_pos_world_m']
+    rim=sink['sink_rim_top_world_m']
+    lines=[
+        '# 使用仿真真值,仅诊断',
+        f'sink_target = {target!r}', f'sink_rim_top = {rim!r}',
+        "eef = obs_lift['robot0_left_eef_pos']",
+        'safe_z = max(eef[2], sink_rim_top + 0.20)',
+        'distance_z = safe_z-eef[2]',
+        'n = int(distance_z/0.029)+1 if distance_z else 0',
+        "assert calls+n+1 <= 80, 'SDK call budget exceeded'",
+        'for k in range(n):',
+        '    step_z = distance_z/n',
+        "    assert 0 <= step_z < 0.03, 'carry lift step bound'",
+        '    left_arm.move_delta(0.0,0.0,step_z)', '    calls += 1',
+        'obs_carry_lift = sensors.get_observation()', 'calls += 1']
+    for dx,dy,yaw in moves:
+        lines += [f'base.move_delta({dx!r}, {dy!r}, {yaw!r})', 'calls += 1']
+    lines += ['obs_carry_base = sensors.get_observation()', 'calls += 1',
+        "eef = obs_carry_base['robot0_left_eef_pos']",
+        'distance = ((sink_target[0]-eef[0])**2+(sink_target[1]-eef[1])**2)**0.5',
+        'n = int(distance/0.045)+1 if distance else 0',
+        "assert calls+2*n <= 80, 'SDK call budget exceeded'",
+        'for k in range(n):',
+        "    eef = obs_carry_base['robot0_left_eef_pos']",
+        '    step = [(sink_target[j]-eef[j])/(n-k) for j in (0,1)]',
+        "    assert sum(v*v for v in step)**0.5 < 0.05, 'carry xy step bound'",
+        '    left_arm.move_delta(step[0],step[1],0.0)', '    calls += 1',
+        '    obs_carry_base = sensors.get_observation()', '    calls += 1',
+        'obs_carry_xy = sensors.get_observation()', 'calls += 1',
+        'lower_z = sink_rim_top + 0.08',
+        "eef = obs_carry_xy['robot0_left_eef_pos']",
+        'distance_z = lower_z-eef[2]',
+        'n = int(abs(distance_z)/0.029)+1 if distance_z else 0',
+        "assert calls+n+1 <= 80, 'SDK call budget exceeded'",
+        'for k in range(n):',
+        '    step_z = distance_z/n',
+        "    assert abs(step_z) <= 0.03, 'lower step bound'",
+        '    left_arm.move_delta(0.0,0.0,step_z)', '    calls += 1',
+        'obs_lower = sensors.get_observation()', 'calls += 1',
+        'left_gripper.open()', 'calls += 1',
+        'obs_release = sensors.get_observation()', 'calls += 1',
+        "assert calls+6 <= 80, 'SDK call budget exceeded'",
+        'for k in range(4):',
+        '    left_arm.move_delta(0.0,0.0,0.025)', '    calls += 1',
+        'obs_retreat = sensors.get_observation()', 'calls += 1',
+        'objects_final = sensors.find_objects()', 'calls += 1',
+        'obj_final = None', 'for item in objects_final:',
+        "    if item['name'] == 'obj': obj_final = item['position']",
+        "assert obj_final is not None, 'obj missing after release'"]
+    result=source+('\n'.join(lines)+'\n')
+    validate_generated_policy(result)
+    return result
+
 def policy_source(shift,tilt=False):
     moves=base_steps(shift)
     src=['from robot_sdk import sensors, base, left_arm, left_gripper',
@@ -419,7 +487,7 @@ def held_physics_samples(episode):
                             eef_position=[tcp[j][3] for j in range(3)]))
     return samples
 
-def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,oracle=None,sequence='rotate-first'):
+def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,oracle=None,sequence='rotate-first',carry=None):
     feedback=next(root.glob('artifacts/**/cells/*/v1/public-feedback.json'),None)
     events=_json(feedback).get('action_trace',[]) if feedback else []
     episode=next(root.glob('artifacts/**/cells/*/v1/executions/openarm365-dev-*'),None)
@@ -440,8 +508,12 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
     stage_names=(('base','open','pregrasp','orient','descend','close','lift','held') if sequence=='translate-first'
                  else ('base','open','pregrasp','descend','close','lift','held') if sequence=='combined'
                  else ORIENTED_STAGES if grasp_quat is not None else STAGES)
+    if carry is not None:
+        stage_names += ('carry_lift','carry_base','carry_xy','lower','release','retreat','observe')
     stages=[];boundary_ops={'base':'get_observation','open':'get_observation','orient':'get_observation','pregrasp':'get_observation',
-        'descend':'get_observation','close':'get_observation','lift':'get_observation','held':'find_objects'}
+        'descend':'get_observation','close':'get_observation','lift':'get_observation','held':'find_objects',
+        'carry_lift':'get_observation','carry_base':'get_observation','carry_xy':'get_observation',
+        'lower':'get_observation','release':'get_observation','retreat':'get_observation','observe':'find_objects'}
     stage_idx=0;last=0;first_failure=None;last_object=initial.get('perception',{}).get('values',{}).get('obj_pos')
     last_eef=initial.get('robot',{}).get('robot0_left_eef_pos');last_gripper=initial.get('robot',{}).get('robot0_left_gripper_qpos')
     object_before_lift=None;object_after_lift=None;cert_cursor=0
@@ -451,7 +523,7 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
             if seen is not None:
                 last_object=seen
                 if stage_idx<=stage_names.index('lift'):object_before_lift=seen
-                else:object_after_lift=seen
+                elif object_after_lift is None:object_after_lift=seen
         if event.get('status')!='completed' and first_failure is None:
             first_failure={'operation':event.get('operation'),'reason':event.get('error')}
         if stage_idx>=len(stage_names):break
@@ -481,6 +553,14 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
                 from scipy.spatial.transform import Rotation
                 remaining=(Rotation.from_quat(grasp_quat)*Rotation.from_quat(q).inv()).magnitude()
                 if remaining>.03:continue
+            if carry is not None and name in ('carry_lift','carry_xy','lower','retreat'):
+                pos=obs.get('robot0_left_eef_pos') if isinstance(obs,dict) else None
+                if pos is None:continue
+                rim=carry['sink_rim_top_world_m']
+                if name=='carry_lift' and pos[2] < rim+.20-.006:continue
+                if name=='carry_xy' and math.dist(pos[:2],carry['sink_pos_world_m'][:2])>.006:continue
+                if name=='lower' and abs(pos[2]-(rim+.08))>.006:continue
+                if name=='retreat' and pos[2] < rim+.18-.006:continue
             if isinstance(obs,dict):
                 last_eef=obs.get('robot0_left_eef_pos',last_eef)
                 last_gripper=obs.get('robot0_left_gripper_qpos',last_gripper)
@@ -499,13 +579,17 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
     public_error=_json(feedback).get('public_error') if feedback else None
     if stage_idx<len(stage_names):
         stages.append(dict(stage=stage_names[stage_idx],public_status='failed',first_failure=first_failure or error or public_error))
+        if carry is not None:
+            stages.extend(dict(stage=name,public_status='not_reached') for name in stage_names[stage_idx+1:])
     before=initial.get('perception',{}).get('values',{}).get('obj_pos')
     after=final.get('perception',{}).get('values',{}).get('obj_pos')
-    object_lift_cm=(100*(after[2]-before[2]) if before is not None and after is not None else None)
+    lift_reference=(object_after_lift if carry is not None and object_after_lift is not None else after)
+    object_lift_cm=(100*(lift_reference[2]-before[2]) if before is not None and lift_reference is not None else None)
     lifted=bool(object_lift_cm is not None and object_lift_cm>=5)
-    if not lifted and stages and stages[-1]['stage']=='held' and stages[-1]['public_status']=='completed':
-        stages[-1].update(public_status='failed',first_failure=public_error or 'object rose less than 5cm')
-        first_failure=first_failure or {'operation':'held','reason':stages[-1]['first_failure']}
+    held_stage=next((stage for stage in stages if stage['stage']=='held'),None)
+    if not lifted and held_stage and held_stage['public_status']=='completed':
+        held_stage.update(public_status='failed',first_failure=public_error or 'object rose less than 5cm')
+        first_failure=first_failure or {'operation':'held','reason':held_stage['first_failure']}
     result=dict(seed=seed,base_shift=shift,exempt=exempt,tilt=tilt,wall_seconds=elapsed,
         stages=stages,certificates=certs,first_failure=first_failure or error or public_error,
         initial_eef=initial.get('robot',{}).get('robot0_left_eef_pos'),final_eef=final.get('robot',{}).get('robot0_left_eef_pos'),
@@ -531,6 +615,14 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
         result.update(grasp_quat_world_xyzw=grasp_quat,oracle=oracle,sequence=sequence,
                       diagnostic_truth_notice='使用仿真真值,仅诊断' if oracle else None)
         result['steps']=arm_step_rows(events,certs,initial)
+    if carry is not None:
+        native=_json(episode/'native_result.json') if episode else {}
+        result.update(carry=carry,native_success=native.get('native_success'),
+            native_status=native.get('status'),object_final_pos=after)
+        bounds=carry.get('sink_xy_aabb_world_m')
+        result['object_in_sink']=(bool(after is not None and bounds is not None and
+            all(bounds[j][0]<=after[j]<=bounds[j][1] for j in (0,1)) and
+            after[2]<carry['sink_rim_top_world_m']) if after is not None and bounds is not None else None)
     return result
 
 def arm_step_rows(events,certs,initial):
@@ -583,6 +675,9 @@ def markdown(row):
               f"最大滑动 mm：`{row.get('max_slip_mm')}`；位移轨迹：`{json.dumps(row.get('slip_trajectory'),ensure_ascii=False)}`。",'',
               f"首个失败：`{json.dumps(row['first_failure'],ensure_ascii=False)}`。",'',
               f"认证证书：`{json.dumps(row['certificates'],ensure_ascii=False)}`。",'']
+    if 'carry' in row:
+        lines += [f"原生评估：success=`{row['native_success']}`，status=`{row['native_status']}`；最终物体位置=`{row['object_final_pos']}`；物体在水槽（启发式）=`{row['object_in_sink']}`。",'',
+                  f"水槽边沿高度=`{row['carry']['sink_rim_top_world_m']}` m，来源：{row['carry']['sink_rim_top_source']}。使用仿真真值,仅诊断。",'']
     if 'steps' in row:
         lines += ['| 步号 | 增量 m / rad | 公开结果 | 失败原因 | 证书查询数 | 证书耗时 s | 目标末端位置 / xyzw |',
                   '| ---: | --- | --- | --- | ---: | ---: | --- |']
@@ -628,6 +723,9 @@ def main(argv=None):
     p.add_argument('--rotation-step',type=valid_rotation_step,default=.45,metavar='RAD',
                    help='maximum rotation vector coordinate per step in (0, 0.5] rad (default: 0.45)')
     p.add_argument('--oracle-from-reset',action='store_true',help='read target geometry once at real reset; diagnostic only')
+    p.add_argument('--carry',action='store_true',help='append diagnostic carry, release and retreat')
+    p.add_argument('--carry-base-shift',default='auto',help='DX,DY,DYAW in mount frame or auto')
+    p.add_argument('--dry-run-reset',action='store_true',help='read-only reset for carry geometry self-check')
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
     args=p.parse_args(argv)
@@ -639,28 +737,58 @@ def main(argv=None):
     if args.sequence!='rotate-first' and not (args.grasp_quat or args.theta_deg is not None):p.error('--sequence requires grasp orientation')
     if args.oracle_from_reset and not (args.grasp_quat or args.theta_deg is not None):p.error('--oracle-from-reset requires grasp orientation')
     if args.dry_run_state and not args.dry_run:p.error('--dry-run-state requires --dry-run')
+    if args.carry and not args.oracle_from_reset:p.error('--carry requires --oracle-from-reset')
+    if args.dry_run_reset and not (args.dry_run and args.carry):p.error('--dry-run-reset requires --dry-run --carry')
+    if args.carry and args.dry_run and not args.dry_run_reset:p.error('--carry dry-run requires --dry-run-reset')
     try:
         shift=tuple(float(x) for x in args.base_shift.split(','))
         if len(shift)!=3:raise ValueError()
         quat=parse_quat(args.grasp_quat) if args.grasp_quat else theta_quat(args.theta_deg) if args.theta_deg is not None else None
         if quat is None and (args.grasp_offset_mm or args.grasp_z_offset_mm or args.lift_step_m!=.025 or args.lift_height_m!=.10):
             raise ValueError('variant offsets/lift require grasp orientation')
-        oracle=None
-        if args.oracle_from_reset and not args.dry_run:
+        oracle=None;carry=None;carry_shift=None;fixture=None
+        if args.oracle_from_reset and (not args.dry_run or args.dry_run_reset):
             from .object_proxy_measure import reset_diagnostic_fixture, DEFAULT_ROBOT_CONFIG
-            fixture=reset_diagnostic_fixture(args.seed,args.out/'oracle-reset',DEFAULT_ROBOT_CONFIG)
+            fixture=reset_diagnostic_fixture(args.seed,args.out/'oracle-reset',DEFAULT_ROBOT_CONFIG,
+                include_sink=args.carry)
             oracle=fixture['diagnostic_truth']
             (args.out/'oracle-reset'/'fixture.json').write_text(json.dumps(fixture,ensure_ascii=False,indent=2)+'\n')
-        if args.oracle_from_reset and args.dry_run:
+        if args.oracle_from_reset and args.dry_run and not args.carry:
             oracle={'position_world_m':[0.,0.,0.], 'z_range_world_m':[0.,0.]}
+        if args.carry:
+            carry={key:oracle[key] for key in ('sink_pos_world_m','sink_rim_top_world_m',
+                'sink_rim_top_source','sink_xy_aabb_world_m','sink_collision_geom_count')}
+            carry_shift=(carry_auto_shift(fixture['mount_pose_world'],oracle['position_world_m'],
+                carry['sink_pos_world_m'],shift[2]) if args.carry_base_shift=='auto' else
+                tuple(float(x) for x in args.carry_base_shift.split(',')))
+            if len(carry_shift)!=3:raise ValueError('carry base shift requires DX,DY,DYAW')
+            base_steps(carry_shift)
+            import numpy as np
+            mount=np.asarray(fixture['mount_pose_world'],float)
+            banana_local=mount[:3,:3].T@(np.asarray(oracle['position_world_m'])-mount[:3,3])
+            sink_local=mount[:3,:3].T@(np.asarray(carry['sink_pos_world_m'])-mount[:3,3])
+            c,s=math.cos(shift[2]),math.sin(shift[2])
+            rotation=np.array([[c,s],[-s,c]])
+            banana_at_grasp=rotation@(banana_local[:2]-shift[:2])
+            sink_at_grasp=rotation@(sink_local[:2]-shift[:2])
+            cy,sy=math.cos(carry_shift[2]),math.sin(carry_shift[2])
+            sink_after=np.array([[cy,sy],[-sy,cy]])@(sink_at_grasp-carry_shift[:2])
+            carry.update(base_shift_mount=carry_shift,banana_relative_mount_at_grasp_m=banana_at_grasp.tolist(),
+                sink_relative_mount_after_shift_m=sink_after.tolist())
         source=(oriented_policy_source(shift,quat,oracle,rotation_step=args.rotation_step) if args.sequence=='rotate-first' else
                 sequenced_policy_source(shift,quat,oracle,sequence=args.sequence,rotation_step=args.rotation_step)) if quat else policy_source(shift,args.tilt)
         if quat:
             source=variant_policy_source(source,quat,offset_mm=args.grasp_offset_mm,
                 z_offset_mm=args.grasp_z_offset_mm,lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)
+        if args.carry:source=carry_policy_source(source,carry,carry_shift)
     except ValueError as exc:p.error('invalid --base-shift or policy: '+str(exc))
     if args.dry_run:
-        if args.oracle_from_reset:print('# 使用仿真真值,仅诊断；dry-run 不执行 reset，真实运行时注入几何常量')
+        if carry is not None:
+            print('# 使用仿真真值,仅诊断；只读 reset，physics_steps=0')
+            print('# carry geometry: '+json.dumps(carry,ensure_ascii=False))
+        if args.oracle_from_reset:
+            print('# 使用仿真真值,仅诊断；'+('本次仅执行只读 reset' if args.dry_run_reset else
+                  'dry-run 不执行 reset，真实运行时注入几何常量'))
         if quat:
             step_literal='0.45' if args.rotation_step==.45 else repr(args.rotation_step)
             divisor=step_literal if args.rotation_step==.45 else f'(0.9*{step_literal})'
@@ -704,7 +832,7 @@ def main(argv=None):
             if old_held_reference is None:os.environ.pop('ATTN_DIAG_HELD_REFERENCE_MODE',None)
             else:os.environ['ATTN_DIAG_HELD_REFERENCE_MODE']=old_held_reference
     result=summarize(args.out,args.seed,shift,args.exempt,args.tilt,time.monotonic()-started,error,
-                     grasp_quat=quat,oracle=oracle,sequence=args.sequence)
+                     grasp_quat=quat,oracle=oracle,sequence=args.sequence,carry=carry)
     result.update(theta_deg=args.theta_deg,close_hold_steps=args.close_hold_steps,
                   grasp_offset_mm=args.grasp_offset_mm,grasp_z_offset_mm=args.grasp_z_offset_mm,
                   lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)

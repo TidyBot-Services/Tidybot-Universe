@@ -475,7 +475,7 @@ def reset_target_geometry(env, world):
             'proxy_names': [box['name'] for box in proxies]}
 
 
-def reset_diagnostic_fixture(seed, out, robot_config, *, task='PickPlaceCounterToSink'):
+def reset_diagnostic_fixture(seed, out, robot_config, *, task='PickPlaceCounterToSink', include_sink=False):
     """Construct the real seed world once and read it without a physics step."""
     import yaml
     from openarm365_dev.identity import OfficialEnvironmentIdentity
@@ -513,6 +513,29 @@ def reset_diagnostic_fixture(seed, out, robot_config, *, task='PickPlaceCounterT
             return float(data.qpos[model.get_joint_qpos_addr(matched[0])])
         lock_names = [f'openarm_{side}_finger_joint1' for side in ('left', 'right')]
         lock_names += [f'openarm_right_joint{i}' for i in range(1, 8)]
+        if include_sink:
+            from openarm365_dev.base_motion import _geom_aabb
+            from openarm365_dev.world import shape_box
+            sink = env.sink
+            sink_pos = np.asarray(sink.pos, float)
+            sink_name = getattr(sink, 'name', 'sink')
+            sink_rows = [row for row in world['inventory']
+                         if row['body_name'] in (sink_name, sink_name+'_main')]
+            boxes = []
+            for row in sink_rows:
+                gid = int(row['geom_id'])
+                center, half = _geom_aabb(data._data, gid, *shape_box(model, gid))
+                boxes.append((center, half))
+            truth['sink_pos_world_m'] = sink_pos.tolist()
+            truth['sink_fixture_name'] = sink_name
+            truth['sink_collision_geom_count'] = len(boxes)
+            truth['sink_rim_top_world_m'] = (max(float(center[2]+half[2]) for center,half in boxes)
+                if boxes else float(sink_pos[2]))
+            truth['sink_rim_top_source'] = ('reset sink main fixed collision boxes' if boxes else 'sink_pos z fallback')
+            truth['sink_xy_aabb_world_m'] = (
+                [[min(float(center[j]-half[j]) for center,half in boxes),
+                  max(float(center[j]+half[j]) for center,half in boxes)] for j in (0,1)]
+                if boxes else None)
         return {'seed': seed, 'diagnostic_truth': truth, 'identity': identity,
                 'world': world, 'joint_names': names, 'q0': [joint(n) for n in names],
                 'locked_joints': {n: joint(n) for n in lock_names},
