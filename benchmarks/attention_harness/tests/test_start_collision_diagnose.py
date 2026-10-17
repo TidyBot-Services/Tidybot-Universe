@@ -51,6 +51,9 @@ def test_ranking_and_summary():
                                 'carried': {'world_collision_free': True},
                                 'bounds_and_self_collision_free': True}}
     assert '| near | 0.400000 |' in diag.format_markdown(result)
+    result['support_exemption'] = {'proxy_collision_free': True,
+                                   'exact_geometry_collision_free': True}
+    assert '启用支撑面豁免后：proxy=True，exact=True' in diag.format_markdown(result)
     rotated = {'name': 'rotated', 'center': [0, 0, 0], 'half_size': [1, .1, .1],
                'quat_wxyz': [2 ** -.5, 0, 0, 2 ** -.5]}
     assert diag.cuboid_sphere_clearance(rotated, [0, 1.5, 0, .1]) == pytest.approx(.4)

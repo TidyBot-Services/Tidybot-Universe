@@ -199,6 +199,13 @@ class CuroboPlanner:
         # Keep topology changes separate; never round measured lock values.
         key = (tuple(sorted(locks)) if search is not None else tuple(sorted(locks.items())),
                tools, capacity, self._attachment_key)
+        carried_supports = self.attachment is not None and bool(self.attachment.supports)
+        if carried_supports:
+            declared_names = {c['name'] for c in self._world_cuboids}
+            if (not self.attachment.names <= declared_names
+                    or not self.attachment.supports <= declared_names - self.attachment.names):
+                raise ValueError('Carried object/support names absent from complete world')
+            key += (True,)
         from .attachment_config import configure_carried_body
         robot = configure_carried_body(self._config,self.attachment)
         robot['kinematics']['lock_joints']=locks
@@ -235,20 +242,44 @@ class CuroboPlanner:
                 num_ik_seeds=64 if search is not None else 16, num_trajopt_seeds=1,
                 interpolation_dt=self.interpolation_dt, **optimizer_options, optimizer_collision_activation_distance=float(self.settings.get("search_activation_distance_m",.02)))
             if search is not None:cfg.ik_solver_config.use_lm_seed=False
-            planner = MotionPlanner(cfg)
+            if carried_supports:
+                from .contact_scene import CarriedMotionPlanner
+                planner = CarriedMotionPlanner(cfg, self.attachment, self._scene())
+            else:
+                planner = MotionPlanner(cfg)
             actual_limits = planner.kinematics.get_joint_limits().position.detach().cpu().numpy().T
             expected_limits = self.limits[[self.joint_names.index(n) for n in planner.joint_names]]
             if not np.allclose(actual_limits,expected_limits,rtol=0.,atol=1e-6):
                 raise IdentityError('V2 active joint bounds differ from the original URDF')
             planner.warmup(num_warmup_iterations=1,enable_graph=search is None)
+            checker_options = {}
+            if carried_supports:
+                from curobo._src.geom.collision.collision_scene import SceneCollisionCfg
+                from .contact_scene import CarriedSceneCollision, configure_scene
+                checker_scene = CarriedSceneCollision.from_config(SceneCollisionCfg(
+                    device_cfg=device, scene_model=self._scene(), max_distance=1.,
+                    cache={'cuboid': capacity, 'mesh': 50}))
+                configure_scene(checker_scene, planner.kinematics, self.attachment,
+                                {'cuboid': capacity, 'mesh': 50}, self._scene())
+                checker_options['scene_collision_checker'] = checker_scene
             checker = RobotCollisionChecker(RobotCollisionCheckerCfg.load_from_config(
                 robot_config=cfg.ik_solver_config.robot_config, scene_model=self._scene(), device_cfg=device,
-                collision_activation_distance=.005, self_collision_activation_distance=0., n_cuboids=capacity))
+                collision_activation_distance=.005, self_collision_activation_distance=0.,
+                n_cuboids=capacity, **checker_options))
+            if carried_supports:
+                configure_scene(checker.scene_model, checker.kinematics, self.attachment,
+                                {'cuboid': capacity, 'mesh': 50}, self._scene())
             self._models[key] = (planner, checker, robot, locks)
         planner, checker, previous_robot, old_locks = self._models[key]
         if robot!=previous_robot:
             self._refresh_measured_model(planner,checker,robot)
             self._models[key]=(planner,checker,robot,dict(locks))
+        if carried_supports:
+            from .contact_scene import configure_scene
+            configure_scene(planner.scene_collision_checker, planner.kinematics,
+                            self.attachment, planner.config.scene_collision_cfg.cache, self._scene())
+            configure_scene(checker.scene_model, checker.kinematics,
+                            self.attachment, {'cuboid': capacity, 'mesh': 50}, self._scene())
         # Always bind the complete current scene after the current measured
         # payload has replaced its world shapes. No cached pose/world is used.
         planner.update_world(self._scene())
@@ -359,6 +390,18 @@ class CuroboPlanner:
                                 "joint_limits": within, "collision_free": all(valid),
                                 "obstacle_count": len(self._world_cuboids),
                                 "world_sha256": hashlib.sha256(json.dumps(self._world_cuboids,sort_keys=True).encode()).hexdigest()}
+        if self.attachment is not None and self.attachment.supports:
+            from .contact_scene import CarriedSceneCollision
+            scene = checker.scene_model
+            if (not isinstance(scene, CarriedSceneCollision)
+                    or not isinstance(planner.scene_collision_checker, CarriedSceneCollision)
+                    or scene._support_names != self.attachment.supports
+                    or scene._object_names != self.attachment.names):
+                raise ValueError('Carried proxy support exemption is not wired')
+            self.last_validation['proxy_support_exemption'] = {
+                'enabled': True, 'support_names': sorted(scene._support_names),
+                'carried_sphere_count': self.attachment.sphere_count,
+                'object_names': sorted(scene._object_names)}
         if self.attachment is not None and hasattr(self.attachment,'artifact'):
             self.last_validation['attachment']=self.attachment.artifact()
         declared={c['name']for c in self._world_cuboids}

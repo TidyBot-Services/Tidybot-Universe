@@ -112,6 +112,10 @@ def format_markdown(result):
     lines = ['# 起点碰撞诊断', '', f"状态：{result['status']}",
              f"复现：proxy={rep.get('proxy_collision_free')}，exact={rep.get('exact_geometry_collision_free')}，"
              f"joint_limits={rep.get('joint_limits')}", '']
+    if 'support_exemption' in result:
+        exemption = result['support_exemption']
+        lines.insert(-1, f"启用支撑面豁免后：proxy={exemption.get('proxy_collision_free')}，"
+                          f"exact={exemption.get('exact_geometry_collision_free')}")
     if result['status'] != 'ok':
         lines.append(result.get('message', '起点失败未复现，已停止。'))
         return '\n'.join(lines) + '\n'
@@ -155,13 +159,14 @@ def _prepare_core(args, log_path, world_path):
     return PlannerAdapter('cuda:0', WorldStore(max_envs=8))
 
 
-def _validate_start(adapter, request, cuboids, *, removed=()):
+def _validate_start(adapter, request, cuboids, *, removed=(), support_override=None):
     # Repeat the service adapter sequence: world upload, named q, attachment,
     # selection for the requested TCP, then CuroboPlanner.validate.
     removed = set(removed)
     world = [c for c in cuboids if c['name'] not in removed]
     attachment = dict(request['attachment'])
-    attachment['support_names'] = [n for n in attachment['support_names'] if n not in removed]
+    attachment['support_names'] = ([n for n in attachment['support_names'] if n not in removed]
+                                   if support_override is None else list(support_override))
     adapter.push_world(request['env_id'], world)
     core = adapter._planner
     q = core.named(request['current_q'], request.get('joint_names'))
@@ -220,12 +225,18 @@ def run_gpu(args, request, cuboids, path, log_path, world_path, recorded_respons
     for key in ('robot_config_sha256', 'urdf_sha256', 'joint_names', 'tool_frames'):
         if key in recorded_robot and core.identity[key] != recorded_robot[key]:
             raise ValueError(f'Robot identity differs from recorded plan: {key}')
-    q, planner, checker, validation = _validate_start(adapter, request, cuboids)
+    _, _, _, enabled_validation = _validate_start(adapter, request, cuboids)
+    q, planner, checker, validation = _validate_start(
+        adapter, request, cuboids, support_override=[])
     reproduction = {'proxy_collision_free': validation.get('proxy_collision_free'),
                     'exact_geometry_collision_free': validation.get('exact_geometry', {}).get('collision_free'),
                     'joint_limits': validation.get('joint_limits'), 'validation': validation}
     result = {'status': 'not_reproduced', 'request_path': path, 'world_cuboids': len(cuboids),
-              'reproduction': reproduction}
+              'reproduction': reproduction,
+              'support_exemption': {
+                  'proxy_collision_free': enabled_validation.get('proxy_collision_free'),
+                  'exact_geometry_collision_free': enabled_validation.get('exact_geometry', {}).get('collision_free'),
+                  'validation': enabled_validation}}
     if validation.get('proxy_collision_free') is not False:
         result['message'] = 'Recorded proxy failure did not reproduce; no removal trials were run.'
         return result
@@ -238,11 +249,13 @@ def run_gpu(args, request, cuboids, path, log_path, world_path, recorded_respons
                           excluded_names=core.attachment.names)
     single, prefix = {}, {}
     for row in ranked:
-        _, _, _, trial = _validate_start(adapter, request, cuboids, removed=(row['name'],))
+        _, _, _, trial = _validate_start(adapter, request, cuboids, removed=(row['name'],),
+                                         support_override=[])
         single[row['name']] = trial.get('proxy_collision_free')
     for n in range(1, len(ranked) + 1):
         _, _, _, trial = _validate_start(adapter, request, cuboids,
-                                         removed=[row['name'] for row in ranked[:n]])
+                                         removed=[row['name'] for row in ranked[:n]],
+                                         support_override=[])
         prefix[n] = trial.get('proxy_collision_free')
         if prefix[n] is True:
             break
