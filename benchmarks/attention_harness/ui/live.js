@@ -3883,7 +3883,9 @@
     const response=await fetch(`${cellBase}/view`,{cache:'no-store'});
     if(!response.ok)throw new Error(`Dev v2 HTTP ${response.status}`);
     const cell=await response.json();if(selectedDev!==s.session_id)return;
-    const fingerprint=JSON.stringify({...cell,ledger:{...cell.ledger,goal:{...cell.ledger.goal,wall_used:0,wall_remaining:0}}});
+    const quiet=goal=>({...goal,wall_used:0,wall_remaining:0});
+    // The goal clock ticks on every poll, in the shared goal and in each per-goal copy; neither should force a redraw.
+    const fingerprint=JSON.stringify({...cell,ledger:{...cell.ledger,goal:quiet(cell.ledger.goal),goals:Object.fromEntries(Object.entries(cell.ledger.goals||{}).map(([id,entry])=>[id,{...entry,goal:quiet(entry.goal||{})}]))}});
     if(lastRendered===fingerprint && currentSnapshot?.dev_v2) {
       await refreshPreview();
       const wall=view.querySelector('[data-dev-budget-key="wall_seconds"]');
