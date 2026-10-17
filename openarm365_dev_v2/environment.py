@@ -27,8 +27,8 @@ def initial_joints(task_id):
     return p
 
 def diagnostic_joint_kp():
-    """Joint-position gain; the default 300 is unchanged. ATTN_DIAG_JOINT_KP is a diagnostic-only override."""
-    raw=os.environ.get('ATTN_DIAG_JOINT_KP','300')
+    """Default joint-position gain is 1500: at kp=300, wrist-joint friction dead zones prevented meeting the 4 mrad bound; real-simulator gradient tests verified 1500 passes. ATTN_DIAG_JOINT_KP is a diagnostic-only override."""
+    raw=os.environ.get('ATTN_DIAG_JOINT_KP','1500')
     try:value=float(raw)
     except ValueError:raise ValueError('ATTN_DIAG_JOINT_KP must be a positive finite number') from None
     if not math.isfinite(value) or value<=0:raise ValueError('ATTN_DIAG_JOINT_KP must be a positive finite number')

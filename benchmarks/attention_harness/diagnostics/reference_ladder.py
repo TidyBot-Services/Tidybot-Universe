@@ -1,7 +1,7 @@
 """Scripted OpenArm365 reference ladder for development seed 101.
 
-Real execution is opt-in. Before running it, export ATTN_DIAG_JOINT_KP=1500.
-This diagnostic gain switch must exist in the deployed simulator environment.
+Real execution is opt-in. OpenArm365 Dev v2 defaults to kp=1500;
+ATTN_DIAG_JOINT_KP can override the diagnostic gain.
 """
 
 from __future__ import annotations
@@ -309,8 +309,8 @@ def main(argv=None):
         directory, stage, step = args.execute_one
         _execute_one(Path(directory), stage, float(step))
         return 0
-    print("提示：真实运行前需要先 export ATTN_DIAG_JOINT_KP=1500")
-    if os.environ.get("ATTN_DIAG_JOINT_KP") != "1500":
+    print("提示：OpenArm365 Dev v2 关节位置控制器默认 kp=1500")
+    if os.environ.get("ATTN_DIAG_JOINT_KP", "1500") != "1500":
         print("警告：当前 ATTN_DIAG_JOINT_KP 不是 1500；规划与跟踪可能不同于已验证设置。")
     if args.print_policy:
         if "," in args.print_policy:

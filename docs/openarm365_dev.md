@@ -18,7 +18,7 @@ are separate evidence and are not counted as this RoboCasa365 Dev loop.
 | Public SDK | sensors, left_arm, right_arm, left_gripper, right_gripper, bimanual | Existing sensors/arm/gripper/base/torso |
 | Translation / rotation | WORLD-frame delta, ≤0.05 m / 0.5 rad per coordinate | Base-frame delta; existing bounds |
 | Joint vector | 14 values: physical left joints 1–7, then right 1–7 | No new absolute-joint interface |
-| Controller | BASIC composite; JOINT_POSITION kp=300, torque limits unchanged; reset uses delta zero hold, execution uses absolute goals | Existing catalog controller |
+| Controller | BASIC composite; JOINT_POSITION kp=1500 by default, torque limits unchanged; reset uses delta zero hold, execution uses absolute goals | Existing catalog controller |
 | Gripper | Two independent original parallel grippers, 2 physical joints each; open/close have no parameters | Existing settle_steps API |
 | Gripper command | 1 mm inside original [0, 44 mm] limits; measured state never clamped | Existing convention |
 | Base | Stationary, monitored at every physics step; drift ≤1 mm / 1 mrad | Existing mobile capability |

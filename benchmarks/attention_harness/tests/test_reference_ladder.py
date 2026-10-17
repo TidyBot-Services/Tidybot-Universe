@@ -118,7 +118,8 @@ def test_dry_run_is_offline(tmp_path):
         text=True, capture_output=True, env=env, check=True)
     assert "estimated SDK calls" in result.stdout
     assert "from robot_sdk import sensors" in result.stdout
-    assert "export ATTN_DIAG_JOINT_KP=1500" in result.stdout
+    assert "默认 kp=1500" in result.stdout
+    assert "警告" not in result.stdout
     assert "dry-run: no execution" in result.stdout
     assert not out.exists()
 
