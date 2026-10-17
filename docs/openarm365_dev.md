@@ -24,6 +24,12 @@ are separate evidence and are not counted as this RoboCasa365 Dev loop.
 | Base | `base.move_delta(dx,dy,dyaw)` in current robot frame; ≤0.20 m norm / 0.3 rad; 2 cm chassis path clearance; uncommanded drift ≤1 mm / 1 mrad | Existing mobile capability |
 | Limits | 80 SDK calls, 2,400 control steps, 480 s per attempt | Existing 40-call Dev policy limit |
 
+## 底座停稳与漂移保护
+
+`base.move_delta` 达到 5 mm / 5 mrad 到位范围后，继续发送零底座命令。相邻控制步的底座 x、y、偏航位置差除以控制步时长，三通道速率分别须连续 `BASE_SETTLE_CONSECUTIVE_STEPS = 5` 步不超过 `2e-4 m/s`、`2e-4 m/s`、`2e-4 rad/s`。最多额外等待 `BASE_SETTLE_MAX_STEPS = 60` 步；这些步仍在同一底座动作窗口内，计入 2,400 控制步总预算，期间继续检查 4 mrad 手臂变化上限。未停稳时报公开错误 `Base did not settle within 60 control steps`。
+
+停稳后用当时的底座位置作为 `base_hold` 和回执的 `after_base_qpos`，重新检查 5 mm / 5 mrad 到位误差，包含零命令期间的滑行；超出时仍按原到位失败处理。回执和 journal 的 `base_settle_steps`、`base_settle_displacement` 分别记录等待步数与三通道位置变化。动作窗口外的 1 mm / 1 mrad 漂移守卫保持原判据。
+
 ## `ik_path` move_delta
 
 With `ATTN_PLANNER_MODE=ik_path`, `move_delta(dx,dy,dz, rotation_delta)`

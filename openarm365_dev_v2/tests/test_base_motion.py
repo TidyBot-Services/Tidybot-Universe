@@ -5,7 +5,9 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from curobo_v2.client import PlanningRejected
-from openarm365_dev.base_motion import BasePathRejected, check_chassis_path, guard_base_and_arms, validate_delta, robot_boxes_from_geoms
+from openarm365_dev.base_motion import (BASE_SETTLE_CONSECUTIVE_STEPS, BASE_SETTLE_MAX_STEPS,
+    BasePathRejected, base_is_stationary, check_chassis_path, guard_base_and_arms,
+    validate_delta, robot_boxes_from_geoms)
 from openarm365_dev.owner import build_sdk
 from openarm365_dev.executor import NativeExecutor
 from openarm365_dev.policy_validation import validate_generated_policy
@@ -167,7 +169,8 @@ def test_base_receipt_journal_and_step_count(monkeypatch):
     executor=object.__new__(NativeExecutor)
     data=SimpleNamespace(qpos=np.zeros(3))
     robot=SimpleNamespace(_ref_base_joint_pos_indexes=np.array([0,1,2]))
-    executor.env=SimpleNamespace(sim=SimpleNamespace(data=data),robots=[robot],horizon=2400)
+    executor.env=SimpleNamespace(sim=SimpleNamespace(data=data),robots=[robot],horizon=2400,
+                                 control_timestep=.05)
     class Planner:
         chassis_binding=BINDING
         prepared={('left',)}
@@ -194,6 +197,8 @@ def test_base_receipt_journal_and_step_count(monkeypatch):
     assert events[0]['collision_check']['start_minimum_clearance_m']==.04
     assert 'minimum_clearance_pair' in events[-1]['collision_check']
     assert result['arm_joint_change']==[0.]*14
+    assert result['base_settle_steps']==BASE_SETTLE_CONSECUTIVE_STEPS
+    assert result['base_settle_displacement']==[0.]*3
     assert [row['event'] for row in events]==['base_intent','base_tracking','receipt']
     assert executor.planner.prepared==set()
     rejected=dict(status='rejected',robot_geoms_checked=2,minimum_clearance_m=.01,
@@ -210,6 +215,102 @@ def test_base_receipt_journal_and_step_count(monkeypatch):
     executor.env.horizon=executor.sequence
     with pytest.raises(RuntimeError, match='budget'): executor.base_move(0,.01,0,request_id='r2')
     assert executor.failed
+
+
+def fake_settling_executor(monkeypatch, positions, arm_change_step=None):
+    import openarm365_dev.world as world_module
+    import openarm365_dev.executor as executor_module
+    monkeypatch.setattr(world_module, 'snapshot', lambda *args, **kwargs: world())
+    monkeypatch.setattr(executor_module, 'check_exact_base_path',
+                        lambda *args: dict(status='clear'))
+    executor=object.__new__(NativeExecutor)
+    data=SimpleNamespace(qpos=np.zeros(3))
+    robot=SimpleNamespace(_ref_base_joint_pos_indexes=np.array([0,1,2]))
+    executor.env=SimpleNamespace(sim=SimpleNamespace(data=data),robots=[robot],horizon=2400,
+                                 control_timestep=.05)
+    class Planner:
+        chassis_binding=BINDING
+        prepared=set()
+        ledger=SimpleNamespace(invalidate=lambda reason: None)
+        arm=np.zeros(14)
+        def state(self): return self.arm.copy()
+    executor.planner=Planner();executor.base_initial=np.zeros(3);executor.base_hold=np.zeros(3)
+    executor.sequence=0;executor.physics_steps=0;executor.failed=False;executor.epoch='test'
+    executor.check_live=lambda: None
+    events=[];executor.log=lambda path, row: events.append(row);executor.journal=Path('/unused')
+    def step():
+        if executor.sequence>=executor.env.horizon: raise RuntimeError('Native control-step budget exhausted')
+        assert np.array_equal(executor.base_command,np.zeros(3))
+        data.qpos[:]=positions[min(executor.sequence,len(positions)-1)]
+        executor.sequence+=1;executor.physics_steps+=1
+        if executor.sequence==arm_change_step: executor.planner.arm[0]=.0041
+    executor.control_step=step
+    return executor,events
+
+
+def test_base_stationary_rate_boundaries():
+    assert base_is_stationary([0,0,0],[1e-5,-1e-5,1e-5],.05)
+    assert not base_is_stationary([0,0,0],[1.01e-5,0,0],.05)
+    assert not base_is_stationary([0,0,0],[0,0,1.01e-5],.05)
+
+
+def test_base_creeps_one_mm_then_holds_at_settled_position(monkeypatch):
+    positions=[[0,y,0] for y in (.00025,.0005,.00075,.001)] + [[0,.001,0]]*5
+    executor,events=fake_settling_executor(monkeypatch,positions)
+    receipt=executor.base_move(0,0,0,request_id='creep')
+    assert receipt['base_settle_steps']==len(positions)
+    assert receipt['base_settle_displacement']==pytest.approx([0,.001,0])
+    assert receipt['after_base_qpos']==pytest.approx([0,.001,0])
+    assert executor.base_hold==pytest.approx([0,.001,0])
+    assert executor.sequence==executor.physics_steps==len(positions)
+    assert events[-1]['base_settle_steps']==len(positions)
+
+
+def test_base_settle_timeout_is_public_failure(monkeypatch):
+    positions=[[0,(i+1)*.00002,0] for i in range(BASE_SETTLE_MAX_STEPS)]
+    executor,events=fake_settling_executor(monkeypatch,positions)
+    with pytest.raises(RuntimeError,match=f'Base did not settle within {BASE_SETTLE_MAX_STEPS} control steps'):
+        executor.base_move(0,0,0,request_id='sliding')
+    assert executor.sequence==executor.physics_steps==BASE_SETTLE_MAX_STEPS
+    assert events[-1]['event']=='base_failure'
+    assert events[-1]['base_settle_steps']==BASE_SETTLE_MAX_STEPS
+    assert executor.failed
+
+
+def test_base_settle_rechecks_final_arrival_error(monkeypatch):
+    positions=[[0,.001*(i+1),0] for i in range(6)] + [[0,.006,0]]*5
+    executor,events=fake_settling_executor(monkeypatch,positions)
+    with pytest.raises(RuntimeError,match='Base motion failed to converge within 5mm/5mrad'):
+        executor.base_move(0,0,0,request_id='overshoot')
+    assert executor.sequence==len(positions)
+    assert events[-2]['event']=='base_tracking'
+    assert events[-2]['base_error']==pytest.approx([0,-.006,0])
+    assert events[-1]['event']=='base_failure'
+
+
+def test_base_already_stationary_uses_exactly_k_budget_steps(monkeypatch):
+    executor,events=fake_settling_executor(monkeypatch,[[0,0,0]])
+    receipt=executor.base_move(0,0,0,request_id='still')
+    assert receipt['base_settle_steps']==BASE_SETTLE_CONSECUTIVE_STEPS
+    assert executor.sequence==executor.physics_steps==BASE_SETTLE_CONSECUTIVE_STEPS
+    assert events[-1]['event']=='receipt'
+
+
+def test_base_settle_keeps_arm_guard(monkeypatch):
+    executor,events=fake_settling_executor(monkeypatch,[[0,0,0]],arm_change_step=2)
+    with pytest.raises(RuntimeError,match='Arm joint drift during base motion exceeded 4mrad'):
+        executor.base_move(0,0,0,request_id='arm-drift')
+    assert executor.sequence==2 and executor.failed
+    assert events[-1]['event']=='base_failure'
+
+
+def test_base_settle_steps_consume_remaining_horizon(monkeypatch):
+    executor,events=fake_settling_executor(monkeypatch,[[0,0,0]])
+    executor.env.horizon=BASE_SETTLE_CONSECUTIVE_STEPS-1
+    with pytest.raises(RuntimeError,match='Native control-step budget exhausted'):
+        executor.base_move(0,0,0,request_id='budget')
+    assert executor.sequence==BASE_SETTLE_CONSECUTIVE_STEPS-1
+    assert events[-1]['event']=='base_failure'
 
 
 def test_world_and_pose_target_follow_moved_mount(monkeypatch):

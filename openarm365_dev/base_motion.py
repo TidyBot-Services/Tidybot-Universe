@@ -17,6 +17,10 @@ BASE_SAMPLE_YAW_RAD = 0.05
 BASE_SUPPORT_HEIGHT_TOLERANCE_M = 0.001
 BASE_MIN_DISTANCE_M = 0.003
 BASE_NEAR_START_ALLOWANCE_M = 0.002
+BASE_SETTLE_CONSECUTIVE_STEPS = 5
+BASE_SETTLE_MAX_STEPS = 60
+BASE_SETTLE_TRANSLATION_SPEED_MPS = 2e-4
+BASE_SETTLE_YAW_SPEED_RADPS = 2e-4
 
 
 class BasePathRejected(PlanningRejected):
@@ -31,6 +35,14 @@ def guard_base_and_arms(base, held_base, arm, start_arm=None):
             raise RuntimeError('Uncommanded base drift exceeded 1mm/1mrad')
     elif np.max(np.abs(np.asarray(arm)-np.asarray(start_arm))) > .004:
         raise RuntimeError('Arm joint drift during base motion exceeded 4mrad')
+
+
+def base_is_stationary(previous, current, control_timestep):
+    """Check all three base speeds from adjacent control-step positions."""
+    speeds = np.abs(np.asarray(current, float)-np.asarray(previous, float)) / control_timestep
+    return bool(np.isfinite(speeds).all()
+                and np.all(speeds[:2] <= BASE_SETTLE_TRANSLATION_SPEED_MPS)
+                and speeds[2] <= BASE_SETTLE_YAW_SPEED_RADPS)
 
 
 def validate_delta(dx, dy, dyaw):

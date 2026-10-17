@@ -7,7 +7,9 @@ from curobo_v2.command_curve import sample_for_original_drive
 from curobo_v2.client import PlanningRejected
 from .environment import PHYSICAL_TO_NATIVE,tcp_pose
 from .world import is_descendant,movable_object_roots
-from .base_motion import check_exact_base_path, base_joint_delta, validate_delta, guard_base_and_arms
+from .base_motion import (BASE_SETTLE_CONSECUTIVE_STEPS, BASE_SETTLE_MAX_STEPS,
+                          base_is_stationary, check_exact_base_path, base_joint_delta,
+                          validate_delta, guard_base_and_arms)
 
 CONTACT_EVENT_LIMIT=200
 GRIPPER_MIMIC_CONTACT_BOUND_M = 0.010
@@ -317,6 +319,7 @@ class NativeExecutor:
         self.base_moving=True;self.moving=True;self.base_command=np.zeros(3)
         self.contact_event_count=0;self.contact_event_overflow=0
         started=time.monotonic()
+        settle_start=None;settle_steps=0
         try:
             # At 20 Hz, 80 steps allow a .20 m / .30 rad command to settle.
             # The native controller maps normalized actions to .15/.15/.30
@@ -334,14 +337,27 @@ class NativeExecutor:
                     raise RuntimeError('Base closed-loop command exceeds native action bounds')
                 self.control_step()
             self.base_command=np.zeros(3)
-            # Require two zero-command settling steps, counted against horizon.
-            for _ in range(2):self.control_step()
+            settle_start=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
+            previous=settle_start
+            stationary_steps=0
+            for _ in range(BASE_SETTLE_MAX_STEPS):
+                self.control_step()
+                settle_steps+=1
+                current=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
+                guard_base_and_arms(current,self.base_hold,self.planner.state(),arm_before)
+                stationary_steps=(stationary_steps+1 if base_is_stationary(previous,current,self.env.control_timestep)
+                                  else 0)
+                previous=current
+                if stationary_steps>=BASE_SETTLE_CONSECUTIVE_STEPS:break
+            else:
+                raise RuntimeError(f'Base did not settle within {BASE_SETTLE_MAX_STEPS} control steps')
             after=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
             final_error=target-after;arm_change=self.planner.state()-arm_before
             result=dict(status='completed',request_id=request_id,epoch=self.epoch,start_sequence=start,
                 sequence=self.sequence,physics_steps=self.physics_steps,before_base_qpos=before.tolist(),
                 after_base_qpos=after.tolist(),target_base_qpos=target.tolist(),
                 base_error=final_error.tolist(),arm_joint_change=arm_change.tolist(),
+                base_settle_steps=settle_steps,base_settle_displacement=(after-settle_start).tolist(),
                 elapsed_seconds=time.monotonic()-started,collision_check=collision)
             self.log(self.journal,dict(event='base_tracking',**result))
             if np.linalg.norm(final_error[:2])>.005 or abs(final_error[2])>.005:
@@ -356,6 +372,8 @@ class NativeExecutor:
                 sequence=self.sequence,before_base_qpos=before.tolist(),after_base_qpos=after.tolist(),
                 target_base_qpos=target.tolist(),base_error=(target-after).tolist(),
                 arm_joint_change=(self.planner.state()-arm_before).tolist(),
+                base_settle_steps=settle_steps,
+                base_settle_displacement=(after-settle_start).tolist() if settle_start is not None else None,
                 elapsed_seconds=time.monotonic()-started,collision_check=collision,
                 reason=f'{type(exc).__name__}: {exc}'))
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('base_failure');raise
