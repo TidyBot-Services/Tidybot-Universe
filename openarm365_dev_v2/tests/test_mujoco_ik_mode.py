@@ -1,5 +1,7 @@
 """Offline routing checks for the physical OpenArm365 Dev planner."""
 import json
+import sys
+import types
 from types import SimpleNamespace
 
 import numpy as np
@@ -11,8 +13,10 @@ from openarm365_dev import planner as planner_module
 @pytest.fixture
 def planner(monkeypatch, tmp_path):
     monkeypatch.setattr(planner_module, 'mount_pose', lambda env: np.eye(4))
-    from openarm365_dev import attachment
-    monkeypatch.setattr(attachment, 'planner_context', lambda *args: None)
+    attachment = types.ModuleType('openarm365_dev.attachment')
+    attachment.planner_context = lambda *args: None
+    monkeypatch.setitem(sys.modules, 'openarm365_dev.attachment', attachment)
+    monkeypatch.setattr(sys.modules['openarm365_dev'], 'attachment', attachment, raising=False)
 
     class FakeClient:
         identity = {'nonce': 'test'}

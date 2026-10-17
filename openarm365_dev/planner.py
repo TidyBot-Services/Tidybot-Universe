@@ -71,7 +71,7 @@ class MujocoV2Planner:
             from .attachment import planner_context
             attachment=self.attachment_provider()
             body['attachment']=planner_context(self.env,attachment,world,self.tools)
-            warm={k:v for k,v in body.items() if k not in {'targets','target_qpos'}}
+            warm={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates'}}
             if 'targets' in body:warm['tool_frames']=list(body['targets'])
             self.client.call('/warmup',warm)
             response=self.client.call(path,body)

@@ -91,7 +91,7 @@ class SapienV2Planner:
             # A gripper action changes measured immutable locks. Compile that
             # exact model explicitly before the bounded planning call; no lock
             # rounding, solver retry or substitute target is permitted.
-            preparation={k:v for k,v in body.items() if k not in {'targets','target_qpos'}}
+            preparation={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates'}}
             if 'targets' in body:preparation['tool_frames']=list(body['targets'])
             self.client.call('/warmup',preparation)
             result=self.client.call(path,body)
