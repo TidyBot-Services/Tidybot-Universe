@@ -1,5 +1,6 @@
 import json,math
-from benchmarks.attention_harness.diagnostics.grasp_chain_probe import base_steps,policy_source,summarize,markdown
+import pytest
+from benchmarks.attention_harness.diagnostics.grasp_chain_probe import base_steps,policy_source,summarize,markdown,rotation_steps,oriented_policy_source,main
 from openarm365_dev.policy_validation import validate_generated_policy
 
 def test_steps_compose_and_policy_is_sdk_valid():
@@ -41,3 +42,26 @@ def test_public_summary_from_real_feedback_shape(tmp_path):
     assert row['object_lifted_5cm'] is True
     assert row['stages'][-1]['object_position']==[0,0,.96]
     assert '上升至少 5 cm' in markdown(row)
+
+
+def test_rotation_split_and_oriented_policy(capsys):
+    import ast
+    from scipy.spatial.transform import Rotation
+    target=Rotation.from_euler('xyz',[.8,-.6,.2]).as_quat()
+    steps=rotation_steps([0,0,0,1],target)
+    assert len(steps)>1 and all(max(abs(v) for v in step)<=.5 for step in steps)
+    source=oriented_policy_source((0,.3,0),target,
+        {'position_world_m':[.5,-2.3,.94],'z_range_world_m':[.92,.96]})
+    validate_generated_policy(source)
+    validate_generated_policy(oriented_policy_source((0,.3,0),target))
+    assert '使用仿真真值,仅诊断' in source
+    assert 'oracle_z[0]+oracle_z[1]' in source
+    assert 'obs_orient' in source and 'robot0_left_eef_quat' in source
+    tree=ast.parse(source)
+    functions=ast.Module(body=[node for node in tree.body if isinstance(node,ast.FunctionDef)],type_ignores=[])
+    namespace={};exec(compile(functions,'<policy-functions>','exec'),namespace)
+    computed=namespace['remaining_rotvec']([0,0,0,1],list(target))
+    assert computed==pytest.approx(Rotation.from_quat(target).as_rotvec(),abs=1e-7)
+    main(['--seed','102','--base-shift','0,.3,0','--grasp-quat',','.join(map(str,target)),
+          '--oracle-from-reset','--dry-run'])
+    assert '使用仿真真值,仅诊断' in capsys.readouterr().out

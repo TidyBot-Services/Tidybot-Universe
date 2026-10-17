@@ -217,6 +217,28 @@ def test_monitor_default_contact_rule_and_row_shape(monkeypatch):
     executor.monitor()  # Historical default does not inspect chassis-only contacts.
     assert [row for path,row in rows if path=='physics'][0]['unexpected_contacts']==[]
 
+
+def test_mimic_contact_bound_is_side_specific_and_default_unchanged(monkeypatch):
+    executor,rows=contact_executor(monkeypatch,0,2,'movable_objects')
+    executor.env.sim.data.qpos[3:5]=[.040,.035]
+    executor.monitor()
+    physics=[row for path,row in rows if path=='physics'][0]
+    assert physics['mimic_error_m']=={'left':pytest.approx(.005)}
+    assert physics['mimic_bound_m']=={'left':.010}
+    executor,rows=contact_executor(monkeypatch,0,2,'movable_objects')
+    executor.env.sim.data.qpos[3:5]=[.040,.029]
+    with pytest.raises(RuntimeError,match='contact 10mm bound'):executor.monitor()
+    executor,rows=contact_executor(monkeypatch,0,2,'movable_objects')
+    executor.env.sim.data.qpos[5:7]=[.040,.038]
+    with pytest.raises(RuntimeError,match='original 1mm bound'):executor.monitor()
+    executor,rows=contact_executor(monkeypatch,1,2,'movable_objects')
+    executor.env.sim.data.qpos[3:5]=[.040,.038]
+    with pytest.raises(RuntimeError,match='original 1mm bound'):executor.monitor()
+    executor,rows=contact_executor(monkeypatch,0,2,'movable_objects')
+    executor.env.sim.data.contact=[]
+    executor.env.sim.data.qpos[3:5]=[.040,.038]
+    with pytest.raises(RuntimeError,match='original 1mm bound'):executor.monitor()
+
 def test_enabled_fixed_contact_is_unexpected_even_when_gripping(monkeypatch):
     executor,rows=contact_executor(monkeypatch,0,6,'movable_objects')
     executor.gripping=True  # The fixed counter body is deliberately in obj_body_id.

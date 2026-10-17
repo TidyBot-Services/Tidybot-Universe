@@ -326,3 +326,77 @@ def test_object_scale_titles():
     assert 'S=0.9' in reach.render_sweep_markdown({
         'object_scale': .9, 'summary': {'table': [],
         'minimum_shift_center_and_5cm': None}}).splitlines()[0]
+
+
+def test_grasp_basis_and_combination_expansion():
+    poses = reach.grasp_orientations(60)
+    assert len(poses) == 48
+    assert len({(p['theta_deg'],p['axis_sign'],p['pitch_deg'],p['forward_sign']) for p in poses}) == 48
+    for p in poses:
+        n, a = p['n_world'], p['a_world']
+        q = p['quaternion_world_xyzw']
+        wxyz = (q[3], *q[:3])
+        assert n[2] == 0
+        assert a[2] < 0
+        assert reach.dot(n,a) == pytest.approx(0,abs=1e-12)
+        assert reach.rotate(wxyz,(0,1,0)) == pytest.approx(n,abs=1e-12)
+        assert reach.rotate(wxyz,(0,0,1)) == pytest.approx(a,abs=1e-12)
+        assert reach.cross(reach.rotate(wxyz,(1,0,0)),n) == pytest.approx(a,abs=1e-12)
+
+
+def test_grasp_summary_sorting_handmade():
+    def row(pitch,dy,pre,grasp,path=True):
+        return {'pitch_deg':pitch,'base_shift':[0,dy,0], 'theta_deg':60,
+                'axis_sign':1,'forward_sign':1,
+                'pregrasp':{'success':pre},'grasp':{'success':grasp},
+                'chassis':{'path_clear':path,'endpoint_clear':path}}
+    summary=reach.summarize_grasp([row(20,.20,True,True),row(0,.35,True,True),
+                                   row(0,.20,True,False),row(0,.25,True,True,False)])
+    assert summary['both_success_count']==3
+    assert summary['path_clear_both_success_count']==2
+    assert [r['base_shift'][1] for r in summary['top_10']]==[.35,.20]
+
+
+def test_grasp_dry_run(capsys):
+    reach.main(['--seed','102','--from-reset','--grasp-search','--exclude-object','--dry-run'])
+    info=json.loads(capsys.readouterr().out)
+    assert info['base_shifts']==4 and info['orientations_per_shift']==48
+    assert info['ik_targets']==384 and info['estimated_ik_seconds_range']==[57.6,76.8]
+
+
+def test_grasp_replay_dry_run_uses_saved_seed(tmp_path,capsys):
+    fixture=tmp_path/'fixture.json'
+    fixture.write_text(json.dumps({'seed':102}))
+    reach.main(['--grasp-search','--fixture',str(fixture),'--exclude-object','--dry-run'])
+    assert json.loads(capsys.readouterr().out)['seed']==102
+
+
+def test_grasp_search_uses_truth_positions_and_excludes_target(monkeypatch):
+    world=[{'name':'mujoco:1:obj_g0','center':[0,0,0],'quat_wxyz':[1,0,0,0]},
+           {'name':'mujoco:2:table','center':[0,0,0],'quat_wxyz':[1,0,0,0]}]
+    class Core:
+        last_failure=None
+        last_solver_diagnostics=[]
+        def named(self,values,names):return values
+        def set_collision_world(self,scene):self.scene=scene
+        def set_attachment(self,value):assert value is None
+        def check_targets(self,target):self.target=target
+        def solve_ik(self,**kwargs):return [0.]
+    class Adapter:
+        def push_world(self,env_id,scene):assert [box['name'] for box in scene]==[world[1]['name']]
+    core=Core()
+    body={'current_q':[0.], 'joint_names':['joint'], 'active_joints':['joint'],
+          'locked_joints':{},'env_id':'kitchen'}
+    monkeypatch.setattr(reach,'prepare',lambda *_:(Adapter(),core,{},body,world,'tool',{}))
+    monkeypatch.setattr(reach,'chassis_check',lambda *_:{'path_clear':True,'endpoint_clear':True})
+    fixture={'world':{'planner_from_world':[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]},
+             'diagnostic_truth':{'position_world_m':[.5,-2.,.94],
+                                 'z_range_world_m':[.92,.96],
+                                 'layered_horizontal_5mm_5deg':{'narrowest_local':{'angle_world_xy_deg':55}}}}
+    args=SimpleNamespace(exclude_object=True,seed=102,fixture=reach.FIXTURE,chassis_binding={})
+    report=reach.run_grasp_search(args,fixture,[(0.,.3,0.)])
+    assert report['ik_targets']==96
+    assert report['excluded_object']['names']==['mujoco:1:obj_g0']
+    assert report['points_world_m']=={'pregrasp':[.5,-2.,1.06], 'grasp':[.5,-2.,.94]}
+    assert report['summary']['path_clear_both_success_count']==48
+    assert report['summary']['top_10'][0]['pitch_deg']==0

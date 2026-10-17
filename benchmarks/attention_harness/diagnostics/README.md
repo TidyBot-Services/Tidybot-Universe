@@ -94,6 +94,21 @@ Dev v2 冻结配置增加 `contact_exempt_objects`，取值 `none`（默认）�
 
 `grasp_chain_probe.py` 默认 seed 102，但必须显式给出机器人 mount 系的 `--base-shift DX,DY,DYAW`。应先从可达性扫描中选择**完整车体路径检查通过、目标中心和上方 5 cm 可达**的候选；扫描提示 DY≈0.30 m 可作为首个候选，不保证轨迹可达。命令示例（在 worktree 根目录执行，使用新输出目录）：
 
+### Seed 102 抓取姿态诊断
+
+`reachability_map --seed 102 --from-reset --grasp-search --exclude-object` 在宿主侧真实 reset 一次，不步进物理，写出 `fixture.json`：当前完整 `snapshot` 世界、q0、锁定关节、同一批 `obj_g*` 目标盒、目标仿真真值位姿与几何 z 范围。整体与指垫窗口分层的 5° 水平投影宽度算法直接复用 `object_proxy_measure.py`；搜索以指垫窗口内最窄方向为 θ 中心（seed 102 约 55°），同时保存整体最窄方向（约 65°）。此信息**使用仿真真值,仅诊断**，公开 observation 不含物体朝向。搜索默认扫 `dx=0;dy=0.20,0.25,0.30,0.35;dyaw=0`，每个位移试 48 个姿态和预抓取、抓取两个目标，共 384 次带碰撞 IK；目标代理盒从 IK 世界中排除，车体路径仍检查完整世界。预抓取 z 为目标顶面以上 10 cm，抓取 z 为几何 z 范围中点，水平位置均为目标 body 真值位置。TCP 局部 y 为水平闭合轴，局部 z 为向下逼近轴，局部 x=y×z；搜索世界 XY 最窄角 ±15°、闭合轴正反号、俯仰 0/20/40/60° 和水平垂直方向正反号。`results.json` 保存全部组合的双目标结果，`results.md` 列出车体路径和双目标都通过、优先俯仰角小及底座位移小的前十个世界系 xyzw 四元数。姿态约定由真实 TCP FK 和手指几何测量确认；IK 使用服务默认 4 mm、0.03 rad 容差。`--dry-run` 只显示目标数和估时。
+
+复现扫描可改用 `--grasp-search --fixture <此前输出>/fixture.json --exclude-object`，无需再次 reset；可选 `--seed` 必须与夹具记录一致。
+分层最窄值是窗口内碰撞顶点的投影，seed 102 的 55° 最窄层靠近物体顶端；它只决定候选方向，不证明指垫接触或抓取成功。
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" /home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/bin/python3.11 -m benchmarks.attention_harness.diagnostics.reachability_map --seed 102 --from-reset --grasp-search --exclude-object --side left --robot-config /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/config/openarm_fixed.yml --assets-dir /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/curobo_v2/service/curobo_service/assets --out outputs/grasp-reach-seed102
+```
+
+`grasp_chain_probe --grasp-quat x,y,z,w --oracle-from-reset` 使用搜索得到的世界系 TCP 四元数，在启动策略前宿主侧只读 reset 一次，将目标 body 真值位置和几何 z 范围中点作为策略常量注入，输出明确标注**使用仿真真值,仅诊断**。策略在底座侧移和张手之后分段旋转到目标姿态，每个世界旋转向量坐标不超过 0.5 rad，旋转后读取末端位置并重算预抓取位移；预抓取步长小于 5 cm，下探每步不超过 3 cm，随后闭爪、竖直抬 10 cm。报告另列闭合轴与世界水平面夹角、两指开度。该探针会运行策略；本次沙箱验证仅执行其 `--dry-run` 和纯函数测试。无 `--oracle-from-reset` 时仍可用公开 `find_objects` 的中心位置做位置目标，但无真值 z 范围。
+
+对称误差规则：最终豁免为 `movable_objects` 且该侧手指 geom 在本物理步接触可移动物体时，该侧 `GRIPPER_MIMIC_CONTACT_BOUND_M=0.010` m；单指行程 44 mm，一侧受物体顶开时允许最多 10 mm 暂态失配。其他时刻及另一侧仍为原 1 mm。仅放宽生效的 `native-physics` 行添加 `mimic_error_m` 和 `mimic_bound_m`；位置、速度、限位等原检查不变。
+
 ```bash
 PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" \
   /home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python -m \

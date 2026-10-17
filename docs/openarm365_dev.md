@@ -39,6 +39,8 @@ straight, including for translation-only calls. The default and explicit
 
 `native-actions.jsonl` 的 `contact_exemption` 事件在最终豁免开启时写 `physical_monitor_allows_movable_contacts: true`。已有 `movable_contact_begin/end` 事件仍记录接触开始和结束，沿用每动作 200 条上限。`native-physics.jsonl` 仅在豁免开启且该步有放行接触时写 `expected_movable_contacts`，每项为 `[机器人 geom 名, 物体 geom 名, 距离 m]`。默认关闭时物理日志字段和原接触失败规则不变。
 
+手爪双指的实测对称误差默认上限仍为 1 mm。仅当最终豁免值为 `movable_objects` 且该物理步该侧手指 geom 与可移动物体实际接触时，该侧上限改为 `GRIPPER_MIMIC_CONTACT_BOUND_M = 0.010` m（10 mm）；另一侧、手掌接触、无接触和豁免关闭时仍为 1 mm。单指总行程为 44 mm，一侧先接触物体可能被顶开，因此允许最多 10 mm 的暂态不对称，但不允许整个行程失配。放宽生效的 `native-physics.jsonl` 行额外记录逐侧 `mimic_error_m`、`mimic_bound_m`；默认行字段集合不变。位置、速度、限位和其他碰撞监控均维持原判据。
+
 The real reset receipts verify a 19-dimensional native composite vector: both
 7-joint arms, independent gripper channels and a zero-held 3-channel base at reset.
 Policy code cannot access that raw

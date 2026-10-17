@@ -447,6 +447,80 @@ def target_from_snapshot(env, world):
     return cfg, root, geom_ids, proxies
 
 
+def reset_target_geometry(env, world):
+    """Read target truth at reset; this is diagnostic-only, not public SDK data."""
+    cfg, root, geom_ids, proxies = target_from_snapshot(env, world)
+    points = np.concatenate([geom_vertices(env.sim.model, env.sim.data, gid) for gid in geom_ids])
+    pose_position, pose_rotation = body_pose(env.sim.data, root)
+    center = points.mean(axis=0)
+    z_range = [float(points[:, 2].min()), float(points[:, 2].max())]
+    widths = [{'angle_world_xy_deg': angle,
+               'object_width_m': projection_width(points, [math.cos(math.radians(angle)),
+                                                              math.sin(math.radians(angle)), 0.])}
+              for angle in range(0, 180, 5)]
+    narrow = min(widths, key=lambda row: row['object_width_m'])
+    opened, _ = finger_measure(env, .043)
+    grip_axis_tcp = opened['grip_axis_tcp']
+    if abs(grip_axis_tcp[1]) < .99 or abs(grip_axis_tcp[0]) > .05 or abs(grip_axis_tcp[2]) > .05:
+        raise ValueError(f'Reset TCP grip axis is not local y: {grip_axis_tcp}')
+    layered = layered_horizontal_widths(points,
+        min(opened['pad_contact_region_length_along_finger_m']), .080, .0875)
+    return {'source': '使用仿真真值,仅诊断', 'name': cfg['name'],
+            'position_world_m': pose_position.tolist(),
+            'quaternion_world_xyzw': Rotation.from_matrix(pose_rotation).as_quat().tolist(),
+            'geometry_center_world_m': center.tolist(), 'z_range_world_m': z_range,
+            'narrowest_5_degree_sample': narrow,
+            'layered_horizontal_5mm_5deg': layered,
+            'measured_grip_axis_tcp': grip_axis_tcp,
+            'proxy_names': [box['name'] for box in proxies]}
+
+
+def reset_diagnostic_fixture(seed, out, robot_config, *, task='PickPlaceCounterToSink'):
+    """Construct the real seed world once and read it without a physics step."""
+    import yaml
+    from openarm365_dev.identity import OfficialEnvironmentIdentity
+    from openarm365_dev_v2.environment import create_env
+    from openarm365_dev.world import snapshot
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    for variable, directory in (('XDG_CACHE_HOME', 'cache'), ('NUMBA_CACHE_DIR', 'numba-cache')):
+        cache = (out/directory).resolve(); cache.mkdir(parents=True, exist_ok=True)
+        os.environ[variable] = str(cache)
+    identity = OfficialEnvironmentIdentity({
+        'robocasa': '/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa',
+        'robosuite': '/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite'},
+        '/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json').verify_identity()
+    env = create_env(task, robots='OpenArm365', seed=seed,
+                     obj_instance_split='pretrain', layout_and_style_ids=[(11, 34)],
+                     camera_widths=128, camera_heights=128, randomize_cameras=False,
+                     generative_textures=None, control_freq=20, horizon=2400, scene_reset_seed=seed)
+    try:
+        with writable_mjcf_assets(out):
+            env.reset()
+        config = yaml.safe_load(Path(robot_config).read_text())
+        world = snapshot(env, chassis_binding=config['service']['native_chassis'])
+        truth = reset_target_geometry(env, world)
+        from openarm365_dev_v2.environment import mount_pose
+        transform = np.asarray(world['planner_from_world'])
+        truth['position_base_m'] = (transform @ np.r_[truth['position_world_m'], 1.])[:3].tolist()
+        truth['geometry_center_base_m'] = (transform @ np.r_[truth['geometry_center_world_m'], 1.])[:3].tolist()
+        names = [f'openarm_{side}_joint{i}' for side in ('left', 'right') for i in range(1, 8)]
+        model, data = env.sim.model, env.sim.data
+        def joint(name):
+            matched = [native for native in model.joint_names if native.endswith(name)]
+            if len(matched) != 1:
+                raise ValueError(f'Ambiguous or missing native joint: {name}')
+            return float(data.qpos[model.get_joint_qpos_addr(matched[0])])
+        lock_names = [f'openarm_{side}_finger_joint1' for side in ('left', 'right')]
+        lock_names += [f'openarm_right_joint{i}' for i in range(1, 8)]
+        return {'seed': seed, 'diagnostic_truth': truth, 'identity': identity,
+                'world': world, 'joint_names': names, 'q0': [joint(n) for n in names],
+                'locked_joints': {n: joint(n) for n in lock_names},
+                'mount_pose_world': mount_pose(env).tolist(), 'physics_steps': 0}
+    finally:
+        env.close()
+
+
 def measure(env, robot_config, assets_dir, *, task='PickPlaceCounterToSink', seed=101):
     import yaml
     from openarm365_dev.world import snapshot

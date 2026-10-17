@@ -20,6 +20,7 @@ POSITION_TOLERANCE_M = .004
 ORIENTATION_TOLERANCE_RAD = .03
 ROLLS_DEG = (0, 90, 180, 270)
 DEFAULT_SWEEP_SPEC = 'dx=0,-0.1;dy=0,0.05,0.10,0.15,0.20,0.30,0.40;dyaw=0,0.15'
+GRASP_SWEEP_SPEC = 'dx=0;dy=0.20,0.25,0.30,0.35;dyaw=0'
 IK_SECONDS_RANGE = (.15, .20)
 
 
@@ -104,6 +105,93 @@ def orientations(initial_wxyz):
                            'quaternion_wxyz': list(orientation_for_axis(axis, roll)),
                            'tool_z_base': list(axis)})
     return answer
+
+
+def grasp_orientation(theta_deg, axis_sign, pitch_deg, forward_sign):
+    """World TCP basis: local y closes, local z approaches, x=y cross z."""
+    theta = math.radians(theta_deg)
+    n = (axis_sign*math.cos(theta), axis_sign*math.sin(theta), 0.)
+    f = (-math.sin(theta)*forward_sign, math.cos(theta)*forward_sign, 0.)
+    pitch = math.radians(pitch_deg)
+    a = (math.sin(pitch)*f[0], math.sin(pitch)*f[1], -math.cos(pitch))
+    x = cross(n, a)
+    q = matrix_quat(x, n, a)
+    return {'theta_deg': theta_deg, 'axis_sign': axis_sign, 'pitch_deg': pitch_deg,
+            'forward_sign': forward_sign, 'n_world': list(n), 'a_world': list(a),
+            'quaternion_world_xyzw': [*q[1:], q[0]]}
+
+
+def grasp_orientations(narrow_deg):
+    return [grasp_orientation(narrow_deg+offset, axis_sign, pitch, forward_sign)
+            for offset in (-15, 0, 15) for axis_sign in (1, -1)
+            for pitch in (0, 20, 40, 60) for forward_sign in (1, -1)]
+
+
+def summarize_grasp(rows):
+    matrix = []
+    for row in rows:
+        matrix.append({**row, 'both_success': row['pregrasp']['success'] and row['grasp']['success']})
+    winners = [row for row in matrix if row['both_success'] and row['chassis']['path_clear']
+               and row['chassis']['endpoint_clear']]
+    winners.sort(key=lambda row: (row['pitch_deg'], math.hypot(*row['base_shift'][:2]),
+                                  abs(row['base_shift'][2]), row['theta_deg'],
+                                  row['axis_sign'], row['forward_sign']))
+    return {'matrix': matrix, 'both_success_count': sum(row['both_success'] for row in matrix),
+            'path_clear_both_success_count': len(winners), 'top_10': winners[:10]}
+
+
+def run_grasp_search(args, fixture, shifts):
+    import numpy as np
+    truth = fixture.get('diagnostic_truth')
+    if not truth:
+        raise ValueError('--grasp-search requires a reset fixture with diagnostic truth')
+    prepared = prepare(args, fixture)
+    adapter, core, contract, body, full_world, tool, _ = prepared
+    q0 = core.named(body['current_q'], body['joint_names'])
+    ik_world, excluded = collision_world(full_world, args.exclude_object)
+    center = truth['position_world_m']
+    zmin, zmax = truth['z_range_world_m']
+    points_world = {'pregrasp': [center[0], center[1], zmax+.10],
+                    'grasp': [center[0], center[1], (zmin+zmax)/2]}
+    transform = fixture['world']['planner_from_world']
+    from scipy.spatial.transform import Rotation
+    q_base_world = Rotation.from_matrix([row[:3] for row in transform[:3]])
+    poses = grasp_orientations(truth['layered_horizontal_5mm_5deg']['narrowest_local']['angle_world_xy_deg'])
+    rows = []
+    for shift in shifts:
+        adapter.push_world(body['env_id'], shifted_world(ik_world, shift))
+        core.set_collision_world(shifted_world(ik_world, shift))
+        core.set_attachment(None)
+        chassis = chassis_check(full_world, args.chassis_binding, shift)
+        for pose in poses:
+            q_world = Rotation.from_quat(pose['quaternion_world_xyzw'])
+            q_base = q_base_world*q_world
+            yaw = Rotation.from_euler('z', -shift[2])
+            q_shifted = yaw*q_base
+            xyzw = q_shifted.as_quat().tolist()
+            results = {}
+            for name, point_world in points_world.items():
+                base = (np.asarray(transform) @ np.r_[point_world, 1.])[:3].tolist()
+                target = {tool: {'position': shifted_point(base, shift),
+                                 'quaternion_wxyz': [xyzw[3], *xyzw[:3]]}}
+                try:
+                    core.check_targets(target)
+                    solution = core.solve_ik(current_q=q0, targets=target,
+                        active_joints=body['active_joints'], locked_joints=body['locked_joints'])
+                    success = solution is not None
+                    reason = None if success else core.last_failure or 'unknown_ik_failure'
+                    diagnostics = core.last_solver_diagnostics
+                except Exception as exc:
+                    success, reason, diagnostics = False, f'{type(exc).__name__}: {exc}', []
+                results[name] = {'position_world_m': point_world, 'position_base_m': target[tool]['position'],
+                                 'success': success, 'reason': reason, 'solver_diagnostics': diagnostics}
+            rows.append({'base_shift': list(shift), **pose, 'chassis': chassis, **results})
+    summary = summarize_grasp(rows)
+    return {'seed': args.seed, 'fixture': str(args.fixture.resolve()),
+            'source': '使用仿真真值,仅诊断', 'tcp_axis_convention': 'local y=grip; local z=approach; local x=y cross z',
+            'tolerances': {'position_m': POSITION_TOLERANCE_M, 'orientation_rad': ORIENTATION_TOLERANCE_RAD},
+            'object': truth, 'excluded_object': {'count': len(excluded), 'names': excluded},
+            'ik_targets': len(rows)*2, 'points_world_m': points_world, 'summary': summary}
 
 
 def object_cuboids(world):
@@ -506,6 +594,9 @@ def main(argv=None):
     parser.add_argument('--out', type=Path, default=Path('reachability-map-results'))
     parser.add_argument('--side', choices=('left', 'right'), default='left')
     parser.add_argument('--fixture', type=Path, default=FIXTURE)
+    parser.add_argument('--seed', type=int, choices=(101, 102, 103))
+    parser.add_argument('--from-reset', action='store_true')
+    parser.add_argument('--grasp-search', action='store_true')
     parser.add_argument('--robot-config', type=Path)
     parser.add_argument('--assets-dir', type=Path)
     parser.add_argument('--exclude-object', action='store_true',
@@ -525,11 +616,67 @@ def main(argv=None):
         parser.error('--object-scale requires a positive finite S')
     if args.exclude_object and args.object_scale_explicit:
         parser.error('--exclude-object and --object-scale are mutually exclusive')
-    if args.sweep_spec is not None and not args.sweep:
-        parser.error('--sweep-spec requires --sweep')
+    if args.sweep_spec is not None and not (args.sweep or args.grasp_search):
+        parser.error('--sweep-spec requires --sweep or --grasp-search')
+    if args.sweep and args.grasp_search:
+        parser.error('--sweep and --grasp-search are mutually exclusive')
+    if args.from_reset and args.seed is None:
+        parser.error('--from-reset requires --seed')
+    if args.seed is not None and not args.from_reset and args.fixture == FIXTURE:
+        parser.error('--seed requires --from-reset or a reset --fixture')
+    if args.grasp_search and not args.from_reset and args.fixture == FIXTURE:
+        parser.error('--grasp-search requires --from-reset or a reset --fixture')
+    if args.grasp_search and not args.exclude_object:
+        parser.error('--grasp-search requires --exclude-object')
     if args.sweep and args.base_shift != (0., 0., 0.):
         parser.error('--base-shift and --sweep are mutually exclusive')
-    fixture = json.loads(args.fixture.read_text())
+    if args.grasp_search and args.dry_run:
+        shifts = args.sweep_spec or parse_sweep_spec(GRASP_SWEEP_SPEC)
+        count = len(shifts)*len(grasp_orientations(0))*2
+        display_seed = args.seed if args.from_reset else json.loads(args.fixture.read_text()).get('seed')
+        print(json.dumps({'seed': display_seed, 'base_shifts': len(shifts),
+                          'orientations_per_shift': len(grasp_orientations(0)),
+                          'positions_per_orientation': 2, 'ik_targets': count,
+                          'estimated_ik_seconds_range': estimate(count),
+                          'source': '使用仿真真值,仅诊断'}, ensure_ascii=False))
+        return
+    if args.from_reset:
+        if args.robot_config is None or args.assets_dir is None:
+            parser.error('--from-reset requires --robot-config and --assets-dir')
+        from .object_proxy_measure import reset_diagnostic_fixture
+        fixture = reset_diagnostic_fixture(args.seed, args.out, args.robot_config)
+        args.fixture = args.out/'fixture.json'
+        args.fixture.write_text(json.dumps(fixture, ensure_ascii=False, indent=2, allow_nan=False)+'\n')
+        truth = fixture['diagnostic_truth']
+        print(json.dumps({'fixture': str(args.fixture), 'seed': args.seed,
+                          'position_base_m': truth['position_base_m'],
+                          'position_world_m': truth['position_world_m'],
+                          'narrow_angle_world_xy_deg': truth['narrowest_5_degree_sample']['angle_world_xy_deg'],
+                          'local_narrow_angle_world_xy_deg': truth['layered_horizontal_5mm_5deg']['narrowest_local']['angle_world_xy_deg'],
+                          'cuboids': len(fixture['world']['cuboids'])}, ensure_ascii=False))
+    else:
+        fixture = json.loads(args.fixture.read_text())
+        if args.grasp_search:
+            if args.seed is not None and fixture.get('seed') != args.seed:
+                parser.error('--seed differs from the reset fixture')
+            args.seed = fixture.get('seed')
+    if args.grasp_search:
+        shifts = args.sweep_spec or parse_sweep_spec(GRASP_SWEEP_SPEC)
+        report = run_grasp_search(args, fixture, shifts)
+        args.out.mkdir(parents=True, exist_ok=True)
+        (args.out/'results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+'\n')
+        lines = [f"# Seed {args.seed} 抓取姿态可达性搜索", '', '使用仿真真值,仅诊断。',
+                 f"双目标带碰撞 IK 成功：{report['summary']['both_success_count']}；车体路径与终点也通过：{report['summary']['path_clear_both_success_count']}。", '',
+                 '| 位移 DX,DY,DYAW | θ° | 轴符号 | φ° | 前倾符号 | TCP 世界四元数 xyzw | n | a |',
+                 '| --- | ---: | ---: | ---: | ---: | --- | --- | --- |']
+        for row in report['summary']['top_10']:
+            lines.append(f"| {row['base_shift']} | {row['theta_deg']} | {row['axis_sign']} | {row['pitch_deg']} | {row['forward_sign']} | {row['quaternion_world_xyzw']} | {row['n_world']} | {row['a_world']} |")
+        (args.out/'results.md').write_text('\n'.join(lines)+'\n')
+        print(f"Wrote {args.out/'results.json'} and {args.out/'results.md'}")
+        return
+    if args.from_reset:
+        print(f"Wrote {args.fixture} (使用仿真真值,仅诊断)")
+        return
     world = fixture['world']['cuboids'] if isinstance(fixture['world'], dict) else fixture['world']
     center, names = object_bbox_center(world)
     shifts = args.sweep_spec or parse_sweep_spec(DEFAULT_SWEEP_SPEC) if args.sweep else [args.base_shift]
