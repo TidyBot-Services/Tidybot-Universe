@@ -14,9 +14,9 @@ from .world import snapshot
 class MujocoV2Planner:
     def __init__(self, env, *, evidence, deadline, cancel_check):
         self.env=env;self.evidence=Path(evidence);self.evidence.mkdir(parents=True,exist_ok=True)
-        lock_path=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-02/runtime-lock.json')
+        lock_path=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime-lock.json')
         lock,sha=load_lock(lock_path)
-        if sha!='07e18c15e946423838dedca5f52b2c98ec2b2292a8bf8b0ca8b62f9d13022ff6':
+        if sha!='7e2611af4cbff327de0d794f55a42db88894b1a9dcbe16ff76e1e46590998304':
             raise IdentityError('OpenArm365 dual-arm deployment lock changed')
         verify_files(lock);verify_client_imports(lock)
         config=Path(lock['project_root'])/'config/openarm_fixed.yml'

@@ -13,12 +13,12 @@
   "dev_adapter_sources": {
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/__init__.py": "9c362d510a5d2038d58c039cb1c206b864f1f52393c9e7a5247610007e35a7f8",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/attachment.py": "0a2f9811c9d2d1065e245debfb2b8b9b689e32117390d5af3e4fc496ab1644f4",
-    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/config.py": "54cf27eae078b68469242e8327a89ede14485c24ff8688aa148a9b47e5b6c99e",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/config.py": "f9115f8e0910c9cb798c7b97bb9c3ea0510888dd8596e0ec19c0d1c1e34f3782",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/environment.py": "43b05710ac81dd9bb6d82528f1c6c9661193d9a700c3c65536b5c5006f1e106a",
-    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/executor.py": "e743e8ee662d35f451c70459b8d0157b92a0163081a928dbb171e5c98c2cfe43",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/executor.py": "abda2fb1fe53ad496bc5e670f8cfaff88556c8cca9e8fd06d18f9f7e75778bbc",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/identity.py": "dda0fd0e3a0069046caa8095de0d48bf47182931c20b9b72c4b6ebf6f78509f4",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/owner.py": "a1f94e1cd36dbe64d702c3c0ae2a72a2c0ed37694cc4d5026f732d195c9c61a3",
-    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/planner.py": "9f4d031225e9913515aac5a7cde12d6c8a65a04499ffd987457998366977c681",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/planner.py": "b3d7244fc433cac7211687bd20fc9bcf22aa84b17b7c9eec0163fe2b4d65c8dc",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/policy_validation.py": "ebaedf3bfab57d7adedee63b19479beb6f17d176d1da05dfb471d46f7b9f9c16",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/policy_worker.py": "bd5d803a315a36696df0823eb4bef0ff8c16a703140b596e9542293f73a9c88f",
     "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365_dev/runner.py": "a2050aeccb8484dacb7bcb16cac1770e0003191a7139f5fe7d1892712132bcb1",
@@ -60,8 +60,8 @@
   },
   "integration_sources": {
     "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/adapter.py": "45bdf49a4a88f1767161a63da97b56c8d323f0285ef9eaf1f93b852be01db200",
-    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/budget.py": "133517f3a5876240de4593a9c038da29f0941c5330ae2525f6e1bc50bd71c61f",
-    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/config.py": "3fb87fe53212a80548b658cdc7f5721bad426cc2aad0a745cc470402272e9eff",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/budget.py": "d2d14347619d2f50266fea41db26afa93518f4c42b67305d74891386821d3855",
+    "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/config.py": "b1b11be23705f14bdebd66dc5d7302a7223b92b837a415bb451176346dcd00c8",
     "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/formal_runner.py": "fe7f4b2b12ee25109d6f5b4c80718b5bf52eb0e70cefd84ddc01a762665ae19e",
     "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/human_camera.py": "4bb843928a66f078062efd6bc3ede466607fe9ad218e88be7b020884903c77d3",
     "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/recording.py": "5684c355606a1ed72db94ae35bef71bb2c435d591437571e089904dcc0ec2a04",
@@ -85,8 +85,8 @@
   "official_env": "PickPlaceCounterToSink",
   "perception_mode": "sim_gt",
   "planner_lock": {
-    "path": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-02/runtime-lock.json",
-    "sha256": "07e18c15e946423838dedca5f52b2c98ec2b2292a8bf8b0ca8b62f9d13022ff6"
+    "path": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime-lock.json",
+    "sha256": "7e2611af4cbff327de0d794f55a42db88894b1a9dcbe16ff76e1e46590998304"
   },
   "python_hash_seed": 0,
   "randomize_cameras": false,
