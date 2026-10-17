@@ -7,7 +7,7 @@ from curobo_v2.command_curve import sample_for_original_drive
 from curobo_v2.client import PlanningRejected
 from .environment import PHYSICAL_TO_NATIVE,tcp_pose
 from .world import is_descendant
-from .base_motion import check_chassis_path, validate_delta, guard_base_and_arms
+from .base_motion import check_exact_base_path, base_joint_delta, validate_delta, guard_base_and_arms
 
 CONTACT_EVENT_LIMIT=200
 
@@ -250,13 +250,13 @@ class NativeExecutor:
         if np.max(abs(before-self.base_hold))>.001:
             raise RuntimeError('Uncommanded base drift exceeded 1mm/1mrad')
         world=snapshot(self.env,chassis_binding=self.planner.chassis_binding)
-        try: collision=check_chassis_path(world,self.planner.chassis_binding,delta)
+        try: collision=check_exact_base_path(self.env,world,self.planner.chassis_binding,delta,self.base_initial)
         except PlanningRejected as exc:
             self.log(self.journal,dict(event='base_collision_rejected',request_id=request_id,
-                before_base_qpos=before.tolist(),delta=delta.tolist(),world_sha256=world['world_sha256'],reason=str(exc)))
+                before_base_qpos=before.tolist(),delta=delta.tolist(),world_sha256=world['world_sha256'],
+                collision_check=getattr(exc,'collision_check',None),reason=str(exc)))
             raise
-        theta=float(before[2]-self.base_initial[2]);ct,st=math.cos(theta),math.sin(theta)
-        target=before+np.array([ct*delta[0]-st*delta[1],st*delta[0]+ct*delta[1],delta[2]])
+        target=before+base_joint_delta(delta,before,self.base_initial)
         arm_before=self.planner.state().copy();self.goals=arm_before.copy()
         self.base_arm_start=arm_before;self.active_request=request_id;start=self.sequence
         self.log(self.journal,dict(event='base_intent',request_id=request_id,epoch=self.epoch,

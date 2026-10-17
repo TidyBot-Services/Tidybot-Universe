@@ -55,7 +55,7 @@ def test_base_precheck_full_world(monkeypatch):
     full=wm.snapshot(env);slim=wm.snapshot(env,exempt_body_ids={2,5})
     from curobo_v2.client import PlanningRejected
     with pytest.raises(PlanningRejected,match='obj'):check_chassis_path(full,binding,(0,.1,0))
-    assert check_chassis_path(slim,binding,(0,.1,0))['status']=='clear'
+    with pytest.raises(PlanningRejected,match='obj'):check_chassis_path(slim,binding,(0,.1,0))
     import inspect
     from openarm365_dev.executor import NativeExecutor
     assert 'snapshot(self.env,chassis_binding=self.planner.chassis_binding)' in inspect.getsource(NativeExecutor.base_move)

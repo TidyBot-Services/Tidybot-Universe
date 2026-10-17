@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from curobo_v2.client import PlanningRejected
-from openarm365_dev.base_motion import check_chassis_path, guard_base_and_arms, validate_delta
+from openarm365_dev.base_motion import BasePathRejected, check_chassis_path, guard_base_and_arms, validate_delta, robot_boxes_from_geoms
 from openarm365_dev.owner import build_sdk
 from openarm365_dev.executor import NativeExecutor
 from openarm365_dev.policy_validation import validate_generated_policy
@@ -25,6 +25,58 @@ def world(*boxes):
     return {'cuboids': [dict(name=f'box{i}', center=list(center), half_size=list(half),
                               quat_wxyz=[1., 0., 0., 0.]) for i, (center, half) in enumerate(boxes)],
             'inventory': [dict(geom_type=6) for _ in boxes], 'world_sha256': 'test'}
+
+
+def box(name, center, half):
+    return dict(name=name, center=list(center), half_size=list(half), quat_wxyz=[1., 0., 0., 0.])
+
+
+def full_robot_scene(obstacle_y):
+    binding = {'center_in_planner_frame': [0., 0., .5], 'half_size': [.2, .16, .2]}
+    robot = [box('chassis', [0., 0., .5], [.2, .16, .2]),
+             box('left_finger', [.45, 0., .7], [.04, .03, .04])]
+    obstacle = box('cabinet', [.45, obstacle_y, .7], [.05, .04, .1])
+    measured = dict(cuboids=[obstacle], inventory=[dict(name='cabinet')], world_sha256='full')
+    return measured, binding, robot
+
+
+def test_pure_robot_box_source_uses_current_pose_and_mesh_bounds():
+    from scipy.spatial.transform import Rotation
+    pose=np.eye(4);pose[:3,:3]=Rotation.from_euler('z',.5).as_matrix();pose[:3,3]=[1.,2.,3.]
+    mount=np.eye(4);mount[:3,3]=[-.2,0,0]
+    rows=[dict(name='mesh_finger',local_center=[.1,0,0],half_size=[.04,.02,.01],world_from_geom=pose)]
+    result=robot_boxes_from_geoms(rows,mount)
+    assert len(result)==1 and result[0]['name']=='mesh_finger'
+    assert np.allclose(result[0]['center'],pose[:3,:3]@[.1,0,0]+[.8,2,3])
+    assert result[0]['half_size']==[.04,.02,.01]
+
+
+def test_full_robot_sweep_rejects_finger_and_clear_path():
+    measured,binding,robot=full_robot_scene(.23)
+    # Chassis alone passes while the extended finger enters the cabinet.
+    assert check_chassis_path(measured,binding,(0,.15,0))['status']=='clear'
+    with pytest.raises(PlanningRejected,match='left_finger versus cabinet'):
+        check_chassis_path(measured,binding,(0,.15,0),robot)
+    clear,binding,robot=full_robot_scene(.50)
+    receipt=check_chassis_path(clear,binding,(0,.15,0),robot)
+    assert receipt['status']=='clear' and receipt['robot_geoms_checked']==2
+    assert receipt['minimum_clearance_pair']['robot_geom'] in ('chassis','left_finger')
+    assert receipt['minimum_clearance_pair']['obstacle']=='cabinet'
+    assert receipt['minimum_clearance_m']>.02
+
+
+def test_origin_check_and_full_world_including_exemptable_object():
+    measured,binding,robot=full_robot_scene(.08)
+    with pytest.raises(PlanningRejected,match='sample 0/1') as caught:
+        check_chassis_path(measured,binding,(0,0,0),robot)
+    audit=caught.value.collision_check
+    assert audit['robot_geoms_checked']==2
+    assert audit['minimum_clearance_pair']['sample_index']==0
+    assert audit['minimum_obstacle_clearance_m']<.02
+    # The base check sees the complete world, even if an arm planner omits an object.
+    measured['cuboids'][0]['name']='movable_object'
+    with pytest.raises(PlanningRejected,match='movable_object'):
+        check_chassis_path(measured,binding,(0,0,0),robot)
 
 
 def test_limits_and_finite():
@@ -106,7 +158,12 @@ def test_sdk_chain_and_trace():
 
 def test_base_receipt_journal_and_step_count(monkeypatch):
     import openarm365_dev.world as world_module
+    import openarm365_dev.executor as executor_module
     monkeypatch.setattr(world_module, 'snapshot', lambda *args, **kwargs: world())
+    monkeypatch.setattr(executor_module, 'check_exact_base_path',
+                        lambda *args: dict(status='clear',robot_geoms_checked=1,
+                            obstacle_candidates_checked=2,distance_calculations=3,elapsed_seconds=.01,
+                            start_minimum_clearance_m=.04,minimum_clearance_pair=None))
     executor=object.__new__(NativeExecutor)
     data=SimpleNamespace(qpos=np.zeros(3))
     robot=SimpleNamespace(_ref_base_joint_pos_indexes=np.array([0,1,2]))
@@ -132,9 +189,24 @@ def test_base_receipt_journal_and_step_count(monkeypatch):
     assert result['request_id']=='r1' and result['start_sequence']==0
     assert result['sequence']==executor.sequence==executor.physics_steps
     assert abs(result['base_error'][1])<=.005 and result['collision_check']['status']=='clear'
+    assert result['collision_check']['robot_geoms_checked']==1
+    assert result['collision_check']['distance_calculations']==3
+    assert events[0]['collision_check']['start_minimum_clearance_m']==.04
+    assert 'minimum_clearance_pair' in events[-1]['collision_check']
     assert result['arm_joint_change']==[0.]*14
     assert [row['event'] for row in events]==['base_intent','base_tracking','receipt']
     assert executor.planner.prepared==set()
+    rejected=dict(status='rejected',robot_geoms_checked=2,minimum_clearance_m=.01,
+                  minimum_obstacle_clearance_m=.01,
+                  minimum_clearance_pair=dict(robot_geom='left_finger',obstacle='cabinet',sample_index=1))
+    def reject(*args): raise BasePathRejected('finger versus cabinet',rejected)
+    monkeypatch.setattr(executor_module,'check_exact_base_path',reject)
+    with pytest.raises(PlanningRejected,match='finger versus cabinet'):
+        executor.base_move(0,.01,0,request_id='collision')
+    assert events[-1]['event']=='base_collision_rejected'
+    assert events[-1]['collision_check']==rejected
+    monkeypatch.setattr(executor_module,'check_exact_base_path',
+                        lambda *args: dict(status='clear',robot_geoms_checked=1,minimum_clearance_pair=None))
     executor.env.horizon=executor.sequence
     with pytest.raises(RuntimeError, match='budget'): executor.base_move(0,.01,0,request_id='r2')
     assert executor.failed
