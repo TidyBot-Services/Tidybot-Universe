@@ -41,6 +41,8 @@ straight, including for translation-only calls. The default and explicit
 
 ## 可移动物体接触豁免
 
+附着诊断开关 `ATTN_DIAG_ATTACHMENT_DUMP=1` 默认关闭；设置为其它值（包括空字符串）会报错。开启后，每次构造非空附着规划上下文都会在该次运行的 evidence 目录写 `attachment-dump-*.json`。文件包含目标 body 及后代的全部 geom、与目标 geom 相关的所有 MuJoCo 接触（包括正距离接触及法向/六维接触力）、每个目标 geom 到非目标且非机器人 geom 的 5 cm 距离查询及最近 10 项、全局最近 10 项、最终 `support_names` 和各世界形状的纳入/排除原因。距离等于 5 cm 时为查询上限，不能推断更远的精确距离。`overlapping_cover_cells` 当前为 `null`，因为本地没有服务端在起点判定的附着覆盖单元与障碍逐项碰撞结果。该开关只写诊断文件，不改变 `support_names` 判定或规划请求；未设置时不写文件。
+
 `contact_exempt_objects` 默认为 `none`，可由 `ATTN_DIAG_CONTACT_EXEMPT` 覆盖最终值。最终值为 `movable_objects` 时，物理监控允许机器人手指、手掌、连杆或车体与任务 `obj_body_id` 中具有独立 free joint 的物体及其子 body 接触，包括目标物、`distr_counter` 和 `distr_sink`。机器人碰台面、柜子、咖啡机、墙、地板、水槽等固定件仍会中止；机器人自碰撞和其他物理监控判据保持原样。底座路径预检查继续使用完整世界。
 
 `native-actions.jsonl` 的 `contact_exemption` 事件在最终豁免开启时写 `physical_monitor_allows_movable_contacts: true`。已有 `movable_contact_begin/end` 事件仍记录接触开始和结束，沿用每动作 200 条上限。`native-physics.jsonl` 仅在豁免开启且该步有放行接触时写 `expected_movable_contacts`，每项为 `[机器人 geom 名, 物体 geom 名, 距离 m]`。默认关闭时物理日志字段和原接触失败规则不变。
