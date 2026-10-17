@@ -1,3 +1,15 @@
+<!-- sidebar-badges-20261017 -->
+## 侧边栏：strategy / attempt badge 与任务标题整理（2026-10-17，仅前端，未提交）
+
+每条记录在状态下方加两个只读椭圆 badge：strategy（7 种策略各一个浅色底，中途切换显示 `Auto → Reactive`，以最后一个策略着色）和 attempt（`2/3 attempts`，进行中 `Attempt 2/3`，灰色细边框）；robot 那行保留。任务分组标题去掉与任务无关的图标和 “Viewing” 字样，次数改为右侧灰色胶囊，最近 10 次结果改为小圆点；Planned / Cancelled / Finished 等状态在侧边栏统一为胶囊。数据来自 `/api/runs` 已有字段（dev_v2 的 `policy_id`/`policy_segments`/`used.executions`/`budget.executions`），后端未改、8769 未重启。dev_loop 记录没有 strategy 记录，只显示 attempt；formal run 只有 strategy，`list_runs()` 里没有已用次数（未做）。
+
+状态文字：dev 记录的 `completed` 后端含义是跑满 attempt（`fixed_iteration_boundary`），不是任务成功；现有 8 条 completed 的每次执行都是 `failed`。前端新增 `all_attempts_failed`（completed 且至少一次执行、全部 `receipt.execution_status==='failed'`），此时侧边栏显示红色 Failed（悬停说明 “Ran all N attempts; none succeeded”），并计入顶部 Failed 筛选（16→24）。没有执行记录的 completed 仍显示灰色 Finished，不下结论。
+
+证据：`test_live_ui.cjs` 新增 SIDEBAR-BADGES（1280/390px）2 项通过，含 Failed/Finished 判断；全量与 HEAD 基线对比，失败名单完全相同（84 项预先存在，无新增，pass 194→196）。中间有一遍全量出现 CLARITY-05 失败（主面板未切到 “Run ended”，疑似时序偶发），单独跑 2 次通过、再跑一遍全量也通过，未复现原因。8769 真实页面 1400/390px 截图无溢出。
+
+未核实/未做：“成功”在数据里的表示方式（现有记录无成功样本，故没有写 Succeeded 判断）；2 条旧 formal run（`status=completed`）仍显示 Finished，其结果未核实；`list_runs()` 不含 formal run 的已用次数（未做）。
+<!-- /sidebar-badges-20261017 -->
+
 <!-- week1-scene-gate-20261016 -->
 ## 第 1 周场景门收尾：补测、Dev v2 强制开启、held-out 登记（2026-10-16）
 

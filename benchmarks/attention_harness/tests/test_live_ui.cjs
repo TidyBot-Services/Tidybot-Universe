@@ -1612,7 +1612,7 @@ async function fixture(t, {styled = false, viewport, initialSnapshot, beforeNavi
       return send({state: 'ok'});
     }
     if (pathname === '/api/run-options') return send(state.launchOptions || {profiles: [{id: 'lift', suite: 'robosuite', task: 'cube_lift', execution_target: 'robosuite_sim', seed: 101}], attention_policies: ['autonomous', 'reactive_help'], assistance_modes: ['benchmark_proxy', 'live_human_first']});
-    if (pathname === '/api/runs') return send({runs: state.runs, launches: state.launches});
+    if (pathname === '/api/runs') return send({runs: state.runs, launches: state.launches, ...(state.devSessions ? {dev_sessions: state.devSessions} : {})});
     if (pathname.startsWith('/api/runs/')) return send(state.snapshots[decodeURIComponent(pathname.slice('/api/runs/'.length))]);
     return send({error: 'No Orchestrator'}, 503);
   });
@@ -3247,6 +3247,49 @@ function controlFixture(_,s) {
     binding:{allowed_policies:['autonomous','reactive_help']},request:null,events:[],segments:[{policy_id:'autonomous',effective_at:1791516360,generation:0}],switch_count:0};
   s.runs=[{...snap.run,created_at:1791516360,robot:{model:'OpenArm',execution_arm:'left'},seed:101}];
 }
+function badgeFixture(_,s){
+  controlFixture(_,s);
+  Object.assign(s.runs[0],{initial_policy:'autonomous',attention_control:s.snapshots.old.attention_control});
+  const cfg={suite:'robocasa365',task_id:'pick_place_counter_to_sink',robot:'OpenArm365',execution_arm:'both',seed:101};
+  const dev=(id,extra)=>({session_id:id,channel:'dev_v2',created_at:1791516300,locked:{config:cfg},versions:[],jobs:[],budget:{executions:3},...extra});
+  s.devSessions=[
+    dev('v2-mixed',{state:'completed',policy_id:'reactive_help',policy_segments:['autonomous','reactive_help'],mixed_policy:true,used:{executions:2},jobs:[1,2].map(n=>({job_id:'j'+n,kind:'execute',receipt:{execution_status:'failed'}}))}),
+    dev('v2-nojobs',{state:'completed',policy_id:'autonomous',policy_segments:['autonomous'],used:{executions:0}}),
+    dev('v2-live',{state:'running',lifecycle:{phase:'sdk'},policy_id:'full_trace_aware_attention_planner',policy_segments:['full_trace_aware_attention_planner'],used:{executions:1}}),
+    {session_id:'loop-old',channel:'dev_loop',state:'budget_exhausted',created_at:1791516200,locked:{config:cfg},versions:[],jobs:[],budget:{executions:3},used:{executions:3},
+      attention_control:{active_policy:null,segments:[],binding:null}}];
+}
+for(const width of [1280,390])test(`SIDEBAR-BADGES: read-only strategy and attempt badges per record at ${width}px`,async t=>{
+  const {page}=await fixture(t,{operator:true,styled:true,fullDocument:true,viewport:{width,height:900},beforeNavigate:badgeFixture});
+  if(!await page.locator('[data-sidebar]').isVisible())await page.locator('[data-sidebar-toggle]').click();
+  await page.evaluate(()=>document.querySelectorAll('[data-sidebar] details').forEach(d=>{if(d.querySelector(':scope>.ab-task-summary'))d.open=true;}));
+  const badge=(id,kind)=>page.locator(`[data-run-entry="${id}"] [data-run-badge=${kind}]`);
+  assert.equal(await badge('old','strategy').innerText(),'Autonomous');
+  assert.equal(await badge('old','attempts').count(),0);
+  assert.equal(await badge('v2-mixed','strategy').innerText(),'Auto → Reactive');
+  assert.equal(await badge('v2-mixed','strategy').getAttribute('title'),'Help strategy: Autonomous → Reactive help · 1 switch');
+  assert.equal(await badge('v2-mixed','strategy').getAttribute('data-policy'),'reactive_help');
+  const tint=loc=>loc.evaluate(e=>getComputedStyle(e).backgroundColor);
+  assert.notEqual(await tint(badge('v2-mixed','strategy')),await tint(badge('v2-live','strategy')),'each strategy gets its own tint');
+  assert.equal(await tint(badge('v2-mixed','attempts')),'rgba(0, 0, 0, 0)');
+  const status=id=>page.locator(`[data-run-entry="${id}"] .ab-run-status`);
+  assert.equal((await status('v2-mixed').innerText()).trim(),'Failed');
+  assert.equal(await status('v2-mixed').getAttribute('data-status'),'failed');
+  assert.equal(await page.locator('[data-run-entry="v2-mixed"]').getAttribute('data-tone'),'failed');
+  assert.equal((await status('v2-nojobs').innerText()).trim(),'Finished');
+  assert.equal(await page.locator('[data-run-entry="v2-nojobs"]').getAttribute('data-tone'),'idle');
+  assert.equal(await badge('v2-mixed','attempts').innerText(),'2/3 attempts');
+  assert.equal(await badge('v2-mixed','attempts').getAttribute('data-live'),'false');
+  assert.equal(await badge('v2-live','strategy').innerText(),'Planner');
+  assert.equal(await badge('v2-live','attempts').innerText(),'Attempt 2/3');
+  assert.equal(await badge('v2-live','attempts').getAttribute('data-live'),'true');
+  assert.equal(await badge('loop-old','strategy').count(),0);
+  assert.equal(await badge('loop-old','attempts').innerText(),'3/3 attempts');
+  assert.equal(await page.locator('[data-run-entry] .ab-run-badge :is(button,a)').count(),0);
+  const fits=await page.locator('[data-run-entry] .ab-run-badge').evaluateAll(els=>els.every(e=>{const a=e.closest('article').getBoundingClientRect(),b=e.getBoundingClientRect();return b.width>0&&b.right<=a.right+0.5;}));
+  assert.ok(fits,'every badge stays inside its record card');
+  await evidence(page,`SIDEBAR-BADGES-${width}`);
+});
 for(const width of [1280,390])test(`SIDEBAR-01: navigation, grouped identity, pins, search and remembered collapse at ${width}px`,async t=>{
   const {page,state}=await fixture(t,{styled:true,fullDocument:true,viewport:{width,height:900},beforeNavigate:controlFixture});
   await page.locator('[data-sidebar-toggle]').click();
