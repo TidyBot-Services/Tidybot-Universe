@@ -282,3 +282,47 @@ def test_sweep_result_files_record_exclusion(tmp_path, monkeypatch):
     md = (tmp_path/'results.md').read_text()
     assert md.startswith('# Seed 101 左臂底座位移 IK 扫掠（已排除目标物体）\n')
     assert 'mujoco:1:obj_g0' in md
+
+
+def test_object_scale_changes_only_proxy_half_sizes():
+    world = [
+        {'name': 'mujoco:1:obj_g0', 'center': [1., 2., 3.],
+         'half_size': [.1, .2, .3], 'quat_wxyz': [1., 0., 0., 0.]},
+        {'name': 'mujoco:2:table', 'center': [0., 0., 0.],
+         'half_size': [1., 1., 1.], 'quat_wxyz': [1., 0., 0., 0.]},
+        {'name': 'mujoco:3:obj_g15', 'center': [-1., 0., 0.],
+         'half_size': [.4, .5, .6], 'quat_wxyz': [0., 0., 0., 1.]},
+    ]
+    assert reach.collision_world(world, object_scale=1.0)[0] is world
+    scaled, names = reach.collision_world(world, object_scale=.5)
+    assert names == []
+    assert [b['half_size'] for b in scaled] == [[.05, .1, .15], [1., 1., 1.], [.2, .25, .3]]
+    assert scaled[1] is world[1]
+    assert scaled[0]['center'] is world[0]['center']
+    assert scaled[2]['quat_wxyz'] is world[2]['quat_wxyz']
+    assert world[0]['half_size'] == [.1, .2, .3]
+
+
+def test_object_scale_dry_run_and_mutual_exclusion(capsys):
+    reach.main(['--dry-run', '--sweep', '--sweep-spec', 'dx=0;dy=0.3;dyaw=0',
+                '--object-scale', '0.9'])
+    info = json.loads(capsys.readouterr().out)
+    assert info['object_scale'] == .9
+    assert info['ik_targets'] == 702
+    with pytest.raises(SystemExit):
+        reach.main(['--dry-run', '--object-scale', '1.0', '--exclude-object'])
+    assert 'mutually exclusive' in capsys.readouterr().err
+    for value in ('0', '-1', 'nan', 'inf'):
+        with pytest.raises(SystemExit):
+            reach.main(['--dry-run', '--object-scale', value])
+
+
+def test_object_scale_titles():
+    assert 'S=0.9' in reach.render_markdown({
+        'object_scale': .9, 'summary': {'matrix': [], 'step6': [], 'promising': []},
+        'fk_initial_base': {}, 'object_proxy': {'center_base_m': [0, 0, 0],
+        'distance_to_recorded_m': 0.}, 'world_to_base_quaternion_wxyz': [1, 0, 0, 0],
+        'step6_target_base_m': [0, 0, 0]}).splitlines()[0]
+    assert 'S=0.9' in reach.render_sweep_markdown({
+        'object_scale': .9, 'summary': {'table': [],
+        'minimum_shift_center_and_5cm': None}}).splitlines()[0]

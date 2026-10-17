@@ -65,3 +65,23 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
 ```bash
 PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" /home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/bin/python3.11 -m benchmarks.attention_harness.diagnostics.reachability_map --sweep --sweep-spec 'dx=0;dy=0.2,0.3,0.4;dyaw=0' --exclude-object --side left --robot-config /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/config/openarm_fixed.yml --assets-dir /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/curobo_v2/service/curobo_service/assets --out outputs/reach-sweep-exclude-object-20261017
 ```
+
+### 牛奶代理缩放与真实几何测量（seed 101）
+
+`reachability_map --object-scale S` 仅把带碰撞 IK 世界中与 `--exclude-object` 相同的 16 个 `obj_g*` 盒的 `half_size` 按比例乘以 S，保持盒中心和方向不变。空世界对照、车体路径检查和其他障碍不缩放。S 必须为正有限数；显式给出 `--object-scale` 与 `--exclude-object` 会报错。默认 S=1.0 保持既有世界对象、结果 JSON 结构和 Markdown 内容不变；显式传参会在报告标题标注 S。`--sweep` 和 `--base-shift` 都支持缩放。
+
+在 worktree 根目录，用官方 cuRobo 解释器逐个运行 S=`1.0/0.9/0.8/0.7/0.6/0.5`；每次使用不同的 `--out`，例如 S=0.9：
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" /home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/bin/python3.11 -m benchmarks.attention_harness.diagnostics.reachability_map --sweep --sweep-spec 'dx=0;dy=0.3;dyaw=0' --object-scale 0.9 --side left --robot-config /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/config/openarm_fixed.yml --assets-dir /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/curobo_v2/service/curobo_service/assets --out outputs/reach-scale-0.9-20261017
+```
+
+`object_proxy_measure.py` 使用 Dev v2 worker 的 `service_env` Python，先执行与 worker 相同的官方环境身份核验，再以 `PickPlaceCounterToSink`、seed 101、pretrain、layout 11/style 34、scene reset seed 101 创建并 reset 环境。它不启动策略或规划器；除 reset 自身外不调用 `mj_step`。脚本直接读出 reset 时的两指实际关节位置和间距；为了只读比较张开/闭合姿态，它另复制 reset 状态的 `MjData`，把两个独立指关节分别设为 0.043 m 与 0.001 m，并只调用 `mj_forward`。这两种指定开口是**运动学姿态的几何测量**，不是施加开合命令后的动力学实测。
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" /home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python -m benchmarks.attention_harness.diagnostics.object_proxy_measure --out outputs/object-proxy-measure-20261017
+```
+
+`results.json` 列出目标物体每个真实碰撞 geom 的类型、尺寸、世界姿态；mesh 的凸包体积及轴对齐/定向盒体积；全部 geom 合并后的凸包与数值最小定向盒；16 个代理盒的世界姿态、尺寸、体积以及代理/真实比值。盒体积**求和会重复计算重叠**，不等于严格并集体积。曲面 geom 用有限表面采样近似整体凸包；定向盒由凸包面/边候选加局部数值优化得到。报告还列出双指间距、指垫厚度、夹持轴、水平每 15° 的牛奶投影宽度与余量、forward_down_45 的估计方向，以及所用机器人配置里的左指碰撞球和指尖球包络开口估计。球的开口估计使用指垫远端三分之一的球和配置的 buffer，仅用于比较规划几何与实体几何；无法代替接触仿真或抓取成功判定。
+
+测量脚本的 `--dry-run` 只打印参数与零步进约束，不加载 MuJoCo。若官方模型/资产 identity 核验在当前沙箱失败，脚本原样报错，不跳过身份检查；需要在与 Dev v2 worker 相同的已认证环境运行正式测量。

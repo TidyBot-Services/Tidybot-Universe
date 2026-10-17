@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 
 from .ik_path_bench import diagnostic_files, request_inputs
@@ -109,8 +110,13 @@ def object_cuboids(world):
     return [c for c in world if c['name'].split(':')[-1].startswith('obj_g')]
 
 
-def collision_world(world, exclude_object=False):
+def collision_world(world, exclude_object=False, object_scale=1.0):
     """Remove exactly the cuboids used by the object proxy, if requested."""
+    if exclude_object and object_scale != 1.0:
+        raise ValueError('--exclude-object and --object-scale are mutually exclusive')
+    if object_scale != 1.0:
+        return [{**c, 'half_size': [v*object_scale for v in c['half_size']]}
+                if c['name'].split(':')[-1].startswith('obj_g') else c for c in world], []
     if not exclude_object:
         return world, []
     shapes = object_cuboids(world)
@@ -312,6 +318,8 @@ def render_sweep_markdown(report):
     title = '# Seed 101 左臂底座位移 IK 扫掠'
     if 'excluded_object' in report:
         title += '（已排除目标物体）'
+    if 'object_scale' in report:
+        title += f"（目标物体代理盒缩放 S={report['object_scale']:g}）"
     lines = [title, '',
              '位移为当前 mount 底座系的 DX,DY,DYAW（m,m,rad）；旋转绕 mount 原点。',
              '每组评估牛奶位置代理周围 3×3×3 个目标、13 个姿态及有/无外部碰撞。',
@@ -345,6 +353,8 @@ def render_markdown(report):
     title = f'# Seed 101 {side_label}臂 IK 可达性图'
     if 'excluded_object' in report:
         title += '（已排除目标物体）'
+    if 'object_scale' in report:
+        title += f"（目标物体代理盒缩放 S={report['object_scale']:g}）"
     lines = [title, '',
              '坐标系：目标、网格和范围均为机器人底座系，单位 m；姿态为 wxyz。',
              '“无碰撞”列仅清空外部世界；planner core 仍检查自碰撞和终点几何。',
@@ -410,7 +420,7 @@ def prepare(args, fixture):
         raise ValueError('Expected seed-101 uncarried scene; attachment is present')
     q0 = core.named(body['current_q'], body['joint_names'])
     core.check_selection(q0, body['active_joints'], [tool], body['locked_joints'])
-    ik_world, _ = collision_world(world, args.exclude_object)
+    ik_world, _ = collision_world(world, args.exclude_object, getattr(args, 'object_scale', 1.0))
     adapter.push_world(body['env_id'], ik_world)
     initial = core.fk(q0, body['locked_joints'], body['active_joints'])[tool]
     return adapter, core, contract, body, world, tool, initial
@@ -421,7 +431,8 @@ def run(args, fixture, world, center, *, shift=(0., 0., 0.), prepared=None, swee
         prepared = prepare(args, fixture)
     adapter, core, contract, body, original_world, tool, initial = prepared
     q0 = core.named(body['current_q'], body['joint_names'])
-    ik_world, excluded_names = collision_world(original_world, args.exclude_object)
+    object_scale = getattr(args, 'object_scale', 1.0)
+    ik_world, excluded_names = collision_world(original_world, args.exclude_object, object_scale)
     world = shifted_world(ik_world, shift)
     if shift != (0., 0., 0.):
         center = shifted_point(center, shift)
@@ -479,6 +490,8 @@ def run(args, fixture, world, center, *, shift=(0., 0., 0.), prepared=None, swee
               'summary': summarize(rows, poses, points) if not sweep else None}
     if args.exclude_object:
         report['excluded_object'] = {'count': len(excluded_names), 'names': excluded_names}
+    if getattr(args, 'object_scale_explicit', False) or object_scale != 1.0:
+        report['object_scale'] = object_scale
     if shift != (0., 0., 0.) or sweep:
         report['base_shift'] = list(shift)
         report['chassis'] = chassis_check(original_world, args.chassis_binding, shift)
@@ -497,12 +510,21 @@ def main(argv=None):
     parser.add_argument('--assets-dir', type=Path)
     parser.add_argument('--exclude-object', action='store_true',
                         help='Remove the obj_g* proxy cuboids from the collision IK world')
+    parser.add_argument('--object-scale', type=float, default=1.0,
+                        help='Multiply only obj_g* collision IK cuboid half sizes by S (default: 1.0)')
     parser.add_argument('--base-shift', type=parse_shift, default=(0., 0., 0.),
                         help='Mount-frame DX,DY,DYAW in m,m,rad')
     parser.add_argument('--sweep', action='store_true', help='Evaluate the compact grid at every sweep shift')
     parser.add_argument('--sweep-spec', type=parse_sweep_spec,
                         help='Override axes: dx=0,-0.1;dy=0,0.05;dyaw=0,0.15')
-    args = parser.parse_args(argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    args = parser.parse_args(raw_argv)
+    args.object_scale_explicit = any(value == '--object-scale' or value.startswith('--object-scale=')
+                                     for value in raw_argv)
+    if not math.isfinite(args.object_scale) or args.object_scale <= 0:
+        parser.error('--object-scale requires a positive finite S')
+    if args.exclude_object and args.object_scale_explicit:
+        parser.error('--exclude-object and --object-scale are mutually exclusive')
     if args.sweep_spec is not None and not args.sweep:
         parser.error('--sweep-spec requires --sweep')
     if args.sweep and args.base_shift != (0., 0., 0.):
@@ -524,6 +546,8 @@ def main(argv=None):
         info['estimated_ik_seconds_range'] = estimate(info['ik_targets'])
         if args.exclude_object:
             info['excluded_object_cuboids'] = len(names)
+        if args.object_scale_explicit:
+            info['object_scale'] = args.object_scale
         print(json.dumps(info, ensure_ascii=False))
         return
     if args.robot_config is None or args.assets_dir is None:
@@ -540,6 +564,8 @@ def main(argv=None):
                   'shifts': reports, 'summary': sweep_summary(reports)}
         if args.exclude_object:
             report['excluded_object'] = reports[0]['excluded_object']
+        if args.object_scale_explicit:
+            report['object_scale'] = args.object_scale
         markdown = render_sweep_markdown(report)
     else:
         report = run(args, fixture, world, center, shift=args.base_shift)
