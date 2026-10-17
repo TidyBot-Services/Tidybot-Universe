@@ -20,6 +20,81 @@ def rotation_steps(current_xyzw,target_xyzw):
     n=max(1,math.ceil(max(abs(float(x)) for x in delta)/.5))
     return [tuple(float(x/n) for x in delta)]*n
 
+def approach_steps(current_pos,target_pos,current_xyzw,target_xyzw,sequence):
+    """Ideal open-loop step sizes; generated policies remeasure after every step."""
+    from scipy.spatial.transform import Rotation
+    distance=math.dist(current_pos,target_pos)
+    rv=(Rotation.from_quat(target_xyzw)*Rotation.from_quat(current_xyzw).inv()).as_rotvec()
+    if sequence=='translate-first':
+        n=math.floor(distance/.045)+1 if distance else 0
+        translation=[(tuple((target_pos[j]-current_pos[j])/n for j in range(3)),(0.,0.,0.))]*n if n else []
+        turns=math.floor(max(abs(float(v)) for v in rv)/.45)+1
+        return translation+[((0.,0.,0.),tuple(float(v/turns) for v in rv))]*turns
+    if sequence=='combined':
+        n=max(1,math.ceil(distance/.045),math.ceil(max(abs(float(v)) for v in rv)/.45))
+        return [(tuple((target_pos[j]-current_pos[j])/n for j in range(3)),
+                 tuple(float(v/n) for v in rv))]*n
+    raise ValueError('approach_steps requires translate-first or combined')
+
+def sequenced_policy_source(shift,quat,oracle=None,*,sequence):
+    if sequence not in ('translate-first','combined'):raise ValueError('unknown sequence')
+    old=oriented_policy_source(shift,quat,oracle)
+    prefix=old.split("rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)\n",1)[0]
+    suffix="grasp_z = (oracle_z[0]+oracle_z[1])/2\n"+old.split("grasp_z = (oracle_z[0]+oracle_z[1])/2\n",1)[1]
+    lines=[]
+    if not oracle:
+        lines += ['objects = sensors.find_objects()', 'calls += 1',
+                  'target = None', 'for item in objects:',
+                  "    if item['name'] == 'obj': target = item['position']",
+                  "assert target is not None, 'obj missing from public find_objects'",
+                  'oracle_center = target', 'oracle_z = [target[2],target[2]]']
+    lines += ['pre = [oracle_center[0], oracle_center[1], oracle_z[1]+0.10]']
+    if sequence=='translate-first':
+        lines += ["eef = obs_open['robot0_left_eef_pos']",
+                  'distance = sum((pre[j]-eef[j])**2 for j in range(3))**0.5',
+                  'n = int(distance/0.045)+1 if distance else 0',
+                  "assert calls+2*n <= 75, 'SDK call budget exceeded'",
+                  'for k in range(n):',
+                  "    eef = obs_open['robot0_left_eef_pos']",
+                  '    step = [(pre[j]-eef[j])/(n-k) for j in range(3)]',
+                  "    assert sum(v*v for v in step)**0.5 < 0.05, 'pregrasp step bound'",
+                  '    left_arm.move_delta(step[0],step[1],step[2])', '    calls += 1',
+                  '    obs_open = sensors.get_observation()', '    calls += 1',
+                  "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+                  'turns = int(max(abs(v) for v in rv)/0.45)+1',
+                  "assert calls+2*turns <= 75, 'SDK call budget exceeded'",
+                  'for k in range(turns):',
+                  "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+                  '    step = [v/(turns-k) for v in rv]',
+                  '    correction = [pre[j]-obs_open[\'robot0_left_eef_pos\'][j] for j in range(3)]',
+                  "    assert max(abs(v) for v in step) <= 0.5, 'rotation coordinate bound'",
+                  "    assert sum(v*v for v in correction)**0.5 < 0.05, 'rotation drift correction bound'",
+                  '    left_arm.move_delta(correction[0],correction[1],correction[2],step)',
+                  '    calls += 1', '    obs_open = sensors.get_observation()', '    calls += 1']
+    else:
+        lines += ["eef = obs_open['robot0_left_eef_pos']",
+                  'distance = sum((pre[j]-eef[j])**2 for j in range(3))**0.5',
+                  "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+                  'travel = distance/0.045',
+                  'turn = max(abs(v) for v in rv)/0.45',
+                  'travel_n = int(travel) if travel == int(travel) else int(travel)+1',
+                  'turn_n = int(turn) if turn == int(turn) else int(turn)+1',
+                  'n = max(1,travel_n,turn_n)',
+                  "assert calls+2*n <= 75, 'SDK call budget exceeded'",
+                  'for k in range(n):',
+                  "    eef = obs_open['robot0_left_eef_pos']",
+                  '    step = [(pre[j]-eef[j])/(n-k) for j in range(3)]',
+                  "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+                  '    turn_step = [v/(n-k) for v in rv]',
+                  "    assert sum(v*v for v in step)**0.5 < 0.05, 'combined translation bound'",
+                  "    assert max(abs(v) for v in turn_step) <= 0.45, 'combined rotation bound'",
+                  '    left_arm.move_delta(step[0],step[1],step[2],turn_step)',
+                  '    calls += 1', '    obs_open = sensors.get_observation()', '    calls += 1']
+    lines += ['obs_pre = obs_open',"eef = obs_pre['robot0_left_eef_pos']"]
+    source=prefix+'\n'.join(lines)+'\n'+suffix
+    validate_generated_policy(source)
+    return source
+
 def oriented_policy_source(shift,quat,oracle=None):
     """Generated SDK policy; oracle is read once by the host at reset."""
     moves=base_steps(shift)
@@ -182,7 +257,7 @@ def grip_axis_horizontal_angle(quat):
     axis=Rotation.from_quat(quat).apply([0.,1.,0.])
     return math.degrees(math.asin(min(1.,abs(float(axis[2])))))
 
-def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,oracle=None):
+def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,oracle=None,sequence='rotate-first'):
     feedback=next(root.glob('artifacts/**/cells/*/v1/public-feedback.json'),None)
     events=_json(feedback).get('action_trace',[]) if feedback else []
     episode=next(root.glob('artifacts/**/cells/*/v1/executions/openarm365-dev-*'),None)
@@ -200,7 +275,9 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
                 result=c.get('result'),failure_reason=(c.get('failure') or {}).get('reason')))
     initial=_json(episode/'initial_public_observation.json') if episode else {}
     final=_json(episode/'final_public_observation.json') if episode else {}
-    stage_names=ORIENTED_STAGES if grasp_quat is not None else STAGES
+    stage_names=(('base','open','pregrasp','orient','descend','close','lift','held') if sequence=='translate-first'
+                 else ('base','open','pregrasp','descend','close','lift','held') if sequence=='combined'
+                 else ORIENTED_STAGES if grasp_quat is not None else STAGES)
     stages=[];boundary_ops={'base':'get_observation','open':'get_observation','orient':'get_observation','pregrasp':'get_observation',
         'descend':'get_observation','close':'get_observation','lift':'get_observation','held':'find_objects'}
     stage_idx=0;last=0;first_failure=None;last_object=initial.get('perception',{}).get('values',{}).get('obj_pos')
@@ -230,6 +307,12 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
                               target_pos[2] if target_pos else None)
                 if observed_pos is None or target_z is None or abs(observed_pos[2]-target_z)>.006:
                     continue
+                if sequence!='rotate-first' and name=='pregrasp' and target_pos is not None:
+                    if math.dist(observed_pos[:2],target_pos[:2])>.006:continue
+                    if sequence=='combined':
+                        from scipy.spatial.transform import Rotation
+                        observed_q=obs.get('robot0_left_eef_quat')
+                        if observed_q is None or (Rotation.from_quat(grasp_quat)*Rotation.from_quat(observed_q).inv()).magnitude()>.03:continue
             if name=='orient' and grasp_quat is not None:
                 q=obs.get('robot0_left_eef_quat') if isinstance(obs,dict) else None
                 if q is None:continue
@@ -268,9 +351,41 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
         final_gripper=final.get('robot',{}).get('robot0_left_gripper_qpos'),object_lifted_5cm=lifted,
         execution_dir=str(episode) if episode else None)
     if grasp_quat is not None:
-        result.update(grasp_quat_world_xyzw=grasp_quat,oracle=oracle,
+        result.update(grasp_quat_world_xyzw=grasp_quat,oracle=oracle,sequence=sequence,
                       diagnostic_truth_notice='使用仿真真值,仅诊断' if oracle else None)
+        result['steps']=arm_step_rows(events,certs,initial)
     return result
+
+def arm_step_rows(events,certs,initial):
+    """Pair public arm calls with observations and ordered planner certificates."""
+    from scipy.spatial.transform import Rotation
+    observed=initial.get('robot',{})
+    rows=[];closed=False
+    for event in events:
+        op=event.get('operation')
+        if op=='close':closed=True
+        if op=='get_observation' and event.get('status')=='completed':
+            observed=event.get('observation') or observed
+            if 'robot' in observed:observed=observed['robot']
+        if op!='move_delta' or event.get('source')!='left_arm':continue
+        args=event.get('arguments') or {}
+        delta=[float(args.get(key,0) or 0) for key in ('dx','dy','dz')]
+        turn=[float(x) for x in (args.get('rotation_delta') or [0,0,0])]
+        pos=observed.get('robot0_left_eef_pos') if isinstance(observed,dict) else None
+        quat=observed.get('robot0_left_eef_quat') if isinstance(observed,dict) else None
+        target_pos=[float(pos[j])+delta[j] for j in range(3)] if pos is not None else None
+        target_quat=([float(v) for v in (Rotation.from_rotvec(turn)*Rotation.from_quat(quat)).as_quat()]
+                     if quat is not None else None)
+        cert=certs[len(rows)] if len(rows)<len(certs) else {}
+        reason=(event.get('error') or cert.get('failure_reason')) if event.get('status')!='completed' else None
+        rows.append(dict(step=len(rows)+1,phase='lift' if closed else 'approach',
+                         translation_delta_m=delta,rotation_delta_rad=turn,
+                         public_status=event.get('status'),failure_reason=reason,
+                         certificate_queries=cert.get('queries'),
+                         certificate_elapsed_seconds=cert.get('elapsed_seconds'),
+                         target_eef_position_world_m=target_pos,
+                         target_eef_quat_world_xyzw=target_quat))
+    return rows
 
 def markdown(row):
     lines=[f"# Seed {row['seed']} 抓取链路探针",'',
@@ -289,6 +404,13 @@ def markdown(row):
     lines += ['',f"物体上升至少 5 cm：`{row['object_lifted_5cm']}`。",'',
               f"首个失败：`{json.dumps(row['first_failure'],ensure_ascii=False)}`。",'',
               f"认证证书：`{json.dumps(row['certificates'],ensure_ascii=False)}`。",'']
+    if 'steps' in row:
+        lines += ['| 步号 | 增量 m / rad | 公开结果 | 失败原因 | 证书查询数 | 证书耗时 s | 目标末端位置 / xyzw |',
+                  '| ---: | --- | --- | --- | ---: | ---: | --- |']
+        for s in row['steps']:
+            value=lambda key:json.dumps(s.get(key),ensure_ascii=False) if s.get(key) is not None else '—'
+            lines.append(f"| {s['step']} | {value('translation_delta_m')} / {value('rotation_delta_rad')} | {s['public_status']} | {value('failure_reason')} | {value('certificate_queries')} | {value('certificate_elapsed_seconds')} | {value('target_eef_position_world_m')} / {value('target_eef_quat_world_xyzw')} |")
+        lines.append('')
     return '\n'.join(lines)
 
 def run(root,seed,source):
@@ -316,12 +438,16 @@ def main(argv=None):
     p.add_argument('--out',type=Path,default=Path('grasp-chain-results'))
     p.add_argument('--tilt',action='store_true')
     p.add_argument('--grasp-quat',help='world TCP target quaternion x,y,z,w')
+    p.add_argument('--sequence',choices=('rotate-first','translate-first','combined'),default='rotate-first')
     p.add_argument('--oracle-from-reset',action='store_true',help='read target geometry once at real reset; diagnostic only')
     p.add_argument('--dry-run',action='store_true')
+    p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
     args=p.parse_args(argv)
     if args.out.exists() and not args.dry_run:p.error('--out already exists; choose a fresh directory')
     if args.tilt and args.grasp_quat:p.error('--tilt and --grasp-quat are mutually exclusive')
+    if args.sequence!='rotate-first' and not args.grasp_quat:p.error('--sequence requires --grasp-quat')
     if args.oracle_from_reset and not args.grasp_quat:p.error('--oracle-from-reset requires --grasp-quat')
+    if args.dry_run_state and not args.dry_run:p.error('--dry-run-state requires --dry-run')
     try:
         shift=tuple(float(x) for x in args.base_shift.split(','))
         if len(shift)!=3:raise ValueError()
@@ -334,10 +460,30 @@ def main(argv=None):
             (args.out/'oracle-reset'/'fixture.json').write_text(json.dumps(fixture,ensure_ascii=False,indent=2)+'\n')
         if args.oracle_from_reset and args.dry_run:
             oracle={'position_world_m':[0.,0.,0.], 'z_range_world_m':[0.,0.]}
-        source=oriented_policy_source(shift,quat,oracle) if quat else policy_source(shift,args.tilt)
+        source=(oriented_policy_source(shift,quat,oracle) if args.sequence=='rotate-first' else
+                sequenced_policy_source(shift,quat,oracle,sequence=args.sequence)) if quat else policy_source(shift,args.tilt)
     except ValueError as exc:p.error('invalid --base-shift or policy: '+str(exc))
     if args.dry_run:
         if args.oracle_from_reset:print('# 使用仿真真值,仅诊断；dry-run 不执行 reset，真实运行时注入几何常量')
+        if quat:
+            print(f'# sequence={args.sequence}; base_steps={len(base_steps(shift))}; approach_steps 在张手后的公开位姿和目标位置确定')
+            print('# rotate-first: rotation=floor(max_rotation_coordinate/0.45)+1，translation=floor(distance/0.045)+1')
+            print('# translate-first: translation=floor(distance/0.045)+1，rotation=floor(max_rotation_coordinate/0.45)+1')
+            print('# combined: N=max(1,ceil(distance/0.045),ceil(max_rotation_coordinate/0.45))')
+            if args.dry_run_state:
+                try:
+                    state=json.loads(args.dry_run_state.read_text())
+                    pos=state['eef_position'];initial_q=state['eef_quat'];pre=state['pregrasp_position']
+                    from scipy.spatial.transform import Rotation
+                    rv=(Rotation.from_quat(quat)*Rotation.from_quat(initial_q).inv()).as_rotvec()
+                    distance=math.dist(pos,pre)
+                    turns=math.floor(max(abs(float(v)) for v in rv)/.45)+1
+                    travel=math.floor(distance/.045)+1 if distance else 0
+                    counts={'rotate-first':turns+travel,
+                            'translate-first':len(approach_steps(pos,pre,initial_q,quat,'translate-first')),
+                            'combined':len(approach_steps(pos,pre,initial_q,quat,'combined'))}
+                    print(f'# dry-run approach step counts: {json.dumps(counts,ensure_ascii=False)}')
+                except (OSError,ValueError,KeyError,TypeError) as exc:p.error('invalid --dry-run-state: '+str(exc))
         print(source,end='');return 0
     old=os.environ.get('ATTN_DIAG_CONTACT_EXEMPT')
     os.environ['ATTN_DIAG_CONTACT_EXEMPT']=args.exempt
@@ -348,7 +494,7 @@ def main(argv=None):
         if old is None:os.environ.pop('ATTN_DIAG_CONTACT_EXEMPT',None)
         else:os.environ['ATTN_DIAG_CONTACT_EXEMPT']=old
     result=summarize(args.out,args.seed,shift,args.exempt,args.tilt,time.monotonic()-started,error,
-                     grasp_quat=quat,oracle=oracle)
+                     grasp_quat=quat,oracle=oracle,sequence=args.sequence)
     args.out.mkdir(parents=True,exist_ok=True)
     (args.out/'policy.py').write_text(source)
     (args.out/'results.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
