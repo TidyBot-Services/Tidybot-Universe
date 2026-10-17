@@ -79,6 +79,17 @@ def test_default_apply_retains_original_budget_steps_and_receipt(monkeypatch):
         maximum_endpoint_joint_error_rad=.0009999999999999992)
 
 
+@pytest.mark.parametrize('source,value', [('default', .35), ('override', .8)])
+def test_ik_path_jump_recorded_in_intent_journal(monkeypatch, source, value):
+    obj,_,events,_=fake_apply(monkeypatch,position=[.011,.02])
+    obj.planner.claim=lambda plan,epoch:{'plan_id':plan,
+        'time_from_start_seconds':[.02], 'max_joint_jump':value,
+        'max_joint_jump_source':source}
+    executor.NativeExecutor.apply(obj,{'plan_id':'p'},request_id='req')
+    assert events[0]['max_joint_jump']==value
+    assert events[0]['max_joint_jump_source']==source
+
+
 def test_failure_logs_joint_evidence_before_unchanged_exception(monkeypatch):
     obj,calls,events,invalidations=fake_apply(monkeypatch,position=[.02,-.001],settle=60)
     with pytest.raises(RuntimeError,match='^Native joint tracking exceeds 4mrad endpoint bound$'):

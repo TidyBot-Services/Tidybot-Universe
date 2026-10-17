@@ -86,6 +86,7 @@ def expected_bodies(kind):
 @pytest.mark.parametrize('kind', ['mujoco', 'sapien'])
 @pytest.mark.parametrize('mode', [None, 'plan', 'ik_path'])
 def test_request_bodies(monkeypatch, tmp_path, kind, mode):
+    monkeypatch.delenv('ATTN_IK_MAX_JOINT_JUMP', raising=False)
     if mode is None:
         monkeypatch.delenv('ATTN_PLANNER_MODE', raising=False)
     else:
@@ -106,6 +107,62 @@ def test_request_bodies(monkeypatch, tmp_path, kind, mode):
                 expected, separators=(',', ':')).encode()
     else:
         assert calls[1][1] == dict(plan, ik_candidates=4)
+        assert 'max_joint_jump' not in calls[1][1]
+        expected = dict(plan)
+        attachment = expected.pop('attachment')
+        expected['ik_candidates'] = 4
+        expected['attachment'] = attachment
+        assert json.dumps(calls[1][1], separators=(',', ':')).encode() == json.dumps(
+            expected, separators=(',', ':')).encode()
+        receipt = json.loads((tmp_path / 'trajectory-0001.json').read_text())
+        assert (receipt['max_joint_jump'], receipt['max_joint_jump_source']) == (.35, 'default')
+
+
+@pytest.mark.parametrize('kind', ['mujoco', 'sapien'])
+@pytest.mark.parametrize('raw,value', [('0.8', .8), ('2.0', 2.), ('.5', .5)])
+def test_override_is_plan_only_and_excluded_from_warmup(
+        monkeypatch, tmp_path, server_models, kind, raw, value):
+    monkeypatch.setenv('ATTN_PLANNER_MODE', 'ik_path')
+    monkeypatch.setenv('ATTN_IK_CANDIDATES', '4')
+    monkeypatch.setenv('ATTN_IK_MAX_JOINT_JUMP', raw)
+    planner = make_planner(kind, monkeypatch, tmp_path)
+    result = request(planner)
+    warmup, plan = (body for _, body in planner.client.calls)
+    assert 'max_joint_jump' not in warmup
+    assert server_models.WarmupRequest.model_validate(warmup).current_q == [0.] * 14
+    with pytest.raises(ValueError, match='max_joint_jump'):
+        server_models.WarmupRequest.model_validate(dict(warmup, max_joint_jump=value))
+    assert plan['max_joint_jump'] == value
+    assert server_models.IKPathRequest.model_validate(plan).max_joint_jump == value
+    assert (result['max_joint_jump'], result['max_joint_jump_source']) == (value, 'override')
+    receipt = json.loads((tmp_path / 'trajectory-0001.json').read_text())
+    assert (receipt['max_joint_jump'], receipt['max_joint_jump_source']) == (value, 'override')
+
+
+@pytest.mark.parametrize('kind', ['mujoco', 'sapien'])
+@pytest.mark.parametrize('raw', ['', 'nan', 'inf', '-inf', '0', '-0.1', 'abc',
+                                 '2.0001', '1_0', ' 0.8'])
+def test_invalid_override_fails_before_request(monkeypatch, tmp_path, kind, raw):
+    monkeypatch.setenv('ATTN_PLANNER_MODE', 'ik_path')
+    monkeypatch.setenv('ATTN_IK_MAX_JOINT_JUMP', raw)
+    planner = make_planner(kind, monkeypatch, tmp_path)
+    with pytest.raises(ValueError, match='ATTN_IK_MAX_JOINT_JUMP'):
+        request(planner)
+    assert planner.client.calls == []
+
+
+@pytest.mark.parametrize('kind', ['mujoco', 'sapien'])
+@pytest.mark.parametrize('mode', [None, 'plan'])
+def test_override_rejected_in_plan_mode(monkeypatch, tmp_path, kind, mode):
+    if mode is None:
+        monkeypatch.delenv('ATTN_PLANNER_MODE', raising=False)
+    else:
+        monkeypatch.setenv('ATTN_PLANNER_MODE', mode)
+    monkeypatch.setenv('ATTN_IK_MAX_JOINT_JUMP', '0.8')
+    planner = make_planner(kind, monkeypatch, tmp_path)
+    with pytest.raises(ValueError, match='only valid in ik_path mode'):
+        request(planner)
+    assert planner.client.calls == []
 
 
 @pytest.fixture
@@ -136,6 +193,7 @@ def server_models(monkeypatch, tmp_path):
 @pytest.mark.parametrize('mode', [None, 'plan', 'ik_path'])
 def test_emitted_bodies_validate_against_server_models(
         monkeypatch, tmp_path, server_models, kind, mode):
+    monkeypatch.delenv('ATTN_IK_MAX_JOINT_JUMP', raising=False)
     if mode is None:
         monkeypatch.delenv('ATTN_PLANNER_MODE', raising=False)
     else:
@@ -149,3 +207,5 @@ def test_emitted_bodies_validate_against_server_models(
         server_models.WarmupRequest.model_validate(dict(warmup, ik_candidates=4))
     model = server_models.PlanRequest if mode != 'ik_path' else server_models.IKPathRequest
     assert model.model_validate(plan).targets['openarm_left_hand_tcp'].position == [.1, .2, .3]
+    if mode == 'ik_path':
+        assert model.model_validate(plan).max_joint_jump == .35

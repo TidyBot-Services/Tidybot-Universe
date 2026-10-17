@@ -203,8 +203,12 @@ class NativeExecutor:
             maximum_speed=self.max_speed,position_limits=self.limits,max_acceleration=kin['max_acceleration'],
             max_jerk=kin['max_jerk'],dt=dt,step_budget=count,settle_steps=settle_steps)
         self.active_request=request_id;start=self.sequence;before=self.planner.state().copy()
-        self.log(self.journal,dict(event='intent',request_id=request_id,epoch=self.epoch,
-            plan_id=plan_id,start_sequence=start,command_curve=certificate))
+        intent=dict(event='intent',request_id=request_id,epoch=self.epoch,
+            plan_id=plan_id,start_sequence=start,command_curve=certificate)
+        if 'max_joint_jump' in response:
+            intent.update(max_joint_jump=response['max_joint_jump'],
+                max_joint_jump_source=response['max_joint_jump_source'])
+        self.log(self.journal,intent)
         if response.get('contact_exemption'):
             self.log(self.journal,dict(event='contact_exemption',request_id=request_id,**response['contact_exemption']))
         self.contact_event_count=0;self.contact_event_overflow=0

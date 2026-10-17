@@ -108,6 +108,8 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
 
 `ik_path` 模式下 `move_delta(dx,dy,dz, rotation_delta)` 保证的是末端目标**终点位姿**：服务端对位置误差使用 ≤4 mm、姿态误差使用 ≤0.03 rad 的校验，并对实际关节空间五次多项式路径做连续几何认证。它不保证末端走直线；只平移时也不保证直线。旋转不会绕过原有碰撞、关节跳变或身份检查。
 
+诊断变量 `ATTN_IK_MAX_JOINT_JUMP` 只在 `ATTN_PLANNER_MODE=ik_path` 时有效；例如 `ATTN_IK_MAX_JOINT_JUMP=0.8` 将该请求的 IK 候选单步最大关节变化阈值设为 0.8 rad。未设置时请求体不发送此字段，由服务端沿用默认 0.35 rad；设置后必须是正的有限小数，且不超过 2.0 rad，非法值或在 `plan` 模式下使用会直接报错。`trajectory-*.json` 和执行日志 `native-actions.jsonl` 的 `intent` 记录实际阈值及 `default`/`override` 来源。此阈值仅用于过滤 IK 候选间的大跳变；整条关节路径仍须通过连续几何证书，速度、加速度和加加速度边界不变。
+
 seed 102 reset 实测：`robot0_left_eef_pos ≈ [0.411192,-2.279444,1.089394]` m，`obj_pos ≈ [0.496910,-2.377295,0.934829]` m；两者均为公开 WORLD 坐标。`mount_pose` 平移约 `[0.812481,-1.767212,0.600000]` m、旋转约 `Rz(π)`；世界点到机器人系为 `p_robot=R_mountᵀ(p_world-t_mount)`，反向为 `p_world=R_mount p_robot+t_mount`。公开 observation 暂无 base pose 字段，探针只用 WORLD 末端/物体位置算 WORLD 手臂位移；底座命令直接用给定机器人系位移。
 
 当前 `wt-exempt` 工作树的已冻结 `openarm365/model/identity.json` 还要求本地副本 `openarm_phase0_recheck/model/compat_v6/robot.urdf`，但该文件在这个工作树中缺失。因此本沙箱内的 `make_lock` 会按原有身份检查报 `native robot model identity drift`，真实探针会在创建实验时停止。运行前需要按原身份清单恢复工作树的完整模型副本；探针不会跳过或放宽该检查。本阶段未启动 worker、服务、GPU 或物理动作。

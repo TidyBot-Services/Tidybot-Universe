@@ -9,6 +9,7 @@ from curobo_v2.identity import IdentityError,load_lock,verify_files,verify_clien
 from curobo_v2.client import PlanningRejected
 from curobo_v2.session import V2Service
 from curobo_v2.trajectory import TrajectoryLedger
+from curobo_v2.ik_path_jump import DEFAULT_MAX_JOINT_JUMP,diagnostic_max_joint_jump
 from .environment import joint_address, mount_pose, tcp_pose
 from .world import snapshot
 
@@ -103,10 +104,13 @@ class MujocoV2Planner:
             from .attachment import planner_context
             attachment=self.attachment_provider()
             body['attachment']=planner_context(self.env,attachment,world,self.tools)
-            warm={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates'}}
+            warm={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates','max_joint_jump'}}
             if 'targets' in body:warm['tool_frames']=list(body['targets'])
             self.client.call('/warmup',warm)
             response=self.client.call(path,body)
+            if path=='/plan/ik_path':
+                response['max_joint_jump']=body.get('max_joint_jump',DEFAULT_MAX_JOINT_JUMP)
+                response['max_joint_jump_source']='override' if 'max_joint_jump' in body else 'default'
             pid=self.ledger.issue(response,epoch=epoch,state=body['current_q'],world=world['cuboids'],
                 identity=self.client.identity,attachment=attachment)
             response.update(plan_id=pid,epoch=epoch,world_receipt=receipt)
@@ -125,12 +129,14 @@ class MujocoV2Planner:
         mode=os.environ.get('ATTN_PLANNER_MODE','plan')
         if mode not in {'plan','ik_path'}:
             raise ValueError('ATTN_PLANNER_MODE must be plan or ik_path')
+        max_joint_jump=diagnostic_max_joint_jump(mode)
         extra=dict(targets={f'openarm_{side}_hand_tcp':dict(position=pos.tolist(),quaternion_wxyz=quat)})
         if mode=='ik_path':
             raw=os.environ.get('ATTN_IK_CANDIDATES','1')
             if not raw.isdecimal() or int(raw)<1:
                 raise ValueError('ATTN_IK_CANDIDATES must be a positive integer')
             extra['ik_candidates']=int(raw)
+            if max_joint_jump is not None:extra['max_joint_jump']=max_joint_jump
         return self.plan('/plan' if mode=='plan' else '/plan/ik_path',extra,active,epoch)
     def claim(self,pid,epoch):
         def op():

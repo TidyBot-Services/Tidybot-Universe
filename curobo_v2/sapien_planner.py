@@ -12,6 +12,7 @@ from .client import PlanningRejected
 from .session import V2Service
 from .sapien_world import snapshot
 from .trajectory import TrajectoryLedger
+from .ik_path_jump import DEFAULT_MAX_JOINT_JUMP,diagnostic_max_joint_jump
 
 
 class SapienV2Planner:
@@ -91,10 +92,13 @@ class SapienV2Planner:
             # A gripper action changes measured immutable locks. Compile that
             # exact model explicitly before the bounded planning call; no lock
             # rounding, solver retry or substitute target is permitted.
-            preparation={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates'}}
+            preparation={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates','max_joint_jump'}}
             if 'targets' in body:preparation['tool_frames']=list(body['targets'])
             self.client.call('/warmup',preparation)
             result=self.client.call(path,body)
+            if path=='/plan/ik_path':
+                result['max_joint_jump']=body.get('max_joint_jump',DEFAULT_MAX_JOINT_JUMP)
+                result['max_joint_jump_source']='override' if 'max_joint_jump' in body else 'default'
             pid=self.ledger.issue(result,epoch=epoch,state=body['current_q'],world=world['cuboids'],
                                   identity=self.client.identity,attachment=attachment)
             result.update(plan_id=pid,epoch=epoch,planner_generation=2,planner_nonce=self.client.nonce,
@@ -141,12 +145,14 @@ class SapienV2Planner:
         mode=os.environ.get('ATTN_PLANNER_MODE','plan')
         if mode not in {'plan','ik_path'}:
             raise ValueError('ATTN_PLANNER_MODE must be plan or ik_path')
+        max_joint_jump=diagnostic_max_joint_jump(mode)
         extra=dict(targets={f'openarm_{side}_hand_tcp':dict(position=position.tolist(),quaternion_wxyz=quat)})
         if mode=='ik_path':
             raw=os.environ.get('ATTN_IK_CANDIDATES','1')
             if not raw.isdecimal() or int(raw)<1:
                 raise ValueError('ATTN_IK_CANDIDATES must be a positive integer')
             extra['ik_candidates']=int(raw)
+            if max_joint_jump is not None:extra['max_joint_jump']=max_joint_jump
         return self._plan('/plan' if mode=='plan' else '/plan/ik_path',extra,
                           active_joints=active,epoch=epoch)
 

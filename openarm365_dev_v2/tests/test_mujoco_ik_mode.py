@@ -14,6 +14,7 @@ from openarm365_dev import planner as planner_module
 
 @pytest.fixture
 def planner(monkeypatch, tmp_path):
+    monkeypatch.delenv('ATTN_IK_MAX_JOINT_JUMP', raising=False)
     monkeypatch.setattr(planner_module, 'mount_pose', lambda env: np.eye(4))
     attachment = types.ModuleType('openarm365_dev.attachment')
     attachment.planner_context = lambda *args: None
@@ -94,6 +95,8 @@ def test_ik_path_reaches_client_and_ledger(monkeypatch, planner, raw, count):
     assert planner.client.calls[-1] == ('/plan/ik_path', dict(expected_body(), ik_candidates=count))
     assert response['source'] == 'ik_path'
     assert planner.ledger.issued[0][0]['source'] == 'ik_path'
+    assert planner.ledger.issued[0][0]['max_joint_jump'] == .35
+    assert planner.ledger.issued[0][0]['max_joint_jump_source'] == 'default'
     assert planner.ledger.issued[0][1]['epoch'] == 7
     assert json.loads((planner.evidence / 'trajectory-0001.json').read_text())['source'] == 'ik_path'
 
