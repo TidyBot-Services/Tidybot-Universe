@@ -128,6 +128,29 @@ class SweepValidator:
             actor_pose=pose_of(c);b=self.scene.create_actor_builder();b.add_box_collision(half_size=c['half_size']);actor=b.build_static('world:'+c['name']);actor.pose=sapien.Pose(actor_pose)
             self.shapes.extend(actor.find_component_by_type(sapien.physx.PhysxRigidBaseComponent).collision_shapes)
             self.static_corners['world:'+c['name']]=corners(c['half_size'])@actor_pose[:3,:3].T+actor_pose[:3,3]
+        if self.carried is not None:
+            # PhysX must not solve the contacts that the certificate already allows.
+            # Give each allowed finger its own unused ignore bit, shared only with
+            # the carried shapes. Distinct bits keep finger/finger contacts intact.
+            fingers=[link for link in self.robot.links if link.name in self.allowed and link.collision_shapes]
+            ids={shape.collision_groups[3]&0xffff for link in fingers for shape in link.collision_shapes}
+            if len(ids)>1 or any(shape.collision_groups[2] for shape in self.carried_body.collision_shapes):
+                raise PlanningRejected('Continuous gate cannot isolate allowed carried contacts')
+            used=0
+            for shape in self.shapes:used|=shape.collision_groups[2]
+            bits=[1<<i for i in range(32) if not used&(1<<i)]
+            if len(bits)<len(fingers):raise PlanningRejected('Continuous gate has no isolated collision groups')
+            carried_bits=0
+            for link,bit in zip(fingers,bits):
+                carried_bits|=bit
+                for shape in link.collision_shapes:
+                    groups=list(shape.collision_groups);groups[2]|=bit;shape.set_collision_groups(groups)
+            for shape in self.carried_body.collision_shapes:
+                groups=list(shape.collision_groups);groups[2]=carried_bits
+                if ids:groups[3]=(groups[3]&~0xffff)|next(iter(ids))
+                shape.set_collision_groups(groups)
+            self.groups=[dict(body=link.name,groups=shape.collision_groups)
+                for link in self.robot.links for shape in link.collision_shapes]
         self.weights=np.array(self.weights);self.accounting=dict(declared_names=sorted(c['name']for c in world),carried_names=sorted(carried_names),static_names=sorted(c['name']for c in world if c['name']not in carried_names),bijective=True,no_shape_dropped=True)
 
     def ancestry(self,link):
