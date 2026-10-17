@@ -13,6 +13,30 @@ from .base_motion import (BASE_SETTLE_CONSECUTIVE_STEPS, BASE_SETTLE_MAX_STEPS,
 
 CONTACT_EVENT_LIMIT=200
 GRIPPER_MIMIC_CONTACT_BOUND_M = 0.010
+# The observed banana rotates during the first post-close steps. Require ten
+# adjacent TCP-relative samples below sensor-scale per-step motion before anchoring.
+HELD_REFERENCE_STABLE_STEPS = 10
+HELD_REFERENCE_POSITION_STEP_M = .0002  # 0.2 mm per control step
+HELD_REFERENCE_ROTATION_STEP_RAD = math.radians(.05)  # 0.05 degree per step
+HELD_REFERENCE_MAX_WAIT_STEPS = 60
+
+def held_reference_mode(configured):
+    if configured not in ('fixed','settled'):
+        raise ValueError('held_reference_mode must be fixed or settled')
+    override=os.environ.get('ATTN_DIAG_HELD_REFERENCE_MODE')
+    if override is not None and override not in ('fixed','settled'):
+        raise ValueError('ATTN_DIAG_HELD_REFERENCE_MODE must be fixed or settled')
+    return dict(configured=configured,source='ATTN_DIAG_HELD_REFERENCE_MODE' if override is not None else 'config',
+                mode=override if override is not None else configured)
+
+def held_reference_step(previous,current,stable_count):
+    """Pure adjacent-pose stability test; return streak and measured step motion."""
+    from scipy.spatial.transform import Rotation
+    displacement=float(np.linalg.norm(current[:3,3]-previous[:3,3]))
+    rotation=float(Rotation.from_matrix(current[:3,:3]@previous[:3,:3].T).magnitude())
+    stable_count=stable_count+1 if (displacement<=HELD_REFERENCE_POSITION_STEP_M and
+        rotation<=HELD_REFERENCE_ROTATION_STEP_RAD) else 0
+    return stable_count,displacement,rotation
 
 def gripper_mimic_contact_bound(side, exemption_mode, contacts):
     """Relax only the finger side touching a movable object in this physics step."""
@@ -121,7 +145,7 @@ def tracking_error_event(request_id,settle_steps,bound,names,target,current,qvel
         qvel=None if qvel is None else np.asarray(qvel).tolist())
 
 class NativeExecutor:
-    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None):
+    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed'):
         self.env,self.planner=env,planner;self.evidence=Path(evidence)
         self.deadline,self.cancel_check=deadline,cancel_check;self.frame_callback=frame_callback
         self.epoch=uuid.uuid4().hex;self.sequence=0;self.physics_steps=0;self.failed=False
@@ -144,6 +168,7 @@ class NativeExecutor:
         self.moving=False;self.gripping=False;self.active_request=None
         self.held=None;self.held_transform=None;self.grasp_counts={'left':{},'right':{}}
         self.held_trace_enabled=diagnostic_held_trace_enabled()
+        self.held_reference=held_reference_mode(held_reference_configured)
         self.held_trace_references={}
         self.contact_active={};self.contact_event_count=0;self.contact_event_overflow=0
         self.planner.attachment_provider=lambda:self.held.copy() if self.held else None
@@ -455,6 +480,7 @@ class NativeExecutor:
         self.active_request=request_id;self.gripping=True;self.moving=True;start=self.sequence
         self.contact_event_count=0;self.contact_event_overflow=0
         self.log(self.journal,dict(event='gripper_intent',request_id=request_id,side=side,command=command,sequence=start))
+        wait_steps=0
         try:
             if command<0 and self.held and self.held['holder']==side:
                 self.held=None;self.held_transform=None;self.planner.ledger.invalidate('release')
@@ -471,9 +497,32 @@ class NativeExecutor:
                     if self.held and self.held['holder']!=side:raise RuntimeError('Dual-held transport is outside this dev profile')
                     from .attachment import object_pose
                     self.held=dict(holder=side,target_id=candidates[0])
-                    self.held_transform=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,candidates[0])
+                    reference=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,candidates[0])
+                    if self.held_reference['mode']=='settled':
+                        initial_reference=reference
+                        stable_count=0;max_displacement=0.;max_rotation=0.
+                        for _ in range(HELD_REFERENCE_MAX_WAIT_STEPS):
+                            self.control_step()
+                            current=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,candidates[0])
+                            stable_count,_,_=held_reference_step(reference,current,stable_count)
+                            from scipy.spatial.transform import Rotation
+                            displacement=float(np.linalg.norm(current[:3,3]-initial_reference[:3,3]))
+                            rotation=float(Rotation.from_matrix(
+                                current[:3,:3]@initial_reference[:3,:3].T).magnitude())
+                            wait_steps+=1
+                            max_displacement=max(max_displacement,displacement)
+                            max_rotation=max(max_rotation,rotation)
+                            reference=current
+                            if stable_count>=HELD_REFERENCE_STABLE_STEPS:break
+                        self.log(self.journal,dict(event='held_reference',request_id=request_id,side=side,
+                            object_body_id=candidates[0],wait_steps=wait_steps,
+                            max_displacement_mm=max_displacement*1000,max_rotation_deg=math.degrees(max_rotation),
+                            reference=reference.tolist(),stable=stable_count>=HELD_REFERENCE_STABLE_STEPS,
+                            held_reference_unstable=stable_count<HELD_REFERENCE_STABLE_STEPS))
+                    self.held_transform=reference
                     self.planner.ledger.invalidate('grasp_acquired')
             result=dict(status='completed',request_id=request_id,physical_side=side,start_sequence=start,sequence=self.sequence)
+            result.update(held_reference_wait_steps=wait_steps,held_reference=self.held_reference)
             self.log(self.journal,dict(event='receipt',**result));return result
         except BaseException:
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('gripper_failure');raise

@@ -42,7 +42,8 @@ def main():
         context=json.loads((args.evidence/'recording_context.json').read_bytes())
         recorder=StepRecorder(args.evidence,context)
         def capture(sequence):capture_human_view(recorder,env,episode,sequence)
-        executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,frame_callback=capture)
+        executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,
+            frame_callback=capture,held_reference_configured=c['held_reference_mode'])
         capture(0)
         def observe():
             robot={}

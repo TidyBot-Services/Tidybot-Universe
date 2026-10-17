@@ -49,6 +49,7 @@ def main(argv=None):
     p.add_argument('--sequence',choices=('rotate-first','translate-first','combined'),default='translate-first')
     p.add_argument('--rotation-step',type=float,default=.15)
     p.add_argument('--dry-run',action='store_true')
+    p.add_argument('--held-reference-mode',choices=('fixed','settled'))
     args=p.parse_args(argv)
     try:
         variants=parse_variants(args.variants)
@@ -70,6 +71,8 @@ def main(argv=None):
                  '--lift-step-m',str(values.get('lift',.025)),
                  '--lift-height-m',str(values.get('height',.10)),
                  '--out',str(args.out/name)]
+        if args.held_reference_mode is not None:
+            command.extend(['--held-reference-mode',args.held_reference_mode])
         if args.dry_run:
             output=io.StringIO()
             with contextlib.redirect_stdout(output):grasp_chain_probe.main(command+['--dry-run'])

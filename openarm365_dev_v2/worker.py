@@ -63,7 +63,8 @@ def main():
                 if extra is not None:
                     try:extra.capture(sequence)
                     except Exception:pass
-        executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,frame_callback=capture)
+        executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,
+            frame_callback=capture,held_reference_configured=c['held_reference_mode'])
         capture(0)
         def observe():
             robot={}

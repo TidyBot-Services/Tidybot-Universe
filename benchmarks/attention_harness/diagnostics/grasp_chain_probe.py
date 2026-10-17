@@ -614,6 +614,7 @@ def main(argv=None):
     p.add_argument('--seed',type=int,choices=(101,102,103),default=102)
     p.add_argument('--base-shift',required=True,help='DX,DY,DYAW in robot mount frame')
     p.add_argument('--exempt',choices=('movable_objects','none'),default='movable_objects')
+    p.add_argument('--held-reference-mode',choices=('fixed','settled'))
     p.add_argument('--out',type=Path,default=Path('grasp-chain-results'))
     p.add_argument('--tilt',action='store_true')
     p.add_argument('--grasp-quat',help='world TCP target quaternion x,y,z,w')
@@ -689,13 +690,19 @@ def main(argv=None):
                 except (OSError,ValueError,KeyError,TypeError) as exc:p.error('invalid --dry-run-state: '+str(exc))
         print(source,end='');return 0
     old=os.environ.get('ATTN_DIAG_CONTACT_EXEMPT')
+    old_held_reference=os.environ.get('ATTN_DIAG_HELD_REFERENCE_MODE')
     os.environ['ATTN_DIAG_CONTACT_EXEMPT']=args.exempt
+    if args.held_reference_mode is not None:
+        os.environ['ATTN_DIAG_HELD_REFERENCE_MODE']=args.held_reference_mode
     started=time.monotonic();error=None
     try:run(args.out,args.seed,source)
     except Exception as exc:error=f'{type(exc).__name__}: {exc}'
     finally:
         if old is None:os.environ.pop('ATTN_DIAG_CONTACT_EXEMPT',None)
         else:os.environ['ATTN_DIAG_CONTACT_EXEMPT']=old
+        if args.held_reference_mode is not None:
+            if old_held_reference is None:os.environ.pop('ATTN_DIAG_HELD_REFERENCE_MODE',None)
+            else:os.environ['ATTN_DIAG_HELD_REFERENCE_MODE']=old_held_reference
     result=summarize(args.out,args.seed,shift,args.exempt,args.tilt,time.monotonic()-started,error,
                      grasp_quat=quat,oracle=oracle,sequence=args.sequence)
     result.update(theta_deg=args.theta_deg,close_hold_steps=args.close_hold_steps,
