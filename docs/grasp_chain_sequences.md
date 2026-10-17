@@ -12,6 +12,8 @@
 
 每个动作后重新读取公开 TCP 位姿并计算剩余增量。平移步的长度严格小于 0.05 m；`translate-first` 的旋转坐标不超过 0.5 rad；`combined` 的旋转坐标不超过 0.45 rad。`combined` 步数为 `max(1,ceil(distance/0.045),ceil(max_abs_rotvec_coordinate/0.45))`。所有序列接着分步下探、闭爪、抬高 10 cm。默认 `rotate-first` 的生成策略源码保留原字节内容。
 
+显式使用非默认 `--rotation-step RAD` 时，三种序列都用 `0.9×RAD` 计算初始旋转步数，而每坐标指令仍不超过 `RAD`。旋转段每步重新观测残差，主循环至多在初始步数上增加 3 步；残差小于 0.01 rad 时提前结束。若主循环后残差仍超过 0.02 rad，最多追加 3 步限幅修正；仍超过 0.02 rad 则打印残差并抛出 `rotation did not converge`。这些额外动作逐次检查 SDK 调用预算。默认 `0.45` 的生成策略源码保持逐字节不变。
+
 以下命令只打印策略及步数公式，不执行 reset 或物理动作：
 
 ```bash

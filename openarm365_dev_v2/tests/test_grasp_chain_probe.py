@@ -133,7 +133,10 @@ def test_default_rotation_policy_bytes_and_small_step():
         assert hashlib.sha256(default.encode()).hexdigest()==digest
         source=make(.15)
         validate_generated_policy(source)
-        assert '/0.15' in source
+        assert '/(0.9*0.15)' in source
+        assert 'range(turns+3)' in source if sequence!='combined' else 'range(n+3)' in source
+        assert 'range(3)' in source and "raise AssertionError('rotation did not converge')" in source
+        assert "print('rotation residual:', rv)" in source
         assert "max(abs(v) for v in step) <= 0.15" in source or "max(abs(v) for v in turn_step) <= 0.15" in source
     rv=(.44,-.46,.10)
     default=rotation_vector_steps(rv)
@@ -142,6 +145,28 @@ def test_default_rotation_policy_bytes_and_small_step():
     assert all(max(abs(v) for v in part)<=.15 for part in smaller)
     assert len(approach_steps((0,0,0),(0,0,0),(0,0,0,1),
                Rotation.from_rotvec(rv).as_quat(),'translate-first',.15))>len(default)
+
+def test_rotation_margin_converges_with_small_execution_shortfall():
+    rotation_step=.15
+    residual=1.45
+    turns=len(rotation_vector_steps((residual,0,0),rotation_step))
+    assert turns==11
+    moves=[]
+    for k in range(turns+3):
+        if residual<.01:break
+        command=min(rotation_step,residual/max(1,turns-k))
+        assert command<=rotation_step
+        moves.append(command)
+        residual-=.985*command
+    if residual>.02:
+        for _ in range(3):
+            command=min(rotation_step,residual)
+            assert command<=rotation_step
+            moves.append(command)
+            residual-=.985*command
+            if residual<.01:break
+    assert len(moves)==11
+    assert residual<.01
 
 @pytest.mark.parametrize('bad',('0','-0.1','0.50001','nan','inf','-inf'))
 def test_invalid_rotation_step_rejected(bad):
@@ -165,7 +190,7 @@ def test_dry_run_rotation_step_counts_and_budget_warning(tmp_path,capsys):
     old_counts=parse(default,'# dry-run approach step counts: ')
     new_counts=parse(small,'# dry-run approach step counts: ')
     assert all(new_counts[name]>old_counts[name] for name in new_counts)
-    assert 'max_rotation_coordinate/0.15' in small
+    assert 'max_rotation_coordinate/(0.9*0.15)' in small
     assert 'SDK call estimates (limit 80)' in small
     assert '估计调用数' in small
     assert '警告：' not in small
@@ -200,8 +225,8 @@ def test_failed_step_has_public_target_and_certificate(tmp_path):
     assert '| 2 |' in markdown(result)
 
 @pytest.mark.parametrize('sequence',('translate-first','combined'))
-@pytest.mark.parametrize('rotation_step',(.45,.15))
-def test_generated_sequence_remeasures_and_reaches_pregrasp(monkeypatch,sequence,rotation_step):
+@pytest.mark.parametrize('rotation_step,execution_fraction',((.45,1.),(.15,1.),(.15,.985)))
+def test_generated_sequence_remeasures_and_reaches_pregrasp(monkeypatch,sequence,rotation_step,execution_fraction):
     from scipy.spatial.transform import Rotation
     target=(.3007057995042732,.9537169507482269,0,0)
     oracle={'position_world_m':[.5,-2.38,.935],'z_range_world_m':[.92,.96]}
@@ -215,7 +240,7 @@ def test_generated_sequence_remeasures_and_reaches_pregrasp(monkeypatch,sequence
         turn=rotation_delta or [0,0,0]
         state['moves'].append(((dx,dy,dz),turn,state['pos'][:]))
         state['pos']=[state['pos'][j]+v for j,v in enumerate((dx,dy,dz))]
-        state['quat']=(Rotation.from_rotvec(turn)*Rotation.from_quat(state['quat'])).as_quat().tolist()
+        state['quat']=(Rotation.from_rotvec([execution_fraction*v for v in turn])*Rotation.from_quat(state['quat'])).as_quat().tolist()
     def objects():
         lift=max(0,state['pos'][2]-.94) if state['closed'] else 0
         return [{'name':'obj','position':[.5,-2.38,.935+lift]}]
@@ -229,7 +254,7 @@ def test_generated_sequence_remeasures_and_reaches_pregrasp(monkeypatch,sequence
                                  rotation_step=rotation_step),{})
     assert state['observations']>=len(state['moves'])
     assert math.dist(state['pos'],[.5,-2.38,1.04])<1e-9
-    assert (Rotation.from_quat(target)*Rotation.from_quat(state['quat']).inv()).magnitude()<1e-9
+    assert (Rotation.from_quat(target)*Rotation.from_quat(state['quat']).inv()).magnitude() < (.02 if execution_fraction<1 else 1e-9)
     before_close=state['moves'][:-4]
     assert all(max(abs(v) for v in turn)<=rotation_step+1e-12 for _,turn,_ in before_close)
     if sequence=='translate-first':

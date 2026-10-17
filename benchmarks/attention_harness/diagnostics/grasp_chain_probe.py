@@ -20,9 +20,12 @@ def valid_rotation_step(value):
         raise ValueError('rotation step must be finite and in (0, 0.5] rad')
     return step
 
+def rotation_step_divisor(rotation_step):
+    return rotation_step if rotation_step==.45 else .9*rotation_step
+
 def rotation_vector_steps(rv,rotation_step=.45):
     rotation_step=valid_rotation_step(rotation_step)
-    n=math.floor(max(abs(float(v)) for v in rv)/rotation_step)+1
+    n=math.floor(max(abs(float(v)) for v in rv)/rotation_step_divisor(rotation_step))+1
     return [tuple(float(v/n) for v in rv)]*n
 def rotation_steps(current_xyzw,target_xyzw,rotation_step=.45):
     from scipy.spatial.transform import Rotation
@@ -41,10 +44,46 @@ def approach_steps(current_pos,target_pos,current_xyzw,target_xyzw,sequence,rota
         turns=len(rotation_vector_steps(rv,rotation_step))
         return translation+[((0.,0.,0.),tuple(float(v/turns) for v in rv))]*turns
     if sequence=='combined':
-        n=max(1,math.ceil(distance/.045),math.ceil(max(abs(float(v)) for v in rv)/rotation_step))
+        n=max(1,math.ceil(distance/.045),math.ceil(max(abs(float(v)) for v in rv)/rotation_step_divisor(rotation_step)))
         return [(tuple((target_pos[j]-current_pos[j])/n for j in range(3)),
                  tuple(float(v/n) for v in rv))]*n
     raise ValueError('approach_steps requires translate-first or combined')
+
+def convergent_rotation_lines(step_literal,*,correct_drift=False):
+    """Non-default policy loop; every extra move still checks the SDK budget."""
+    lines=[f'turns = int(max(abs(v) for v in rv)/(0.9*{step_literal}))+1',
+           "assert calls+2*turns <= 75, 'SDK call budget exceeded'",
+           'for k in range(turns+3):',
+           "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+           '    if max(abs(v) for v in rv) < 0.01: break',
+           '    remaining = max(1, turns-k)',
+           f'    step = [max(-{step_literal}, min({step_literal}, v/remaining)) for v in rv]',
+           f"    assert max(abs(v) for v in step) <= {step_literal}, 'rotation coordinate bound'"]
+    if correct_drift:
+        lines += ["    correction = [pre[j]-obs_open['robot0_left_eef_pos'][j] for j in range(3)]",
+                  "    assert sum(v*v for v in correction)**0.5 < 0.05, 'rotation drift correction bound'"]
+    lines += ["    assert calls+2 <= 75, 'SDK call budget exceeded'",
+              ('    left_arm.move_delta(correction[0],correction[1],correction[2],step)' if correct_drift
+               else '    left_arm.move_delta(0.0,0.0,0.0,step)'),
+              '    calls += 1', '    obs_open = sensors.get_observation()', '    calls += 1',
+              "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+              'if max(abs(v) for v in rv) > 0.02:',
+              '    for correction_k in range(3):',
+              f'        step = [max(-{step_literal}, min({step_literal}, v)) for v in rv]',
+              f"        assert max(abs(v) for v in step) <= {step_literal}, 'rotation coordinate bound'"]
+    if correct_drift:
+        lines += ["        correction = [pre[j]-obs_open['robot0_left_eef_pos'][j] for j in range(3)]",
+                  "        assert sum(v*v for v in correction)**0.5 < 0.05, 'rotation drift correction bound'"]
+    lines += ["        assert calls+2 <= 75, 'SDK call budget exceeded'",
+              ('        left_arm.move_delta(correction[0],correction[1],correction[2],step)' if correct_drift
+               else '        left_arm.move_delta(0.0,0.0,0.0,step)'),
+              '        calls += 1', '        obs_open = sensors.get_observation()', '        calls += 1',
+              "        rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+              '        if max(abs(v) for v in rv) < 0.01: break',
+              'if max(abs(v) for v in rv) > 0.02:',
+              "    print('rotation residual:', rv)",
+              "    raise AssertionError('rotation did not converge')"]
+    return lines
 
 def sequenced_policy_source(shift,quat,oracle=None,*,sequence,rotation_step=.45):
     if sequence not in ('translate-first','combined'):raise ValueError('unknown sequence')
@@ -73,8 +112,11 @@ def sequenced_policy_source(shift,quat,oracle=None,*,sequence,rotation_step=.45)
                   "    assert sum(v*v for v in step)**0.5 < 0.05, 'pregrasp step bound'",
                   '    left_arm.move_delta(step[0],step[1],step[2])', '    calls += 1',
                   '    obs_open = sensors.get_observation()', '    calls += 1',
-                  "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
-                  f'turns = int(max(abs(v) for v in rv)/{step_literal})+1',
+                  "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)"]
+        if rotation_step!=.45:
+            lines += convergent_rotation_lines(step_literal,correct_drift=True)
+        else:
+            lines += [f'turns = int(max(abs(v) for v in rv)/{step_literal})+1',
                   "assert calls+2*turns <= 75, 'SDK call budget exceeded'",
                   'for k in range(turns):',
                   "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
@@ -85,24 +127,50 @@ def sequenced_policy_source(shift,quat,oracle=None,*,sequence,rotation_step=.45)
                   '    left_arm.move_delta(correction[0],correction[1],correction[2],step)',
                   '    calls += 1', '    obs_open = sensors.get_observation()', '    calls += 1']
     else:
+        nondefault=rotation_step!=.45
+        turn_divisor=step_literal if not nondefault else f'(0.9*{step_literal})'
         lines += ["eef = obs_open['robot0_left_eef_pos']",
                   'distance = sum((pre[j]-eef[j])**2 for j in range(3))**0.5',
                   "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
                   'travel = distance/0.045',
-                  f'turn = max(abs(v) for v in rv)/{step_literal}',
+                  f'turn = max(abs(v) for v in rv)/{turn_divisor}',
                   'travel_n = int(travel) if travel == int(travel) else int(travel)+1',
                   'turn_n = int(turn) if turn == int(turn) else int(turn)+1',
                   'n = max(1,travel_n,turn_n)',
                   "assert calls+2*n <= 75, 'SDK call budget exceeded'",
-                  'for k in range(n):',
+                  'for k in range(n+3):' if nondefault else 'for k in range(n):',
                   "    eef = obs_open['robot0_left_eef_pos']",
-                  '    step = [(pre[j]-eef[j])/(n-k) for j in range(3)]',
+                  ('    step = [(pre[j]-eef[j])/max(1,n-k) for j in range(3)]' if nondefault
+                   else '    step = [(pre[j]-eef[j])/(n-k) for j in range(3)]'),
                   "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
-                  '    turn_step = [v/(n-k) for v in rv]',
+                  (f'    turn_step = [max(-{step_literal}, min({step_literal}, v/max(1,n-k))) for v in rv]' if nondefault
+                   else '    turn_step = [v/(n-k) for v in rv]')]
+        if nondefault:
+            lines += ["    if k >= n and max(abs(v) for v in rv) < 0.01: break"]
+        lines += [
                   "    assert sum(v*v for v in step)**0.5 < 0.05, 'combined translation bound'",
-                  f"    assert max(abs(v) for v in turn_step) <= {step_literal}, 'combined rotation bound'",
+                  f"    assert max(abs(v) for v in turn_step) <= {step_literal}, 'combined rotation bound'"]
+        if nondefault:
+            lines += ["    assert calls+2 <= 75, 'SDK call budget exceeded'"]
+        lines += [
                   '    left_arm.move_delta(step[0],step[1],step[2],turn_step)',
                   '    calls += 1', '    obs_open = sensors.get_observation()', '    calls += 1']
+        if nondefault:
+            lines += ["rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+                      'if max(abs(v) for v in rv) > 0.02:',
+                      '    for correction_k in range(3):',
+                      f'        turn_step = [max(-{step_literal}, min({step_literal}, v)) for v in rv]',
+                      f"        assert max(abs(v) for v in turn_step) <= {step_literal}, 'combined rotation bound'",
+                      "        step = [pre[j]-obs_open['robot0_left_eef_pos'][j] for j in range(3)]",
+                      "        assert sum(v*v for v in step)**0.5 < 0.05, 'combined translation bound'",
+                      "        assert calls+2 <= 75, 'SDK call budget exceeded'",
+                      '        left_arm.move_delta(step[0],step[1],step[2],turn_step)',
+                      '        calls += 1', '        obs_open = sensors.get_observation()', '        calls += 1',
+                      "        rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
+                      '        if max(abs(v) for v in rv) < 0.01: break',
+                      'if max(abs(v) for v in rv) > 0.02:',
+                      "    print('rotation residual:', rv)",
+                      "    raise AssertionError('rotation did not converge')"]
     lines += ['obs_pre = obs_open',"eef = obs_pre['robot0_left_eef_pos']"]
     source=prefix+'\n'.join(lines)+'\n'+suffix
     validate_generated_policy(source)
@@ -141,8 +209,12 @@ def oriented_policy_source(shift,quat,oracle=None,*,rotation_step=.45):
     src += ['obs_base = sensors.get_observation()', 'calls += 1',
             'left_gripper.open()', 'calls += 1',
             'obs_open = sensors.get_observation()', 'calls += 1',
-            "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
-            f'turns = int(max(abs(v) for v in rv)/{step_literal})+1',
+            "rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)"]
+    if rotation_step!=.45:
+        src += convergent_rotation_lines(step_literal)
+        src += ['obs_orient = obs_open']
+    else:
+        src += [f'turns = int(max(abs(v) for v in rv)/{step_literal})+1',
             "assert calls + 2*turns <= 75, 'SDK call budget exceeded'",
             'for k in range(turns):',
             "    rv = remaining_rotvec(obs_open['robot0_left_eef_quat'], grasp_quat)",
@@ -485,10 +557,11 @@ def main(argv=None):
         if args.oracle_from_reset:print('# 使用仿真真值,仅诊断；dry-run 不执行 reset，真实运行时注入几何常量')
         if quat:
             step_literal='0.45' if args.rotation_step==.45 else repr(args.rotation_step)
+            divisor=step_literal if args.rotation_step==.45 else f'(0.9*{step_literal})'
             print(f'# sequence={args.sequence}; base_steps={len(base_steps(shift))}; approach_steps 在张手后的公开位姿和目标位置确定')
-            print(f'# rotate-first: rotation=floor(max_rotation_coordinate/{step_literal})+1，translation=floor(distance/0.045)+1')
-            print(f'# translate-first: translation=floor(distance/0.045)+1，rotation=floor(max_rotation_coordinate/{step_literal})+1')
-            print(f'# combined: N=max(1,ceil(distance/0.045),ceil(max_rotation_coordinate/{step_literal}))')
+            print(f'# rotate-first: rotation=floor(max_rotation_coordinate/{divisor})+1，translation=floor(distance/0.045)+1')
+            print(f'# translate-first: translation=floor(distance/0.045)+1，rotation=floor(max_rotation_coordinate/{divisor})+1')
+            print(f'# combined: N=max(1,ceil(distance/0.045),ceil(max_rotation_coordinate/{divisor}))')
             print('# SDK 调用数估计：上限 80；提供 --dry-run-state 后按旋转/平移及约 4 步下探估算，估计调用数 > 70 时警告')
             if args.dry_run_state:
                 try:
