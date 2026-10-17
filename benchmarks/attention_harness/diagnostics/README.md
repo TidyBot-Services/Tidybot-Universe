@@ -39,3 +39,29 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
 ```
 
 输出 `results.json` 和 `results.md`，含各姿态两种场景的成功率、可达点轴对齐范围、第 6 步对照与逐点失败原因。`without_collision` 清空**外部世界**，但 core 的自碰撞、关节限位与几何终点验收仍生效；因此空世界 IK 失败不能单独证明臂长或关节极限。带障碍失败与空世界成功支持障碍相关的进一步检查，也不构成路径可达或抓取成功证明。测试只覆盖网格、姿态、汇总和 Markdown 格式；真实 IK 留待官方环境运行。
+
+### 底座位移与小网格扫掠
+
+`--base-shift DX,DY,DYAW` 评估一个位移；默认 `0,0,0` 保留原有完整网格和结果结构。DX、DY 是**当前 mount 底座系**的平移（m），DYAW 是绕 mount 原点的偏航（rad）。`base_motion.py` 中车体碰撞盒的中心相对 mount 为 `[-0.198,0,-0.291]` m；旋转枢轴不是车体盒中心。固定世界点与障碍盒先按 `p_new = Rz(-DYAW) × (p_old - [DX,DY,0])` 变换，盒方向左乘逆偏航四元数。牛奶位置代理和第 6 步目标采用同样的逆变换；`q0`、锁定关节、初始 FK 和机器人系候选姿态保持原值。空世界与完整世界 IK 都使用位移后的同一组目标。
+
+`--sweep` 默认按 DX=`0,-0.1`，DY=`0,0.05,0.10,0.15,0.20,0.30,0.40`，DYAW=`0,0.15` 的笛卡尔积评估 28 组。`--sweep-spec 'dx=0,-0.1;dy=0,0.05;dyaw=0,0.15'` 可覆盖各轴。每组仅评估牛奶代理中心周围 x/y 各 ±4 cm、步长 4 cm，z 为 0/5/10 cm 的 27 点，13 姿态，两种碰撞模式；不含第 6 步。共 `28×27×13×2=19,656` 次 IK。按单目标 0.15–0.20 秒估算，纯 IK 约 **49 分 8 秒至 65 分 31 秒**，还需加模型初始化、世界上传及输出时间。`--dry-run --sweep` 无需模型或 GPU，会输出目标数和估计秒数。
+
+每组用夹具的完整 cuboid 世界及与 `test_base_motion.py` 相同的 inventory 结构调用 `check_chassis_path`。平移模长 ≤0.20 m 且偏航绝对值 ≤0.30 rad 的位移标为单步；更远位移沿直线和线性偏航插值，拆为满足 SDK 单步限额的小段，逐段检查，并对最终底座姿态再做零位移碰撞检查。多步标记表示理论上需要多次 `base.move_delta`，不是已在模拟器执行。汇总表给出每组带碰撞最佳姿态的成功格点数、中心和上方 5 cm 是否在任一姿态可达、路径/终点检查和单步状态。建议只从**中心与上方 5 cm 均带碰撞 IK 成功、路径及终点均通过**的样本中，按平移模长、再按偏航绝对值选最小位移；这是扫描数据排序，不代表抓取或运动执行成功。
+
+正式扫掠命令（请为每次运行选新的 `--out`）：
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" /home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/bin/python3.11 -m benchmarks.attention_harness.diagnostics.reachability_map --sweep --side left --robot-config /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/config/openarm_fixed.yml --assets-dir /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/curobo_v2/service/curobo_service/assets --out reachability-sweep-results
+```
+
+结果写入 `results.json`、`results.md`。当前仅做过纯数据测试及夹具 CPU 路径检查；没有执行真实 IK 或底座动作，因此没有实测最小可达位移。
+
+### 排除目标物体代理盒
+
+`--exclude-object` 只从带碰撞 IK 的外部世界去掉用于定位牛奶位置代理的 `obj_g*` 碰撞盒（seed 101 夹具为 16 个）；桌面等其余障碍、空世界对照及车体路径/终点检查保持原样。`results.json` 记录 `excluded_object.count` 和 `excluded_object.names`，`results.md` 标题标为“已排除目标物体”。单次扫描与 `--sweep` 均支持；不加此开关时保持原结果结构。`--dry-run --exclude-object` 会显示排除数量。该对照用于检验目标物体自碰撞是否造成中心高度 IK 失败，不代表抓取动作或完整路径可行。
+
+针对 DY 0.2/0.3/0.4 m 的正式扫掠命令（在 worktree 根目录执行）：
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" /home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/bin/python3.11 -m benchmarks.attention_harness.diagnostics.reachability_map --sweep --sweep-spec 'dx=0;dy=0.2,0.3,0.4;dyaw=0' --exclude-object --side left --robot-config /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/config/openarm_fixed.yml --assets-dir /home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-03/runtime/project/curobo_v2/service/curobo_service/assets --out outputs/reach-sweep-exclude-object-20261017
+```

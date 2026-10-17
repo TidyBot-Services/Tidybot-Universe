@@ -18,6 +18,8 @@ WORLD_STEP6_DELTA = (0.0089, -0.0083, -0.0138)  # rounded command
 POSITION_TOLERANCE_M = .004
 ORIENTATION_TOLERANCE_RAD = .03
 ROLLS_DEG = (0, 90, 180, 270)
+DEFAULT_SWEEP_SPEC = 'dx=0,-0.1;dy=0,0.05,0.10,0.15,0.20,0.30,0.40;dyaw=0,0.15'
+IK_SECONDS_RANGE = (.15, .20)
 
 
 def add(a, b):
@@ -103,9 +105,22 @@ def orientations(initial_wxyz):
     return answer
 
 
+def object_cuboids(world):
+    return [c for c in world if c['name'].split(':')[-1].startswith('obj_g')]
+
+
+def collision_world(world, exclude_object=False):
+    """Remove exactly the cuboids used by the object proxy, if requested."""
+    if not exclude_object:
+        return world, []
+    shapes = object_cuboids(world)
+    selected = {id(c) for c in shapes}
+    return [c for c in world if id(c) not in selected], [c['name'] for c in shapes]
+
+
 def object_bbox_center(world):
     """Fixture has one generic 'obj_g*' group, but no semantic milk pose."""
-    shapes = [c for c in world if c['name'].split(':')[-1].startswith('obj_g')]
+    shapes = object_cuboids(world)
     if not shapes:
         raise ValueError('Fixture has no obj_g* bounding boxes; cannot locate milk proxy')
     # Centers of rotated cuboids bound the object only approximately. The midpoint
@@ -123,6 +138,108 @@ def grid(center):
                                  round(center[2]+iz*.05, 9)],
              'offset_m': [round(ix*.04, 9), round(iy*.04, 9), round(iz*.05, 9)]}
             for ix in range(-3, 4) for iy in range(-3, 4) for iz in range(4)]
+
+
+def small_grid(center):
+    """The 3 x 3 x 3 sweep grid, with a stable centre identifier."""
+    return [{'id': f'x{ix:+d}_y{iy:+d}_z{iz}',
+             'position_base_m': [round(center[0]+ix*.04, 9),
+                                 round(center[1]+iy*.04, 9),
+                                 round(center[2]+iz*.05, 9)],
+             'offset_m': [round(ix*.04, 9), round(iy*.04, 9), round(iz*.05, 9)]}
+            for ix in range(-1, 2) for iy in range(-1, 2) for iz in range(3)]
+
+
+def parse_shift(value):
+    try:
+        parts = tuple(float(part.strip()) for part in value.split(','))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('base shift requires DX,DY,DYAW') from exc
+    if len(parts) != 3 or not all(math.isfinite(v) for v in parts):
+        raise argparse.ArgumentTypeError('base shift requires three finite values DX,DY,DYAW')
+    return parts
+
+
+def parse_sweep_spec(value):
+    """Semicolon-separated dx,dy,dyaw lists; order is dx, then dy, then dyaw."""
+    fields = {}
+    try:
+        for field in value.split(';'):
+            name, raw = field.split('=', 1)
+            name = name.strip().lower()
+            if name not in ('dx', 'dy', 'dyaw') or name in fields:
+                raise ValueError('unknown or repeated sweep axis')
+            numbers = tuple(float(part.strip()) for part in raw.split(','))
+            if not numbers or not all(math.isfinite(n) for n in numbers):
+                raise ValueError('sweep axes must contain finite numbers')
+            fields[name] = numbers
+        if set(fields) != {'dx', 'dy', 'dyaw'}:
+            raise ValueError('sweep needs dx, dy and dyaw')
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('sweep spec: dx=...;dy=...;dyaw=...') from exc
+    return [(dx, dy, yaw) for dx in fields['dx'] for dy in fields['dy'] for yaw in fields['dyaw']]
+
+
+def shifted_point(point, shift):
+    """Coordinates of a fixed point after mount motion T_old_new=(Rz(yaw),[dx,dy,0])."""
+    dx, dy, yaw = shift
+    c, s = math.cos(yaw), math.sin(yaw)
+    x, y, z = point
+    return [c*(x-dx)+s*(y-dy), -s*(x-dx)+c*(y-dy), z]
+
+
+def shifted_world(world, shift):
+    if shift == (0., 0., 0.):
+        return world
+    half = -shift[2]/2
+    inverse_yaw = (math.cos(half), 0., 0., math.sin(half))
+    return [{**box, 'center': shifted_point(box['center'], shift),
+             'quat_wxyz': list(quat_mul(inverse_yaw, box['quat_wxyz']))}
+            for box in world]
+
+
+def chassis_snapshot(world):
+    inventory = []
+    for box in world:
+        geom_id, native_name = box['name'].split(':', 2)[1:]
+        inventory.append({'name': box['name'], 'geom_id': int(geom_id), 'body_id': -1,
+                          'body_name': native_name, 'geom_type': 6,
+                          'source': 'actual MuJoCo collision geometry'})
+    return {'cuboids': world, 'inventory': inventory, 'world_sha256': 'stored-seed-101'}
+
+
+def chassis_check(world, binding, shift):
+    """Check a straight mount path, splitting SDK-limited calls; also check its endpoint."""
+    from openarm365_dev.base_motion import check_chassis_path, BASE_TRANSLATION_LIMIT_M, BASE_YAW_LIMIT_RAD
+    from curobo_v2.client import PlanningRejected
+    dx, dy, yaw = shift
+    count = max(1, math.ceil(math.hypot(dx, dy)/BASE_TRANSLATION_LIMIT_M - 1e-10),
+                math.ceil(abs(yaw)/BASE_YAW_LIMIT_RAD - 1e-10))
+    failure = None
+    checked = 0
+    for i in range(count):
+        t = i/count
+        angle = yaw*t
+        c, s = math.cos(angle), math.sin(angle)
+        delta = ((c*dx+s*dy)/count, (-s*dx+c*dy)/count, yaw/count)
+        try:
+            check_chassis_path(chassis_snapshot(shifted_world(world, (dx*t, dy*t, angle))), binding, delta)
+            checked += 1
+        except PlanningRejected as exc:
+            failure = str(exc)
+            break
+    try:
+        check_chassis_path(chassis_snapshot(shifted_world(world, shift)), binding, (0., 0., 0.))
+        endpoint_clear, endpoint_reason = True, None
+    except PlanningRejected as exc:
+        endpoint_clear, endpoint_reason = False, str(exc)
+    return {'path_clear': failure is None, 'path_reason': failure,
+            'endpoint_clear': endpoint_clear, 'endpoint_reason': endpoint_reason,
+            'single_step': count == 1, 'steps_required': count, 'steps_checked': checked}
+
+
+def estimate(targets):
+    return [round(targets*seconds, 1) for seconds in IK_SECONDS_RANGE]
 
 
 def world_to_base(point_world, fk_initial):
@@ -156,10 +273,79 @@ def summarize(rows, poses, points):
     return {'matrix': matrix, 'step6': sixth, 'promising': ranked}
 
 
+def summarize_sweep_rows(rows, poses, points):
+    by_key = {(r['mode'], r['orientation'], r['point']): r for r in rows}
+    per_pose = []
+    for pose in poses:
+        name = pose['name']
+        counts = {mode: sum(by_key[(mode, name, p['id'])]['success'] for p in points)
+                  for mode in ('without_collision', 'with_collision')}
+        per_pose.append({'orientation': name, **counts})
+    best = max(per_pose, key=lambda r: (r['with_collision'], r['without_collision']))
+    def reachable(point_id, mode):
+        return any(by_key[(mode, pose['name'], point_id)]['success'] for pose in poses)
+    return {'best_orientation': best['orientation'],
+            'best_success_with_collision': best['with_collision'],
+            'best_success_without_collision': max(p['without_collision'] for p in per_pose),
+            'center_with_collision': reachable('x+0_y+0_z0', 'with_collision'),
+            'above_5cm_with_collision': reachable('x+0_y+0_z1', 'with_collision'),
+            'center_without_collision': reachable('x+0_y+0_z0', 'without_collision'),
+            'above_5cm_without_collision': reachable('x+0_y+0_z1', 'without_collision'),
+            'per_orientation': per_pose}
+
+
+def sweep_summary(reports):
+    table = [{'base_shift': r['base_shift'], **r['summary'], 'chassis': r['chassis']}
+             for r in reports]
+    candidates = [r for r in table if r['center_with_collision']
+                  and r['above_5cm_with_collision'] and r['chassis']['path_clear']
+                  and r['chassis']['endpoint_clear']]
+    def sort_key(row):
+        dx, dy, yaw = row['base_shift']
+        return (math.hypot(dx, dy), abs(yaw), dx, dy, yaw)
+    return {'table': table, 'minimum_shift_center_and_5cm':
+            None if not candidates else min(candidates, key=sort_key)['base_shift'],
+            'selection_rule': 'with_collision center and +5cm both reachable; path and endpoint clear; smallest translation norm, then absolute yaw'}
+
+
+def render_sweep_markdown(report):
+    title = '# Seed 101 左臂底座位移 IK 扫掠'
+    if 'excluded_object' in report:
+        title += '（已排除目标物体）'
+    lines = [title, '',
+             '位移为当前 mount 底座系的 DX,DY,DYAW（m,m,rad）；旋转绕 mount 原点。',
+             '每组评估牛奶位置代理周围 3×3×3 个目标、13 个姿态及有/无外部碰撞。',
+             '成功数为单个最佳姿态带碰撞结果；中心与上方 5 cm 可达指任一姿态带碰撞 IK 成功。',
+             '路径列检查直线路径；超过单步上限时分为合法小段。终点另行检查。',
+             '', '| DX,DY,DYAW | 最佳姿态 | 成功格点 | 中心 | +5 cm | 路径 | 终点 | 单步 |',
+             '| --- | --- | ---: | --- | --- | --- | --- | --- |']
+    if 'excluded_object' in report:
+        excluded = report['excluded_object']
+        lines.insert(2, f"带碰撞 IK 已排除 {excluded['count']} 个目标物体盒：{', '.join(excluded['names'])}；车体路径检查仍使用完整世界。")
+    for row in report['summary']['table']:
+        chassis = row['chassis']
+        yes = lambda value: '是' if value else '否'
+        step = '是' if chassis['single_step'] else f"需多步（{chassis['steps_required']}）"
+        lines.append(f"| {','.join(f'{v:g}' for v in row['base_shift'])} | {row['best_orientation']} | "
+                     f"{row['best_success_with_collision']}/27 | {yes(row['center_with_collision'])} | "
+                     f"{yes(row['above_5cm_with_collision'])} | {yes(chassis['path_clear'])} | "
+                     f"{yes(chassis['endpoint_clear'])} | {step} |")
+    minimum = report['summary']['minimum_shift_center_and_5cm']
+    lines += ['', '## 数据建议', '',
+              '筛选：带碰撞 IK 中心及上方 5 cm 均有解，车体路径和终点通过；'
+              '按平移模长、偏航绝对值排序。',
+              '满足条件的最小位移：' + ('本次扫掠无' if minimum is None else str(minimum)) + '。',
+              '', '逐点 IK、无碰撞对照及车体失败原因见 results.json。']
+    return '\n'.join(lines) + '\n'
+
+
 def render_markdown(report):
     s = report['summary']
     side_label = {'left': '左', 'right': '右'}[report.get('side', 'left')]
-    lines = [f'# Seed 101 {side_label}臂 IK 可达性图', '',
+    title = f'# Seed 101 {side_label}臂 IK 可达性图'
+    if 'excluded_object' in report:
+        title += '（已排除目标物体）'
+    lines = [title, '',
              '坐标系：目标、网格和范围均为机器人底座系，单位 m；姿态为 wxyz。',
              '“无碰撞”列仅清空外部世界；planner core 仍检查自碰撞和终点几何。',
              f"初始 FK（底座系）：{report['fk_initial_base']}",
@@ -170,6 +356,11 @@ def render_markdown(report):
              f"服务默认容差：位置 ≤{POSITION_TOLERANCE_M} m，姿态 ≤{ORIENTATION_TOLERANCE_RAD} rad；单点 core.solve_ik，q0 每次相同。",
              '', '| 姿态 | 无碰撞 | 带碰撞 | 无碰撞可达范围 min → max (m) | 带碰撞可达范围 min → max (m) |',
              '| --- | ---: | ---: | --- | --- |']
+    if 'base_shift' in report:
+        lines.insert(2, f"底座位移 DX,DY,DYAW：{report['base_shift']}；固定世界已变换到位移后底座系。")
+    if 'excluded_object' in report:
+        excluded = report['excluded_object']
+        lines.insert(2, f"带碰撞 IK 已排除 {excluded['count']} 个目标物体盒：{', '.join(excluded['names'])}；车体路径检查仍使用完整世界。")
     def cell(c):
         return f"{c['success']}/{c['total']} ({c['rate']:.1%})"
     def bounds(c):
@@ -194,13 +385,14 @@ def render_markdown(report):
     return '\n'.join(lines) + '\n'
 
 
-def run(args, fixture, world, center):
+def prepare(args, fixture):
     import curobo_v2.identity as identity
     import yaml
     import curobo
 
     config_path, assets = args.robot_config.resolve(), args.assets_dir.resolve()
     document = yaml.safe_load(config_path.read_text())
+    args.chassis_binding = document['service']['native_chassis']
     files = diagnostic_files(config_path, assets, document, args.fixture)
     identity._service_context = ({'assets_root': str(assets), 'files': files,
                                   'library_root': str(Path(curobo.__file__).resolve().parent.parent),
@@ -218,12 +410,34 @@ def run(args, fixture, world, center):
         raise ValueError('Expected seed-101 uncarried scene; attachment is present')
     q0 = core.named(body['current_q'], body['joint_names'])
     core.check_selection(q0, body['active_joints'], [tool], body['locked_joints'])
-    adapter.push_world(body['env_id'], world)
+    ik_world, _ = collision_world(world, args.exclude_object)
+    adapter.push_world(body['env_id'], ik_world)
     initial = core.fk(q0, body['locked_joints'], body['active_joints'])[tool]
+    return adapter, core, contract, body, world, tool, initial
+
+
+def run(args, fixture, world, center, *, shift=(0., 0., 0.), prepared=None, sweep=False):
+    if prepared is None:
+        prepared = prepare(args, fixture)
+    adapter, core, contract, body, original_world, tool, initial = prepared
+    q0 = core.named(body['current_q'], body['joint_names'])
+    ik_world, excluded_names = collision_world(original_world, args.exclude_object)
+    world = shifted_world(ik_world, shift)
+    if shift != (0., 0., 0.):
+        center = shifted_point(center, shift)
+    if shift != (0., 0., 0.) or sweep:
+        adapter.push_world(body['env_id'], world)
     obj_base, q_base_world = world_to_base(WORLD_MILK, initial)
+    if shift != (0., 0., 0.):
+        obj_base = shifted_point(obj_base, shift)
+        half = -shift[2]/2
+        q_base_world = unit(quat_mul((math.cos(half), 0., 0., math.sin(half)), q_base_world))
     step6_world = add(WORLD_STEP6_CURRENT, WORLD_STEP6_DELTA)
     step6_base, _ = world_to_base(step6_world, initial)
-    points = grid(center) + [{'id': 'step6', 'position_base_m': list(step6_base), 'offset_m': None}]
+    if shift != (0., 0., 0.):
+        step6_base = shifted_point(step6_base, shift)
+    points = small_grid(center) if sweep else grid(center) + [
+        {'id': 'step6', 'position_base_m': list(step6_base), 'offset_m': None}]
     poses = orientations(initial['quaternion_wxyz'])
     # Keep the genuine scene and empty scene in separate batches.
     rows = []
@@ -257,12 +471,19 @@ def run(args, fixture, world, center):
               'fk_initial_base': initial, 'world_to_base_quaternion_wxyz': q_base_world,
               'transform_source': 'FK(q0) and recorded initial world TCP position/quaternion from reference_ladder.py',
               'object_proxy': {'source': 'obj_g* cuboid center extrema midpoint',
-                               'center_base_m': center, 'cuboids': len([c for c in world if c['name'].split(':')[-1].startswith('obj_g')]),
+                               'center_base_m': center, 'cuboids': len(object_cuboids(original_world)),
                                'recorded_object_base_m': obj_base, 'distance_to_recorded_m': discrepancy},
               'step6_target_world_m': step6_world, 'step6_target_base_m': step6_base,
               'tolerances': {'position_m': POSITION_TOLERANCE_M, 'orientation_rad': ORIENTATION_TOLERANCE_RAD},
               'orientations': poses, 'points': points, 'rows': rows,
-              'summary': summarize(rows, poses, points)}
+              'summary': summarize(rows, poses, points) if not sweep else None}
+    if args.exclude_object:
+        report['excluded_object'] = {'count': len(excluded_names), 'names': excluded_names}
+    if shift != (0., 0., 0.) or sweep:
+        report['base_shift'] = list(shift)
+        report['chassis'] = chassis_check(original_world, args.chassis_binding, shift)
+    if sweep:
+        report['summary'] = summarize_sweep_rows(rows, poses, points)
     return report
 
 
@@ -274,23 +495,58 @@ def main(argv=None):
     parser.add_argument('--fixture', type=Path, default=FIXTURE)
     parser.add_argument('--robot-config', type=Path)
     parser.add_argument('--assets-dir', type=Path)
+    parser.add_argument('--exclude-object', action='store_true',
+                        help='Remove the obj_g* proxy cuboids from the collision IK world')
+    parser.add_argument('--base-shift', type=parse_shift, default=(0., 0., 0.),
+                        help='Mount-frame DX,DY,DYAW in m,m,rad')
+    parser.add_argument('--sweep', action='store_true', help='Evaluate the compact grid at every sweep shift')
+    parser.add_argument('--sweep-spec', type=parse_sweep_spec,
+                        help='Override axes: dx=0,-0.1;dy=0,0.05;dyaw=0,0.15')
     args = parser.parse_args(argv)
+    if args.sweep_spec is not None and not args.sweep:
+        parser.error('--sweep-spec requires --sweep')
+    if args.sweep and args.base_shift != (0., 0., 0.):
+        parser.error('--base-shift and --sweep are mutually exclusive')
     fixture = json.loads(args.fixture.read_text())
     world = fixture['world']['cuboids'] if isinstance(fixture['world'], dict) else fixture['world']
     center, names = object_bbox_center(world)
-    npoints, nposes = len(grid(center))+1, 1+3*len(ROLLS_DEG)
+    shifts = args.sweep_spec or parse_sweep_spec(DEFAULT_SWEEP_SPEC) if args.sweep else [args.base_shift]
+    npoints, nposes = (len(small_grid(center)) if args.sweep else len(grid(center))+1), 1+3*len(ROLLS_DEG)
     if args.dry_run:
-        print(json.dumps({'side': args.side, 'frame': 'robot base', 'object_proxy_center_base_m': center,
-                          'object_cuboids': len(names), 'grid_positions': npoints-1,
-                          'extra_step6_positions': 1, 'orientations': nposes,
-                          'collision_modes': 2, 'ik_targets': npoints*nposes*2}, ensure_ascii=False))
+        info = {'side': args.side, 'frame': 'robot base', 'object_proxy_center_base_m': center,
+                'object_cuboids': len(names), 'grid_positions': npoints if args.sweep else npoints-1,
+                'extra_step6_positions': 0 if args.sweep else 1, 'orientations': nposes,
+                'collision_modes': 2, 'ik_targets': len(shifts)*npoints*nposes*2}
+        if args.sweep:
+            info.update(base_shifts=len(shifts), targets_per_shift=npoints*nposes*2)
+        elif args.base_shift != (0., 0., 0.):
+            info['base_shift'] = args.base_shift
+        info['estimated_ik_seconds_range'] = estimate(info['ik_targets'])
+        if args.exclude_object:
+            info['excluded_object_cuboids'] = len(names)
+        print(json.dumps(info, ensure_ascii=False))
         return
     if args.robot_config is None or args.assets_dir is None:
         parser.error('real runs require --robot-config and --assets-dir')
-    report = run(args, fixture, world, center)
+    if args.sweep:
+        prepared = prepare(args, fixture)
+        reports = [run(args, fixture, world, center, shift=shift, prepared=prepared, sweep=True)
+                   for shift in shifts]
+        report = {'fixture': str(args.fixture.resolve()), 'side': args.side,
+                  'sweep_spec': [list(shift) for shift in shifts],
+                  'grid_positions_per_shift': npoints, 'orientations_per_shift': nposes,
+                  'ik_targets': len(shifts)*npoints*nposes*2,
+                  'estimated_ik_seconds_range': estimate(len(shifts)*npoints*nposes*2),
+                  'shifts': reports, 'summary': sweep_summary(reports)}
+        if args.exclude_object:
+            report['excluded_object'] = reports[0]['excluded_object']
+        markdown = render_sweep_markdown(report)
+    else:
+        report = run(args, fixture, world, center, shift=args.base_shift)
+        markdown = render_markdown(report)
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out/'results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-    (args.out/'results.md').write_text(render_markdown(report))
+    (args.out/'results.md').write_text(markdown)
     print(f"Wrote {args.out/'results.json'} and {args.out/'results.md'}")
 
 
