@@ -68,6 +68,37 @@ def diagnostic_settle_steps():
         raise ValueError('ATTN_DIAG_SETTLE_STEPS must be a positive integer')
     return int(raw)
 
+def diagnostic_held_trace_enabled():
+    value=os.environ.get('ATTN_DIAG_HELD_TRACE')
+    if value not in (None,'1'):
+        raise ValueError('ATTN_DIAG_HELD_TRACE must be 1 when set')
+    return value=='1'
+
+def held_trace_value(body,relative,reference,forces,distances):
+    """Format measured grasp data without changing the attachment reference."""
+    from scipy.spatial.transform import Rotation
+    return dict(object_body=body,rel_pos_tcp_mm=(relative[:3,3]*1000).tolist(),
+        rel_rot_deg=math.degrees(Rotation.from_matrix(
+            relative[:3,:3]@reference[:3,:3].T).magnitude()),
+        reference=reference.tolist(),finger_contact_force_n=forces,
+        finger_object_distances_mm=distances)
+
+def finger_object_contact_measurements(env,side,bid):
+    import mujoco
+    sim=env.sim;m=sim.model;forces={'left':0.,'right':0.};distances={'left':[],'right':[]}
+    for index,con in enumerate(sim.data.contact):
+        if con.dist>0:continue
+        for fg,og in ((int(con.geom1),int(con.geom2)),(int(con.geom2),int(con.geom1))):
+            name=m.geom_id2name(fg) or ''
+            if f'openarm_{side}_' not in name or not is_descendant(m,int(m.geom_bodyid[og]),bid):continue
+            finger=next((f for f in ('left','right') if f'_{f}_finger_' in name),None)
+            if finger is None:continue
+            force=np.zeros(6);mujoco.mj_contactForce(m._model,sim.data._data,index,force)
+            forces[finger]+=max(0.,float(force[0]))
+            distances[finger].append(float(con.dist)*1000)
+            break
+    return forces,{finger:sorted(values) for finger,values in distances.items()}
+
 def diagnostic_tracking_bound():
     raw=os.environ.get('ATTN_DIAG_TRACKING_BOUND','0.004')
     if not re.fullmatch(r'\+?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?',raw):
@@ -112,6 +143,8 @@ class NativeExecutor:
             for k in ('lower','upper','velocity')] for i in (1,2)]) for side in PHYSICAL_TO_NATIVE}
         self.moving=False;self.gripping=False;self.active_request=None
         self.held=None;self.held_transform=None;self.grasp_counts={'left':{},'right':{}}
+        self.held_trace_enabled=diagnostic_held_trace_enabled()
+        self.held_trace_references={}
         self.contact_active={};self.contact_event_count=0;self.contact_event_overflow=0
         self.planner.attachment_provider=lambda:self.held.copy() if self.held else None
         self.journal=self.evidence/'native-actions.jsonl';self.physics=self.evidence/'native-physics.jsonl'
@@ -142,6 +175,7 @@ class NativeExecutor:
 
     def monitor(self):
         self.physics_steps+=1
+        trace_enabled=getattr(self,'held_trace_enabled',False)
         sim=self.env.sim;r=self.env.robots[0];q=self.planner.state()
         v=np.asarray(sim.data.qvel[r._ref_arm_joint_vel_indexes],float)
         if np.any(q<self.limits[:,0]) or np.any(q>self.limits[:,1]):raise RuntimeError('Measured native joint limit exceeded')
@@ -173,6 +207,7 @@ class NativeExecutor:
         for side in PHYSICAL_TO_NATIVE:
             for bid in set(self.grasp_counts[side])|bilateral[side]:
                 self.grasp_counts[side][bid]=self.grasp_counts[side].get(bid,0)+1 if bid in bilateral[side] else 0
+        held_error=None
         if self.held and not self.gripping:
             side=self.held['holder'];bid=self.held['target_id']
             if bid not in bilateral[side]:raise RuntimeError('Measured bilateral grasp contact lost during transport')
@@ -180,7 +215,8 @@ class NativeExecutor:
             from scipy.spatial.transform import Rotation
             if (np.linalg.norm(relative[:3,3]-self.held_transform[:3,3])>.004 or
                     Rotation.from_matrix(relative[:3,:3]@self.held_transform[:3,:3].T).magnitude()>.03):
-                raise RuntimeError('Measured object/hand transform exceeds original 4mm/0.03rad bound')
+                held_error='Measured object/hand transform exceeds original 4mm/0.03rad bound'
+                if not trace_enabled:raise RuntimeError(held_error)
         objects=set(getattr(self.env,'obj_body_id',{}).values())
         exemption_enabled=exemption_mode=='movable_objects'
         movable_roots=tuple(movable_object_roots(self.env).values()) if exemption_enabled else ()
@@ -229,7 +265,18 @@ class NativeExecutor:
             row['mimic_error_m']={side:pair[0] for side,pair in relaxed_mimic.items()}
             row['mimic_bound_m']={side:pair[1] for side,pair in relaxed_mimic.items()}
         if expected_movable_contacts:row['expected_movable_contacts']=expected_movable_contacts
+        if trace_enabled:
+            trace=[]
+            targets={(side,bid) for side,values in bilateral.items() for bid in values}
+            if self.held:targets.add((self.held['holder'],self.held['target_id']))
+            for side,bid in sorted(targets):
+                relative=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
+                reference=self.held_trace_references.setdefault((side,bid),relative.copy())
+                forces,distances=finger_object_contact_measurements(self.env,side,bid)
+                trace.append(held_trace_value(sim.model.body_id2name(bid),relative,reference,forces,distances))
+            if trace:row['held_trace']=trace
         self.log(self.physics,row)
+        if held_error:raise RuntimeError(held_error)
         if contacts:raise RuntimeError('Unexpected physical robot/world contact')
 
     def control_step(self):
@@ -411,6 +458,8 @@ class NativeExecutor:
         try:
             if command<0 and self.held and self.held['holder']==side:
                 self.held=None;self.held_transform=None;self.planner.ledger.invalidate('release')
+            if command<0 and self.held_trace_enabled:
+                self.held_trace_references={key:value for key,value in self.held_trace_references.items() if key[0]!=side}
             # Native position actuators have soft limits; keep commanded endpoints
             # 1mm inside the original [0,.044] range. Never clamp measured state.
             self.grips[side]=command*(1-2*.001/.044)

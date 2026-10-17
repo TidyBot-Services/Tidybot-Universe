@@ -210,6 +210,40 @@ def test_monitor_default_contact_rule_and_row_shape(monkeypatch):
     executor,rows=contact_executor(monkeypatch,0,2,'none');executor.gripping=True
     executor.monitor()
     assert [row for path,row in rows if path=='physics'][0]['unexpected_contacts']==[]
+
+def test_held_trace_toggle_with_fake_bilateral_contacts(monkeypatch):
+    from openarm365_dev import attachment
+    from types import SimpleNamespace
+    executor,rows=contact_executor(monkeypatch,0,2,'movable_objects')
+    model=executor.env.sim.model
+    model.geoms=model.geoms.copy();model.geoms[0]='openarm_left_left_finger_collision0'
+    model.geom_bodyid=np.r_[model.geom_bodyid,2]
+    model.geoms=model.geoms+['openarm_left_right_finger_collision0']
+    executor.env.sim.data.contact=[SimpleNamespace(geom1=0,geom2=2,dist=-.0002),
+                                   SimpleNamespace(geom1=8,geom2=2,dist=-.0001)]
+    executor.env.sim.data.body_xmat=np.tile(np.eye(3).reshape(1,9),(model.nbody,1))
+    executor.env.sim.data.body_xpos=np.zeros((model.nbody,3))
+    executor.env.sim.data.body_xpos[4]=[.002,0,0]
+    monkeypatch.setattr(attachment,'bilateral_contacts',lambda env:{'left':{4},'right':set()})
+    executor.held_trace_enabled=False
+    executor.monitor()
+    plain=[row for path,row in rows if path=='physics'][-1]
+    assert 'held_trace' not in plain
+    executor.held_trace_enabled=True;executor.held_trace_references={}
+    executor.monitor()
+    traced=[row for path,row in rows if path=='physics'][-1]
+    assert set(traced)==set(plain)|{'held_trace'}
+    assert {k:v for k,v in traced.items() if k not in ('held_trace','physics_step')}=={
+        k:v for k,v in plain.items() if k!='physics_step'}
+    entry=traced['held_trace'][0]
+    assert entry['object_body']=='obj_g6' and entry['rel_pos_tcp_mm']==[2.,0.,0.]
+    assert entry['finger_contact_force_n']=={'left':2.5,'right':2.5}
+    assert entry['finger_object_distances_mm']=={'left':[-.2],'right':[-.1]}
+    executor.held={'holder':'left','target_id':4};executor.held_transform=np.eye(4)
+    executor.env.sim.data.body_xpos[4]=[.006,0,0]
+    with pytest.raises(RuntimeError,match='original 4mm/0.03rad bound'):
+        executor.monitor()
+    assert [row for path,row in rows if path=='physics'][-1]['held_trace'][0]['rel_pos_tcp_mm']==[6.,0.,0.]
     executor,rows=contact_executor(monkeypatch,1,2,'none');executor.gripping=True
     with pytest.raises(RuntimeError,match='Unexpected physical robot/world contact'):
         executor.monitor()

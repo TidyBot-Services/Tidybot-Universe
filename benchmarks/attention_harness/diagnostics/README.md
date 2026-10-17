@@ -107,6 +107,18 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
 
 `grasp_chain_probe --grasp-quat x,y,z,w --oracle-from-reset` 使用搜索得到的世界系 TCP 四元数，在启动策略前宿主侧只读 reset 一次，将目标 body 真值位置和几何 z 范围中点作为策略常量注入，输出明确标注**使用仿真真值,仅诊断**。`--sequence rotate-first` 是默认值，保持原策略源码逐字节相同：底座侧移、张手、原地分步旋转、平移到预抓取、下探、闭爪、抬起。`--sequence translate-first` 在张手后保持初始姿态，先以小于 5 cm 的步骤平移到目标顶面上方 10 cm，再于该位置分步旋转；旋转命令的平移量只用于抵消观测到的 TCP 漂移，每步后重新观测。`--sequence combined` 将到预抓取位置和目标姿态的距离拆为 `N=max(1,ceil(distance/0.045),ceil(max_abs_rotvec_coordinate/0.45))` 步，每步同时平移和旋转，并用新观测重算剩余量。三种序列随后均下探、闭爪、竖直抬起。报告另列每个手臂动作的步号、平移/旋转增量、公开结果、失败原因、证书查询数/耗时与该步目标 TCP 世界位姿，以及闭合轴与世界水平面夹角、两指开度。无 `--oracle-from-reset` 时仍可用公开 `find_objects` 的中心位置做位置目标，但无真值 z 范围。
 
+持握稳定性诊断：设置 `ATTN_DIAG_HELD_TRACE=1` 后，有双指夹持或 `self.held` 的 `native-physics.jsonl` 行增加 `held_trace`，逐物体记录 `object_body`、TCP 系相对位置 `rel_pos_tcp_mm`、相对首次双指接触参考的 `rel_rot_deg`、首次记录的 4×4 `reference`、两指接触力 `finger_contact_force_n` 和接触距离 `finger_object_distances_mm`。未设置时不增加任何字段；其他值报错。监控原有 4 mm / 0.03 rad 判据不变，开启诊断时越界行也会写出。`held_transform` 在手爪关闭动作固定执行 20 个控制步后、确认至少连续 12 步双侧接触时，由当时 `inv(tcp_pose) @ object_pose` 建立；因此它的参考晚于首次接触。轨迹首次记录参考与监控参考分别保存，以定位闭爪阶段的挤动和抬起阶段的滑动。
+
+探针支持 `--theta-deg D`（与 `--grasp-quat` 互斥，xyzw = `(sin((90-D)/2),cos((90-D)/2),0,0)`，角度按度转弧度）、`--grasp-offset-mm X`（沿四元数局部 x 轴的水平投影）、`--grasp-z-offset-mm Z`、`--lift-step-m S`（默认 0.025）和 `--lift-height-m H`（默认 0.10）。零偏移及默认抬起值不改变生成策略源码。`results.json` 另有最终观测相对初始观测的 `object_lift_cm`、`aborted_by`、`monitor_aborted`、闭爪后开度与物体相对 EEF 的逐抬起动作位移及最大滑动量；即使监控中止，也从 `final_public_observation.json` 读取最终高度。未产生双侧夹持轨迹时，滑动轨迹可能为空。`--close-hold-steps 0` 是唯一可用值：本 dev SDK 的 `left_gripper.close()` 无参数，worker 拒绝手爪参数，固定执行 20 步，白名单也没有等待操作；精确 N 步保持须另行增加受限 SDK 操作及原生零命令控制步实现，当前没有把重复闭爪冒充保持。
+
+GPU 机器上串行运行独立变体（下例全为可运行的 `hold=0`）：
+
+```bash
+PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" /home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python -m benchmarks.attention_harness.diagnostics.grasp_variants --seed 102 --base-shift 0,0.25,0 --sequence translate-first --rotation-step 0.15 --variants 'base55:theta=55,hold=0,offset=0,z=0,lift=0.025;angle70:theta=70,hold=0,offset=0,z=0,lift=0.025;shift5:theta=55,hold=0,offset=5,z=0,lift=0.025' --out grasp-variants-102
+```
+
+脚本逐变体传入 `ATTN_PLANNER_MODE=ik_path`、`ATTN_IK_CANDIDATES=8`、`ATTN_IK_MAX_JOINT_JUMP=1.0`、`ATTN_DIAG_HELD_TRACE=1`；`--dry-run` 仅生成策略，`--only name1,name2` 只选择指定变体。矩阵结果写入输出目录的 `results.json` 和 `results.md`，每个变体另有独立执行目录。
+
 `--rotation-step RAD` 控制三种序列的每坐标旋转步长，取值须为有限的 `(0, 0.5]` rad，默认 `0.45`，此时生成的策略源码逐字节保持原样。指定非默认值时，步数以 `0.9×RAD` 计算，指令上限仍为 `RAD`；每次旋转重新观测残差，主循环最多多走 3 步，残差小于 0.01 rad 时提前结束，超过 0.02 rad 时最多再做 3 步限幅修正，仍未收敛则报告残差并失败。seed 102 的 translate-first 实测中，预抓取的 4 步平移全部成功，水平误差约 0.2 mm；随后约 0.48 rad 的旋转步分别消耗 5.5 s（9425 次证书查询）和 7.7 s（12089 次查询），第二次所在的 `/plan/ik_path` 请求超过客户端每请求 8 s 上限而超时。较大旋转会扩大扫掠体积并增加证书耗时；可用 `--rotation-step 0.15` 增加步数，降低单步旋转幅度，但总 SDK 调用数也会增加。SDK 上限为 80 次；带 `--dry-run-state` 时，dry-run 按约 4 步下探估计各序列的调用数，估计值超过 70 即警告。估计值不能替代真实执行时的调用预算和证书耗时检查。
 
 `--dry-run` 不 reset，也不启动仿真；它按所选 `--rotation-step` 打印三种序列的初始步数公式。确切步数依赖侧移并张手后的公开 TCP 位姿和目标位置；非默认步长下的额外收敛步数只能在执行中确定。已有这些数据时，可以额外传 `--dry-run-state path.json`，内容为 `{"eef_position":[x,y,z],"eef_quat":[x,y,z,w],"pregrasp_position":[x,y,z]}`；输出三种序列的初始数字步数和 SDK 调用数估计，且仍不启动仿真。详见 [抓取序列说明](../../../docs/grasp_chain_sequences.md)。

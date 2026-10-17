@@ -14,6 +14,44 @@ def parse_quat(value):
     norm=math.sqrt(sum(x*x for x in parts))
     return tuple(x/norm for x in parts)
 
+def theta_quat(theta_deg):
+    if not math.isfinite(theta_deg):raise ValueError('theta must be finite')
+    half=math.radians((90-theta_deg)/2)
+    return (math.sin(half),math.cos(half),0.,0.)
+
+def grasp_offset_xy(quat,offset_mm):
+    from scipy.spatial.transform import Rotation
+    if not math.isfinite(offset_mm):raise ValueError('grasp offset must be finite')
+    axis=Rotation.from_quat(quat).apply([1.,0.,0.])[:2]
+    norm=math.hypot(*axis)
+    if norm<1e-9:raise ValueError('grasp long axis has no horizontal projection')
+    return tuple(float(v/norm*offset_mm/1000) for v in axis)
+
+def variant_policy_source(source,quat,*,offset_mm=0.,z_offset_mm=0.,lift_step_m=.025,lift_height_m=.10):
+    """Change only requested policy literals; the zero-default path is byte-identical."""
+    if not all(math.isfinite(v) for v in (offset_mm,z_offset_mm,lift_step_m,lift_height_m)):
+        raise ValueError('variant numbers must be finite')
+    if not 0<lift_step_m<=.05 or not 0<lift_height_m<=.5:
+        raise ValueError('lift step must be in (0,.05] and height in (0,.5]')
+    def replace_once(old,new):
+        nonlocal source
+        if source.count(old)!=1:raise ValueError(f'expected one policy literal: {old}')
+        source=source.replace(old,new)
+    if offset_mm:
+        dx,dy=grasp_offset_xy(quat,offset_mm)
+        replace_once('pre = [oracle_center[0], oracle_center[1], oracle_z[1]+0.10]',
+            f'pre = [oracle_center[0]+{dx!r}, oracle_center[1]+{dy!r}, oracle_z[1]+0.10]')
+    if z_offset_mm:
+        replace_once('grasp_z = (oracle_z[0]+oracle_z[1])/2',
+            f'grasp_z = (oracle_z[0]+oracle_z[1])/2+{z_offset_mm/1000!r}')
+    if lift_step_m!=.025 or lift_height_m!=.10:
+        n=math.ceil(lift_height_m/lift_step_m)
+        steps=[lift_step_m]*(n-1)+[lift_height_m-lift_step_m*(n-1)]
+        replace_once('for k in range(4):\n    left_arm.move_delta(0.0,0.0,0.025)',
+            f'for lift_delta_z in {steps!r}:\n    left_arm.move_delta(0.0,0.0,lift_delta_z)')
+    validate_generated_policy(source)
+    return source
+
 def valid_rotation_step(value):
     step=float(value)
     if not math.isfinite(step) or not 0 < step <= .5:
@@ -345,6 +383,42 @@ def grip_axis_horizontal_angle(quat):
     axis=Rotation.from_quat(quat).apply([0.,1.,0.])
     return math.degrees(math.asin(min(1.,abs(float(axis[2])))))
 
+def slip_metrics(samples):
+    """Samples are named checkpoints with object and EEF world positions."""
+    rows=[];baseline=None;maximum=0.
+    for sample in samples:
+        obj=sample.get('object_position');eef=sample.get('eef_position')
+        if obj is None or eef is None:continue
+        relative=[1000*(float(obj[j])-float(eef[j])) for j in range(3)]
+        if baseline is None:baseline=relative
+        slip=math.dist(relative,baseline);maximum=max(maximum,slip)
+        rows.append(dict(checkpoint=sample['checkpoint'],relative_obj_eef_mm=relative,slip_from_close_mm=slip))
+    return rows,maximum
+
+def held_physics_samples(episode):
+    if not episode:return []
+    journal=episode/'native-actions.jsonl';physics=episode/'native-physics.jsonl'
+    if not journal.is_file() or not physics.is_file():return []
+    actions=[json.loads(line) for line in journal.read_text().splitlines()]
+    close=next((i for i,row in enumerate(actions) if row.get('event')=='gripper_intent' and row.get('command')==1.),None)
+    if close is None:return []
+    lift_ids=[row['request_id'] for row in actions[close+1:] if row.get('event')=='intent']
+    if not lift_ids:return []
+    last={}
+    for line in physics.read_text().splitlines():
+        row=json.loads(line);rid=row.get('request_id')
+        if rid in lift_ids and row.get('held_trace'):last[rid]=row
+    samples=[]
+    for index,rid in enumerate(lift_ids,1):
+        row=last.get(rid)
+        if row is None:continue
+        trace=next((v for v in row['held_trace'] if v.get('object_body')=='obj'),row['held_trace'][0])
+        tcp=row['tcp']['left'];relative=[v/1000 for v in trace['rel_pos_tcp_mm']]
+        obj=[sum(tcp[j][k]*relative[k] for k in range(3))+tcp[j][3] for j in range(3)]
+        samples.append(dict(checkpoint=f'lift_{index}',object_position=obj,
+                            eef_position=[tcp[j][3] for j in range(3)]))
+    return samples
+
 def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,oracle=None,sequence='rotate-first'):
     feedback=next(root.glob('artifacts/**/cells/*/v1/public-feedback.json'),None)
     events=_json(feedback).get('action_trace',[]) if feedback else []
@@ -427,7 +501,8 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
         stages.append(dict(stage=stage_names[stage_idx],public_status='failed',first_failure=first_failure or error or public_error))
     before=initial.get('perception',{}).get('values',{}).get('obj_pos')
     after=final.get('perception',{}).get('values',{}).get('obj_pos')
-    lifted=bool(object_before_lift and object_after_lift and object_after_lift[2]-object_before_lift[2]>=.05)
+    object_lift_cm=(100*(after[2]-before[2]) if before is not None and after is not None else None)
+    lifted=bool(object_lift_cm is not None and object_lift_cm>=5)
     if not lifted and stages and stages[-1]['stage']=='held' and stages[-1]['public_status']=='completed':
         stages[-1].update(public_status='failed',first_failure=public_error or 'object rose less than 5cm')
         first_failure=first_failure or {'operation':'held','reason':stages[-1]['first_failure']}
@@ -438,6 +513,20 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
         initial_gripper=initial.get('robot',{}).get('robot0_left_gripper_qpos'),
         final_gripper=final.get('robot',{}).get('robot0_left_gripper_qpos'),object_lifted_5cm=lifted,
         execution_dir=str(episode) if episode else None)
+    abort_reason=error or public_error or (first_failure.get('reason') if isinstance(first_failure,dict) else first_failure)
+    if isinstance(abort_reason,dict):abort_reason=abort_reason.get('message',str(abort_reason))
+    result['object_lift_cm']=object_lift_cm
+    result['aborted_by']=str(abort_reason) if abort_reason else None
+    result['monitor_aborted']=bool(abort_reason and ('Measured ' in str(abort_reason) or 'Unexpected physical' in str(abort_reason)))
+    close_stage=next((s for s in stages if s['stage']=='close' and s.get('public_status')=='completed'),None)
+    samples=[]
+    if close_stage and object_before_lift is not None:
+        samples.append(dict(checkpoint='close',object_position=object_before_lift,eef_position=close_stage['eef_position']))
+        samples.append(dict(checkpoint='hold_0',object_position=object_before_lift,eef_position=close_stage['eef_position']))
+    samples.extend(held_physics_samples(episode))
+    result['slip_trajectory'],result['max_slip_mm']=slip_metrics(samples)
+    if not result['slip_trajectory']:result['max_slip_mm']=None
+    result['finger_openings_after_close_m']=close_stage.get('gripper_qpos') if close_stage else None
     if grasp_quat is not None:
         result.update(grasp_quat_world_xyzw=grasp_quat,oracle=oracle,sequence=sequence,
                       diagnostic_truth_notice='使用仿真真值,仅诊断' if oracle else None)
@@ -490,6 +579,8 @@ def markdown(row):
         extra=f" {val('grip_axis_horizontal_angle_deg')} | {val('finger_openings_m')} |" if oriented else ''
         lines.append(f"| {s['stage']} | {s['public_status']} | {s.get('sdk_calls','—')} | {s.get('certification_count','—')} | {s.get('certification_elapsed_seconds','—')} | {val('eef_position')} | {val('object_position')} | {val('gripper_qpos')} |{extra} {val('first_failure')} |")
     lines += ['',f"物体上升至少 5 cm：`{row['object_lifted_5cm']}`。",'',
+              f"最终物体上升 cm：`{row.get('object_lift_cm')}`；监控中止：`{row.get('monitor_aborted')}`；原因：`{row.get('aborted_by')}`。",'',
+              f"最大滑动 mm：`{row.get('max_slip_mm')}`；位移轨迹：`{json.dumps(row.get('slip_trajectory'),ensure_ascii=False)}`。",'',
               f"首个失败：`{json.dumps(row['first_failure'],ensure_ascii=False)}`。",'',
               f"认证证书：`{json.dumps(row['certificates'],ensure_ascii=False)}`。",'']
     if 'steps' in row:
@@ -526,6 +617,12 @@ def main(argv=None):
     p.add_argument('--out',type=Path,default=Path('grasp-chain-results'))
     p.add_argument('--tilt',action='store_true')
     p.add_argument('--grasp-quat',help='world TCP target quaternion x,y,z,w')
+    p.add_argument('--theta-deg',type=float,help='closing axis heading in world XY, degrees')
+    p.add_argument('--grasp-offset-mm',type=float,default=0.,help='signed offset along horizontal banana long axis')
+    p.add_argument('--grasp-z-offset-mm',type=float,default=0.)
+    p.add_argument('--close-hold-steps',type=int,default=0)
+    p.add_argument('--lift-step-m',type=float,default=.025)
+    p.add_argument('--lift-height-m',type=float,default=.10)
     p.add_argument('--sequence',choices=('rotate-first','translate-first','combined'),default='rotate-first')
     p.add_argument('--rotation-step',type=valid_rotation_step,default=.45,metavar='RAD',
                    help='maximum rotation vector coordinate per step in (0, 0.5] rad (default: 0.45)')
@@ -534,14 +631,19 @@ def main(argv=None):
     p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
     args=p.parse_args(argv)
     if args.out.exists() and not args.dry_run:p.error('--out already exists; choose a fresh directory')
-    if args.tilt and args.grasp_quat:p.error('--tilt and --grasp-quat are mutually exclusive')
-    if args.sequence!='rotate-first' and not args.grasp_quat:p.error('--sequence requires --grasp-quat')
-    if args.oracle_from_reset and not args.grasp_quat:p.error('--oracle-from-reset requires --grasp-quat')
+    if args.grasp_quat and args.theta_deg is not None:p.error('--grasp-quat and --theta-deg are mutually exclusive')
+    if args.tilt and (args.grasp_quat or args.theta_deg is not None):p.error('--tilt and grasp orientation are mutually exclusive')
+    if args.close_hold_steps<0:p.error('--close-hold-steps requires nonnegative integer')
+    if args.close_hold_steps:p.error('this dev SDK has no exact hold/settle operation; nonzero --close-hold-steps is unavailable')
+    if args.sequence!='rotate-first' and not (args.grasp_quat or args.theta_deg is not None):p.error('--sequence requires grasp orientation')
+    if args.oracle_from_reset and not (args.grasp_quat or args.theta_deg is not None):p.error('--oracle-from-reset requires grasp orientation')
     if args.dry_run_state and not args.dry_run:p.error('--dry-run-state requires --dry-run')
     try:
         shift=tuple(float(x) for x in args.base_shift.split(','))
         if len(shift)!=3:raise ValueError()
-        quat=parse_quat(args.grasp_quat) if args.grasp_quat else None
+        quat=parse_quat(args.grasp_quat) if args.grasp_quat else theta_quat(args.theta_deg) if args.theta_deg is not None else None
+        if quat is None and (args.grasp_offset_mm or args.grasp_z_offset_mm or args.lift_step_m!=.025 or args.lift_height_m!=.10):
+            raise ValueError('variant offsets/lift require grasp orientation')
         oracle=None
         if args.oracle_from_reset and not args.dry_run:
             from .object_proxy_measure import reset_diagnostic_fixture, DEFAULT_ROBOT_CONFIG
@@ -552,6 +654,9 @@ def main(argv=None):
             oracle={'position_world_m':[0.,0.,0.], 'z_range_world_m':[0.,0.]}
         source=(oriented_policy_source(shift,quat,oracle,rotation_step=args.rotation_step) if args.sequence=='rotate-first' else
                 sequenced_policy_source(shift,quat,oracle,sequence=args.sequence,rotation_step=args.rotation_step)) if quat else policy_source(shift,args.tilt)
+        if quat:
+            source=variant_policy_source(source,quat,offset_mm=args.grasp_offset_mm,
+                z_offset_mm=args.grasp_z_offset_mm,lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)
     except ValueError as exc:p.error('invalid --base-shift or policy: '+str(exc))
     if args.dry_run:
         if args.oracle_from_reset:print('# 使用仿真真值,仅诊断；dry-run 不执行 reset，真实运行时注入几何常量')
@@ -593,6 +698,9 @@ def main(argv=None):
         else:os.environ['ATTN_DIAG_CONTACT_EXEMPT']=old
     result=summarize(args.out,args.seed,shift,args.exempt,args.tilt,time.monotonic()-started,error,
                      grasp_quat=quat,oracle=oracle,sequence=args.sequence)
+    result.update(theta_deg=args.theta_deg,close_hold_steps=args.close_hold_steps,
+                  grasp_offset_mm=args.grasp_offset_mm,grasp_z_offset_mm=args.grasp_z_offset_mm,
+                  lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)
     args.out.mkdir(parents=True,exist_ok=True)
     (args.out/'policy.py').write_text(source)
     (args.out/'results.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
