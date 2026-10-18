@@ -102,6 +102,7 @@ def make_bridge(tmp_path, *, eval_authorized=True):
     base=dict(max_versions=1,target_depth=1,target_valid_executions=1,help_budget=0,planner_features={'human_wait_seconds':1},policies=[POLICY])
     budget=derive_cell_budget(normalize_configuration({**base,'eval_agent':eval_default(True)}))
     authorized=budget if eval_authorized else derive_cell_budget(normalize_configuration(base))
+    if not eval_authorized:authorized['model_seconds']=budget['model_seconds']
     limits={k:2*v for k,v in authorized.items()};s.ensure_goal(gid,limits,7200)
     memory_settings=dict(base_url='http://127.0.0.1:1',store_id='controlled-authority',namespace='controlled-namespace')
     b=DevMainBridge(s.path,tmp_path/'artifacts',key,memory_settings)
@@ -130,21 +131,28 @@ def test_main_bridge_experiment_refuses_missing_eval(tmp_path):
 
 @pytest.mark.scene_gate
 @pytest.mark.eval_gate
-def test_main_bridge_eval_goal_shortfall_is_explicit_and_creates_nothing(tmp_path):
+def test_main_bridge_eval_old_goal_zero_cost_quota_creates(tmp_path,monkeypatch):
+    from openarm365_dev_v2 import dev_config
+    monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})
     b,body=make_bridge(tmp_path,eval_authorized=False)
-    with pytest.raises(ValueError,match=r'authorized goal shortfall: .*eval_calls \+2.*provider_tokens \+150112.*input_tokens \+141920.*output_tokens \+8192.*model_seconds \+240'):
-        b.create(body)
-    assert b.list()==[]
+    # The old goal keeps its original model-time authorization.
+    with b.store.tx() as db:
+        goal=b.store.get(db,'goals',b.goal_id)
+        goal['limits'].update(eval_calls=0,provider_tokens=0,input_tokens=0,output_tokens=0)
+        b.store.put(db,'goals',b.goal_id,goal)
+    body['selection']['configuration']['experiment_budget']=b.store.goal(b.goal_id)['limits']
+    created=b.create(body)
+    assert created['experiment_id'] and len(b.list())==2
 
 
 @pytest.mark.scene_gate
 @pytest.mark.eval_gate
-def test_main_bridge_eval_cell_shortfall_is_explicit_and_creates_nothing(tmp_path):
+def test_main_bridge_eval_cell_zero_calls_creates(tmp_path,monkeypatch):
+    from openarm365_dev_v2 import dev_config
+    monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})
     b,body=make_bridge(tmp_path)
     body['selection']['configuration']['cell_budget']['eval_calls']=0
-    with pytest.raises(ValueError,match=r'Eval cell budget shortfall: eval_calls \+1'):
-        b.create(body)
-    assert b.list()==[]
+    assert b.create(body)['experiment_id']
 
 
 @pytest.mark.scene_gate

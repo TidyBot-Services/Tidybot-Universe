@@ -68,7 +68,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     reservation={'dev_calls' if kind=='model' else 'advisor_calls':1,'provider_tokens':input_bound+max_tokens,
                  'input_tokens':input_bound,'output_tokens':max_tokens,'model_seconds':seconds}
     if kind=='advisor':reservation.update(help_count=1,help_credits=1,help_wait_seconds=seconds)
-    store.reserve_check(key,reservation) if not existing else None
+    store.reserve_check(key,reservation,model_name=MODEL['model']) if not existing else None
     request=immutable(directory/(kind+'-input.json'),{**MODEL,'max_tokens':max_tokens,'messages':messages,'token_reservation':reservation})
     # Credential loading belongs to the configured runtime; never artifact/log it.
     if client is None:
@@ -78,7 +78,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
             if path.is_file():credential=path.read_text().strip()
         provider=ParccClient(api_key=credential,max_attempts=1,timeout_seconds=min(seconds,store.goal_for_cell(key)['wall_remaining']))
     else:provider=client
-    job=store.reserve(key,version,kind,reservation)
+    job=store.reserve(key,version,kind,reservation,model_name=MODEL['model'])
     if job.get('claimed_at') or job.get('actual'):raise DevConflict('existing model claim cannot be redispatched')
     wire=[]
     def observed(status,headers,raw):
@@ -400,8 +400,9 @@ def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailab
     bound=len(json.dumps({k:v for k,v in evidence.items() if k!='frames'},ensure_ascii=False).encode())+len(evidence['frames'])*eva.FRAME_TOKEN_BOUND+4096
     seconds=cell.get('runtime',{}).get('model_reserve_seconds',120)
     reservation={'eval_calls':1,'provider_tokens':bound+eva.MAX_TOKENS,'input_tokens':bound,'output_tokens':eva.MAX_TOKENS,'model_seconds':seconds}
-    store.reserve_check(key,reservation) if not existing else None
-    job=store.reserve(key,version,'eval',reservation);store.claim(job['job_id'],owner)
+    unmetered=eva.is_unmetered(config.get('eval_agent'))
+    store.reserve_check(key,reservation,unmetered_eval=unmetered) if not existing else None
+    job=store.reserve(key,version,'eval',reservation,unmetered_eval=unmetered,model_name=config['eval_agent']['model']);store.claim(job['job_id'],owner)
     try:
         record=eva.ask(evidence,eva.from_config(config),proxy_client(client),cache_dir=Path(cell['artifact_dir']).parent.parent/'eval-cache')
         immutable(artifact,record)
@@ -509,8 +510,8 @@ def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifac
     recording_seconds=(execution.get('actual') or {}).get('execution_seconds',0)
     logical=advisor.logical_seconds(recording_seconds,proxy,selected_moments=selected,targeted=localization['status']=='targeted')
     reservation={'advisor_calls':1,'provider_tokens':bound+advisor.MAX_TOKENS,'input_tokens':bound,'output_tokens':advisor.MAX_TOKENS,'model_seconds':seconds,'help_count':1,'help_credits':1,'help_wait_seconds':seconds,'hint_human_seconds':logical}
-    store.reserve_check(key,reservation) if not existing else None
-    job=store.reserve(key,job_version,'advisor',reservation);store.claim(job['job_id'],owner)
+    store.reserve_check(key,reservation,model_name=proxy['model']) if not existing else None
+    job=store.reserve(key,job_version,'advisor',reservation,model_name=proxy['model']);store.claim(job['job_id'],owner)
     try:
         record=advisor.ask(evidence,proxy,proxy_client(client),cache_dir=Path(cell['artifact_dir']).parent.parent/'advisor-cache')
         record.update(requested=True,request_type='hint',selected_moments=selected,selected_frame_manifest=selected_frames,localization=localization,question=evidence['question'],logical_human_seconds=logical,recording_seconds=recording_seconds,answer_latency_seconds=proxy['answer_latency_seconds'])
@@ -646,6 +647,11 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
         store.update_cell(key,state='cancelled' if 'cancelled' in str(exc) else 'failed',reason=str(exc))
     except DevBudgetExhausted as exc:
         cell=store.cell(key);store.update_cell(key,state='failed' if cell['versions'] else 'not_started',reason=str(exc))
+    except DevConflict as exc:
+        if str(exc).startswith('Eval safety call cap reached'):
+            store.update_cell(key,state='needs_review',reason=str(exc));return
+        unresolved=any(j['state'] in {'claimed','needs_review'} for j in store.cell(key)['jobs'])
+        store.update_cell(key,state='needs_review' if unresolved else 'planned',reason=f'{type(exc).__name__}: {exc}');raise
     except BaseException as exc:
         # Already claimed failures are held by provider_call/execute; no retries.
         unresolved=any(j['state'] in {'claimed','needs_review'} for j in store.cell(key)['jobs'])

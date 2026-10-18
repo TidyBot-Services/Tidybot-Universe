@@ -10,6 +10,12 @@ from . import v2_evaluator as vision
 from .dev_help import public_screen
 
 MODEL = 'parcc/Qwen'
+# User decision, 2026-10-18: this fixed Qwen Eval is free. If the model
+# changes, the ordinary limited Eval accounting applies again.
+from .free_models import eval_is_unmetered
+EVAL_MODEL_IS_FREE = eval_is_unmetered({'enabled':True,'model':MODEL})
+def is_unmetered(config):
+    return eval_is_unmetered(config)
 PROMPT_VERSION = 'eval-agent-vision-v2'
 CACHE_VERSION = 'eval-agent-image-cache-v1'
 MAX_TOKENS = vision.VISION_TOKENS

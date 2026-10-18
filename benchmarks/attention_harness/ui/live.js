@@ -1855,8 +1855,9 @@
         form.querySelector('button[type=submit]').disabled = submitting || !profile?.enabled;
         if(profile?.channel==='dev_v2'){
           const cellQuota=key=>Number(form.querySelector(`[data-v2-cell="${key}"]`)?.value||0);
-          const evalNote=form.eval_agent_enabled.checked?` Eval budget per cell: ${cellQuota('eval_calls')} calls, ${cellQuota('provider_tokens')} provider tokens (${cellQuota('input_tokens')} input, ${cellQuota('output_tokens')} output), ${cellQuota('model_seconds')} model seconds total.`:'';
-          form.querySelector('[data-launch-preview]').textContent = description + `Generated version limit: ${form.max_attempts.value}. Cell and experiment resource quotas are independent.${evalNote} ` + ' Registered Dev v2 · help is supplied by the public-only Advisor. Independent task results are display and offline analysis only.';
+          const evalNote=form.eval_agent_enabled.checked?` Eval 调用：${options.dev_v2.eval_accounting}；每格最多 ${Math.max(2*Number(form.max_attempts.value),10)} 次安全调用。模型时间仍计入每格 ${cellQuota('model_seconds')} 秒总限额。`:'';
+          const tokenNote=` ${Object.entries(options.dev_v2.model_token_accounting||{}).map(([role,status])=>`${role} tokens：${status}`).join('；')}。`;
+          form.querySelector('[data-launch-preview]').textContent = description + `Generated version limit: ${form.max_attempts.value}. Cell and experiment resource quotas are independent.${evalNote}${tokenNote} ` + ' Registered Dev v2 · help is supplied by the public-only Advisor. Independent task results are display and offline analysis only.';
         }
       }
       function syncProfile(resetWall) {
@@ -1881,7 +1882,7 @@
         form.model.value = isFixed(profile||{}) ? 'Approved execution policy' : (options?.dev_loop?.model || '');
         form.max_attempts.value = certified ? 1 : v2?(options.dev_v2.default_max_iterations||3):3;
         if(v2&&options?.dev_v2?.bridge_schema==='main-dev-v3')form.help_count.value=options.dev_v2.default_cell_budget.help_count;
-        form.token_limit.value = certified ? 0 : formal?30000:v2?(options.dev_v2.default_cell_budget?.provider_tokens||220000):60000;
+        form.token_limit.value = certified ? 0 : formal?30000:v2?(options.dev_v2.default_cell_budget?.provider_tokens??220000):60000;
         form.seed.value = profile?.seed ?? 101;
         form.execution_target.value = profile ? label(profile.execution_target) : '';
         form.request_mode.disabled = !isFixed(profile||{});
@@ -3862,7 +3863,7 @@
     snapshot.dev_v2=cell;
     snapshot.dev_eval_enabled=s.locked?.config?.eval_agent?.enabled===true;
     snapshot.dev_session.versions=cell.versions;
-    if(snapshot.dev_eval_enabled && !snapshot.resources.eval_calls)snapshot.resources.eval_calls={used:cell.used.eval_calls||0,limit:cell.budget.eval_calls||0};
+    if(snapshot.dev_eval_enabled)snapshot.resources.eval_calls={used:cell.eval_usage?.eval_calls??cell.used.eval_calls??0,limit:null};
     snapshot.run.status=cell.state==='cancelled'?'cancelled':terminal?'completed':lifecycle && lifecycle.phase!=='sdk'?lifecycle.phase:'running';
     snapshot.run.policy_id=cell.policy_id;
     snapshot.station.status=terminal?'ended':lifecycle && lifecycle.phase!=='sdk'?lifecycle.phase:'running';

@@ -310,12 +310,16 @@ def prepare(args):
                 for k,v in json.loads(cp)['budget'].items():allocated[k]+=v
         for cp, in db.execute('SELECT payload FROM v2_cells WHERE exp=?',(eid,)):
             for k,v in json.loads(cp)['used'].items():own_used[k]+=v
+        from .dev_ledger import charged_amount
+        from .free_models import limited_resources
+        from .dev_experiment import MODEL
+        limited=limited_resources(eval_config=p['eval_agent'],model_names=(MODEL['model'],p['advisor_proxy']['model']))
         for state,j in store.goal_jobs(db,GOAL_ID):
             if state in {'reserved','claimed','needs_review'} and db.execute('SELECT exp FROM v2_cells WHERE id=?',(j['cell'],)).fetchone()[0]==eid:
-                for k,v in j['reservation'].items():own_held[k]+=v
-        shortage={k:allocated[k]+n*budget[k]-o['goal_limits'].get(k,0) for k in RESOURCES if allocated[k]+n*budget[k]>o['goal_limits'].get(k,0)}
+                for k,v in charged_amount(j,j['reservation']).items():own_held[k]+=v
+        shortage={k:allocated[k]+n*budget[k]-o['goal_limits'].get(k,0) for k in limited if allocated[k]+n*budget[k]>o['goal_limits'].get(k,0)}
         if shortage:raise DevBudgetExhausted('shared goal allocation exceeds original limits: '+', '.join(f'{k} +{v}' for k,v in shortage.items()))
-        if any(max(0,n*budget[k]-own_used[k]-own_held[k])>g['remaining'][k] for k in RESOURCES):raise DevBudgetExhausted('original goal remaining resources insufficient for prepared plan')
+        if any(max(0,n*budget[k]-own_used[k]-own_held[k])>g['remaining'][k] for k in limited):raise DevBudgetExhausted('original goal remaining resources insufficient for prepared plan')
         required_wall=n*(budget['model_seconds']+budget['execution_seconds']+p['max_versions']*p['planner_features']['human_wait_seconds'])
         if g.get('real_finished_at') or g['wall_remaining']<required_wall:raise DevBudgetExhausted('original goal remaining wall insufficient for prepared plan')
     # No immutable host configuration is written until all input, resource and

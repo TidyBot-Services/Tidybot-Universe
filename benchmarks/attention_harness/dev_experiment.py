@@ -91,7 +91,9 @@ def create(store,artifact_root,selection):
         goal_limits=configuration.get('goal_limits',{k:n*v for k,v in budget.items()})
         if complete_resources(goal_limits):goal_limits=fill_optional(goal_limits)
         __import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
-        if set(goal_limits)!=set(RESOURCES) or any(n*budget[k]>goal_limits[k] for k in RESOURCES):raise ValueError('goal allocation exceeds limits')
+        from .free_models import limited_resources
+        limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(MODEL['model'],configuration['advisor_proxy']['model']))
+        if set(goal_limits)!=set(RESOURCES) or any(n*budget[k]>goal_limits[k] for k in limited):raise ValueError('goal allocation exceeds limits')
         wait_wall=configuration['max_versions']*configuration.get('planner_features',{}).get('human_wait_seconds',0)
         wall_limit=configuration.get('wall_limit',n*(budget['model_seconds']+budget['execution_seconds']+wait_wall)+3600)
         if type(wall_limit) not in (int,float) or not __import__('math').isfinite(wall_limit) or wall_limit<=0:raise ValueError('positive wall limit required')
@@ -160,6 +162,9 @@ def create(store,artifact_root,selection):
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
     if budget_tier=='dev':manifest['budget_tier']='dev'
     if v3:
+        # 2026-10-18 free Eval accounting applies to new v3 manifests only;
+        # legacy v2 manifest bytes stay unchanged.
+        manifest['budget_accounting_version']='free-model-tokens-eval-calls-v2'
         goal_id=hashlib.sha256(('goal|'+configuration.get('goal_key',key)).encode()).hexdigest()[:32]
         manifest.update(schema='attentionbench.dev-experiment.v3',goal_id=goal_id,goal_limits=goal_limits,wall_limit=wall_limit,cell_budget=budget,
                         **{k:configuration[k] for k in FIELDS if k in configuration and k not in {'cell_budget','goal_limits','wall_limit'}})
@@ -189,7 +194,9 @@ def create(store,artifact_root,selection):
                 if ep.get('goal_id')!=goal_id:continue
                 for cp, in db.execute('SELECT payload FROM v2_cells WHERE exp=?',(ep['experiment_id'],)):
                     for k,v in json.loads(cp)['budget'].items():allocated[k]+=v
-            if any(allocated[k]+len(cells)*budget[k]>goal_limits.get(k,0) for k in RESOURCES):raise ValueError('shared goal allocation exceeds limits')
+            from .free_models import limited_resources
+            limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(MODEL['model'],configuration['advisor_proxy']['model']))
+            if any(allocated[k]+len(cells)*budget[k]>goal_limits.get(k,0) for k in limited):raise ValueError('shared goal allocation exceeds limits')
             existing=db.execute('SELECT payload FROM v2_goals WHERE id=?',(goal_id,)).fetchone()
             if existing:
                 original=json.loads(existing[0])

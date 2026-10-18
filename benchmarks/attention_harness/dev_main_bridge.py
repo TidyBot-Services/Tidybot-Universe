@@ -40,8 +40,13 @@ class DevMainBridge:
             planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(True))))
         without_eval=derive_cell_budget(normalize_configuration(dict(max_versions=2,target_depth=2,target_valid_executions=2,help_budget=1,
             planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(False))))
+        from .free_models import eval_is_unmetered,is_unmetered_model
+        from .dev_experiment import MODEL
+        from .dev_advisor_proxy import MODEL as ADVISOR_MODEL
         return dict(enabled=True,bridge_schema='main-dev-v3',goal_key=self.goal_key,default_cell_budget=default,
             default_no_eval_cell_budget=without_eval,goal_limits=fill_optional(goal['limits']),default_max_iterations=2,policies=[POLICY],eval_agent_supported=True,
+            eval_accounting='不计限额，仅记录' if eval_is_unmetered(eval_default(True)) else '计入限额',
+            model_token_accounting={role:('不计限额，仅记录' if is_unmetered_model(model) else '计入限额') for role,model in {'Dev':MODEL['model'],'Advisor':ADVISOR_MODEL,'Eval':eval_default(True)['model']}.items()},
             authorization=dict(mode='existing_goal',deadline_epoch=goal.get('authorized_until')),
             memory=self.memory,profiles=[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,
                 seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,
@@ -112,7 +117,7 @@ class DevMainBridge:
         elif prepared and not active:phase='prepared'
         elif owned:phase='preparing'  # Memory/public work, not simulator startup.
         else:phase='queued'
-        enough=g['wall_remaining']>0 and not g.get('real_finished_at') and g['remaining'].get('dev_calls',0)>0 and g['remaining'].get('provider_tokens',0)>0
+        enough=g['wall_remaining']>0 and not g.get('real_finished_at') and g['remaining'].get('dev_calls',0)>0
         can_start=(bool(recovery) or e['state']=='planned' and any(row['state']=='planned' for row in cells) and enough) and not e['cancelled'] and not active and not unresolved and not unknown_owner and not recovery_error
         from .eval_agent import default_config as eval_default
         minimum=derive_cell_budget(normalize_configuration(dict(max_versions=1,target_depth=1,target_valid_executions=1,help_budget=0,
@@ -122,7 +127,11 @@ class DevMainBridge:
         for other in goal_experiments:
             for row in other['cells']:
                 for k,v in row['budget'].items():allocated[k]+=v
-        can_create=not recovery and not active and not unresolved and not unknown_owner and enough and all(allocated[k]+minimum[k]<=g['limits'].get(k,0) and minimum[k]<=g['remaining'][k] for k in RESOURCES)
+        from .free_models import limited_resources
+        from .dev_experiment import MODEL
+        from .dev_advisor_proxy import MODEL as ADVISOR_MODEL
+        limited=limited_resources(eval_config=eval_default(e['selection']['mode']=='experiment'),model_names=(MODEL['model'],ADVISOR_MODEL))
+        can_create=not recovery and not active and not unresolved and not unknown_owner and enough and all(allocated[k]+minimum[k]<=g['limits'].get(k,0) and minimum[k]<=g['remaining'][k] for k in limited)
         scope=[dict(task_id=row['task_id'],seed=row['seed'],state=row['state']) for row in cells]
         return dict(phase=phase,can_start=can_start,can_create_new=can_create,can_stop=own_active and not terminal,
             start_label='Start prepared experiment' if prepared else 'Continue experiment',
@@ -162,14 +171,17 @@ class DevMainBridge:
         # The bridge owns the fixed Eval configuration; UI input only chooses the role.
         from .dev_advisor_proxy import default_config as advisor_default
         selection.update(eval_agent=eval_default(v['mode']=='experiment'),advisor_proxy=advisor_default(False))
+        from .free_models import limited_resources
+        from .dev_experiment import MODEL
+        limited=limited_resources(eval_config=selection['eval_agent'],model_names=(MODEL['model'],selection['advisor_proxy']['model']))
         if v['mode']=='experiment':
             required=derive_cell_budget(normalize_configuration(selection))
             actual=fill_optional(budget) if complete_resources(budget) else budget
-            missing={k:required[k]-actual.get(k,0) for k in RESOURCES if actual.get(k,0)<required[k]}
+            missing={k:required[k]-actual.get(k,0) for k in limited if actual.get(k,0)<required[k]}
             if missing:raise ValueError('Eval cell budget shortfall: '+', '.join(f'{k} +{amount}' for k,amount in missing.items()))
-        authorization_shortfall={k:max(limits[k],n*budget.get(k,0))-g['limits'].get(k,0) for k in RESOURCES
+        authorization_shortfall={k:max(limits[k],n*budget.get(k,0))-g['limits'].get(k,0) for k in limited
                                  if max(limits[k],n*budget.get(k,0))>g['limits'].get(k,0)}
-        experiment_shortfall={k:n*budget.get(k,0)-limits[k] for k in RESOURCES if n*budget.get(k,0)>limits[k]}
+        experiment_shortfall={k:n*budget.get(k,0)-limits[k] for k in limited if n*budget.get(k,0)>limits[k]}
         if authorization_shortfall or experiment_shortfall:
             parts=[]
             if authorization_shortfall:parts.append('authorized goal shortfall: '+', '.join(f'{k} +{v}' for k,v in authorization_shortfall.items()))

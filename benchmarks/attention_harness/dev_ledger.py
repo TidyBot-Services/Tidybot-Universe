@@ -4,10 +4,30 @@ from contextlib import contextmanager
 from pathlib import Path
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from openarm365_dev_v2.diag_budget import task_limits,dev_tier_budget
+from .free_models import is_unmetered_model,TOKEN_RESOURCES,eval_is_unmetered
 GOAL='3a82df131d394774bc1ae9d881895133'
 RESOURCES=('dev_calls','advisor_calls','eval_calls','provider_tokens','input_tokens','output_tokens','executions','sdk_calls','control_steps','help_credits','help_count','help_wait_seconds','model_seconds','execution_seconds','hint_human_seconds')
 # Resources introduced after the first ledgers: a budget/limit dict may omit them (read as 0).
 OPTIONAL=('eval_calls','hint_human_seconds')
+EVAL_USAGE=('eval_calls','provider_tokens','input_tokens','output_tokens','model_seconds')
+def charged_amount(job,amount):
+    """Portion of a receipt subject to a quota; never use for used totals."""
+    free_tokens=job.get('unmetered_eval') or is_unmetered_model(job.get('unmetered_model'))
+    return {k:v for k,v in amount.items() if not (job.get('unmetered_eval') and k=='eval_calls')
+            and not (free_tokens and k in TOKEN_RESOURCES)}
+def eval_usage_amount(job,amount):
+    return {k:amount.get(k,0) for k in EVAL_USAGE} if job.get('unmetered_eval') else {k:0 for k in EVAL_USAGE}
+def eval_cost_amount(job,amount):
+    return {k:amount.get(k,0) for k in EVAL_USAGE} if job.get('kind')=='eval' else {k:0 for k in EVAL_USAGE}
+def quota_used(used,jobs):
+    """Remove only explicitly exempt, settled usage from a legacy used total."""
+    result={k:used.get(k,0) for k in RESOURCES}
+    for state,job in jobs:
+        if state!='settled':continue
+        charged=charged_amount(job,job['actual'])
+        for k,v in job['actual'].items():
+            if k in result:result[k]-=v-charged.get(k,0)
+    return result
 HUMAN_SECONDS=('hint_human_seconds',)
 LIMITS=dict(dev_calls=28,advisor_calls=14,eval_calls=28,provider_tokens=500000,input_tokens=500000,output_tokens=500000,executions=28,sdk_calls=2240,control_steps=67200,help_credits=28,help_count=28,help_wait_seconds=7200,model_seconds=7200,execution_seconds=7200,hint_human_seconds=7200)
 def task_goal_limits(budget_tier='dev'):
@@ -118,12 +138,14 @@ class DevV2Store:
         rows=db.execute("SELECT j.state,j.payload,e.payload FROM v2_jobs j JOIN v2_cells c ON j.cell=c.id JOIN v2_experiments e ON COALESCE(c.exp,json_extract(c.payload,'$.experiment_id'))=e.id ORDER BY j.rowid")
         return [(state,json.loads(p)) for state,p,e in rows if experiment_goal(json.loads(e))==goal_id]
     def _goal(self,db,goal_id=GOAL):
-        g=self.get(db,'goals',goal_id);held={k:0 for k in RESOURCES}
-        for state,j in self.goal_jobs(db,goal_id):
+        g=self.get(db,'goals',goal_id);held={k:0 for k in RESOURCES};quota_held=dict(held)
+        jobs=self.goal_jobs(db,goal_id)
+        for state,j in jobs:
             if state not in {'reserved','claimed','needs_review'}:continue
-            p=encoded(j)
-            for k,v in json.loads(p)['reservation'].items():held[k]+=v
-        g['reserved']=held;g['remaining']={k:max(0,g['limits'].get(k,0)-g['used'].get(k,0)-held[k]) for k in RESOURCES}
+            for k,v in j['reservation'].items():held[k]+=v
+            for k,v in charged_amount(j,j['reservation']).items():quota_held[k]+=v
+        metered=quota_used(g['used'],jobs)
+        g['reserved']=held;g['remaining']={k:max(0,g['limits'].get(k,0)-metered[k]-quota_held[k]) for k in RESOURCES}
         g['wall_used']=max(0,(g.get('real_finished_at') or time.time())-g['real_started_at']) if g['real_started_at'] else 0
         g['wall_remaining']=max(0,g['wall_limit']-g['wall_used'])
         if g.get('authorized_until') is not None:g['wall_remaining']=min(g['wall_remaining'],max(0,g['authorized_until']-time.time()))
@@ -142,7 +164,18 @@ class DevV2Store:
             for k,v in amount.items():g['used'][k]=g['used'].get(k,0)+v
             g['real_started_at']=min(g['real_started_at'] or r['real_started_at'],r['real_started_at']);g['opening'].append(ref)
             self.put(db,'goals',GOAL,g);self.event(db,'opening',{'ref':ref,'actual':amount})
-    def reserve(self,cell,version,kind,reservation):
+    def reserve(self,cell,version,kind,reservation,*,unmetered_eval=False,model_name=None):
+        try:
+            return self._reserve_impl(cell,version,kind,reservation,unmetered_eval=unmetered_eval,model_name=model_name)
+        except DevConflict as exc:
+            if kind=='eval' and str(exc).startswith('Eval safety call cap reached'):
+                with self.tx() as db:
+                    row=self.get(db,'cells',cell)
+                    row.update(state='needs_review',reason=str(exc))
+                    self.put(db,'cells',cell,row)
+                    self.event(db,'eval_safety_cap',{'cell':cell,'reason':str(exc)})
+            raise
+    def _reserve_impl(self,cell,version,kind,reservation,*,unmetered_eval=False,model_name=None):
         cost(reservation)
         if kind not in {'model','advisor','demo','human','cache','execute','eval'}:raise ValueError('unsupported resource job')
         with self.tx() as db:
@@ -150,18 +183,44 @@ class DevV2Store:
             row=db.execute('SELECT payload FROM v2_jobs WHERE cell=? AND version=? AND kind=?',(cell,version,kind)).fetchone()
             if row:
                 j=json.loads(row[0])
-                if j['reservation']!=reservation:raise DevConflict('reservation id reused')
+                if (j['reservation']!=reservation or bool(j.get('unmetered_eval'))!=unmetered_eval
+                    or j.get('unmetered_model')!=(model_name if is_unmetered_model(model_name) else None)):
+                    raise DevConflict('reservation id reused')
                 return j
             exp=self.get(db,'experiments',c['experiment_id'])
+            if unmetered_eval and (kind!='eval' or not eval_is_unmetered(exp.get('selection',{}).get('eval_agent'))):raise DevConflict('unmetered Eval requires fixed free Qwen model')
+            if model_name is not None and kind not in {'model','advisor','eval'}:raise DevConflict('model token exemption requires model job')
+            if model_name is not None and kind=='eval' and model_name!=exp.get('selection',{}).get('eval_agent',{}).get('model'):raise DevConflict('Eval model differs from frozen selection')
+            if model_name is not None and kind in {'model','advisor'}:
+                from .dev_experiment import MODEL
+                from .dev_advisor_proxy import MODEL as ADVISOR_MODEL
+                expected=MODEL['model'] if kind=='model' or c.get('planner_features') else ADVISOR_MODEL
+                if model_name!=expected:raise DevConflict('model differs from fixed provider configuration')
             if c['state']!='running' or exp.get('cancelled'):raise DevConflict('cell cannot dispatch')
             goal_id=self.cell_goal(db,c);g=self._goal(db,goal_id)
             if g.get('real_finished_at'):raise DevBudgetExhausted('validation goal closed; original expenditure cannot be reset')
             if g['wall_remaining']<=0:raise DevBudgetExhausted('original goal wall budget expired')
+            if kind=='eval':
+                if exp['manifest'].get('sha256'):
+                    from .dev_loop import sha
+                    if sha(exp['manifest']['uri'])!=exp['manifest']['sha256']:raise DevConflict('Eval manifest digest drift')
+                manifest=json.loads(Path(exp['manifest']['uri']).read_bytes())
+                cap=max(2*manifest.get('max_versions',manifest.get('max_iterations',2)),10)
+                attempts=db.execute("SELECT COUNT(*) FROM v2_jobs WHERE cell=? AND kind='eval' AND state!='released'",(cell,)).fetchone()[0]
+                if attempts>=cap:raise DevConflict(f'Eval safety call cap reached ({cap}) for cell; needs review')
             held={k:0 for k in RESOURCES}
+            cell_jobs=[]
             for p, in db.execute("SELECT payload FROM v2_jobs WHERE cell=? AND state IN ('reserved','claimed','needs_review')",(cell,)):
-                for k,v in json.loads(p)['reservation'].items():held[k]+=v
-            if any(v>g['remaining'][k] or c['used'].get(k,0)+held[k]+v>c['budget'].get(k,0) for k,v in reservation.items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
+                old=json.loads(p)
+                for k,v in charged_amount(old,old['reservation']).items():held[k]+=v
+            for state,p in db.execute("SELECT state,payload FROM v2_jobs WHERE cell=?",(cell,)):
+                cell_jobs.append((state,json.loads(p)))
+            cell_metered=quota_used(c['used'],cell_jobs)
+            candidate={'unmetered_eval':unmetered_eval,'unmetered_model':model_name if is_unmetered_model(model_name) else None}
+            if any(v>g['remaining'][k] or cell_metered[k]+held[k]+v>c['budget'].get(k,0) for k,v in charged_amount(candidate,reservation).items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
             jid=f'{cell}:{version}:{kind}';j={'job_id':jid,'cell':cell,'version':version,'kind':kind,'goal_id':goal_id,'reservation':reservation,'reserved_at':time.time()}
+            if unmetered_eval:j['unmetered_eval']=True
+            if is_unmetered_model(model_name):j['unmetered_model']=model_name
             db.execute('INSERT INTO v2_jobs VALUES (?,?,?,?,?,?)',(jid,cell,version,kind,'reserved',encoded(j)))
             self.event(db,'reserved',j);return j
     def claim(self,jid,owner,*,approval_id=None):
@@ -213,6 +272,10 @@ class DevV2Store:
         if state not in {'claimed','needs_review'} or set(actual)!=set(j['reservation']) or any(actual[k]>v for k,v in j['reservation'].items()):raise DevConflict('missing/excess usage; retain reservation')
         c=self.get(db,'cells',j['cell']);goal_id=self.cell_goal(db,c);g=self.get(db,'goals',goal_id)
         for k,v in actual.items():c['used'][k]=c['used'].get(k,0)+v;g['used'][k]=g['used'].get(k,0)+v
+        if j.get('unmetered_eval'):
+            for target in (c,g):
+                usage=target.setdefault('eval_usage',{k:0 for k in EVAL_USAGE})
+                for k,v in eval_usage_amount(j,actual).items():usage[k]=usage.get(k,0)+v
         j.update(actual=actual,receipt=receipt,settled_at=time.time())
         db.execute("UPDATE v2_jobs SET state='settled',payload=? WHERE id=?",(encoded(j),jid));self.put(db,'cells',j['cell'],c);self.put(db,'goals',goal_id,g);self.event(db,'settled',j)
     def recover_evals(self,db,goal_id=None):
@@ -269,22 +332,25 @@ class DevV2Store:
             n=db.execute('SELECT COALESCE(MAX(version),0) FROM v2_versions WHERE cell=?',(key,)).fetchone()[0]
             if record['version']!=n+1:raise DevConflict('versions must be consecutive')
             db.execute('INSERT INTO v2_versions VALUES (?,?,?)',(key,record['version'],encoded(record)))
-    def reserve_check(self,key,reservation):
+    def reserve_check(self,key,reservation,*,unmetered_eval=False,model_name=None):
         cost(reservation)
         with self.tx() as db:
             c=self.get(db,'cells',key);g=self._goal(db,self.cell_goal(db,c))
             held={k:0 for k in RESOURCES}
             for state,p in db.execute("SELECT state,payload FROM v2_jobs WHERE cell=?",(key,)):
                 if state in {'reserved','claimed','needs_review'}:
-                    for k,v in json.loads(p)['reservation'].items():held[k]+=v
-            if g.get('real_finished_at') or g['wall_remaining']<=0 or any(v>g['remaining'][k] or c['used'].get(k,0)+held[k]+v>c['budget'].get(k,0) for k,v in reservation.items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
+                    old=json.loads(p)
+                    for k,v in charged_amount(old,old['reservation']).items():held[k]+=v
+            jobs=[(state,json.loads(p)) for state,p in db.execute("SELECT state,payload FROM v2_jobs WHERE cell=?",(key,))]
+            metered=quota_used(c['used'],jobs)
+            if g.get('real_finished_at') or g['wall_remaining']<=0 or any(v>g['remaining'][k] or metered[k]+held[k]+v>c['budget'].get(k,0) for k,v in charged_amount({'unmetered_eval':unmetered_eval,'unmetered_model':model_name if is_unmetered_model(model_name) else None},reservation).items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
     def export_ledger(self,goal_id=None):
         with self.tx() as db:
             ids=[r[0] for r in db.execute('SELECT id FROM v2_goals ORDER BY rowid')]
             groups={}
             for gid in ids:
                 jobs=[{**j,'state':state} for state,j in self.goal_jobs(db,gid)]
-                g=self._goal(db,gid);recomputed={k:0 for k in RESOURCES}
+                g=self._goal(db,gid);recomputed={k:0 for k in RESOURCES};eval_recomputed={k:0 for k in EVAL_USAGE};eval_cost={k:0 for k in EVAL_USAGE}
                 for event, in db.execute("SELECT payload FROM v2_events WHERE kind='opening'"):
                     ev=json.loads(event)
                     if ev.get('goal_id',GOAL)==gid:
@@ -292,7 +358,10 @@ class DevV2Store:
                 for j in jobs:
                     if j['state']=='settled':
                         for k,v in j['actual'].items():recomputed[k]+=v
-                groups[gid]={'goal_id':gid,'goal':g,'jobs':jobs,'recomputed_used':recomputed,'recompute_matches':resource_equal(recomputed,g['used']),'formal_eligible':False}
+                        for k,v in eval_usage_amount(j,j['actual']).items():eval_recomputed[k]+=v
+                        for k,v in eval_cost_amount(j,j['actual']).items():eval_cost[k]+=v
+                eval_matches=resource_equal(eval_recomputed,g.get('eval_usage',{}))
+                groups[gid]={'goal_id':gid,'goal':g,'jobs':jobs,'recomputed_used':recomputed,'recomputed_eval_usage':eval_recomputed,'eval_usage':g.get('eval_usage',{k:0 for k in EVAL_USAGE}),'eval_cost':eval_cost,'recompute_matches':resource_equal(recomputed,g['used']) and eval_matches,'formal_eligible':False}
                 keys={key for key,p in db.execute('SELECT id,payload FROM v2_cells') if self.cell_goal(db,json.loads(p))==gid}
                 query_events=[(kind,json.loads(p)) for kind,p in db.execute("SELECT kind,payload FROM v2_events WHERE kind IN ('planner_memory_query_started','planner_memory_query_finished') ORDER BY seq") if json.loads(p).get('cell') in keys]
                 queries=[]

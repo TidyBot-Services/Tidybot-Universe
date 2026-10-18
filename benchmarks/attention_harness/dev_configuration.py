@@ -79,8 +79,11 @@ def configured_budget(p):
  required=derive_cell_budget(p,limits['sdk_calls'],limits['control_steps']);b=p.get('cell_budget',required);cost(b)
  if complete_resources(b):b=fill_optional(b)
  if set(b)!=set(RESOURCES):raise ValueError('complete cell budget required')
- if p['coverage']=='strict_full_depth' and any(b[k]<v for k,v in required.items()):raise ValueError('strict cell budget below worst-case requirement')
+ from .free_models import limited_resources
+ from .dev_experiment import MODEL
+ limited=limited_resources(eval_config=p['eval_agent'],model_names=(MODEL['model'],p['advisor_proxy']['model']))
+ if p['coverage']=='strict_full_depth' and any(b[k]<required[k] for k in limited):raise ValueError('strict cell budget below worst-case requirement')
  minimum=derive_cell_budget({**p,'max_versions':1,'target_valid_executions':1,'help_budget':0})
- if any(b[k]<v for k,v in minimum.items()):raise ValueError('zero capacity budget refused')
+ if any(b[k]<minimum[k] for k in limited):raise ValueError('zero capacity budget refused')
  return b
 def worst_slot(p):return ((2+int(p.get('eval_agent',{}).get('enabled',False)))*p['model_reserve_seconds']+p['attempt_wall_seconds']+p['startup_cleanup_seconds']+p.get('planner_features',{}).get('human_wait_seconds',0)+2*p.get('planner_features',{}).get('background_seconds',0))

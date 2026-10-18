@@ -5,7 +5,7 @@ from pathlib import Path
 from .dev_loop import sha
 from .core.dev_store import DevConflict
 from .dev_experiment import snapshot,validate_fairness
-from .dev_ledger import RESOURCES,GOAL,resource_equal
+from .dev_ledger import RESOURCES,GOAL,resource_equal,eval_usage_amount,eval_cost_amount,EVAL_USAGE
 from .dev_failure_analysis import classify
 
 def wilson(successes,n):
@@ -18,7 +18,7 @@ def read(ref):
     return json.loads(Path(ref['uri']).read_bytes())
 def analyze_cell(c,planned,manifest_ref):
     rows=[];unknown=False;refs=[];first=None;infra=False
-    recomputed={k:0 for k in RESOURCES};resource_errors=[]
+    recomputed={k:0 for k in RESOURCES};eval_recomputed={k:0 for k in EVAL_USAGE};eval_cost={k:0 for k in EVAL_USAGE};resource_errors=[]
     for job in c['jobs']:
         if job['state']!='settled':continue
         actual=dict(job['actual'])
@@ -28,6 +28,7 @@ def analyze_cell(c,planned,manifest_ref):
             if answer_ref:
                 answer=read(answer_ref)
                 if receipt.get('usage_accounting')=='measured' and (actual['provider_tokens'],actual['input_tokens'],actual['output_tokens'])!=tuple(answer['usage'][k] for k in ('total_tokens','prompt_tokens','completion_tokens')):raise ValueError('HumanProxy usage/settlement differs')
+                if job['kind']=='eval' and not receipt.get('usage_accounting') and not receipt.get('cache_hit') and (actual['provider_tokens'],actual['input_tokens'],actual['output_tokens'])!=tuple(answer['usage'][k] for k in ('total_tokens','prompt_tokens','completion_tokens')):raise ValueError('Eval usage/settlement differs')
             elif job['kind'] in {'model','advisor'}:
                 output=read(receipt['response']);usage=output['usage']
                 if actual['provider_tokens']!=usage['total_tokens'] or actual['input_tokens']!=usage['prompt_tokens'] or actual['output_tokens']!=usage['completion_tokens']:raise ValueError('provider usage/settlement differs')
@@ -48,8 +49,11 @@ def analyze_cell(c,planned,manifest_ref):
             elif job['kind'] in {'demo','human','cache'}:read(receipt['help'])
             for k,v in actual.items():
                 if k in recomputed:recomputed[k]+=v  # legacy review seconds are readable, never human attention
+            for k,v in eval_usage_amount(job,actual).items():eval_recomputed[k]+=v
+            for k,v in eval_cost_amount(job,actual).items():eval_cost[k]+=v
         except (OSError,ValueError,KeyError,TypeError) as exc:resource_errors.append(str(exc));unknown=True
     if not resource_errors and not resource_equal(recomputed,c['used']):resource_errors.append('cell used differs from settlement receipts');unknown=True
+    if not resource_errors and not resource_equal(eval_recomputed,c.get('eval_usage',{})):resource_errors.append('cell Eval usage differs from settlement receipts');unknown=True
     eligible=c.get('experiment_eligible',False) and not c.get('mixed_policy',False) and c['state']!='condition_invalid'
     if (c['task_id'],c['seed'])!=(planned['task_id'],planned['seed']):unknown=True
     for v in c['versions']:
@@ -116,7 +120,7 @@ def analyze_cell(c,planned,manifest_ref):
         'native_success':success if evaluated else None,'terminal_native_success':known[-1]['native_success'] if evaluated else None,
         'unknown':unknown,'versions':rows,'version_count':len(rows),'first_success':first if evaluated else None,'eval_confusion_matrix':matrix,'eval_false_stops':false_stop,
         'advisor_tokens':sum(j.get('actual',{}).get('provider_tokens',0) for j in c['jobs'] if j['kind']=='advisor' and j['state']=='settled'),'wall_seconds':max((j.get('settled_at',c.get('created_at') or 0) for j in c['jobs']),default=0)-(c.get('created_at') or 0),
-        'resources':recomputed,'resource_errors':resource_errors,'infra':infra,'evidence_refs':refs,'reason':c.get('reason'),'partial_iterations':len(rows)<2,'scene_conditions':[j['receipt'].get('scene_condition') for j in c['jobs'] if j['kind']=='execute' and j['state']=='settled'],'condition_invalid':c['state']=='condition_invalid'}
+        'resources':recomputed,'eval_cost':eval_cost,'resource_errors':resource_errors,'infra':infra,'evidence_refs':refs,'reason':c.get('reason'),'partial_iterations':len(rows)<2,'scene_conditions':[j['receipt'].get('scene_condition') for j in c['jobs'] if j['kind']=='execute' and j['state']=='settled'],'condition_invalid':c['state']=='condition_invalid'}
 
 def report(store,exp_id):
     e=snapshot(store,exp_id);m=read(e['manifest']);validate_fairness(m)
@@ -141,6 +145,7 @@ def report(store,exp_id):
         eligible=[c for c in rows if c['eligible']];observed=[c for c in eligible if c['evaluated']];success=sum(c['native_success'] is True for c in observed);n=len(observed);terminal=sum(c['terminal_native_success'] is True for c in observed)
         counts={state:sum(c['state']==state for c in eligible) for state in ['completed','failed','cancelled','unknown','needs_review','not_started','planned','running','condition_invalid']}
         resources={k:sum(c['resources'].get(k,0) for c in eligible) for k in RESOURCES}
+        eval_cost={k:sum(c.get('eval_cost',{}).get(k,0) for c in eligible) for k in EVAL_USAGE}
         first=[c['first_success'] for c in observed if c['first_success']]
         matrix={k:sum(c.get('eval_confusion_matrix',{}).get(k,0) for c in eligible) for k in ('true_positive','false_positive','true_negative','false_negative','unknown')}
         groups.append({'task_id':task,'policy_id':policy,'planned':len(rows),'eligible_planned':len(eligible),'excluded_mixed_or_interactive':sum(c.get('mixed_policy') or not c.get('eligible') and not c.get('condition_invalid') for c in rows),'excluded_condition_invalid':sum(c.get('condition_invalid',False) for c in rows),'all_planned_resources':{k:sum(c['resources'].get(k,0) for c in rows) for k in RESOURCES},'eval_confusion_matrix':matrix,'eval_false_stops':sum(c.get('eval_false_stops',0) for c in eligible),
@@ -149,7 +154,7 @@ def report(store,exp_id):
             'terminal_success':terminal,'terminal_success_rate':terminal/n if n else None,
             'planned_completion_ratio':counts['completed']/len(eligible) if eligible else None,
             'state_counts':counts,'unknown_evidence':sum(c['unknown'] for c in eligible),
-            'partial_iterations':sum(c['partial_iterations'] for c in eligible),'resources':resources,
+            'partial_iterations':sum(c['partial_iterations'] for c in eligible),'resources':resources,'eval_cost':eval_cost,
             'mean_versions':sum(c['version_count'] for c in eligible)/len(eligible) if eligible else None,
             'mean_G':sum(c['G'] for c in eligible)/len(eligible) if eligible else None,'mean_E':sum(c['E'] for c in eligible)/len(eligible) if eligible else None,'help_cost':{'advisor_tokens':sum(c.get('advisor_tokens',0) for c in eligible),'credits':resources['advisor_calls'],'count':resources['advisor_calls'],'logical_human_seconds':resources['hint_human_seconds']},'wall_seconds':sum(c.get('wall_seconds',0) for c in eligible),
             'infra_cells':sum(c.get('infra',False) for c in eligible),'failed_cells':counts['failed'],'cancelled_cells':counts['cancelled'],'needs_review_cells':counts['needs_review'],'not_started_cells':counts['not_started']+counts['planned'],'unknown_cells':sum(c['unknown'] for c in eligible),
@@ -167,10 +172,11 @@ def report(store,exp_id):
         'denominator_rule':'All manifest cells retained; rates/Wilson use independently evaluated eligible cells only. Unevaluated/unknown are never native false.',
         'success_rule':'Any independently verified success within the fixed budget; terminal actual execution reported separately. Success versions/times computed offline only.'}
 def report_csv(value):
-    output=io.StringIO();fields=['task_id','policy_id','planned','eligible_planned','evaluated','success','native_false','unevaluated','native_success_rate','wilson_low','wilson_high','terminal_success_rate','planned_completion_ratio','partial_iterations','mean_versions','infra_cells','failed_cells','cancelled_cells','needs_review_cells','not_started_cells','unknown_cells','mean_G','mean_E','wall_seconds',*RESOURCES]
+    eval_columns={k:('eval_calls_used' if k=='eval_calls' else 'eval_'+k+'_used') for k in EVAL_USAGE}
+    output=io.StringIO();fields=['task_id','policy_id','planned','eligible_planned','evaluated','success','native_false','unevaluated','native_success_rate','wilson_low','wilson_high','terminal_success_rate','planned_completion_ratio','partial_iterations','mean_versions','infra_cells','failed_cells','cancelled_cells','needs_review_cells','not_started_cells','unknown_cells','mean_G','mean_E','wall_seconds',*RESOURCES,*eval_columns.values()]
     w=csv.DictWriter(output,fieldnames=fields);w.writeheader()
     for g in value['groups']:
-        row={k:g.get(k) for k in fields if k not in RESOURCES};interval=g['wilson95'];row.update(wilson_low=interval[0] if interval else None,wilson_high=interval[1] if interval else None,**g['resources']);w.writerow(row)
+        row={k:g.get(k) for k in fields if k not in RESOURCES and k not in eval_columns.values()};interval=g['wilson95'];row.update(wilson_low=interval[0] if interval else None,wilson_high=interval[1] if interval else None,**g['resources'],**{column:g['eval_cost'][k] for k,column in eval_columns.items()});w.writerow(row)
     return output.getvalue()
 def export(store,exp_id,directory):
     d=Path(directory);d.mkdir(parents=True,exist_ok=True);value=report(store,exp_id)

@@ -121,13 +121,20 @@ def test_R8_validation_v3(tmp_path):
  assert [v['version'] for v in c['versions']]==[1,2,3,4] and not c['versions'][2]['valid']
  assert [j['version'] for j in c['jobs'] if j['kind']=='execute']==[1,2,4] and c['used']['dev_calls']==4
 
-@pytest.mark.parametrize('resource',RESOURCES)
+@pytest.mark.parametrize('resource',[r for r in RESOURCES if r not in {'provider_tokens','input_tokens','output_tokens'}])
 def test_R10a_strict_resource_boundaries(tmp_path,resource):
  sel=selection('budget-boundary');cb=derive_cell_budget(normalize_configuration(sel))
  s=DevV2Store(tmp_path/'s.sqlite');bad={**cb,resource:cb[resource]-1}
  with pytest.raises(ValueError):create(s,tmp_path/'a',{**sel,'cell_budget':bad})
  with s.tx() as db:assert db.execute('SELECT count(*) FROM v2_goals').fetchone()[0]==0 and db.execute('SELECT count(*) FROM v2_jobs').fetchone()[0]==0
  good=create(s,tmp_path/'a',{**sel,'cell_budget':cb});assert not any(good['resources']['used'].values())
+
+def test_R10a_free_token_cell_capacity_can_be_zero(tmp_path):
+ sel=selection('free-token-cell');cb=derive_cell_budget(normalize_configuration(sel))
+ budget={**cb,'provider_tokens':0,'input_tokens':0,'output_tokens':0}
+ s=DevV2Store(tmp_path/'s.sqlite')
+ created=create(s,tmp_path/'a',{**sel,'cell_budget':budget})
+ assert created['resources']['limits']['provider_tokens']==0
 
 def test_R10b_minimal_wall(tmp_path):
  sel={**selection('minimal-boundary'),'target_depth':1,'target_valid_executions':1,'max_versions':1,'help_budget':0,'coverage':'budget_limited','wall_limit':2220}
@@ -143,7 +150,8 @@ def test_start_threshold_no_dispatch(tmp_path):
 def test_diag_minimum_preserved(tmp_path):
  cb=derive_cell_budget(normalize_configuration({**selection(),'max_versions':1,'target_depth':1,'target_valid_executions':1,'help_budget':0}))
  s=DevV2Store(tmp_path/'s.sqlite')
- with pytest.raises(ValueError,match='zero capacity'):create(s,tmp_path/'a',{**selection(),'mode':'diagnostic','coverage':'budget_limited','cell_budget':{**cb,'input_tokens':2000}})
+ # Free token capacity may be zero; model time remains a structural minimum.
+ with pytest.raises(ValueError,match='zero capacity'):create(s,tmp_path/'a',{**selection(),'mode':'diagnostic','coverage':'budget_limited','cell_budget':{**cb,'input_tokens':0,'model_seconds':0}})
 
 def test_paid_provider_settle_exception_preserves_known(tmp_path,monkeypatch):
  s,e,b=setup(tmp_path,{**selection(),'target_depth':1,'target_valid_executions':1});cl=Client();old=s.settle;hit=[]

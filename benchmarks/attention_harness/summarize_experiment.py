@@ -123,7 +123,7 @@ def read_experiment(store_path, experiment_id=None):
                           'fallback_detail': {'generic_request': generic_fallbacks,
                                               'model_answer': sum(bool(r.get('fallback')) or r.get('state') == 'fallback' for r in planner_requests)},
                           'eval_compute': {k: sum(j.get('actual', {}).get(k, 0) for j in jobs if j['kind'] == 'eval' and j['state'] == 'settled')
-                                           for k in ('eval_calls', 'provider_tokens', 'model_seconds')},
+                                           for k in ('eval_calls', 'provider_tokens', 'input_tokens', 'output_tokens', 'model_seconds')},
                           'read_errors': errors})
         for planned in manifest.get('cells', []):
             if planned['key'] not in found:
@@ -135,7 +135,7 @@ def read_experiment(store_path, experiment_id=None):
                               'request_units': 0, 'logical_human_seconds': 0, 'timeouts': 0, 'fallbacks': 0,
                               'attention_seconds_unknown_requests': 0,
                               'execution_timeouts': 0,
-                              'eval_compute': {'eval_calls': 0, 'provider_tokens': 0, 'model_seconds': 0},
+                              'eval_compute': {'eval_calls': 0, 'provider_tokens': 0, 'input_tokens': 0, 'output_tokens': 0, 'model_seconds': 0},
                               'read_errors': ['missing persisted cell']})
     return {'experiment_id': experiment['experiment_id'], 'manifest': manifest, 'cells': cells}
 
@@ -191,7 +191,7 @@ def summarize(experiment):
                 'fallbacks': sum(c['fallbacks'] for c in rows),
                 'fallback_detail': {kind: sum(c.get('fallback_detail', {}).get(kind, 0) for c in rows)
                                     for kind in ('generic_request', 'model_answer')},
-                'eval_compute': {k: sum(c['eval_compute'][k] for c in rows) for k in ('eval_calls', 'provider_tokens', 'model_seconds')}}
+                'eval_compute': {k: sum(c['eval_compute'].get(k, 0) for c in rows) for k in ('eval_calls', 'provider_tokens', 'input_tokens', 'output_tokens', 'model_seconds')}}
     by_policy = {p: {**aggregate(rows), 'invalid_cells': invalid[p]} for p, rows in sorted(policies.items())}
     for p in invalid:
         by_policy.setdefault(p, {**aggregate([]), 'invalid_cells': invalid[p]})

@@ -188,6 +188,10 @@ rewritten to make an old catalog appear approved for changed source.
 
 ## Diagnostic task budget override
 
+### Dev v2 免费模型用量口径（2026-10-18）
+
+用户确认 `parcc/GLM`（Dev、AdvisorProxy）与 `parcc/Qwen`（固定 Eval）免费；名单由 `benchmarks/attention_harness/free_models.py` 统一定义。新 Dev 实验把这两种模型的 provider/input/output tokens 及固定 Qwen Eval 的 `eval_calls` 继续累计到原有的格子与 goal `used`、报告资源列和导出账本，但不作额度检查。Eval 回执、账本 `eval_usage`、导出及报告 `eval_cost` 另列实际调用与 token；不并入注意力成本。其他模型回到受限 token 行为，非固定 Qwen Eval 也恢复原有 `eval_calls` 限额。`help_budget`、`help_credits`、`help_count`、`advisor_calls`、`hint_human_seconds`、`help_wait_seconds`、`dev_calls/max_versions`、仿真执行资源、`wall` 与 `model_seconds` 继续受限。每格 Eval 最多调用 `max(2*max_versions,10)` 次，超出即标记 `needs_review`；这是防失控保险。既有 goal 无需为免费 token 或 Eval 调用增额，旧式作业与旧清单保持原有解释。
+
 New Dev v2 experiments (`runner_boundary='dev_loop'`) default to budget tier `dev`: 320 SDK calls, 9,600 control steps (`env.horizon`) and a 1,920 second attempt wall. An explicit `legacy` tier reproduces the former 80/2,400/480 configuration and immutable manifest bytes. Existing manifests without a tier field are interpreted as legacy; new Dev manifests and configurations contain `budget_tier: dev` in their hashes. Formal configurations and approved comparisons retain 80/2,400/480 and reject the Dev tier. Dev tier results have `formal_eligible=false`, carry `dev_tier_budget` in result/trace/native/sandbox evidence and their ledger settlement, and are excluded from formal comparisons. Development configuration and source locks must be regenerated under the existing hash checks; old immutable manifests are not rewritten.
 
 Only the scripted seed 101–103 `grasp_chain_probe` and `grasp_variants` accept `--budget-scale S` (finite 1–8). The CLI sets `ATTN_DIAG_BUDGET_SCALE` with a probe marker. Its explicit scale replaces the Dev default, so `--budget-scale 2` means 160/4,800/960 rather than a compounded 8×. Integer ceilings round up for fractional multipliers. The diagnostic ledger, `budget.json`, and reservation carry the corresponding limits. Without the option, these scripts now use the Dev default task budget.

@@ -100,7 +100,7 @@ def test_prepare_invalid_wait_refused_before_any_immutable_artifacts(prepared_en
     integration.prepare(args)
 
 
-@pytest.mark.parametrize('resource',[r for r in RESOURCES if r not in OPTIONAL])
+@pytest.mark.parametrize('resource',[r for r in RESOURCES if r not in OPTIONAL and r not in {'provider_tokens','input_tokens','output_tokens'}])
 def test_prepare_original_resource_remaining_insufficient(prepared_env,resource):
     store,state,args=prepared_env
     required=2*derive_cell_budget(plan())[resource]
@@ -164,16 +164,17 @@ def test_prepare_original_total_limit_insufficient(prepared_env):
     assert not state.exists() and raw_goal(store)==before
 
 
-def test_prepare_old_goal_without_eval_authorization_reports_exact_shortfall(prepared_env):
+def test_prepare_old_goal_without_eval_cost_authorization_succeeds(prepared_env,monkeypatch):
+    from openarm365_dev_v2 import dev_config
+    monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})
     store,state,args=prepared_env
     with store.tx() as db:
         goal=store.get(db,'goals',integration.GOAL_ID)
-        goal['limits'].update(eval_calls=0,provider_tokens=400000,input_tokens=400000)
+        goal['limits'].update(eval_calls=0,provider_tokens=0,input_tokens=0,output_tokens=0)
         store.put(db,'goals',integration.GOAL_ID,goal)
     before=raw_goal(store)
-    with pytest.raises(DevBudgetExhausted,match=r'eval_calls \+4.*provider_tokens \+115040.*input_tokens \+63840'):
-        integration.prepare(args)
-    assert not state.exists() and raw_goal(store)==before
+    result=integration.prepare(args)
+    assert result and state.exists() and raw_goal(store)==before
 
 
 @pytest.mark.parametrize('field,value',[('seed',126),('port',8769),('memory_url','http://remote.invalid')])
