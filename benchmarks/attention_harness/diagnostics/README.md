@@ -151,6 +151,8 @@ seed 102 reset 实测：`robot0_left_eef_pos ≈ [0.411192,-2.279444,1.089394]` 
 
 `--carry --oracle-from-reset --dry-run --dry-run-reset` 只做 reset，不启动物理步进，打印水槽边沿高度、来源、`sink_pos`、auto 位移、香蕉抓取时与水槽移位后的 mount 相对位置，以及待执行策略。边沿高度从 reset 原生 MuJoCo 水槽 main 固定碰撞盒的最大 z 计算；没有对应盒时退回 `sink_pos` 的 z 并明确标明。这些几何均标注“使用仿真真值,仅诊断”。正常 `--dry-run` 行为不变。真实执行目录的 `native_result.json` 被原样读取到 `results.json` 的 `native_success` 和 `native_status`；`object_final_pos` 来自最终公开观测，`object_in_sink` 只按水槽碰撞盒 XY 投影与低于边沿的 z 做启发式判定，不代替原生评估器。
 
+夹具 `sink_pos` 是水槽夹具原点，碰撞盒算出的最高面可能属于水龙头。`--carry-sink-xy X,Y` 可指定世界系搬运目标，`--carry-rim-top Z` 可指定盆沿高度；两者仅在 `--carry` 下有效。X/Y 必须有限，Z 必须是 [0.5, 1.5] m 内的有限数。覆盖 XY 时目标 z 保留夹具原值，策略只用目标 x/y；`--carry-base-shift auto` 根据覆盖后的目标计算。覆盖任一值时，`carry` 记录夹具原目标与原沿高度、有效值、来源 `user override, diagnostic`、实际底座位移和启发式说明；`results.md` 也列出对照。此时 `object_in_sink` 按有效目标中心的世界系 XY 矩形（半宽 x=0.17 m、y=0.07 m）且物体 z 低于有效沿高度判定。未覆盖时策略和原启发式保持不变。
+
 ```bash
 PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service" \
   XDG_CACHE_HOME=/tmp/attn-carry-cache NUMBA_CACHE_DIR=/tmp/attn-carry-numba \
@@ -163,6 +165,8 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
   --carry --carry-base-shift auto --dry-run --dry-run-reset \
   --carry-clearance-m 0.05 --release-clearance-m 0.05 --retreat-m 0.05
 ```
+
+盆目标的只读检查可在上述命令加上 `--carry-sink-xy 0.46,-2.065 --carry-rim-top 0.93`，并把 `--release-clearance-m` 改为 `0.03`。输出同时列出夹具原值、有效目标与沿高度、算出的 auto 底座位移；只读 reset 不推进物理。
 
 seed 102 只读 reset 实测：`sink_pos=[0.2999998883,-1.7962400050,0.9861874579]` m；main 固定碰撞盒 13 个，边沿顶面 `1.0186950289` m；`auto=(+0.1969099291,-0.5810548409,0)`。mount 旋转为 `Rz(π)`，所以世界系 `sink−banana=(-0.1969099291,+0.5810548409)` m 映到 mount 系后符号翻转。抓取时香蕉与移位后水槽的 mount XY 均为 `[0.3155711446,0.3600824950]` m。以上仅为只读可达性自检，未执行新增物理阶段或获得原生成功结果。
 

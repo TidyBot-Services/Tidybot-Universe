@@ -685,6 +685,11 @@ def markdown(row):
         lines += [f"原生评估：success=`{row['native_success']}`，status=`{row['native_status']}`；最终物体位置=`{row['object_final_pos']}`；物体在水槽（启发式）=`{row['object_in_sink']}`。",'',
                   f"水槽边沿高度=`{row['carry']['sink_rim_top_world_m']}` m，来源：{row['carry']['sink_rim_top_source']}。使用仿真真值,仅诊断。",'',
                   f"搬运过渡高度余量=`{row['carry'].get('carry_clearance_m',.20)}` m；释放高度余量=`{row['carry'].get('release_clearance_m',.08)}` m；释放后上抬=`{row['carry'].get('retreat_m',.10)}` m。",'']
+        if 'carry_target_source' in row['carry']:
+            carry=row['carry']
+            lines += [f"搬运目标=`{carry['sink_pos_world_m']}`，来源：{carry.get('sink_pos_source','fixture')}；夹具原目标=`{carry['fixture_sink_pos_world_m']}`。",'',
+                      f"夹具原边沿高度=`{carry['fixture_sink_rim_top_world_m']}` m，来源：{carry['fixture_sink_rim_top_source']}；底座位移=`{carry['base_shift_mount']}`。",'',
+                      f"物体在水槽的覆盖值启发式：{carry['object_in_sink_heuristic']}；XY 范围=`{carry['sink_xy_aabb_world_m']}`。",'']
     if 'steps' in row:
         lines += ['| 步号 | 增量 m / rad | 公开结果 | 失败原因 | 证书查询数 | 证书耗时 s | 目标末端位置 / xyzw |',
                   '| ---: | --- | --- | --- | ---: | ---: | --- |']
@@ -743,6 +748,8 @@ def _main(argv=None):
     p.add_argument('--oracle-from-reset',action='store_true',help='read target geometry once at real reset; diagnostic only')
     p.add_argument('--carry',action='store_true',help='append diagnostic carry, release and retreat')
     p.add_argument('--carry-base-shift',default='auto',help='DX,DY,DYAW in mount frame or auto')
+    p.add_argument('--carry-sink-xy',metavar='X,Y',help='diagnostic world XY carry target override')
+    p.add_argument('--carry-rim-top',type=float,metavar='Z',help='diagnostic sink rim height override in metres')
     p.add_argument('--carry-clearance-m',type=float,default=.20,metavar='C')
     p.add_argument('--release-clearance-m',type=float,default=.08,metavar='R')
     p.add_argument('--retreat-m',type=float,default=.10,metavar='T')
@@ -750,6 +757,17 @@ def _main(argv=None):
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
     args=p.parse_args(argv)
+    if (args.carry_sink_xy is not None or args.carry_rim_top is not None) and not args.carry:
+        p.error('--carry-sink-xy and --carry-rim-top require --carry')
+    sink_xy_override=None
+    if args.carry_sink_xy is not None:
+        try:
+            sink_xy_override=tuple(float(v) for v in args.carry_sink_xy.split(','))
+        except ValueError:p.error('--carry-sink-xy requires finite X,Y')
+        if len(sink_xy_override)!=2 or not all(math.isfinite(v) for v in sink_xy_override):
+            p.error('--carry-sink-xy requires finite X,Y')
+    if args.carry_rim_top is not None and not (math.isfinite(args.carry_rim_top) and .5<=args.carry_rim_top<=1.5):
+        p.error('--carry-rim-top must be finite and in [0.5, 1.5]')
     carry_clearance,release_clearance,retreat_distance=args.carry_clearance_m,args.release_clearance_m,args.retreat_m
     if not (math.isfinite(carry_clearance) and .02<=carry_clearance<=.30):p.error('--carry-clearance-m must be in [0.02, 0.30]')
     if not (math.isfinite(release_clearance) and .02<=release_clearance<=.30 and release_clearance<=carry_clearance):p.error('--release-clearance-m must be in [0.02, 0.30] and <= --carry-clearance-m')
@@ -788,6 +806,21 @@ def _main(argv=None):
         if args.carry:
             carry={key:oracle[key] for key in ('sink_pos_world_m','sink_rim_top_world_m',
                 'sink_rim_top_source','sink_xy_aabb_world_m','sink_collision_geom_count')}
+            if sink_xy_override is not None or args.carry_rim_top is not None:
+                carry.update(fixture_sink_pos_world_m=carry['sink_pos_world_m'],
+                    fixture_sink_rim_top_world_m=carry['sink_rim_top_world_m'],
+                    fixture_sink_rim_top_source=carry['sink_rim_top_source'],
+                    fixture_sink_xy_aabb_world_m=carry['sink_xy_aabb_world_m'],
+                    carry_target_source='user override, diagnostic',
+                    object_in_sink_heuristic='effective target centred world XY rectangle, half-widths (0.17, 0.07) m; z below effective rim top')
+                if sink_xy_override is not None:
+                    carry['sink_pos_world_m']=[*sink_xy_override,carry['sink_pos_world_m'][2]]
+                    carry['sink_pos_source']='user override, diagnostic'
+                if args.carry_rim_top is not None:
+                    carry['sink_rim_top_world_m']=args.carry_rim_top
+                    carry['sink_rim_top_source']='user override, diagnostic'
+                x,y=carry['sink_pos_world_m'][:2]
+                carry['sink_xy_aabb_world_m']=[[x-.17,x+.17],[y-.07,y+.07]]
             carry_shift=(carry_auto_shift(fixture['mount_pose_world'],oracle['position_world_m'],
                 carry['sink_pos_world_m'],shift[2]) if args.carry_base_shift=='auto' else
                 tuple(float(x) for x in args.carry_base_shift.split(',')))
@@ -821,6 +854,13 @@ def _main(argv=None):
         if carry is not None:
             print('# 使用仿真真值,仅诊断；只读 reset，physics_steps=0')
             print('# carry geometry: '+json.dumps(carry,ensure_ascii=False))
+            if 'carry_target_source' in carry:
+                print('# fixture target/rim: '+json.dumps({'sink_pos_world_m':carry['fixture_sink_pos_world_m'],
+                    'sink_rim_top_world_m':carry['fixture_sink_rim_top_world_m']},ensure_ascii=False))
+                shift_label='auto base shift' if args.carry_base_shift=='auto' else 'explicit base shift'
+                print(f'# effective target/rim and {shift_label}: '+json.dumps({'sink_pos_world_m':carry['sink_pos_world_m'],
+                    'sink_rim_top_world_m':carry['sink_rim_top_world_m'],
+                    'base_shift_mount':carry['base_shift_mount']},ensure_ascii=False))
         if args.oracle_from_reset:
             print('# 使用仿真真值,仅诊断；'+('本次仅执行只读 reset' if args.dry_run_reset else
                   'dry-run 不执行 reset，真实运行时注入几何常量'))

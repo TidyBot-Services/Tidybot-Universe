@@ -13,6 +13,9 @@ def test_carry_auto_geometry_and_policy_bounds():
     shift=carry_auto_shift(mount,banana,sink)
     assert shift==pytest.approx((.196909929094,-.581054840855,0.))
     assert carry_auto_shift(mount,banana,sink,math.pi/2)==pytest.approx((-.581054840855,-.196909929094,0.))
+    # World delta is (-0.0369098174, +0.3122948458); Rz(pi) reverses XY.
+    assert carry_auto_shift(mount,banana,[.46,-2.065,sink[2]])==pytest.approx(
+        (.036909817432,-.312294845808,0.))
     source=sequenced_policy_source((0,.25,0),(.3007057995042732,.9537169507482269,0,0),
         {'position_world_m':banana,'z_range_world_m':[.92,.96]},sequence='translate-first',rotation_step=.15)
     sink_truth={'sink_pos_world_m':sink,'sink_rim_top_world_m':1.0186950289094834}
@@ -114,6 +117,55 @@ def test_carry_cli_passes_clearances_to_policy(monkeypatch,tmp_path,capsys):
     assert 'lower_z = sink_rim_top + 0.05' in output
     assert 'for k in range(2):\n    left_arm.move_delta(0.0,0.0,0.025)' in output
 
+def test_carry_target_overrides_in_dry_run(monkeypatch,tmp_path,capsys):
+    import numpy as np
+    from benchmarks.attention_harness.diagnostics import object_proxy_measure
+    banana=[.4969098174320634,-2.37729484580756,.9348288902306693]
+    fixture_sink=[.2999998883379904,-1.7962400049525014,.9861874579216556]
+    mount=np.eye(4);mount[:2,:2]=-np.eye(2)
+    mount[:3,3]=[.8124809619968811,-1.7672123507688546,.6]
+    def fixture(seed,out,robot_config,include_sink=False):
+        out.mkdir(parents=True)
+        return {'mount_pose_world':mount.tolist(),'diagnostic_truth':{
+            'position_world_m':banana,'z_range_world_m':[.92,.96],
+            'sink_pos_world_m':fixture_sink,'sink_rim_top_world_m':1.0186950289094834,
+            'sink_rim_top_source':'fixture','sink_xy_aabb_world_m':[[0,1],[-2,-1]],
+            'sink_collision_geom_count':13}}
+    monkeypatch.setattr(object_proxy_measure,'reset_diagnostic_fixture',fixture)
+    base=['--base-shift','0,.25,0','--grasp-quat','0,0,0,1',
+          '--oracle-from-reset','--carry','--dry-run','--dry-run-reset',
+          '--out',str(tmp_path/'override')]
+    assert main(base+['--carry-sink-xy','.46,-2.065','--carry-rim-top','.93'])==0
+    output=capsys.readouterr().out
+    carry=json.loads(output.split('# carry geometry: ',1)[1].split('\n',1)[0])
+    assert carry['fixture_sink_pos_world_m']==fixture_sink
+    assert carry['fixture_sink_rim_top_world_m']==1.0186950289094834
+    assert carry['sink_pos_world_m']==[.46,-2.065,fixture_sink[2]]
+    assert carry['sink_rim_top_world_m']==.93
+    assert carry['base_shift_mount']==pytest.approx((.036909817432,-.312294845808,0.))
+    assert carry['sink_xy_aabb_world_m'][0]==pytest.approx([.29,.63])
+    assert carry['sink_xy_aabb_world_m'][1]==pytest.approx([-2.135,-1.995])
+    assert carry['carry_target_source']=='user override, diagnostic'
+    assert 'sink_target = [0.46, -2.065, 0.9861874579216556]' in output
+    assert 'sink_rim_top = 0.93' in output
+    assert '# fixture target/rim:' in output and '# effective target/rim and auto base shift:' in output
+    assert 'world XY rectangle' in carry['object_in_sink_heuristic']
+    base[-1]=str(tmp_path/'explicit')
+    assert main(base+['--carry-sink-xy','.46,-2.065','--carry-rim-top','.93',
+                      '--carry-base-shift','.1,-.2,0'])==0
+    explicit=json.loads(capsys.readouterr().out.split('# carry geometry: ',1)[1].split('\n',1)[0])
+    assert explicit['base_shift_mount']==[.1,-.2,0.]
+
+@pytest.mark.parametrize('option,value',[
+    ('--carry-sink-xy','nan,0'),('--carry-sink-xy','0,inf'),
+    ('--carry-sink-xy','0'),('--carry-sink-xy','0,0,0'),
+    ('--carry-rim-top','nan'),('--carry-rim-top','.49'),('--carry-rim-top','1.51')])
+def test_invalid_carry_target_overrides_rejected(option,value):
+    with pytest.raises(SystemExit):
+        main(['--base-shift','0,.25,0','--carry',option,value,'--dry-run'])
+    with pytest.raises(SystemExit):
+        main(['--base-shift','0,.25,0',option,value,'--dry-run'])
+
 def test_steps_compose_and_policy_is_sdk_valid():
     for shift in ((0,.3,0),(.3,.2,.4),(-.4,.5,-.6)):
         steps=base_steps(shift);x=y=yaw=0.
@@ -161,6 +213,18 @@ def test_public_summary_from_real_feedback_shape(tmp_path):
         'carry_lift','carry_base','carry_xy','lower','release','retreat','observe']
     assert carried['stages'][-1]['public_status']=='not_reached'
     assert carried['native_success'] is None and carried['object_final_pos']==[0,0,.96]
+    override={**carry,'sink_xy_aabb_world_m':[[-.17,.17],[-.07,.07]],
+              'fixture_sink_pos_world_m':[.3,-1.8,1.],
+              'fixture_sink_rim_top_world_m':1.0187,
+              'fixture_sink_rim_top_source':'fixture',
+              'carry_target_source':'user override, diagnostic',
+              'sink_pos_source':'user override, diagnostic',
+              'base_shift_mount':(0.,0.,0.),
+              'object_in_sink_heuristic':'effective target centred world XY rectangle'}
+    assert summarize(tmp_path,102,(0,.3,0),'movable_objects',False,1.,carry=override)['object_in_sink'] is True
+    assert '覆盖值启发式' in markdown(summarize(tmp_path,102,(0,.3,0),'movable_objects',False,1.,carry=override))
+    override['sink_rim_top_world_m']=.93
+    assert summarize(tmp_path,102,(0,.3,0),'movable_objects',False,1.,carry=override)['object_in_sink'] is False
 
 
 def test_rotation_split_and_oriented_policy(capsys):
