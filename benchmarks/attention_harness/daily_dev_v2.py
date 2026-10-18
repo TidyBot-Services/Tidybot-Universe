@@ -48,7 +48,12 @@ class DailyDevV2:
         return [dict(c,channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],locked={'config':dict(config['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=config['model']['model'],experiment_state=e['state'],manifest=e['manifest'],name_suffix=e['selection'].get('name_suffix','')) for c in e['cells']]
     def create(self,body):
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('explicit selection and start required')
-        selection=body['selection'];configuration=selection.get('configuration',{})
+        selection=body['selection']
+        if not isinstance(selection,dict):raise ValueError('bounded explicit experiment selection required')
+        if not selection.get('planner_features'):
+            selection={k:v for k,v in selection.items() if k!='human_wait_seconds'}
+        experiments.validate_selection_fields(selection)
+        configuration=selection.get('configuration',{})
         key=selection.get('request_key','')
         if not re.fullmatch(r'[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
         eid='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24];directory,path,budget=self.paths(eid)

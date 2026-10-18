@@ -4,6 +4,10 @@
 
   const DEBUG_VIEW = new URLSearchParams(location.search).get('debug') === '1';
   const initialSelection = new URL(location.href).searchParams;
+  function experimentFromHash(hash) { return /^#exp=(devexp-[a-f0-9]{24})$/.exec(hash || '')?.[1] || null; }
+  function restoredExperiment(hash, items) {const id=experimentFromHash(hash);return id && items.some(item=>item.experiment_id===id) ? id : null;}
+  const initialExperiment=experimentFromHash(location.hash);
+  let experimentRestored=false;
   const view = root.querySelector('.view');
   root.dataset.operatorView = String(!DEBUG_VIEW);
   const workspace=document.createElement('div');workspace.className='ab-workspace';
@@ -262,6 +266,7 @@
     url.searchParams.delete('dev');
     if (runId) url.searchParams.set('run', runId);
     else url.searchParams.delete('run');
+    url.hash='';
     history.replaceState(null, '', url);
   }
   function rememberRunView(){
@@ -583,7 +588,9 @@
   function navigateRecord(id){
     if(!devSessions.some(d=>d.session_id===id)){navigateRun(id);return;}
     rememberRunView();selectedDev=id;selectedRequest=null;lastRendered='';
-    const url=new URL(location.href);url.searchParams.delete('run');url.searchParams.set('dev',id);history.replaceState(null,'',url);
+    const url=new URL(location.href);url.searchParams.delete('run');url.searchParams.set('dev',id);
+    url.hash=devSessions.find(d=>d.session_id===id)?.experiment_id ? `exp=${devSessions.find(d=>d.session_id===id).experiment_id}` : '';
+    history.replaceState(null,'',url);
     if(matchMedia('(max-width:760px)').matches){sidebarOpen=false;sidebarLayout();}
     refresh();
   }
@@ -1973,6 +1980,7 @@
           url.searchParams.delete('run');
           if (selectedDev) url.searchParams.set('dev',selectedDev);
           else url.searchParams.delete('dev');
+          url.hash=profile.channel==='dev_v2'?`exp=${result.experiment_id}`:'';
           history.replaceState(null,'',url);
           launchDialog.close();
           lastRendered = '';
@@ -2699,6 +2707,27 @@
       [...snapshot.requests].sort((a,b) => b.created_at - a.created_at).find(hasFeedback);
   }
   // Operator presentation: no changes to evidence, decisions or request payloads.
+  const WAIT_RING_CIRCUMFERENCE=2*Math.PI*9;
+  function waitCountdown(deadline,now,totalSeconds) {
+    const end=typeof deadline==='string'?Date.parse(deadline):Number(deadline)*1000;
+    if(!Number.isFinite(end))return null;
+    const remaining=Math.max(0,Math.ceil((end-now)/1000)),total=Math.max(1,Number(totalSeconds)||remaining||1);
+    return {remaining,late:remaining>0&&remaining<=30,ended:remaining===0,gone:now>=end+5000,
+      dashoffset:WAIT_RING_CIRCUMFERENCE*(1-Math.min(1,remaining/total))};
+  }
+  function waitingRequest(snapshot) {
+    const approval=snapshot?.dev_v2?.planner?.requests?.find(r=>r.request_type==='approval'&&r.state==='waiting'&&r.deadline_epoch!=null);
+    if(approval)return {deadline:approval.deadline_epoch,created:approval.created_at};
+    // Benchmark AdvisorProxy requests have no human reply window.
+    if(snapshot?.dev_v2)return null;
+    const request=(snapshot?.requests||[]).find(r=>r.state==='pending'&&r.deadline_at!=null&&r.mode==='live_human_first');
+    return request?{deadline:request.deadline_at,created:request.created_at}:null;
+  }
+  function resourceRows(snapshot) {
+    const resources=snapshot.resources,s=snapshot.dev_session;
+    const attempts=s?resources.executions:{used:snapshot.attempts.length,limit:snapshot.task_plan?.max_attempts ?? launches.find(l=>l.run_id===snapshot.run.run_id)?.locked?.max_attempts};
+    return [['executions','Attempts',attempts],['eval_calls','Reviews requested',snapshot.dev_eval_enabled?resources.eval_calls:null],['help_count','Help requests',resources.help_count || resources.assistance || (snapshot.attention_control?.hint_limit != null?{used:snapshot.attention_control.hint_count,limit:snapshot.attention_control.hint_limit}:null)],['help_wait_seconds','Waiting for replies',s?resources.help_wait_seconds:null,true],['model_calls','AI plan rewrites',s?(resources.model_calls || resources.dev_calls):null],['execution_seconds','Robot run time',resources.execution_seconds,true],['wall_seconds','Total time',resources.wall_seconds || (!s?{used:null,limit:null}:null),true]];
+  }
   // ---- operator polish helpers ----
   function epoch(value) {if(value==null||value==='')return null;if(typeof value==='number')return value>1e12?value/1000:value;const t=Date.parse(value);return Number.isNaN(t)?null:t/1000;}
   function humanDuration(seconds) {const v=Math.max(0,Math.round(Number(seconds)||0));return v<60?`${v} s`:v<3600?`${Math.round(v/60)} min`:`${Math.round(v/360)/10} h`;}
@@ -3136,18 +3165,20 @@
     return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${waiting?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action ${waiting?'need':'none'}"><h4>${waiting?'The robot needs your help':'✓ Nothing to do'}</h4>${waiting?`<p>${esc(prompt)}</p>${!dev&&chosen?.deadline_at!=null?`<p class="ab-countdown" data-reply-countdown data-deadline="${chosen.deadline_at}">${esc(countdown(chosen))}</p>`:''}${actions}`:`<p>${operatorLifecycleCopy(snapshot)?.text || (isTerminal(snapshot)?'This run has ended. The help the robot received is listed below.':"The robot is working on its own. You'll be asked here if it needs help.")}</p>`}</div>${operatorHelpHistory(snapshot)}</section>`;
   }
 
-  function operatorBudgetCard(name,value,seconds=false,ended=false,showZero=false) {
+  function operatorBudgetCard(name,value,seconds=false,ended=false,showZero=false,recorded=false,plain=false) {
     if (!value || (value.used==null && value.limit==null) || (Number(value.limit)===0 && !Number(value.used) && !showZero)) return '';
     const used=value.used==null?null:Number(value.used),limit=value.limit==null?null:Number(value.limit),out=value.budgeted!==false && used!=null && limit!=null && limit>=0 && used>=limit;
     const warn=!out && used!=null && limit>0 && used/limit>=0.7;
     const format=v=>v==null?'—':seconds?operatorTime(v):number(v);
-    return `<div class="op-meter${out?' out':warn?' warn':''}" data-fill="${limit>0&&used!=null?Math.min(100,Math.round(used/limit*100)):0}"><span>${name}</span><b><em data-count-to="${used==null?'':used}" data-count-seconds="${seconds?'1':''}">${format(used)}</em> <small>/ ${format(limit)}</small></b><div class="op-budget-track"><i style="width:${pct(used,limit)}%"></i></div>${out?`<small>Used up${ended?' · this ended the run':''}</small>`:''}</div>`;
+    return `<div class="op-meter${out&&!recorded&&!plain?' out':warn&&!recorded&&!plain?' warn':''}" data-fill="${limit>0&&used!=null?Math.min(100,Math.round(used/limit*100)):0}"><span>${name}</span><b><em data-count-to="${used==null?'':used}" data-count-seconds="${seconds?'1':''}">${format(used)}</em> <small>${recorded?'recorded':`/ ${format(limit)}`}</small></b><div class="op-budget-track"><i style="width:${pct(used,limit)}%"></i></div>${out&&!recorded&&!plain?`<small>Used up${ended?' · this ended the run':''}</small>`:''}</div>`;
   }
   function operatorResources(snapshot) {
     const resources=snapshot.resources,s=snapshot.dev_session;
-    const attempts=s?resources.executions:{used:snapshot.attempts.length,limit:snapshot.task_plan?.max_attempts ?? launches.find(l=>l.run_id===snapshot.run.run_id)?.locked?.max_attempts};
     const endedKey=s?devEndSummary(s).key:snapshot.eval?.stopped_reason;
-    const fields=[['executions','Attempts',attempts],['eval_calls','Reviews requested',snapshot.dev_eval_enabled?resources.eval_calls:null],['help_count','Help requests',resources.help_count || resources.assistance || (snapshot.attention_control?.hint_limit != null?{used:snapshot.attention_control.hint_count,limit:snapshot.attention_control.hint_limit}:null)],['model_calls','AI plan rewrites',s?(resources.model_calls || resources.dev_calls):null],['execution_seconds','Robot run time',resources.execution_seconds,true],['wall_seconds','Total time',resources.wall_seconds || (!s?{used:null,limit:null}:null),true]];
+    const fields=resourceRows(snapshot);
+    const accounting=snapshot.model_token_accounting;
+    const free=Boolean(snapshot.dev_v2&&accounting&&['Dev','Advisor','Eval'].every(role=>accounting[role]==='不计限额，仅记录'));
+    const freeEval=Boolean(snapshot.dev_v2&&accounting?.Eval==='不计限额，仅记录');
     const kFormat=value=>value==null?'—':Number(value)>=1000?`${Math.round(Number(value)/100)/10}k`:number(value);
     const tokens=resources.tokens;
     const textOnlyCount=textOnlyReviews(snapshot).length;
@@ -3156,7 +3187,7 @@
     const exportLink=snapshot.dev_v2?`<a href="/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/export.csv" target="_blank" rel="noopener">Download data (CSV)</a>`:'';
     // Wall-clock time keeps running after a run has ended; it only matters when it is why the run ended.
     const shown=fields.filter(([key])=>!(key==='wall_seconds' && isTerminal(snapshot) && endedKey!=='wall_seconds'));
-    return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','How much budget is left?')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>value?`${s?`<div data-dev-budget-key="${key}">`:''}${operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls')}${s?'</div>':''}`:'').join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && Number(tokens.limit)>0?`AI usage: ${kFormat(tokens.used)} of ${kFormat(tokens.limit)} tokens`:''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','How much budget is left?')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>value?`${s?`<div data-dev-budget-key="${key}">`:''}${operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds')}${s?'</div>':''}`:'').join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.
@@ -3363,6 +3394,9 @@
     const active = actionableRequests(snapshot);
     const chosen = active.find(item => item.request_id === selectedRequest) || active[0];
     view.innerHTML = `${runSettings(snapshot)}${runOverview(snapshot)}${executionViewer(snapshot)}${requestPanel(snapshot,chosen)}${resourceDetails(snapshot)}<p class="minor" id="ab-live-message" aria-live="polite"></p>`;
+    const requestRegion=view.querySelector('[data-core-region="request"]');
+    if(requestRegion){requestRegion.id='request';requestRegion.tabIndex=-1;}
+    updateWaitCountdown();
     if(snapshot.dev_v2?.planner){
       const region=view.querySelector('[data-core-region="request"]');
       region?.insertAdjacentHTML('beforeend',plannerPanel(snapshot));
@@ -3634,6 +3668,28 @@
     const top = view.querySelector('[data-status-countdown]');
     if (top) top.textContent = countdown(request);
   }
+  let lastWaitRequest=null;
+  function updateWaitCountdown() {
+    const actions=root.querySelector('.op-top-actions');
+    if(!actions)return;
+    const request=waitingRequest(currentSnapshot),runId=currentSnapshot?.run?.run_id;
+    if(request)lastWaitRequest={...request,runId};
+    if(!request&&lastWaitRequest&&(lastWaitRequest.runId!==runId||Date.now()<Number(lastWaitRequest.deadline)*1000))lastWaitRequest=null;
+    const active=request||lastWaitRequest;
+    const existing=actions.querySelector('#wait-countdown');
+    const total=active?Math.max(1,Number(active.deadline)-Number(active.created||active.deadline)):0;
+    const state=active?waitCountdown(active.deadline,Date.now(),total):null;
+    if(!state||state.gone){existing?.remove();if(state?.gone)lastWaitRequest=null;return;}
+    const anchor=existing||document.createElement('a');
+    if(!existing){anchor.id='wait-countdown';anchor.setAttribute('role','timer');anchor.href='#request';
+      anchor.innerHTML='<svg viewBox="0 0 22 22" width="22" height="22" aria-hidden="true"><circle class="op-wait-ring-bg" cx="11" cy="11" r="9"/><circle class="op-wait-ring" cx="11" cy="11" r="9"/></svg><span class="op-wait-label"></span><time></time>';
+      anchor.addEventListener('click',event=>{event.preventDefault();const region=view.querySelector('#request');region?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});region?.focus({preventScroll:true});});
+      actions.insertBefore(anchor,actions.querySelector('.op-alerts'));}
+    anchor.dataset.remainingSeconds=String(state.remaining);anchor.dataset.late=String(state.late);
+    anchor.querySelector('.op-wait-label').textContent=state.ended?'Reply window ended':'Waiting for your reply';
+    anchor.querySelector('time').textContent=state.ended?'':`${Math.floor(state.remaining/60)}:${String(state.remaining%60).padStart(2,'0')}`;
+    anchor.querySelector('.op-wait-ring').style.strokeDashoffset=String(state.dashoffset);
+  }
 
   function bindOrchestratorControls(scope=view) {
     scope.querySelector('[data-dag-dispatch]')?.addEventListener('click', async event => {
@@ -3702,7 +3758,7 @@
     const preview = view.querySelector('#ab-camera-frame[data-live-stream-key]');
     if (preview) stopPreviewFrames(preview);
     view.querySelectorAll('video').forEach(v => v.pause());
-    currentSnapshot = null; runNotice.hidden = true;devTag.hidden=true;
+    currentSnapshot = null; runNotice.hidden = true;devTag.hidden=true;updateWaitCountdown();
     const title = launch ? launch.state === 'failed' ? 'Launch failed' : 'Waiting for run registration' : 'No Attention runs';
     view.innerHTML = `${DEBUG_VIEW ? `${runSettings(null,launch)}<section class="panel ab-run-overview" data-core-region="status" data-phase="${launch ? 'launching' : 'empty'}" aria-label="Task Status & Progress"><div class="ab-status-panel-heading" aria-hidden="true">Task Status & Progress</div><div class="ab-status-head"><h2>${title}</h2>${!launch ? launchButton() : '<button data-dismiss-launch>View existing runs</button>'}${moreButton()}<button id="ab-cancel-run" type="button" disabled>Cancel run</button><button class="danger" id="ab-emergency-interrupt" disabled title="No executing run">■ Emergency stop</button></div><div class="ab-status-main"><div class="ab-action-needed" data-action-needed data-needed="no" role="status" data-connected-needed="no" data-connected-text="✓ No action required">✓ No action required</div></div><p>${launch ? `${esc(pendingLaunch)} · ${esc(launch.reason || 'Launch request accepted; waiting for the executor to create the run.')}` : 'Use New run to choose a robot, task and Dev iteration budgets.'}</p></section>
       <section class="panel" data-core-region="execution"><h3>Execution & History</h3><p class="minor">Waiting for a run and execution frames.</p></section>
@@ -3861,6 +3917,7 @@
       model:s.model||cell.model||launchOptions?.dev_loop?.model,attention_control:control};
     const snapshot = await devWorkspaceSnapshot(session);
     snapshot.dev_v2=cell;
+    snapshot.model_token_accounting=launchOptions?.dev_v2?.model_token_accounting || null;
     snapshot.dev_eval_enabled=s.locked?.config?.eval_agent?.enabled===true;
     snapshot.dev_session.versions=cell.versions;
     if(snapshot.dev_eval_enabled)snapshot.resources.eval_calls={used:cell.eval_usage?.eval_calls??cell.used.eval_calls??0,limit:null};
@@ -3930,6 +3987,7 @@
     }
     const snapshot=await devV2WorkspaceSnapshot(s,cell);if(selectedDev!==s.session_id)return;
     selectedRun=s.session_id;render(snapshot);lastRendered=fingerprint;
+    if(experimentFromHash(location.hash)!==s.experiment_id){const url=new URL(location.href);url.hash=`exp=${s.experiment_id}`;history.replaceState(null,'',url);}
   }
 
   async function updateDevSnapshot(s) {
@@ -3987,6 +4045,14 @@
       const listed = await listResponse.json();
       runs = listed.runs;
       devSessions = listed.dev_sessions || [];
+      if(!experimentRestored){
+        experimentRestored=true;
+        if(initialExperiment){
+          const restored=restoredExperiment(location.hash,devSessions.filter(d=>!d.history_deleted_at));
+          if(restored){selectedDev=devSessions.find(d=>d.experiment_id===restored).session_id;selectedRun=selectedDev;}
+          else {const url=new URL(location.href);url.hash='';history.replaceState(null,'',url);}
+        }else if(location.hash.startsWith('#exp=')){const url=new URL(location.href);url.hash='';history.replaceState(null,'',url);}
+      }
       if(allNavigationRecords().some(r=>r.run_id===(selectedDev||selectedRun)&&r.history_deleted_at&&!recordIsActive(r))){
         selectedDev=null;selectRun(null);currentSnapshot=null;lastRendered='';
       }
@@ -4065,4 +4131,5 @@
   setInterval(refresh, 3000);
   setInterval(refreshPreview, 1000);
   setInterval(updateReplyClock, 1000);
+  setInterval(updateWaitCountdown, 1000);
 })();

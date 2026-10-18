@@ -12,6 +12,9 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier'}|FIELDS
+def validate_selection_fields(selection):
+    if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def task_cell_budget(budget_tier='dev'):
     limits=task_limits(budget_tier)
     return {**CELL_BUDGET,'sdk_calls':2*limits['sdk_calls'],
@@ -36,8 +39,7 @@ def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     return b
 
 def create(store,artifact_root,selection):
-    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier'}|FIELDS
-    if not isinstance(selection,dict) or set(selection)-allowed:raise ValueError('bounded explicit experiment selection required')
+    validate_selection_fields(selection)
     budget_tier=selection.get('budget_tier','dev')
     task_limits(budget_tier)
     v3=bool(set(selection)&FIELDS)

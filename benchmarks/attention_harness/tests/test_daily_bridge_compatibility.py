@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from benchmarks.attention_harness import daily_dev_v2 as daily, ui_server
+from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment, ui_server
 from benchmarks.attention_harness.core.dev_store import DevBudgetExhausted, DevConflict
 from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.dev_ledger import DevV2Store, RESOURCES, GOAL
@@ -177,6 +177,62 @@ def experiment(tmp_path):
             cell_budget=budget, max_iterations=1, wall_seconds=300)))
     e = bridge.create(body)
     return bridge, body, e, bridge.store(e['experiment_id'])
+
+
+def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp_path, monkeypatch):
+    # Fields and budgets from the captured New run request on the daily preview.
+    budget = dict(advisor_calls=2, control_steps=28800, dev_calls=3, eval_calls=3,
+                  execution_seconds=6400, executions=3, help_count=2, help_credits=2,
+                  help_wait_seconds=300, input_tokens=190000, model_seconds=600,
+                  output_tokens=30000, provider_tokens=220000, sdk_calls=960)
+    selection = dict(configuration=dict(cell_budget=budget, experiment_budget=budget,
+                                        goal_id='daily-v2-1792342718933', max_iterations=3,
+                                        wall_seconds=14400),
+                     eval_agent={'enabled': True, 'model': 'parcc/Qwen'}, help_budget=2,
+                     human_wait_seconds=60, mode='experiment', policies=['autonomous'],
+                     request_key='4270f39e-d30f-4010-be88-2ea21dcdbaec', seeds=[101],
+                     tasks=['pick_place_counter_to_sink'])
+    body = {'selection': selection, 'start': False}
+    bridge = daily.DailyDevV2(tmp_path / 'daily', [], per_run_budget=True)
+
+    class MaterializationReached(Exception):
+        pass
+
+    def stop_before_materialization(argv, **kwargs):
+        saved = json.loads(Path(argv[argv.index('--selection') + 1]).read_bytes())
+        dev_experiment.validate_selection_fields(saved)  # create's exact field gate
+        assert saved == {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
+        raise MaterializationReached
+
+    monkeypatch.setattr(daily.subprocess, 'run', stop_before_materialization)
+    with pytest.raises(MaterializationReached):
+        bridge.create(body)
+    request_file = next((tmp_path / 'daily').glob('devexp-*/selection.json'))
+    assert 'human_wait_seconds' not in json.loads(request_file.read_bytes())
+    assert 'human_wait_seconds' in selection  # caller input remains intact
+
+    unknown = copy.deepcopy(body)
+    unknown['selection']['unexpected_field'] = True
+    with pytest.raises(ValueError, match='bounded explicit experiment selection required'):
+        bridge.create(unknown)
+    assert json.loads(request_file.read_bytes()) == {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
+
+    planner = copy.deepcopy(body)
+    planner['selection']['planner_features'] = {'human_wait_seconds': 60}
+    with pytest.raises(ValueError, match='bounded explicit experiment selection required'):
+        bridge.create(planner)
+
+
+def test_main_bridge_still_maps_human_wait_into_planner_features(tmp_path, monkeypatch):
+    from openarm365_dev_v2 import dev_config
+    from openarm365_dev_v2.tests.test_main_integration import make_bridge
+
+    # This boundary check exercises the bridge without requiring the absent model copy.
+    monkeypatch.setattr(dev_config, 'model_sources', lambda *args, **kwargs: {})
+    bridge, body = make_bridge(tmp_path)
+    created = bridge.create(body)
+    manifest = json.loads(Path(created['manifest']['uri']).read_bytes())
+    assert manifest['planner_features']['human_wait_seconds'] == body['selection']['human_wait_seconds']
 
 
 def test_daily_post_contract_and_isolated_existing_shared_goal(experiment, tmp_path, monkeypatch):
