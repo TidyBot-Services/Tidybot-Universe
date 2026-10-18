@@ -223,6 +223,86 @@ def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp
         bridge.create(planner)
 
 
+@pytest.mark.parametrize('versions,help,model_seconds,wall_seconds',
+                         [(5, 5, 1800, 21600), (3, 2, 600, 14400)])
+def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
+        tmp_path, monkeypatch, versions, help, model_seconds, wall_seconds):
+    from openarm365_dev_v2 import dev_config
+
+    # Materialize through the real create function in this process so the
+    # missing sandbox model copy can be replaced by a test-only identity stub.
+    monkeypatch.setattr(dev_config, 'model_sources', lambda *args, **kwargs: {})
+    def materialize(argv, **kwargs):
+        def argument(name):
+            return Path(argv[argv.index(name) + 1])
+        selection = json.loads(argument('--selection').read_bytes())
+        config = selection['configuration']
+        store = DevV2Store(argument('--store'), configuration=dict(
+            goal_id=config['goal_id'], limits=config['experiment_budget'],
+            wall_seconds=config['wall_seconds']))
+        created = dev_experiment.create(store, argument('--artifacts'), selection)
+        argument('--output').write_text(json.dumps(created))
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(daily.subprocess, 'run', materialize)
+
+    bridge = daily.DailyDevV2(tmp_path / 'daily', [], per_run_budget=True)
+    budget = dict(daily.DEFAULT_CELL)
+    budget.update(dev_calls=versions, executions=versions, eval_calls=versions,
+                  advisor_calls=help, help_count=help, help_credits=help,
+                  model_seconds=model_seconds)
+    selection = dict(request_key='daily-ui-default-run', tasks=['open_cabinet'],
+                     seeds=[102], policies=['autonomous'], mode='experiment',
+                     help_budget=help, human_wait_seconds=300,
+                     eval_agent={'enabled': True, 'model': 'parcc/Qwen'},
+                     configuration=dict(goal_id='daily-v2-1792349910212',
+                                        experiment_budget=budget, cell_budget=budget,
+                                        max_iterations=versions, wall_seconds=wall_seconds))
+    experiment = bridge.create(dict(selection=selection, start=False))
+    manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
+    assert manifest['schema'] == 'attentionbench.dev-experiment.v2'
+    assert 'model_reserve_seconds' not in manifest
+    assert 'planner_features' not in manifest
+    assert dev_experiment.slot_wall_seconds(manifest) == 3 * 120 + 1920 + 60
+    assert experiment['selection']['seeds'] == [102]
+    assert experiment['selection']['help_budget'] == help
+    assert experiment['selection']['eval_agent']['enabled'] is True
+    assert next(iter(manifest['configs'].values()))['eval_agent']['enabled'] is True
+    assert manifest['max_versions'] == manifest['target_depth'] == versions
+    assert manifest['cell_budget']['help_count'] == help
+    assert manifest['cell_budget']['model_seconds'] == model_seconds
+    assert manifest['wall_limit'] == wall_seconds
+    assert 'human_wait_seconds' not in json.loads(next(bridge.root.glob('devexp-*/selection.json')).read_bytes())
+
+    eid = experiment['experiment_id']
+    manifest_bytes = Path(experiment['manifest']['uri']).read_bytes()
+    store = bridge.store(eid)
+    directory, _, creation_budget = bridge.paths(eid)
+    run_budget = bridge.dispatch_budget(store, experiment, directory, creation_budget)
+    fake_client = object()
+    fake_runner_factory = lambda **kwargs: None
+    class FirstCellReached(Exception):
+        pass
+    def stop_at_first_cell(_store, _experiment, _manifest, key, _through, _owner, *, client, runner_factory):
+        assert key == manifest['cells'][0]['key']
+        assert client is fake_client and runner_factory is fake_runner_factory
+        raise FirstCellReached
+    monkeypatch.setattr('benchmarks.attention_harness.dev_v2_loop.run_cell', stop_at_first_cell)
+    with pytest.raises(FirstCellReached):
+        dev_experiment.run(store, eid, max_cells=1, budget_file=run_budget,
+                           client=fake_client, runner_factory=fake_runner_factory)
+    assert Path(experiment['manifest']['uri']).read_bytes() == manifest_bytes
+
+
+def test_daily_slot_fallback_keeps_v3_and_unknown_manifests_strict():
+    slot = dev_experiment.slot_wall_seconds
+    v3 = dict(schema='attentionbench.dev-experiment.v3', model_reserve_seconds=120,
+              attempt_wall_seconds=1920, startup_cleanup_seconds=60,
+              eval_agent={'enabled': True})
+    assert slot(v3) == dev_experiment.worst_slot(v3)
+    with pytest.raises(KeyError, match='model_reserve_seconds'):
+        slot(dict(schema='attentionbench.dev-experiment.v2', selection={}))
+
+
 def test_main_bridge_still_maps_human_wait_into_planner_features(tmp_path, monkeypatch):
     from openarm365_dev_v2 import dev_config
     from openarm365_dev_v2.tests.test_main_integration import make_bridge

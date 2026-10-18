@@ -41,6 +41,18 @@ def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     if b.get('goal')!=GOAL or limits!=expected:raise ValueError('original goal budget file required; cannot reset/expand')
     return b
 
+def slot_wall_seconds(manifest):
+    """Reserve a full slot using the frozen runtime of each manifest format."""
+    if (manifest['schema']=='attentionbench.dev-experiment.v2'
+            and manifest['selection'].get('configuration') is not None):
+        # Independent daily ledgers predate the v3 runtime fields. Their model
+        # calls reserve 120 seconds and execution uses the locked task attempt
+        # limit. Allow 60 seconds of cleanup, above the v2 runtime's 25 seconds.
+        return worst_slot(dict(model_reserve_seconds=120,
+            attempt_wall_seconds=max(c['attempt_wall_seconds'] for c in manifest['configs'].values()),
+            startup_cleanup_seconds=60,eval_agent=manifest['selection'].get('eval_agent',{})))
+    return worst_slot(manifest)
+
 def create(store,artifact_root,selection):
     validate_selection_fields(selection)
     budget_tier=selection.get('budget_tier','dev')
@@ -489,7 +501,7 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
                 pending=any(j['kind']=='model' and j['state']=='settled' and j['version']>g for j in c['jobs'])
                 if not pending and not slot.get('compensation') and g>=slot['through_version'] and (not c['versions'] or not c['versions'][-1]['valid'] or any(j['kind']=='execute' and j['version']==g and j['state']=='settled' for j in c['jobs'])):continue
                 if not pending and slot.get('compensation') and ex>=m['target_valid_executions'] and g>=m['target_depth']:continue
-                seconds=worst_slot(m)
+                seconds=slot_wall_seconds(m)
                 recovering=any(r['cell']==key for r in e.get('recovered_human_waits',[]))
                 if not recovering and (goal['wall_remaining']<seconds or (outer_deadline_epoch is not None and outer_deadline_epoch-time.time()<seconds)):
                     reason='outer_deadline_safe_boundary' if outer_deadline_epoch is not None and outer_deadline_epoch-time.time()<seconds else 'goal_wall_worst_slot_insufficient'
