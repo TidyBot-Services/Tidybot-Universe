@@ -1767,6 +1767,26 @@
       gpu_seconds:Number(values.gpu_seconds)};
   }
 
+  // Values shared by the visible limits and the independent Dev v2 ledger.
+  function runConfigBudget({versions,help,waitSeconds,modelMinutes,profile,defaults,reviewer,policyCount=1}) {
+    const n=Number(versions),h=Number(help),modelSeconds=Number(modelMinutes)*60;
+    const sdk=Number(profile.sdk_call_limit),steps=Number(profile.control_step_limit);
+    const execution=Number(profile.attempt_wall_seconds);
+    const cell={...defaults,dev_calls:n,advisor_calls:h,eval_calls:reviewer?n:0,
+      executions:n,sdk_calls:n*sdk,control_steps:n*steps,
+      help_credits:h,help_count:h,help_wait_seconds:h*120+n*Number(waitSeconds),
+      model_seconds:modelSeconds,execution_seconds:n*(execution+Number(profile.startup_cleanup_seconds||0)),
+      provider_tokens:200000*n, input_tokens:170000*n,output_tokens:30000*n};
+    return {cell,experiment:Object.fromEntries(Object.entries(cell).map(([key,value])=>[key,value*policyCount]))};
+  }
+  function runConfigSeedOptions(seeds,registered,mode) {
+    return seeds.map(seed=>({seed,unregistered:mode==='experiment'&&!registered.includes(seed),
+      title:String(seed)+(mode==='experiment'&&!registered.includes(seed)?' (no scene contract · interactive only)':'')}));
+  }
+  function runConfigSummary({robot,arm,seed,layout,style,versions,help,reviewer}) {
+    return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests · reviewer ${reviewer?'on':'off'}`;
+  }
+
   function bindLaunch() {
     view.querySelector('[data-open-launch]')?.addEventListener('click', () => {
       const options = launchOptions;
@@ -1789,49 +1809,53 @@
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3><p>Choose a run type, then configure its task and resources.</p></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
         <form id="ab-launch-form"><div class="ab-launch-body">
           ${source?`<p class="ab-launch-note" data-launch-source>${sourceProfile?'Task, robot and arm copied from the current record.':'The current configuration is unavailable for a new run. Choose a supported configuration below.'} Source: ${esc(displayRun(source))}</p>`:''}
-          <section class="ab-launch-section"><h4><span>01</span>Run settings</h4><div class="ab-launch-grid">
+          <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field ab-launch-type">Run type<select name="run_type" aria-label="Run type">${devProfiles.some(p=>!isFixed(p))?'<option value="dev">Dev automatic iteration</option>':''}${devProfiles.some(isFixed)?'<option value="fixed">Fixed policy execution</option>':''}</select><small data-run-type-description></small></label>
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
             <label class="ab-launch-field">Task<select name="task_id" aria-label="Task" required></select></label>
-            <label class="ab-launch-field ab-launch-name">Name suffix (optional)<input name="name_suffix" aria-label="Name suffix" maxlength="80" placeholder="e.g. lower-grasp-v2"><small data-launch-name-preview aria-live="polite"></small></label>
-            <label class="ab-launch-field">Robot<select name="robot_model" aria-label="Robot" required></select></label>
-            <label class="ab-launch-field">Execution mode<select name="execution_arm" aria-label="Execution mode" required></select></label>
-            <label class="ab-launch-field">Development seed<input name="seed" type="number" value="101" readonly></label>
-            <label class="ab-launch-field">Execution target<input name="execution_target" value="RoboCasa365 simulator" readonly></label>
-            <label class="ab-launch-field">Execution location<select name="execution_target_choice">${executionLocations.map(target=>`<option value="${esc(target.id)}" ${target.available?'':'disabled'}>${esc(label(target.id))}${target.available?'':` · Unavailable: ${esc(target.reason || 'No runner available')}`}</option>`).join('')}</select></label>
-            <label class="ab-launch-field">Request mode<select name="request_mode">${(options?.request_modes || []).map(mode=>`<option value="${esc(mode.id)}" ${mode.default?'selected':''}>${esc(label(mode.id))}</option>`).join('')}</select><small>Fixed-policy runs; Dev iterations use their registered help workflow.</small></label>
-            <label class="ab-launch-field">GPU time budget (seconds)<input name="gpu_seconds" type="number" min="0" max="${esc(options?.limits?.gpu_seconds ?? 0)}" value="0"><small>0: track usage without a GPU budget.</small></label>
-            <label class="ab-launch-field">Policy model<input name="model" value="${esc(options?.dev_loop?.model || 'Approved execution policy')}" readonly></label>
+            <label class="ab-launch-field" data-v2-mode-field>Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
+            <label class="ab-launch-field">Scene seed<select name="seed" aria-label="Scene seed"></select><small data-seed-note role="status"></small></label>
+            <label class="ab-launch-field">Robot<output data-robot-summary>OpenArm365 · both arms</output><select name="robot_model" aria-label="Robot" required></select><select name="execution_arm" aria-label="Execution mode" required></select></label>
+            <label class="ab-launch-field">Name suffix (optional)<input name="name_suffix" aria-label="Name suffix" maxlength="80" placeholder="e.g. lower-grasp-v2"><small data-launch-name-preview aria-live="polite"></small></label>
+            <input name="execution_target" value="RoboCasa365 simulator" readonly hidden>
+            <input name="model" value="${esc(options?.dev_loop?.model || 'Approved execution policy')}" readonly hidden>
           </div></section>
-          <section class="ab-launch-section" data-fixed-config hidden><h4>Fixed policy assistance</h4><div class="ab-launch-grid">
+          <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Set when and how much help the robot may request.</small></div><div class="ab-launch-grid" data-v2-help>
+            <label class="ab-launch-field">Attention policy<select name="v2_policy"><option value="all">All seven · frozen comparison</option>${(options?.dev_v2?.policies||[]).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
+            <label class="ab-launch-field">Help requests allowed per task<input name="help_count" type="number" min="1" max="10" value="5"></label>
+            <label class="ab-launch-field">Time to wait for a person (seconds)<input name="human_wait_seconds" type="number" min="1" max="600" value="300"></label>
+            <p class="ab-launch-field wide ab-run-hint">Each request uses one unit of human attention.</p>
+          </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
+          <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
+            <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
+          </section>
+          <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
+            <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
+            <label class="ab-launch-field">Whole run time limit (seconds)<input name="wall_seconds" type="number" min="30" value="21600" required><small data-wall-description>6 hours · stored in seconds</small></label>
+            <label class="ab-launch-field">AI thinking time per task (minutes)<input name="model_seconds_minutes" type="number" min="5" value="30" required></label>
+            <label class="ab-launch-field">Robot time per attempt<output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
+            <label class="ab-launch-field">Robot steps (SDK calls)<output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
+            <label class="ab-launch-field" data-v2-tokens>AI tokens<output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
+            <label class="ab-launch-field" data-fixed-tokens hidden>Token budget<input name="token_limit" type="number" min="0" max="100000" value="60000"></label>
+          </div></section>
+          <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><span class="op-number">05</span> Advanced <small>Fixed policy settings, goal and resource details.</small></summary><div class="ab-launch-grid">
+            <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''}></label>
+          </div><div data-fixed-config hidden><h4>Fixed policy settings</h4><div class="ab-launch-grid">
+            <label class="ab-launch-field">Execution location<select name="execution_target_choice">${executionLocations.map(target=>`<option value="${esc(target.id)}" ${target.available?'':'disabled'}>${esc(label(target.id))}${target.available?'':` · Unavailable: ${esc(target.reason || 'No runner available')}`}</option>`).join('')}</select></label>
+            <label class="ab-launch-field">Request mode<select name="request_mode">${(options?.request_modes || []).map(mode=>`<option value="${esc(mode.id)}" ${mode.default?'selected':''}>${esc(label(mode.id))}</option>`).join('')}</select></label>
+            <label class="ab-launch-field">GPU time budget (seconds)<input name="gpu_seconds" type="number" min="0" max="${esc(options?.limits?.gpu_seconds ?? 0)}" value="0"></label>
             <label class="ab-launch-field">Attention policy<select name="fixed_policy">${(options?.attention_policies || []).map(policy=>`<option value="${esc(policy)}">${esc(policyTitle(policy))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field">Assistance mode<select name="fixed_assistance">${(options?.assistance_modes || []).map(mode=>`<option value="${esc(mode)}">${esc(label(mode))}</option>`).join('')}</select></label>
+            <label class="ab-launch-field">Assistance mode<select name="fixed_assistance">${(options?.assistance_modes || []).map(mode=>`<option value="${esc(mode)}">${esc(label(mode))}</option>`).join('')}</select><small>Choose how requests receive human or benchmark assistance.</small></label>
             <label class="ab-launch-field">Assistance credits<input name="fixed_credits" type="number" min="0" max="${esc(options?.limits?.assistance_credits ?? 0)}" value="1"></label>
             <label class="ab-launch-field">Human reply deadline (seconds)<input name="fixed_human_deadline" type="number" min="1" max="${esc(options?.limits?.human_deadline_seconds ?? 0)}" value="60"></label>
-          </div></section>
-          <section class="ab-launch-section" data-v2-config hidden><h4>Dev v2 experiment</h4><p class="minor">Development validation only. Scene reproducibility across resets is unverified; do not use these records for a formal policy comparison.</p><div class="ab-launch-grid">
-            <label class="ab-launch-field"><span>Dispatch</span><select name="v2_start"><option value="yes">Start real model and simulation</option><option value="no">Create only · no resource dispatch</option></select></label><label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''} required></label>
-            <label class="ab-launch-field">Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
-            <label class="ab-launch-field">Attention policy<select name="v2_policy"><option value="all">All seven · frozen comparison</option>${(options?.dev_v2?.policies||[]).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field op-eval-toggle"><input name="eval_agent_enabled" type="checkbox" checked ${options?.dev_v2?.eval_agent_supported===false?'disabled':''}>Eval agent — reviews the recording and camera views</label>
-            <label class="ab-launch-field">Help count / credits<input name="help_count" type="number" min="0" max="2" value="2"></label>
-            <label class="ab-launch-field">Human approval wait (seconds)<input name="human_wait_seconds" type="number" min="1" max="600" value="60"></label>
-          </div><details><summary>Independent resource limits</summary><p>Each column is frozen at creation. Units: counts, tokens, credits, seconds.</p><table><thead><tr><th>Resource</th><th>Cell limit</th><th>Experiment limit</th></tr></thead><tbody>${Object.entries(options?.dev_v2?.default_cell_budget||{}).map(([k,v])=>`<tr><td>${esc(label(k))}</td><td><input aria-label="Cell ${esc(k)}" data-v2-cell="${k}" type="number" min="0" value="${v}"></td><td><input aria-label="Experiment ${esc(k)}" data-v2-experiment="${k}" type="number" min="0" value="${options?.dev_v2?.goal_limits?.[k]??v}"></td></tr>`).join('')}</tbody></table></details>
-          <details><summary>Entry support matrix</summary>${(options?.dev_v2?.matrix||[]).map(r=>`<p>${esc(r.robot)} / ${esc(r.arm)} · ${esc(r.task)}: ${r.dev_v2_supported?'Supported':esc(r.reason)}</p>`).join('')}</details></section>
-          <section class="ab-launch-section"><h4><span>02</span>Resource budgets</h4><div class="ab-launch-grid budgets-grid">
-            <label class="ab-launch-field"><span data-iterations-label>Maximum iterations / executions</span><input name="max_attempts" type="number" min="1" max="10" value="3" required></label>
-            <label class="ab-launch-field">Token budget<input name="token_limit" type="number" min="0" max="100000" value="60000" required></label>
-            <label class="ab-launch-field">Total SDK calls<input name="sdk_calls" type="number" readonly></label>
-          </div></section>
-          <section class="ab-launch-section"><h4><span>03</span>Time limits</h4><div class="ab-launch-grid">
-            <label class="ab-launch-field">Session time limit<span class="ab-launch-unit"><input name="wall_seconds" type="number" min="30" max="1800" required><span aria-hidden="true">seconds</span></span></label>
-            <label class="ab-launch-field">Execution deadline per attempt<span class="ab-launch-unit"><input name="attempt_wall_seconds" type="number" readonly><span aria-hidden="true">seconds</span></span></label>
-          </div></section>
-        </div><footer class="ab-launch-footer"><p class="ab-launch-note" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><button class="ab-button-primary" type="submit">Start run</button></div><p role="status" id="ab-launch-message"></p></footer></form></div>`;
+          </div></div><div data-v2-config><details><summary>Independent resource limits</summary><p>These limits start from the selections above. Units: counts, tokens, credits, seconds.</p><table><thead><tr><th>Resource</th><th>Cell limit</th><th>Experiment limit</th></tr></thead><tbody>${Object.entries(options?.dev_v2?.default_cell_budget||{}).map(([k,v])=>`<tr><td>${esc(label(k))}</td><td><input aria-label="Cell ${esc(k)}" data-v2-cell="${k}" type="number" min="0" value="${v}" ${k==='sdk_calls'?'readonly':''}></td><td><input aria-label="Experiment ${esc(k)}" data-v2-experiment="${k}" type="number" min="0" value="${options?.dev_v2?.goal_limits?.[k]??v}" ${k==='sdk_calls'?'readonly':''}></td></tr>`).join('')}</tbody></table></details>
+          <details><summary>Entry support matrix</summary>${(options?.dev_v2?.matrix||[]).map(r=>`<p>${esc(r.robot)} / ${esc(r.arm)} · ${esc(r.task)}: ${r.dev_v2_supported?'Supported':esc(r.reason)}</p>`).join('')}</details></div></details>
+        </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
       form.eval_agent_enabled.checked = options?.dev_v2?.eval_agent_supported !== false;
       const requestKey = globalThis.crypto?.randomUUID?.() || `dev-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       let submitting = false;
+      let manualBudget = false;
       function fillOptions(select, values, title, unavailable = () => false) {
         const previous = select.value;
         select.innerHTML = values.map(value => `<option value="${esc(value)}" ${unavailable(value)?'disabled':''}>${esc(title(value))}</option>`).join('');
@@ -1844,58 +1868,97 @@
       function selectedProfile() {
         return taskProfiles().find(p => p.robot === form.robot_model.value && p.execution_arm === form.execution_arm.value);
       }
+      function syncSeedOptions() {
+        const profile=selectedProfile(),v2=profile?.channel==='dev_v2';
+        const registered=options?.dev_v2?.registered_scene_seeds||[];
+        const seeds=v2?(options?.dev_v2?.tasks?.find(t=>t.task_id===profile.task_id)?.seeds||Array.from({length:25},(_,i)=>101+i)):[profile?.seed??101];
+        const previous=Number(form.seed.value);
+        form.seed.innerHTML=runConfigSeedOptions(seeds,registered,form.v2_mode.value).map(row=>`<option value="${row.seed}">${esc(row.title)}</option>`).join('');
+        form.seed.value=seeds.includes(previous)?String(previous):String(v2&&seeds.includes(102)?102:seeds[0]);
+        const missing=v2&&form.v2_mode.value==='experiment'&&!registered.includes(Number(form.seed.value));
+        form.querySelector('[data-seed-note]').textContent=missing?'No scene contract for this seed. Choose Interactive or a registered seed.':'';
+      }
+      function syncBudget() {
+        const profile=selectedProfile();
+        if(profile?.channel!=='dev_v2')return;
+        if(manualBudget)return;
+        const n=Number(form.max_attempts.value),h=Number(form.help_count.value);
+        if(!Number.isInteger(n)||n<1||n>10||!Number.isInteger(h)||h<1||h>10)return;
+        const policyCount=form.v2_policy.value==='all'?(options.dev_v2.policies||[]).length:1;
+        const calculated=runConfigBudget({versions:n,help:h,waitSeconds:form.human_wait_seconds.value,
+          modelMinutes:form.model_seconds_minutes.value,profile,defaults:options.dev_v2.default_cell_budget,
+          reviewer:form.eval_agent_enabled.checked,policyCount});
+        for(const input of form.querySelectorAll('[data-v2-cell]')){
+          if(input.dataset.v2Cell in calculated.cell)input.value=calculated.cell[input.dataset.v2Cell];
+        }
+        for(const input of form.querySelectorAll('[data-v2-experiment]')){
+          const key=input.dataset.v2Experiment;
+          if(options.dev_v2.bridge_schema!=='main-dev-v3'&&key in calculated.experiment)input.value=calculated.experiment[key];
+        }
+      }
       function updatePreview() {
         const profile = selectedProfile();
         form.querySelector('[data-launch-name-preview]').textContent = `${taskName(form.task_id.value)}${form.name_suffix.value.trim()?` -- ${form.name_suffix.value.trim()}`:''}`;
         const iterations = Number(form.max_attempts.value);
-        form.sdk_calls.value = profile?.channel==='dev_v2'?Number(form.querySelector('[data-v2-cell="sdk_calls"]')?.value||0):profile ? profile.sdk_call_limit * iterations : 0;
-        const description = profile ? `${profile.robot} · ${armNames[profile.execution_arm] || profile.execution_arm} · Seed ${profile.seed}${profile.layout_id!=null?` · Layout ${profile.layout_id} / Style ${profile.style_id}`:''}${profile.base_mode==='stationary'?' · Stationary base':''}. ` : '';
+        syncBudget();
+        form.sdk_calls.value=profile?Number(profile.sdk_call_limit||0)*iterations:0;
+        form.querySelector('[data-readonly-sdk-calls]').textContent=form.sdk_calls.value;
+        form.querySelector('[data-robot-time]').textContent=profile?`${Math.round(Number(profile.attempt_wall_seconds)/60)} min`:'';
+        form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
+        form.querySelector('[data-wall-description]').textContent=`${Number(form.wall_seconds.value)/3600} hours · stored in seconds`;
+        const description = profile ? `${profile.robot} · ${armNames[profile.execution_arm] || profile.execution_arm} · Seed ${form.seed.value}${profile.layout_id!=null?` · Layout ${profile.layout_id} / Style ${profile.style_id}`:''}. ` : '';
         const unavailable = profile && !profile.enabled ? profile.unavailable_reason || 'This configuration is unavailable.' : '';
         form.querySelector('[data-launch-preview]').textContent = unavailable || description + (profile?.channel === 'certified_v2' ? 'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.' : profile?.channel==='formal' ? 'Runs the approved policy with locked execution and assistance conditions.' : `Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`);
         form.querySelector('[data-run-type-description]').textContent=isFixed(profile||{})?'Runs an approved policy with fixed resource limits.':'Generates and revises policy code within the selected budgets.';
-        for(const input of form.querySelectorAll('input[name]')){
-          let output=form.querySelector(`[data-fixed-for="${input.name}"]`);
-          if(input.readOnly&&!output){output=document.createElement('output');output.dataset.fixedFor=input.name;output.className='ab-fixed-value';input.after(output);}
-          input.hidden=input.readOnly;
-          if(output){output.hidden=!input.readOnly;output.textContent=input.value;output.setAttribute('aria-label',`${input.name}: ${input.value} (fixed configuration)`);}
-        }
-        form.querySelector('button[type=submit]').disabled = submitting || !profile?.enabled;
+        for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled;
         if(profile?.channel==='dev_v2'){
-          const cellQuota=key=>Number(form.querySelector(`[data-v2-cell="${key}"]`)?.value||0);
-          const evalNote=form.eval_agent_enabled.checked?` Eval 调用：${options.dev_v2.eval_accounting}；每格最多 ${Math.max(2*Number(form.max_attempts.value),10)} 次安全调用。模型时间仍计入每格 ${cellQuota('model_seconds')} 秒总限额。`:'';
-          const tokenNote=` ${Object.entries(options.dev_v2.model_token_accounting||{}).map(([role,status])=>`${role} tokens：${status}`).join('；')}。`;
-          form.querySelector('[data-launch-preview]').textContent = description + `Generated version limit: ${form.max_attempts.value}. Cell and experiment resource quotas are independent.${evalNote}${tokenNote} ` + ' Registered Dev v2 · help is supplied by the public-only Advisor. Independent task results are display and offline analysis only.';
+          form.querySelector('[data-launch-preview]').textContent=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
+            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked});
+          syncSeedOptions();
         }
       }
       function syncProfile(resetWall) {
+        manualBudget=false;
         const profile = selectedProfile();
         const certified = profile?.channel === 'certified_v2';
         const v2=profile?.channel==='dev_v2';
         const formal=profile?.channel==='formal';
-        form.querySelector('[data-fixed-config]').hidden=!formal;
+        form.classList.toggle('ab-v2-profile',v2);
+        form.querySelector('[data-run-config-section="advanced"]').open=isFixed(profile||{});
+        form.querySelector('[data-fixed-config]').hidden=!isFixed(profile||{});
         form.fixed_credits.disabled=!formal;
         form.fixed_human_deadline.disabled=!formal;
         form.querySelector('[data-v2-config]').hidden=!v2;
+        form.querySelector('[data-v2-help]').hidden=!v2;
+        form.querySelector('[data-fixed-help]').hidden=v2;
+        form.querySelector('[data-v2-mode-field]').hidden=!v2;
+        form.querySelector('[data-run-config-section="reviewer"]').hidden=!v2;
+        form.querySelector('[data-v2-tokens]').hidden=!v2;
+        form.querySelector('[data-fixed-tokens]').hidden=v2;
+        form.querySelector('[data-start-no]').hidden=!v2;
         if(v2)form.v2_policy.value=options.dev_v2.bridge_schema?'full_trace_aware_attention_planner':'autonomous';
-        form.querySelector('[data-iterations-label]').textContent=v2?'Maximum generated versions':'Maximum iterations / executions';
+        form.querySelector('[data-iterations-label]').textContent=v2?'Versions per task':'Maximum iterations / executions';
         form.goal_id.required=v2;
-        form.v2_start.value=options?.dev_v2?.authorization?.mode==='existing_goal'||options?.dev_v2?.authorization?.mode==='per_run_budget'||options?.dev_v2?.authorization?.deadline_epoch>Date.now()/1000?'yes':'no';
-        form.max_attempts.removeAttribute('max');
+        form.max_attempts.max=10;
         form.token_limit.max=v2?Number.MAX_SAFE_INTEGER:100000;
         form.max_attempts.readOnly = certified;
         form.token_limit.readOnly = certified;
         form.wall_seconds.readOnly = certified;
         form.wall_seconds.max = isFixed(profile||{}) ? 600 : profile?.channel==='dev_v2' ? 86400 : 1800;
         form.model.value = isFixed(profile||{}) ? 'Approved execution policy' : (options?.dev_loop?.model || '');
-        form.max_attempts.value = certified ? 1 : v2?(options.dev_v2.default_max_iterations||3):3;
-        if(v2&&options?.dev_v2?.bridge_schema==='main-dev-v3')form.help_count.value=options.dev_v2.default_cell_budget.help_count;
+        form.max_attempts.value = certified ? 1 : v2?5:3;
+        if(v2)form.help_count.value=5;
         form.token_limit.value = certified ? 0 : formal?30000:v2?(options.dev_v2.default_cell_budget?.provider_tokens??220000):60000;
-        form.seed.value = profile?.seed ?? 101;
+        syncSeedOptions();
+        if(v2&&[...form.seed.options].some(o=>o.value==='102'))form.seed.value='102';
         form.execution_target.value = profile ? label(profile.execution_target) : '';
         form.request_mode.disabled = !isFixed(profile||{});
         form.gpu_seconds.disabled = !isFixed(profile||{});
         form.attempt_wall_seconds.value = profile?.attempt_wall_seconds ?? '';
         if (resetWall) form.wall_seconds.value = profile?.wall_seconds ?? 600;
+        form.querySelector('[data-reviewer-required]').hidden=form.v2_mode.value!=='experiment';
+        form.eval_agent_enabled.checked=v2;
+        form.eval_agent_enabled.disabled=!v2||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
         form.querySelector('#ab-launch-message').textContent = '';
         updatePreview();
       }
@@ -1936,17 +1999,25 @@
       form.task_id.addEventListener('change',syncTask);
       form.robot_model.addEventListener('change',syncArm);
       form.execution_arm.addEventListener('change',() => syncProfile(true));
-      form.addEventListener('input',updatePreview);
-      form.addEventListener('change',updatePreview);
+      function budgetInput(event) {
+        if(event.target.matches('[data-v2-cell],[data-v2-experiment]'))manualBudget=true;
+        else if(['max_attempts','help_count','human_wait_seconds','model_seconds_minutes','v2_policy','eval_agent_enabled'].includes(event.target.name))manualBudget=false;
+        updatePreview();
+      }
+      form.addEventListener('input',budgetInput);
+      form.addEventListener('change',budgetInput);
       form.v2_mode.addEventListener('change',()=>{
-        if(options?.dev_v2?.bridge_schema!=='main-dev-v3')return;
+        manualBudget=false;
         const experiment=form.v2_mode.value==='experiment';
-        form.eval_agent_enabled.checked=experiment;
-        const defaults=experiment?options.dev_v2.default_cell_budget:options.dev_v2.default_no_eval_cell_budget;
-        for(const input of form.querySelectorAll('[data-v2-cell]'))input.value=defaults[input.dataset.v2Cell];
-        form.token_limit.value=defaults.provider_tokens;
+        if(experiment)form.eval_agent_enabled.checked=true;
+        form.eval_agent_enabled.disabled=experiment||options?.dev_v2?.eval_agent_supported===false;
+        form.querySelector('[data-reviewer-required]').hidden=!experiment;
+        syncSeedOptions();
         updatePreview();
       });
+      for(const button of form.querySelectorAll('[data-start-no],[data-start-yes]')){
+        button.addEventListener('click',()=>{form.v2_start.value=button.hasAttribute('data-start-yes')?'yes':'no';});
+      }
       form.addEventListener('submit',async event => {
         event.preventDefault();
         const profile = selectedProfile();
@@ -1959,11 +2030,10 @@
           if(profile.channel==='formal')selection=fixedLaunchSelection(profile,{policy:form.fixed_policy.value,assistance_mode:form.fixed_assistance.value,attempts:form.max_attempts.value,credits:form.fixed_credits.value,tokens:form.token_limit.value,human_deadline:form.fixed_human_deadline.value,wall_seconds:form.wall_seconds.value,request_mode:form.request_mode.value || 'async',gpu_seconds:form.gpu_seconds.value});
           if(certified){selection.request_mode=form.request_mode.value || 'async';selection.gpu_seconds=Number(form.gpu_seconds.value);}
           if(profile.channel==='dev_v2'){
+            syncBudget();
             const n=Number(form.max_attempts.value),help=Number(form.help_count.value);
             const cell=Object.fromEntries([...form.querySelectorAll('[data-v2-cell]')].map(e=>[e.dataset.v2Cell,Number(e.value)]));
             const experiment=Object.fromEntries([...form.querySelectorAll('[data-v2-experiment]')].map(e=>[e.dataset.v2Experiment,Number(e.value)]));
-            if(options.dev_v2.eval_agent_supported!==false){cell.eval_calls=cell.executions;experiment.eval_calls=experiment.executions;}
-            cell.provider_tokens=Number(form.token_limit.value);cell.help_count=help;cell.help_credits=help;cell.advisor_calls=help;
             selection={eval_agent:{enabled:form.eval_agent_enabled.checked,model:'parcc/Qwen'},request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:form.v2_policy.value==='all'?(options.dev_v2.policies):[form.v2_policy.value],mode:form.v2_mode.value,help_budget:help,human_wait_seconds:Number(form.human_wait_seconds.value),configuration:{goal_id:form.goal_id.value,experiment_budget:experiment,cell_budget:cell,max_iterations:n,wall_seconds:Number(form.wall_seconds.value)}};
           }
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
@@ -1987,7 +2057,7 @@
           await refresh();
         } catch (error) {
           submitting = false;
-          form.querySelector('#ab-launch-message').textContent = `Launch failed: ${profile?.channel==='dev_v2'||DEBUG_VIEW ? error.message : plainError(error.message)}`;
+          form.querySelector('#ab-launch-message').textContent = profile?.channel==='dev_v2'?error.message:`Launch failed: ${DEBUG_VIEW ? error.message : plainError(error.message)}`;
           updatePreview();
         }
       });

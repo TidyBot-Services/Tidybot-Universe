@@ -2113,6 +2113,37 @@ html:has(#attentionbench-clear[data-operator-view="true"]),body:has(#attentionbe
 
 #attentionbench-clear[data-operator-view="true"] .op-fields{align-items:start}
 #attentionbench-clear[data-operator-view="true"] .op-field.op-wide:has(.op-strategy[open]){grid-column:1/-1}
+/* Run configuration: four short decisions, with technical controls in Advanced. */
+#attentionbench-clear .ab-launch-section[hidden],#attentionbench-clear [data-v2-help][hidden],#attentionbench-clear [data-fixed-help][hidden],#attentionbench-clear [data-v2-mode-field][hidden],#attentionbench-clear [data-fixed-config][hidden],#attentionbench-clear [data-v2-config][hidden],#attentionbench-clear [data-v2-tokens][hidden],#attentionbench-clear [data-fixed-tokens][hidden],#attentionbench-clear [data-start-no][hidden]{display:none!important}
+#attentionbench-clear .ab-run-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+#attentionbench-clear .ab-run-section-head h4{margin:0;white-space:nowrap}
+#attentionbench-clear .ab-run-section-head>small{max-width:55%;color:var(--muted);font-size:11px;line-height:1.4;text-align:right}
+#attentionbench-clear .ab-launch-section .op-number,#attentionbench-clear .ab-run-advanced .op-number{display:inline-grid;place-items:center;min-width:29px;min-height:29px;background:var(--op-ink,#242822);color:#fff;border-radius:5px;padding:3px 6px;font:700 15px var(--heading)}
+#attentionbench-clear .ab-run-advanced{margin-top:14px}
+#attentionbench-clear .ab-run-advanced>summary{display:flex;align-items:center;gap:9px;cursor:pointer;font:700 16px var(--heading)}
+#attentionbench-clear .ab-run-advanced>summary small{margin-left:auto;font:400 11px var(--body);color:var(--muted)}
+#attentionbench-clear .ab-run-advanced>div{margin-top:14px}
+#attentionbench-clear .ab-run-advanced details{margin-top:14px}
+#attentionbench-clear .ab-launch-field output{display:block;min-height:42px;padding:10px 12px;border:1px solid var(--line);background:#ffffff0b;font-size:14px;color:var(--text)}
+#attentionbench-clear form.ab-v2-profile .ab-launch-field select[name=robot_model],#attentionbench-clear form.ab-v2-profile .ab-launch-field select[name=execution_arm]{display:none}
+#attentionbench-clear form:not(.ab-v2-profile) [data-robot-summary]{display:none}
+#attentionbench-clear .ab-run-hint{font-size:11px;line-height:1.5;color:var(--muted);margin:0}
+#attentionbench-clear .ab-reviewer-toggle{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:10px;cursor:pointer}
+#attentionbench-clear .ab-reviewer-toggle input{width:42px;height:24px;left:0;top:0;margin:0;opacity:0;position:absolute}
+#attentionbench-clear .ab-reviewer-toggle .ab-switch{width:42px;height:24px;border-radius:20px;background:#777;position:relative;margin-top:1px;transition:background .15s}
+#attentionbench-clear .ab-reviewer-toggle .ab-switch:after{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:#fff;transition:transform .15s}
+#attentionbench-clear .ab-reviewer-toggle input:checked+.ab-switch{background:var(--orange)}
+#attentionbench-clear .ab-reviewer-toggle input:checked+.ab-switch:after{transform:translateX(18px)}
+#attentionbench-clear .ab-reviewer-toggle input:focus-visible+.ab-switch{outline:2px solid var(--orange);outline-offset:3px}
+#attentionbench-clear .ab-reviewer-toggle input:disabled+.ab-switch{cursor:not-allowed}
+#attentionbench-clear .ab-reviewer-toggle strong,#attentionbench-clear .ab-reviewer-toggle small,#attentionbench-clear .ab-reviewer-toggle em{display:block}
+#attentionbench-clear .ab-reviewer-toggle strong{font-size:14px}
+#attentionbench-clear .ab-reviewer-toggle small{margin-top:5px;max-width:65ch;font-size:12px;line-height:1.5;color:var(--muted)}
+#attentionbench-clear .ab-reviewer-toggle em{margin-top:5px;font-size:11px;color:var(--orange);font-style:normal}
+#attentionbench-clear .ab-reviewer-toggle em[hidden]{display:none}
+#attentionbench-clear #run-config-summary{font-size:12px;color:var(--text)}
+#attentionbench-clear .ab-launch-actions [data-start-no]{border-color:var(--orange)}
+@media(max-width:560px){#attentionbench-clear .ab-run-section-head{align-items:flex-start;flex-direction:column}#attentionbench-clear .ab-run-section-head>small{max-width:none;text-align:left}#attentionbench-clear .ab-run-advanced>summary{flex-wrap:wrap}#attentionbench-clear .ab-run-advanced>summary small{margin-left:0;width:100%}}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>

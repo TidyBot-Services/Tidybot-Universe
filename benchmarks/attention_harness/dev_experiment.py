@@ -15,6 +15,9 @@ CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens
 ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
+def validate_help_budget(help_budget):
+    if type(help_budget) is not int or not 0<=help_budget<=10:raise ValueError('help budget must be 0–10')
+    return help_budget
 def task_cell_budget(budget_tier='dev'):
     limits=task_limits(budget_tier)
     return {**CELL_BUDGET,'sdk_calls':2*limits['sdk_calls'],
@@ -66,7 +69,9 @@ def create(store,artifact_root,selection):
         for seed in seeds:validate_selection(t,seed)
     require_scene_gate(mode,selection,tasks,seeds)
     help_budget=selection.get('help_budget',1)
-    if type(help_budget) is not int or not 0<=help_budget<=2:raise ValueError('help budget must be 0–2')
+    # The operator may authorize up to ten requests per task; ledger credit and
+    # request accounting still enforce the explicit cell and goal allocations.
+    validate_help_budget(help_budget)
     trace_visible=selection.get('trace_visible',True)
     if type(trace_visible) is not bool:raise ValueError('trace visibility must be boolean')
     params=selection.get('policy_parameters',{})
@@ -525,7 +530,7 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
 
 def options():
     import benchmarks,openarm365_dev_v2
-    return {**task_options(),'policies':list(POLICY_IDS),'cell_budget':task_cell_budget(),'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,2],
+    return {**task_options(),'policies':list(POLICY_IDS),'cell_budget':task_cell_budget(),'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,10],
         'source_canary':{'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'source_root':str(ROOT)}}
 
 def main():

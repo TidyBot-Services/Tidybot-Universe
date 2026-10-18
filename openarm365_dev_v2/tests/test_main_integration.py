@@ -186,13 +186,56 @@ def test_main_bridge_old_modes_without_eval(tmp_path,mode):
     assert len(e['cells'])==1
 
 
+def test_interactive_eval_choice_daily_and_existing_goal_paths(tmp_path,monkeypatch):
+    from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment
+    from benchmarks.attention_harness.dev_configuration import require_eval_gate
+
+    class MaterializationReached(Exception):
+        pass
+
+    daily_bridge=daily.DailyDevV2(tmp_path/'daily',[],per_run_budget=True)
+    def stop_at_materialization(argv,**kwargs):
+        selection=json.loads(Path(argv[argv.index('--selection')+1]).read_bytes())
+        assert selection['mode']=='interactive'
+        assert selection['eval_agent']=={'enabled':enabled,'model':'parcc/Qwen'}
+        require_eval_gate(selection['mode'],selection)
+        dev_experiment.validate_selection_fields(selection)
+        # Exercise the real experiment preflight, stopping at source freezing;
+        # the sandbox does not contain the native robot model copy.
+        config=selection['configuration']
+        store=DevV2Store(Path(argv[argv.index('--store')+1]),configuration={'goal_id':config['goal_id'],'limits':config['experiment_budget'],'wall_seconds':config['wall_seconds']})
+        dev_experiment.create(store,Path(argv[argv.index('--artifacts')+1]),selection)
+    monkeypatch.setattr(daily.subprocess,'run',stop_at_materialization)
+    monkeypatch.setattr(dev_experiment,'make_lock',lambda path: (_ for _ in ()).throw(MaterializationReached()))
+    for enabled in (True,False):
+        budget=dict(daily.DEFAULT_CELL)
+        body=dict(start=False,selection=dict(request_key=f'daily-interactive-{enabled}',tasks=['open_cabinet'],seeds=[101],policies=['autonomous'],mode='interactive',help_budget=1,
+            eval_agent={'enabled':enabled,'model':'parcc/Qwen'},configuration=dict(goal_id=f'daily-interactive-{enabled}',experiment_budget=budget,cell_budget=budget,max_iterations=1,wall_seconds=3600)))
+        with pytest.raises(MaterializationReached):daily_bridge.create(body)
+
+    (tmp_path/'bridge').mkdir()
+    b,body=make_bridge(tmp_path/'bridge')
+    body['selection'].update(mode='interactive',tasks=['open_cabinet'])
+    with pytest.raises(ValueError,match='Eval requests are not configured'):
+        b.create(body)
+    monkeypatch.setattr(dev_experiment,'create',lambda *args,**kwargs: (_ for _ in ()).throw(MaterializationReached()))
+    body['selection']['eval_agent']['enabled']=False
+    with pytest.raises(MaterializationReached):b.create(body)
+    del body['selection']['eval_agent']
+    with pytest.raises(MaterializationReached):b.create(body)
+
+
 def test_main_bridge_maps_actual_frozen_configuration_and_no_clock_on_refresh(tmp_path):
     b,body=make_bridge(tmp_path);e=b.create(body)
     options=b.options()
     assert options['eval_agent_supported'] is True
-    assert options['default_cell_budget']['eval_calls']==2
-    assert options['default_cell_budget']['provider_tokens']-options['default_no_eval_cell_budget']['provider_tokens']==150112
-    assert options['default_cell_budget']['model_seconds']-options['default_no_eval_cell_budget']['model_seconds']==240
+    assert options['default_max_iterations']==5
+    assert options['default_cell_budget']['dev_calls']==5  # max_versions=5
+    assert options['default_cell_budget']['advisor_calls']==5  # help_budget=5
+    assert options['default_cell_budget']['eval_calls']==5  # target_valid_executions=5 with Eval enabled
+    assert options['default_cell_budget']['help_wait_seconds']==5*120+5*300  # five helps and 300 s per version
+    assert options['default_cell_budget']['provider_tokens']-options['default_no_eval_cell_budget']['provider_tokens']==5*75056
+    assert options['default_cell_budget']['model_seconds']-options['default_no_eval_cell_budget']['model_seconds']==5*120
     assert len(e['cells'])==2
     m=json.loads(Path(e['manifest']['uri']).read_bytes())
     assert m['target_depth']==m['target_valid_executions']==m['max_versions']==1

@@ -11,7 +11,17 @@ from .dev_help import POLICY_IDS
 from openarm365_dev_v2.dev_config import ROOT
 from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
-DEFAULT_CELL=dict(dev_calls=3,advisor_calls=2,eval_calls=3,provider_tokens=220000,input_tokens=190000,output_tokens=30000,executions=3,sdk_calls=240*DEV_TIER_BUDGET_SCALE,control_steps=7200*DEV_TIER_BUDGET_SCALE,help_credits=2,help_count=2,help_wait_seconds=300,model_seconds=600,execution_seconds=1600*DEV_TIER_BUDGET_SCALE)
+# Five versions and five requests fit the visible defaults. The SDK and execution
+# ceilings come from the same Dev tier task limits used by the worker.
+DEFAULT_CELL=dict(dev_calls=5,advisor_calls=5,eval_calls=5,provider_tokens=1000000,input_tokens=850000,output_tokens=150000,executions=5,sdk_calls=5*task_limits()['sdk_calls'],control_steps=5*task_limits()['control_steps'],help_credits=5,help_count=5,help_wait_seconds=5*120+5*300,model_seconds=1800,execution_seconds=5*(task_limits()['attempt_seconds']+60*DEV_TIER_BUDGET_SCALE))
+
+def registered_scene_seeds():
+    from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract
+    contract=load_contract(registered_contract_ref())
+    # Only advertise seeds covered for every selectable task. A future contract
+    # with partial coverage therefore stays conservative in this shared list.
+    covered=[{int(seed) for seed in entry['seeds']} for entry in contract['tasks'].values()]
+    return sorted(set.intersection(*covered)) if covered else []
 
 class DailyDevV2:
     def __init__(self,root,profiles,authorization=None,*,per_run_budget=False):
@@ -20,9 +30,9 @@ class DailyDevV2:
         self.recover()
     def options(self):
         return {'enabled':True,'policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
-                'default_cell_budget':DEFAULT_CELL,'default_max_iterations':3,'formal_eligible':False,
+                'default_cell_budget':DEFAULT_CELL,'default_max_iterations':5,'registered_scene_seeds':registered_scene_seeds(),'formal_eligible':False,
                 'authorization':{'mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else self.authorization,'matrix':self.matrix(),
-                'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],wall_seconds=3600*DEV_TIER_BUDGET_SCALE,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]}
+                'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],control_step_limit=task_limits()['control_steps'],startup_cleanup_seconds=60*DEV_TIER_BUDGET_SCALE,wall_seconds=21600,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]}
     def matrix(self):
         rows=[]
         for p in self.profiles:
@@ -53,6 +63,13 @@ class DailyDevV2:
         if not selection.get('planner_features'):
             selection={k:v for k,v in selection.items() if k!='human_wait_seconds'}
         experiments.validate_selection_fields(selection)
+        if selection.get('mode')=='experiment':
+            # The independent-ledger schema predates reproducible_reset. Enforce
+            # the same registered seed coverage before creating any ledger files.
+            from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract,seed_entry
+            contract=load_contract(registered_contract_ref())
+            for task in selection.get('tasks',[]):
+                for seed in selection.get('seeds',[]):seed_entry(contract,task,seed)
         configuration=selection.get('configuration',{})
         key=selection.get('request_key','')
         if not re.fullmatch(r'[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')

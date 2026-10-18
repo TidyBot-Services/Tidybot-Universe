@@ -21,11 +21,20 @@ def test_idempotent_create_and_conflict(exp):
     s,e,tmp=exp
     assert create(s,tmp/'artifacts',{'request_key':'matrix-test-1'})['experiment_id']==e['experiment_id']
     with pytest.raises(DevConflict):create(s,tmp/'artifacts',{'request_key':'matrix-test-1','seeds':[102]})
-@pytest.mark.parametrize('selection',[{'seeds':[True]},{'seeds':[100]},{'tasks':['bad']},{'help_budget':3},{'policies':['bad']},{'policy_parameters':{'budget_matched_random_escalation':{}}}])
+@pytest.mark.parametrize('selection',[{'seeds':[True]},{'seeds':[100]},{'tasks':['bad']},{'help_budget':11},{'policies':['bad']},{'policy_parameters':{'budget_matched_random_escalation':{}}}])
 def test_precreation_invalid_zero_records(tmp_path,selection):
     s=DevV2Store(tmp_path/'s.sqlite')
     with pytest.raises(ValueError):create(s,tmp_path/'a',dict(request_key='invalid-create',**selection))
     assert list_experiments(s)==[] and s.export_ledger()['jobs']==[]
+
+def test_help_budget_ten_creates_and_out_of_range_values_do_not(tmp_path):
+    s=DevV2Store(tmp_path/'s.sqlite')
+    valid=create(s,tmp_path/'artifacts',{'request_key':'help-budget-ten','tasks':['open_cabinet'],'seeds':[101],'policies':['autonomous'],'mode':'interactive','help_budget':10})
+    assert valid['selection']['help_budget']==10
+    for count in (11,-1,True):
+        with pytest.raises(ValueError,match='help budget must be 0–10'):
+            create(s,tmp_path/'artifacts',{'request_key':f'invalid-help-{count}','tasks':['open_cabinet'],'seeds':[101],'policies':['autonomous'],'mode':'interactive','help_budget':count})
+    assert len(list_experiments(s))==1
 def test_policy_freeze_and_cancel(exp):
     s,e,tmp=exp
     with pytest.raises(DevConflict):switch(s,e['cells'][0]['key'],'reactive_help')

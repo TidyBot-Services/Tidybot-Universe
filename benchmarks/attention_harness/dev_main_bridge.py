@@ -36,21 +36,22 @@ class DevMainBridge:
         goal=self.store.goal(self.goal_id)
         tier=goal.get('budget_tier','legacy')
         from .eval_agent import default_config as eval_default
-        default=derive_cell_budget(normalize_configuration(dict(max_versions=2,target_depth=2,target_valid_executions=2,help_budget=1,
-            planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(True))))
-        without_eval=derive_cell_budget(normalize_configuration(dict(max_versions=2,target_depth=2,target_valid_executions=2,help_budget=1,
-            planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(False))))
+        default=derive_cell_budget(normalize_configuration(dict(max_versions=5,target_depth=5,target_valid_executions=5,help_budget=5,
+            planner_features={'human_wait_seconds':300},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(True))))
+        without_eval=derive_cell_budget(normalize_configuration(dict(max_versions=5,target_depth=5,target_valid_executions=5,help_budget=5,
+            planner_features={'human_wait_seconds':300},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(False))))
         from .free_models import eval_is_unmetered,is_unmetered_model
         from .dev_experiment import MODEL
         from .dev_advisor_proxy import MODEL as ADVISOR_MODEL
-        return dict(enabled=True,bridge_schema='main-dev-v3',goal_key=self.goal_key,default_cell_budget=default,
-            default_no_eval_cell_budget=without_eval,goal_limits=fill_optional(goal['limits']),default_max_iterations=2,policies=[POLICY],eval_agent_supported=True,
+        from .daily_dev_v2 import registered_scene_seeds
+        return dict(enabled=True,bridge_schema='main-dev-v3',goal_key=self.goal_key,registered_scene_seeds=registered_scene_seeds(),tasks=[t.public() for t in TASKS.values()],default_cell_budget=default,
+            default_no_eval_cell_budget=without_eval,goal_limits=fill_optional(goal['limits']),default_max_iterations=5,policies=[POLICY],eval_agent_supported=True,
             eval_accounting='不计限额，仅记录' if eval_is_unmetered(eval_default(True)) else '计入限额',
             model_token_accounting={role:('不计限额，仅记录' if is_unmetered_model(model) else '计入限额') for role,model in {'Dev':MODEL['model'],'Advisor':ADVISOR_MODEL,'Eval':eval_default(True)['model']}.items()},
             authorization=dict(mode='existing_goal',deadline_epoch=goal.get('authorized_until')),
             memory=self.memory,profiles=[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,
                 seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,
-                execution_target='robocasa365_sim',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],sdk_call_limit=task_limits(tier)['sdk_calls'],wall_seconds=goal['wall_limit']) for t in TASKS.values()])
+                execution_target='robocasa365_sim',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],sdk_call_limit=task_limits(tier)['sdk_calls'],control_step_limit=task_limits(tier)['control_steps'],startup_cleanup_seconds=60,wall_seconds=min(21600,goal['wall_limit']),layout_id=11,style_id=34) for t in TASKS.values()])
 
     def experiments(self):
         return [e for e in experiments.list_experiments(self.store) if e.get('goal_id')==self.goal_id]
