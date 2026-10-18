@@ -164,3 +164,11 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
 ```
 
 seed 102 只读 reset 实测：`sink_pos=[0.2999998883,-1.7962400050,0.9861874579]` m；main 固定碰撞盒 13 个，边沿顶面 `1.0186950289` m；`auto=(+0.1969099291,-0.5810548409,0)`。mount 旋转为 `Rz(π)`，所以世界系 `sink−banana=(-0.1969099291,+0.5810548409)` m 映到 mount 系后符号翻转。抓取时香蕉与移位后水槽的 mount XY 均为 `[0.3155711446,0.3600824950]` m。以上仅为只读可达性自检，未执行新增物理阶段或获得原生成功结果。
+
+## 抓取链诊断任务预算
+
+`grasp_chain_probe` 和 `grasp_variants` 可选 `--budget-scale S`，其中 S 为有限的 1–8 倍正数。例如在 seed 102 上使用 `--budget-scale 2` 时，单次上限为 160 次 SDK 调用、4800 控制步和 960 秒。此参数只供脚本化诊断探针使用，命令会设置 `ATTN_DIAG_BUDGET_SCALE` 和探针标记；直接在普通 Dev 或正式运行中设置该环境变量会被拒绝。非法值报错；浮点倍数的整数上限向上取整。未传参数时沿用原 80/2400/480、原预算文件和策略源码。
+
+放大由 `openarm365_dev_v2/diag_budget.py` 统一计算。诊断实验的 `budget.json`、账本上限和执行预留同时放大；例如 2 倍时诊断账本单次预留 160 次调用、4800 步、1080 秒（含放大的 120 秒启动清理预留），wall limit 为 8520 秒。生成策略的搬运段硬上限随之变为 160，抓取段保留 5 次调用余量，变为 155。`results.json`、runner 结果、sandbox/native 回执、worker RPC 回执和 reset 回执记录 `diagnostic_budget_override`。放大执行的账本回执标为 `diagnostic`，有效执行次数统计排除它，正式边界拒绝它。
+
+这只放大任务资源上限。证书、逐物理步监控、关节与速度限制、接触检查、身份和哈希校验、沙箱代码白名单均未更改。探针宿主脚本是普通 Python；它生成的 SDK 策略仍须通过 `policy_validation` 和沙箱白名单，因此不能使用任意 import、NumPy 或未允许的内置函数。`--dry-run` 不执行物理步进；`--carry --dry-run` 需要 `--dry-run-reset`，会做只读 reset。

@@ -192,6 +192,10 @@ class DevV2Store:
         if state=='settled':
             if j['actual']!=actual or j['receipt']!=receipt:raise DevConflict('conflicting settlement')
             return
+        if j['kind']=='execute' and isinstance(receipt,dict) and receipt.get('diagnostic'):
+            if not receipt.get('diagnostic_budget_override'):raise DevConflict('diagnostic execution requires budget evidence')
+            c=self.get(db,'cells',j['cell']);exp=self.get(db,'experiments',c['experiment_id'])
+            if exp['selection']['mode']!='diagnostic':raise DevConflict('diagnostic execution cannot enter normal Dev ledger')
         if state not in {'claimed','needs_review'} or set(actual)!=set(j['reservation']) or any(actual[k]>v for k,v in j['reservation'].items()):raise DevConflict('missing/excess usage; retain reservation')
         c=self.get(db,'cells',j['cell']);goal_id=self.cell_goal(db,c);g=self.get(db,'goals',goal_id)
         for k,v in actual.items():c['used'][k]=c['used'].get(k,0)+v;g['used'][k]=g['used'].get(k,0)+v

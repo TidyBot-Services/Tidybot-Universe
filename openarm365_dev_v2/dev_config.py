@@ -1,9 +1,10 @@
 """New development conditions and immutable resource lock, separate from v1 freeze."""
 import copy,hashlib,json
 from pathlib import Path
-from benchmarks.attention_harness.dev_tasks import get_task,validate_selection,SDK
+from benchmarks.attention_harness.dev_tasks import get_task,validate_selection
 from benchmarks.attention_harness.robocasa365.config import EXPECTED
 from openarm365_dev.config import LOCK,LOCK_SHA
+from .diag_budget import task_limits,case_wall_seconds
 SCHEMA='attentionbench.openarm365-dual-dev-config.v2'
 ROOT=Path(__file__).resolve().parents[1]
 SIM_PYTHON=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python')
@@ -71,8 +72,8 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
     c=copy.deepcopy(EXPECTED)
     c.update(schema_version=SCHEMA,task_id=t.task_id,official_env=t.official_env,task_prompt=t.task_prompt,
        seed=seed,robot=t.robot,execution_arm=t.execution_arm,controller='BASIC',
-       camera_names=['robot0_agentview_left','gripper0_right_eye_in_hand'],horizon=SDK['control_steps'],
-       sdk_call_limit=SDK['sdk_calls'],attempt_wall_seconds=SDK['attempt_seconds'],whole_case_wall_seconds=1800,
+       camera_names=['robot0_agentview_left','gripper0_right_eye_in_hand'],horizon=task_limits()['control_steps'],
+       sdk_call_limit=task_limits()['sdk_calls'],attempt_wall_seconds=task_limits()['attempt_seconds'],whole_case_wall_seconds=case_wall_seconds(),
        asset_manifest_sha256=sha(ASSETS),object_set_id='robocasa365:pretrain:'+sha(ASSETS),
        base_mode='commanded_motion',runner_boundary='dev_loop',execution_controller_input='absolute',
        reset_controller_input='delta',global_random_seed=seed,gripper_command_endpoints_m=[.001,.043],
@@ -90,7 +91,7 @@ def validate_dev_config(c,*,expected_source_root=None):
         raise ValueError('held_reference_mode must be fixed or settled')
     expected['held_reference_mode']=c['held_reference_mode']
     seconds=c.get('attempt_wall_seconds')
-    if type(seconds) is not int or not 1<=seconds<=SDK['attempt_seconds']:raise ValueError('SDK attempt wall exceeded')
+    if type(seconds) is not int or not 1<=seconds<=task_limits()['attempt_seconds']:raise ValueError('SDK attempt wall exceeded')
     expected['attempt_wall_seconds']=seconds
     if 'scene_reset_seed' in c:
         if type(c['scene_reset_seed']) is not int or c['scene_reset_seed']!=c['seed']:raise ValueError('scene reset seed mismatch')

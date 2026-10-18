@@ -5,6 +5,7 @@ from .config import validate_config
 from .sandbox import probe_sandbox,execute_formal_policy,_json_safe
 from .owner import NativeOwner,OutcomeUnknown,build_sdk
 from benchmarks.attention_harness.robocasa365.recording import finalize_recording
+from openarm365_dev_v2.diag_budget import diagnostic_budget,task_limits
 
 def write(path,value):
     path.write_text(json.dumps(_json_safe(value),ensure_ascii=False,sort_keys=True,indent=2,allow_nan=False)+'\n')
@@ -19,12 +20,14 @@ class OpenArm365DevRunner:
         self.cancel_event=threading.Event()
 
     def execute(self,request):
+        override=diagnostic_budget()
         if request.entry_lock is not None:raise ValueError('Dev-only runner cannot claim an approved formal entry')
         c=validate_config(json.loads(request.config_path.read_bytes()))
         if request.task_id!=c['task_id'] or request.seed!=101:raise ValueError('Locked 365 task/seed mismatch')
         limit=request.sdk_call_limit or c['sdk_call_limit']
         seconds=request.effective_attempt_deadline_seconds
-        if not 0<seconds<=480 or not 0<limit<=80:raise ValueError('Dual-arm execution exceeds frozen budgets')
+        limits=task_limits()
+        if not 0<seconds<=limits['attempt_seconds'] or not 0<limit<=limits['sdk_calls']:raise ValueError('Dual-arm execution exceeds frozen budgets')
         started=time.monotonic();deadline=started+seconds
         episode=request.artifact_root/('openarm365-dev-'+uuid.uuid4().hex[:12]);episode.mkdir(parents=True,exist_ok=False)
         ids=dict(run_id=request.run_id,attempt_id=request.attempt_id)
@@ -90,6 +93,10 @@ class OpenArm365DevRunner:
         safety=dict(**ids,source='native_per_physics_step_monitor',monitor_available=attested,
             unsafe_attempts=int(bool(violations)),violations=violations,events=[],limits=c['safety_limits'])
         native=dict(native,**ids,status=status)
+        if override:
+            receipt['diagnostic_budget_override']=override
+            native['diagnostic_budget_override']=override
+            trace['diagnostic_budget_override']=override
         for name,value in [('trace',trace),('sandbox_receipt',receipt),('safety',safety),('native_result',native)]:
             artifacts[name]=write(episode/(name+'.json'),value)
         result=dict(schema_version='attentionbench.formal-runner-result.v1',**binding,status=status,error=error,
@@ -98,4 +105,5 @@ class OpenArm365DevRunner:
             outcome_unknown=unknown,sandbox={'process_isolated':probe is not None,'sdk_rpc_only':probe is not None,
                 'deadline_enforced':True,'action_cancellation_verified':cleanup['leader_reaped'] and cleanup['process_group_gone'] and cleanup['planner_process_groups_gone']},
             artifact_dir=str(episode.resolve()),artifacts=artifacts,recording=recording)
+        if override:result['diagnostic_budget_override']=override
         write(episode/'result.json',result);return result

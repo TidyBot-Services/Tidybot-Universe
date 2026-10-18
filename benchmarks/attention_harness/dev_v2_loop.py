@@ -300,6 +300,11 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
 def execute(store,key,version,record,config,owner,directory,runner_factory,client=None,*,memory_validation=None):
     cell=store.cell(key);goal=store.goal_for_cell(key);cleanup=cell.get('runtime',{}).get('startup_cleanup_seconds',25);seconds=min(config['attempt_wall_seconds'],goal['wall_remaining']-cleanup,cell['budget']['execution_seconds']-cell['used']['execution_seconds']-cleanup)
     if seconds<=20:raise DevBudgetExhausted('insufficient execution and cleanup time')
+    from openarm365_dev_v2.diag_budget import diagnostic_budget
+    if diagnostic_budget():
+        with store.tx() as db:
+            exp=store.get(db,'experiments',cell['experiment_id'])
+        if exp['selection']['mode']!='diagnostic':raise DevConflict('scaled attempt requires diagnostic experiment')
     reservation={'executions':1,'sdk_calls':config['sdk_call_limit'],'control_steps':config['horizon'],'execution_seconds':seconds+cleanup}
     memory_path=Path(directory)/'memory-input.json'
     if cell.get('planner_features',{}).get('memory') and memory_path.is_file():
@@ -345,7 +350,7 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
     watcher.start()
     try:
         result=run_with_formal_boundary(request,runner=runner)
-        bundle=immutable(directory/'bundle.json',{**result,'channel':'dev_v2','formal_eligible':False,'dev_version':version,'policy_id':cell['policy_id'],'config_lock':{'uri':str(config_path),'sha256':sha(config_path)}})
+        bundle=immutable(directory/'bundle.json',{**result,'channel':'diagnostic' if result.get('diagnostic_budget_override') else 'dev_v2','formal_eligible':False,'dev_version':version,'policy_id':cell['policy_id'],'config_lock':{'uri':str(config_path),'sha256':sha(config_path)}})
         if result.get('infrastructure_failure') or result.get('outcome_unknown'):raise DevConflict('native infrastructure/dispatch unknown; no revision/retry')
         trace=json.loads(checked(result['artifacts']['trace']).read_bytes());projected={'schema_version':'attentionbench.dev-public-feedback.v1','execution_status':'condition_invalid','public_error':'scene_contract_mismatch','action_trace':[]} if result['status']=='condition_invalid' else public_feedback(trace)
         episode_root=Path(result['artifact_dir'])
@@ -357,7 +362,7 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         public_screen(projected);feedback=immutable(directory/'public-feedback.json',projected)
         receipt=json.loads(checked(result['artifacts']['sandbox_receipt']).read_bytes())
         actual={'executions':1,'sdk_calls':receipt['sdk_call_budget']['dispatched'],'control_steps':receipt['control_steps'],'execution_seconds':receipt['elapsed_seconds']}
-        store.settle(job['job_id'],actual,{'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
+        store.settle(job['job_id'],actual,{**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
         memory_path=directory/'memory-input.json'
         if cell.get('planner_features') and memory_path.exists():
             from .dev_planner_memory import journal_result
@@ -564,7 +569,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 store.update_cell(key,policy_id=cell['pending_policy'],pending_policy=None,policy_segments=cell['policy_segments']+[cell['pending_policy']])
                 cell=store.cell(key)
             last=cell['versions'][-1] if cell['versions'] else None
-            if last and last['valid'] and ('goal_id' not in m or sum(j['kind']=='execute' and j['state']=='settled' for j in cell['jobs'])<m['target_valid_executions']):
+            if last and last['valid'] and ('goal_id' not in m or sum(j['kind']=='execute' and j['state']=='settled' and not (j.get('receipt') or {}).get('diagnostic') for j in cell['jobs'])<m['target_valid_executions']):
                 job=job_for(cell,last['version'],'execute')
                 if not job:
                     execute(store,key,last['version'],last,config,owner,root/f"v{last['version']}",runner_factory,client);continue
@@ -584,7 +589,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                     store.update_cell(key,state='completed',reason='eval_passed');return
             count=len(cell['versions'])
             if 'goal_id' in m:
-                executions=sum(j['kind']=='execute' and j['state']=='settled' for j in cell['jobs'])
+                executions=sum(j['kind']=='execute' and j['state']=='settled' and not (j.get('receipt') or {}).get('diagnostic') for j in cell['jobs'])
                 complete=count>=m['target_depth'] and executions>=m['target_valid_executions']
                 pending=any(j['kind']=='model' and j['state']=='settled' and j['version']>count for j in cell['jobs'])
                 if not pending and (complete or count>=m['max_versions']):

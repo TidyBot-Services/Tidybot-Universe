@@ -41,6 +41,8 @@ def create(store,artifact_root,selection):
     if not isinstance(key,str) or not re.fullmatch('[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
     mode=selection.get('mode','experiment')
     if mode not in {'experiment','interactive','diagnostic'}:raise ValueError('unsupported Dev mode')
+    from openarm365_dev_v2.diag_budget import diagnostic_budget
+    if diagnostic_budget() and mode!='diagnostic':raise ValueError('scaled attempt requires diagnostic experiment')
     tasks=selection.get('tasks',list(__import__('benchmarks.attention_harness.dev_tasks',fromlist=['TASKS']).TASKS))
     seeds=selection.get('seeds',[101]);policies=selection.get('policies',list(POLICY_IDS))
     if not isinstance(tasks,list) or not tasks or len(tasks)>32 or len(set(tasks))!=len(tasks):raise ValueError('unique registered task list required')
@@ -407,7 +409,8 @@ def acquire(store,exp_id,owner):
 def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=None,max_slots=None,outer_deadline_epoch=None,min_start_wall_seconds=None):
     from .dev_wait_recovery import reconcile_waits
     reconcile_waits(store,exp_id)
-    if snapshot(store,exp_id)['selection']['mode']=='diagnostic':raise DevConflict('diagnostic dispatch requires individually metered reset/probe')
+    from openarm365_dev_v2.diag_budget import diagnostic_budget
+    if snapshot(store,exp_id)['selection']['mode']=='diagnostic' and not diagnostic_budget():raise DevConflict('diagnostic dispatch requires individually metered reset/probe')
     if type(max_cells) is not int or max_cells<1:raise ValueError('positive explicit max_cells required')
     e=snapshot(store,exp_id);m=verify_manifest(e)
     if 'goal_id' in m and Path(m['ledger_path']).resolve()!=store.path.resolve():raise ValueError('manifest ledger binding mismatch')
@@ -443,7 +446,7 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
             if current['cancelled']:break
             if c['state'] in {'completed','failed','cancelled','unknown','needs_review','not_started','condition_invalid'}:continue
             goal=store.goal(m.get('goal_id',GOAL))
-            g=len(c['versions']);ex=sum(j['kind']=='execute' and j['state']=='settled' for j in c['jobs'])
+            g=len(c['versions']);ex=sum(j['kind']=='execute' and j['state']=='settled' and not (j.get('receipt') or {}).get('diagnostic') for j in c['jobs'])
             if 'goal_id' in m:
                 pending=any(j['kind']=='model' and j['state']=='settled' and j['version']>g for j in c['jobs'])
                 if not pending and not slot.get('compensation') and g>=slot['through_version'] and (not c['versions'] or not c['versions'][-1]['valid'] or any(j['kind']=='execute' and j['version']==g and j['state']=='settled' for j in c['jobs'])):continue

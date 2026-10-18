@@ -185,3 +185,9 @@ rewritten to make an old catalog appear approved for changed source.
 
 证据：`outputs/ui-dev-shared-workspace/ACCEPTANCE_FROZEN.json`、`projection-tests.log`、`UI_CHECKS.json`、`HANDOFF.md`、`RESULT.json`、`PRODUCTION_RELEASE.json`、`PRODUCTION_UI_CHECKS.json`及实际页面截图。未来发布沿用已合并Dev分支；双臂执行链由另一任务继续其固定验收包。
 <!-- /dev-shared-workspace-followup -->
+
+## Diagnostic task budget override
+
+Only the scripted seed 101–103 `grasp_chain_probe` and `grasp_variants` accept `--budget-scale S` (finite 1–8). The CLI sets `ATTN_DIAG_BUDGET_SCALE` with a probe marker. A scaled attempt uses the same multiplier for the 80 SDK calls, 2,400 control steps (`env.horizon`) and 480 second attempt wall. Integer ceilings round up for fractional multipliers. The diagnostic ledger, `budget.json`, and reservation carry the corresponding larger limits. Without the option, those task limits and generated policy bytes retain their original values.
+
+The override is recorded as `diagnostic_budget_override` in the probe `results.json`, runner result, sandbox/native receipts and worker RPC/reset receipts. Such jobs are marked diagnostic and excluded from valid Dev execution counts; the formal runner rejects them. This is a task budget adjustment, not a change to certificates, the 4 mm / 0.03 rad physical monitor, joint/velocity/contact checks, robot margin, identity hashes, or sandbox policy. The host probe is plain Python; the generated policy still passes `policy_validation` and the sandbox whitelist, which forbids arbitrary imports, NumPy and unlisted builtins.

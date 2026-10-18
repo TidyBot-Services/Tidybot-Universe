@@ -45,12 +45,26 @@ def main(argv=None):
     p.add_argument('--only',help='comma-separated variant names')
     p.add_argument('--out',type=Path,default=Path('grasp-variants-results'))
     p.add_argument('--seed',type=int,choices=(101,102,103),default=102)
+    p.add_argument('--budget-scale',help='diagnostic task budget scale in [1,8]')
     p.add_argument('--base-shift',default='0,0.25,0')
     p.add_argument('--sequence',choices=('rotate-first','translate-first','combined'),default='translate-first')
     p.add_argument('--rotation-step',type=float,default=.15)
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--held-reference-mode',choices=('fixed','settled'))
     args=p.parse_args(argv)
+    override=None
+    from openarm365_dev_v2.diag_budget import SOURCE,MARKER,diagnostic_budget
+    if args.budget_scale is not None or SOURCE in os.environ:
+        before=os.environ.get(SOURCE);marker=os.environ.get(MARKER)
+        if args.budget_scale is not None:os.environ[SOURCE]=args.budget_scale
+        os.environ[MARKER]='1'
+        try:override=diagnostic_budget()
+        except ValueError as exc:p.error(str(exc))
+        finally:
+            if before is None:os.environ.pop(SOURCE,None)
+            else:os.environ[SOURCE]=before
+            if marker is None:os.environ.pop(MARKER,None)
+            else:os.environ[MARKER]=marker
     try:
         variants=parse_variants(args.variants)
         if args.only:
@@ -71,6 +85,7 @@ def main(argv=None):
                  '--lift-step-m',str(values.get('lift',.025)),
                  '--lift-height-m',str(values.get('height',.10)),
                  '--out',str(args.out/name)]
+        if args.budget_scale is not None:command.extend(['--budget-scale',args.budget_scale])
         if args.held_reference_mode is not None:
             command.extend(['--held-reference-mode',args.held_reference_mode])
         if args.dry_run:
@@ -94,6 +109,7 @@ def main(argv=None):
                      monitor_aborted=result.get('monitor_aborted'),
                      aborted_by=result.get('aborted_by') or completed.stderr[-1000:] or None,
                      finger_openings_after_close_m=result.get('finger_openings_after_close_m'))
+        if override:row['diagnostic_budget_override']=override
         rows.append(row)
         (args.out/'results.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
         (args.out/'results.md').write_text('# 抓取变体矩阵\n\n'+format_table(rows))

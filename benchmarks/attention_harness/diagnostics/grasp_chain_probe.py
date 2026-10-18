@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse, hashlib, json, math, os, time
 from pathlib import Path
 from openarm365_dev.policy_validation import validate_generated_policy
+from openarm365_dev_v2.diag_budget import SOURCE,MARKER,diagnostic_budget,task_limits,probe_reserve,policy_limit
 
 STAGES=('base','open','pregrasp','descend','close','lift','held')
 ORIENTED_STAGES=('base','open','orient','pregrasp','descend','close','lift','held')
@@ -390,6 +391,8 @@ def carry_policy_source(source, sink, shift):
         "    if item['name'] == 'obj': obj_final = item['position']",
         "assert obj_final is not None, 'obj missing after release'"]
     result=source+('\n'.join(lines)+'\n')
+    if diagnostic_budget():
+        result=result.replace("<= 80, 'SDK call budget exceeded'",f"<= {policy_limit()}, 'SDK call budget exceeded'")
     validate_generated_policy(result)
     return result
 
@@ -693,10 +696,20 @@ def run(root,seed,source):
     from benchmarks.attention_harness.diagnostics.motion_tracking_matrix import ScriptedClient
     root.mkdir(parents=True,exist_ok=True)
     store=DevV2Store(root/'store.sqlite')
+    override=diagnostic_budget()
     selection=dict(request_key='grasp-chain-'+hashlib.sha256((source+str(seed)).encode()).hexdigest()[:24],
-        mode='interactive',tasks=['pick_place_counter_to_sink'],seeds=[seed],policies=['autonomous'],
+        mode='diagnostic' if override else 'interactive',tasks=['pick_place_counter_to_sink'],seeds=[seed],policies=['autonomous'],
         target_depth=1,target_valid_executions=1,max_versions=1,help_budget=0,
         coverage='budget_limited',reproducible_reset=True)
+    if override:
+        from benchmarks.attention_harness.dev_configuration import normalize_configuration,derive_cell_budget
+        reserve=probe_reserve()
+        selection.update(attempt_wall_seconds=override['attempt_seconds'],
+            startup_cleanup_seconds=reserve['startup_cleanup_seconds'],wall_limit=reserve['wall_limit'])
+        profile=normalize_configuration(selection)
+        cell_budget=derive_cell_budget(profile)
+        cell_budget.update({k:reserve[k] for k in ('sdk_calls','control_steps','execution_seconds')})
+        selection['cell_budget']=cell_budget
     experiment=create(store,root/'artifacts',selection);manifest=verify_manifest(experiment)
     budget=root/'budget.json';budget.write_text(json.dumps(dict(goal_id=manifest['goal_id'],
         ledger_path=str(store.path.resolve()),experiment_id=experiment['experiment_id'],
@@ -704,9 +717,10 @@ def run(root,seed,source):
     reply=json.dumps({'source':source,'reason':'scripted grasp-chain diagnostic'})
     run(store,experiment['experiment_id'],max_cells=1,budget_file=budget,client=ScriptedClient(reply))
 
-def main(argv=None):
+def _main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--seed',type=int,choices=(101,102,103),default=102)
+    p.add_argument('--budget-scale',help='diagnostic task budget scale in [1,8]')
     p.add_argument('--base-shift',required=True,help='DX,DY,DYAW in robot mount frame')
     p.add_argument('--exempt',choices=('movable_objects','none'),default='movable_objects')
     p.add_argument('--held-reference-mode',choices=('fixed','settled'))
@@ -729,6 +743,10 @@ def main(argv=None):
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
     args=p.parse_args(argv)
+    if args.budget_scale is not None:os.environ[SOURCE]=args.budget_scale
+    if SOURCE in os.environ:os.environ[MARKER]='1'
+    try:override=diagnostic_budget()
+    except ValueError as exc:p.error(str(exc))
     if args.out.exists() and not args.dry_run:p.error('--out already exists; choose a fresh directory')
     if args.grasp_quat and args.theta_deg is not None:p.error('--grasp-quat and --theta-deg are mutually exclusive')
     if args.tilt and (args.grasp_quat or args.theta_deg is not None):p.error('--tilt and grasp orientation are mutually exclusive')
@@ -781,6 +799,9 @@ def main(argv=None):
             source=variant_policy_source(source,quat,offset_mm=args.grasp_offset_mm,
                 z_offset_mm=args.grasp_z_offset_mm,lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)
         if args.carry:source=carry_policy_source(source,carry,carry_shift)
+        if override:
+            source=source.replace("<= 75, 'SDK call budget exceeded'",f"<= {policy_limit(True)}, 'SDK call budget exceeded'")
+            validate_generated_policy(source)
     except ValueError as exc:p.error('invalid --base-shift or policy: '+str(exc))
     if args.dry_run:
         if carry is not None:
@@ -833,6 +854,7 @@ def main(argv=None):
             else:os.environ['ATTN_DIAG_HELD_REFERENCE_MODE']=old_held_reference
     result=summarize(args.out,args.seed,shift,args.exempt,args.tilt,time.monotonic()-started,error,
                      grasp_quat=quat,oracle=oracle,sequence=args.sequence,carry=carry)
+    if override:result['diagnostic_budget_override']=override
     result.update(theta_deg=args.theta_deg,close_hold_steps=args.close_hold_steps,
                   grasp_offset_mm=args.grasp_offset_mm,grasp_z_offset_mm=args.grasp_z_offset_mm,
                   lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)
@@ -842,5 +864,13 @@ def main(argv=None):
     (args.out/'results.md').write_text(markdown(result))
     print(json.dumps({'results':str(args.out/'results.json'),'first_failure':result['first_failure'],'object_lifted_5cm':result['object_lifted_5cm']},ensure_ascii=False))
     return 0 if error is None else 1
+
+def main(argv=None):
+    before={name:os.environ.get(name) for name in (SOURCE,MARKER)}
+    try:return _main(argv)
+    finally:
+        for name,value in before.items():
+            if value is None:os.environ.pop(name,None)
+            else:os.environ[name]=value
 
 if __name__=='__main__':raise SystemExit(main())

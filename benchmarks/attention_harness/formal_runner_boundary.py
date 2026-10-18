@@ -44,8 +44,11 @@ class FormalRunRequest:
                 else self.attempt_deadline_seconds)
 
     def validate(self) -> None:
+        from openarm365_dev_v2.diag_budget import diagnostic_budget,task_limits
+        diag=diagnostic_budget() if self.suite=="robocasa365" and self.entry_lock is None else None
+        ceiling=task_limits()["sdk_calls"] if diag else 200
         if self.sdk_call_limit is not None and (
-                type(self.sdk_call_limit) is not int or not 1 <= self.sdk_call_limit <= 200):
+                type(self.sdk_call_limit) is not int or not 1 <= self.sdk_call_limit <= ceiling):
             raise ValueError("formal remaining SDK call limit must be 1–200")
         if (self.run_id is None) != (self.attempt_id is None):
             raise ValueError("formal run and attempt identities must be paired")
