@@ -183,3 +183,43 @@ seed 102 只读 reset 实测：`sink_pos=[0.2999998883,-1.7962400050,0.986187457
 放大由 `openarm365_dev_v2/diag_budget.py` 统一计算。诊断实验的 `budget.json`、账本上限和执行预留同时放大；例如 2 倍时诊断账本单次预留 160 次调用、4800 步、1080 秒（含放大的 120 秒启动清理预留），wall limit 为 8520 秒。生成策略的搬运段硬上限随之变为 160，抓取段保留 5 次调用余量，变为 155。`results.json`、runner 结果、sandbox/native 回执、worker RPC 回执和 reset 回执记录 `diagnostic_budget_override`。放大执行的账本回执标为 `diagnostic`，有效执行次数统计排除它，正式边界拒绝它。
 
 这只放大任务资源上限。证书、逐物理步监控、关节与速度限制、接触检查、身份和哈希校验、沙箱代码白名单均未更改。探针宿主脚本是普通 Python；它生成的 SDK 策略仍须通过 `policy_validation` 和沙箱白名单，因此不能使用任意 import、NumPy 或未允许的内置函数。`--dry-run` 不执行物理步进；`--carry --dry-run` 需要 `--dry-run-reset`，会做只读 reset。
+
+# 开发场景两阶段筛查（仅 PickPlaceCounterToSink）
+
+`scene_screen.py` 只接受开发 seed 101–125；含 held-out 1001–1010 或任何范围外 seed 的 `--seeds` 立即报错。`--stage reset` 用标准解释器对每个 seed 做一次只读 reset，`physics_steps=0`。它复用 `object_proxy_measure.reset_diagnostic_fixture` 的目标碰撞几何、5° 水平投影宽度和世界快照，用双指实测最大张开 **80.5 mm** 判宽度；复用 `base_motion.check_exact_base_path` 的整机原生几何与 **3 mm** 起点规则。水槽目标来自 `sink.get_int_sites(relative=False)` 的 basin 内部区域；盆沿从相邻盆壁碰撞盒选取，不用 `sink_pos` 或水龙头最高点。放置点在内部区域 XY 各内缩 5 cm，报告目标 z 范围、到内部区域距离、盆沿来源及原生成功判据 `obj_inside_of(partial_check=True) && gripper_obj_far(th=0.25 m)`。
+
+IK 成功行另记录最终通过抓取三层和搬运端点的 `selected_candidate_number`、`grasp_quaternion_world_xyzw`、`grasp_theta_deg`、`object_height_m` 和 `target_z_range_world_m`。候选四元数沿用 `reachability_map` 的世界系 xyzw，直接对应探针 `--grasp-quat`；规划器内部使用的底座系 wxyz 不是这个字段。垂直向下、正向闭合轴时 `q=(sin((90−θ)/2),cos((90−θ)/2),0,0)`（角度先换弧度）；反向闭合轴的 55° 候选对应 `grasp_theta_deg=-125`。有俯仰或滚转时无法用探针的单个 θ 表示，记录 `null`，并在 `grasp_theta_note` 说明原因，仍以四元数执行。
+
+`--stage ik` 读取同一输出目录的 reset 夹具，只处理宽度及起点均通过的种子。它复用 `reachability_map.prepare/run_grasp_search/chassis_check`；默认在 `dx=0`、`dy=0.20/0.25/0.30/0.35 m`、`dyaw=0 rad` 上找向下抓取。`--dy-list` 和 `--dyaw-list` 接受逗号分隔的数值；`--pitch-zero-only` 默认开启，仅检查垂直向下姿态，俯仰 0° 时两个 forward sign 对应同一旋转，因此每个位移有 6 个不同朝向。底盘路径或终点检查失败时，粗筛该位移的 IK 全部跳过并记录 `skipped=chassis_rejected`。默认粗筛上限从每种子 1152 次降为 48 次，实际次数还可能因底盘拒绝而更少。`--no-pitch-zero-only` 恢复四种俯仰，但保留所选位移和底盘预检；`--full-grasp-search` 覆盖这些选项，恢复原来的 12 个位移、48 个朝向和 IK 顺序，用于少数种子复核。`reachability_map` 的可选参数默认值仍保持原搜索行为。其后验证抓取高度、+0.03 m、+0.06 m 各层的官方碰撞 IK 与 j7 限位余量 ≥0.10 rad。随后以 5 cm、8 邻居栅格 BFS 和原 `check_chassis_path` 检查到盆附近的可达底座格点。释放目标取原生盆内部 XY 范围各方向内缩 0.06 m 的矩形（范围不足 0.12 m 时取中心），在其中测试 3×3 栅格和距抓取起点最近的一点；去重后最多 10 点。TCP 在盆沿上方 0.08 m、垂直向下，任一点满足原碰撞、端点和 j7 余量 ≥0.10 rad 即通过。`ik.json` 记录矩形、释放点数量、每点在各底座格点的余量及命中点。输出 `reset.json/.md`、`ik.json/.md`、每种子夹具及 `summary.md`。`feasible` **仅表示端点 IK 可行**；同一高度的 TCP 水平平移不另检，路径连续性与原生成功留给真实探针。IK 阴性写作 `unknown`，因为有界采样不能证明全局无解。
+
+抓取三层全部通过的候选按最小 j7 余量降序排列，同一机器人系朝向（四元数各分量四舍五入到 1e-6）只保留一个；`--max-grasp-candidates` 默认只取前 3 个。每个候选按最近释放点的 XY 对齐距离只检查前 `--max-carry-cells` 个可达格点，默认 80。搬运端点的合格性和最大余量按种子、朝向、格点、目标点编号缓存，命中时不重复调用 IK。默认搬运 IK 上限为 **3×80×10=2400 次/种子**；实际次数因释放点去重、缓存命中和提前成功而更少。两项上限只限制采样预算，不改变碰撞、端点、j7 等合格标准。若选定候选全部失败，判定 `unknown:carry_not_found`，并记录 `carry_candidates_tested`、`carry_cells_tested`、`carry_cells_skipped_geometry`、`carry_cache_hits`。目前未启用几何半径预筛：已检索 URDF 和 `reachability_map`，尚无依据能证明水平 0.20–0.75 m 在所有高度、姿态下是安全的可达区间，故 `carry_cells_skipped_geometry=0`；不会用猜测阈值排除有效解。
+
+IK 阶段按种子及 yaw 复用有向底盘边检查，按 yaw 和起点复用完整 BFS；每个源格点的底盘快照在检查其相邻边时只构造一次，碰撞判定仍调用原 `check_chassis_path`。粗筛、每层抓取 IK、BFS 起止与每 100 条新边、搬运格点测试数及 `cache_hit` 均逐行刷新输出。`--seed-timeout-seconds N` 设置每个 IK 种子的墙钟限时，默认 1500 秒；超时记 `unknown:timeout` 并继续。每个种子结束即原子更新 `ik.json`、`ik.md`、`summary.md`；`--skip-done` 跳过 `ik.json` 中已有的种子，包括此前超时或出错的种子。不加该参数会重新筛查并覆盖该种子的旧结果。首次发现一个合格释放点即结束该种子的搜索；旧版两点判据生成的搬运结论需重跑后使用。
+
+在 GPU 机器上的 worktree 根目录执行，两个阶段使用同一个 `--out`：
+
+```bash
+export PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service"
+export XDG_CACHE_HOME=/tmp/attention-scene-screen-cache
+export NUMBA_CACHE_DIR=/tmp/attention-scene-screen-numba
+mkdir -p "$XDG_CACHE_HOME" "$NUMBA_CACHE_DIR"
+export SCREEN_CONFIG=/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/config/openarm_fixed.yml
+export SCREEN_ASSETS=/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/curobo_v2/service/curobo_service/assets
+/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python -m benchmarks.attention_harness.diagnostics.scene_screen --stage reset --seeds 104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125 --out outputs/scene-screen-dev --robot-config "$SCREEN_CONFIG" --assets-dir "$SCREEN_ASSETS"
+/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/bin/python3.11 -m benchmarks.attention_harness.diagnostics.scene_screen --stage ik --seeds 104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125 --out outputs/scene-screen-dev --robot-config "$SCREEN_CONFIG" --assets-dir "$SCREEN_ASSETS"
+```
+
+两条命令均可先加 `--dry-run`；它只统计候选组合，不 reset、不导入 cuRobo、不启动 GPU。GPU 阶段须在有官方解释器、配置和资产的机器执行。工具不执行物理步进、SDK 动作或模型调用，也不写场景合约。
+
+### 从筛查结果生成抓取搬运探针
+
+`probe_from_screen.py` 读取同一目录的 `reset.json` 和 `ik.json`，只对抓取及搬运端点都通过的开发种子生成完整命令。`--dry-run` 是默认行为，输出参数摘要及含 `ATTN_PLANNER_MODE=ik_path`、`ATTN_IK_CANDIDATES=8`、`ATTN_IK_MAX_JOINT_JUMP=1.0`、`ATTN_DIAG_HELD_TRACE=1` 的 shell 命令；`--print-command` 只输出命令。工具不 reset、不调用规划器、不运行探针。探针 CLI 接受开发 seed 101–125；真正执行该命令仍会使用原有场景、证书和物理监控。
+
+```bash
+python -m benchmarks.attention_harness.diagnostics.probe_from_screen \
+  --screen-dir outputs/scene-screen-dev --seed 104 --out outputs/probe-seed104 --dry-run
+```
+
+底座抓取位移直接来自 `grasp_base_shift`；搬运位移取 `carry_base_cell − grasp_base_shift` 的 mount 系平移（筛查默认底座 yaw=0）。释放 XY 用选中释放端点，须落在原生盆内部 XY 范围；盆沿高度用 reset 里由盆壁碰撞盒确定的 `sink.rim_top_world_m`。筛查释放端点的 TCP z 在盆沿上方，物体松爪后才需落入原生内部 z 范围。搬运与释放清除高度同设 `max(0.08, object_height_m/2 + 0.04)` 米：TCP 位于盆沿之上，按物体几何半高估算底部位置，再留 4 cm 余量；下限 8 cm 沿用 seed 102 的成功参数。算出超过 0.20 m 就报错并要求检查高物体几何。默认抬升 0.06 m、每步 0.025 m、抓取 z 偏移 5 mm，可用同名参数覆盖。命令还固定 `--retreat-m 0.025 --retreat-base=-0.30,0,0`，让松爪后夹爪离物体超过原生 0.25 m 门槛的路径有机会成立；端点 IK 本身不保证真实成功。
+
+旧 `ik.json` 缺上述候选朝向或目标高度时，生成器明确报错并提示重跑 `scene_screen --stage ik`，不会从别的候选猜测朝向。当前 `outputs/scene-screen-control/ik.json` 是旧格式，因此无法仅凭该文件生成可归因于筛查所选候选的 seed 102 正式命令；可用它的底座、释放点与盆沿数值和 seed 102 已知手工成功参数做只读回归对照。

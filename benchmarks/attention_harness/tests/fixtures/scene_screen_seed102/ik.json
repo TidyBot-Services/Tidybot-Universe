@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "seed": 102,
+      "grasp_ik_feasible": true,
+      "carry_ik_feasible": true,
+      "grasp_base_shift": [
+        0.0,
+        0.3,
+        0.0
+      ],
+      "carry_base_cell": [
+        0.0,
+        -0.15
+      ],
+      "release_point_world_m": [
+        0.45958380249628744,
+        -1.9124472194406208,
+        0.9989206782602051
+      ],
+      "selected_candidate_number": 3,
+      "grasp_quaternion_world_xyzw": [
+        0.3007057995042731,
+        0.9537169507482269,
+        0.0,
+        0.0
+      ],
+      "grasp_theta_deg": 55.0,
+      "target_z_range_world_m": [
+        0.9199370184677239,
+        0.9516263961490986
+      ],
+      "object_height_m": 0.0316893776813747
+    }
+  ]
+}

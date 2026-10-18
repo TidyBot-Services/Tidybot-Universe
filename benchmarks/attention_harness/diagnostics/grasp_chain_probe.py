@@ -1,4 +1,4 @@
-"""Scripted seed 101–103 grasp-chain probe; real execution is explicit."""
+"""Scripted development seed 101–125 grasp-chain probe; real execution is explicit."""
 from __future__ import annotations
 import argparse, hashlib, json, math, os, sys, time
 from pathlib import Path
@@ -747,7 +747,7 @@ def run(root,seed,source):
 
 def _main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--seed',type=int,choices=(101,102,103),default=102)
+    p.add_argument('--seed',type=int,choices=range(101,126),default=102)
     p.add_argument('--budget-scale',help='diagnostic task budget scale in [1,8]')
     p.add_argument('--base-shift',required=True,help='DX,DY,DYAW in robot mount frame')
     p.add_argument('--exempt',choices=('movable_objects','none'),default='movable_objects')

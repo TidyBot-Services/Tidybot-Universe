@@ -331,6 +331,16 @@ def test_object_scale_titles():
 def test_grasp_basis_and_combination_expansion():
     poses = reach.grasp_orientations(60)
     assert len(poses) == 48
+    assert poses == [reach.grasp_orientation(60+offset, axis_sign, pitch, forward_sign)
+                     for offset in (-15, 0, 15) for axis_sign in (1, -1)
+                     for pitch in (0, 20, 40, 60) for forward_sign in (1, -1)]
+    assert poses == reach.grasp_orientations(60, (0, 20, 40, 60))
+    vertical = reach.grasp_orientations(60, (0,))
+    assert len(vertical) == 6
+    assert all(p['forward_sign'] == 1 and p['pitch_deg'] == 0 for p in vertical)
+    for p in vertical:
+        duplicate = reach.grasp_orientation(p['theta_deg'], p['axis_sign'], 0, -1)
+        assert duplicate['quaternion_world_xyzw'] == pytest.approx(p['quaternion_world_xyzw'])
     assert len({(p['theta_deg'],p['axis_sign'],p['pitch_deg'],p['forward_sign']) for p in poses}) == 48
     for p in poses:
         n, a = p['n_world'], p['a_world']
@@ -400,3 +410,43 @@ def test_grasp_search_uses_truth_positions_and_excludes_target(monkeypatch):
     assert report['points_world_m']=={'pregrasp':[.5,-2.,1.06], 'grasp':[.5,-2.,.94]}
     assert report['summary']['path_clear_both_success_count']==48
     assert report['summary']['top_10'][0]['pitch_deg']==0
+
+
+def test_grasp_chassis_early_rejection_avoids_all_ik(monkeypatch):
+    calls = []
+    class Core:
+        last_failure = None
+        last_solver_diagnostics = []
+        def named(self, values, names): return values
+        def set_collision_world(self, scene): pass
+        def set_attachment(self, value): pass
+        def check_targets(self, target): pass
+        def solve_ik(self, **kwargs):
+            calls.append(1)
+            return [0.]
+    class Adapter:
+        def push_world(self, env_id, scene): pass
+    body = {'current_q': [0.], 'joint_names': ['joint'], 'active_joints': ['joint'],
+            'locked_joints': {}, 'env_id': 'kitchen'}
+    monkeypatch.setattr(reach, 'prepare', lambda *_: (Adapter(), Core(), {}, body, [], 'tool', {}))
+    monkeypatch.setattr(reach, 'chassis_check', lambda _world, _binding, shift: {
+        'path_clear': shift[1] == .25, 'endpoint_clear': shift[1] == .25})
+    fixture = {'world': {'planner_from_world': [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]},
+               'diagnostic_truth': {'position_world_m': [0., 0., 1.],
+                                    'z_range_world_m': [.9, 1.1],
+                                    'layered_horizontal_5mm_5deg': {'narrowest_local': {'angle_world_xy_deg': 55}}}}
+    args = SimpleNamespace(exclude_object=True, seed=102, fixture=reach.FIXTURE, chassis_binding={})
+    shifts = [(0., .20, 0.), (0., .25, 0.)]
+    report = reach.run_grasp_search(args, fixture, shifts, pitches=(0,), reject_chassis_before_ik=True)
+    assert len(calls) == report['ik_targets'] == 12
+    assert len(report['summary']['matrix']) == 12
+    assert all(row['skipped'] == 'chassis_rejected' for row in report['summary']['matrix'][:6])
+    assert all(not row['both_success'] for row in report['summary']['matrix'][:6])
+    calls.clear()
+    default = reach.run_grasp_search(args, fixture, shifts)
+    explicit = reach.run_grasp_search(args, fixture, shifts, pitches=(0, 20, 40, 60),
+                                      reject_chassis_before_ik=False)
+    assert default == explicit
+    assert len(calls) == 384
+    assert default['ik_targets'] == 192
+    assert all('skipped' not in row for row in default['summary']['matrix'])

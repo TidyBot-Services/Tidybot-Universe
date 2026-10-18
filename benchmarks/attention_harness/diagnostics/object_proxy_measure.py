@@ -454,6 +454,7 @@ def reset_target_geometry(env, world):
     pose_position, pose_rotation = body_pose(env.sim.data, root)
     center = points.mean(axis=0)
     z_range = [float(points[:, 2].min()), float(points[:, 2].max())]
+    axis_ranges = [[float(points[:, i].min()), float(points[:, i].max())] for i in range(3)]
     widths = [{'angle_world_xy_deg': angle,
                'object_width_m': projection_width(points, [math.cos(math.radians(angle)),
                                                               math.sin(math.radians(angle)), 0.])}
@@ -466,9 +467,12 @@ def reset_target_geometry(env, world):
     layered = layered_horizontal_widths(points,
         min(opened['pad_contact_region_length_along_finger_m']), .080, .0875)
     return {'source': '使用仿真真值,仅诊断', 'name': cfg['name'],
+            'target_asset_path': str(Path(env.objects[cfg['name']].mjcf_path).resolve()),
             'position_world_m': pose_position.tolist(),
             'quaternion_world_xyzw': Rotation.from_matrix(pose_rotation).as_quat().tolist(),
             'geometry_center_world_m': center.tolist(), 'z_range_world_m': z_range,
+            'axis_aligned_ranges_world_m': axis_ranges,
+            'axis_aligned_bbox_dimensions_m': axis_bounds(points).tolist(),
             'narrowest_5_degree_sample': narrow,
             'layered_horizontal_5mm_5deg': layered,
             'measured_grip_axis_tcp': grip_axis_tcp,
@@ -514,18 +518,29 @@ def reset_diagnostic_fixture(seed, out, robot_config, *, task='PickPlaceCounterT
         lock_names = [f'openarm_{side}_finger_joint1' for side in ('left', 'right')]
         lock_names += [f'openarm_right_joint{i}' for i in range(1, 8)]
         if include_sink:
-            from openarm365_dev.base_motion import _geom_aabb
+            from openarm365_dev.base_motion import (_geom_aabb, check_exact_base_path,
+                                                     check_chassis_path, BasePathRejected)
             from openarm365_dev.world import shape_box
             sink = env.sink
+            truth['sink_int_sites_world_m'] = {
+                name: [np.asarray(point, float).tolist() for point in points]
+                for name, points in sink.get_int_sites(relative=False).items()
+                if name in ('basin', 'basin_left', 'basin_right')}
+            if not truth['sink_int_sites_world_m']:
+                raise ValueError('Sink has no native basin interior region')
             sink_pos = np.asarray(sink.pos, float)
             sink_name = getattr(sink, 'name', 'sink')
             sink_rows = [row for row in world['inventory']
                          if row['body_name'] in (sink_name, sink_name+'_main')]
             boxes = []
+            box_records = []
             for row in sink_rows:
                 gid = int(row['geom_id'])
                 center, half = _geom_aabb(data._data, gid, *shape_box(model, gid))
                 boxes.append((center, half))
+                box_records.append({'name': row['name'], 'center_world_m': center.tolist(),
+                                    'half_size_world_m': half.tolist()})
+            truth['sink_main_collision_boxes_world_m'] = box_records
             truth['sink_pos_world_m'] = sink_pos.tolist()
             truth['sink_fixture_name'] = sink_name
             truth['sink_collision_geom_count'] = len(boxes)
@@ -536,6 +551,18 @@ def reset_diagnostic_fixture(seed, out, robot_config, *, task='PickPlaceCounterT
                 [[min(float(center[j]-half[j]) for center,half in boxes),
                   max(float(center[j]+half[j]) for center,half in boxes)] for j in (0,1)]
                 if boxes else None)
+            try:
+                start_audit = check_exact_base_path(
+                    env, world, config['service']['native_chassis'], (0., 0., 0.),
+                    np.asarray(data.qpos[env.robots[0]._ref_base_joint_pos_indexes], float))
+            except BasePathRejected as exc:
+                start_audit = exc.collision_check
+            truth['base_start_exact_audit'] = start_audit
+            try:
+                chassis_audit = check_chassis_path(world, config['service']['native_chassis'], (0., 0., 0.))
+            except BasePathRejected as exc:
+                chassis_audit = exc.collision_check
+            truth['base_start_chassis_proxy_audit'] = chassis_audit
         return {'seed': seed, 'diagnostic_truth': truth, 'identity': identity,
                 'world': world, 'joint_names': names, 'q0': [joint(n) for n in names],
                 'locked_joints': {n: joint(n) for n in lock_names},

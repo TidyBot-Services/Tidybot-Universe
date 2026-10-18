@@ -121,10 +121,10 @@ def grasp_orientation(theta_deg, axis_sign, pitch_deg, forward_sign):
             'quaternion_world_xyzw': [*q[1:], q[0]]}
 
 
-def grasp_orientations(narrow_deg):
+def grasp_orientations(narrow_deg, pitches=(0, 20, 40, 60)):
     return [grasp_orientation(narrow_deg+offset, axis_sign, pitch, forward_sign)
             for offset in (-15, 0, 15) for axis_sign in (1, -1)
-            for pitch in (0, 20, 40, 60) for forward_sign in (1, -1)]
+            for pitch in pitches for forward_sign in ((1,) if pitches == (0,) else (1, -1))]
 
 
 def summarize_grasp(rows):
@@ -140,7 +140,7 @@ def summarize_grasp(rows):
             'path_clear_both_success_count': len(winners), 'top_10': winners[:10]}
 
 
-def run_grasp_search(args, fixture, shifts):
+def run_grasp_search(args, fixture, shifts, pitches=(0, 20, 40, 60), reject_chassis_before_ik=False):
     import numpy as np
     truth = fixture.get('diagnostic_truth')
     if not truth:
@@ -156,13 +156,26 @@ def run_grasp_search(args, fixture, shifts):
     transform = fixture['world']['planner_from_world']
     from scipy.spatial.transform import Rotation
     q_base_world = Rotation.from_matrix([row[:3] for row in transform[:3]])
-    poses = grasp_orientations(truth['layered_horizontal_5mm_5deg']['narrowest_local']['angle_world_xy_deg'])
+    poses = grasp_orientations(truth['layered_horizontal_5mm_5deg']['narrowest_local']['angle_world_xy_deg'], pitches)
     rows = []
+    ik_targets = 0
     for shift in shifts:
-        adapter.push_world(body['env_id'], shifted_world(ik_world, shift))
-        core.set_collision_world(shifted_world(ik_world, shift))
-        core.set_attachment(None)
+        if not reject_chassis_before_ik:
+            adapter.push_world(body['env_id'], shifted_world(ik_world, shift))
+            core.set_collision_world(shifted_world(ik_world, shift))
+            core.set_attachment(None)
         chassis = chassis_check(full_world, args.chassis_binding, shift)
+        if reject_chassis_before_ik and not (chassis['path_clear'] and chassis['endpoint_clear']):
+            for pose in poses:
+                rows.append({'base_shift': list(shift), **pose, 'chassis': chassis,
+                             'skipped': 'chassis_rejected',
+                             **{name: {'success': False, 'reason': 'chassis_rejected'}
+                                for name in points_world}})
+            continue
+        if reject_chassis_before_ik:
+            adapter.push_world(body['env_id'], shifted_world(ik_world, shift))
+            core.set_collision_world(shifted_world(ik_world, shift))
+            core.set_attachment(None)
         for pose in poses:
             q_world = Rotation.from_quat(pose['quaternion_world_xyzw'])
             q_base = q_base_world*q_world
@@ -171,6 +184,7 @@ def run_grasp_search(args, fixture, shifts):
             xyzw = q_shifted.as_quat().tolist()
             results = {}
             for name, point_world in points_world.items():
+                ik_targets += 1
                 base = (np.asarray(transform) @ np.r_[point_world, 1.])[:3].tolist()
                 target = {tool: {'position': shifted_point(base, shift),
                                  'quaternion_wxyz': [xyzw[3], *xyzw[:3]]}}
@@ -191,7 +205,7 @@ def run_grasp_search(args, fixture, shifts):
             'source': '使用仿真真值,仅诊断', 'tcp_axis_convention': 'local y=grip; local z=approach; local x=y cross z',
             'tolerances': {'position_m': POSITION_TOLERANCE_M, 'orientation_rad': ORIENTATION_TOLERANCE_RAD},
             'object': truth, 'excluded_object': {'count': len(excluded), 'names': excluded},
-            'ik_targets': len(rows)*2, 'points_world_m': points_world, 'summary': summary}
+            'ik_targets': ik_targets, 'points_world_m': points_world, 'summary': summary}
 
 
 def object_cuboids(world):
