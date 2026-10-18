@@ -281,13 +281,16 @@ def prepare(args):
     o=b.options()
     # Two tasks, one legal seed each, at most 2 Dev/2 native + 1 Advisor per
     # task. No matrix and no paired Memory run behind a failed D3 prerequisite.
-    selection=dict(request_key='main-integration-final-source-v1',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[args.seed],
+    selection=dict(request_key='main-integration-final-source-eval-v1',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[args.seed],
         policies=o['policies'],mode='experiment',help_budget=1,human_wait_seconds=args.wait_seconds,budget_tier='legacy',
         configuration=dict(goal_id=GOAL_KEY,experiment_budget=o['goal_limits'],max_iterations=2,wall_seconds=store.goal(GOAL_ID)['wall_limit']))
+    from .eval_agent import default_config as eval_default
+    selection['eval_agent']={'enabled':True,'model':eval_default(True)['model']}
     p=normalize_configuration(dict(max_versions=selection['configuration']['max_iterations'],
         target_depth=selection['configuration']['max_iterations'],target_valid_executions=selection['configuration']['max_iterations'],
         help_budget=selection['help_budget'],policies=selection['policies'],coverage='budget_limited',
-        planner_features=dict(human_wait_seconds=args.wait_seconds,memory=settings),budget_tier='legacy'))
+        planner_features=dict(human_wait_seconds=args.wait_seconds,memory=settings),budget_tier='legacy',
+        eval_agent=eval_default(True)))
     budget=derive_cell_budget(p)
     configured_budget({**p,'cell_budget':budget})
     selection['configuration']['cell_budget']=budget
@@ -310,7 +313,8 @@ def prepare(args):
         for state,j in store.goal_jobs(db,GOAL_ID):
             if state in {'reserved','claimed','needs_review'} and db.execute('SELECT exp FROM v2_cells WHERE id=?',(j['cell'],)).fetchone()[0]==eid:
                 for k,v in j['reservation'].items():own_held[k]+=v
-        if any(allocated[k]+n*budget[k]>o['goal_limits'].get(k,0) for k in RESOURCES):raise DevBudgetExhausted('shared goal allocation exceeds original limits')
+        shortage={k:allocated[k]+n*budget[k]-o['goal_limits'].get(k,0) for k in RESOURCES if allocated[k]+n*budget[k]>o['goal_limits'].get(k,0)}
+        if shortage:raise DevBudgetExhausted('shared goal allocation exceeds original limits: '+', '.join(f'{k} +{v}' for k,v in shortage.items()))
         if any(max(0,n*budget[k]-own_used[k]-own_held[k])>g['remaining'][k] for k in RESOURCES):raise DevBudgetExhausted('original goal remaining resources insufficient for prepared plan')
         required_wall=n*(budget['model_seconds']+budget['execution_seconds']+p['max_versions']*p['planner_features']['human_wait_seconds'])
         if g.get('real_finished_at') or g['wall_remaining']<required_wall:raise DevBudgetExhausted('original goal remaining wall insufficient for prepared plan')

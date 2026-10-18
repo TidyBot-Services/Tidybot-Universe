@@ -1853,7 +1853,11 @@
           if(output){output.hidden=!input.readOnly;output.textContent=input.value;output.setAttribute('aria-label',`${input.name}: ${input.value} (fixed configuration)`);}
         }
         form.querySelector('button[type=submit]').disabled = submitting || !profile?.enabled;
-        if(profile?.channel==='dev_v2')form.querySelector('[data-launch-preview]').textContent = description + `Generated version limit: ${form.max_attempts.value}. Cell and experiment resource quotas are independent. ` + ' Registered Dev v2 · help is supplied by the public-only Advisor. Independent task results are display and offline analysis only.';
+        if(profile?.channel==='dev_v2'){
+          const cellQuota=key=>Number(form.querySelector(`[data-v2-cell="${key}"]`)?.value||0);
+          const evalNote=form.eval_agent_enabled.checked?` Eval budget per cell: ${cellQuota('eval_calls')} calls, ${cellQuota('provider_tokens')} provider tokens (${cellQuota('input_tokens')} input, ${cellQuota('output_tokens')} output), ${cellQuota('model_seconds')} model seconds total.`:'';
+          form.querySelector('[data-launch-preview]').textContent = description + `Generated version limit: ${form.max_attempts.value}. Cell and experiment resource quotas are independent.${evalNote} ` + ' Registered Dev v2 · help is supplied by the public-only Advisor. Independent task results are display and offline analysis only.';
+        }
       }
       function syncProfile(resetWall) {
         const profile = selectedProfile();
@@ -1876,6 +1880,7 @@
         form.wall_seconds.max = isFixed(profile||{}) ? 600 : profile?.channel==='dev_v2' ? 86400 : 1800;
         form.model.value = isFixed(profile||{}) ? 'Approved execution policy' : (options?.dev_loop?.model || '');
         form.max_attempts.value = certified ? 1 : v2?(options.dev_v2.default_max_iterations||3):3;
+        if(v2&&options?.dev_v2?.bridge_schema==='main-dev-v3')form.help_count.value=options.dev_v2.default_cell_budget.help_count;
         form.token_limit.value = certified ? 0 : formal?30000:v2?(options.dev_v2.default_cell_budget?.provider_tokens||220000):60000;
         form.seed.value = profile?.seed ?? 101;
         form.execution_target.value = profile ? label(profile.execution_target) : '';
@@ -1925,6 +1930,15 @@
       form.execution_arm.addEventListener('change',() => syncProfile(true));
       form.addEventListener('input',updatePreview);
       form.addEventListener('change',updatePreview);
+      form.v2_mode.addEventListener('change',()=>{
+        if(options?.dev_v2?.bridge_schema!=='main-dev-v3')return;
+        const experiment=form.v2_mode.value==='experiment';
+        form.eval_agent_enabled.checked=experiment;
+        const defaults=experiment?options.dev_v2.default_cell_budget:options.dev_v2.default_no_eval_cell_budget;
+        for(const input of form.querySelectorAll('[data-v2-cell]'))input.value=defaults[input.dataset.v2Cell];
+        form.token_limit.value=defaults.provider_tokens;
+        updatePreview();
+      });
       form.addEventListener('submit',async event => {
         event.preventDefault();
         const profile = selectedProfile();
@@ -1964,7 +1978,7 @@
           await refresh();
         } catch (error) {
           submitting = false;
-          form.querySelector('#ab-launch-message').textContent = `Launch failed: ${DEBUG_VIEW ? error.message : plainError(error.message)}`;
+          form.querySelector('#ab-launch-message').textContent = `Launch failed: ${profile?.channel==='dev_v2'||DEBUG_VIEW ? error.message : plainError(error.message)}`;
           updatePreview();
         }
       });

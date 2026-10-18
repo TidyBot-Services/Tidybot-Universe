@@ -10,12 +10,13 @@ from benchmarks.attention_harness.core.dev_store import DevBudgetExhausted, DevC
 from benchmarks.attention_harness.dev_configuration import derive_cell_budget, normalize_configuration
 from benchmarks.attention_harness.dev_ledger import DevV2Store, RESOURCES, OPTIONAL, fill_optional
 from benchmarks.attention_harness.dev_planner import POLICY
+from benchmarks.attention_harness.eval_agent import default_config as eval_default
 
 
 def plan(wait=600):
     return normalize_configuration(dict(max_versions=2, target_depth=2,
         target_valid_executions=2, help_budget=1, policies=[POLICY],
-        planner_features={'human_wait_seconds': wait}, coverage='budget_limited',budget_tier='legacy'))
+        planner_features={'human_wait_seconds': wait}, coverage='budget_limited',budget_tier='legacy',eval_agent=eval_default(True)))
 
 
 @pytest.fixture
@@ -23,9 +24,9 @@ def prepared_env(tmp_path, monkeypatch):
     ledger=tmp_path/'controlled.sqlite'
     state=tmp_path/'host'
     store=DevV2Store(ledger)
-    # Exactly the original real goal limits, copied as data; no real DB opened.
-    limits=dict(dev_calls=16,advisor_calls=8,executions=32,provider_tokens=400000,
-        input_tokens=400000,output_tokens=400000,sdk_calls=2560,control_steps=76800,
+    # Controlled Eval-authorized goal; no real DB opened.
+    limits=dict(dev_calls=16,advisor_calls=8,eval_calls=4,executions=32,provider_tokens=600000,
+        input_tokens=600000,output_tokens=400000,sdk_calls=2560,control_steps=76800,
         help_count=24,help_credits=24,help_wait_seconds=7200,model_seconds=2880,execution_seconds=7200)
     store.ensure_goal(integration.GOAL_ID, limits, 7200)
     args=argparse.Namespace(memory_url='http://127.0.0.1:1',memory_store_id='controlled-authority',
@@ -99,7 +100,6 @@ def test_prepare_invalid_wait_refused_before_any_immutable_artifacts(prepared_en
     integration.prepare(args)
 
 
-# Prepared plans reserve no recording-evaluator calls (cell budget 0), so that resource cannot run short.
 @pytest.mark.parametrize('resource',[r for r in RESOURCES if r not in OPTIONAL])
 def test_prepare_original_resource_remaining_insufficient(prepared_env,resource):
     store,state,args=prepared_env
@@ -161,6 +161,18 @@ def test_prepare_original_total_limit_insufficient(prepared_env):
         store.put(db,'goals',integration.GOAL_ID,goal)
     before=raw_goal(store)
     with pytest.raises(DevBudgetExhausted,match='allocation'):integration.prepare(args)
+    assert not state.exists() and raw_goal(store)==before
+
+
+def test_prepare_old_goal_without_eval_authorization_reports_exact_shortfall(prepared_env):
+    store,state,args=prepared_env
+    with store.tx() as db:
+        goal=store.get(db,'goals',integration.GOAL_ID)
+        goal['limits'].update(eval_calls=0,provider_tokens=400000,input_tokens=400000)
+        store.put(db,'goals',integration.GOAL_ID,goal)
+    before=raw_goal(store)
+    with pytest.raises(DevBudgetExhausted,match=r'eval_calls \+4.*provider_tokens \+115040.*input_tokens \+63840'):
+        integration.prepare(args)
     assert not state.exists() and raw_goal(store)==before
 
 

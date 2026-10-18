@@ -1,7 +1,7 @@
 """Persistent, serial, public-only Dev experiments; no formal approvals minted."""
 import argparse,copy,hashlib,json,os,time
 from pathlib import Path
-from .dev_configuration import FIELDS,normalize_configuration,configured_budget,worst_slot,require_scene_gate
+from .dev_configuration import FIELDS,normalize_configuration,configured_budget,worst_slot,require_scene_gate,require_eval_gate
 from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded,experiment_goal,complete_resources,fill_optional,task_goal_limits,task_goal_wall_limit
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .dev_loop import immutable,sha,process_identity,owner_alive
@@ -51,6 +51,7 @@ def create(store,artifact_root,selection):
     if not isinstance(key,str) or not re.fullmatch('[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
     mode=selection.get('mode','experiment')
     if mode not in {'experiment','interactive','diagnostic'}:raise ValueError('unsupported Dev mode')
+    require_eval_gate(mode,selection)
     from openarm365_dev_v2.diag_budget import diagnostic_budget
     if diagnostic_budget() and mode!='diagnostic':raise ValueError('scaled attempt requires diagnostic experiment')
     tasks=selection.get('tasks',list(__import__('benchmarks.attention_harness.dev_tasks',fromlist=['TASKS']).TASKS))

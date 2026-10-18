@@ -28,14 +28,15 @@ def prepared(tmp_path, monkeypatch, request):
     ledger=tmp_path/'controlled.sqlite';state=tmp_path/'host'
     monkeypatch.setattr(host,'LEDGER',ledger);monkeypatch.setattr(host,'STATE',state)
     store=DevV2Store(ledger)
-    limits=dict(dev_calls=16,advisor_calls=8,executions=32,provider_tokens=400000,
-        input_tokens=400000,output_tokens=400000,sdk_calls=2560,control_steps=76800,
+    limits=dict(dev_calls=16,advisor_calls=8,eval_calls=4,executions=32,provider_tokens=600000,
+        input_tokens=600000,output_tokens=400000,sdk_calls=2560,control_steps=76800,
         help_count=24,help_credits=24,help_wait_seconds=7200,model_seconds=2880,execution_seconds=7200)
     if getattr(request,'param',False):
         from benchmarks.attention_harness.dev_configuration import derive_cell_budget,normalize_configuration
         from benchmarks.attention_harness.dev_planner import POLICY
+        from benchmarks.attention_harness.eval_agent import default_config as eval_default
         plan=normalize_configuration(dict(max_versions=2,target_depth=2,target_valid_executions=2,help_budget=1,
-            policies=[POLICY],planner_features={'human_wait_seconds':600},coverage='budget_limited'))
+            policies=[POLICY],planner_features={'human_wait_seconds':600},coverage='budget_limited',eval_agent=eval_default(True)))
         limits={k:2*v for k,v in derive_cell_budget(plan).items()}
     store.ensure_goal(host.GOAL_ID,limits,7200)
     # Simulate creation against the immediately previous entry bytes without

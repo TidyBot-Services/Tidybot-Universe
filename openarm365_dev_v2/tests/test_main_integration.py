@@ -93,31 +93,103 @@ def test_child_capabilities_are_separated(monkeypatch):
     assert not any(k.startswith('ATTENTION_MEMORY_') for k in provider)
 
 
-def make_bridge(tmp_path):
+def make_bridge(tmp_path, *, eval_authorized=True):
     import hashlib
     from benchmarks.attention_harness.dev_configuration import normalize_configuration,derive_cell_budget
     key='controlled-shared-goal';gid=hashlib.sha256(('goal|'+key).encode()).hexdigest()[:32]
-    s=DevV2Store(tmp_path/'ledger.sqlite');budget=derive_cell_budget(normalize_configuration(dict(max_versions=1,target_depth=1,target_valid_executions=1,help_budget=0,planner_features={'human_wait_seconds':1},policies=[POLICY])))
-    limits={k:2*v for k,v in budget.items()};s.ensure_goal(gid,limits,7200)
+    s=DevV2Store(tmp_path/'ledger.sqlite')
+    from benchmarks.attention_harness.eval_agent import default_config as eval_default
+    base=dict(max_versions=1,target_depth=1,target_valid_executions=1,help_budget=0,planner_features={'human_wait_seconds':1},policies=[POLICY])
+    budget=derive_cell_budget(normalize_configuration({**base,'eval_agent':eval_default(True)}))
+    authorized=budget if eval_authorized else derive_cell_budget(normalize_configuration(base))
+    limits={k:2*v for k,v in authorized.items()};s.ensure_goal(gid,limits,7200)
     memory_settings=dict(base_url='http://127.0.0.1:1',store_id='controlled-authority',namespace='controlled-namespace')
     b=DevMainBridge(s.path,tmp_path/'artifacts',key,memory_settings)
     body=dict(start=False,selection=dict(request_key='controlled-main-bridge',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[101],policies=[POLICY],mode='experiment',help_budget=0,human_wait_seconds=1,
+        eval_agent={'enabled':True,'model':'parcc/Qwen'},
         configuration=dict(goal_id=key,experiment_budget=limits,cell_budget=budget,max_iterations=1,wall_seconds=7200)))
     return b,body
 
 
 @pytest.mark.scene_gate
+@pytest.mark.eval_gate
 def test_main_bridge_experiment_refuses_seeds_without_a_registered_scene_reference(tmp_path):
     b,body=make_bridge(tmp_path);body['selection']['seeds']=[125]
     with pytest.raises(ValueError,match='seed 125'):b.create(body)
     assert b.list()==[] or not any(row for row in b.list() if row.get('selection',{}).get('seeds')==[125])
 
 
+@pytest.mark.scene_gate
+@pytest.mark.eval_gate
+def test_main_bridge_experiment_refuses_missing_eval(tmp_path):
+    b,body=make_bridge(tmp_path)
+    del body['selection']['eval_agent']
+    with pytest.raises(ValueError,match='requires eval_agent.enabled'):b.create(body)
+    assert b.list()==[]
+
+
+@pytest.mark.scene_gate
+@pytest.mark.eval_gate
+def test_main_bridge_eval_goal_shortfall_is_explicit_and_creates_nothing(tmp_path):
+    b,body=make_bridge(tmp_path,eval_authorized=False)
+    with pytest.raises(ValueError,match=r'authorized goal shortfall: .*eval_calls \+2.*provider_tokens \+150112.*input_tokens \+141920.*output_tokens \+8192.*model_seconds \+240'):
+        b.create(body)
+    assert b.list()==[]
+
+
+@pytest.mark.scene_gate
+@pytest.mark.eval_gate
+def test_main_bridge_eval_cell_shortfall_is_explicit_and_creates_nothing(tmp_path):
+    b,body=make_bridge(tmp_path)
+    body['selection']['configuration']['cell_budget']['eval_calls']=0
+    with pytest.raises(ValueError,match=r'Eval cell budget shortfall: eval_calls \+1'):
+        b.create(body)
+    assert b.list()==[]
+
+
+@pytest.mark.scene_gate
+@pytest.mark.eval_gate
+@pytest.mark.parametrize('change',[{'model':'another-model'},{'prompt_version':'custom'}])
+def test_main_bridge_eval_configuration_is_fixed(tmp_path,change):
+    b,body=make_bridge(tmp_path)
+    body['selection']['eval_agent'].update(change)
+    with pytest.raises(ValueError,match='fixed Qwen Eval selection required'):b.create(body)
+    assert b.list()==[]
+
+
+@pytest.mark.eval_gate
+def test_main_bridge_accepts_exact_default_eval_configuration(tmp_path):
+    from benchmarks.attention_harness.eval_agent import default_config
+    b,body=make_bridge(tmp_path)
+    body['selection']['eval_agent']=default_config(True)
+    e=b.create(body)
+    assert e['selection']['eval_agent']==default_config(True)
+
+
+@pytest.mark.parametrize('mode',['interactive','diagnostic'])
+@pytest.mark.eval_gate
+def test_main_bridge_old_modes_without_eval(tmp_path,mode):
+    b,body=make_bridge(tmp_path)
+    body['selection']['mode']=mode
+    body['selection']['tasks']=['open_cabinet']
+    del body['selection']['eval_agent']
+    e=b.create(body)
+    assert e['selection']['eval_agent']['enabled'] is False
+    assert len(e['cells'])==1
+
+
 def test_main_bridge_maps_actual_frozen_configuration_and_no_clock_on_refresh(tmp_path):
     b,body=make_bridge(tmp_path);e=b.create(body)
+    options=b.options()
+    assert options['eval_agent_supported'] is True
+    assert options['default_cell_budget']['eval_calls']==2
+    assert options['default_cell_budget']['provider_tokens']-options['default_no_eval_cell_budget']['provider_tokens']==150112
+    assert options['default_cell_budget']['model_seconds']-options['default_no_eval_cell_budget']['model_seconds']==240
     assert len(e['cells'])==2
     m=json.loads(Path(e['manifest']['uri']).read_bytes())
     assert m['target_depth']==m['target_valid_executions']==m['max_versions']==1
+    assert m['selection']['eval_agent']['enabled'] is True
+    assert m['cell_budget']['eval_calls']==1 and m['goal_limits']['eval_calls']==2
     assert m['planner_features']['memory']==b.memory and m['planner_features']['human_wait_seconds']==1
     assert {v['seed'] for v in m['configs'].values()}=={101}
     from openarm365_dev_v2.scene_contract import registered_contract_ref

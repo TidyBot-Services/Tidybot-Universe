@@ -80,9 +80,12 @@ def test_old_manifest_exact_bytes(tmp_path,monkeypatch):
  baseline.make_dev_config=lambda *a,**kw:make_dev_config(*a,**kw,budget_tier='legacy')
  old_store=DevV2Store(tmp_path/'old.sqlite');old_store.ensure_goal(GOAL,LIMITS,7200)
  new_store=DevV2Store(tmp_path/'new.sqlite');new_store.ensure_goal(GOAL,LIMITS,7200)
- old=baseline.create(old_store,tmp_path/'a',{'request_key':'legacy-byte-canary'})
+ # The byte canary covers the old interactive path; new experiment runs require Eval.
+ common={'request_key':'legacy-byte-canary','mode':'interactive','tasks':['open_cabinet'],
+         'seeds':[101],'policies':['autonomous']}
+ old=baseline.create(old_store,tmp_path/'a',common)
  before=Path(old['manifest']['uri']).read_bytes()
- new=create(new_store,tmp_path/'a',{'request_key':'legacy-byte-canary','budget_tier':'legacy'})
+ new=create(new_store,tmp_path/'a',{**common,'budget_tier':'legacy'})
  assert before==Path(new['manifest']['uri']).read_bytes() and old['selection']==new['selection']
  old_manifest=json.loads(before);new_manifest=json.loads(Path(new['manifest']['uri']).read_bytes())
  key=next(iter(old_manifest['configs']))
@@ -93,6 +96,33 @@ def test_old_manifest_exact_bytes(tmp_path,monkeypatch):
   return dict(executions=1,sdk_calls=config['sdk_call_limit'],control_steps=config['horizon'],
               execution_seconds=config['attempt_wall_seconds']+25)
  assert encoded(first_reservation(old_manifest['configs'][key]))==encoded(first_reservation(new_manifest['configs'][key]))
+
+def test_old_experiment_manifest_exact_bytes_with_eval(tmp_path,monkeypatch):
+ import subprocess,types
+ from openarm365_dev_v2 import dev_config
+ monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})
+ root=Path(__file__).resolve().parents[2]
+ # Freeze the reviewed HEAD so this comparison still has a baseline after commit.
+ baseline_revision='8ad49ea4a51354245ead55fb6fb259a5667b6666'
+ source=subprocess.check_output(['git','show',baseline_revision+':benchmarks/attention_harness/dev_experiment.py'],cwd=root,text=True)
+ baseline=types.ModuleType('benchmarks.attention_harness.baseline_experiment')
+ baseline.__package__='benchmarks.attention_harness'
+ exec(compile(source,'reviewed HEAD:benchmarks/attention_harness/dev_experiment.py','exec'),baseline.__dict__)
+ db_path=tmp_path/'shared.sqlite'
+ old_store=DevV2Store(db_path);old_store.ensure_goal(GOAL,LIMITS,7200)
+ budget=task_cell_budget('legacy')
+ selection={'request_key':'legacy-experiment-byte-canary','mode':'experiment','tasks':['open_cabinet'],
+            'seeds':[101],'policies':['autonomous'],'budget_tier':'legacy',
+            'eval_agent':{'enabled':True,'model':'parcc/Qwen'},
+            'configuration':{'goal_id':GOAL,'experiment_budget':LIMITS,'cell_budget':budget,
+                             'max_iterations':2,'wall_seconds':7200}}
+ old=baseline.create(old_store,tmp_path/'a',selection)
+ before=Path(old['manifest']['uri']).read_bytes()
+ db_path.unlink()
+ new_store=DevV2Store(db_path);new_store.ensure_goal(GOAL,LIMITS,7200)
+ new=create(new_store,tmp_path/'a',selection)
+ assert before==Path(new['manifest']['uri']).read_bytes()
+ assert old['selection']==new['selection']
 
 @pytest.mark.parametrize('depth,execution_target',[(4,3),(5,1)])
 def test_generation_and_execution_targets_distinct(tmp_path,depth,execution_target):

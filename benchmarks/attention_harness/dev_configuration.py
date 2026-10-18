@@ -25,7 +25,7 @@ def normalize_configuration(selection):
   raise ValueError('legacy human_proxy can be read but not configured for a new v3 experiment')
  from .eval_agent import normalize as normalize_eval,default_config as eval_default
  from .dev_advisor_proxy import normalize as normalize_advisor,default_config as advisor_default
- p['eval_agent']=normalize_eval(selection.get('eval_agent',eval_default(False))) if not (isinstance(selection.get('eval_agent'),dict) and set(selection['eval_agent'])=={'enabled','model'}) else normalize_eval({'enabled':selection['eval_agent']['enabled']})
+ p['eval_agent']=normalize_eval(selection.get('eval_agent',eval_default(False)))
  p['advisor_proxy']=normalize_advisor(selection.get('advisor_proxy',advisor_default(False)))
  if p['eval_agent']['model']==p['advisor_proxy']['model']:raise ValueError('Eval and Advisor models must differ')
  p['help_budget']=selection.get('help_budget',1)
@@ -57,6 +57,11 @@ def require_scene_gate(mode,selection,tasks,seeds):
   for t in tasks:
    for seed in seeds:seed_entry(contract,t,seed)
  elif len(seeds)!=1:raise ValueError('a single-state scene contract covers one seed; use a seed-keyed (v2) contract')
+
+def require_eval_gate(mode, selection):
+ """Every comparable cell needs the same automatic completion signal."""
+ if mode=='experiment' and (not isinstance(selection.get('eval_agent'),dict) or selection['eval_agent'].get('enabled') is not True):
+  raise ValueError('experiment mode requires eval_agent.enabled: true (vision Eval for every executed version)')
 def derive_cell_budget(p,sdk_calls=None,horizon=None):
  limits=task_limits(p.get('budget_tier','legacy'))
  sdk_calls=limits['sdk_calls'] if sdk_calls is None else sdk_calls

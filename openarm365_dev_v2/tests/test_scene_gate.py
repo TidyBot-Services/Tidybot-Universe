@@ -11,7 +11,7 @@ from benchmarks.attention_harness.dev_tasks import HELD_OUT_SEEDS, SEEDS, valida
 from openarm365_dev_v2.scene_contract import SCHEMA_V2, fingerprint, validate
 from openarm365_dev_v2.dev_config import validate_dev_config
 
-pytestmark = pytest.mark.scene_gate
+pytestmark = [pytest.mark.scene_gate, pytest.mark.eval_gate]
 
 STATE = {'robot': {'x': [1.0]}, 'objects': {'obj_pos': [0.5, 0.25, 1.0]}, 'fixtures': {}}
 
@@ -23,7 +23,8 @@ def contract(tmp_path, seeds=(101, 102), tasks=('open_cabinet',), state=STATE):
 
 def selection(**kw):
     base = dict(request_key='scene-gate-test', tasks=['open_cabinet'], seeds=[101], policies=['autonomous'],
-                target_depth=3, target_valid_executions=3, max_versions=5, help_budget=2, coverage='strict_full_depth')
+                target_depth=3, target_valid_executions=3, max_versions=5, help_budget=2, coverage='strict_full_depth',
+                eval_agent={'enabled': True, 'model': 'parcc/Qwen'})
     base.update(kw)
     return base
 

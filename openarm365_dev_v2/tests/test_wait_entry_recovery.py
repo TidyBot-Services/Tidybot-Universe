@@ -28,9 +28,15 @@ def fixture(tmp_path):
     limits={k:2*v for k,v in budget.items()};store=DevV2Store(tmp_path/'ledger.sqlite');store.ensure_goal(gid,limits,7200)
     memory=dict(base_url='http://127.0.0.1:1',store_id='controlled-authority',namespace='controlled-namespace')
     b=main.DevMainBridge(store.path,tmp_path/'artifacts',key,memory)
-    body=dict(start=False,selection=dict(request_key='controlled-recovery',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[101],policies=[planner.POLICY],mode='experiment',help_budget=0,human_wait_seconds=600,
-        configuration=dict(goal_id=key,experiment_budget=limits,cell_budget=budget,max_iterations=1,wall_seconds=7200)))
-    e=b.create(body);c=e['cells'][0]
+    # Recovery starts from an existing ledger; bridge creation now reserves Eval
+    # for every experiment-mode version, which would change this test's work.
+    e=experiments.create(store,tmp_path/'artifacts',dict(request_key='controlled-recovery',
+        tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[101],policies=[planner.POLICY],
+        mode='experiment',budget_tier='legacy',help_budget=0,goal_key=key,goal_limits=limits,wall_limit=7200,
+        cell_budget=budget,coverage='budget_limited',target_depth=1,target_valid_executions=1,
+        max_versions=1,reproducible_reset=True,
+        planner_features=dict(human_wait_seconds=600,memory=memory)))
+    c=e['cells'][0]
     root=Path(e['artifact_dir'])/'cells'/c['key'];root.mkdir(parents=True)
     cfg=json.loads(Path(e['manifest']['uri']).read_bytes())['configs'][f"{c['task_id']}:{c['seed']}"]
     immutable(root/'config.json',cfg)

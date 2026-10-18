@@ -35,10 +35,13 @@ class DevMainBridge:
     def options(self):
         goal=self.store.goal(self.goal_id)
         tier=goal.get('budget_tier','legacy')
+        from .eval_agent import default_config as eval_default
         default=derive_cell_budget(normalize_configuration(dict(max_versions=2,target_depth=2,target_valid_executions=2,help_budget=1,
-            planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier)))
+            planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(True))))
+        without_eval=derive_cell_budget(normalize_configuration(dict(max_versions=2,target_depth=2,target_valid_executions=2,help_budget=1,
+            planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier,eval_agent=eval_default(False))))
         return dict(enabled=True,bridge_schema='main-dev-v3',goal_key=self.goal_key,default_cell_budget=default,
-            goal_limits=goal['limits'],default_max_iterations=2,policies=[POLICY],eval_agent_supported=False,
+            default_no_eval_cell_budget=without_eval,goal_limits=fill_optional(goal['limits']),default_max_iterations=2,policies=[POLICY],eval_agent_supported=True,
             authorization=dict(mode='existing_goal',deadline_epoch=goal.get('authorized_until')),
             memory=self.memory,profiles=[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,
                 seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,
@@ -111,8 +114,10 @@ class DevMainBridge:
         else:phase='queued'
         enough=g['wall_remaining']>0 and not g.get('real_finished_at') and g['remaining'].get('dev_calls',0)>0 and g['remaining'].get('provider_tokens',0)>0
         can_start=(bool(recovery) or e['state']=='planned' and any(row['state']=='planned' for row in cells) and enough) and not e['cancelled'] and not active and not unresolved and not unknown_owner and not recovery_error
+        from .eval_agent import default_config as eval_default
         minimum=derive_cell_budget(normalize_configuration(dict(max_versions=1,target_depth=1,target_valid_executions=1,help_budget=0,
-            planner_features={'human_wait_seconds':1},policies=[POLICY],budget_tier=g.get('budget_tier','legacy'))))
+            planner_features={'human_wait_seconds':1},policies=[POLICY],budget_tier=g.get('budget_tier','legacy'),
+            eval_agent=eval_default(e['selection']['mode']=='experiment'))))
         allocated={k:0 for k in RESOURCES}
         for other in goal_experiments:
             for row in other['cells']:
@@ -128,15 +133,25 @@ class DevMainBridge:
     def create(self,body):
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('selection and explicit start required')
         v=body['selection'];configuration=v['configuration'];g=self.store.goal(self.goal_id)
+        from .dev_configuration import require_eval_gate, require_scene_gate
+        require_eval_gate(v['mode'],v)
+        if v.get('human_proxy',{}).get('enabled'):raise ValueError('HumanProxy requests are not configured in this isolated bridge')
+        from .eval_agent import default_config as eval_default
+        review=v.get('eval_agent')
+        if v['mode']=='experiment':
+            fixed=eval_default(True)
+            if review not in ({'enabled':True,'model':fixed['model']},fixed):
+                raise ValueError('fixed Qwen Eval selection required')
+        elif isinstance(review,dict) and review.get('enabled'):
+            raise ValueError('Eval requests are not configured for interactive/diagnostic bridge runs')
         if v.get('budget_tier',g.get('budget_tier','legacy'))!=g.get('budget_tier','legacy'):
             raise ValueError('existing goal budget tier cannot change')
         if configuration['goal_id']!=self.goal_key:raise ValueError('this UI is bound to the existing goal; no new budget')
-        if v.get('eval_agent',{}).get('enabled') or v.get('human_proxy',{}).get('enabled'):raise ValueError('HumanProxy requests are not configured in this isolated bridge')
         if v['policies']!=[POLICY]:raise ValueError('this acceptance bridge only dispatches the full planner')
         if not self.memory:raise ValueError('isolated Memory authority required for three-feature run')
         limits=configuration['experiment_budget'];budget=configuration['cell_budget'];n=len(v['tasks'])*len(v['seeds'])
         if complete_resources(limits):limits=fill_optional(limits)  # goals authorized before eval_calls existed allow none
-        if set(limits)!=set(RESOURCES) or any(limits[k]>g['limits'].get(k,0) or n*budget[k]>limits[k] for k in RESOURCES):raise ValueError('selection exceeds cumulative authorized goal')
+        if set(limits)!=set(RESOURCES):raise ValueError('complete experiment resource limits required')
         if not 0<configuration['wall_seconds']<=g['wall_limit']:raise ValueError('wall exceeds original authorization')
         selection={k:v[k] for k in ('request_key','tasks','seeds','policies','mode','help_budget')}
         selection['budget_tier']=g.get('budget_tier','legacy')
@@ -144,16 +159,27 @@ class DevMainBridge:
         selection.update(goal_key=self.goal_key,goal_limits=g['limits'],wall_limit=g['wall_limit'],cell_budget=budget,
             coverage='budget_limited',target_depth=depth,target_valid_executions=depth,max_versions=depth,
             reproducible_reset=True,planner_features=dict(human_wait_seconds=v.get('human_wait_seconds',60),memory=self.memory))
-        # This pre-existing independently budgeted bridge predates automatic Eval.
-        # Keep its immutable goal allocation readable; new experiments default
-        # both independent roles on unless they explicitly choose otherwise.
-        from .eval_agent import default_config as eval_default
+        # The bridge owns the fixed Eval configuration; UI input only chooses the role.
         from .dev_advisor_proxy import default_config as advisor_default
-        selection.update(eval_agent=eval_default(False),advisor_proxy=advisor_default(False))
+        selection.update(eval_agent=eval_default(v['mode']=='experiment'),advisor_proxy=advisor_default(False))
+        if v['mode']=='experiment':
+            required=derive_cell_budget(normalize_configuration(selection))
+            actual=fill_optional(budget) if complete_resources(budget) else budget
+            missing={k:required[k]-actual.get(k,0) for k in RESOURCES if actual.get(k,0)<required[k]}
+            if missing:raise ValueError('Eval cell budget shortfall: '+', '.join(f'{k} +{amount}' for k,amount in missing.items()))
+        authorization_shortfall={k:max(limits[k],n*budget.get(k,0))-g['limits'].get(k,0) for k in RESOURCES
+                                 if max(limits[k],n*budget.get(k,0))>g['limits'].get(k,0)}
+        experiment_shortfall={k:n*budget.get(k,0)-limits[k] for k in RESOURCES if n*budget.get(k,0)>limits[k]}
+        if authorization_shortfall or experiment_shortfall:
+            parts=[]
+            if authorization_shortfall:parts.append('authorized goal shortfall: '+', '.join(f'{k} +{v}' for k,v in authorization_shortfall.items()))
+            if experiment_shortfall:parts.append('experiment limit shortfall: '+', '.join(f'{k} +{v}' for k,v in experiment_shortfall.items()))
+            raise ValueError('; '.join(parts))
         if selection['mode']=='experiment':
             # Experiment mode starts every cell from the registered physical scene; seeds without a reference are refused at creation.
             from openarm365_dev_v2.scene_contract import registered_contract_ref
             selection['scene_contract']=registered_contract_ref()
+        require_scene_gate(selection['mode'],selection,selection['tasks'],selection['seeds'])
         # An operator may lower the wall for this particular experiment, without
         # changing the persistent goal deadline or the immutable old goal row.
         e=experiments.create(self.store,self.artifacts,selection)

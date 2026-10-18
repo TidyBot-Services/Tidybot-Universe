@@ -28,6 +28,9 @@ test('EVAL UI 05 counted reviews displayed only for enabled experiment',()=>{
 test('EVAL UI New run defaults on, locked selection and snapshot carry review',()=>{
  assert.match(source,/name="eval_agent_enabled" type="checkbox" checked/);
  assert.match(source,/eval_agent:\{enabled:form.eval_agent_enabled.checked,model:'parcc\/Qwen'\}/);
+ assert.match(source,/Eval budget per cell:.*eval_calls.*provider_tokens.*input_tokens.*output_tokens.*model_seconds/);
+ assert.match(source,/default_no_eval_cell_budget/);
+ assert.match(source,/profile\?\.channel==='dev_v2'\|\|DEBUG_VIEW \? error.message/);
  assert.match(source,/snapshot.dev_eval_enabled=s.locked\?\.config\?\.eval_agent\?\.enabled===true/);
  assert.match(source,/snapshot.dev_session.versions=cell.versions/);
  assert.match(source,/operatorAIReview\(version\?\.evaluator_review/);
