@@ -20,9 +20,9 @@ def test_scale_and_default(monkeypatch):
     monkeypatch.delenv(SOURCE, raising=False)
     monkeypatch.delenv(MARKER, raising=False)
     assert diagnostic_budget() is None
-    assert task_limits() == {'sdk_calls': 80, 'control_steps': 2400, 'attempt_seconds': 480}
-    assert probe_reserve() == {'sdk_calls': 80, 'control_steps': 2400,
-        'execution_seconds': 540, 'startup_cleanup_seconds': 60, 'wall_limit': 4260}
+    assert task_limits() == {'sdk_calls': 320, 'control_steps': 9600, 'attempt_seconds': 1920}
+    assert probe_reserve() == {'sdk_calls': 320, 'control_steps': 9600,
+        'execution_seconds': 2160, 'startup_cleanup_seconds': 240, 'wall_limit': 17040}
     monkeypatch.setenv(MARKER, '1')
     monkeypatch.setenv(SOURCE, '2.5')
     assert diagnostic_budget() == {'scale': 2.5, 'sdk_calls': 200,
@@ -59,7 +59,7 @@ def test_config_and_runner_with_fake_native(monkeypatch, tmp_path):
     monkeypatch.delenv(MARKER, raising=False)
     lock={'path': 'fixture', 'sha256': 'fixture'}
     base=dev_config.make_dev_config('pick_place_counter_to_sink', 102, lock)
-    assert (base['sdk_call_limit'], base['horizon'], base['attempt_wall_seconds']) == (80, 2400, 480)
+    assert (base['sdk_call_limit'], base['horizon'], base['attempt_wall_seconds']) == (320, 9600, 1920)
     monkeypatch.setenv(SOURCE, '2')
     monkeypatch.setenv(MARKER, '1')
     config=dev_config.make_dev_config('pick_place_counter_to_sink', 102, lock)
@@ -110,7 +110,11 @@ def test_config_and_runner_with_fake_native(monkeypatch, tmp_path):
     assert runner.budgets(base_request, base)==(480,80)
     base_result=runner.execute(base_request)
     assert 'diagnostic_budget_override' not in base_result
-    assert 'diagnostic_budget_override' not in json.loads(Path(base_result['artifacts']['sandbox_receipt']['uri']).read_text())
+    assert base_result['dev_tier_budget']['sdk_calls']==320
+    for name in ('sandbox_receipt','native_result','trace'):
+        row=json.loads(Path(base_result['artifacts'][name]['uri']).read_text())
+        assert 'diagnostic_budget_override' not in row
+        assert row['dev_tier_budget']==base_result['dev_tier_budget']
     assert seen==[160,80]
 
 

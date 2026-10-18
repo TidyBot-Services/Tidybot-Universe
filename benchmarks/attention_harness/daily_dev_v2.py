@@ -9,8 +9,9 @@ from .dev_loop import immutable,sha,owner_alive,process_identity
 from .dev_tasks import TASKS
 from .dev_help import POLICY_IDS
 from openarm365_dev_v2.dev_config import ROOT
+from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
-DEFAULT_CELL=dict(dev_calls=3,advisor_calls=2,eval_calls=3,provider_tokens=220000,input_tokens=190000,output_tokens=30000,executions=3,sdk_calls=240,control_steps=7200,help_credits=2,help_count=2,help_wait_seconds=300,model_seconds=600,execution_seconds=1600)
+DEFAULT_CELL=dict(dev_calls=3,advisor_calls=2,eval_calls=3,provider_tokens=220000,input_tokens=190000,output_tokens=30000,executions=3,sdk_calls=240*DEV_TIER_BUDGET_SCALE,control_steps=7200*DEV_TIER_BUDGET_SCALE,help_credits=2,help_count=2,help_wait_seconds=300,model_seconds=600,execution_seconds=1600*DEV_TIER_BUDGET_SCALE)
 
 class DailyDevV2:
     def __init__(self,root,profiles,authorization=None,*,per_run_budget=False):
@@ -21,7 +22,7 @@ class DailyDevV2:
         return {'enabled':True,'policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
                 'default_cell_budget':DEFAULT_CELL,'default_max_iterations':3,'formal_eligible':False,
                 'authorization':{'mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else self.authorization,'matrix':self.matrix(),
-                'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=480,sdk_call_limit=80,wall_seconds=3600,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]}
+                'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],wall_seconds=3600*DEV_TIER_BUDGET_SCALE,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]}
     def matrix(self):
         rows=[]
         for p in self.profiles:

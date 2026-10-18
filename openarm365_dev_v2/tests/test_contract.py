@@ -16,7 +16,7 @@ def test_task_config(lock,task,seed):
     assert t.task_prompt in prompt and 'WORLD' in prompt
     if task=='open_cabinet':assert 'sink' not in prompt and 'Panda' not in prompt
     assert c['robot']=='OpenArm365' and c['execution_arm']=='both'
-    assert c['sdk_call_limit']==80 and c['horizon']==2400
+    assert c['budget_tier']=='dev' and c['sdk_call_limit']==320 and c['horizon']==9600
     assert c['contact_exempt_objects']=='none'
 
 def test_contact_exemption_is_frozen_and_hashed(monkeypatch):

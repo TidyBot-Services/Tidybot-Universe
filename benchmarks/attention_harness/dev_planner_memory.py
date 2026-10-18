@@ -35,7 +35,7 @@ def context(config, namespace):
 
 
 def sdk_identity(config):
-    from .dev_tasks import SDK, SDK_PROMPT
+    from .dev_tasks import dev_sdk, dev_sdk_prompt
     ref=config['dev_lock']
     if sha(ref['path'])!=ref['sha256']:raise DevConflict('Memory SDK lock drift')
     lock=json.loads(Path(ref['path']).read_bytes());root=Path(lock['source_root'])
@@ -44,7 +44,7 @@ def sdk_identity(config):
                and '/tests/' not in name}
     if not sdk_files:raise ValueError('Memory requires frozen SDK implementation identity')
     if any(sha(root/name)!=expected for name,expected in sdk_files.items()):raise DevConflict('Memory runtime SDK differs from frozen identity')
-    return dict(contract=SDK,prompt=SDK_PROMPT,implementation=sdk_files,planner_lock=lock['planner_lock']['sha256'],robot_model_identity=lock['model_sources'])
+    return dict(contract=dev_sdk(config),prompt=dev_sdk_prompt(config),implementation=sdk_files,planner_lock=lock['planner_lock']['sha256'],robot_model_identity=lock['model_sources'])
 
 
 def client_for(settings):

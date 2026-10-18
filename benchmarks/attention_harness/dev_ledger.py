@@ -3,12 +3,22 @@ import json,sqlite3,time,math
 from contextlib import contextmanager
 from pathlib import Path
 from .core.dev_store import DevConflict,DevBudgetExhausted
+from openarm365_dev_v2.diag_budget import task_limits,dev_tier_budget
 GOAL='3a82df131d394774bc1ae9d881895133'
 RESOURCES=('dev_calls','advisor_calls','eval_calls','provider_tokens','input_tokens','output_tokens','executions','sdk_calls','control_steps','help_credits','help_count','help_wait_seconds','model_seconds','execution_seconds','hint_human_seconds')
 # Resources introduced after the first ledgers: a budget/limit dict may omit them (read as 0).
 OPTIONAL=('eval_calls','hint_human_seconds')
 HUMAN_SECONDS=('hint_human_seconds',)
 LIMITS=dict(dev_calls=28,advisor_calls=14,eval_calls=28,provider_tokens=500000,input_tokens=500000,output_tokens=500000,executions=28,sdk_calls=2240,control_steps=67200,help_credits=28,help_count=28,help_wait_seconds=7200,model_seconds=7200,execution_seconds=7200,hint_human_seconds=7200)
+def task_goal_limits(budget_tier='dev'):
+    """New goal authorization follows an explicit diagnostic override too."""
+    limits=task_limits(budget_tier)
+    return {**LIMITS,'sdk_calls':28*limits['sdk_calls'],
+            'control_steps':28*limits['control_steps'],
+            'execution_seconds':15*limits['attempt_seconds']}
+
+def task_goal_wall_limit(budget_tier='dev'):
+    return 15*task_limits(budget_tier)['attempt_seconds']
 def fill_optional(b):
     """Read a budget/limit dict written before the optional resources existed: absent ones are 0."""
     return {**{k:0 for k in OPTIONAL if k not in b},**{k:v for k,v in b.items() if k!='review_human_seconds'}}
@@ -68,7 +78,7 @@ class DevV2Store:
     def get(db,table,key):
         r=db.execute('SELECT payload FROM v2_'+table+' WHERE id=?',(key,)).fetchone()
         if not r and table=='goals' and key==GOAL:
-            value=dict(limits=LIMITS,used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=7200,opening=[])
+            value=dict(limits=task_goal_limits(),used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=task_goal_wall_limit(),opening=[],budget_tier='dev')
             db.execute('INSERT INTO v2_goals VALUES (?,?)',(GOAL,encoded(value)))
             return value
         if not r:raise DevConflict('unknown '+table+' record')
@@ -192,6 +202,10 @@ class DevV2Store:
         if state=='settled':
             if j['actual']!=actual or j['receipt']!=receipt:raise DevConflict('conflicting settlement')
             return
+        if j['kind']=='execute' and isinstance(receipt,dict) and receipt.get('dev_tier_budget'):
+            if receipt['dev_tier_budget']!=dev_tier_budget():raise DevConflict('invalid Dev tier budget evidence')
+            c=self.get(db,'cells',j['cell']);exp=self.get(db,'experiments',c['experiment_id'])
+            if exp.get('formal_eligible') is not False or exp.get('selection',{}).get('budget_tier')!='dev':raise DevConflict('Dev tier execution cannot enter formal or legacy ledger')
         if j['kind']=='execute' and isinstance(receipt,dict) and receipt.get('diagnostic'):
             if not receipt.get('diagnostic_budget_override'):raise DevConflict('diagnostic execution requires budget evidence')
             c=self.get(db,'cells',j['cell']);exp=self.get(db,'experiments',c['experiment_id'])

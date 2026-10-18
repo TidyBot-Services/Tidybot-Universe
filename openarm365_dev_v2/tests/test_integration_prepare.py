@@ -15,7 +15,7 @@ from benchmarks.attention_harness.dev_planner import POLICY
 def plan(wait=600):
     return normalize_configuration(dict(max_versions=2, target_depth=2,
         target_valid_executions=2, help_budget=1, policies=[POLICY],
-        planner_features={'human_wait_seconds': wait}, coverage='budget_limited'))
+        planner_features={'human_wait_seconds': wait}, coverage='budget_limited',budget_tier='legacy'))
 
 
 @pytest.fixture

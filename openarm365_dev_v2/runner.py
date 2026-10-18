@@ -6,7 +6,7 @@ from openarm365_dev.sandbox import probe_sandbox,execute_formal_policy,_json_saf
 from .owner import NativeOwnerV2 as NativeOwner
 from openarm365_dev.owner import OutcomeUnknown,build_sdk
 from benchmarks.attention_harness.robocasa365.recording import finalize_recording
-from .diag_budget import diagnostic_budget,task_limits
+from .diag_budget import diagnostic_budget,dev_tier_budget,task_limits
 
 def write(path,value):
     path.write_text(json.dumps(_json_safe(value),ensure_ascii=False,sort_keys=True,indent=2,allow_nan=False)+'\n')
@@ -30,8 +30,7 @@ class OpenArm365DevRunnerV2:
         """(attempt seconds, SDK call limit) for this attempt; raises when outside the frozen envelope."""
         limit=request.sdk_call_limit or c['sdk_call_limit']
         seconds=request.effective_attempt_deadline_seconds
-        limits=task_limits()
-        if not 0<seconds<=limits['attempt_seconds'] or not 0<limit<=limits['sdk_calls']:raise ValueError('Dual-arm execution exceeds frozen budgets')
+        if not 0<seconds<=c['attempt_wall_seconds'] or not 0<limit<=c['sdk_call_limit']:raise ValueError('Dual-arm execution exceeds frozen budgets')
         return seconds,limit
 
     def safety_record(self,record):
@@ -44,10 +43,12 @@ class OpenArm365DevRunnerV2:
 
     def execute(self,request):
         override=diagnostic_budget()
+        tier=dev_tier_budget() if self.runner_boundary=='dev_loop' else None
         if override and (self.runner_boundary!='dev_loop' or request.entry_lock is not None):
             raise ValueError('diagnostic budget cannot enter the formal boundary')
         if request.entry_lock is not None and not self.allow_entry_lock:raise ValueError('Dev-only runner cannot claim an approved formal entry')
         c=self.load_config(request)
+        if c.get('budget_tier','legacy')!='dev':tier=None
         if request.task_id!=c['task_id'] or request.seed!=c['seed']:raise ValueError('Locked 365 task/seed mismatch')
         seconds,limit=self.budgets(request,c)
         started=time.monotonic();deadline=started+seconds
@@ -136,6 +137,10 @@ class OpenArm365DevRunnerV2:
             receipt['diagnostic_budget_override']=override
             native['diagnostic_budget_override']=override
             trace['diagnostic_budget_override']=override
+        if tier:
+            receipt['dev_tier_budget']=tier
+            native['dev_tier_budget']=tier
+            trace['dev_tier_budget']=tier
         for name,value in [('trace',trace),('sandbox_receipt',receipt),('safety',safety),('native_result',native)]:
             artifacts[name]=write(episode/(name+'.json'),value)
         result=dict(schema_version='attentionbench.formal-runner-result.v1',**binding,status=status,error=error,
@@ -145,4 +150,5 @@ class OpenArm365DevRunnerV2:
                 'deadline_enforced':True,'action_cancellation_verified':cleanup['leader_reaped'] and cleanup['process_group_gone'] and cleanup['planner_process_groups_gone']},
             artifact_dir=str(episode.resolve()),artifacts=artifacts,recording=recording,scene_condition=ready.get('scene_condition') if attested else None)
         if override:result['diagnostic_budget_override']=override
+        if tier:result['dev_tier_budget']=tier
         write(episode/'result.json',result);return result

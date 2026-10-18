@@ -6,7 +6,11 @@ from .dev_experiment import snapshot,verify_manifest,cell_key,acquire
 from .dev_loop import process_identity
 from .dev_v2_loop import provider_call,execute,immutable,job_for
 from .core.dev_store import DevConflict
-PROBE_BUDGET=dict(eval_calls=0,dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=160,control_steps=4800,help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=120,execution_seconds=1080)
+from openarm365_dev_v2.diag_budget import task_limits
+def probe_budget(budget_tier='dev'):
+ limits=task_limits(budget_tier)
+ return dict(eval_calls=0,dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=2*limits['sdk_calls'],control_steps=2*limits['control_steps'],help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=120,execution_seconds=2*__import__('math').ceil(540*limits['attempt_seconds']/480))
+PROBE_BUDGET=probe_budget()
 SOURCE='from robot_sdk import sensors\nobservation = sensors.get_observation()\n'
 def create_probe(store,parent):
  e=snapshot(store,parent);m=verify_manifest(e)
@@ -17,6 +21,7 @@ def create_probe(store,parent):
  if row:return snapshot(store,eid)
  directory=Path(e['artifact_dir']).parent/eid;directory.mkdir(parents=True,exist_ok=True)
  tasks=m['selection']['tasks'];seed=m['selection']['seeds'][0]
+ tier=m.get('budget_tier','legacy');reserve=probe_budget(tier);limits=task_limits(tier)
  if len(tasks)!=2:raise ValueError('probe preflight uses two registered tasks')
  cells=[dict(key=cell_key(eid,t,seed,'autonomous'),task_id=t,seed=seed,policy_id='autonomous') for t in tasks]
  pm=copy.deepcopy(m);pm.update(experiment_id=eid,cells=cells,schedule=[],report_scope='probe only, excluded from comparison')
@@ -28,10 +33,10 @@ def create_probe(store,parent):
   for cp,ep in db.execute('SELECT c.payload,e.payload FROM v2_cells c JOIN v2_experiments e ON c.exp=e.id'):
    if json.loads(ep).get('goal_id',GOAL)==m['goal_id']:
     for k,v in json.loads(cp)['budget'].items():total[k]+=v
-  if any(total[k]+PROBE_BUDGET.get(k,0)>m['goal_limits'].get(k,0) for k in RESOURCES):raise ValueError('probe allocation exceeds goal limits')
+  if any(total[k]+reserve.get(k,0)>m['goal_limits'].get(k,0) for k in RESOURCES):raise ValueError('probe allocation exceeds goal limits')
   store.put(db,'experiments',eid,pe)
   for i,row in enumerate(cells):
-   b={k:0 for k in RESOURCES};b.update(executions=1,sdk_calls=80,control_steps=2400,execution_seconds=540)
+   b={k:0 for k in RESOURCES};b.update(executions=1,sdk_calls=limits['sdk_calls'],control_steps=limits['control_steps'],execution_seconds=reserve['execution_seconds']//2)
    if i==0:b.update(dev_calls=1,provider_tokens=10000,input_tokens=2000,output_tokens=256,model_seconds=120)
    payload=dict(row,experiment_id=eid,state='planned',owner=None,mode='probe',mixed_policy=False,experiment_eligible=False,policy_segments=['autonomous'],budget=b,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False,probe_max_tokens=256,runtime={k:m[k] for k in ['model_reserve_seconds','startup_cleanup_seconds','max_input_bytes_per_request','source_size_limit_bytes','public_failure_rule']})
    db.execute('INSERT INTO v2_cells VALUES (?,?,?)',(row['key'],eid,encoded(payload)))

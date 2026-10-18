@@ -72,7 +72,7 @@ def setup_run(tmp_path,enabled=True,policy='autonomous'):
     selection=dict(request_key='eval-loop-test',tasks=['open_cabinet'],seeds=[102],policies=[policy])
     if enabled:selection['eval_agent']={'enabled':True,'model':'parcc/Qwen'}
     e=create(s,tmp_path/'artifacts',selection)
-    budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}}))
+    budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'budget_tier':'dev','limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':s.goal()['wall_limit']}}))
     return s,e,budget
 
 GOOD='### What happened\ntrace event #1 failed.\nEVAL_RESULT: {"passed":false,"feedback":"trace event #1: use smaller measured deltas."}'

@@ -66,17 +66,33 @@ def test_help_crash_reuse_and_execute_crash(tmp_path,monkeypatch):
  f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=Runner)
  assert len(cl.inputs)==3 and f['cells'][0]['used']['help_count']==1 and f['cells'][0]['used']['executions']==3
 
-def test_old_manifest_exact_bytes(tmp_path):
+def test_old_manifest_exact_bytes(tmp_path,monkeypatch):
  import importlib.util
+ from openarm365_dev_v2 import dev_config
+ # Both generations use one real source tree; the missing worktree model copy is
+ # outside the serialized experiment conditions under comparison.
+ monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})
  original=Path(__file__).with_name('fixtures')/'dev_experiment_v2.py.txt'
  from importlib.machinery import SourceFileLoader
  spec=importlib.util.spec_from_loader('benchmarks.attention_harness.baseline_experiment',SourceFileLoader('benchmarks.attention_harness.baseline_experiment',str(original)));baseline=importlib.util.module_from_spec(spec);spec.loader.exec_module(baseline)
  # Both use identical runtime paths and resources, isolating product conditions.
- for name in ['make_lock','make_dev_config','verify_lock','get_task','DemoProvider']:setattr(baseline,name,globals().get(name) or __import__('benchmarks.attention_harness.dev_experiment',fromlist=[name]).__dict__[name])
- old=baseline.create(DevV2Store(tmp_path/'old.sqlite'),tmp_path/'a',{'request_key':'legacy-byte-canary'})
+ for name in ['make_lock','verify_lock','get_task','DemoProvider']:setattr(baseline,name,globals().get(name) or __import__('benchmarks.attention_harness.dev_experiment',fromlist=[name]).__dict__[name])
+ baseline.make_dev_config=lambda *a,**kw:make_dev_config(*a,**kw,budget_tier='legacy')
+ old_store=DevV2Store(tmp_path/'old.sqlite');old_store.ensure_goal(GOAL,LIMITS,7200)
+ new_store=DevV2Store(tmp_path/'new.sqlite');new_store.ensure_goal(GOAL,LIMITS,7200)
+ old=baseline.create(old_store,tmp_path/'a',{'request_key':'legacy-byte-canary'})
  before=Path(old['manifest']['uri']).read_bytes()
- new=create(DevV2Store(tmp_path/'new.sqlite'),tmp_path/'a',{'request_key':'legacy-byte-canary'})
+ new=create(new_store,tmp_path/'a',{'request_key':'legacy-byte-canary','budget_tier':'legacy'})
  assert before==Path(new['manifest']['uri']).read_bytes() and old['selection']==new['selection']
+ old_manifest=json.loads(before);new_manifest=json.loads(Path(new['manifest']['uri']).read_bytes())
+ key=next(iter(old_manifest['configs']))
+ assert encoded(old_manifest['configs'][key])==encoded(new_manifest['configs'][key])
+ assert encoded(old['cells'][0]['budget'])==encoded(new['cells'][0]['budget'])
+ assert encoded(old['resources']['limits'])==encoded(new['resources']['limits'])
+ def first_reservation(config):
+  return dict(executions=1,sdk_calls=config['sdk_call_limit'],control_steps=config['horizon'],
+              execution_seconds=config['attempt_wall_seconds']+25)
+ assert encoded(first_reservation(old_manifest['configs'][key]))==encoded(first_reservation(new_manifest['configs'][key]))
 
 @pytest.mark.parametrize('depth,execution_target',[(4,3),(5,1)])
 def test_generation_and_execution_targets_distinct(tmp_path,depth,execution_target):

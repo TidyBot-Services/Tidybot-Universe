@@ -25,9 +25,10 @@ def main():
         from openarm365_dev.executor import NativeExecutor
         from openarm365_dev.policy_validation import OPERATIONS
         from openarm365.environment import validate_physical_model,configure_display_camera
-        from .diag_budget import diagnostic_budget
+        from .diag_budget import diagnostic_budget,dev_tier_budget
         override=diagnostic_budget()
         c=validate_config(json.loads(args.config.read_bytes()));args.evidence.mkdir(parents=True,exist_ok=True)
+        tier=dev_tier_budget() if c['runner_boundary']=='dev_loop' and c.get('budget_tier','legacy')=='dev' else None
         if override and c['runner_boundary']!='dev_loop':raise ValueError('diagnostic budget cannot enter formal worker')
         identity=OfficialEnvironmentIdentity({
             'robocasa':'/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa',
@@ -108,6 +109,7 @@ def main():
             physical_to_native=PHYSICAL_TO_NATIVE,identity=identity,rng_events=env.scene_rng_events,scene_reset_seed=c.get('scene_reset_seed'),initial_public_observation=observe(),
             execution_conditions=execution_conditions,scene_xml_sha256=hashlib.sha256(scene.encode()).hexdigest())
         if override:reset_receipt['diagnostic_budget_override']=override
+        if tier:reset_receipt['dev_tier_budget']=tier
         (args.evidence/'reset_receipt.json').write_text(json.dumps(reset_receipt,indent=2)+'\n')
         import benchmarks,openarm365_dev_v2
         (args.evidence/'import-canary.json').write_text(json.dumps({'benchmarks':benchmarks.__file__,
@@ -166,6 +168,7 @@ def main():
                 with (args.evidence/'native-errors.jsonl').open('a') as f:
                     f.write(json.dumps({'request_id':rid,'traceback':traceback.format_exc()})+'\n')
             if override:response['diagnostic_budget_override']=override
+            if tier:response['dev_tier_budget']=tier
             receipt_cache[rid]=(canonical,response)
             with (args.evidence/'rpc-receipts.jsonl').open('a') as f:
                 f.write(json.dumps({'request':request,'response':response},sort_keys=True)+'\n');f.flush();os.fsync(f.fileno())

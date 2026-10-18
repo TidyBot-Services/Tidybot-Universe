@@ -9,7 +9,7 @@ def setup(tmp_path,policy='autonomous',key='loop-test',eval_enabled=False):
     selection=dict(request_key=key,tasks=['open_cabinet'],seeds=[102],policies=[policy])
     if eval_enabled:selection['eval_agent']={'enabled':True,'model':'parcc/Qwen'}
     s=DevV2Store(tmp_path/'s.sqlite');e=create(s,tmp_path/'artifacts',selection)
-    budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}}))
+    budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'budget_tier':'dev','limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':s.goal()['wall_limit']}}))
     return s,e,budget
 
 def test_fake_complete_revision_keeps_previous_and_billing(tmp_path):

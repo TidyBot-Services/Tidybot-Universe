@@ -21,6 +21,7 @@ from .dev_loop import sha, process_identity, owner_alive
 from .dev_planner import PlannerControl, POLICY
 from .dev_tasks import TASKS
 from openarm365_dev_v2.dev_config import ROOT
+from openarm365_dev_v2.diag_budget import task_limits
 
 
 class DevMainBridge:
@@ -33,14 +34,15 @@ class DevMainBridge:
 
     def options(self):
         goal=self.store.goal(self.goal_id)
+        tier=goal.get('budget_tier','legacy')
         default=derive_cell_budget(normalize_configuration(dict(max_versions=2,target_depth=2,target_valid_executions=2,help_budget=1,
-            planner_features={'human_wait_seconds':60},policies=[POLICY])))
+            planner_features={'human_wait_seconds':60},policies=[POLICY],budget_tier=tier)))
         return dict(enabled=True,bridge_schema='main-dev-v3',goal_key=self.goal_key,default_cell_budget=default,
             goal_limits=goal['limits'],default_max_iterations=2,policies=[POLICY],eval_agent_supported=False,
             authorization=dict(mode='existing_goal',deadline_epoch=goal.get('authorized_until')),
             memory=self.memory,profiles=[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,
                 seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,
-                execution_target='robocasa365_sim',attempt_wall_seconds=480,sdk_call_limit=80,wall_seconds=goal['wall_limit']) for t in TASKS.values()])
+                execution_target='robocasa365_sim',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],sdk_call_limit=task_limits(tier)['sdk_calls'],wall_seconds=goal['wall_limit']) for t in TASKS.values()])
 
     def experiments(self):
         return [e for e in experiments.list_experiments(self.store) if e.get('goal_id')==self.goal_id]
@@ -110,7 +112,7 @@ class DevMainBridge:
         enough=g['wall_remaining']>0 and not g.get('real_finished_at') and g['remaining'].get('dev_calls',0)>0 and g['remaining'].get('provider_tokens',0)>0
         can_start=(bool(recovery) or e['state']=='planned' and any(row['state']=='planned' for row in cells) and enough) and not e['cancelled'] and not active and not unresolved and not unknown_owner and not recovery_error
         minimum=derive_cell_budget(normalize_configuration(dict(max_versions=1,target_depth=1,target_valid_executions=1,help_budget=0,
-            planner_features={'human_wait_seconds':1},policies=[POLICY])))
+            planner_features={'human_wait_seconds':1},policies=[POLICY],budget_tier=g.get('budget_tier','legacy'))))
         allocated={k:0 for k in RESOURCES}
         for other in goal_experiments:
             for row in other['cells']:
@@ -126,6 +128,8 @@ class DevMainBridge:
     def create(self,body):
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('selection and explicit start required')
         v=body['selection'];configuration=v['configuration'];g=self.store.goal(self.goal_id)
+        if v.get('budget_tier',g.get('budget_tier','legacy'))!=g.get('budget_tier','legacy'):
+            raise ValueError('existing goal budget tier cannot change')
         if configuration['goal_id']!=self.goal_key:raise ValueError('this UI is bound to the existing goal; no new budget')
         if v.get('eval_agent',{}).get('enabled') or v.get('human_proxy',{}).get('enabled'):raise ValueError('HumanProxy requests are not configured in this isolated bridge')
         if v['policies']!=[POLICY]:raise ValueError('this acceptance bridge only dispatches the full planner')
@@ -135,6 +139,7 @@ class DevMainBridge:
         if set(limits)!=set(RESOURCES) or any(limits[k]>g['limits'].get(k,0) or n*budget[k]>limits[k] for k in RESOURCES):raise ValueError('selection exceeds cumulative authorized goal')
         if not 0<configuration['wall_seconds']<=g['wall_limit']:raise ValueError('wall exceeds original authorization')
         selection={k:v[k] for k in ('request_key','tasks','seeds','policies','mode','help_budget')}
+        selection['budget_tier']=g.get('budget_tier','legacy')
         depth=configuration['max_iterations']
         selection.update(goal_key=self.goal_key,goal_limits=g['limits'],wall_limit=g['wall_limit'],cell_budget=budget,
             coverage='budget_limited',target_depth=depth,target_valid_executions=depth,max_versions=depth,

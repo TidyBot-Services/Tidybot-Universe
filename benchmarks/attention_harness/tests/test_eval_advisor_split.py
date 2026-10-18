@@ -182,7 +182,8 @@ def _loop_setup(tmp_path,monkeypatch,mode='experiment'):
         'policies':['reactive_help'],'help_budget':1,'mode':mode,
         'eval_agent':{'enabled':True,'model':'parcc/Qwen'},'advisor_proxy':{}}
     experiment=create(store,tmp_path/'artifacts',selection)
-    budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}}))
+    # The authorization must name the same wall envelope as the frozen goal.
+    budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'budget_tier':'dev','limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':store.goal()['wall_limit']}}))
     return store,experiment,budget
 
 

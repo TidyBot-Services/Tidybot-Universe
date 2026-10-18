@@ -48,11 +48,17 @@ def test_opt_in_validation_and_default_context(tmp_path,monkeypatch):
     class Model:
         geom_bodyid=[2,4]
         body_parentid=[0,0,0,0,0]
+        body_jntnum=[0,0,1,0,0]
+        _model=object()
+        def body_name2id(self,name):
+            assert name=='robot0_openarm_body_link0'
+            return 3
     data=SimpleNamespace(body_xmat=np.tile(np.eye(3).reshape(1,9),(5,1)),
-                         body_xpos=np.zeros((5,3)),contact=[SimpleNamespace(dist=.002,geom1=0,geom2=1)])
+                         body_xpos=np.zeros((5,3)),contact=[SimpleNamespace(dist=.002,geom1=0,geom2=1)],_data=object())
     env=SimpleNamespace(sim=SimpleNamespace(model=Model(),data=data))
-    world=dict(inventory=[dict(name='entity:2:shape:0',body_id=2),dict(name='counter',body_id=4)],
+    world=dict(inventory=[dict(name='entity:2:shape:0',body_id=2,geom_id=0),dict(name='counter',body_id=4,geom_id=1)],
                cuboids=[])
+    monkeypatch.setattr(am.mujoco,'mj_geomDistance',lambda *args:.005,raising=False)
     monkeypatch.setattr(am,'tcp_pose',lambda env,side:np.eye(4))
     from openarm365_dev import environment
     monkeypatch.setattr(environment,'mount_pose',lambda env:np.eye(4))
@@ -62,10 +68,10 @@ def test_opt_in_validation_and_default_context(tmp_path,monkeypatch):
     assert list(context)==['holder','target_id','object_pose','tcp_object_transform',
                            'tool_frame','shape_names','support_names']
     assert context['shape_names']==['entity:2:shape:0']
-    assert context['support_names']==[]
+    assert context['support_names']==['counter']
     assert context['object_pose']==np.eye(4).tolist()
     expected=dict(holder='left',target_id=2,object_pose=np.eye(4).tolist(),
         tcp_object_transform=np.eye(4).tolist(),tool_frame='openarm_left_hand_tcp',
-        shape_names=['entity:2:shape:0'],support_names=[])
+        shape_names=['entity:2:shape:0'],support_names=['counter'])
     assert json.dumps(context,separators=(',',':')).encode()==json.dumps(expected,separators=(',',':')).encode()
     assert list(tmp_path.iterdir())==[]

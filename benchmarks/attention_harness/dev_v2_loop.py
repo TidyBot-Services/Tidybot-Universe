@@ -224,7 +224,7 @@ def model_messages(config,previous,feedback,attention,remaining,trace_visible=Tr
     opinion=''
     if 'eval_review' in f:
         opinion='\nEval agent verdict and feedback for your previous attempt: '+json.dumps(f['eval_review'],ensure_ascii=False)
-    return [{'role':'system','content':t.system_prompt()+opinion},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
+    return [{'role':'system','content':t.system_prompt(config)+opinion},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
 
 def hp_result(text,record):
     if not isinstance(text,str) or not text.strip():raise ValueError('empty HumanProxy hint')
@@ -362,7 +362,7 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         public_screen(projected);feedback=immutable(directory/'public-feedback.json',projected)
         receipt=json.loads(checked(result['artifacts']['sandbox_receipt']).read_bytes())
         actual={'executions':1,'sdk_calls':receipt['sdk_call_budget']['dispatched'],'control_steps':receipt['control_steps'],'execution_seconds':receipt['elapsed_seconds']}
-        store.settle(job['job_id'],actual,{**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
+        store.settle(job['job_id'],actual,{**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),**({'dev_tier_budget':result['dev_tier_budget']} if result.get('dev_tier_budget') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
         memory_path=directory/'memory-input.json'
         if cell.get('planner_features') and memory_path.exists():
             from .dev_planner_memory import journal_result

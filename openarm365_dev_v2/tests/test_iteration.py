@@ -23,7 +23,7 @@ def test_empty_constructor_and_multigoal(tmp_path):
  with pytest.raises(DevConflict):create(s,tmp_path/'a',{**selection('separate-goal-a'),'target_depth':4})
 def test_formula():
  p=normalize_configuration(selection());b=derive_cell_budget(p,80,2400)
- assert b['provider_tokens']==253008 and b['input_tokens']==210000 and b['execution_seconds']==1620
+ assert b['provider_tokens']==253008 and b['input_tokens']==210000 and b['execution_seconds']==5940
  assert b['model_seconds']==840 and b['output_tokens']==43008 and b['control_steps']==7200
  assert b['advisor_calls']==p['help_budget']==2
  assert 255056-b['provider_tokens']==p['help_budget']*1024

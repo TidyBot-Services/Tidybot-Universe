@@ -2,7 +2,7 @@
 
 Same robot, task, scene, controller and identity lock as the Dev v2 configuration. Only the
 declared boundary and the three budget fields differ: the experiment freeze chooses them,
-inside the envelope the Dev v2 runner has been verified for. Dev v2 configurations are unchanged.
+inside the original 80/2400/480 envelope. The Dev tier has a separate budget.
 """
 import copy
 
@@ -36,7 +36,7 @@ def make_formal_config(task_id, seed, lock, *, attempt_wall_seconds, whole_case_
         raise ValueError('scene reset seed must equal the configuration seed')
     _check_budget(attempt_wall_seconds, whole_case_wall_seconds, sdk_call_limit)
     c = copy.deepcopy(make_dev_config(task_id, seed, lock, layout_id, style_id,
-                                      expected_source_root=expected_source_root))
+                                      expected_source_root=expected_source_root, budget_boundary='formal', budget_tier='legacy'))
     c.update(schema_version=SCHEMA, runner_boundary='formal', attempt_wall_seconds=attempt_wall_seconds,
              whole_case_wall_seconds=whole_case_wall_seconds, sdk_call_limit=sdk_call_limit)
     c['scene_reset_seed'] = scene_reset_seed
@@ -59,7 +59,7 @@ def validate_formal_config(c, *, expected_source_root=None):
     # validator on the equivalent Dev view, so identity, lock, scene and robot checks stay single-sourced.
     dev_view = dict(c, schema_version=DEV_SCHEMA, runner_boundary='dev_loop',
                     whole_case_wall_seconds=DEV_WHOLE_CASE_SECONDS, sdk_call_limit=SDK['sdk_calls'])
-    validate_dev_config(dev_view, expected_source_root=expected_source_root)
+    validate_dev_config(dev_view, expected_source_root=expected_source_root, budget_boundary='formal')
     return c
 
 

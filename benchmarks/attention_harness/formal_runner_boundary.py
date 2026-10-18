@@ -44,9 +44,8 @@ class FormalRunRequest:
                 else self.attempt_deadline_seconds)
 
     def validate(self) -> None:
-        from openarm365_dev_v2.diag_budget import diagnostic_budget,task_limits
-        diag=diagnostic_budget() if self.suite=="robocasa365" and self.entry_lock is None else None
-        ceiling=task_limits()["sdk_calls"] if diag else 200
+        from openarm365_dev_v2.diag_budget import task_limits
+        ceiling=task_limits()["sdk_calls"] if self.suite=="robocasa365" and self.entry_lock is None else 200
         if self.sdk_call_limit is not None and (
                 type(self.sdk_call_limit) is not int or not 1 <= self.sdk_call_limit <= ceiling):
             raise ValueError("formal remaining SDK call limit must be 1–200")
@@ -99,6 +98,10 @@ class FormalRunRequest:
                 raise ValueError("formal config source is missing")
             if hashlib.sha256(self.config_path.read_bytes()).hexdigest() != self.config_sha256:
                 raise ValueError("formal config source differs from approved digest")
+            if self.entry_lock is not None and self.suite == 'robocasa365':
+                config=json.loads(self.config_path.read_bytes())
+                if config.get('schema_version') == 'attentionbench.openarm365-dual-dev-config.v2':
+                    raise ValueError('development budget cannot enter formal request')
 
 
 class FormalSuiteRunner(Protocol):
@@ -115,6 +118,8 @@ def run_with_formal_boundary(
     if runner is None or runner.suite != request.suite:
         raise RuntimeError("no suite-matched formal runner registered")
     result = runner.execute(request)
+    if request.entry_lock is not None and (result.get('dev_tier_budget') or result.get('diagnostic_budget_override')):
+        raise RuntimeError('scaled development execution cannot enter formal comparison')
     if not isinstance(result, dict) or result.get("schema_version") != "attentionbench.formal-runner-result.v1":
         raise RuntimeError("formal runner returned no versioned result")
     for key, expected in (

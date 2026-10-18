@@ -3,10 +3,11 @@ from pathlib import Path
 import pytest
 from benchmarks.attention_harness.dev_ui_server import serve,live
 from benchmarks.attention_harness.dev_experiment import *
+from benchmarks.attention_harness.dev_ledger import task_goal_wall_limit
 from benchmarks.attention_harness.dev_loop import immutable
 @pytest.fixture
 def api(tmp_path):
-    s=DevV2Store(tmp_path/'s.sqlite');budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}}))
+    s=DevV2Store(tmp_path/'s.sqlite');budget=tmp_path/'budget.json';budget.write_text(json.dumps({'goal':GOAL,'budget_tier':'dev','limits':{'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':task_goal_wall_limit('dev')}}))
     http=serve(s,tmp_path/'a',0,budget);thread=threading.Thread(target=http.serve_forever,daemon=True);thread.start();base='http://127.0.0.1:'+str(http.server_port)
     html=urllib.request.urlopen(base+'/ui/').read().decode();token=re.search('name="control-token" content="([^"]+)',html)[1]
     def req(path,body=None,auth=True,headers=None):

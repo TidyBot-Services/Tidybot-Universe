@@ -282,12 +282,12 @@ def prepare(args):
     # Two tasks, one legal seed each, at most 2 Dev/2 native + 1 Advisor per
     # task. No matrix and no paired Memory run behind a failed D3 prerequisite.
     selection=dict(request_key='main-integration-final-source-v1',tasks=['pick_place_counter_to_sink','open_cabinet'],seeds=[args.seed],
-        policies=o['policies'],mode='experiment',help_budget=1,human_wait_seconds=args.wait_seconds,
+        policies=o['policies'],mode='experiment',help_budget=1,human_wait_seconds=args.wait_seconds,budget_tier='legacy',
         configuration=dict(goal_id=GOAL_KEY,experiment_budget=o['goal_limits'],max_iterations=2,wall_seconds=store.goal(GOAL_ID)['wall_limit']))
     p=normalize_configuration(dict(max_versions=selection['configuration']['max_iterations'],
         target_depth=selection['configuration']['max_iterations'],target_valid_executions=selection['configuration']['max_iterations'],
         help_budget=selection['help_budget'],policies=selection['policies'],coverage='budget_limited',
-        planner_features=dict(human_wait_seconds=args.wait_seconds,memory=settings)))
+        planner_features=dict(human_wait_seconds=args.wait_seconds,memory=settings),budget_tier='legacy'))
     budget=derive_cell_budget(p)
     configured_budget({**p,'cell_budget':budget})
     selection['configuration']['cell_budget']=budget

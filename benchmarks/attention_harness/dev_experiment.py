@@ -2,15 +2,21 @@
 import argparse,copy,hashlib,json,os,time
 from pathlib import Path
 from .dev_configuration import FIELDS,normalize_configuration,configured_budget,worst_slot,require_scene_gate
-from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded,experiment_goal,complete_resources,fill_optional
+from .dev_ledger import DevV2Store,RESOURCES,LIMITS,GOAL,encoded,experiment_goal,complete_resources,fill_optional,task_goal_limits,task_goal_wall_limit
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .dev_loop import immutable,sha,process_identity,owner_alive
 from .dev_tasks import get_task,validate_selection,options as task_options
 from .dev_help import POLICY_IDS,policy_parameters,DemoProvider,EMPTY_MEMORY,HELP_PRICING,public_screen
 from openarm365_dev_v2.dev_config import make_lock,make_dev_config,validate_dev_config,verify_lock,ROOT
+from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
+def task_cell_budget(budget_tier='dev'):
+    limits=task_limits(budget_tier)
+    return {**CELL_BUDGET,'sdk_calls':2*limits['sdk_calls'],
+            'control_steps':2*limits['control_steps'],
+            'execution_seconds':__import__('math').ceil(1000*limits['attempt_seconds']/480)}
 def cell_key(exp_id,task,seed,policy):return hashlib.sha256(f'{exp_id}|{task}|{seed}|{policy}'.encode()).hexdigest()
 def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     b=json.loads(Path(path).read_bytes());limits=b.get('limits')
@@ -23,13 +29,17 @@ def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
         expected=dict(goal_id=manifest['goal_id'],experiment_id=manifest['experiment_id'],limits=manifest['goal_limits'],wall_limit=manifest['wall_limit'])
         if any(b.get(k)!=v for k,v in expected.items()) or b.get('manifest_sha256')!=manifest_ref['sha256'] or Path(b.get('ledger_path','/missing')).resolve()!=store.path.resolve():raise ValueError('v3 budget/manifest/ledger binding mismatch')
         return b
-    expected={'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':7200}
+    tier=manifest.get('budget_tier','legacy') if manifest is not None else b.get('budget_tier','legacy')
+    if b.get('budget_tier','legacy')!=tier:raise ValueError('budget tier/manifest binding mismatch')
+    expected={'dev_calls':28,'advisor_calls':14,'provider_tokens':500000,'executions':28,'wall_seconds':task_goal_wall_limit(tier)}
     if b.get('goal')!=GOAL or limits!=expected:raise ValueError('original goal budget file required; cannot reset/expand')
     return b
 
 def create(store,artifact_root,selection):
-    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy'}|FIELDS
+    allowed={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier'}|FIELDS
     if not isinstance(selection,dict) or set(selection)-allowed:raise ValueError('bounded explicit experiment selection required')
+    budget_tier=selection.get('budget_tier','dev')
+    task_limits(budget_tier)
     v3=bool(set(selection)&FIELDS)
     if v3:
         from .eval_agent import default_config as eval_default
@@ -73,6 +83,7 @@ def create(store,artifact_root,selection):
         if any(legacy_configuration['cell_budget'].get(k,0)>legacy_configuration['experiment_budget'].get(k,0) for k in RESOURCES):raise ValueError('cell exceeds experiment resource budget')
     exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
+    if budget_tier=='dev':normalized['budget_tier']='dev'
     if v3:
         budget=configured_budget(configuration)
         n=len(tasks)*len(seeds)*len(policies)
@@ -120,11 +131,11 @@ def create(store,artifact_root,selection):
     lock_path=directory/'identity-lock.json'
     ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path)
     verify_lock(ref)
-    configs={f'{t}:{s}':make_dev_config(t,s,ref) for t in tasks for s in seeds}
+    configs={f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier) for t in tasks for s in seeds}
     sources={t:{'source':Path(get_task(t).initial_policy).read_text(),'sha256':sha(get_task(t).initial_policy)} for t in tasks}
     demos={t:DemoProvider().freeze(t) for t in tasks}
     # All base conditions live once, outside the policy specifications.
-    budget=budget if v3 else dict(CELL_BUDGET,help_credits=help_budget,help_count=help_budget,advisor_calls=min(2,help_budget))
+    budget=budget if v3 else dict(task_cell_budget(budget_tier),help_credits=help_budget,help_count=help_budget,advisor_calls=min(2,help_budget))
     if legacy_configuration is not None:budget=dict(legacy_configuration['cell_budget'])
     if 'eval_agent' in normalized:
         for config in configs.values():config['eval_agent']=dict(normalized['eval_agent'])
@@ -140,12 +151,13 @@ def create(store,artifact_root,selection):
         depth=configuration['target_depth'];maximum=configuration['max_versions']
         schedule=[{'cell':cells[0]['key'],'through_version':depth}]+[{'cell':c['key'],'through_version':v} for v in range(1,depth+1) for c in cells[1:]]
         schedule += [{'cell':c['key'],'through_version':maximum,'compensation':True} for c in cells]
-    elif legacy_configuration is None:store.ensure_goal(GOAL,LIMITS,7200)
+    elif legacy_configuration is None:store.ensure_goal(GOAL,task_goal_limits(budget_tier),task_goal_wall_limit(budget_tier))
     manifest=dict(schema='attentionbench.dev-experiment.v2',experiment_id=exp_id,selection=normalized,
-        model=MODEL,cell_budget=budget,goal_limits=LIMITS,wall_limit=7200,opening=[] if v3 else store.goal()['opening'],
+        model=MODEL,cell_budget=budget,goal_limits=task_goal_limits(budget_tier),wall_limit=task_goal_wall_limit(budget_tier),opening=[] if v3 else store.goal()['opening'],
         robot='OpenArm365',execution_arm='both',configs=configs,initial_sources=sources,identity_lock=ref,
         memory=EMPTY_MEMORY,help_pricing=HELP_PRICING,demos=demos,policies=parameters,trace_visible=trace_visible,
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
+    if budget_tier=='dev':manifest['budget_tier']='dev'
     if v3:
         goal_id=hashlib.sha256(('goal|'+configuration.get('goal_key',key)).encode()).hexdigest()[:32]
         manifest.update(schema='attentionbench.dev-experiment.v3',goal_id=goal_id,goal_limits=goal_limits,wall_limit=wall_limit,cell_budget=budget,
@@ -178,8 +190,14 @@ def create(store,artifact_root,selection):
                     for k,v in json.loads(cp)['budget'].items():allocated[k]+=v
             if any(allocated[k]+len(cells)*budget[k]>goal_limits.get(k,0) for k in RESOURCES):raise ValueError('shared goal allocation exceeds limits')
             existing=db.execute('SELECT payload FROM v2_goals WHERE id=?',(goal_id,)).fetchone()
-            if existing and ((fill_optional(json.loads(existing[0])['limits'])!=fill_optional(goal_limits)) or json.loads(existing[0])['wall_limit']!=wall_limit):raise DevConflict('immutable goal budget conflict')  # goals authorized before eval_calls existed allow none
-            if not existing:store.put(db,'goals',goal_id,dict(limits=goal_limits,used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=wall_limit,opening=[]))
+            if existing:
+                original=json.loads(existing[0])
+                if (fill_optional(original['limits'])!=fill_optional(goal_limits) or original['wall_limit']!=wall_limit
+                        or original.get('budget_tier','legacy')!=budget_tier):raise DevConflict('immutable goal budget conflict')  # goals authorized before eval_calls existed allow none
+            if not existing:
+                goal=dict(limits=goal_limits,used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=wall_limit,opening=[])
+                if budget_tier=='dev':goal['budget_tier']='dev'
+                store.put(db,'goals',goal_id,goal)
         # Guard simultaneous same-key creators without permitting conditions drift.
         row=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(exp_id,)).fetchone()
         if row:
@@ -209,12 +227,17 @@ def validate_fairness(m):
 def verify_manifest(exp):
     if sha(exp['manifest']['uri'])!=exp['manifest']['sha256']:raise DevConflict('manifest digest drift')
     m=json.loads(Path(exp['manifest']['uri']).read_bytes());validate_fairness(m)
+    tier=m.get('budget_tier','legacy')
+    task_limits(tier)
+    if m['selection'].get('budget_tier','legacy')!=tier:raise DevConflict('manifest budget tier differs from selection')
     # Diagnostics preserve their creation epoch while later resets may use a
     # separately locked source epoch. Ordinary execution remains ROOT-bound.
     epoch_root=None
     if m['selection']['mode']=='diagnostic':epoch_root=json.loads(Path(m['identity_lock']['path']).read_bytes())['source_root']
     verify_lock(m['identity_lock'],expected_source_root=epoch_root)
-    for c in m['configs'].values():validate_dev_config(c,expected_source_root=epoch_root)
+    for c in m['configs'].values():
+        if c.get('budget_tier','legacy')!=tier:raise DevConflict('config budget tier differs from manifest')
+        validate_dev_config(c,expected_source_root=epoch_root)
     for t,r in m['initial_sources'].items():
         if hashlib.sha256(r['source'].encode()).hexdigest()!=r['sha256']:raise DevConflict('initial source drift')
     for d in m['demos'].values():DemoProvider().result(d)
@@ -492,7 +515,7 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
 
 def options():
     import benchmarks,openarm365_dev_v2
-    return {**task_options(),'policies':list(POLICY_IDS),'cell_budget':CELL_BUDGET,'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,2],
+    return {**task_options(),'policies':list(POLICY_IDS),'cell_budget':task_cell_budget(),'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,2],
         'source_canary':{'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'source_root':str(ROOT)}}
 
 def main():
