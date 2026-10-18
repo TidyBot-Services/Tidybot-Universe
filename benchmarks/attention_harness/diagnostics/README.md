@@ -147,7 +147,7 @@ seed 102 reset 实测：`robot0_left_eef_pos ≈ [0.411192,-2.279444,1.089394]` 
 
 ### 持物搬运诊断（可选）
 
-`grasp_chain_probe --carry --carry-base-shift auto --oracle-from-reset` 在既有抓取和 10 cm 抬起之后追加 `carry_lift`、`carry_base`、`carry_xy`、`lower`、`release`、`retreat`、`observe`。`--carry` 默认关闭；关闭时生成策略与此前逐字节一致。也可指定 `--carry-base-shift DX,DY,DYAW`（机器人 mount 系）。`auto` 把 reset 的 `sink_pos−banana_pos` 转为抓取后 mount 系位移；`base.move_delta` 拆分为每次平移 ≤0.20 m、转角 ≤0.30 rad 并保持 SE(2) 终点。搬运升到水槽边沿顶面上方 0.20 m，水平移到水槽目标中心，降到边沿上方 0.08 m，松爪后上抬 0.10 m。所有新增臂动作使用原 SDK、规划证书和物理监控；手臂水平步长 <0.05 m，竖直升/降每步 <0.03 m 或 ≤0.03 m。
+`grasp_chain_probe --carry --carry-base-shift auto --oracle-from-reset` 在既有抓取和 10 cm 抬起之后追加 `carry_lift`、`carry_base`、`carry_xy`、`lower`、`release`、`retreat`、`observe`。`--carry` 默认关闭；关闭时生成策略与此前逐字节一致。也可指定 `--carry-base-shift DX,DY,DYAW`（机器人 mount 系）。`auto` 把 reset 的 `sink_pos−banana_pos` 转为抓取后 mount 系位移；`base.move_delta` 拆分为每次平移 ≤0.20 m、转角 ≤0.30 rad 并保持 SE(2) 终点。`--carry-clearance-m C` 指定搬运过渡高度为水槽边沿顶面加 C（默认 0.20 m），`--release-clearance-m R` 指定释放前高度为边沿加 R（默认 0.08 m），`--retreat-m T` 指定释放后竖直上抬距离（默认 0.10 m，每步 0.025 m）。C、R 须在 [0.02, 0.30] m 且 R≤C；T 须在 (0, 0.20] m 且为 0.025 m 的整数倍。C=R 时 `lower` 仍会观测一次，但无需移动。实测 seed 102 抓取底座位置的垂直向下姿态适合先用 `--carry-clearance-m 0.05 --release-clearance-m 0.05 --retreat-m 0.05` 做只读检查。三个参数会写入 `results.json` 的 `carry` 和 `results.md`。所有新增臂动作使用原 SDK、规划证书和物理监控；手臂水平步长 <0.05 m，竖直升/降每步 <0.03 m 或 ≤0.03 m。
 
 `--carry --oracle-from-reset --dry-run --dry-run-reset` 只做 reset，不启动物理步进，打印水槽边沿高度、来源、`sink_pos`、auto 位移、香蕉抓取时与水槽移位后的 mount 相对位置，以及待执行策略。边沿高度从 reset 原生 MuJoCo 水槽 main 固定碰撞盒的最大 z 计算；没有对应盒时退回 `sink_pos` 的 z 并明确标明。这些几何均标注“使用仿真真值,仅诊断”。正常 `--dry-run` 行为不变。真实执行目录的 `native_result.json` 被原样读取到 `results.json` 的 `native_success` 和 `native_status`；`object_final_pos` 来自最终公开观测，`object_in_sink` 只按水槽碰撞盒 XY 投影与低于边沿的 z 做启发式判定，不代替原生评估器。
 
@@ -160,7 +160,8 @@ PYTHONPATH="$PWD:/home/truares/桌面/AttentionBench-Workspace/development/atten
   --grasp-quat 0.3007057995042732,0.9537169507482269,0,0 \
   --oracle-from-reset --sequence translate-first --rotation-step 0.15 \
   --exempt movable_objects --grasp-z-offset-mm 5 --lift-step-m 0.025 \
-  --carry --carry-base-shift auto --dry-run --dry-run-reset
+  --carry --carry-base-shift auto --dry-run --dry-run-reset \
+  --carry-clearance-m 0.05 --release-clearance-m 0.05 --retreat-m 0.05
 ```
 
 seed 102 只读 reset 实测：`sink_pos=[0.2999998883,-1.7962400050,0.9861874579]` m；main 固定碰撞盒 13 个，边沿顶面 `1.0186950289` m；`auto=(+0.1969099291,-0.5810548409,0)`。mount 旋转为 `Rz(π)`，所以世界系 `sink−banana=(-0.1969099291,+0.5810548409)` m 映到 mount 系后符号翻转。抓取时香蕉与移位后水槽的 mount XY 均为 `[0.3155711446,0.3600824950]` m。以上仅为只读可达性自检，未执行新增物理阶段或获得原生成功结果。

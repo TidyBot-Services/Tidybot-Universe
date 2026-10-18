@@ -24,6 +24,96 @@ def test_carry_auto_geometry_and_policy_bounds():
     assert "left_gripper.open()" in carried
     validate_generated_policy(carried)
 
+    assert hashlib.sha256(carried.encode()).hexdigest()==\
+        'a670c88bdf09baf6f0e0304e22035b3d592eacb34f24c8c4149175919f99de8e'
+
+
+def test_equal_carry_release_height_has_empty_lower_stage(tmp_path):
+    from benchmarks.attention_harness.diagnostics.grasp_chain_probe import carry_policy_source
+    sink={'sink_pos_world_m':[0,0,1.], 'sink_rim_top_world_m':1.}
+    source=carry_policy_source(policy_source((0,.25,0)),sink,(0,0,0),.05,.05,.05)
+    assert 'safe_z = max(eef[2], sink_rim_top + 0.05)' in source
+    assert 'lower_z = sink_rim_top + 0.05' in source
+    assert 'for k in range(2):\n    left_arm.move_delta(0.0,0.0,0.025)' in source
+    assert "assert calls+4 <= 80" in source
+    position=[0.,0.,1.05];moves=[]
+    class Arm:
+        def move_delta(self,x,y,z):
+            moves.append((x,y,z));position[2]+=z
+    class Sensors:
+        def get_observation(self):return {'robot0_left_eef_pos':position.copy()}
+        def find_objects(self):return [{'name':'obj','position':[0,0,.9]}]
+    class Gripper:
+        def open(self):pass
+    namespace={'obs_lift':{'robot0_left_eef_pos':position.copy()},'calls':0,
+               'left_arm':Arm(),'sensors':Sensors(),'left_gripper':Gripper()}
+    exec(source.split('# 使用仿真真值,仅诊断\n')[-1],namespace)
+    assert moves==[(0.,0.,.025)]*2
+    assert namespace['obs_lower']['robot0_left_eef_pos'][2]==pytest.approx(1.05)
+
+    version=tmp_path/'artifacts'/'e'/'cells'/'c'/'v1';version.mkdir(parents=True)
+    events=[]
+    def event(op,**extra):events.append(dict(operation=op,status='completed',**extra))
+    def obs(z):return {'robot0_left_eef_pos':[0,0,z]}
+    for name in ('base','open','pregrasp','descend','close','lift'):
+        event('get_observation',observation=obs(1.05))
+    event('find_objects',objects=[{'name':'obj','position':[0,0,.9]}])
+    for name in ('carry_lift','carry_base','carry_xy','lower','release'):
+        event('get_observation',observation=obs(1.05))
+    event('move_delta',source='left_arm');event('move_delta',source='left_arm')
+    event('get_observation',observation=obs(1.10))
+    event('find_objects',objects=[{'name':'obj','position':[0,0,.9]}])
+    (version/'public-feedback.json').write_text(json.dumps({'action_trace':events}))
+    carry={**sink,'sink_rim_top_source':'test','carry_clearance_m':.05,
+           'release_clearance_m':.05,'retreat_m':.05}
+    result=summarize(tmp_path,102,(0,.25,0),'movable_objects',False,1.,carry=carry)
+    stages={stage['stage']:stage for stage in result['stages']}
+    assert [stages[name]['public_status'] for name in ('lower','release','retreat','observe')]==['completed']*4
+    assert stages['lower']['sdk_calls']==1 and stages['lower']['certification_count']==0
+    assert stages['retreat']['certification_count']==2
+    assert result['carry']['retreat_m']==.05
+    assert '释放后上抬=`0.05`' in markdown(result)
+
+
+@pytest.mark.parametrize('option,value',[
+    ('--carry-clearance-m','0.01'),('--carry-clearance-m','0.31'),
+    ('--carry-clearance-m','nan'),('--release-clearance-m','0.01'),
+    ('--release-clearance-m','0.31'),('--release-clearance-m','nan'),
+    ('--retreat-m','0'),('--retreat-m','0.201'),('--retreat-m','0.03'),
+    ('--retreat-m','inf')])
+def test_invalid_carry_heights_rejected(option,value):
+    with pytest.raises(SystemExit):
+        main(['--base-shift','0,.25,0',option,value,'--dry-run'])
+
+
+def test_release_must_not_exceed_carry():
+    with pytest.raises(SystemExit):
+        main(['--base-shift','0,.25,0','--carry-clearance-m','.05',
+              '--release-clearance-m','.08','--dry-run'])
+
+
+def test_carry_cli_passes_clearances_to_policy(monkeypatch,tmp_path,capsys):
+    import numpy as np
+    from benchmarks.attention_harness.diagnostics import object_proxy_measure
+    def fixture(seed,out,robot_config,include_sink=False):
+        out.mkdir(parents=True)
+        return {'mount_pose_world':np.eye(4).tolist(),
+                'diagnostic_truth':{'position_world_m':[0,0,.9],
+                    'z_range_world_m':[.88,.92], 'sink_pos_world_m':[0,0,1.],
+                    'sink_rim_top_world_m':1.,'sink_rim_top_source':'test',
+                    'sink_xy_aabb_world_m':[[-.2,.2],[-.2,.2]],
+                    'sink_collision_geom_count':1}}
+    monkeypatch.setattr(object_proxy_measure,'reset_diagnostic_fixture',fixture)
+    assert main(['--base-shift','0,.25,0','--grasp-quat','0,0,0,1',
+                 '--oracle-from-reset','--carry','--dry-run','--dry-run-reset',
+                 '--out',str(tmp_path/'result'),'--carry-clearance-m','.05',
+                 '--release-clearance-m','.05','--retreat-m','.05'])==0
+    output=capsys.readouterr().out
+    assert '"carry_clearance_m": 0.05' in output
+    assert 'safe_z = max(eef[2], sink_rim_top + 0.05)' in output
+    assert 'lower_z = sink_rim_top + 0.05' in output
+    assert 'for k in range(2):\n    left_arm.move_delta(0.0,0.0,0.025)' in output
+
 def test_steps_compose_and_policy_is_sdk_valid():
     for shift in ((0,.3,0),(.3,.2,.4),(-.4,.5,-.6)):
         steps=base_steps(shift);x=y=yaw=0.

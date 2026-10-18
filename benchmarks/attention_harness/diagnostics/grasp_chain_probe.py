@@ -338,16 +338,19 @@ def carry_auto_shift(mount_pose_world, banana_pos, sink_pos, grasp_base_yaw=0.):
     local[:2]=[c*local[0]+s*local[1],-s*local[0]+c*local[1]]
     return (float(local[0]),float(local[1]),0.)
 
-def carry_policy_source(source, sink, shift):
+def carry_policy_source(source, sink, shift, carry_clearance_m=.20, release_clearance_m=.08, retreat_m=.10):
     """Append a diagnostic placement after the original held checkpoint."""
     moves=base_steps(shift) if any(shift) else []
     target=sink['sink_pos_world_m']
     rim=sink['sink_rim_top_world_m']
+    carry_literal='0.20' if carry_clearance_m==.20 else repr(carry_clearance_m)
+    release_literal='0.08' if release_clearance_m==.08 else repr(release_clearance_m)
+    retreat_steps=round(retreat_m/.025)
     lines=[
         '# 使用仿真真值,仅诊断',
         f'sink_target = {target!r}', f'sink_rim_top = {rim!r}',
         "eef = obs_lift['robot0_left_eef_pos']",
-        'safe_z = max(eef[2], sink_rim_top + 0.20)',
+        f'safe_z = max(eef[2], sink_rim_top + {carry_literal})',
         'distance_z = safe_z-eef[2]',
         'n = int(distance_z/0.029)+1 if distance_z else 0',
         "assert calls+n+1 <= 80, 'SDK call budget exceeded'",
@@ -370,7 +373,7 @@ def carry_policy_source(source, sink, shift):
         '    left_arm.move_delta(step[0],step[1],0.0)', '    calls += 1',
         '    obs_carry_base = sensors.get_observation()', '    calls += 1',
         'obs_carry_xy = sensors.get_observation()', 'calls += 1',
-        'lower_z = sink_rim_top + 0.08',
+        f'lower_z = sink_rim_top + {release_literal}',
         "eef = obs_carry_xy['robot0_left_eef_pos']",
         'distance_z = lower_z-eef[2]',
         'n = int(abs(distance_z)/0.029)+1 if distance_z else 0',
@@ -382,8 +385,8 @@ def carry_policy_source(source, sink, shift):
         'obs_lower = sensors.get_observation()', 'calls += 1',
         'left_gripper.open()', 'calls += 1',
         'obs_release = sensors.get_observation()', 'calls += 1',
-        "assert calls+6 <= 80, 'SDK call budget exceeded'",
-        'for k in range(4):',
+        f"assert calls+{retreat_steps+2} <= 80, 'SDK call budget exceeded'",
+        f'for k in range({retreat_steps}):',
         '    left_arm.move_delta(0.0,0.0,0.025)', '    calls += 1',
         'obs_retreat = sensors.get_observation()', 'calls += 1',
         'objects_final = sensors.find_objects()', 'calls += 1',
@@ -560,10 +563,10 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
                 pos=obs.get('robot0_left_eef_pos') if isinstance(obs,dict) else None
                 if pos is None:continue
                 rim=carry['sink_rim_top_world_m']
-                if name=='carry_lift' and pos[2] < rim+.20-.006:continue
+                if name=='carry_lift' and pos[2] < rim+carry.get('carry_clearance_m',.20)-.006:continue
                 if name=='carry_xy' and math.dist(pos[:2],carry['sink_pos_world_m'][:2])>.006:continue
-                if name=='lower' and abs(pos[2]-(rim+.08))>.006:continue
-                if name=='retreat' and pos[2] < rim+.18-.006:continue
+                if name=='lower' and abs(pos[2]-(rim+carry.get('release_clearance_m',.08)))>.006:continue
+                if name=='retreat' and pos[2] < rim+carry.get('release_clearance_m',.08)+carry.get('retreat_m',.10)-.006:continue
             if isinstance(obs,dict):
                 last_eef=obs.get('robot0_left_eef_pos',last_eef)
                 last_gripper=obs.get('robot0_left_gripper_qpos',last_gripper)
@@ -680,7 +683,8 @@ def markdown(row):
               f"认证证书：`{json.dumps(row['certificates'],ensure_ascii=False)}`。",'']
     if 'carry' in row:
         lines += [f"原生评估：success=`{row['native_success']}`，status=`{row['native_status']}`；最终物体位置=`{row['object_final_pos']}`；物体在水槽（启发式）=`{row['object_in_sink']}`。",'',
-                  f"水槽边沿高度=`{row['carry']['sink_rim_top_world_m']}` m，来源：{row['carry']['sink_rim_top_source']}。使用仿真真值,仅诊断。",'']
+                  f"水槽边沿高度=`{row['carry']['sink_rim_top_world_m']}` m，来源：{row['carry']['sink_rim_top_source']}。使用仿真真值,仅诊断。",'',
+                  f"搬运过渡高度余量=`{row['carry'].get('carry_clearance_m',.20)}` m；释放高度余量=`{row['carry'].get('release_clearance_m',.08)}` m；释放后上抬=`{row['carry'].get('retreat_m',.10)}` m。",'']
     if 'steps' in row:
         lines += ['| 步号 | 增量 m / rad | 公开结果 | 失败原因 | 证书查询数 | 证书耗时 s | 目标末端位置 / xyzw |',
                   '| ---: | --- | --- | --- | ---: | ---: | --- |']
@@ -739,10 +743,18 @@ def _main(argv=None):
     p.add_argument('--oracle-from-reset',action='store_true',help='read target geometry once at real reset; diagnostic only')
     p.add_argument('--carry',action='store_true',help='append diagnostic carry, release and retreat')
     p.add_argument('--carry-base-shift',default='auto',help='DX,DY,DYAW in mount frame or auto')
+    p.add_argument('--carry-clearance-m',type=float,default=.20,metavar='C')
+    p.add_argument('--release-clearance-m',type=float,default=.08,metavar='R')
+    p.add_argument('--retreat-m',type=float,default=.10,metavar='T')
     p.add_argument('--dry-run-reset',action='store_true',help='read-only reset for carry geometry self-check')
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
     args=p.parse_args(argv)
+    carry_clearance,release_clearance,retreat_distance=args.carry_clearance_m,args.release_clearance_m,args.retreat_m
+    if not (math.isfinite(carry_clearance) and .02<=carry_clearance<=.30):p.error('--carry-clearance-m must be in [0.02, 0.30]')
+    if not (math.isfinite(release_clearance) and .02<=release_clearance<=.30 and release_clearance<=carry_clearance):p.error('--release-clearance-m must be in [0.02, 0.30] and <= --carry-clearance-m')
+    if not (math.isfinite(retreat_distance) and 0<retreat_distance<=.20 and abs(retreat_distance/.025-round(retreat_distance/.025))<1e-9):
+        p.error('--retreat-m must be in (0, 0.20] and a multiple of 0.025')
     if args.budget_scale is not None:os.environ[SOURCE]=args.budget_scale
     if SOURCE in os.environ:os.environ[MARKER]='1'
     try:override=diagnostic_budget()
@@ -792,13 +804,15 @@ def _main(argv=None):
             cy,sy=math.cos(carry_shift[2]),math.sin(carry_shift[2])
             sink_after=np.array([[cy,sy],[-sy,cy]])@(sink_at_grasp-carry_shift[:2])
             carry.update(base_shift_mount=carry_shift,banana_relative_mount_at_grasp_m=banana_at_grasp.tolist(),
-                sink_relative_mount_after_shift_m=sink_after.tolist())
+                sink_relative_mount_after_shift_m=sink_after.tolist(),carry_clearance_m=carry_clearance,
+                release_clearance_m=release_clearance,retreat_m=retreat_distance)
         source=(oriented_policy_source(shift,quat,oracle,rotation_step=args.rotation_step) if args.sequence=='rotate-first' else
                 sequenced_policy_source(shift,quat,oracle,sequence=args.sequence,rotation_step=args.rotation_step)) if quat else policy_source(shift,args.tilt)
         if quat:
             source=variant_policy_source(source,quat,offset_mm=args.grasp_offset_mm,
                 z_offset_mm=args.grasp_z_offset_mm,lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)
-        if args.carry:source=carry_policy_source(source,carry,carry_shift)
+        if args.carry:source=carry_policy_source(source,carry,carry_shift,
+                                                carry_clearance,release_clearance,retreat_distance)
         if override:
             source=source.replace("<= 75, 'SDK call budget exceeded'",f"<= {policy_limit(True)}, 'SDK call budget exceeded'")
             validate_generated_policy(source)
