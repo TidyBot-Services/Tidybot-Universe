@@ -250,10 +250,11 @@ class DevMainBridge:
             if sha(ref['uri'])!=ref['sha256']:raise DevConflict('display evidence drift')
             return Path(ref['uri']).read_text() if text else json.loads(Path(ref['uri']).read_bytes())
         rows=[]
+        from .dev_request_view import display_eval_review
         for v in c['versions']:
             j=next((j for j in c['jobs'] if j['version']==v['version'] and j['kind']=='execute'),None)
             receipt=(j.get('receipt') or j.get('review_evidence') or {}) if j else {};bundle=read(receipt.get('bundle'))
-            rows.append(dict(v,source_text=read(v['source'],True),diff_text=read(v.get('diff'),True),decision_content=read(v.get('decision')),
+            rows.append(dict(v,evaluator_review=display_eval_review(c,v['version']),source_text=read(v['source'],True),diff_text=read(v.get('diff'),True),decision_content=read(v.get('decision')),
                 help_content=read(v.get('help')),public_feedback=read(receipt.get('public_feedback')),
                 independent_result=read(bundle['artifacts']['native_result']) if bundle else None,recording=bundle.get('recording') if bundle else None,
                 execution_state=j['state'] if j else 'not_dispatched'))

@@ -27,7 +27,7 @@ def normalize_configuration(selection):
  from .dev_advisor_proxy import normalize as normalize_advisor,default_config as advisor_default
  p['eval_agent']=normalize_eval(selection.get('eval_agent',eval_default(False)))
  p['advisor_proxy']=normalize_advisor(selection.get('advisor_proxy',advisor_default(False)))
- if p['eval_agent']['model']==p['advisor_proxy']['model']:raise ValueError('Eval and Advisor models must differ')
+ independent_eval_advisor(p['eval_agent'],p['advisor_proxy'])
  p['help_budget']=selection.get('help_budget',1)
  for k in ['target_depth','target_valid_executions','max_versions','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request']:
   if type(p[k]) is not int or p[k]<1:raise ValueError('positive integer configuration required: '+k)
@@ -39,6 +39,19 @@ def normalize_configuration(selection):
  if tier=='dev':p['budget_tier']='dev'
  if p['max_input_bytes_per_request']>30000:raise ValueError('public input contract exceeded')
  return p
+
+def independent_eval_advisor(evaluation,advisor):
+ """The only same-model exception: distinct prompts, cache namespaces and calls."""
+ if evaluation['model']==advisor['model'] and (
+  evaluation['prompt_version']==advisor['prompt_version'] or
+  evaluation['prompt_sha256']==advisor['prompt_sha256'] or
+  evaluation['cache_version']==advisor['cache_version'] or
+  not evaluation.get('cache_namespace') or not advisor.get('cache_namespace') or
+  evaluation['cache_namespace']==advisor['cache_namespace'] or
+  not evaluation.get('session_namespace') or not advisor.get('session_namespace') or
+  evaluation['session_namespace']==advisor['session_namespace']):
+  raise ValueError('Eval and Advisor sharing a model require distinct prompts, cache namespaces and session namespaces')
+ return True
 def require_scene_gate(mode,selection,tasks,seeds):
  """Experiment-mode runs must start every cell from the registered physical scene.
 

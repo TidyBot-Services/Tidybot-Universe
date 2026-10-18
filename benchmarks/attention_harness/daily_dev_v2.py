@@ -13,7 +13,16 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
 # Five versions and five requests fit the visible defaults. The SDK and execution
 # ceilings come from the same Dev tier task limits used by the worker.
-DEFAULT_CELL=dict(dev_calls=5,advisor_calls=5,eval_calls=5,provider_tokens=1000000,input_tokens=850000,output_tokens=150000,executions=5,sdk_calls=5*task_limits()['sdk_calls'],control_steps=5*task_limits()['control_steps'],help_credits=5,help_count=5,help_wait_seconds=5*120+5*300,model_seconds=1800,execution_seconds=5*(task_limits()['attempt_seconds']+60*DEV_TIER_BUDGET_SCALE))
+DEFAULT_CELL=dict(dev_calls=5,advisor_calls=5,eval_calls=5,provider_tokens=1000000,input_tokens=850000,output_tokens=150000,executions=5,sdk_calls=5*task_limits()['sdk_calls'],control_steps=5*task_limits()['control_steps'],help_credits=5,help_count=5,help_wait_seconds=5*120+5*300,hint_human_seconds=7200,model_seconds=1800,execution_seconds=5*(task_limits()['attempt_seconds']+60*DEV_TIER_BUDGET_SCALE))
+
+def bind_daily_advisor(selection,previous_selection):
+    """Freeze visual Advisor for new daily runs; preserve old daily manifests."""
+    if selection.get('mode','experiment')!='experiment':
+        return selection
+    if Path(previous_selection).is_file() and 'advisor_proxy' not in json.loads(Path(previous_selection).read_bytes()):
+        return selection
+    from .dev_advisor_proxy import default_config
+    return {**selection,'advisor_proxy':selection.get('advisor_proxy',default_config(True))}
 
 def registered_scene_seeds():
     from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract
@@ -74,6 +83,7 @@ class DailyDevV2:
         key=selection.get('request_key','')
         if not re.fullmatch(r'[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
         eid='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24];directory,path,budget=self.paths(eid)
+        selection=bind_daily_advisor(selection,directory/'selection.json')
         with self.mutex:
             # Same goal cannot silently reset consumption in another ledger.
             for old in self.root.glob('devexp-*/authorization.json'):
@@ -221,11 +231,9 @@ class DailyDevV2:
         for v in c['versions']:
             j=next((j for j in c['jobs'] if j['version']==v['version'] and j['kind']=='execute'),None);receipt=(j.get('receipt') or j.get('review_evidence') or {}) if j else {}
             bundle=read(receipt.get('bundle'))
+            from .dev_request_view import display_eval_review
             review_path=Path(v['source']['uri']).parent/'evaluator-review.json'
-            review_content=None
-            if review_path.is_file():
-                try:review_content=json.loads(review_path.read_bytes())
-                except (OSError,ValueError):pass
+            review_content=display_eval_review(c,v['version'],legacy_path=review_path)
             rows.append(dict(v,evaluator_review=review_content,source_text=read(v['source'],True),diff_text=read(v['diff'],True),decision_content=read(v['decision']),help_content=read(v.get('help')),public_feedback=read(receipt.get('public_feedback')),independent_result=read(bundle['artifacts']['native_result']) if bundle else None,recording=bundle.get('recording') if bundle else None,execution_state=j['state'] if j else 'not_dispatched'))
         return dict(c,versions=rows,ledger=s.export_ledger())
     def post(self,path,body,*,human_authorized=False):

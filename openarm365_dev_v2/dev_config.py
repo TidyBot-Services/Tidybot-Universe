@@ -121,6 +121,8 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
     if 'advisor_proxy' in c:
         from benchmarks.attention_harness.dev_advisor_proxy import normalize
         expected['advisor_proxy']=normalize(c['advisor_proxy'])
-    if 'eval_agent' in expected and 'advisor_proxy' in expected and expected['eval_agent']['model']==expected['advisor_proxy']['model']:raise ValueError('Eval and Advisor models must differ')
+    if 'eval_agent' in expected and 'advisor_proxy' in expected:
+        from benchmarks.attention_harness.dev_configuration import independent_eval_advisor
+        independent_eval_advisor(expected['eval_agent'],expected['advisor_proxy'])
     if c!=expected or any(type(c[k]) is not type(v) for k,v in expected.items()):raise ValueError('Dev configuration mismatch')
     return c

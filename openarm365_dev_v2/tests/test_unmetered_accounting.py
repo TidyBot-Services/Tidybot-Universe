@@ -11,7 +11,7 @@ from benchmarks.attention_harness.dev_ui_server import budget_preview
 from benchmarks.attention_harness.free_models import FREE_MODELS, is_unmetered_model
 
 
-def ledger(tmp_path, *, eval_model='parcc/Qwen', model_seconds=30):
+def ledger(tmp_path, *, eval_model='parcc/Qwen', advisor_model=None, model_seconds=30):
     store=DevV2Store(tmp_path/'ledger.sqlite')
     manifest=tmp_path/'manifest.json'
     manifest.write_text(json.dumps({'max_versions':5}))
@@ -20,16 +20,43 @@ def ledger(tmp_path, *, eval_model='parcc/Qwen', model_seconds=30):
     budget=dict(limits)
     with store.tx() as db:
         store.put(db,'goals',GOAL,dict(limits=limits,used={k:0 for k in RESOURCES},real_started_at=None,wall_limit=1000,opening=[]))
-        store.put(db,'experiments','e',dict(cancelled=False,selection={'eval_agent':{'enabled':True,'model':eval_model}},manifest={'uri':str(manifest)}))
+        selection={'eval_agent':{'enabled':True,'model':eval_model}}
+        if advisor_model is not None:selection['advisor_proxy']={'model':advisor_model}
+        store.put(db,'experiments','e',dict(cancelled=False,selection=selection,manifest={'uri':str(manifest)}))
         store.put(db,'cells','a',dict(experiment_id='e',state='running',owner=owner,used={k:0 for k in RESOURCES},budget=budget))
     return store,owner
 
 
+@pytest.mark.parametrize('proxy,planner,expected,rejected',[
+    (None, False, 'parcc/GLM', 'parcc/Qwen'),
+    ({'enabled':False,'model':'parcc/Qwen'}, False, 'parcc/GLM', 'parcc/Qwen'),
+    ({'enabled':False,'model':'parcc/Qwen'}, True, 'parcc/GLM', 'parcc/Qwen'),
+    ({'enabled':True,'model':'parcc/Qwen'}, False, 'parcc/Qwen', 'parcc/GLM'),
+    ({'enabled':True,'model':'parcc/Qwen'}, True, 'parcc/Qwen', 'parcc/GLM'),
+    ({'enabled':True,'model':'parcc/GLM'}, False, 'parcc/GLM', 'parcc/Qwen'),
+])
+def test_advisor_model_matches_frozen_route(tmp_path,proxy,planner,expected,rejected):
+    store,_=ledger(tmp_path)
+    with store.tx() as db:
+        experiment=store.get(db,'experiments','e')
+        if proxy is not None:experiment['selection']['advisor_proxy']=proxy
+        store.put(db,'experiments','e',experiment)
+        cell=store.get(db,'cells','a')
+        if planner:cell['planner_features']={'human_wait_seconds':1}
+        store.put(db,'cells','a',cell)
+    reservation={'advisor_calls':1}
+    with pytest.raises(DevConflict,match='model differs from fixed provider configuration'):
+        store.reserve('a',1,'advisor',reservation,model_name=rejected)
+    assert not store.cell('a')['jobs']
+    assert store.reserve('a',1,'advisor',reservation,model_name=expected)['kind']=='advisor'
+
+
 @pytest.mark.parametrize('kind,model,call_key',[
     ('model','parcc/GLM','dev_calls'),('advisor','parcc/GLM','advisor_calls'),
+    ('advisor','parcc/Qwen','advisor_calls'),
     ('eval','parcc/Qwen','eval_calls')])
 def test_free_model_zero_token_goal_reserves_settles_and_exports(tmp_path,kind,model,call_key):
-    store,owner=ledger(tmp_path)
+    store,owner=ledger(tmp_path,advisor_model=model if kind=='advisor' else None)
     reservation={call_key:1,'provider_tokens':100,'input_tokens':70,'output_tokens':30,'model_seconds':1}
     if kind=='eval':
         store.reserve_check('a',reservation,unmetered_eval=True,model_name=model)
@@ -93,13 +120,10 @@ def test_other_eval_model_returns_to_metered_limits(tmp_path):
 
 @pytest.mark.parametrize('kind',('model','advisor'))
 def test_other_dev_or_advisor_model_returns_to_metered_tokens(tmp_path,monkeypatch,kind):
-    store,_=ledger(tmp_path)
+    store,_=ledger(tmp_path,advisor_model='other' if kind=='advisor' else None)
     if kind=='model':
         from benchmarks.attention_harness.dev_experiment import MODEL
         monkeypatch.setitem(MODEL,'model','other')
-    else:
-        from benchmarks.attention_harness import dev_advisor_proxy
-        monkeypatch.setattr(dev_advisor_proxy,'MODEL','other')
     with pytest.raises(DevBudgetExhausted):
         store.reserve('a',1,kind,{'provider_tokens':1},model_name='other')
 

@@ -15,6 +15,8 @@ from benchmarks.attention_harness.dev_experiment import create,run,GOAL
 from benchmarks.attention_harness.dev_v2_loop import question_for
 from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.parcc_client import ParccResponse
+from benchmarks.attention_harness.dev_request_view import build_request_view,human_seconds,shown_words
+from benchmarks.attention_harness.free_models import is_unmetered_model,limited_resources
 from openarm365_dev_v2.tests.fakes import Client,Runner
 
 
@@ -38,18 +40,130 @@ def evidence():
 
 def test_roles_models_and_vision_boundary(tmp_path):
     ec=eval_agent.normalize({});ac=dev_advisor_proxy.normalize({})
-    assert ec['model']!=ac['model']
-    with pytest.raises(ValueError):dev_advisor_proxy.normalize({'model':ec['model']})
-    eval_client=FakeClient('EVAL_RESULT: {"passed": false, "feedback": "frame #1: motion stopped"}')
+    assert ec['model']==ac['model']=='parcc/Qwen'
+    assert ec['prompt_sha256']!=ac['prompt_sha256'] and ec['cache_version']!=ac['cache_version']
+    eval_client=FakeClient('{"passed": false, "reason": "frame #1: motion stopped", "reference_suggestion": "Try smaller motion"}')
     review=eval_agent.ask(evidence(),ec,eval_client,cache_dir=tmp_path)
     assert review['passed'] is False and review['mode']=='vision'
     assert any(isinstance(x.get('content'),list) for x in eval_client.calls[0]['messages'])
     advisor_client=FakeClient('Retry with a smaller motion.')
-    hint=dev_advisor_proxy.ask(evidence(),ac,advisor_client,cache_dir=tmp_path)
-    assert hint['mode']=='text_only' and hint['feedback'].startswith('Retry')
-    assert all(isinstance(x['content'],str) for x in advisor_client.calls[0]['messages'])
+    from benchmarks.attention_harness.dev_request_view import build_request_view
+    request=build_request_view(task=evidence()['task'],question='What stopped?',frames=evidence()['frames'],shown_video_seconds=2)
+    hint=dev_advisor_proxy.ask(request,ac,advisor_client,cache_dir=tmp_path)
+    assert hint['mode']=='vision' and hint['feedback'].startswith('Retry')
+    assert isinstance(advisor_client.calls[0]['messages'][1]['content'],list)
     assert eval_agent.ask(evidence(),ec,FakeClient('bad'),cache_dir=tmp_path)['cache_hit']
     with pytest.raises(eval_agent.EvalUnavailable):eval_agent.ask({**evidence(),'frames':[]},ec,FakeClient('bad'))
+
+
+def test_eval_v3_fact_and_advice_separation_and_missing_fields():
+    parsed=eval_agent.parse_v3(json.dumps({'passed':False,'reason':'Trace event #2 stopped. Try a smaller move.','reference_suggestion':'Inspect the path.'}))
+    assert parsed['reason']=='Trace event #2 stopped.'
+    assert 'Try a smaller move.' in parsed['reference_suggestion'] and parsed['reason_advice_moved']
+    for value in ({'passed':True},{'reason':'frame #1 stopped'},
+                  {'passed':False,'reason':'建议调整夹爪。'}):
+        with pytest.raises(ValueError):eval_agent.parse_v3(json.dumps(value,ensure_ascii=False))
+
+
+def test_dev_sees_only_reason_for_every_policy(tmp_path,monkeypatch):
+    store,experiment,_=_loop_setup(tmp_path,monkeypatch,mode='interactive')
+    from benchmarks.attention_harness.dev_v2_loop import model_messages
+    from benchmarks.attention_harness.dev_experiment import verify_manifest
+    config=verify_manifest(experiment)['configs']['open_cabinet:102']
+    review={'passed':False,'reason':'frame #1 stopped.','reference_suggestion':'SECRET_SUGGESTION'}
+    messages=[]
+    for policy in ('autonomous','reactive_help','full_trace_aware_attention_planner'):
+        value=model_messages(config,'',{'eval_review':review},{'policy_id':policy,'action':'continue'}, {},True)
+        joined=json.dumps(value)
+        assert 'SECRET_SUGGESTION' not in joined and 'frame #1 stopped.' in joined
+        messages.append(json.loads(value[1]['content'])['public_feedback']['eval_review'])
+    assert messages[0]==messages[1]==messages[2]=={'passed':False,'reason':'frame #1 stopped.'}
+
+
+def test_ui_review_projection_keeps_reason_and_suggestion_separate(tmp_path):
+    from benchmarks.attention_harness.dev_request_view import display_eval_review
+    from benchmarks.attention_harness.dev_loop import sha
+    path=tmp_path/'eval-review.json'
+    path.write_text(json.dumps({'status':'completed','passed':False,'reason':'frame #1 stopped.',
+                                'reference_suggestion':'Try smaller motion.'}))
+    frozen=path.read_bytes()
+    cell={'jobs':[{'kind':'eval','version':1,'state':'settled','receipt':{'eval_review':{'uri':str(path),'sha256':sha(path)}}}]}
+    review=display_eval_review(cell,1)
+    assert review['reason']=='frame #1 stopped.' and review['reference_suggestion']=='Try smaller motion.'
+    assert 'Reference suggestion: Try smaller motion.' in review['feedback']
+    assert path.read_bytes()==frozen
+
+
+def test_request_view_is_only_advisor_input_and_cache_uses_frames(tmp_path):
+    frames=[{**evidence()['frames'][0],'view':view,'sha256':str(i)*64} for i,view in enumerate(('external','side','top','left_wrist','right_wrist'),1)]
+    view=build_request_view(task={'task_id':'fake','task_prompt':'Move an object','native_success':True},question='What stopped?',
+        frames=frames,events=[{'operation':'run_policy','status':'failed','error':'motion rejected','native_success':True}],
+        diff='-old\n+new',eval_review={'passed':False,'reason':'frame #1 stopped','reference_suggestion':'Try smaller motion'},shown_video_seconds=3)
+    def keys(value):
+        if isinstance(value,dict):
+            for key,item in value.items():yield key;yield from keys(item)
+        elif isinstance(value,list):
+            for item in value:yield from keys(item)
+    assert not {'native_success','native_result','reward','oracle'} & set(keys(view))
+    assert {f['view'] for f in view['frames']}=={'overview','side','top','left_wrist','right_wrist'}
+    assert view['steps'][0]['label']=='The robot plan stopped' and view['steps'][0]['stop_reason']=='Stopped: motion rejected'
+    client=FakeClient('Move more slowly.');config=dev_advisor_proxy.normalize({})
+    result=dev_advisor_proxy.ask(view,config,client,cache_dir=tmp_path)
+    sent=client.calls[0]['messages'][1]['content']
+    assert json.loads(sent[0]['text'])=={**{k:v for k,v in view.items() if k!='frames'},'frame_manifest':[{k:f[k] for k in ('view','sha256','filename')} for f in view['frames']]}
+    assert len([part for part in sent if part['type']=='image_url'])==5
+    assert result['frames'][0]['sha256']==view['frames'][0]['sha256']
+    assert result['hint_human_seconds']==human_seconds(view,result['feedback'])['hint_human_seconds']
+    assert result['shown_words']==shown_words(view) and result['answer_words']==len('Movemoreslowly.')
+    assert dev_advisor_proxy.ask(view,config,client,cache_dir=tmp_path)['cache_hit']
+    changed={**view,'frames':[{**view['frames'][0],'sha256':'f'*64},*view['frames'][1:]]}
+    assert dev_advisor_proxy.ask(changed,config,client,cache_dir=tmp_path)['cache_key']!=result['cache_key']
+
+
+def test_independence_and_free_qwen_accounting():
+    from benchmarks.attention_harness.dev_configuration import independent_eval_advisor
+    ec=eval_agent.normalize({});ac=dev_advisor_proxy.normalize({})
+    assert independent_eval_advisor(ec,ac)
+    for key in ('prompt_version','prompt_sha256','cache_version','cache_namespace','session_namespace'):
+        with pytest.raises(ValueError):independent_eval_advisor(ec,{**ac,key:ec[key]})
+    assert is_unmetered_model(ac['model'])
+    assert not {'eval_calls','provider_tokens','input_tokens','output_tokens'} & set(limited_resources(eval_config=ec,model_names=('parcc/GLM',ac['model'])))
+
+
+def test_old_v2_manifest_and_artifact_read_without_rewrite(tmp_path,monkeypatch):
+    import hashlib
+    from benchmarks.attention_harness.dev_experiment import verify_manifest
+    store,experiment,_=_loop_setup(tmp_path,monkeypatch,mode='interactive')
+    manifest=json.loads(Path(experiment['manifest']['uri']).read_bytes());path=tmp_path/'legacy-manifest.json'
+    old_eval={**eval_agent.default_config(),'prompt_version':eval_agent.OLD_PROMPT_VERSION,
+              'prompt_sha256':hashlib.sha256(eval_agent.SYSTEM_V2.encode()).hexdigest()}
+    old_eval.pop('cache_namespace');old_eval.pop('session_namespace')
+    old_advisor={**dev_advisor_proxy.default_config(),'model':dev_advisor_proxy.OLD_MODEL,
+                 'mode':'text_only','prompt_version':dev_advisor_proxy.OLD_PROMPT_VERSION,
+                 'prompt_sha256':hashlib.sha256(dev_advisor_proxy.OLD_SYSTEM.encode()).hexdigest(),
+                 'cache_version':dev_advisor_proxy.OLD_CACHE_VERSION,'max_selected_frames':4}
+    old_advisor.pop('cache_namespace');old_advisor.pop('session_namespace')
+    manifest['selection'].update(eval_agent=old_eval,advisor_proxy=old_advisor)
+    for config in manifest['configs'].values():config.update(eval_agent=old_eval,advisor_proxy=old_advisor)
+    path.write_text(json.dumps(manifest,ensure_ascii=False))
+    frozen=path.read_bytes();experiment['manifest']={'uri':str(path),'sha256':hashlib.sha256(frozen).hexdigest()}
+    assert verify_manifest(experiment)['selection']['eval_agent']['prompt_version']==eval_agent.OLD_PROMPT_VERSION
+    artifact=tmp_path/'old-review.json';artifact.write_text('{"passed": false, "feedback": "trace event #1 stopped"}')
+    old_bytes=artifact.read_bytes()
+    assert eval_agent.visible_review(json.loads(artifact.read_bytes()))=={'passed':False,'reason':'trace event #1 stopped','reference_suggestion':''}
+    assert path.read_bytes()==frozen and artifact.read_bytes()==old_bytes
+
+
+def test_new_daily_binds_visual_advisor_and_old_daily_stays_frozen(tmp_path):
+    from benchmarks.attention_harness.daily_dev_v2 import bind_daily_advisor,DEFAULT_CELL
+    selection={'eval_agent':{'enabled':True,'model':'parcc/Qwen'}}
+    path=tmp_path/'selection.json'
+    fresh=bind_daily_advisor(selection,path)
+    assert fresh['advisor_proxy']['model']=='parcc/Qwen' and fresh['advisor_proxy']['mode']=='vision'
+    assert DEFAULT_CELL['hint_human_seconds']>0
+    path.write_text(json.dumps(selection))
+    frozen=path.read_bytes()
+    assert bind_daily_advisor(selection,path)==selection and path.read_bytes()==frozen
 
 
 def test_eval_controls_policy_and_diagnostic_fallback():
@@ -158,16 +272,17 @@ class TimedFrameRunner(FrameRunner):
 
 
 class RoutedClient(Client):
-    def __init__(self,passed=False,vision_down=False):
-        super().__init__();self.passed=passed;self.vision_down=vision_down;self.role_calls=[];self.timeout_seconds=90
+    def __init__(self,passed=False,vision_down=False,advisor_down=False):
+        super().__init__();self.passed=passed;self.vision_down=vision_down;self.advisor_down=advisor_down;self.role_calls=[];self.timeout_seconds=90
     def chat(self,**kw):
         prompt=kw['messages'][0]['content']
         if prompt.startswith('You are the system Eval agent'):
             self.role_calls.append(('eval',kw['model']))
             if self.vision_down:raise TimeoutError('fake vision failure')
-            content='EVAL_RESULT: '+json.dumps({'passed':self.passed,'feedback':'frame #1 shows the attempted motion'})
+            content=json.dumps({'passed':self.passed,'reason':'frame #1 shows the attempted motion','reference_suggestion':'Try smaller motion'})
         elif prompt.startswith('You are a human-like robotics advisor'):
             self.role_calls.append(('advisor',kw['model']))
+            if self.advisor_down:raise TimeoutError('fake advisor vision failure')
             content='Try a smaller motion.'
         else:return super().chat(**kw)
         return ParccResponse(kw['model'],content,None,.01,1,{'total_tokens':7,'prompt_tokens':3,'completion_tokens':4})
@@ -193,7 +308,7 @@ def test_per_version_eval_then_one_advisor_hint(tmp_path,monkeypatch):
     cell=result['cells'][0]
     assert cell['state']=='completed' and cell['used']['eval_calls']==2 and cell['used']['advisor_calls']==1
     assert cell['used']['hint_human_seconds']>0 and 'review_human_seconds' not in cell['used']
-    assert client.role_calls==[('eval','parcc/Qwen'),('advisor','parcc/GLM')]
+    assert client.role_calls==[('eval','parcc/Qwen'),('advisor','parcc/Qwen')]
     assert [j for j in cell['jobs'] if j['kind']=='eval' and j['version']==2][0]['receipt']['cache_hit'] is True
     model_packets=[json.loads(call['messages'][1]['content']) for call in client.inputs]
     assert model_packets[1]['public_feedback']['eval_review']['passed'] is False
@@ -220,6 +335,14 @@ def test_eval_vision_failure_invalidates_cell(tmp_path,monkeypatch):
     cell=result['cells'][0]
     assert cell['state']=='condition_invalid' and 'eval_vision_unavailable' in cell['reason']
     assert len(cell['versions'])==1 and cell['used']['advisor_calls']==0
+
+
+def test_advisor_vision_failure_retries_then_invalidates_cell(tmp_path,monkeypatch):
+    store,experiment,budget=_loop_setup(tmp_path,monkeypatch);client=RoutedClient(advisor_down=True)
+    result=run(store,experiment['experiment_id'],max_cells=1,budget_file=budget,client=client,runner_factory=FrameRunner)
+    cell=result['cells'][0]
+    assert cell['state']=='condition_invalid' and cell['reason'].startswith('advisor_vision_unavailable:')
+    assert cell['used']['advisor_calls']==1 and client.role_calls.count(('advisor','parcc/Qwen'))==2
 
 
 def test_interactive_eval_outage_marks_public_fallback(tmp_path,monkeypatch):
@@ -252,7 +375,11 @@ def test_full_planner_targeted_hint_records_sampled_frame(tmp_path,monkeypatch):
     result=run(store,second['experiment_id'],max_cells=1,budget_file=budget,client=client,runner_factory=TimedFrameRunner)
     cell=result['cells'][0];path=Path(cell['versions'][1]['source']['uri']).parent/'advisor-hint.json'
     request=json.loads(path.read_text())
+    archived_view=json.loads(Path(request['request_view']['uri']).read_text())
+    assert archived_view['question']==request['question'] and archived_view['request_kind']=='targeted'
+    assert archived_view['frames'][0]['sha256']==request['frames'][0]['sha256']
     assert request['localization']['status']=='targeted'
     assert request['selected_moments'][0]['frame_index']==2
     assert request['selected_frame_manifest'][0]['sha256']
-    assert request['logical_human_seconds']<request['recording_seconds']+30
+    assert request['logical_human_seconds']==request['hint_human_seconds']
+    assert request['shown_video_seconds']>=0 and request['frames'][0]['sha256']

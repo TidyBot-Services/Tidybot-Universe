@@ -55,6 +55,10 @@ def slot_wall_seconds(manifest):
 
 def create(store,artifact_root,selection):
     validate_selection_fields(selection)
+    from .eval_agent import OLD_PROMPT_VERSION
+    from .dev_advisor_proxy import OLD_PROMPT_VERSION as OLD_ADVISOR_PROMPT_VERSION
+    if selection.get('eval_agent',{}).get('prompt_version')==OLD_PROMPT_VERSION or selection.get('advisor_proxy',{}).get('prompt_version')==OLD_ADVISOR_PROMPT_VERSION:
+        raise ValueError('new experiments require current Eval and Advisor prompts')
     budget_tier=selection.get('budget_tier','dev')
     task_limits(budget_tier)
     v3=bool(set(selection)&FIELDS)

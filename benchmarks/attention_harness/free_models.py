@@ -1,7 +1,7 @@
 """Cost accounting policy for the user-approved free provider models."""
 
-# User decision, 2026-10-18: parcc/GLM (Dev and AdvisorProxy) and
-# parcc/Qwen (Eval) are free. Tokens are recorded but have no cost quota.
+# User decisions, 2026-10-18/19: parcc/GLM (Dev and legacy Advisor)
+# and parcc/Qwen (Eval and visual Advisor) are free. Usage is still recorded.
 FREE_MODELS = frozenset({'parcc/GLM', 'parcc/Qwen'})
 TOKEN_RESOURCES = ('provider_tokens', 'input_tokens', 'output_tokens')
 

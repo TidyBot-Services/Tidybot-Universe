@@ -193,8 +193,11 @@ class DevV2Store:
             if model_name is not None and kind=='eval' and model_name!=exp.get('selection',{}).get('eval_agent',{}).get('model'):raise DevConflict('Eval model differs from frozen selection')
             if model_name is not None and kind in {'model','advisor'}:
                 from .dev_experiment import MODEL
-                from .dev_advisor_proxy import MODEL as ADVISOR_MODEL
-                expected=MODEL['model'] if kind=='model' or c.get('planner_features') else ADVISOR_MODEL
+                proxy=exp.get('selection',{}).get('advisor_proxy') or {}
+                # The request-style Advisor (including planner cells) uses the
+                # fixed Dev provider; only an enabled AdvisorProxy uses its
+                # separately frozen model.
+                expected=proxy['model'] if kind=='advisor' and proxy and proxy.get('enabled',True) else MODEL['model']
                 if model_name!=expected:raise DevConflict('model differs from fixed provider configuration')
             if c['state']!='running' or exp.get('cancelled'):raise DevConflict('cell cannot dispatch')
             goal_id=self.cell_goal(db,c);g=self._goal(db,goal_id)

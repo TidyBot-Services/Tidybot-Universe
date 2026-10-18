@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment, ui_server
+from benchmarks.attention_harness import daily_dev_v2 as daily, dev_advisor_proxy, dev_experiment, eval_agent, ui_server
 from benchmarks.attention_harness.core.dev_store import DevBudgetExhausted, DevConflict
 from benchmarks.attention_harness.core.store import AttentionStore
 from benchmarks.attention_harness.dev_ledger import DevV2Store, RESOURCES, GOAL
@@ -166,8 +166,29 @@ def test_explicit_shared_goal_bridge_cannot_be_replaced_by_daily_root(tmp_path):
 
 
 @pytest.fixture
-def experiment(tmp_path):
-    # Actual offline materialization subprocess, no model, worker or simulator.
+def offline_materialize(monkeypatch):
+    # Exercise real create in this process with only the absent model sources stubbed.
+    from openarm365_dev_v2 import dev_config
+    monkeypatch.setattr(dev_config, 'model_sources', lambda *args, **kwargs: {})
+
+    def materialize(argv, **kwargs):
+        def argument(name):
+            return Path(argv[argv.index(name) + 1])
+        selection = json.loads(argument('--selection').read_bytes())
+        config = selection['configuration']
+        store = DevV2Store(argument('--store'), configuration=dict(
+            goal_id=config['goal_id'], limits=config['experiment_budget'],
+            wall_seconds=config['wall_seconds']))
+        created = dev_experiment.create(store, argument('--artifacts'), selection)
+        argument('--output').write_text(json.dumps(created))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(daily.subprocess, 'run', materialize)
+
+
+@pytest.fixture
+def experiment(tmp_path, offline_materialize):
+    # Actual offline materialization, no model, worker or simulator.
     bridge = daily.DailyDevV2(tmp_path / 'daily', [], per_run_budget=True)
     budget = dict(daily.DEFAULT_CELL)
     body = dict(start=False, selection=dict(request_key='controlled-daily-compatibility',
@@ -194,6 +215,8 @@ def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp
                      tasks=['pick_place_counter_to_sink'])
     body = {'selection': selection, 'start': False}
     bridge = daily.DailyDevV2(tmp_path / 'daily', [], per_run_budget=True)
+    expected = {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
+    expected['advisor_proxy'] = dev_advisor_proxy.normalize(dev_advisor_proxy.default_config(True))
 
     class MaterializationReached(Exception):
         pass
@@ -201,7 +224,8 @@ def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp
     def stop_before_materialization(argv, **kwargs):
         saved = json.loads(Path(argv[argv.index('--selection') + 1]).read_bytes())
         dev_experiment.validate_selection_fields(saved)  # create's exact field gate
-        assert saved == {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
+        assert saved == expected
+        assert set(saved) - (set(selection) - {'human_wait_seconds'}) == {'advisor_proxy'}
         raise MaterializationReached
 
     monkeypatch.setattr(daily.subprocess, 'run', stop_before_materialization)
@@ -215,7 +239,7 @@ def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp
     unknown['selection']['unexpected_field'] = True
     with pytest.raises(ValueError, match='bounded explicit experiment selection required'):
         bridge.create(unknown)
-    assert json.loads(request_file.read_bytes()) == {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
+    assert json.loads(request_file.read_bytes()) == expected
 
     planner = copy.deepcopy(body)
     planner['selection']['planner_features'] = {'human_wait_seconds': 60}
@@ -223,28 +247,38 @@ def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp
         bridge.create(planner)
 
 
+def test_existing_daily_request_without_advisor_keeps_its_selection_and_manifest(experiment, monkeypatch):
+    bridge, body, _, _ = experiment
+    old_body = copy.deepcopy(body)
+    old_body['selection']['request_key'] = 'controlled-old-daily-request'
+    old_body['selection']['configuration']['goal_id'] = 'controlled-old-daily-goal'
+    with monkeypatch.context() as old_code:
+        old_code.setattr(daily, 'bind_daily_advisor', lambda selection, previous: selection)
+        old = bridge.create(old_body)
+    directory = bridge.paths(old['experiment_id'])[0]
+    request_bytes = (directory / 'selection.json').read_bytes()
+    manifest_path = Path(old['manifest']['uri'])
+    manifest_bytes = manifest_path.read_bytes()
+    assert 'advisor_proxy' not in old['selection']
+    assert old['selection']['eval_agent'] == old_body['selection']['eval_agent']
+
+    repeated = bridge.create(old_body)
+    assert repeated['experiment_id'] == old['experiment_id']
+    assert repeated['selection'] == old['selection']
+    assert (directory / 'selection.json').read_bytes() == request_bytes
+    assert manifest_path.read_bytes() == manifest_bytes
+
+
+@pytest.mark.parametrize('mode', ['interactive', 'diagnostic'])
+def test_daily_advisor_binding_does_not_change_non_experiment_modes(tmp_path, mode):
+    selection = {'mode': mode, 'eval_agent': {'enabled': True, 'model': 'parcc/Qwen'}}
+    assert daily.bind_daily_advisor(selection, tmp_path / 'selection.json') == selection
+
+
 @pytest.mark.parametrize('versions,help,model_seconds,wall_seconds',
                          [(5, 5, 1800, 21600), (3, 2, 600, 14400)])
 def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
-        tmp_path, monkeypatch, versions, help, model_seconds, wall_seconds):
-    from openarm365_dev_v2 import dev_config
-
-    # Materialize through the real create function in this process so the
-    # missing sandbox model copy can be replaced by a test-only identity stub.
-    monkeypatch.setattr(dev_config, 'model_sources', lambda *args, **kwargs: {})
-    def materialize(argv, **kwargs):
-        def argument(name):
-            return Path(argv[argv.index(name) + 1])
-        selection = json.loads(argument('--selection').read_bytes())
-        config = selection['configuration']
-        store = DevV2Store(argument('--store'), configuration=dict(
-            goal_id=config['goal_id'], limits=config['experiment_budget'],
-            wall_seconds=config['wall_seconds']))
-        created = dev_experiment.create(store, argument('--artifacts'), selection)
-        argument('--output').write_text(json.dumps(created))
-        return SimpleNamespace(returncode=0)
-    monkeypatch.setattr(daily.subprocess, 'run', materialize)
-
+        tmp_path, monkeypatch, offline_materialize, versions, help, model_seconds, wall_seconds):
     bridge = daily.DailyDevV2(tmp_path / 'daily', [], per_run_budget=True)
     budget = dict(daily.DEFAULT_CELL)
     budget.update(dev_calls=versions, executions=versions, eval_calls=versions,
@@ -259,6 +293,19 @@ def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
                                         max_iterations=versions, wall_seconds=wall_seconds))
     experiment = bridge.create(dict(selection=selection, start=False))
     manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
+    saved_request = {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
+    saved_request['advisor_proxy'] = dev_advisor_proxy.normalize(dev_advisor_proxy.default_config(True))
+    request_file = bridge.paths(experiment['experiment_id'])[0] / 'selection.json'
+    assert json.loads(request_file.read_bytes()) == saved_request
+    expected_eval = eval_agent.normalize(eval_agent.default_config(True))
+    assert experiment['selection']['eval_agent'] == expected_eval
+    assert experiment['selection']['advisor_proxy'] == saved_request['advisor_proxy']
+    assert {k: experiment['selection'][k] for k in saved_request} == {**saved_request, 'eval_agent': expected_eval}
+    assert set(experiment['selection']) - set(saved_request) == {'budget_tier', 'policy_parameters', 'trace_visible'}
+    assert manifest['selection'] == experiment['selection']
+    manifest_bytes = Path(experiment['manifest']['uri']).read_bytes()
+    assert bridge.create(dict(selection=selection, start=False))['experiment_id'] == experiment['experiment_id']
+    assert Path(experiment['manifest']['uri']).read_bytes() == manifest_bytes
     assert manifest['schema'] == 'attentionbench.dev-experiment.v2'
     assert 'model_reserve_seconds' not in manifest
     assert 'planner_features' not in manifest
@@ -287,6 +334,9 @@ def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
     interactive_path = Path(interactive['manifest']['uri'])
     interactive_bytes = interactive_path.read_bytes()
     interactive_manifest = json.loads(interactive_bytes)
+    assert 'advisor_proxy' not in interactive['selection']
+    assert interactive['selection']['eval_agent'] == interactive_selection['eval_agent']
+    assert 'advisor_proxy' not in interactive_manifest['configs']['open_cabinet:102']
     assert 'scene_contract' not in interactive_manifest
     assert 'reproducible_reset' not in interactive_manifest
     assert all('scene_reset_seed' not in c and 'scene_contract' not in c
@@ -299,7 +349,6 @@ def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
     assert 'human_wait_seconds' not in json.loads(next(bridge.root.glob('devexp-*/selection.json')).read_bytes())
 
     eid = experiment['experiment_id']
-    manifest_bytes = Path(experiment['manifest']['uri']).read_bytes()
     store = bridge.store(eid)
     from benchmarks.attention_harness.dev_report import report
     assert report(store, eid)['cells'][0]['fair_conditions_qualified'] is False
@@ -451,7 +500,12 @@ def test_planned_daily_ledger_is_byte_preserved_and_never_dispatched(experiment,
     assert not any(row['used'].values())
     assert store.path.read_bytes() == before
     manifest = json.loads(Path(e['manifest']['uri']).read_bytes())
-    assert manifest['configs']['open_cabinet:101']['eval_agent'] == {'enabled': True, 'model': 'parcc/Qwen'}
+    expected_eval = eval_agent.normalize(eval_agent.default_config(True))
+    expected_advisor = dev_advisor_proxy.normalize(dev_advisor_proxy.default_config(True))
+    assert manifest['selection']['eval_agent'] == expected_eval
+    assert manifest['selection']['advisor_proxy'] == expected_advisor
+    assert manifest['configs']['open_cabinet:101']['eval_agent'] == expected_eval
+    assert manifest['configs']['open_cabinet:101']['advisor_proxy'] == expected_advisor
 
 
 def test_daily_http_multiview_preview_files_and_readonly_ledger(experiment, tmp_path, monkeypatch):

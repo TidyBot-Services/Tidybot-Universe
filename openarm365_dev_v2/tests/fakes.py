@@ -46,7 +46,7 @@ class FailedEvalClient(Client):
         usage={'total_tokens':100,'prompt_tokens':40,'completion_tokens':60}
         if prompt.startswith('You are the system Eval agent'):
             self.role_calls.append('eval')
-            return ParccResponse(kw['model'],'EVAL_RESULT: {"passed": false, "feedback": "frame #1 shows the motion failed"}',None,.01,1,usage)
+            return ParccResponse(kw['model'],'{"passed": false, "reason": "frame #1 shows the motion failed", "reference_suggestion": "Use smaller motion"}',None,.01,1,usage)
         if prompt.startswith('You are a human-like robotics advisor') or prompt.startswith('Give a concise actionable repair hint'):
             self.role_calls.append('advisor')
             self.inputs.append(kw)
