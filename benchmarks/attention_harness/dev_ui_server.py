@@ -7,8 +7,25 @@ from .dev_ledger import DevV2Store,encoded
 from .dev_loop import process_identity,sha,immutable
 from .core.dev_store import DevConflict
 from . import dev_experiment as experiments
+from .dev_configuration import normalize_configuration,derive_cell_budget,configured_budget
 from openarm365_dev_v2.dev_config import ROOT
 UI=Path(__file__).with_name('dev_ui')
+
+def budget_preview(selection):
+    """Show the same normalized worst-case budget that create validates; do not allocate anything."""
+    if not isinstance(selection,dict):raise ValueError('selection object required')
+    tasks,seeds,policies=(selection.get(key) for key in ('tasks','seeds','policies'))
+    if any(not isinstance(values,list) or not values for values in (tasks,seeds,policies)):
+        raise ValueError('tasks, seeds and policies required for preview')
+    config=normalize_configuration(selection)
+    required=derive_cell_budget(config)
+    per_cell=configured_budget(config)
+    cells=len(tasks)*len(seeds)*len(policies)
+    wait_wall=config['max_versions']*config.get('planner_features',{}).get('human_wait_seconds',0)
+    return dict(per_cell=per_cell,required_per_cell=required,cells=cells,
+                total={key:value*cells for key,value in per_cell.items()},
+                wall_seconds=config.get('wall_limit',cells*(per_cell['model_seconds']+per_cell['execution_seconds']+wait_wall)+3600),
+                retry_k2_reachable=config['target_depth']>=3)
 
 def live(store,exp_id,key):
     c=store.cell(key)
@@ -48,7 +65,7 @@ def serve(store,artifact_root,port,budget_file=None):
             try:
                 if path in {'/','/ui/'}:
                     html=(UI/'index.html').read_text().replace('__CONTROL_TOKEN__',token);self.send(html,'text/html; charset=utf-8');return
-                if path=='/ui/app.js':self.send((UI/'app.js').read_bytes(),'text/javascript');return
+                if path in {'/ui/app.js','/ui/view_model.js'}:self.send((UI/path.rsplit('/',1)[-1]).read_bytes(),'text/javascript');return
                 if not self.authorized():self.obj({'error':'control token required'},403);return
                 if path=='/api/dev/options':self.obj(experiments.options());return
                 if path=='/api/dev/experiments':self.obj(experiments.list_experiments(store));return
@@ -106,6 +123,7 @@ def serve(store,artifact_root,port,budget_file=None):
                 if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not 0<size<=32768:raise ValueError('bounded JSON body required')
                 body=json.loads(self.rfile.read(size));path=urlsplit(self.path).path
                 if not isinstance(body,dict):raise ValueError('JSON object required')
+                if path=='/api/dev/preview':self.obj(budget_preview(body));return
                 if path=='/api/dev/experiments':self.obj(experiments.create(store,artifact_root,body),201);return
                 approval=re.fullmatch(r'/api/dev/experiments/(devexp-[a-f0-9]{24})/approvals/(planner-[a-f0-9]{64})/decision',path)
                 if approval:
