@@ -3172,6 +3172,9 @@
     const format=v=>v==null?'—':seconds?operatorTime(v):number(v);
     return `<div class="op-meter${out&&!recorded&&!plain?' out':warn&&!recorded&&!plain?' warn':''}" data-fill="${limit>0&&used!=null?Math.min(100,Math.round(used/limit*100)):0}"><span>${name}</span><b><em data-count-to="${used==null?'':used}" data-count-seconds="${seconds?'1':''}">${format(used)}</em> <small>${recorded?'recorded':`/ ${format(limit)}`}</small></b><div class="op-budget-track"><i style="width:${pct(used,limit)}%"></i></div>${out&&!recorded&&!plain?`<small>Used up${ended?' · this ended the run':''}</small>`:''}</div>`;
   }
+  function operatorUnavailableResourceCard(name) {
+    return `<div class="op-meter op-meter--na" title="Not tracked for this run"><span>${esc(name)}</span><b>—</b><small>Not tracked for this run</small></div>`;
+  }
   function operatorResources(snapshot) {
     const resources=snapshot.resources,s=snapshot.dev_session;
     const endedKey=s?devEndSummary(s).key:snapshot.eval?.stopped_reason;
@@ -3187,7 +3190,10 @@
     const exportLink=snapshot.dev_v2?`<a href="/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/export.csv" target="_blank" rel="noopener">Download data (CSV)</a>`:'';
     // Wall-clock time keeps running after a run has ended; it only matters when it is why the run ended.
     const shown=fields.filter(([key])=>!(key==='wall_seconds' && isTerminal(snapshot) && endedKey!=='wall_seconds'));
-    return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','How much budget is left?')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>value?`${s?`<div data-dev-budget-key="${key}">`:''}${operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds')}${s?'</div>':''}`:'').join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','How much budget is left?')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
+      const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
+      return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
+    }).join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.

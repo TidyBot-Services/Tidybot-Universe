@@ -19,11 +19,11 @@ for(const [status,passed,label] of [['completed',true,'Looks right'],['completed
   const debug=api().operatorAIReview(review,1,true);assert.match(debug,/Raw AI review JSON/);assert.match(debug,/&quot;status&quot;/);
  });
 }
-test('EVAL UI 05 counted reviews displayed only for enabled experiment',()=>{
+test('EVAL UI 05 counts enabled reviews and marks disabled reviews untracked',()=>{
  const snap={run:{run_id:'x'},dev_session:{},dev_v2:{experiment_id:'e'},dev_eval_enabled:true,attempts:[],resources:{executions:{used:2,limit:3},eval_calls:{used:2,limit:3}}};
  const html=api().operatorResources(snap);assert.match(html,/Reviews requested/);assert.match(html,/data-dev-budget-key="eval_calls"/);assert.match(html,/data-count-to="2"/);
  snap.resources.eval_calls={used:0,limit:0};assert.match(api().operatorResources(snap),/Reviews requested/);
- delete snap.dev_eval_enabled;assert.doesNotMatch(api().operatorResources(snap),/Reviews requested/);
+ delete snap.dev_eval_enabled;assert.match(api().operatorResources(snap),/data-dev-budget-key="eval_calls"><div class="op-meter op-meter--na" title="Not tracked for this run"><span>Reviews requested<\/span><b>—<\/b>/);
 });
 test('EVAL UI New run defaults on, locked selection and snapshot carry review',()=>{
  assert.match(source,/name="eval_agent_enabled" type="checkbox" checked/);

@@ -9,10 +9,12 @@ const operatorBlock=source.slice(source.indexOf('  // Operator presentation:'),s
 const esc=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const api=vm.runInNewContext(operatorBlock+'\n({waitCountdown,waitingRequest,resourceRows,operatorResources})',{
   DEBUG_VIEW:false,esc,number:String,pct:()=>0,operatorTime:n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`,
-  operatorHeading:()=>'',launches:[],isTerminal:()=>false,devEndSummary:()=>({key:''})
+  operatorHeading:()=>'',launches:[],isTerminal:snapshot=>snapshot.run.status==='completed',devEndSummary:()=>({key:''})
 });
 const hashBlock=source.slice(source.indexOf('  function experimentFromHash('),source.indexOf('  const initialExperiment='));
 const hash=vm.runInNewContext(hashBlock+'\n({experimentFromHash,restoredExperiment})');
+const resourceKeys=html=>[...html.matchAll(/data-dev-budget-key="([^"]+)"/g)].map(match=>match[1]);
+const expectedKeys=['executions','eval_calls','help_count','help_wait_seconds','model_calls','execution_seconds','wall_seconds'];
 
 test('absolute deadline gives remaining seconds, late state, ended window and ring offset',()=>{
   const start=Date.parse('2026-10-19T10:00:00Z'),end='2026-10-19T10:01:00Z';
@@ -41,7 +43,12 @@ test('resource rows include waiting time after help and free models are recorded
   const rows=api.resourceRows(snapshot);
   assert.equal(rows.findIndex(r=>r[0]==='help_wait_seconds'),rows.findIndex(r=>r[0]==='help_count')+1);
   const free=api.operatorResources(snapshot);
+  assert.deepEqual(resourceKeys(free),expectedKeys);
+  assert.equal((free.match(/class="op-meter(?: |")/g)||[]).length,7);
+  assert.equal((free.match(/class="op-budget-track"/g)||[]).length,7);
+  assert.doesNotMatch(free,/op-meter--na/);
   assert.match(free,/data-dev-budget-key="help_wait_seconds"[\s\S]*1:01[\s\S]*2:00/);
+  assert.match(free,/data-dev-budget-key="help_wait_seconds"><div class="op-meter"/);
   assert.match(free,/AI usage: 30.3k tokens/);
   assert.match(free,/data-free-models-tag/);
   assert.match(free,/Reviews requested[\s\S]*recorded/);
@@ -50,6 +57,42 @@ test('resource rows include waiting time after help and free models are recorded
   const metered=api.operatorResources(snapshot);
   assert.doesNotMatch(metered,/data-free-models-tag/);
   assert.match(metered,/AI usage: 30.3k of 220k tokens/);
+});
+
+test('legacy and ordinary runs keep all seven Resources cards with placeholders for untracked values',()=>{
+  const resources={executions:{used:1,limit:3},help_count:{used:0,limit:3},execution_seconds:{used:12,limit:120},wall_seconds:{used:20,limit:300}};
+  const legacy={run:{run_id:'old',status:'running'},dev_session:{},attempts:[],resources};
+  const html=api.operatorResources(legacy);
+  assert.deepEqual(resourceKeys(html),expectedKeys);
+  assert.equal((html.match(/class="op-meter(?: |")/g)||[]).length,7);
+  assert.equal((html.match(/class="op-meter op-meter--na"/g)||[]).length,3);
+  for(const key of ['eval_calls','help_wait_seconds','model_calls']){
+    assert.match(html,new RegExp(`data-dev-budget-key="${key}"><div class="op-meter op-meter--na" title="Not tracked for this run"><span>[^<]+</span><b>—</b><small>Not tracked for this run</small></div>`));
+  }
+  assert.equal((html.match(/class="op-budget-track"/g)||[]).length,4);
+  const ordinary=api.operatorResources({run:{run_id:'ordinary',status:'running'},attempts:[],task_plan:{max_attempts:3},resources});
+  assert.equal((ordinary.match(/class="op-meter(?: |")/g)||[]).length,7);
+  assert.match(ordinary,/Waiting for replies/);
+  assert.match(ordinary,/AI plan rewrites/);
+  assert.doesNotMatch(ordinary,/data-dev-budget-key/);
+  legacy.dev_eval_enabled=true;
+  resources.eval_calls={used:null,limit:null};
+  assert.match(api.operatorResources(legacy),/data-dev-budget-key="eval_calls"><div class="op-meter op-meter--na"/);
+});
+
+test('disabled Eval shows an untracked review card and completed runs still hide Total time',()=>{
+  const snapshot={run:{run_id:'disabled',status:'running'},dev_session:{},dev_v2:{experiment_id:'e'},attempts:[],
+    resources:{executions:{used:1,limit:3},eval_calls:{used:2,limit:4},help_count:{used:0,limit:3},help_wait_seconds:{used:0,limit:60},
+      model_calls:{used:1,limit:5},execution_seconds:{used:4,limit:120},wall_seconds:{used:7,limit:300}}};
+  const running=api.operatorResources(snapshot);
+  assert.deepEqual(resourceKeys(running),expectedKeys);
+  assert.ok(running.includes('data-dev-budget-key="eval_calls"><div class="op-meter op-meter--na" title="Not tracked for this run"><span>Reviews requested</span><b>—</b><small>Not tracked for this run</small></div>'));
+  assert.doesNotMatch(running,/Reviews requested[\s\S]{0,160}recorded/);
+  snapshot.run.status='completed';
+  const ended=api.operatorResources(snapshot);
+  assert.deepEqual(resourceKeys(ended),expectedKeys.filter(key=>key!=='wall_seconds'));
+  assert.doesNotMatch(ended,/Total time/);
+  assert.equal((ended.match(/class="op-meter(?: |")/g)||[]).length,6);
 });
 
 test('experiment hash restores only a listed exact id and otherwise falls back',()=>{

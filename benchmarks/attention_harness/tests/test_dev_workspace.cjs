@@ -124,7 +124,7 @@ test('OPERATOR-04 renders each recorded response once and quick options are draf
 
 test('OPERATOR-05 uses human-readable cards (wall time hidden once a run has ended), exhaustion and unchanged CSV export',()=>{
  const snap={run:{run_id:'dev-private',status:'completed'},dev_session:{},dev_v2:{experiment_id:'experiment1',ledger:{recompute_matches:false}},resources:{executions:{used:3,limit:3},help_count:{used:2,limit:2},model_calls:{used:3,limit:3},execution_seconds:{used:501,limit:1600},wall_seconds:{used:1100,limit:3600},tokens:{used:21000,limit:220000}},attempts:[]};
- const html=operatorAPI().operatorResources(snap);assert.equal((html.match(/class="op-meter(?: |")/g)||[]).length,4);assert.doesNotMatch(html,/Total time/);assert.match(html,/8:21.*26:40/);assert.match(html,/AI usage: 21k of 220k tokens/);assert.match(html,/Used up · this ended the run/);assert.match(html,/Data check failed · tell the research team/);assert.match(html,/\/api\/dev-v2\/experiments\/experiment1\/export.csv/);assert.doesNotMatch(html,/Reserved|<pre|<code|Experiment ledger/);
+ const html=operatorAPI().operatorResources(snap);assert.equal((html.match(/class="op-meter(?: |")/g)||[]).length,6);assert.match(html,/data-dev-budget-key="eval_calls"><div class="op-meter op-meter--na"/);assert.match(html,/data-dev-budget-key="help_wait_seconds"><div class="op-meter op-meter--na"/);assert.doesNotMatch(html,/Total time/);assert.match(html,/8:21.*26:40/);assert.match(html,/AI usage: 21k of 220k tokens/);assert.match(html,/Used up · this ended the run/);assert.match(html,/Data check failed · tell the research team/);assert.match(html,/\/api\/dev-v2\/experiments\/experiment1\/export.csv/);assert.doesNotMatch(html,/Reserved|<pre|<code|Experiment ledger/);
 });
 
 test('OPERATOR request path/fields and original submit handlers are retained',()=>{
@@ -140,7 +140,7 @@ test('OPERATOR request path/fields and original submit handlers are retained',()
 test('OPERATOR error inventory additions reuse GOAL English copies',()=>{
  const api=operatorAPI();assert.equal(api.plainError('read_only_arm_plan_rejected'),'the motion planner refused the move (out of reach or would collide)');assert.equal(api.plainError('continuous_command_validation_rejected'),'the motion planner refused the move (out of reach or would collide)');assert.equal(api.plainError('Grasp lost during lift step 1'),'the item slipped out of the gripper');
 });
-test('OPERATOR budgets with no data are hidden and never shown as zero',()=>{
+test('OPERATOR budget formatter omits empty values and never shows them as zero',()=>{
  const api=operatorAPI();assert.equal(api.operatorBudgetCard('Total time',{used:null,limit:null},true),'');assert.equal(api.operatorBudgetCard('Help requests',{used:0,limit:0}),'');
  const html=api.operatorBudgetCard('Total time',{used:null,limit:900},true);assert.match(html,/—<\/em> <small>\/ 15:00/);assert.doesNotMatch(html,/Used up|0:00/);
 });
