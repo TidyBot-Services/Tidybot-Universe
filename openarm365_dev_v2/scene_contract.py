@@ -32,8 +32,8 @@ def compare(reference,actual,tolerance=1e-6):
  return {'matched':not differences,'tolerance':tolerance,'differences':differences,'raw_sha256':fingerprint(actual),'normalized_sha256':fingerprint(actual,True)}
 SCHEMA_V1='attentionbench.public-scene-contract.v1'
 SCHEMA_V2='attentionbench.public-scene-contract.v2'
-REGISTERED_CONTRACT=Path(__file__).resolve().parent/'scene_contracts'/'dev-seeds-101-103-v2-20261016.json'
-REGISTERED_SHA256="44a386e908fd94a5bef2359fac364ab047d4c97940050dc17895245bbac7fd63"
+REGISTERED_CONTRACT=Path(__file__).resolve().parent/'scene_contracts'/'dev-seeds-101-103-v2-20261019-kp1500.json'
+REGISTERED_SHA256="bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716"
 def registered_contract_ref():
  """Reference to the contract registered for development experiments. Pinned by digest in code: editing the file without
  re-registering it here fails closed instead of silently changing what counts as the same scene."""

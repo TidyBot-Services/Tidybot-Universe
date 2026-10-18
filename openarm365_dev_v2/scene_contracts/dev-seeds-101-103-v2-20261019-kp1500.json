@@ -1,0 +1,76 @@
+{
+ "provenance": {
+  "built": "2026-10-19",
+  "controller_kp": 1500,
+  "hook": "scene_reset_seed == seed (canonical region order)",
+  "layout_style": [
+   11,
+   34
+  ],
+  "note": "dev seeds 101-103 only; other seeds have no reference and are refused, not skipped",
+  "probe": "/tmp/claude-1000/seed-probe-20261019",
+  "seeds_covered": [
+   101,
+   102,
+   103
+  ],
+  "sources": [
+   "accept.jsonl",
+   "cabinet_extra_101.jsonl",
+   "cabinet_extra_102.jsonl",
+   "cabinet_extra_103.jsonl"
+  ],
+  "supersedes": {
+   "file": "dev-seeds-101-103-v2-20261016.json",
+   "sha256": "44a386e908fd94a5bef2359fac364ab047d4c97940050dc17895245bbac7fd63"
+  }
+ },
+ "schema": "attentionbench.public-scene-contract.v2",
+ "tasks": {
+  "open_cabinet": {
+   "seeds": {
+    "101": {
+     "fresh_processes": 20,
+     "normalized_sha256": "ba69f9d1b7030777de26fda1dc68192cc64e8693f06206985f85370a8fc38bdc",
+     "raw_sha256": "0bb1c80a505abe9e1bf03f8118670b93cb172546a7814cb22805406a09cb6c31",
+     "resets": 60
+    },
+    "102": {
+     "fresh_processes": 20,
+     "normalized_sha256": "9fe7be04ba3d574d4b85479f4d9cd7758f046fc2f718ce5249119e334df9c244",
+     "raw_sha256": "77338b3d100dc4f5dd4cfbc5f4e0bc9c282e90fcfe0e363dc4b8d84e936c8781",
+     "resets": 60
+    },
+    "103": {
+     "fresh_processes": 20,
+     "normalized_sha256": "2330fffa583f545f47d808fb8ac8328ee2daa8e37d8015d9fd0acf4af3594525",
+     "raw_sha256": "426faf93210e9a663a3605bbe07c600a501c09a329e8fe221c6d0e5e7c3a81a2",
+     "resets": 60
+    }
+   }
+  },
+  "pick_place_counter_to_sink": {
+   "seeds": {
+    "101": {
+     "fresh_processes": 20,
+     "normalized_sha256": "90b0bf960955ca49c2992fbd125b0b6c65f7bf3a62cfe35d035dc1b56aff69f2",
+     "raw_sha256": "52f4c142fdaf9708491382845de64f23847f623fbf4e2bbfb518dd07d9c601d9",
+     "resets": 40
+    },
+    "102": {
+     "fresh_processes": 20,
+     "normalized_sha256": "d7d2f8f3f6f5cc1a628dcbbe547e6b426aeefd255fa47a1d2f68e8dc36a0d033",
+     "raw_sha256": "8428ccd251ce0810c22d53c94ca8f2a85f82ca1d12c9da38c7e345a44f79fba1",
+     "resets": 40
+    },
+    "103": {
+     "fresh_processes": 20,
+     "normalized_sha256": "d7e16c541a2f9c272d798691d0173ba96c421547bc865cb43d62839378fc2ffa",
+     "raw_sha256": "881b39da1a67eb6b007966e0068bc1d9df3a50aa0b7521600775ca701c3667ab",
+     "resets": 40
+    }
+   }
+  }
+ },
+ "tolerance": 1e-06
+}

@@ -1,4 +1,5 @@
 """Experiment-mode scene gate, seed-keyed scene contract and held-out seed registration. No simulator, no model."""
+import hashlib
 import json
 from pathlib import Path
 
@@ -73,7 +74,8 @@ def test_diagnostic_mode_is_exempt(tmp_path):
 
 
 def test_legacy_independent_configuration_is_not_covered_by_the_gate():
-    # Known gap, recorded rather than hidden: the daily bridge's legacy configuration cannot express either option.
+    # The v3 selection gate still exempts this schema; new legacy experiment
+    # manifests bind the registered reset and contract during materialization.
     from benchmarks.attention_harness.dev_configuration import require_scene_gate
     require_scene_gate('experiment', {'configuration': {}}, ['open_cabinet'], [101])
 
@@ -120,10 +122,14 @@ def test_held_out_seeds_are_disjoint_registered_and_unselectable(tmp_path):
 
 
 def test_registered_contract_covers_dev_seeds_101_to_103_for_both_tasks():
-    path = Path(__file__).resolve().parents[1] / 'scene_contracts' / 'dev-seeds-101-103-v2-20261016.json'
-    ref = {'uri': str(path), 'sha256': __import__('hashlib').sha256(path.read_bytes()).hexdigest()}
-    from openarm365_dev_v2.scene_contract import load_contract, seed_entry
+    from openarm365_dev_v2.scene_contract import load_contract, registered_contract_ref, seed_entry
+    ref = registered_contract_ref()
+    assert Path(ref['uri']).name == 'dev-seeds-101-103-v2-20261019-kp1500.json'
+    assert ref['sha256'] == hashlib.sha256(Path(ref['uri']).read_bytes()).hexdigest()
     contract = load_contract(ref)
+    assert contract['tolerance'] == 1e-6
+    assert contract['provenance']['controller_kp'] == 1500
+    assert contract['provenance']['supersedes']['sha256'] == '44a386e908fd94a5bef2359fac364ab047d4c97940050dc17895245bbac7fd63'
     for task in ('open_cabinet', 'pick_place_counter_to_sink'):
         for seed in (101, 102, 103):
             entry = seed_entry(contract, task, seed)
@@ -131,3 +137,22 @@ def test_registered_contract_covers_dev_seeds_101_to_103_for_both_tasks():
         with pytest.raises(ValueError, match='no reference'):
             seed_entry(contract, task, 104)
         assert not set(map(int, contract['tasks'][task]['seeds'])) & set(HELD_OUT_SEEDS)
+
+
+def test_registered_contract_tampering_fails_closed(tmp_path, monkeypatch):
+    import openarm365_dev_v2.scene_contract as scene_contract
+    tampered = tmp_path / scene_contract.REGISTERED_CONTRACT.name
+    tampered.write_bytes(scene_contract.REGISTERED_CONTRACT.read_bytes() + b' ')
+    monkeypatch.setattr(scene_contract, 'REGISTERED_CONTRACT', tampered)
+    with pytest.raises(ValueError, match='re-registration'):
+        scene_contract.registered_contract_ref()
+
+
+def test_old_manifest_contract_reference_still_loads():
+    from openarm365_dev_v2.scene_contract import load_contract, seed_entry
+    path = Path(__file__).resolve().parents[1] / 'scene_contracts' / 'dev-seeds-101-103-v2-20261016.json'
+    ref = {'uri': str(path), 'sha256': '44a386e908fd94a5bef2359fac364ab047d4c97940050dc17895245bbac7fd63'}
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == ref['sha256']
+    old = load_contract(ref)
+    assert old['provenance']['built'] == '2026-10-16'
+    assert seed_entry(old, 'pick_place_counter_to_sink', 102)['normalized_sha256'] == 'd844035e63a67adae07bbd799f76af4e86fb2b07b7c095cc01be606d7399fbae'

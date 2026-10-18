@@ -267,7 +267,32 @@ def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
     assert experiment['selection']['help_budget'] == help
     assert experiment['selection']['eval_agent']['enabled'] is True
     assert next(iter(manifest['configs'].values()))['eval_agent']['enabled'] is True
+    from openarm365_dev_v2.scene_contract import registered_contract_ref
+    ref = registered_contract_ref()
+    assert manifest['scene_contract'] == ref
+    assert manifest['reproducible_reset'] is True
+    assert 'scene_contract' not in manifest['selection']
+    assert 'reproducible_reset' not in manifest['selection']
+    assert all(c['scene_reset_seed'] == c['seed'] == 102 and c['scene_contract'] == ref
+               for c in manifest['configs'].values())
+    from openarm365_dev_v2.dev_config import validate_dev_config
+    for config in manifest['configs'].values():
+        assert validate_dev_config(config)['scene_contract'] == ref
     assert manifest['max_versions'] == manifest['target_depth'] == versions
+    interactive_selection = copy.deepcopy(selection)
+    interactive_selection['request_key'] = 'daily-ui-interactive-run'
+    interactive_selection['mode'] = 'interactive'
+    interactive_selection['configuration']['goal_id'] = 'daily-v2-interactive-goal'
+    interactive = bridge.create(dict(selection=interactive_selection, start=False))
+    interactive_path = Path(interactive['manifest']['uri'])
+    interactive_bytes = interactive_path.read_bytes()
+    interactive_manifest = json.loads(interactive_bytes)
+    assert 'scene_contract' not in interactive_manifest
+    assert 'reproducible_reset' not in interactive_manifest
+    assert all('scene_reset_seed' not in c and 'scene_contract' not in c
+               for c in interactive_manifest['configs'].values())
+    assert bridge.create(dict(selection=interactive_selection, start=False))['manifest'] == interactive['manifest']
+    assert interactive_path.read_bytes() == interactive_bytes
     assert manifest['cell_budget']['help_count'] == help
     assert manifest['cell_budget']['model_seconds'] == model_seconds
     assert manifest['wall_limit'] == wall_seconds
@@ -276,6 +301,8 @@ def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
     eid = experiment['experiment_id']
     manifest_bytes = Path(experiment['manifest']['uri']).read_bytes()
     store = bridge.store(eid)
+    from benchmarks.attention_harness.dev_report import report
+    assert report(store, eid)['cells'][0]['fair_conditions_qualified'] is False
     directory, _, creation_budget = bridge.paths(eid)
     run_budget = bridge.dispatch_budget(store, experiment, directory, creation_budget)
     fake_client = object()

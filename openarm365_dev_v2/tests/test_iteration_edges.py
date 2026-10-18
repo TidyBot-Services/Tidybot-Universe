@@ -100,6 +100,7 @@ def test_old_manifest_exact_bytes(tmp_path,monkeypatch):
 def test_old_experiment_manifest_exact_bytes_with_eval(tmp_path,monkeypatch):
  import subprocess,types
  from openarm365_dev_v2 import dev_config
+ from openarm365_dev_v2.scene_contract import registered_contract_ref
  monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})
  root=Path(__file__).resolve().parents[2]
  # Freeze the reviewed HEAD so this comparison still has a baseline after commit.
@@ -108,20 +109,45 @@ def test_old_experiment_manifest_exact_bytes_with_eval(tmp_path,monkeypatch):
  baseline=types.ModuleType('benchmarks.attention_harness.baseline_experiment')
  baseline.__package__='benchmarks.attention_harness'
  exec(compile(source,'reviewed HEAD:benchmarks/attention_harness/dev_experiment.py','exec'),baseline.__dict__)
- db_path=tmp_path/'shared.sqlite'
- old_store=DevV2Store(db_path);old_store.ensure_goal(GOAL,LIMITS,7200)
  budget=task_cell_budget('legacy')
  selection={'request_key':'legacy-experiment-byte-canary','mode':'experiment','tasks':['open_cabinet'],
             'seeds':[101],'policies':['autonomous'],'budget_tier':'legacy',
             'eval_agent':{'enabled':True,'model':'parcc/Qwen'},
             'configuration':{'goal_id':GOAL,'experiment_budget':LIMITS,'cell_budget':budget,
                              'max_iterations':2,'wall_seconds':7200}}
- old=baseline.create(old_store,tmp_path/'a',selection)
- before=Path(old['manifest']['uri']).read_bytes()
- db_path.unlink()
- new_store=DevV2Store(db_path);new_store.ensure_goal(GOAL,LIMITS,7200)
- new=create(new_store,tmp_path/'a',selection)
- assert before==Path(new['manifest']['uri']).read_bytes()
+ def create_pair(selected,name):
+  db_path=tmp_path/f'{name}.sqlite';artifacts=tmp_path/name
+  old_store=DevV2Store(db_path);old_store.ensure_goal(GOAL,LIMITS,7200)
+  old=baseline.create(old_store,artifacts,selected)
+  before=Path(old['manifest']['uri']).read_bytes()
+  # Recreate the same ledger and artifact path so serialized paths match;
+  # remove the old immutable manifest before materializing the new one.
+  Path(old['manifest']['uri']).unlink();db_path.unlink()
+  new_store=DevV2Store(db_path);new_store.ensure_goal(GOAL,LIMITS,7200)
+  new=create(new_store,artifacts,selected)
+  return old,new,before,Path(new['manifest']['uri']).read_bytes()
+
+ old,new,before,after=create_pair(selection,'experiment')
+ assert old['selection']==new['selection']
+ old_manifest=json.loads(before);new_manifest=json.loads(after)
+ assert set(new_manifest)-set(old_manifest)=={'scene_contract','reproducible_reset'}
+ assert set(new_manifest['configs'])==set(old_manifest['configs'])
+ ref=registered_contract_ref()
+ assert new_manifest['scene_contract']==ref
+ assert new_manifest['reproducible_reset'] is True
+ stripped=copy.deepcopy(new_manifest)
+ stripped.pop('scene_contract');stripped.pop('reproducible_reset')
+ for key,config in new_manifest['configs'].items():
+  assert set(config)-set(old_manifest['configs'][key])=={'scene_reset_seed','scene_contract'}
+  assert config['scene_reset_seed']==config['seed']
+  assert config['scene_contract']==ref
+  stripped['configs'][key].pop('scene_reset_seed');stripped['configs'][key].pop('scene_contract')
+ # immutable() writes sorted, indented UTF-8 JSON with one trailing newline.
+ assert (json.dumps(stripped,ensure_ascii=False,sort_keys=True,indent=2,allow_nan=False)+'\n').encode()==before
+
+ interactive_selection={**selection,'mode':'interactive'}
+ old,new,before,after=create_pair(interactive_selection,'interactive')
+ assert before==after
  assert old['selection']==new['selection']
 
 @pytest.mark.parametrize('depth,execution_target',[(4,3),(5,1)])

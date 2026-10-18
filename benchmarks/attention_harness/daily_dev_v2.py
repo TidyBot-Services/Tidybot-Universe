@@ -64,8 +64,8 @@ class DailyDevV2:
             selection={k:v for k,v in selection.items() if k!='human_wait_seconds'}
         experiments.validate_selection_fields(selection)
         if selection.get('mode')=='experiment':
-            # The independent-ledger schema predates reproducible_reset. Enforce
-            # the same registered seed coverage before creating any ledger files.
+            # Reject uncovered seeds before creating ledger files. New legacy
+            # experiment manifests bind this reference to each config in create().
             from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract,seed_entry
             contract=load_contract(registered_contract_ref())
             for task in selection.get('tasks',[]):

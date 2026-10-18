@@ -149,6 +149,16 @@ def create(store,artifact_root,selection):
             if e['selection']!=normalized:raise DevConflict('request key reused with different experiment conditions')
             verify_manifest(e)
     if row:return snapshot(store,e['experiment_id'])
+    # Existing independent ledgers return above with their original immutable
+    # manifest. New legacy experiment cells need the same physical scene gate
+    # as v3; interactive and diagnostic cells retain their original reset path.
+    legacy_scene_ref=None
+    if legacy_configuration is not None and mode=='experiment':
+        from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract,seed_entry
+        legacy_scene_ref=registered_contract_ref()
+        contract=load_contract(legacy_scene_ref)
+        for task in tasks:
+            for seed in seeds:seed_entry(contract,task,seed)
     directory=Path(artifact_root).resolve()/exp_id;directory.mkdir(parents=True,exist_ok=True)
     lock_path=directory/'identity-lock.json'
     ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path)
@@ -182,7 +192,7 @@ def create(store,artifact_root,selection):
     if budget_tier=='dev':manifest['budget_tier']='dev'
     if v3:
         # 2026-10-18 free Eval accounting applies to new v3 manifests only;
-        # legacy v2 manifest bytes stay unchanged.
+        # legacy v2 budget accounting stays unchanged.
         manifest['budget_accounting_version']='free-model-tokens-eval-calls-v2'
         goal_id=hashlib.sha256(('goal|'+configuration.get('goal_key',key)).encode()).hexdigest()[:32]
         manifest.update(schema='attentionbench.dev-experiment.v3',goal_id=goal_id,goal_limits=goal_limits,wall_limit=wall_limit,cell_budget=budget,
@@ -199,6 +209,13 @@ def create(store,artifact_root,selection):
             target_depth=depth,target_valid_executions=depth,max_versions=depth,
             ledger_path=str(store.path.resolve()))
         manifest['schedule']=[{'cell':c['key'],'through_version':v} for v in range(1,depth+1) for c in cells]
+        if legacy_scene_ref is not None:
+            # The report reads the top-level contract to require verified
+            # conditions. Keep selection unchanged for daily request identity.
+            manifest.update(scene_contract=legacy_scene_ref,reproducible_reset=True)
+            for c in configs.values():
+                c['scene_reset_seed']=c['seed']
+                c['scene_contract']=legacy_scene_ref
     public_screen(sources);public_screen(demos);validate_fairness(manifest)
     manifest_path=directory/'manifest.json'
     mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
