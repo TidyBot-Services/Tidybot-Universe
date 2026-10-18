@@ -1,6 +1,6 @@
 """Scripted seed 101–103 grasp-chain probe; real execution is explicit."""
 from __future__ import annotations
-import argparse, hashlib, json, math, os, time
+import argparse, hashlib, json, math, os, sys, time
 from pathlib import Path
 from openarm365_dev.policy_validation import validate_generated_policy
 from openarm365_dev_v2.diag_budget import SOURCE,MARKER,diagnostic_budget,task_limits,probe_reserve,policy_limit
@@ -338,7 +338,7 @@ def carry_auto_shift(mount_pose_world, banana_pos, sink_pos, grasp_base_yaw=0.):
     local[:2]=[c*local[0]+s*local[1],-s*local[0]+c*local[1]]
     return (float(local[0]),float(local[1]),0.)
 
-def carry_policy_source(source, sink, shift, carry_clearance_m=.20, release_clearance_m=.08, retreat_m=.10):
+def carry_policy_source(source, sink, shift, carry_clearance_m=.20, release_clearance_m=.08, retreat_m=.10, retreat_base=None):
     """Append a diagnostic placement after the original held checkpoint."""
     moves=base_steps(shift) if any(shift) else []
     target=sink['sink_pos_world_m']
@@ -388,8 +388,14 @@ def carry_policy_source(source, sink, shift, carry_clearance_m=.20, release_clea
         f"assert calls+{retreat_steps+2} <= 80, 'SDK call budget exceeded'",
         f'for k in range({retreat_steps}):',
         '    left_arm.move_delta(0.0,0.0,0.025)', '    calls += 1',
-        'obs_retreat = sensors.get_observation()', 'calls += 1',
-        'objects_final = sensors.find_objects()', 'calls += 1',
+        'obs_retreat = sensors.get_observation()', 'calls += 1']
+    if retreat_base is not None:
+        retreat_moves=base_steps(retreat_base)
+        lines += [f"assert calls+{len(retreat_moves)+2} <= 80, 'SDK call budget exceeded'"]
+        for dx,dy,yaw in retreat_moves:
+            lines += [f'base.move_delta({dx!r}, {dy!r}, {yaw!r})', 'calls += 1']
+        lines += ['obs_retreat_base = sensors.get_observation()', 'calls += 1']
+    lines += ['objects_final = sensors.find_objects()', 'calls += 1',
         'obj_final = None', 'for item in objects_final:',
         "    if item['name'] == 'obj': obj_final = item['position']",
         "assert obj_final is not None, 'obj missing after release'"]
@@ -450,6 +456,10 @@ def policy_source(shift,tilt=False):
     source='\n'.join(src)+'\n';validate_generated_policy(source);return source
 
 def _json(path):return json.loads(path.read_text()) if path and path.is_file() else {}
+
+def gripper_object_distance(eef, obj):
+    """Euclidean distance between final public EEF and object positions."""
+    return math.dist(eef,obj) if eef is not None and obj is not None else None
 
 def grip_axis_horizontal_angle(quat):
     if quat is None:return None
@@ -516,10 +526,13 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
                  else ORIENTED_STAGES if grasp_quat is not None else STAGES)
     if carry is not None:
         stage_names += ('carry_lift','carry_base','carry_xy','lower','release','retreat','observe')
+        if carry.get('retreat_base_mount') is not None:
+            stage_names=stage_names[:-1]+('retreat_base','observe')
     stages=[];boundary_ops={'base':'get_observation','open':'get_observation','orient':'get_observation','pregrasp':'get_observation',
         'descend':'get_observation','close':'get_observation','lift':'get_observation','held':'find_objects',
         'carry_lift':'get_observation','carry_base':'get_observation','carry_xy':'get_observation',
-        'lower':'get_observation','release':'get_observation','retreat':'get_observation','observe':'find_objects'}
+        'lower':'get_observation','release':'get_observation','retreat':'get_observation',
+        'retreat_base':'get_observation','observe':'find_objects'}
     stage_idx=0;last=0;first_failure=None;last_object=initial.get('perception',{}).get('values',{}).get('obj_pos')
     last_eef=initial.get('robot',{}).get('robot0_left_eef_pos');last_gripper=initial.get('robot',{}).get('robot0_left_gripper_qpos')
     object_before_lift=None;object_after_lift=None;cert_cursor=0
@@ -603,6 +616,9 @@ def summarize(root,seed,shift,exempt,tilt,elapsed,error=None,*,grasp_quat=None,o
         initial_gripper=initial.get('robot',{}).get('robot0_left_gripper_qpos'),
         final_gripper=final.get('robot',{}).get('robot0_left_gripper_qpos'),object_lifted_5cm=lifted,
         execution_dir=str(episode) if episode else None)
+    final_distance=gripper_object_distance(result['final_eef'],after)
+    result['final_gripper_object_distance_m']=final_distance
+    result['gripper_far_025']=final_distance>.25 if final_distance is not None else None
     abort_reason=error or public_error or (first_failure.get('reason') if isinstance(first_failure,dict) else first_failure)
     if isinstance(abort_reason,dict):abort_reason=abort_reason.get('message',str(abort_reason))
     result['object_lift_cm']=object_lift_cm
@@ -678,6 +694,7 @@ def markdown(row):
         lines.append(f"| {s['stage']} | {s['public_status']} | {s.get('sdk_calls','—')} | {s.get('certification_count','—')} | {s.get('certification_elapsed_seconds','—')} | {val('eef_position')} | {val('object_position')} | {val('gripper_qpos')} |{extra} {val('first_failure')} |")
     lines += ['',f"物体上升至少 5 cm：`{row['object_lifted_5cm']}`。",'',
               f"最终物体上升 cm：`{row.get('object_lift_cm')}`；监控中止：`{row.get('monitor_aborted')}`；原因：`{row.get('aborted_by')}`。",'',
+              f"最终夹爪到物体距离=`{row['final_gripper_object_distance_m']}` m；超过 0.25 m=`{row['gripper_far_025']}`。",'',
               f"最大滑动 mm：`{row.get('max_slip_mm')}`；位移轨迹：`{json.dumps(row.get('slip_trajectory'),ensure_ascii=False)}`。",'',
               f"首个失败：`{json.dumps(row['first_failure'],ensure_ascii=False)}`。",'',
               f"认证证书：`{json.dumps(row['certificates'],ensure_ascii=False)}`。",'']
@@ -685,6 +702,8 @@ def markdown(row):
         lines += [f"原生评估：success=`{row['native_success']}`，status=`{row['native_status']}`；最终物体位置=`{row['object_final_pos']}`；物体在水槽（启发式）=`{row['object_in_sink']}`。",'',
                   f"水槽边沿高度=`{row['carry']['sink_rim_top_world_m']}` m，来源：{row['carry']['sink_rim_top_source']}。使用仿真真值,仅诊断。",'',
                   f"搬运过渡高度余量=`{row['carry'].get('carry_clearance_m',.20)}` m；释放高度余量=`{row['carry'].get('release_clearance_m',.08)}` m；释放后上抬=`{row['carry'].get('retreat_m',.10)}` m。",'']
+        if 'retreat_base_mount' in row['carry']:
+            lines += [f"释放后底座后退（mount 系）=`{row['carry']['retreat_base_mount']}`。",'']
         if 'carry_target_source' in row['carry']:
             carry=row['carry']
             lines += [f"搬运目标=`{carry['sink_pos_world_m']}`，来源：{carry.get('sink_pos_source','fixture')}；夹具原目标=`{carry['fixture_sink_pos_world_m']}`。",'',
@@ -753,12 +772,26 @@ def _main(argv=None):
     p.add_argument('--carry-clearance-m',type=float,default=.20,metavar='C')
     p.add_argument('--release-clearance-m',type=float,default=.08,metavar='R')
     p.add_argument('--retreat-m',type=float,default=.10,metavar='T')
+    p.add_argument('--retreat-base',metavar='DX,DY,DYAW',help='base displacement after vertical retreat, in mount frame; requires --carry')
     p.add_argument('--dry-run-reset',action='store_true',help='read-only reset for carry geometry self-check')
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--dry-run-state',type=Path,help='JSON with post-open eef_position, eef_quat and pregrasp_position for exact dry-run step counts')
-    args=p.parse_args(argv)
+    raw_argv=list(sys.argv[1:] if argv is None else argv)
+    for i in range(len(raw_argv)-1):
+        if raw_argv[i]=='--retreat-base' and raw_argv[i+1].startswith('-') and ',' in raw_argv[i+1]:
+            raw_argv[i:i+2]=['--retreat-base='+raw_argv[i+1]]
+            break
+    args=p.parse_args(raw_argv)
     if (args.carry_sink_xy is not None or args.carry_rim_top is not None) and not args.carry:
         p.error('--carry-sink-xy and --carry-rim-top require --carry')
+    if args.retreat_base is not None and not args.carry:p.error('--retreat-base requires --carry')
+    retreat_base=None
+    if args.retreat_base is not None:
+        try:
+            retreat_base=tuple(float(v) for v in args.retreat_base.split(','))
+            if len(retreat_base)!=3:raise ValueError()
+            base_steps(retreat_base)
+        except ValueError:p.error('--retreat-base requires finite DX,DY,DYAW')
     sink_xy_override=None
     if args.carry_sink_xy is not None:
         try:
@@ -839,13 +872,14 @@ def _main(argv=None):
             carry.update(base_shift_mount=carry_shift,banana_relative_mount_at_grasp_m=banana_at_grasp.tolist(),
                 sink_relative_mount_after_shift_m=sink_after.tolist(),carry_clearance_m=carry_clearance,
                 release_clearance_m=release_clearance,retreat_m=retreat_distance)
+            if retreat_base is not None:carry['retreat_base_mount']=retreat_base
         source=(oriented_policy_source(shift,quat,oracle,rotation_step=args.rotation_step) if args.sequence=='rotate-first' else
                 sequenced_policy_source(shift,quat,oracle,sequence=args.sequence,rotation_step=args.rotation_step)) if quat else policy_source(shift,args.tilt)
         if quat:
             source=variant_policy_source(source,quat,offset_mm=args.grasp_offset_mm,
                 z_offset_mm=args.grasp_z_offset_mm,lift_step_m=args.lift_step_m,lift_height_m=args.lift_height_m)
         if args.carry:source=carry_policy_source(source,carry,carry_shift,
-                                                carry_clearance,release_clearance,retreat_distance)
+                                                carry_clearance,release_clearance,retreat_distance,retreat_base)
         if override:
             source=source.replace("<= 75, 'SDK call budget exceeded'",f"<= {policy_limit(True)}, 'SDK call budget exceeded'")
             validate_generated_policy(source)

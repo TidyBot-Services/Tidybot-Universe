@@ -78,6 +78,59 @@ def test_equal_carry_release_height_has_empty_lower_stage(tmp_path):
     assert '释放后上抬=`0.05`' in markdown(result)
 
 
+def test_retreat_base_policy_stage_and_distance(tmp_path):
+    from benchmarks.attention_harness.diagnostics.grasp_chain_probe import carry_policy_source, gripper_object_distance
+    sink={'sink_pos_world_m':[0,0,1.], 'sink_rim_top_world_m':1.,
+          'sink_rim_top_source':'test','sink_xy_aabb_world_m':[[-.2,.2],[-.2,.2]]}
+    original=carry_policy_source(policy_source((0,.25,0)),sink,(0,0,0),.05,.05,.025)
+    source=carry_policy_source(policy_source((0,.25,0)),sink,(0,0,0),.05,.05,.025,(-.30,0,0))
+    assert source.startswith(original.split('objects_final = sensors.find_objects()')[0])
+    assert source.count('base.move_delta(-0.15, 0.0, 0.0)')==2
+    assert source.index('obs_retreat = sensors.get_observation()') < source.index('base.move_delta(-0.15, 0.0, 0.0)')
+    assert source.index('obs_retreat_base = sensors.get_observation()') < source.index('objects_final = sensors.find_objects()')
+    assert "assert calls+4 <= 80, 'SDK call budget exceeded'" in source
+    validate_generated_policy(source)
+
+    version=tmp_path/'artifacts'/'e'/'cells'/'c'/'v1';version.mkdir(parents=True)
+    episode=version/'executions'/'openarm365-dev-test';episode.mkdir(parents=True)
+    events=[]
+    def event(op,**extra):events.append(dict(operation=op,status='completed',**extra))
+    def obs(x=0.,z=1.05):return {'robot0_left_eef_pos':[x,0,z]}
+    for _ in range(6):event('get_observation',observation=obs())
+    event('find_objects',objects=[{'name':'obj','position':[0,0,.9]}])
+    for _ in range(5):event('get_observation',observation=obs())
+    event('get_observation',observation=obs(z=1.075))
+    event('move_delta',source='base');event('move_delta',source='base')
+    event('get_observation',observation=obs(x=.30,z=1.075))
+    event('find_objects',objects=[{'name':'obj','position':[0,0,.9]}])
+    (version/'public-feedback.json').write_text(json.dumps({'action_trace':events}))
+    (episode/'final_public_observation.json').write_text(json.dumps({
+        'robot':obs(x=.30,z=1.075),'perception':{'values':{'obj_pos':[0,0,.9]}}}))
+    carry={**sink,'carry_clearance_m':.05,'release_clearance_m':.05,
+           'retreat_m':.025,'retreat_base_mount':(-.30,0,0)}
+    row=summarize(tmp_path,102,(0,.25,0),'movable_objects',False,1.,carry=carry)
+    stages={stage['stage']:stage for stage in row['stages']}
+    assert [stages[name]['public_status'] for name in ('retreat','retreat_base','observe')]==['completed']*3
+    assert stages['retreat_base']['sdk_calls']==3
+    assert stages['retreat_base']['certification_count']==0
+    assert row['final_gripper_object_distance_m']==pytest.approx(math.sqrt(.30**2+.175**2))
+    assert row['gripper_far_025'] is True
+    assert '释放后底座后退' in markdown(row)
+    assert gripper_object_distance([0,0,0],[3,4,0])==5
+    assert gripper_object_distance(None,[3,4,0]) is None
+
+
+@pytest.mark.parametrize('value',['0,0','0,0,0,0','nan,0,0','0,inf,0','x,0,0'])
+def test_invalid_retreat_base_rejected(value):
+    with pytest.raises(SystemExit):
+        main(['--base-shift','0,.25,0','--carry','--retreat-base',value,'--dry-run'])
+
+
+def test_retreat_base_requires_carry():
+    with pytest.raises(SystemExit):
+        main(['--base-shift','0,.25,0','--retreat-base','-.30,0,0','--dry-run'])
+
+
 @pytest.mark.parametrize('option,value',[
     ('--carry-clearance-m','0.01'),('--carry-clearance-m','0.31'),
     ('--carry-clearance-m','nan'),('--release-clearance-m','0.01'),
@@ -116,6 +169,18 @@ def test_carry_cli_passes_clearances_to_policy(monkeypatch,tmp_path,capsys):
     assert 'safe_z = max(eef[2], sink_rim_top + 0.05)' in output
     assert 'lower_z = sink_rim_top + 0.05' in output
     assert 'for k in range(2):\n    left_arm.move_delta(0.0,0.0,0.025)' in output
+    with monkeypatch.context() as budget_env:
+        budget_env.setenv('ATTN_DIAG_BUDGET_SCALE','2')
+        budget_env.setenv('ATTN_DIAG_GRASP_PROBE','1')
+        assert main(['--base-shift','0,.25,0','--grasp-quat','0,0,0,1',
+                     '--oracle-from-reset','--carry','--dry-run','--dry-run-reset',
+                     '--out',str(tmp_path/'retreat'),'--carry-clearance-m','.05',
+                     '--release-clearance-m','.05','--retreat-m','.025',
+                     '--retreat-base','-.30,0,0','--budget-scale','2'])==0
+        retreat_output=capsys.readouterr().out
+    assert '"retreat_base_mount": [-0.3, 0.0, 0.0]' in retreat_output
+    assert retreat_output.count('base.move_delta(-0.15, 0.0, 0.0)')==2
+    assert "assert calls+4 <= 160, 'SDK call budget exceeded'" in retreat_output
 
 def test_carry_target_overrides_in_dry_run(monkeypatch,tmp_path,capsys):
     import numpy as np
