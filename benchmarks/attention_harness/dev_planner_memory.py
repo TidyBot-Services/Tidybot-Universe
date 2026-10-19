@@ -152,10 +152,22 @@ def journal_result(store, cell, version, packet, source_ref, public_feedback_ref
 
 
 def stage_candidate(store, cell, version, help_ref, source_ref, feedback_ref, directory):
-    help_value=json.loads(Path(help_ref['uri']).read_bytes())
-    if help_value.get('rejected') or help_value.get('provider')!='advisor':return None
     for ref in (help_ref,source_ref,feedback_ref):
         if sha(ref['uri'])!=ref['sha256']:raise DevConflict('candidate evidence digest drift')
+    help_value=json.loads(Path(help_ref['uri']).read_bytes())
+    if help_value.get('rejected'):return None
+    if help_value.get('provider')=='human_proxy':
+        # A visual AdvisorProxy answer may be displayed as an offline proposal.
+        # The Service importer still independently decides whether it can be a
+        # candidate; this queue carries no authority or promotion decision.
+        proxy_ref=help_value.get('advisor_proxy')
+        if (help_value.get('mode')!='vision' or not isinstance(proxy_ref,dict)
+                or set(proxy_ref)!={'uri','sha256'}):return None
+        if sha(proxy_ref['uri'])!=proxy_ref['sha256']:raise DevConflict('visual Advisor evidence digest drift')
+        answer=json.loads(Path(proxy_ref['uri']).read_bytes())
+        if answer.get('status')!='completed' or answer.get('mode')!='vision' or answer.get('request_type')!='hint' or answer.get('feedback')!=help_value.get('content'):
+            return None
+    elif help_value.get('provider')!='advisor':return None
     from .dev_v2_memory_import import queue
     return queue(store,cell,version,directory,'source',dict(
         guidance_source=help_ref,repair_source=source_ref,public_trace_source=feedback_ref))

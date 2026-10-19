@@ -262,7 +262,8 @@ class DevMainBridge:
                 independent_result=read(bundle['artifacts']['native_result']) if bundle else None,recording=bundle.get('recording') if bundle else None,
                 execution_state=j['state'] if j else 'not_dispatched'))
         planner=PlannerControl(self.store).snapshot(c['key']) if c.get('planner_features') else None
-        return dict(c,versions=rows,planner=planner,ledger=self.store.export_ledger(self.goal_id),lifecycle=self.lifecycle({**c,'planner':planner}))
+        from .dev_memory_view import projection as memory_projection
+        return dict(c,versions=rows,planner=planner,ledger=self.store.export_ledger(self.goal_id),lifecycle=self.lifecycle({**c,'planner':planner}),planner_memory=memory_projection(self.store,c))
 
     def get(self,path):
         parsed=urlsplit(path)

@@ -24,6 +24,41 @@ def bind_daily_advisor(selection,previous_selection):
     from .dev_advisor_proxy import default_config
     return {**selection,'advisor_proxy':selection.get('advisor_proxy',default_config(True))}
 
+def bind_daily_memory(selection, memory, previous_selection=None):
+    """New full-planner experiments use the existing v3 contract and budget gates."""
+    from .dev_planner import POLICY, configuration as planner_configuration
+    if previous_selection is not None and Path(previous_selection).is_file():
+        old=json.loads(Path(previous_selection).read_bytes())
+        if not old.get('planner_features',{}).get('memory'):
+            return selection
+    if selection.get('planner_features',{}).get('memory') and memory is None:
+        raise ValueError('daily Memory authority is not configured')
+    if memory is None or selection.get('mode','experiment')!='experiment' or selection.get('policies')!=[POLICY]:
+        return selection
+    features=selection.get('planner_features')
+    if features and features.get('memory') not in (None,memory):
+        raise ValueError('daily Memory authority differs from server configuration')
+    if features is None:
+        features={'memory':memory}
+    else:
+        features={**features,'memory':memory}
+    planner_configuration(features)
+    legacy=selection.get('configuration')
+    if legacy is None:
+        return {**selection,'planner_features':features}
+    from openarm365_dev_v2.scene_contract import registered_contract_ref
+    converted={k:v for k,v in selection.items() if k!='configuration'}
+    # The daily UI's finite legacy limits stay byte-for-byte as supplied. Its
+    # defaults are below v3 worst-case hint-human time, so v3's existing
+    # budget_limited coverage enforces those limits without granting more.
+    converted.update(goal_key=legacy['goal_id'],goal_limits=legacy['experiment_budget'],
+        wall_limit=legacy['wall_seconds'],cell_budget=legacy['cell_budget'],
+        target_depth=legacy['max_iterations'],target_valid_executions=legacy['max_iterations'],
+        max_versions=legacy['max_iterations'],coverage='budget_limited',
+        reproducible_reset=True,scene_contract=registered_contract_ref(),planner_features=features)
+    converted.pop('human_wait_seconds',None)
+    return converted
+
 def registered_scene_seeds():
     from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract
     contract=load_contract(registered_contract_ref())
@@ -33,14 +68,18 @@ def registered_scene_seeds():
     return sorted(set.intersection(*covered)) if covered else []
 
 class DailyDevV2:
-    def __init__(self,root,profiles,authorization=None,*,per_run_budget=False):
+    def __init__(self,root,profiles,authorization=None,*,per_run_budget=False,memory=None):
+        if memory is not None:
+            from .dev_planner import configuration as planner_configuration
+            planner_configuration({'memory':memory,'human_wait_seconds':0,'background_seconds':0,'approval_rule':'none'})
         self.root=Path(root).resolve();self.root.mkdir(parents=True,exist_ok=True)
-        self.profiles=profiles;self.authorization=authorization;self.per_run_budget=per_run_budget;self.mutex=threading.Lock();self.workers={}
+        self.profiles=profiles;self.authorization=authorization;self.per_run_budget=per_run_budget;self.memory=memory;self.mutex=threading.Lock();self.workers={}
         self.recover()
     def options(self):
         return {'enabled':True,'policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
                 'default_cell_budget':DEFAULT_CELL,'default_max_iterations':5,'registered_scene_seeds':registered_scene_seeds(),'formal_eligible':False,
                 'authorization':{'mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else self.authorization,'matrix':self.matrix(),
+                **({'memory':{k:self.memory[k] for k in ('store_id','namespace','url_sha256')}} if self.memory is not None else {}),
                 'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],control_step_limit=task_limits()['control_steps'],startup_cleanup_seconds=60*DEV_TIER_BUDGET_SCALE,wall_seconds=21600,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]}
     def matrix(self):
         rows=[]
@@ -79,23 +118,30 @@ class DailyDevV2:
             contract=load_contract(registered_contract_ref())
             for task in selection.get('tasks',[]):
                 for seed in selection.get('seeds',[]):seed_entry(contract,task,seed)
-        configuration=selection.get('configuration',{})
         key=selection.get('request_key','')
         if not re.fullmatch(r'[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
         eid='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24];directory,path,budget=self.paths(eid)
         selection=bind_daily_advisor(selection,directory/'selection.json')
+        selection=bind_daily_memory(selection,self.memory,directory/'selection.json')
+        experiments.validate_selection_fields(selection)
+        configuration=selection.get('configuration')
+        goal_key=configuration['goal_id'] if configuration is not None else selection.get('goal_key')
+        if not goal_key:raise ValueError('daily experiment requires a bounded goal configuration')
         with self.mutex:
             # Same goal cannot silently reset consumption in another ledger.
             for old in self.root.glob('devexp-*/authorization.json'):
                 row=json.loads(old.read_bytes())
-                if old!=budget and row['configuration']['goal_id']==configuration.get('goal_id'):raise DevConflict('goal ID already bound to another independent ledger')
+                previous=row.get('configuration') or row.get('goal_key')
+                previous_key=previous['goal_id'] if isinstance(previous,dict) else previous
+                if old!=budget and previous_key==goal_key:raise DevConflict('goal ID already bound to another independent ledger')
             # A crash during materialization can leave a goal ledger without its
             # authorization file. It still binds the goal; never reset it elsewhere.
             for old in self.root.glob('devexp-*/ledger.sqlite3'):
                 if old==path:continue
                 with sqlite3.connect('file:'+str(old)+'?mode=ro',uri=True) as db:
-                    if db.execute('SELECT 1 FROM v2_goals WHERE id=?',(configuration.get('goal_id'),)).fetchone():raise DevConflict('goal ID already bound to another independent ledger')
-            s=DevV2Store(path,configuration={'goal_id':configuration['goal_id'],'limits':configuration['experiment_budget'],'wall_seconds':configuration['wall_seconds']})
+                    goal_id=goal_key if configuration is not None else hashlib.sha256(('goal|'+goal_key).encode()).hexdigest()[:32]
+                    if db.execute('SELECT 1 FROM v2_goals WHERE id=?',(goal_id,)).fetchone():raise DevConflict('goal ID already bound to another independent ledger')
+            s=DevV2Store(path,configuration={'goal_id':configuration['goal_id'],'limits':configuration['experiment_budget'],'wall_seconds':configuration['wall_seconds']}) if configuration is not None else DevV2Store(path)
             # Source verification can traverse upstream packages. Keep it out of
             # the UI process, whose history readers otherwise contend for the GIL.
             request_file=directory/'selection.json'
@@ -115,9 +161,13 @@ class DailyDevV2:
                 result=subprocess.run([sys.executable,'-B','-m','benchmarks.attention_harness.dev_experiment','create','--store',str(path),'--artifacts',str(directory/'artifacts'),'--selection',str(request_file),'--output',str(directory/'created.json')],cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,timeout=60)
             if result.returncode:raise DevConflict('Experiment materialization failed; creation.log preserves diagnostic evidence')
             e=experiments.snapshot(s,eid)
+            manifest=json.loads(Path(e['manifest']['uri']).read_bytes())
             if budget.exists():
                 declaration=json.loads(budget.read_bytes())
-                if declaration['configuration']!=configuration or declaration['ledger_path']!=str(path):raise DevConflict('immutable authorization differs')
+                if declaration['ledger_path']!=str(path) or (declaration.get('configuration')!=configuration if configuration is not None else declaration.get('manifest_sha256')!=e['manifest']['sha256']):raise DevConflict('immutable authorization differs')
+            elif configuration is None:
+                declaration=dict(goal_key=goal_key,goal_id=manifest['goal_id'],experiment_id=eid,limits=manifest['goal_limits'],wall_limit=manifest['wall_limit'],manifest_sha256=e['manifest']['sha256'],ledger_path=str(path),
+                    **({'authorization_mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else {'deadline_epoch':self.authorization['deadline_epoch'] if self.authorization else time.time()+manifest['wall_limit']}))
             elif self.per_run_budget:
                 declaration=dict(configuration=configuration,ledger_path=str(path),authorization_mode='per_run_budget',deadline_epoch=None)
             else:
@@ -127,7 +177,7 @@ class DailyDevV2:
             else:
                 immutable(budget,declaration)
                 with s.tx() as db:
-                    goal=s.get(db,'goals',s.goal_id);goal['authorized_until']=declaration['deadline_epoch'];s.put(db,'goals',s.goal_id,goal)
+                    gid=manifest.get('goal_id',s.goal_id);goal=s.get(db,'goals',gid);goal['authorized_until']=declaration['deadline_epoch'];s.put(db,'goals',gid,goal)
         if body['start']:self.start(eid)
         return experiments.snapshot(s,eid)
     def start(self,eid):
@@ -163,23 +213,23 @@ class DailyDevV2:
         if creation.get('authorization_mode')!='per_run_budget':
             if creation.get('deadline_epoch',0)<=time.time():raise DevBudgetExhausted('This older record retains its expired authorization; create a new run')
             return creation_budget
-        configuration=experiment['selection']['configuration']
-        if creation['configuration']!=configuration or Path(creation['ledger_path']).resolve()!=store.path.resolve():raise DevConflict('run budget binding differs')
+        configuration=experiment['selection'].get('configuration')
+        if (creation.get('configuration')!=configuration if configuration is not None else creation.get('manifest_sha256')!=experiment['manifest']['sha256']) or Path(creation['ledger_path']).resolve()!=store.path.resolve():raise DevConflict('run budget binding differs')
         dispatch=directory/'run-authorization.json'
         if dispatch.exists():
             declaration=json.loads(dispatch.read_bytes())
-            if declaration['configuration']!=configuration or declaration['ledger_path']!=str(store.path):raise DevConflict('run authorization differs')
+            if declaration['ledger_path']!=str(store.path) or (declaration.get('configuration')!=configuration if configuration is not None else declaration.get('manifest_sha256')!=experiment['manifest']['sha256']):raise DevConflict('run authorization differs')
         else:
-            goal=store.goal()
-            deadline=time.time()+configuration['wall_seconds']
+            goal=store.goal(experiment.get('goal_id'))
+            deadline=time.time()+(configuration['wall_seconds'] if configuration is not None else creation['wall_limit'])
             if goal.get('real_started_at') is not None:deadline=min(deadline,goal['real_started_at']+goal['wall_limit'])
-            declaration=dict(configuration=configuration,ledger_path=str(store.path),deadline_epoch=deadline,authorization_mode='per_run_budget')
+            declaration={**creation,'deadline_epoch':deadline}
             immutable(dispatch,declaration)
         if declaration['deadline_epoch']<=time.time():raise DevBudgetExhausted('Run time budget exhausted; create a new run')
         with store.tx() as db:
-            goal=store.get(db,'goals',store.goal_id)
+            gid=experiment.get('goal_id',store.goal_id);goal=store.get(db,'goals',gid)
             if goal.get('authorized_until') not in (None,declaration['deadline_epoch']):raise DevConflict('existing run deadline cannot be extended')
-            goal['authorized_until']=declaration['deadline_epoch'];store.put(db,'goals',store.goal_id,goal)
+            goal['authorized_until']=declaration['deadline_epoch'];store.put(db,'goals',gid,goal)
         return dispatch
     def recover(self):
         # Live external workers survive UI reload. Dead claims are quarantined.
@@ -238,7 +288,10 @@ class DailyDevV2:
             request_ref=request_view_ref(help_content,read)
             request_view=display_request_view(read(request_ref)) if request_ref else None
             rows.append(dict(v,evaluator_review=review_content,request_view=request_view,source_text=read(v['source'],True),diff_text=read(v['diff'],True),decision_content=read(v['decision']),help_content=help_content,public_feedback=read(receipt.get('public_feedback')),independent_result=read(bundle['artifacts']['native_result']) if bundle else None,recording=bundle.get('recording') if bundle else None,execution_state=j['state'] if j else 'not_dispatched'))
-        return dict(c,versions=rows,ledger=s.export_ledger())
+        from .dev_memory_view import projection as memory_projection
+        with sqlite3.connect('file:'+str(s.path.resolve())+'?mode=ro',uri=True) as db:
+            goal_id=s.get(db,'experiments',c['experiment_id']).get('goal_id')
+        return dict(c,versions=rows,ledger=s.export_ledger(goal_id),planner_memory=memory_projection(s,c))
     def post(self,path,body,*,human_authorized=False):
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.

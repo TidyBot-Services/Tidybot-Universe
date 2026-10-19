@@ -2697,11 +2697,20 @@
   function memoryPanel(snapshot) {
     const memory=snapshot.memory;
     if (!memory) return '';
+    const dev=memory.dev_v2;
     const records=memoryCatalogue?.memories || Object.values(memory.records || {}).map(item=>({...item.record,memory_id:item.memory_id}));
     const canOperate=memoryCatalogue?.control?.can_operate ?? memory.control?.can_operate;
     const detail=memorySelected || null, record=detail?.record;
     return `<details data-memory-panel data-persist-detail="memory-panel"><summary>Memory · candidates & validation queue</summary>
-      <p>${memory.control?'Reads the same Memory records as the agent.':'Memory service is not configured.'}</p>
+      ${dev?`<div data-dev-memory-panel><h4>Dev v2 Memory evidence</h4>
+        ${dev.empty?'<p data-dev-memory-empty>No Dev v2 Memory candidates, validation dispatches or uses are recorded for this cell.</p>':''}
+        ${dev.queues.map(q=>`<article data-memory-queue><b>${esc(q.source)} · v${esc(q.version)}</b><p>${esc(q.status)} · ${esc(q.kind)}${q.kind==='source'?' · proposal only; not an authority candidate':''}</p></article>`).join('')}
+        ${dev.validations.map(v=>`<article data-memory-validation><b>Validation · v${esc(v.version)}</b><p>${esc(v.exposure)} · grant ${esc(v.grant_id)} · ${esc(v.status)} · ${esc(v.memory_ids.join(', ')||'control')}</p></article>`).join('')}
+        ${dev.retrievals.map(r=>`<article data-memory-retrieval><b>Dev exposure · v${esc(r.version)}</b><p>Authority ${esc(r.authority)} · namespace ${esc(r.namespace)}</p>${r.entries.length?r.entries.map(e=>`<p data-request-memory>来源：${esc(e.source)}${e.seeded_for_tests?' · seeded for tests, excluded from results':e.source==='来源待核实'?' · exclude from results until provenance is verified':''} · ${esc(e.memory_id)} @ ${esc(e.version)} · ${e.trusted?'trusted at retrieval':'untrusted'} · grant ${esc(e.grant_id)}<br>适用条件：${esc(JSON.stringify(e.applicability))}</p>`).join(''):'<p>No matching trusted Memory was granted.</p>'}</article>`).join('')}
+        ${dev.generations.map(g=>`<article data-memory-generation><b>Generation use · v${esc(g.version)}</b><p>Memory input ${esc(g.memory_packet_sha256)} · model input ${esc(g.model_input_sha256)} · generated source ${esc(g.result_source_sha256)}</p></article>`).join('')}
+        ${dev.receipts.map(r=>`<article data-memory-receipt><b>来源：${esc(r.source)} · ${esc(r.operation)} · v${esc(r.version)}</b>${r.seeded_for_tests?'<strong>seeded for tests, excluded from results</strong>':''}<p>${esc(r.status)}${r.authority_status?` · ${esc(r.authority_status)}`:''}</p></article>`).join('')}
+      </div>`:''}
+      <p>${dev?(snapshot.dev_v2?.planner_features?.memory?'Dev v2 Memory authority is configured. The catalogue below shows the separate legacy Memory records.':'No Dev v2 Memory authority is configured for this cell.'):(memory.control?'Reads the same Memory records as the agent.':'Memory service is not configured.')}</p>
       ${(memory.ingestion || []).map(item=>`<p data-memory-ingestion>${esc(item.memory_id || item.request_id)} · ${esc(item.decision)}${item.reason?` · ${esc(item.reason)}`:''}</p>`).join('')}
       ${memory.control?'<button type="button" data-memory-refresh>Refresh Memory catalogue</button>':''}
       <p data-memory-message role="status">${esc(memoryMessage)}</p>
@@ -2779,7 +2788,7 @@
     const feedback = chosen ? null : feedbackRequest(snapshot);
     const reply = submittedHint(snapshot,feedback);
     return `${DEBUG_VIEW ? `<section class="panel detail ab-current-request" data-core-region="request" data-state="${chosen ? 'active' : 'idle'}" aria-label="Current Request & Reply"><div class="panel-title"><h3>Current Request & Reply</h3>${chosen ? chip('pending', 'Awaiting your decision') : ''}</div>${chosen ? `${otherPending.length ? `<nav aria-label="Other pending requests">${otherPending.map(r => requestRow(snapshot,r)).join('')}</nav>` : ''}${traceDetail(snapshot, chosen)}` : `<div class="ab-idle-row"><p class="ab-idle-request">No action required</p>${feedbackShortcut(snapshot)}</div><p class="ab-idle-guidance" data-idle-guidance>${esc(idleGuidance(snapshot))}</p>${expired ? `<p data-reply-countdown data-deadline="${esc(expired.deadline_at)}" data-expired="true">${esc(countdown(expired))}</p>` : ''}`}${reply}
-      ${history.length ? `<details class="ab-request-history" data-request-history data-persist-detail="requests"><summary>Request history · ${history.length} </summary><div class="inbox-list">${history.map(r => requestRow(snapshot,r)).join('')}</div>${historical ? traceDetail(snapshot, historical, false, Boolean(chosen) || feedback?.request_id !== historical.request_id) : '<p class="minor">Select a historical request to view its evidence.</p>'}</details>` : ''}</section>` : operatorHelp(snapshot,chosen)}`;
+      ${history.length ? `<details class="ab-request-history" data-request-history data-persist-detail="requests"><summary>Request history · ${history.length} </summary><div class="inbox-list">${history.map(r => requestRow(snapshot,r)).join('')}</div>${historical ? traceDetail(snapshot, historical, false, Boolean(chosen) || feedback?.request_id !== historical.request_id) : '<p class="minor">Select a historical request to view its evidence.</p>'}</details>` : ''}${snapshot.dev_v2?memoryPanel(snapshot):''}</section>` : operatorHelp(snapshot,chosen)}`;
   }
   function mdLite(html) {
     return DEBUG_VIEW?html:html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'$1');
@@ -3323,8 +3332,9 @@
   }
   function operatorHelp(snapshot,chosen) {
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session);
-    if(end?.key==='action_approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action"><h4>Action permission closed</h4><p>${esc(end.explanation)}. This action was not executed.</p>${end.review?'<p>Review required · Unresolved work and any unknown paid holds remain recorded.</p>':''}</div>${operatorHelpHistory(snapshot)}</section>`;
-    if(snapshot.dev_v2?.lifecycle?.phase==='approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="waiting" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action need"><h4>A robot action needs your decision</h4><p>${esc(operatorLifecycleCopy(snapshot).text)}</p></div>${operatorHelpHistory(snapshot)}</section>`;
+    const memory=snapshot.dev_v2?memoryPanel(snapshot):'';
+    if(end?.key==='action_approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action"><h4>Action permission closed</h4><p>${esc(end.explanation)}. This action was not executed.</p>${end.review?'<p>Review required · Unresolved work and any unknown paid holds remain recorded.</p>':''}</div>${operatorHelpHistory(snapshot)}${memory}</section>`;
+    if(snapshot.dev_v2?.lifecycle?.phase==='approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="waiting" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action need"><h4>A robot action needs your decision</h4><p>${esc(operatorLifecycleCopy(snapshot).text)}</p></div>${operatorHelpHistory(snapshot)}${memory}</section>`;
     const waiting=operatorWaiting(snapshot),s=snapshot.dev_session,control=snapshot.attention_control;
     const dev=s && !snapshot.dev_v2;
     const hint=dev?control?.hint:chosen;
@@ -3335,7 +3345,7 @@
     const prompt=`Attempt ${k} failed: ${failure}. What should it do differently?`;
     const key=dev && hint?`${s.session_id}:${hint.request_id}`:'';
     const actions=dev?`<form data-dev-guidance data-request-id="${esc(hint?.request_id)}">${operatorQuickReplies()}<label class="op-guidance-label">Your reply<textarea name="content" maxlength="2000" required placeholder="${esc(placeholder)}">${esc(stored('attention.dev-guidance:'+key)||'')}</textarea></label><div class="op-controls"><button class="ab-button-primary" type="submit" value="answer" ${devGuidancePending.has(key)?'disabled':''}>Send reply</button><small>Watch the replay in 03 before replying</small></div><p role="status" data-dev-guidance-message></p></form>`:chosen?.request_type==='hint'?`<div class="ab-response-form">${operatorQuickReplies()}<label for="ab-hint-content">Your reply</label><textarea id="ab-hint-content" maxlength="4000" placeholder="${esc(placeholder)}"></textarea>${snapshot.run.robot?.execution_arm==='both'?'<div data-hint-scope><label>Target hand<select data-hint-arm aria-label="Hint target hand"><option value="left">Left hand</option><option value="right">Right hand</option><option value="both">Both hands</option></select></label><label>Task phase<select data-hint-phase aria-label="Hint task phase"><option value="pickup">Pickup</option><option value="handoff">Handoff</option><option value="placement">Placement</option></select></label></div>':''}<div class="op-controls"><button class="ab-button-primary" type="button" data-respond="hint">Send reply</button><small>Watch the replay in 03 before replying</small></div></div>`:chosen?.request_type==='approval'?'<div class="op-controls"><button type="button" data-respond="approve">Approve</button><button type="button" data-respond="deny">Deny</button></div>':'<button type="button" data-respond="interrupt">Confirm interrupt request</button>';
-    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${waiting?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action ${waiting?'need':'none'}"><h4>${waiting?'The robot needs your help':'✓ Nothing to do'}</h4>${waiting?`<p>${esc(prompt)}</p>${!dev&&chosen?.deadline_at!=null?`<p class="ab-countdown" data-reply-countdown data-deadline="${chosen.deadline_at}">${esc(countdown(chosen))}</p>`:''}${actions}`:`<p>${operatorLifecycleCopy(snapshot)?.text || (isTerminal(snapshot)?'This run has ended. The help the robot received is listed below.':"The robot is working on its own. You'll be asked here if it needs help.")}</p>`}</div>${operatorHelpHistory(snapshot)}</section>`;
+    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${waiting?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action ${waiting?'need':'none'}"><h4>${waiting?'The robot needs your help':'✓ Nothing to do'}</h4>${waiting?`<p>${esc(prompt)}</p>${!dev&&chosen?.deadline_at!=null?`<p class="ab-countdown" data-reply-countdown data-deadline="${chosen.deadline_at}">${esc(countdown(chosen))}</p>`:''}${actions}`:`<p>${operatorLifecycleCopy(snapshot)?.text || (isTerminal(snapshot)?'This run has ended. The help the robot received is listed below.':"The robot is working on its own. You'll be asked here if it needs help.")}</p>`}</div>${operatorHelpHistory(snapshot)}${memory}</section>`;
   }
 
   function operatorBudgetCard(name,value,seconds=false,ended=false,showZero=false,recorded=false,plain=false) {
@@ -3578,7 +3588,9 @@
     updateWaitCountdown();
     if(snapshot.dev_v2?.planner){
       const region=view.querySelector('[data-core-region="request"]');
-      region?.insertAdjacentHTML('beforeend',plannerPanel(snapshot));
+      const memoryCard=region?.querySelector('[data-memory-panel]');
+      if(memoryCard)memoryCard.insertAdjacentHTML('beforebegin',plannerPanel(snapshot));
+      else region?.insertAdjacentHTML('beforeend',plannerPanel(snapshot));
       const pending=snapshot.dev_v2.planner.requests.some(r=>r.request_type==='approval'&&r.state==='waiting');
       if(pending&&region){region.dataset.state='waiting';const action=region.querySelector('.op-action');if(action){action.className='op-action need';action.innerHTML='<h4>A robot action needs your decision</h4><p>Review the exact source and bounded permission below. Recorded public preparation is available below; the action remains blocked.</p>';}}
     }
@@ -4106,6 +4118,7 @@
       model:s.model||cell.model||launchOptions?.dev_loop?.model,attention_control:control};
     const snapshot = await devWorkspaceSnapshot(session);
     snapshot.dev_v2=cell;
+    snapshot.memory={...(snapshot.memory||{control:launchOptions?.dev_v2?.memory?{can_operate:false}:null,ingestion:[],uses:[],records:{}}),dev_v2:cell.planner_memory||{queues:[],validations:[],retrievals:[],generations:[],receipts:[],empty:true}};
     snapshot.model_token_accounting=launchOptions?.dev_v2?.model_token_accounting || null;
     snapshot.dev_eval_enabled=s.locked?.config?.eval_agent?.enabled===true;
     snapshot.dev_session.versions=cell.versions;

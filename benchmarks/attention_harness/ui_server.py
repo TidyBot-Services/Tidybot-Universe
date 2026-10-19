@@ -7,6 +7,7 @@ Run with ``python -m benchmarks.attention_harness.ui_server --store PATH``.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import io
 import json
@@ -523,14 +524,14 @@ def create_server(
     robocasa_camera_ws: str | None = None, robocasa_camera_device: str = "maniskill_base",
     run_catalog: Path | None = None, dev_v2_bridge=None,
     dev_v2_root: Path | None = None, dev_v2_authorization: Path | None = None,
-    dev_v2_per_run_budget: bool = False,
+    dev_v2_per_run_budget: bool = False, dev_v2_memory: dict | None = None,
     memory_view: MemoryView | None = None,
 ) -> ThreadingHTTPServer:
     # These adapters own different ledgers. Never silently replace an explicitly
     # injected shared-goal bridge with an independent daily experiment budget.
     if dev_v2_bridge is not None and dev_v2_root is not None:
         raise ValueError('choose an existing goal bridge or --dev-v2-root')
-    if dev_v2_root is None and (dev_v2_authorization is not None or dev_v2_per_run_budget):
+    if dev_v2_root is None and (dev_v2_authorization is not None or dev_v2_per_run_budget or dev_v2_memory is not None):
         raise ValueError('Dev v2 authorization/budget options require --dev-v2-root')
     if store is not None:
         recover_lost_runs(store)
@@ -556,7 +557,7 @@ def create_server(
         from .daily_dev_v2 import DailyDevV2
         authorization = json.loads(dev_v2_authorization.read_bytes()) if dev_v2_authorization else None
         dev_v2_bridge = DailyDevV2(dev_v2_root, profiles, authorization,
-                                  per_run_budget=dev_v2_per_run_budget)
+                                  per_run_budget=dev_v2_per_run_budget,memory=dev_v2_memory)
 
     from . import dev_loop
     from .core.dev_store import DevConflict
@@ -1302,6 +1303,10 @@ def main() -> None:
     parser.add_argument("--memory-service-url",
                         help="Memory Service origin; keys come from ATTENTION_MEMORY_API_KEY and "
                              "ATTENTION_MEMORY_OPERATOR_KEY (operator key enables lifecycle actions)")
+    parser.add_argument("--dev-v2-memory-store-id", default=os.environ.get("ATTENTION_MEMORY_STORE_ID"),
+                        help="opt-in daily Memory authority store ID")
+    parser.add_argument("--dev-v2-memory-namespace", default=os.environ.get("ATTENTION_MEMORY_NAMESPACE"),
+                        help="isolated daily Memory namespace")
     parser.add_argument("--memory-local", action="store_true",
                         help="show the Memory kept in this run store (read-only unless "
                              "--memory-local-operator)")
@@ -1349,6 +1354,15 @@ def main() -> None:
         if store is None:
             parser.error("--memory-local requires --store")
         memory_view = MemoryView.local(args.store, operate=args.memory_local_operator)
+    daily_memory = None
+    if args.dev_v2_memory_store_id or args.dev_v2_memory_namespace:
+        if not (args.dev_v2_root and args.memory_service_url and args.dev_v2_memory_store_id and args.dev_v2_memory_namespace and os.environ.get("ATTENTION_MEMORY_API_KEY")):
+            parser.error("daily Memory requires --dev-v2-root, --memory-service-url, store ID, namespace and ATTENTION_MEMORY_API_KEY")
+        from .dev_planner import configuration as planner_configuration
+        daily_memory=dict(base_url=args.memory_service_url,store_id=args.dev_v2_memory_store_id,
+                          namespace=args.dev_v2_memory_namespace,
+                          url_sha256=hashlib.sha256(args.memory_service_url.encode()).hexdigest())
+        planner_configuration({'memory':daily_memory,'human_wait_seconds':0,'background_seconds':0,'approval_rule':'none'})
     server = create_server(store=store, host=args.host, port=args.port, memory_view=memory_view,
                            orchestrator_url=args.orchestrator_url,
                            artifact_root=args.artifact_root, robosuite_url=args.robosuite_url,
@@ -1357,7 +1371,7 @@ def main() -> None:
                            robocasa_camera_device=args.robocasa_camera_device,
                            run_catalog=args.run_catalog, dev_v2_root=args.dev_v2_root,
                            dev_v2_authorization=args.dev_v2_authorization,
-                           dev_v2_per_run_budget=args.dev_v2_per_run_budget)
+                           dev_v2_per_run_budget=args.dev_v2_per_run_budget,dev_v2_memory=daily_memory)
     print(f"AttentionBench UI: http://{args.host}:{server.server_port}/ui/", flush=True)
     try:
         server.serve_forever()

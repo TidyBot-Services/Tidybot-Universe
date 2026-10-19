@@ -7,6 +7,7 @@ import pytest
 
 from benchmarks.attention_harness.daily_dev_v2 import DailyDevV2
 from benchmarks.attention_harness.dev_main_bridge import DevMainBridge
+from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.dev_loop import sha
 from benchmarks.attention_harness.dev_request_view import display_eval_review
 from benchmarks.attention_harness.core.dev_store import DevConflict
@@ -35,16 +36,21 @@ def test_daily_and_bridge_show_the_same_verified_review_and_request(tmp_path):
     assert help_content['provider']=='human_proxy' and 'request_view' not in help_content and 'request' not in help_content
     help_content['advisor_proxy']=advisor_ref
     help_ref=artifact('help.json',help_content)
-    cell={'key':'cell','versions':[{'version':1,'source':source,'diff':diff,'decision':decision,'help':help_ref}],
+    cell={'key':'cell','experiment_id':'fixture-experiment','versions':[{'version':1,'source':source,'diff':diff,'decision':decision,'help':help_ref}],
           'jobs':[{'kind':'eval','version':1,'state':'settled','receipt':{'eval_review':review}}]}
-    class Store:
+    class Store(DevV2Store):
         def export_ledger(self,*_):return {'recompute_matches':True}
+    store=Store(tmp_path/'ledger.sqlite3')
+    with store.tx() as db:store.put(db,'experiments',cell['experiment_id'],{'goal_id':'goal'})
     daily=DailyDevV2.__new__(DailyDevV2)
     bridge=DevMainBridge.__new__(DevMainBridge)
-    bridge.store=Store();bridge.goal_id='goal';bridge.lifecycle=lambda _:{}
+    bridge.store=store;bridge.goal_id='goal';bridge.lifecycle=lambda _:{}
     before={p:p.read_bytes() for p in tmp_path.iterdir()}
-    daily_row=daily.view(Store(),cell)['versions'][0]
-    bridge_row=bridge.view(cell)['versions'][0]
+    daily_view=daily.view(store,cell);bridge_view=bridge.view(cell)
+    assert daily_view['planner_memory']['empty'] is True
+    assert bridge_view['planner_memory']['empty'] is True
+    daily_row=daily_view['versions'][0]
+    bridge_row=bridge_view['versions'][0]
     for row in (daily_row,bridge_row):
         assert row['help_content']['provider']=='human_proxy'
         assert row['evaluator_review']['reason']==view['eval_review']['reason']
@@ -77,13 +83,13 @@ process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync(0,'utf8')).map((v
 
     Path(request['uri']).write_text('{}')
     with pytest.raises(DevConflict,match='[Dd]igest|drift'):
-        daily.view(Store(),cell)
+        daily.view(store,cell)
     with pytest.raises(DevConflict,match='[Dd]igest|drift'):
         bridge.view(cell)
     Path(request['uri']).write_bytes(before[Path(request['uri'])])
     Path(advisor_ref['uri']).write_text('{}')
     with pytest.raises(DevConflict,match='[Dd]igest|drift'):
-        daily.view(Store(),cell)
+        daily.view(store,cell)
     with pytest.raises(DevConflict,match='[Dd]igest|drift'):
         bridge.view(cell)
 
@@ -98,14 +104,19 @@ def test_old_help_without_request_view_has_no_panel(tmp_path):
     decision=artifact('decision.json',{'action':'request'})
     help_ref=artifact('help.json',{'provider':'advisor','content':'Old answer',
                                    'request':{'uri':'legacy-model-request.json','sha256':'a'*64}})
-    cell={'key':'cell','versions':[{'version':1,'source':source,'diff':diff,'decision':decision,'help':help_ref}], 'jobs':[]}
-    class Store:
+    cell={'key':'cell','experiment_id':'fixture-experiment','versions':[{'version':1,'source':source,'diff':diff,'decision':decision,'help':help_ref}], 'jobs':[]}
+    class Store(DevV2Store):
         def export_ledger(self,*_):return {}
+    store=Store(tmp_path/'ledger.sqlite3')
+    with store.tx() as db:store.put(db,'experiments',cell['experiment_id'],{'goal_id':'goal'})
     daily=DailyDevV2.__new__(DailyDevV2)
     bridge=DevMainBridge.__new__(DevMainBridge)
-    bridge.store=Store();bridge.goal_id='goal';bridge.lifecycle=lambda _:{}
-    assert daily.view(Store(),cell)['versions'][0]['request_view'] is None
-    assert bridge.view(cell)['versions'][0]['request_view'] is None
+    bridge.store=store;bridge.goal_id='goal';bridge.lifecycle=lambda _:{}
+    daily_view=daily.view(store,cell);bridge_view=bridge.view(cell)
+    assert daily_view['planner_memory']['empty'] is True
+    assert bridge_view['planner_memory']['empty'] is True
+    assert daily_view['versions'][0]['request_view'] is None
+    assert bridge_view['versions'][0]['request_view'] is None
 
 
 def test_legacy_display_fixture_request_view_still_resolves(tmp_path):

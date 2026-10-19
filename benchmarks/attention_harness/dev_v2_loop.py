@@ -235,16 +235,15 @@ def hp_result(text,record):
 def attention(store,key,version,feedback,previous,failures,prior,m,owner,directory,client):
     cell=store.cell(key);policy=cell['policy_id'];params=m['policies'].get(policy,policy_parameters(policy));remaining=max(0,cell['budget']['help_count']-cell['used']['help_count'])
     decision_path=directory/'decision.json'
-    memory=m['memory']
-    if cell.get('planner_features') and cell['planner_features']['memory']:
-        from .dev_planner_memory import load_memory
-        config=m['configs'][f"{cell['task_id']}:{cell['seed']}"]
-        memory,_=load_memory(store,key,version,previous,config,cell['planner_features']['memory'],directory)
     from . import dev_advisor_proxy as advisor
     config=m['configs'][f"{cell['task_id']}:{cell['seed']}"];proxy=advisor.from_config(config)
     features=cell.get('planner_features') or {}
-    if proxy and features and (features.get('human_wait_seconds',0)>0 or features.get('background_seconds',0)>0 or features.get('approval_rule')!='none'):
+    if proxy and features and (features.get('human_wait_seconds',0)>0 or features.get('background_seconds',0)>0 or features.get('approval_rule','generated_motion_policy')!='none'):
         raise DevConflict('Advisor is incompatible with planner waiting preparation and approval')
+    memory=m['memory']
+    if features.get('memory'):
+        from .dev_planner_memory import load_memory
+        memory,_=load_memory(store,key,version,previous,config,features['memory'],directory)
     if decision_path.exists():decision=json.loads(decision_path.read_bytes())
     else:
         eval_review=feedback.get('eval_review')

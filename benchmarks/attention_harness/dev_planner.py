@@ -36,10 +36,10 @@ def configuration(value):
         if type(p[key]) is not int or not minimum <= p[key] <= maximum:
             raise ValueError('bounded positive planner duration required: ' + key)
     if p['approval_rule']=='none' and (p['human_wait_seconds'] or p['background_seconds']):
-        raise ValueError('memory-only planner cannot prepare or wait for approval')
+        raise ValueError('planner without approval cannot prepare or wait for approval')
     m = p['memory']
     if m is not None:
-        if not isinstance(m, dict) or set(m) != {'base_url', 'store_id', 'namespace'}:
+        if not isinstance(m, dict) or set(m) not in ({'base_url', 'store_id', 'namespace'}, {'base_url', 'store_id', 'namespace', 'url_sha256'}):
             raise ValueError('Memory endpoint, authority and isolated namespace required')
         if not all(isinstance(v, str) and v.strip() for v in m.values()):
             raise ValueError('nonempty Memory configuration required')
@@ -49,6 +49,8 @@ def configuration(value):
                 url.scheme not in {'http', 'https'} or not url.hostname or
                 url.scheme == 'http' and url.hostname not in {'127.0.0.1', 'localhost'}):
             raise ValueError('Memory endpoint must be credential-free HTTPS or loopback')
+        if 'url_sha256' in m and m['url_sha256'] != hashlib.sha256(m['base_url'].encode()).hexdigest():
+            raise ValueError('Memory endpoint digest mismatch')
     return p
 
 
