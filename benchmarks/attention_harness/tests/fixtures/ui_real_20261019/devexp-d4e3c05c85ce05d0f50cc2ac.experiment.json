@@ -1,0 +1,204 @@
+{
+  "artifact_dir": "/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-d4e3c05c85ce05d0f50cc2ac/artifacts/devexp-d4e3c05c85ce05d0f50cc2ac",
+  "cancelled": false,
+  "created_at": 1792349922.5114942,
+  "experiment_id": "devexp-d4e3c05c85ce05d0f50cc2ac",
+  "formal_eligible": false,
+  "goal_id": "daily-v2-1792349910212",
+  "manifest": {
+    "sha256": "da7e1e8e6da9f1d7a5c4760c7fda1619dd013069461dbfbf2cc23d240aea0e1d",
+    "uri": "/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-d4e3c05c85ce05d0f50cc2ac/artifacts/devexp-d4e3c05c85ce05d0f50cc2ac/manifest.json"
+  },
+  "owner": null,
+  "reason": "'model_reserve_seconds'",
+  "selection": {
+    "budget_tier": "dev",
+    "configuration": {
+      "cell_budget": {
+        "advisor_calls": 5,
+        "control_steps": 48000,
+        "dev_calls": 5,
+        "eval_calls": 5,
+        "execution_seconds": 10800,
+        "executions": 5,
+        "help_count": 5,
+        "help_credits": 5,
+        "help_wait_seconds": 2100,
+        "input_tokens": 850000,
+        "model_seconds": 1800,
+        "output_tokens": 150000,
+        "provider_tokens": 1000000,
+        "sdk_calls": 1600
+      },
+      "experiment_budget": {
+        "advisor_calls": 5,
+        "control_steps": 48000,
+        "dev_calls": 5,
+        "eval_calls": 5,
+        "execution_seconds": 10800,
+        "executions": 5,
+        "help_count": 5,
+        "help_credits": 5,
+        "help_wait_seconds": 2100,
+        "input_tokens": 850000,
+        "model_seconds": 1800,
+        "output_tokens": 150000,
+        "provider_tokens": 1000000,
+        "sdk_calls": 1600
+      },
+      "goal_id": "daily-v2-1792349910212",
+      "max_iterations": 5,
+      "wall_seconds": 21600
+    },
+    "eval_agent": {
+      "enabled": true,
+      "model": "parcc/Qwen"
+    },
+    "help_budget": 5,
+    "mode": "experiment",
+    "policies": [
+      "autonomous"
+    ],
+    "policy_parameters": {
+      "autonomous": {}
+    },
+    "request_key": "c91e2c08-1808-4bd5-ba43-1c5121dc8ebd",
+    "seeds": [
+      102
+    ],
+    "tasks": [
+      "pick_place_counter_to_sink"
+    ],
+    "trace_visible": true
+  },
+  "state": "needs_review",
+  "cells": [
+    {
+      "budget": {
+        "advisor_calls": 5,
+        "control_steps": 48000,
+        "dev_calls": 5,
+        "eval_calls": 5,
+        "execution_seconds": 10800,
+        "executions": 5,
+        "help_count": 5,
+        "help_credits": 5,
+        "help_wait_seconds": 2100,
+        "input_tokens": 850000,
+        "model_seconds": 1800,
+        "output_tokens": 150000,
+        "provider_tokens": 1000000,
+        "sdk_calls": 1600
+      },
+      "created_at": null,
+      "experiment_eligible": true,
+      "experiment_id": "devexp-d4e3c05c85ce05d0f50cc2ac",
+      "formal_eligible": false,
+      "key": "ee286fd2dedce05ff650bce09a28b1370c116723a28b79516091765f08e5280e",
+      "mixed_policy": false,
+      "mode": "experiment",
+      "owner": null,
+      "policy_id": "autonomous",
+      "policy_segments": [
+        "autonomous"
+      ],
+      "seed": 102,
+      "state": "planned",
+      "task_id": "pick_place_counter_to_sink",
+      "used": {
+        "advisor_calls": 0,
+        "control_steps": 0,
+        "dev_calls": 0,
+        "eval_calls": 0,
+        "execution_seconds": 0,
+        "executions": 0,
+        "help_count": 0,
+        "help_credits": 0,
+        "help_wait_seconds": 0,
+        "hint_human_seconds": 0,
+        "input_tokens": 0,
+        "model_seconds": 0,
+        "output_tokens": 0,
+        "provider_tokens": 0,
+        "sdk_calls": 0
+      },
+      "jobs": [],
+      "versions": []
+    }
+  ],
+  "resources": {
+    "authorized_until": 1792371522.5877256,
+    "limits": {
+      "advisor_calls": 5,
+      "control_steps": 48000,
+      "dev_calls": 5,
+      "eval_calls": 5,
+      "execution_seconds": 10800,
+      "executions": 5,
+      "help_count": 5,
+      "help_credits": 5,
+      "help_wait_seconds": 2100,
+      "input_tokens": 850000,
+      "model_seconds": 1800,
+      "output_tokens": 150000,
+      "provider_tokens": 1000000,
+      "sdk_calls": 1600
+    },
+    "opening": [],
+    "real_started_at": null,
+    "used": {
+      "advisor_calls": 0,
+      "control_steps": 0,
+      "dev_calls": 0,
+      "eval_calls": 0,
+      "execution_seconds": 0,
+      "executions": 0,
+      "help_count": 0,
+      "help_credits": 0,
+      "help_wait_seconds": 0,
+      "hint_human_seconds": 0,
+      "input_tokens": 0,
+      "model_seconds": 0,
+      "output_tokens": 0,
+      "provider_tokens": 0,
+      "sdk_calls": 0
+    },
+    "wall_limit": 21600,
+    "reserved": {
+      "dev_calls": 0,
+      "advisor_calls": 0,
+      "eval_calls": 0,
+      "provider_tokens": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "executions": 0,
+      "sdk_calls": 0,
+      "control_steps": 0,
+      "help_credits": 0,
+      "help_count": 0,
+      "help_wait_seconds": 0,
+      "model_seconds": 0,
+      "execution_seconds": 0,
+      "hint_human_seconds": 0
+    },
+    "remaining": {
+      "dev_calls": 5,
+      "advisor_calls": 5,
+      "eval_calls": 5,
+      "provider_tokens": 1000000,
+      "input_tokens": 850000,
+      "output_tokens": 150000,
+      "executions": 5,
+      "sdk_calls": 1600,
+      "control_steps": 48000,
+      "help_credits": 5,
+      "help_count": 5,
+      "help_wait_seconds": 2100,
+      "model_seconds": 1800,
+      "execution_seconds": 10800,
+      "hint_human_seconds": 0
+    },
+    "wall_used": 0,
+    "wall_remaining": 0
+  }
+}

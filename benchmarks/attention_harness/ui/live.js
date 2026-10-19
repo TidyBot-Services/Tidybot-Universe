@@ -307,7 +307,7 @@
     const cfg=session.locked?.config||{};
     return {run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
       created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
-      status:session.state,reason:session.reason,end_summary:devEndSummary(session),development:true,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
+      status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
       attempts_used:session.used?.executions,attempts_limit:session.budget?.executions,
       // Ran to the boundary with every execution failed: "completed" alone says nothing about the task outcome.
@@ -319,10 +319,12 @@
   }
   function navigationRecords(){return allNavigationRecords().filter(r=>!r.history_deleted_at||recordIsActive(r));}
   function deletedNavigationRecords(){return allNavigationRecords().filter(r=>r.history_deleted_at&&!recordIsActive(r));}
-  function recordIsActive(item){if(item.lifecycle)return ['model','advisor','approval','sdk','preparing'].includes(item.lifecycle.phase);return item.development?['ready','running','stopping'].includes(item.status):item.status==='running';}
+  function recordIsActive(item){if(['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','timed_out','not_started'].includes(item.status))return false;if(item.lifecycle)return ['model','advisor','approval','sdk','preparing'].includes(item.lifecycle.phase);return item.development?['ready','running','stopping'].includes(item.status):item.status==='running';}
   function recordStatus(item){
     if(!DEBUG_VIEW&&item.all_attempts_failed)return 'Failed';
     if(!DEBUG_VIEW&&item.development&&/infrastructure|dispatch unknown|outcome_unknown/i.test(String(item.reason||'')))return 'System problem';
+    if(item.development&&['condition_invalid','needs_review','cancelled','failed','not_started'].includes(item.status))
+      return ({condition_invalid:'Condition Invalid',needs_review:'Needs review',cancelled:'Stopped',failed:'Failed',not_started:'Not started'})[item.status];
     if(item.development&&item.lifecycle)return ({prepared:'Prepared / Not started',queued:'Queued / Next round',model:'Model working',advisor:'Waiting for Advisor',approval:'Needs human approval',sdk:'SDK running',preparing:'Preparing public work',review:'Needs review',terminal:'Ended'})[item.lifecycle.phase] || 'Unconfirmed';
     if(!DEBUG_VIEW&&item.development&&item.status==='running')return 'Running';
     if(!DEBUG_VIEW&&item.development&&item.status==='completed')return 'Finished';
@@ -701,6 +703,34 @@
       return {seconds:null, reason:'This event is outside the recorded sample range'};
     const index = traces.findLastIndex(t => t <= event.timestamp);
     return {seconds:videos[index], mode:'sample'};
+  }
+  function operatorReplayTarget(events, index, recording, hasVideo) {
+    const exact=replayTarget(events[index],recording,hasVideo);
+    if(exact.seconds!=null || !hasVideo)return exact;
+    const event=events[index];
+    // A failed SDK call can finish after the last saved frame. Its clock is real,
+    // but it has no exact video position; use the recorded end for that final step.
+    const outsideEnd=event.timestamp_basis==='relative' && Number.isFinite(event.timestamp)
+      && event.timestamp>recording?.replay_timing?.frame_trace_seconds?.at(-1);
+    const finalFailure=(event.status==='failed'||event.status==='blocked')
+      && !events.slice(index+1).some(e=>e.status==='failed'||e.status==='blocked');
+    if(event.timestamp_basis==='relative' && event.timestamp!=null && !(outsideEnd&&finalFailure))return exact;
+    const timing=recording?.replay_timing;
+    const lastTrace=timing?.frame_trace_seconds?.at(-1);
+    const lastSample=Number.isFinite(lastTrace)?replayTarget({timestamp_basis:'relative',timestamp:lastTrace},recording,true):{seconds:null};
+    if(timing && lastSample.seconds==null)return exact;
+    if(finalFailure) {
+      const duration=recording?.duration_seconds;
+      const seconds=lastSample.seconds!=null?lastSample.seconds:Number.isFinite(duration)&&duration>0?Math.max(0,duration-0.1):null;
+      if(seconds!=null)return {seconds,mode:'end'};
+    }
+    const known=events.slice(0,index).map((row,i)=>({index:i,target:replayTarget(row,recording,true)}))
+      .filter(row=>row.target.seconds!=null).at(-1);
+    if(known)return {seconds:known.target.seconds,mode:'nearest'};
+    const firstTrace=timing?.frame_trace_seconds?.[0];
+    const first=Number.isFinite(firstTrace)?replayTarget({timestamp_basis:'relative',timestamp:firstTrace},recording,true).seconds:null;
+    if(first!=null)return {seconds:first,mode:'nearest'};
+    return Number.isFinite(recording?.duration_seconds)&&recording.duration_seconds>0?{seconds:0,mode:'nearest'}:exact;
   }
   function rememberReplay(video) {
     const key=video.dataset.replayKey;
@@ -1255,7 +1285,7 @@
     return {running:'Attempt running', succeeded:'Attempt succeeded', failed:'Attempt unsuccessful', timed_out:'Attempt timed out', cancelled:'Attempt cancelled'}[status] || 'Not executed yet';
   }
   function isTerminal(snapshot) {
-    return ['completed', 'failed', 'cancelled'].includes(snapshot.run.status);
+    return ['completed', 'failed', 'cancelled', 'condition_invalid', 'needs_review', 'stopped', 'budget_exhausted', 'timed_out', 'not_started'].includes(snapshot.run.status);
   }
   function executionFailure(trace) {
     const failure = trace?.failure;
@@ -1786,6 +1816,21 @@
   function runConfigSummary({robot,arm,seed,layout,style,versions,help,reviewer}) {
     return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests · reviewer ${reviewer?'on':'off'}`;
   }
+  function launchSourceProfile(source, profiles, options, preferDev) {
+    if(!source)return {profile:null,reason:''};
+    const isFixed=p=>['certified_v2','formal'].includes(p.channel);
+    const matching=profiles.filter(p=>p.enabled && p.suite===source.suite && p.task_id===source.task_id
+      && p.robot===source.robot?.model && p.execution_arm===source.robot?.execution_arm);
+    const seeded=matching.filter(p=>p.channel==='dev_v2'
+      ? (options?.dev_v2?.tasks?.find(t=>t.task_id===p.task_id)?.seeds||[p.seed]).includes(source.seed)
+      : p.seed===source.seed);
+    return {profile:seeded.find(p=>isFixed(p)!==preferDev)||seeded[0]||null,
+      reason:!matching.length?'The task, robot and arm combination is no longer supported.'
+        : !seeded.length?`Scene seed ${source.seed} is unavailable for this task.`:''};
+  }
+  function launchSourceNotice(source,profile,reason) {
+    return source?`<p class="ab-launch-note" data-launch-source>${profile?'Task, robot and arm copied from the current record.':`The current configuration is unavailable for a new run: ${esc(reason)} Choose a supported configuration below.`} Source: ${esc(displayRun(source))}</p>`:'';
+  }
 
   function bindLaunch() {
     view.querySelector('[data-open-launch]')?.addEventListener('click', () => {
@@ -1802,13 +1847,12 @@
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
       const source = linkedConfiguration?.run || currentSnapshot?.run;
       const isFixed=p=>['certified_v2','formal'].includes(p.channel);
-      const matchingProfiles=source?devProfiles.filter(p=>p.suite===source.suite&&p.task_id===source.task_id&&p.seed===source.seed&&p.robot===source.robot?.model&&p.execution_arm===source.robot?.execution_arm&&p.enabled):[];
       const preferDev=Boolean(currentSnapshot?.dev_session);
-      const sourceProfile=matchingProfiles.find(p=>isFixed(p)!==preferDev)||matchingProfiles[0];
+      const {profile:sourceProfile,reason:sourceUnavailable}=launchSourceProfile(source,devProfiles,options,preferDev);
       launchDialog.innerHTML = `<div class="ab-launch-shell">
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3><p>Choose a run type, then configure its task and resources.</p></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
         <form id="ab-launch-form"><div class="ab-launch-body">
-          ${source?`<p class="ab-launch-note" data-launch-source>${sourceProfile?'Task, robot and arm copied from the current record.':'The current configuration is unavailable for a new run. Choose a supported configuration below.'} Source: ${esc(displayRun(source))}</p>`:''}
+          ${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
           <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field ab-launch-type">Run type<select name="run_type" aria-label="Run type">${devProfiles.some(p=>!isFixed(p))?'<option value="dev">Dev automatic iteration</option>':''}${devProfiles.some(isFixed)?'<option value="fixed">Fixed policy execution</option>':''}</select><small data-run-type-description></small></label>
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
@@ -1994,6 +2038,7 @@
         syncArm();
         form.execution_arm.value = sourceProfile.execution_arm;
         syncProfile(true);
+        if([...form.seed.options].some(option=>Number(option.value)===source.seed))form.seed.value=String(source.seed);
       }
       form.benchmark.addEventListener('change',syncBenchmark);
       form.task_id.addEventListener('change',syncTask);
@@ -2812,7 +2857,7 @@
     const status=String(r.status||'');
     if(recordIsActive(r))return Number(r.pending_hints||0)>0?'waiting':'running';
     if(status==='needs_review')return /infrastructure|dispatch unknown|outcome_unknown/i.test(String(r.reason||''))?'failed':'waiting';
-    if(['failed','timed_out','budget_exhausted'].includes(status)||r.all_attempts_failed)return 'failed';
+    if(['failed','condition_invalid','timed_out','budget_exhausted'].includes(status)||r.all_attempts_failed)return 'failed';
     if(status==='succeeded')return 'success';
     return 'idle';
   }
@@ -2838,6 +2883,11 @@
     const last=operatorLast(snapshot),outcome=snapshot.eval?.native_outcomes?.[last?.attempt_id];
     const success=(outcome?.evaluated===true&&outcome.native_success===true)||snapshot.eval?.native_success===true;
     const phase=snapshot.dev_v2?.lifecycle?.phase;
+    if(snapshot.run.status==='condition_invalid')return 'condition_invalid';
+    if(snapshot.run.status==='needs_review')return 'review';
+    if(snapshot.run.status==='not_started')return 'not_started';
+    if(snapshot.run.status==='cancelled'||snapshot.run.status==='stopped')return 'cancelled';
+    if(snapshot.run.status==='failed'||snapshot.run.status==='timed_out')return 'failed';
     return phase && !['sdk','terminal'].includes(phase) ? phase : success?'success':isTerminal(snapshot)?'failed':operatorWaiting(snapshot)?'waiting':'running';
   }
   let toastTimer=null;
@@ -2947,6 +2997,9 @@
     const row=rows[l.phase];return row?{title:row[0],short:row[1],text:row[2]}:null;
   }
   function operatorPageTitle(snapshot,name) {
+    const terminalTitle={condition_invalid:'⚠ Condition invalid',needs_review:'⚠ Needs review',cancelled:'○ Cancelled',stopped:'○ Stopped',not_started:'○ Not started',
+      failed:'✕ Failed',timed_out:'✕ Timed out',budget_exhausted:'✕ Budget reached'}[snapshot.run.status];
+    if(terminalTitle)return `${terminalTitle} · ${name} · Attention Bench`;
     const copy=operatorLifecycleCopy(snapshot);
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session);
     if(end?.key==='action_approval')return `${end.title} · ${name} · Attention Bench`;
@@ -3014,6 +3067,17 @@
     return 'the run ended';
   }
   function operatorOutcome(snapshot) {
+    const status=snapshot.run.status,reason=String(snapshot.dev_session?.reason||snapshot.eval?.stopped_reason||'');
+    if(['condition_invalid','needs_review','cancelled','stopped','not_started'].includes(status)) {
+      const detail=status==='condition_invalid' ? /scene_contract_mismatch/i.test(reason) ? 'Invalid run: the scene did not match the registered scene.'
+        : /eval_vision_unavailable|unparseable_answer/i.test(reason) ? 'Invalid run: the automatic reviewer could not read the recording.'
+        : 'Invalid run: the required execution conditions could not be verified.'
+        : status==='needs_review' ? 'Needs review: the worker stopped unexpectedly and the run cannot continue automatically.'
+          : status==='not_started'?'Not started: this task ended before any execution began.'
+          : status==='cancelled'?'Stopped: this run was cancelled.':'Stopped: this run was stopped.';
+      const title={condition_invalid:'⚠ CONDITION INVALID',needs_review:'⚠ NEEDS REVIEW',cancelled:'○ CANCELLED',stopped:'○ STOPPED',not_started:'○ NOT STARTED'}[status];
+      return `<div class="op-outcome ${status}" data-operator-outcome="${status}" role="status"><strong>${title}</strong><div><p>${esc(detail)}</p></div></div>`;
+    }
     const lifecycle=snapshot.dev_v2?.lifecycle,copyState=operatorLifecycleCopy(snapshot);
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session),permissionStopped=end?.key==='action_approval';
     if(copyState && !['sdk','terminal'].includes(lifecycle.phase))return `<div class="op-outcome" data-operator-outcome="${esc(lifecycle.phase)}" role="status"><strong>${copyState.title}</strong><div>${permissionStopped?`<p>Action permission closed · ${esc(end.explanation)}. This action was not executed.</p>`:''}<p>${esc(copyState.text)}</p></div></div>`;
@@ -3063,17 +3127,19 @@
 
   function operatorEvents(trace, hasVideo) {
     const groups=[];
-    (trace?.events || []).forEach((event,index)=>{
+    const events=trace?.events||[];
+    events.forEach((event,index)=>{
       if (!DEBUG_VIEW && event.status!=='failed' && (event.status==='started' || event.event_type==='sdk.sensor_read' || /(^|\.)get_observation$/.test(String(event.operation||'')) || (event.event_type==='sdk.bimanual_control' && event.operation==='state'))) return;
       const previous=groups.at(-1), operation=event.operation || event.event_type, text=plainEvent(event);
       if (previous && previous.text === text && previous.event.status === event.status) previous.count++;
       else groups.push({operation,event,index,count:1,text});
     });
     return groups.map(({operation,event,index,count,text})=>{
-      const target=replayTarget(event,trace?.recording,hasVideo);
+      const target=operatorReplayTarget(events,index,trace?.recording,hasVideo);
       const seconds=hasVideo ? target.seconds : (event.timestamp_basis==='relative' && Number.isFinite(event.timestamp) ? event.timestamp : null);
       const failed=event.status==='failed'||event.status==='blocked';
-      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`}><time>${seconds==null?'':operatorTime(seconds)}</time><span>${failed?'✕':event.status==='running'?'●':'✓'}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
+      const approximate=target.mode==='end'?'Near recording end':target.mode==='nearest'?'Near recorded step':'';
+      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`} title="${esc(approximate||'Seek to recorded time')}"><time>${seconds==null?'':`${approximate?'~':''}${operatorTime(seconds)}`}</time><span>${failed?'✕':event.status==='running'?'●':'✓'}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${approximate?`<small>${approximate} · approximate seek</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
     }).join('');
   }
   function loadingOverlay(kind) {
@@ -3165,16 +3231,31 @@
       return `<li><button type="button" data-selected-moment data-moment-request="${esc(request.request_id)}" data-moment-index="${index}" ${target?'':'disabled title="No recording for this view"'}>${esc(label)}</button>${moment.note?`<small>${esc(moment.note)}</small>`:''}</li>`;
     }).join('')}</ul></div>`;
   }
-  function selectedMomentMarkerHTML(snapshot,attemptId,chosenView,duration) {
+  function placeMomentMarkers(positions,width) {
+    const markerWidth=Math.min(74,Math.max(1,width));
+    const placed=[];
+    return positions.map((position,index)=>({position,index})).sort((a,b)=>a.position-b.position||a.index-b.index).reduce((rows,item)=>{
+      const left=Math.max(0,Math.min(width-markerWidth,item.position*width-markerWidth/2));
+      let lane=0;
+      while(placed.some(row=>row.lane===lane && left<row.left+row.width+4 && row.left<left+markerWidth+4))lane++;
+      const row={left,top:1-lane*28,width:markerWidth,lane};
+      placed.push(row);rows[item.index]=row;return rows;
+    },[]);
+  }
+  function selectedMomentMarkerHTML(snapshot,attemptId,chosenView,duration,width=300) {
     if(!(Number.isFinite(duration) && duration>0))return '';
-    return (snapshot.requests||[]).filter(request=>request.attempt_id===attemptId).flatMap(request=>selectedMoments(request).map((moment,index)=>{
+    const markers=(snapshot.requests||[]).filter(request=>request.attempt_id===attemptId).flatMap(request=>selectedMoments(request).map((moment,index)=>{
       const target=momentReplayInfo(snapshot,request,moment);
-      if(!target || target.view!==chosenView || target.seconds>duration)return '';
+      if(!target || target.view!==chosenView || target.seconds>duration)return null;
       const role=moment.role==='before'?'Before':moment.role==='after'?'After':'Moment';
       const label=`${moment.moment_id||`#${index+1}`} ${role}`;
-      const pct=target.seconds/duration*100,edge=pct<10?' op-moment-edge-start':pct>90?' op-moment-edge-end':'';
-      return `<button type="button" class="op-moment-marker${edge}" data-selected-moment data-moment-request="${esc(request.request_id)}" data-moment-index="${index}" style="left:${(target.seconds/duration*100).toFixed(2)}%" aria-label="Selected moment ${esc(label)} · ${esc(MOMENT_VIEWS[chosenView])} · ${replayTime(target.seconds)}" title="${esc(moment.note||label)}">${esc(label)}</button>`;
-    })).join('');
+      return {request,index,moment,target,label};
+    })).filter(Boolean);
+    const positions=placeMomentMarkers(markers.map(row=>row.target.seconds/duration),width);
+    return markers.map((row,i)=>{
+      const {request,index,moment,target,label}=row,position=positions[i];
+      return `<button type="button" class="op-moment-marker" data-selected-moment data-moment-request="${esc(request.request_id)}" data-moment-index="${index}" style="left:${Number(position.left.toFixed(2))}px;top:${position.top}px;width:${position.width}px;transform:none" aria-label="Selected moment ${esc(label)} · ${esc(MOMENT_VIEWS[chosenView])} · ${replayTime(target.seconds)}" title="${esc(moment.note||label)}">${esc(label)}</button>`;
+    }).join('');
   }
   function jumpToSelectedMoment(snapshot,request,moment) {
     const target=momentReplayInfo(snapshot,request,moment);
@@ -3203,7 +3284,7 @@
     const refresh=()=>{
       scrubber.querySelectorAll('[data-selected-moment]').forEach(marker=>marker.remove());
       const chosenView=panel.querySelector('[data-camera-view][aria-pressed="true"]')?.dataset.cameraView||'external';
-      scrubber.insertAdjacentHTML('beforeend',selectedMomentMarkerHTML(snapshot,panel.dataset.replayAttempt,chosenView,video.duration));
+      scrubber.insertAdjacentHTML('beforeend',selectedMomentMarkerHTML(snapshot,panel.dataset.replayAttempt,chosenView,video.duration,scrubber.clientWidth));
     };
     scrubber.addEventListener('click',event=>{
       const marker=event.target.closest('[data-selected-moment]');
@@ -3213,6 +3294,10 @@
     });
     video.addEventListener('loadedmetadata',refresh,{signal:video.industrialTransportAbort?.signal});
     video.addEventListener('durationchange',refresh,{signal:video.industrialTransportAbort?.signal});
+    if(typeof ResizeObserver!=='undefined' && video.industrialTransportAbort?.signal){
+      const observer=new ResizeObserver(refresh);observer.observe(scrubber);
+      video.industrialTransportAbort.signal.addEventListener('abort',()=>observer.disconnect(),{once:true});
+    }
     refresh();
   }
   function operatorHelpHistory(snapshot) {
@@ -3992,9 +4077,19 @@
     render(snapshot);
   }
   // Adapt persisted Dev v2 records to the original five-region workspace.
-  async function devV2WorkspaceSnapshot(s, cell) {
+  function devV2State(cellState, experimentState) {
+    if(['needs_review','cancelled','condition_invalid','failed','stopped','budget_exhausted','not_started'].includes(experimentState))
+      return experimentState;
+    if(['planned','running'].includes(cellState) && ['running','completed'].includes(experimentState))
+      return experimentState;
+    return cellState;
+  }
+  async function devV2WorkspaceSnapshot(s, cell, experiment) {
     const lifecycle=cell.lifecycle;
-    const terminal = lifecycle ? ['terminal','review'].includes(lifecycle.phase) : ['completed','failed','cancelled','needs_review'].includes(cell.state);
+    const state=devV2State(cell.state,experiment?.state||s.experiment_state);
+    const reason=experiment?.reason||cell.reason;
+    const terminal = ['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','not_started'].includes(state)
+      || ['terminal','review'].includes(lifecycle?.phase);
     const reserved = Object.fromEntries(Object.keys(cell.budget).map(k => [k,0]));
     for (const job of cell.jobs.filter(j => ['reserved','claimed','needs_review'].includes(j.state))) {
       for (const [key,value] of Object.entries(job.reservation || {})) reserved[key] = (reserved[key] || 0) + value;
@@ -4007,7 +4102,7 @@
     const control = {binding:{allowed_policies:launchOptions?.dev_v2?.policies||[]},active_policy:cell.policy_id,
       read_only:terminal||cell.mode!=='interactive',reason:cell.mode==='interactive'?'Switches apply before the next model version; this session is excluded from comparison.':'Frozen experimental policy; independent results are display only.'};
     const session = {...s,channel:'dev_v2',key:cell.key,experiment_id:cell.experiment_id,artifact_dir:cell.artifact_dir,
-      versions:cell.versions,jobs:cell.jobs,budget,used,reserved,remaining,reason:cell.reason,state:cell.state,lifecycle:cell.lifecycle,
+      versions:cell.versions,jobs:cell.jobs,budget,used,reserved,remaining,reason,state,lifecycle:cell.lifecycle,
       model:s.model||cell.model||launchOptions?.dev_loop?.model,attention_control:control};
     const snapshot = await devWorkspaceSnapshot(session);
     snapshot.dev_v2=cell;
@@ -4015,7 +4110,8 @@
     snapshot.dev_eval_enabled=s.locked?.config?.eval_agent?.enabled===true;
     snapshot.dev_session.versions=cell.versions;
     if(snapshot.dev_eval_enabled)snapshot.resources.eval_calls={used:cell.eval_usage?.eval_calls??cell.used.eval_calls??0,limit:null};
-    snapshot.run.status=cell.state==='cancelled'?'cancelled':terminal?'completed':lifecycle && lifecycle.phase!=='sdk'?lifecycle.phase:'running';
+    snapshot.run.status=terminal?(['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','not_started'].includes(state)?state:'needs_review')
+      :lifecycle && lifecycle.phase!=='sdk'?lifecycle.phase:'running';
     snapshot.run.policy_id=cell.policy_id;
     snapshot.station.status=terminal?'ended':lifecycle && lifecycle.phase!=='sdk'?lifecycle.phase:'running';
     const monitorBase=`/api/dev-v2/experiments/${encodeURIComponent(cell.experiment_id)}/cells/${encodeURIComponent(cell.key)}/live`;
@@ -4026,7 +4122,8 @@
     // Extra live angles exist only while an attempt runs; a finished run is browsed through its saved replays.
     const liveViews=terminal?null:Object.fromEntries([['external','Overview',1920,1080],['side','Side',960,540],['top','Top-down',960,540],['left_wrist','Left wrist',960,540],['right_wrist','Right wrist',960,540]]
       .filter(([key])=>!launchOptions?.dev_v2?.bridge_schema||key==='external').map(([key,name,width,height]) => [key,{name,width,height,preview_url:monitorBase+'/frame'+(key==='external'?'':'?view='+key),state_url:monitorBase+(key==='external'?'':'?view='+key)}]));
-    if(!lifecycle || lifecycle.phase==='sdk' || terminal && snapshot.attempts.length)Object.assign(snapshot.station,{camera_url:monitorBase+'/frame',camera_preview_url:monitorBase+'/frame',camera_views:liveViews,
+    if(terminal)Object.assign(snapshot.station,{camera_url:null,camera_preview_url:null,camera_state_url:null,camera_views:null,camera_monitor_v2:false,camera_monitor_terminal:true});
+    else if(!lifecycle || lifecycle.phase==='sdk')Object.assign(snapshot.station,{camera_url:monitorBase+'/frame',camera_preview_url:monitorBase+'/frame',camera_views:liveViews,
       camera_state_url:monitorBase,camera_monitor_v2:true,camera_monitor_terminal:terminal,
       camera_monitor_identity:`${cell.key}:${episode}:${version}`});
     snapshot.requests=[];snapshot.responses={};
@@ -4070,16 +4167,20 @@
     const response=await fetch(`${cellBase}/view`,{cache:'no-store'});
     if(!response.ok)throw new Error(`Dev v2 HTTP ${response.status}`);
     const cell=await response.json();if(selectedDev!==s.session_id)return;
+    const experimentResponse=await fetch(`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}`,{cache:'no-store'});
+    if(!experimentResponse.ok)throw new Error(`Dev v2 experiment HTTP ${experimentResponse.status}`);
+    const experiment=await experimentResponse.json();if(selectedDev!==s.session_id)return;
     const quiet=goal=>({...goal,wall_used:0,wall_remaining:0});
     // The goal clock ticks on every poll, in the shared goal and in each per-goal copy; neither should force a redraw.
-    const fingerprint=JSON.stringify({...cell,ledger:{...cell.ledger,goal:quiet(cell.ledger.goal),goals:Object.fromEntries(Object.entries(cell.ledger.goals||{}).map(([id,entry])=>[id,{...entry,goal:quiet(entry.goal||{})}]))}});
+    const fingerprint=JSON.stringify({experiment_state:experiment.state,experiment_reason:experiment.reason,
+      cell:{...cell,ledger:{...cell.ledger,goal:quiet(cell.ledger.goal),goals:Object.fromEntries(Object.entries(cell.ledger.goals||{}).map(([id,entry])=>[id,{...entry,goal:quiet(entry.goal||{})}]))}}});
     if(lastRendered===fingerprint && currentSnapshot?.dev_v2) {
       await refreshPreview();
       const wall=view.querySelector('[data-dev-budget-key="wall_seconds"]');
       if(wall)wall.innerHTML=DEBUG_VIEW?budgetCard('Goal wall time',{limit:(cell.ledger.goal.wall_limit??cell.ledger.goal.limits.wall_seconds),used:cell.ledger.goal.wall_used,reserved:0,remaining:cell.ledger.goal.wall_remaining},'s'):operatorBudgetCard('Total time',{limit:(cell.ledger.goal.wall_limit??cell.ledger.goal.limits.wall_seconds),used:cell.ledger.goal.wall_used},true);
       return;
     }
-    const snapshot=await devV2WorkspaceSnapshot(s,cell);if(selectedDev!==s.session_id)return;
+    const snapshot=await devV2WorkspaceSnapshot(s,cell,experiment);if(selectedDev!==s.session_id)return;
     selectedRun=s.session_id;render(snapshot);lastRendered=fingerprint;
     if(experimentFromHash(location.hash)!==s.experiment_id){const url=new URL(location.href);url.hash=`exp=${s.experiment_id}`;history.replaceState(null,'',url);}
   }

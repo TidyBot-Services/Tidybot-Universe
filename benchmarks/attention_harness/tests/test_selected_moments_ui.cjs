@@ -11,13 +11,13 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&
 const choices=new Map(),saved=new Map(),seeks=[];
 let shown='attempt-1',renders=0;
 const handlers={};
-const scrubber={querySelectorAll:()=>[],insertAdjacentHTML:(_,html)=>{handlers.html=html},addEventListener:(type,fn)=>{handlers.scrubber=fn}};
+const scrubber={clientWidth:300,querySelectorAll:()=>[],insertAdjacentHTML:(_,html)=>{handlers.html=html},addEventListener:(type,fn)=>{handlers.scrubber=fn}};
 const video={duration:10,requestReplaySeek:(seconds,mode)=>seeks.push({seconds,mode}),nextElementSibling:{querySelector:()=>scrubber},addEventListener:()=>{}};
 const panel={dataset:{get replayAttempt(){return shown;}},querySelector:selector=>selector==='video[data-history-replay]'?video:null,scrollIntoView:()=>{}};
 const listButton={dataset:{momentRequest:'targeted-1',momentIndex:'0'},addEventListener:(type,fn)=>{handlers.list=fn}};
 const view={querySelector:selector=>selector==='[data-execution-viewer]'?panel:selector==='[data-execution-viewer] video[data-history-replay]'?video:null,
   querySelectorAll:selector=>selector==='[data-request-moments] [data-selected-moment]'?[listButton]:[]};
-const api=vm.runInNewContext(block+'\n({selectedMoments,selectedMomentDetails,selectedMomentMarkerHTML,jumpToSelectedMoment,bindSelectedMomentControls})',{
+const api=vm.runInNewContext(block+'\n({selectedMoments,selectedMomentDetails,placeMomentMarkers,selectedMomentMarkerHTML,jumpToSelectedMoment,bindSelectedMomentControls})',{
   esc,replayTime:seconds=>`${String(Math.floor(seconds/60)).padStart(2,'0')}:${(seconds%60).toFixed(2).padStart(5,'0')}`,
   view,cameraChoices:choices,cameraContext:s=>s.run.run_id,cameraChoice:s=>choices.get(s.run.run_id)||'external',
   stored:(key,value)=>{if(value!==undefined)saved.set(key,value);return saved.get(key)},render:()=>{renders++;shown='attempt-1';}
@@ -38,15 +38,33 @@ test('scrubber markers are labelled and appear only on the matching view at thei
   const overview=api.selectedMomentMarkerHTML(snapshot,'attempt-1','external',10);
   assert.match(overview,/data-selected-moment/);
   assert.match(overview,/data-moment-request="targeted-1"/);
-  assert.match(overview,/left:84\.00%/);
+  assert.match(overview,/left:215px/);
   assert.match(overview,/m1 Before/);
   assert.doesNotMatch(overview,/m2 After/);
   const wrist=api.selectedMomentMarkerHTML(snapshot,'attempt-1','left_wrist',10);
-  assert.match(wrist,/left:88\.00%/);
+  assert.match(wrist,/left:226px/);
   assert.match(wrist,/m2 After/);
   assert.doesNotMatch(wrist,/m1 Before/);
   assert.equal(api.selectedMomentMarkerHTML(snapshot,'attempt-1','top',10),'');
   assert.equal(api.selectedMomentMarkerHTML(snapshot,'attempt-1','external',0),'');
+});
+
+test('close selected moments occupy separate clickable rectangles',()=>{
+  const positioned=api.placeMomentMarkers([.9973,.9986,.9986,.1],500);
+  for(let a=0;a<positioned.length;a++)for(let b=a+1;b<positioned.length;b++){
+    const xOverlap=positioned[a].left<positioned[b].left+positioned[b].width && positioned[b].left<positioned[a].left+positioned[a].width;
+    const yOverlap=positioned[a].top<positioned[b].top+24 && positioned[b].top<positioned[a].top+24;
+    assert.ok(!(xOverlap&&yOverlap),`markers ${a} and ${b} overlap`);
+  }
+  const close=structuredClone(snapshot);
+  close.requests[0].selected_moments=[
+    {...close.requests[0].selected_moments[0],video_seconds:57.64},
+    {...close.requests[0].selected_moments[0],moment_id:'m2',role:'after',video_seconds:57.72}];
+  const html=api.selectedMomentMarkerHTML(close,'attempt-1','external',57.8,500);
+  assert.equal((html.match(/data-selected-moment/g)||[]).length,2);
+  assert.match(html,/data-moment-index="0"/);assert.match(html,/data-moment-index="1"/);
+  assert.equal((html.match(/aria-label="Selected moment/g)||[]).length,2);
+  assert.match(html,/top:-27px/);
 });
 
 test('click path uses the shared replay seek and switches view before seeking',()=>{
@@ -74,11 +92,12 @@ test('list and scrubber click handlers both use the moment jump',()=>{
 });
 
 test('Dev v2 read-only projection copies help localization into the UI request',async()=>{
-  const projection=source.slice(source.indexOf('  async function devV2WorkspaceSnapshot'),source.indexOf('  async function updateV2Snapshot'));
+  const projection=source.slice(source.indexOf('  function devV2State('),source.indexOf('  async function updateV2Snapshot'));
   const base={run:{},dev_session:{},resources:{},station:{},attempts:[{attempt_id:'attempt-1',dev_version:1}],traces:{t:{attempt_id:'attempt-1',trace_id:'trace-1'}},
     requests:[],responses:{},response_evidence:{},dev_evidence_gaps:[],eval:{native_outcomes:{}}};
   const project=vm.runInNewContext(projection+'\n devV2WorkspaceSnapshot',{
     devWorkspaceSnapshot:async()=>base,launchOptions:{dev_v2:{policies:[]}},v2MonitorIdentities:new Map(),encodeURIComponent,
+    devHelpResponder:provider=>provider,
     devEvidenceCache:new Map(),readDevEvidence:async()=>{throw Error('unexpected read')}
   });
   const cell={key:'cell-1',experiment_id:'exp-1',artifact_dir:'/tmp/unused',state:'completed',mode:'benchmark',policy_id:'reactive_help',
