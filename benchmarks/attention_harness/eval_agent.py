@@ -35,16 +35,24 @@ REPAIR_WORDS = re.compile(r'(?i)\b(?:should|suggest|recommend|fix|try|need to|mu
 def split_reason(reason, suggestion=''):
     """Conservatively move whole advice-bearing sentences away from Dev-visible facts."""
     facts, advice = [], []
-    for sentence in re.split(r'(?<=[.!?。！？])\s*', reason):
+    # ASCII sentence punctuation needs following whitespace; a decimal point,
+    # version separator or ellipsis with no trailing space stays in its text.
+    # Chinese sentence punctuation may separate sentences without whitespace.
+    for sentence in re.split(r'(?<=[.!?])\s+|(?<=[。！？])\s*', reason):
         if not sentence.strip(): continue
         (advice if REPAIR_WORDS.search(sentence) else facts).append(sentence.strip())
+    if not advice:return reason.strip(),suggestion.strip(),False
     moved = ' '.join(advice)
     return ' '.join(facts), ' '.join(part for part in (suggestion.strip(), moved) if part), bool(advice)
 
 
 def parse_v3(text):
     try:
-        value=json.loads(text.strip())
+        # Qwen may wrap the object in a code fence or explain it on either side.
+        # Decode the first object itself; its field contract remains strict.
+        start=text.find('{')
+        if start<0:raise ValueError('missing Eval object')
+        value,_=json.JSONDecoder().raw_decode(text,start)
         if not isinstance(value,dict) or set(value)-{'passed','reason','reference_suggestion'} or not {'passed','reason'}<=set(value):raise ValueError('missing Eval fields')
         if type(value['passed']) is not bool or not isinstance(value['reason'],str) or not value['reason'].strip() or not isinstance(value.get('reference_suggestion',''),str):raise ValueError('invalid Eval fields')
         reason,suggestion,moved=split_reason(value['reason'][:1500],value.get('reference_suggestion','')[:1500])
@@ -52,6 +60,14 @@ def parse_v3(text):
         return {'passed':value['passed'],'reason':reason,'reference_suggestion':suggestion,'reason_advice_moved':moved}
     except (ValueError,TypeError) as exc:
         raise ValueError('invalid Eval v3 JSON') from exc
+
+
+def _failed_answer(response, usage):
+    details=response.usage.get('completion_tokens_details')
+    diagnostic_usage=usage.copy()
+    if isinstance(details,dict) and type(details.get('reasoning_tokens')) is int and details['reasoning_tokens']>=0:
+        diagnostic_usage['reasoning_tokens']=details['reasoning_tokens']
+    return response.content[:4000],getattr(response,'finish_reason',None),diagnostic_usage
 
 
 def visible_review(record, *, dev=False):
@@ -63,7 +79,11 @@ def visible_review(record, *, dev=False):
 
 
 class EvalUnavailable(Exception):
-    pass
+    def __init__(self, reason, *, raw_answer_excerpt=None, finish_reason=None, usage=None):
+        super().__init__(reason)
+        self.raw_answer_excerpt=raw_answer_excerpt
+        self.finish_reason=finish_reason
+        self.usage=usage or {}
 
 
 def default_config(enabled=True):
@@ -107,7 +127,7 @@ def ask(evidence, config, client, *, cache_dir=None):
     if path and path.is_file():
         record=json.loads(path.read_text())
         if record.get('cache_key')==key:return {**record,'cache_hit':True,'usage':{},'latency_seconds':0}
-    begun=time.monotonic();last='unavailable';usage={}
+    begun=time.monotonic();last='unavailable';usage={};failed_answer=None
     for attempt in range(1,config['max_attempts']+1):
         try:
             messages=vision.evaluator_messages(evidence);messages[0]={'role':'system','content':SYSTEM_V2 if config['prompt_version']==OLD_PROMPT_VERSION else SYSTEM_V3}
@@ -119,7 +139,8 @@ def ask(evidence, config, client, *, cache_dir=None):
                 content={'feedback':parsed['feedback']}
             else:
                 try:parsed=parse_v3(response.content)
-                except ValueError:last='unparseable_answer';continue
+                except ValueError:
+                    last='unparseable_answer';failed_answer=_failed_answer(response,usage);continue
                 content={k:parsed[k] for k in ('reason','reference_suggestion','reason_advice_moved')}
             public_screen(content);vision.assert_public(content)
             record={'schema_version':'attentionbench.eval-agent.v2' if config['prompt_version']==OLD_PROMPT_VERSION else 'attentionbench.eval-agent.v3','status':'completed','passed':parsed['passed'],**content,
@@ -130,4 +151,7 @@ def ask(evidence, config, client, *, cache_dir=None):
             return record
         except Exception as exc:
             last=vision._safe_detail(exc)
+    if failed_answer is not None:
+        raise EvalUnavailable('vision unavailable after retries: '+last,
+                              raw_answer_excerpt=failed_answer[0],finish_reason=failed_answer[1],usage=failed_answer[2])
     raise EvalUnavailable('vision unavailable after retries: '+last)

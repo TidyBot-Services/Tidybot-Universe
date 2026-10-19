@@ -1,0 +1,9 @@
+{
+  "schema_version": "attentionbench.advisor-proxy.v3",
+  "status": "completed",
+  "mode": "vision",
+  "request_view": {
+    "uri": "advisor-input.json",
+    "sha256": "__TEST_DIGEST__"
+  }
+}

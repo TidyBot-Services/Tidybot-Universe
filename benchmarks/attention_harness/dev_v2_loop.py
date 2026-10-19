@@ -418,6 +418,9 @@ def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailab
         record={'schema_version':'attentionbench.eval-agent.v2','status':'unavailable_diagnostic' if allow_unavailable else 'invalid_vision_unavailable',
             'passed':None,'feedback':'Eval vision unavailable; public failure fallback' if allow_unavailable else '',
             'error':str(exc)[:300],'mode':'unavailable','model':config['eval_agent']['model'],'frames':[],'usage':{}}
+        if exc.raw_answer_excerpt is not None:
+            # Diagnostic data stays in the Eval artifact; public projections only use verdict fields.
+            record.update(raw_answer_excerpt=exc.raw_answer_excerpt,finish_reason=exc.finish_reason,usage=exc.usage)
         immutable(artifact,record)
         store.settle(job['job_id'],job['reservation'],{'eval_review':{'uri':str(artifact),'sha256':sha(artifact)},'usage_accounting':'reservation_retained'})
         if not allow_unavailable:raise HumanProxyInvalid(str(exc))
@@ -544,7 +547,10 @@ def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifac
     public_screen({k:v for k,v in evidence.items() if k!='frames'})
     bound=advisor.worst_case_input_bound(evidence);seconds=cell.get('runtime',{}).get('model_reserve_seconds',120)
     recording_seconds=(execution.get('actual') or {}).get('execution_seconds',0)
-    logical=(shown_video_seconds+shown_words(evidence)/READ_WPS+1500/WRITE_WPS) if proxy['mode']=='vision' else advisor.logical_seconds(recording_seconds,proxy,selected_moments=selected,targeted=localization['status']=='targeted')
+    # The visual Advisor allows at most MAX_TOKENS output tokens. At roughly
+    # 0.75 English words/token, 1024 tokens reserve 768 answer words.
+    answer_word_reserve=math.ceil(advisor.MAX_TOKENS*0.75)
+    logical=(shown_video_seconds+shown_words(evidence)/READ_WPS+answer_word_reserve/WRITE_WPS) if proxy['mode']=='vision' else advisor.logical_seconds(recording_seconds,proxy,selected_moments=selected,targeted=localization['status']=='targeted')
     reservation={'advisor_calls':1,'provider_tokens':bound+advisor.MAX_TOKENS,'input_tokens':bound,'output_tokens':advisor.MAX_TOKENS,'model_seconds':seconds,'help_count':1,'help_credits':1,'help_wait_seconds':seconds,'hint_human_seconds':logical}
     store.reserve_check(key,reservation,model_name=proxy['model']) if not existing else None
     job=store.reserve(key,job_version,'advisor',reservation,model_name=proxy['model']);store.claim(job['job_id'],owner)

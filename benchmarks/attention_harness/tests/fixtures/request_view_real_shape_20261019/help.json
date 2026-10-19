@@ -1,0 +1,15 @@
+{
+  "advisor_proxy": {
+    "uri": "advisor-hint.json",
+    "sha256": "__TEST_DIGEST__"
+  },
+  "content": "Try a trace-grounded repair.",
+  "localization": {
+    "reason": "policy_uses_full_trace",
+    "status": "generic_fallback"
+  },
+  "mode": "vision",
+  "provider": "human_proxy",
+  "scope": "public repair hint from a simulated human, no approval",
+  "selected_moments": []
+}

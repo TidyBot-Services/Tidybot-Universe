@@ -231,10 +231,13 @@ class DailyDevV2:
         for v in c['versions']:
             j=next((j for j in c['jobs'] if j['version']==v['version'] and j['kind']=='execute'),None);receipt=(j.get('receipt') or j.get('review_evidence') or {}) if j else {}
             bundle=read(receipt.get('bundle'))
-            from .dev_request_view import display_eval_review
+            from .dev_request_view import display_eval_review,display_request_view,request_view_ref
             review_path=Path(v['source']['uri']).parent/'evaluator-review.json'
             review_content=display_eval_review(c,v['version'],legacy_path=review_path)
-            rows.append(dict(v,evaluator_review=review_content,source_text=read(v['source'],True),diff_text=read(v['diff'],True),decision_content=read(v['decision']),help_content=read(v.get('help')),public_feedback=read(receipt.get('public_feedback')),independent_result=read(bundle['artifacts']['native_result']) if bundle else None,recording=bundle.get('recording') if bundle else None,execution_state=j['state'] if j else 'not_dispatched'))
+            help_content=read(v.get('help'))
+            request_ref=request_view_ref(help_content,read)
+            request_view=display_request_view(read(request_ref)) if request_ref else None
+            rows.append(dict(v,evaluator_review=review_content,request_view=request_view,source_text=read(v['source'],True),diff_text=read(v['diff'],True),decision_content=read(v['decision']),help_content=help_content,public_feedback=read(receipt.get('public_feedback')),independent_result=read(bundle['artifacts']['native_result']) if bundle else None,recording=bundle.get('recording') if bundle else None,execution_state=j['state'] if j else 'not_dispatched'))
         return dict(c,versions=rows,ledger=s.export_ledger())
     def post(self,path,body,*,human_authorized=False):
         # Same transport protocol as DevMainBridge. Daily legacy commands do

@@ -1,0 +1,79 @@
+{
+  "diff": "--- v0\n+++ v1\n@@ -1,5 +1,57 @@\n-from robot_sdk import sensors, left_arm, left_gripper\n-observation = sensors.get_observa",
+  "eval_review": {
+    "passed": false,
+    "reason": "Execution failed with RuntimeError: TimeoutError at action trace event #5 (index 5), the second move_delta call for the left arm (dx=0.",
+    "reference_suggestion": "The approach function uses MAX_STEPS=40 with 0."
+  },
+  "frames": [
+    {
+      "filename": "recording_frames/000000.jpg",
+      "sha256": "cb26c9648aada47830b15a1cea4d85d6c7667958c950a2a2286d2d98dbfb69b7",
+      "view": "overview"
+    },
+    {
+      "filename": "recording_frames/000061.jpg",
+      "sha256": "b4003edce2943e48c8654e259980cd6fae58ee487c15cb3e71a18968d5bf4799",
+      "view": "overview"
+    },
+    {
+      "filename": "recording_views/side/000061.jpg",
+      "sha256": "8852a68c27e3435ee427a1c4407954b9eb8ef5a72b6ea2594058ce8316bed079",
+      "view": "side"
+    },
+    {
+      "filename": "recording_views/top/000061.jpg",
+      "sha256": "ed1918a91dbcf317027a600c94992a8c5107a04c9c433ee88ab1099b450ca345",
+      "view": "top"
+    },
+    {
+      "filename": "recording_views/left_wrist/000061.jpg",
+      "sha256": "15c4c86420900024747d67fe80fb9af01edd137fd6b0e37fbb591014d111a3d7",
+      "view": "left_wrist"
+    },
+    {
+      "filename": "recording_views/right_wrist/000061.jpg",
+      "sha256": "08619667b17bfbb109a3d3afaf40e3016290b04445bed33b0b73b0d2839b1576",
+      "view": "right_wrist"
+    }
+  ],
+  "question": "Which trace-grounded repair should the next version try?",
+  "reasoning": "",
+  "request_kind": "generic",
+  "schema_version": "attentionbench.request-view.v1",
+  "shown_video_seconds": 44.741,
+  "steps": [
+    {
+      "count": 1,
+      "index": 1,
+      "label": "Looked for the objects",
+      "status": "completed",
+      "stop_reason": ""
+    },
+    {
+      "count": 1,
+      "index": 2,
+      "label": "Opened the gripper",
+      "status": "completed",
+      "stop_reason": ""
+    },
+    {
+      "count": 1,
+      "index": 4,
+      "label": "Moved the arm a small step",
+      "status": "completed",
+      "stop_reason": ""
+    },
+    {
+      "count": 1,
+      "index": 5,
+      "label": "Moved the arm a small step",
+      "status": "failed",
+      "stop_reason": "Stopped: the action took too long"
+    }
+  ],
+  "task": {
+    "task_id": "pick_place_counter_to_sink",
+    "task_prompt": "Pick the object from the counter and place it in the sink."
+  }
+}

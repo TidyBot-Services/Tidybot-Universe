@@ -29,6 +29,7 @@ class ParccResponse:
     attempts: int
     usage: dict[str, Any]
     request_id: str | None = None
+    finish_reason: str | None = None
 
     def artifact(self, *, include_content: bool = True) -> dict[str, Any]:
         value = {
@@ -110,7 +111,8 @@ class ParccClient:
                     if status not in RETRYABLE_STATUS:
                         raise ParccError(last_error)
                 else:
-                    message = body.get("choices", [{}])[0].get("message", {})
+                    choice = body.get("choices", [{}])[0]
+                    message = choice.get("message", {})
                     content = message.get("content")
                     if isinstance(content, str) and content.strip():
                         return ParccResponse(
@@ -121,6 +123,7 @@ class ParccClient:
                             attempts=attempt,
                             usage=dict(body.get("usage") or {}),
                             request_id=response_headers.get("x-request-id"),
+                            finish_reason=choice.get("finish_reason"),
                         )
                     last_error = "HTTP 200 response contained no final content"
             except ParccError:

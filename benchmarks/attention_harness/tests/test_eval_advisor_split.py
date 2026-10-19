@@ -1,5 +1,6 @@
 """Zero-cost role and timing contract tests: fake providers and fake frames."""
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ from benchmarks.attention_harness.dev_experiment import create,run,GOAL
 from benchmarks.attention_harness.dev_v2_loop import question_for
 from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.parcc_client import ParccResponse
-from benchmarks.attention_harness.dev_request_view import build_request_view,human_seconds,shown_words
+from benchmarks.attention_harness.dev_request_view import READ_WPS,WRITE_WPS,build_request_view,count_words,human_seconds,shown_words
 from benchmarks.attention_harness.free_models import is_unmetered_model,limited_resources
 from openarm365_dev_v2.tests.fakes import Client,Runner
 
@@ -63,6 +64,92 @@ def test_eval_v3_fact_and_advice_separation_and_missing_fields():
     for value in ({'passed':True},{'reason':'frame #1 stopped'},
                   {'passed':False,'reason':'建议调整夹爪。'}):
         with pytest.raises(ValueError):eval_agent.parse_v3(json.dumps(value,ensure_ascii=False))
+
+
+@pytest.mark.parametrize('reason',[
+    'dx=0.0357, dy=-0.0479; obj_pos[0.497, -2.377, 0.935] stayed fixed.',
+    'Version 1.2.3 reported a timeout... The next frame was unchanged.',
+    '夹爪停止。obj_pos[0.497, -2.377] 没有变化。',
+])
+def test_eval_reason_keeps_numeric_and_mixed_facts_exactly(reason):
+    parsed=eval_agent.parse_v3(json.dumps({'passed':False,'reason':reason},ensure_ascii=False))
+    assert parsed['reason']==reason
+    assert parsed['reference_suggestion']=='' and not parsed['reason_advice_moved']
+
+
+def test_eval_reason_moves_whole_advice_sentences_in_mixed_text():
+    reason='dx=0.0357 stayed fixed. Try a smaller step. 夹爪停止。建议调整路径。'
+    parsed=eval_agent.parse_v3(json.dumps({'passed':False,'reason':reason},ensure_ascii=False))
+    assert parsed['reason']=='dx=0.0357 stayed fixed. 夹爪停止。'
+    assert parsed['reference_suggestion']=='Try a smaller step. 建议调整路径。'
+    assert parsed['reason_advice_moved']
+
+
+def test_word_units_for_answers_and_displayed_diff():
+    answer=' '.join(['word']*60)
+    assert count_words(answer)==60
+    assert count_words('抓取 object_1 at 0.0357 米 move_delta(-0.05) 完成')==9
+    assert count_words('hello世界42')==4
+    assert count_words('-0.05 move_delta( abc_def 0.0357')==4
+    assert count_words('')==0
+    view={'question':'', 'reasoning':'', 'diff':'+move_delta(-0.05)',
+          'steps':[], 'eval_review':{'passed':False,'reason':'','reference_suggestion':''},
+          'shown_video_seconds':0}
+    assert shown_words(view)==2  # False and the expandable diff
+    assert human_seconds(view,answer)['answer_words']==60
+
+
+@pytest.mark.parametrize('answer',[
+    '{"passed": false, "reason": "frame #1 stopped"}',
+    '```json\n{"passed": false, "reason": "frame #1 stopped"}\n```',
+    '```\n{"passed": false, "reason": "frame #1 stopped"}\n```',
+    'The visible result is:\n{"passed": false, "reason": "frame #1 stopped"}\nEnd of review.',
+])
+def test_eval_v3_accepts_first_complete_object(answer):
+    assert eval_agent.parse_v3(answer)['reason']=='frame #1 stopped'
+
+
+@pytest.mark.parametrize('answer',[
+    '{"passed": false, "reason": "frame #1 stopped"',
+    '{"passed": false, "reason": "frame #1 stopped", "confidence": 0.8}',
+    '{"passed": false}',
+    '{"passed": false, "reason": ""}',
+    '{"passed": "false", "reason": "frame #1 stopped"}',
+    'No visible result could be determined.',
+])
+def test_eval_v3_rejects_incomplete_or_invalid_objects(answer):
+    with pytest.raises(ValueError):eval_agent.parse_v3(answer)
+
+
+def test_eval_unparseable_reply_keeps_bounded_diagnostics_without_public_projection():
+    class DiagnosticClient(FakeClient):
+        def chat(self,**kw):
+            self.calls.append(kw)
+            reply=FakeReply('private marker: '+('x'*4100))
+            reply.finish_reason='length'
+            reply.usage={'total_tokens':4099,'prompt_tokens':3,'completion_tokens':4096,
+                         'completion_tokens_details':{'reasoning_tokens':4000}}
+            return reply
+    client=DiagnosticClient('')
+    with pytest.raises(eval_agent.EvalUnavailable) as caught:
+        eval_agent.ask(evidence(),eval_agent.normalize({}),client)
+    exc=caught.value
+    assert len(client.calls)==2 and client.calls[0]['max_tokens']==eval_agent.MAX_TOKENS
+    assert exc.raw_answer_excerpt=='private marker: '+('x'*(4000-len('private marker: ')))
+    assert exc.finish_reason=='length'
+    assert exc.usage=={'total_tokens':4099,'prompt_tokens':3,'completion_tokens':4096,'reasoning_tokens':4000}
+    assert 'private marker' not in str(exc)
+    assert 'private marker' not in json.dumps(eval_agent.visible_review(vars(exc)))
+
+
+def test_parcc_fake_wire_carries_finish_reason_without_changing_artifact():
+    from benchmarks.attention_harness.parcc_client import ParccClient
+    wire={'choices':[{'message':{'content':'{"passed": false, "reason": "frame #1 stopped"}'},'finish_reason':'length'}],
+          'usage':{'total_tokens':8,'prompt_tokens':3,'completion_tokens':5}}
+    client=ParccClient(api_key='fake',transport=lambda *_:(200,{},json.dumps(wire).encode()),max_attempts=1)
+    response=client.chat(model='parcc/Qwen',messages=[{'role':'user','content':'fake'}],max_tokens=8)
+    assert response.finish_reason=='length'
+    assert 'finish_reason' not in response.artifact()
 
 
 def test_dev_sees_only_reason_for_every_policy(tmp_path,monkeypatch):
@@ -114,7 +201,7 @@ def test_request_view_is_only_advisor_input_and_cache_uses_frames(tmp_path):
     assert len([part for part in sent if part['type']=='image_url'])==5
     assert result['frames'][0]['sha256']==view['frames'][0]['sha256']
     assert result['hint_human_seconds']==human_seconds(view,result['feedback'])['hint_human_seconds']
-    assert result['shown_words']==shown_words(view) and result['answer_words']==len('Movemoreslowly.')
+    assert result['shown_words']==shown_words(view) and result['answer_words']==3
     assert dev_advisor_proxy.ask(view,config,client,cache_dir=tmp_path)['cache_hit']
     changed={**view,'frames':[{**view['frames'][0],'sha256':'f'*64},*view['frames'][1:]]}
     assert dev_advisor_proxy.ask(changed,config,client,cache_dir=tmp_path)['cache_key']!=result['cache_key']
@@ -337,6 +424,32 @@ def test_eval_vision_failure_invalidates_cell(tmp_path,monkeypatch):
     assert len(cell['versions'])==1 and cell['used']['advisor_calls']==0
 
 
+def test_unparseable_eval_persists_diagnostics_and_invalidates_cell(tmp_path,monkeypatch):
+    class UnparseableClient(RoutedClient):
+        def chat(self,**kw):
+            if kw['messages'][0]['content'].startswith('You are the system Eval agent'):
+                self.role_calls.append(('eval',kw['model']))
+                return ParccResponse(kw['model'],'private marker: {"passed": false',None,.01,1,
+                                     {'total_tokens':4099,'prompt_tokens':3,'completion_tokens':4096,
+                                      'completion_tokens_details':{'reasoning_tokens':4000}},finish_reason='length')
+            return super().chat(**kw)
+    store,experiment,budget=_loop_setup(tmp_path,monkeypatch);client=UnparseableClient()
+    result=run(store,experiment['experiment_id'],max_cells=1,budget_file=budget,client=client,runner_factory=FrameRunner)
+    cell=result['cells'][0]
+    assert cell['state']=='condition_invalid' and cell['reason'].startswith('eval_vision_unavailable:')
+    assert len(cell['versions'])==1 and cell['used']['advisor_calls']==0
+    assert client.role_calls==[('eval','parcc/Qwen')]*2
+    artifact=Path(cell['versions'][0]['source']['uri']).parent/'eval-review.json'
+    review=json.loads(artifact.read_text())
+    assert review['status']=='invalid_vision_unavailable' and review['error'].endswith('unparseable_answer')
+    assert review['raw_answer_excerpt']=='private marker: {"passed": false'
+    assert review['finish_reason']=='length'
+    assert review['usage']=={'total_tokens':4099,'prompt_tokens':3,'completion_tokens':4096,'reasoning_tokens':4000}
+    assert 'private marker' not in json.dumps(eval_agent.visible_review(review))
+    from benchmarks.attention_harness.dev_request_view import display_eval_review
+    assert 'private marker' not in json.dumps(display_eval_review(cell,1))
+
+
 def test_advisor_vision_failure_retries_then_invalidates_cell(tmp_path,monkeypatch):
     store,experiment,budget=_loop_setup(tmp_path,monkeypatch);client=RoutedClient(advisor_down=True)
     result=run(store,experiment['experiment_id'],max_cells=1,budget_file=budget,client=client,runner_factory=FrameRunner)
@@ -383,3 +496,7 @@ def test_full_planner_targeted_hint_records_sampled_frame(tmp_path,monkeypatch):
     assert request['selected_frame_manifest'][0]['sha256']
     assert request['logical_human_seconds']==request['hint_human_seconds']
     assert request['shown_video_seconds']>=0 and request['frames'][0]['sha256']
+    advisor_job=next(job for job in cell['jobs'] if job['kind']=='advisor')
+    expected_reserve=(archived_view['shown_video_seconds']+shown_words(archived_view)/READ_WPS
+                      +math.ceil(dev_advisor_proxy.MAX_TOKENS*0.75)/WRITE_WPS)
+    assert advisor_job['reservation']['hint_human_seconds']==expected_reserve
