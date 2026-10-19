@@ -71,7 +71,7 @@ def test_seeded_grant_packet_event_view_and_result_skip(tmp_path, monkeypatch):
     assert 'seeded-for-tests:' not in messages[-1]['content']
     view = projection(store, {'key': cell['key']})
     assert view['retrievals'][0]['entries'][0]['excluded_from_results'] is True
-    assert view['retrievals'][0]['entries'][0]['source'] == '手工为测试种入'
+    assert view['retrievals'][0]['entries'][0]['source'] == 'Seeded for tests'
     assert memory.journal_result(store, cell['key'], 1, packet, {}, {}, directory) is None
     assert not (directory/'memory-result.json').exists()
     with pytest.raises(DevConflict, match='excluded from result queue'):

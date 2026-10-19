@@ -2668,6 +2668,7 @@
   }
   // Attention mechanism presentation: server permissions and persisted records.
   let memoryCatalogue = null, memorySelected = null, memoryMessage = '';
+  let devMemoryCatalogue = null, devMemoryDetail = null, devMemoryMessage = '', devMemoryError = '', devMemoryLoading = false;
   // The server decides what may still be done with a request (permitted_actions). A server or
   // record that predates the field keeps the controls it always had; actions added later, such as
   // ignoring a request, are only ever shown when the server says they exist.
@@ -2701,14 +2702,22 @@
     const records=memoryCatalogue?.memories || Object.values(memory.records || {}).map(item=>({...item.record,memory_id:item.memory_id}));
     const canOperate=memoryCatalogue?.control?.can_operate ?? memory.control?.can_operate;
     const detail=memorySelected || null, record=detail?.record;
+    const devCanOperate=devMemoryCatalogue?.control?.can_operate === true;
+    const devControls=id=>`<form data-dev-memory-operation data-memory-id="${esc(id)}"><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><div class="op-controls">${[['disable','Disable'],['enable','Enable'],['expiry','Set expiry'],['rollback','Roll back']].map(([action,label])=>`<button type="button" data-dev-memory-action="${action}" ${devCanOperate?'':'disabled title="Memory operator authority is not configured on this server"'}>${label}</button>`).join('')}</div></form>`;
+    const devRows=devMemoryCatalogue?.memories || [];
     return `<details data-memory-panel data-persist-detail="memory-panel"><summary>Memory · candidates & validation queue</summary>
       ${dev?`<div data-dev-memory-panel><h4>Dev v2 Memory evidence</h4>
+        <button type="button" data-dev-memory-refresh>Refresh Dev v2 Memory directory</button>
+        <p data-dev-memory-message role="status">${esc(devMemoryMessage)}</p><p data-dev-memory-error role="alert">${esc(devMemoryError)}</p>
+        ${!devCanOperate?`<p>Lifecycle controls disabled: ${devMemoryCatalogue?'Memory operator authority is not configured on this server.':'Checking server operator authority.'}</p>`:''}
+        <div data-dev-memory-directory><h5>Current Dev v2 Memory directory</h5>${devRows.length?devRows.map(row=>`<article data-dev-memory-record><b>${esc(row.memory_id)} @ ${esc(row.version)} · ${esc(row.status)}</b><p>Source: ${esc(row.source_label || 'Unverified')}${row.seeded_for_tests||row.excluded_from_results?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}</p><p>Applicability: ${esc(JSON.stringify(row.applicability_summary || {}))}</p>${devControls(row.memory_id)}</article>`).join(''):'<p>No Dev v2 Memory records loaded.</p>'}</div>
+        ${devMemoryDetail?`<details data-dev-memory-history open><summary>Lifecycle events · ${esc(devMemoryDetail.memory?.memory_id)}</summary><p>Current status: ${esc(devMemoryDetail.memory?.status)}</p><pre>${esc(JSON.stringify(devMemoryDetail.history || [],null,2))}</pre></details>`:''}
         ${dev.empty?'<p data-dev-memory-empty>No Dev v2 Memory candidates, validation dispatches or uses are recorded for this cell.</p>':''}
         ${dev.queues.map(q=>`<article data-memory-queue><b>${esc(q.source)} · v${esc(q.version)}</b><p>${esc(q.status)} · ${esc(q.kind)}${q.kind==='source'?' · proposal only; not an authority candidate':''}</p></article>`).join('')}
         ${dev.validations.map(v=>`<article data-memory-validation><b>Validation · v${esc(v.version)}</b><p>${esc(v.exposure)} · grant ${esc(v.grant_id)} · ${esc(v.status)} · ${esc(v.memory_ids.join(', ')||'control')}</p></article>`).join('')}
-        ${dev.retrievals.map(r=>`<article data-memory-retrieval><b>Dev exposure · v${esc(r.version)}</b><p>Authority ${esc(r.authority)} · namespace ${esc(r.namespace)}</p>${r.entries.length?r.entries.map(e=>`<p data-request-memory>来源：${esc(e.source)}${e.excluded_from_results||e.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':e.source==='来源待核实'?' · exclude from results until provenance is verified':''} · ${esc(e.memory_id)} @ ${esc(e.version)} · ${esc(e.status|| (e.trusted?'trusted':'untrusted'))} at retrieval · grant ${esc(e.grant_id)}<br>适用条件：${esc(JSON.stringify(e.applicability))}</p>`).join(''):'<p>No matching trusted Memory was granted.</p>'}</article>`).join('')}
+        ${dev.retrievals.map(r=>`<article data-memory-retrieval><b>Dev exposure · v${esc(r.version)}</b><p>Authority ${esc(r.authority)} · namespace ${esc(r.namespace)}</p>${r.entries.length?r.entries.map(e=>`<div data-request-memory><p>Source: ${esc(e.source)}${e.excluded_from_results||e.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':e.source==='Source unverified'?' · exclude from results until provenance is verified':''} · ${esc(e.memory_id)} @ ${esc(e.version)} · ${esc(e.status|| (e.trusted?'trusted':'untrusted'))} at retrieval · grant ${esc(e.grant_id)}<br>Applicability: ${esc(JSON.stringify(e.applicability))}</p>${devControls(e.memory_id)}</div>`).join(''):'<p>No matching trusted Memory was granted.</p>'}</article>`).join('')}
         ${dev.generations.map(g=>`<article data-memory-generation><b>Generation use · v${esc(g.version)}</b><p>Memory input ${esc(g.memory_packet_sha256)} · model input ${esc(g.model_input_sha256)} · generated source ${esc(g.result_source_sha256)}</p></article>`).join('')}
-        ${dev.receipts.map(r=>`<article data-memory-receipt><b>来源：${esc(r.source)} · ${esc(r.operation)} · v${esc(r.version)}</b>${r.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}<p>${esc(r.status)}${r.authority_status?` · ${esc(r.authority_status)}`:''}</p></article>`).join('')}
+        ${dev.receipts.map(r=>`<article data-memory-receipt><b>Source: ${esc(r.source)} · ${esc(r.operation)} · v${esc(r.version)}</b>${r.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}<p>${esc(r.status)}${r.authority_status?` · ${esc(r.authority_status)}`:''}</p></article>`).join('')}
       </div>`:''}
       <p>${dev?(snapshot.dev_v2?.planner_features?.memory?'Dev v2 Memory authority is configured. The catalogue below shows the separate legacy Memory records.':'No Dev v2 Memory authority is configured for this cell.'):(memory.control?'Reads the same Memory records as the agent.':'Memory service is not configured.')}</p>
       ${(memory.ingestion || []).map(item=>`<p data-memory-ingestion>${esc(item.memory_id || item.request_id)} · ${esc(item.decision)}${item.reason?` · ${esc(item.reason)}`:''}</p>`).join('')}
@@ -2745,6 +2754,39 @@
     }
     async function read(path) {const response=await fetch(path,{cache:'no-store'});const result=await response.json();if(!response.ok)throw new Error(result.error || `HTTP ${response.status}`);return result;}
     function redraw() {if(currentSnapshot?.run.run_id===snapshot.run.run_id)render(currentSnapshot);}
+    async function loadDevDirectory() {
+      if(devMemoryLoading)return;
+      devMemoryLoading=true;
+      try{devMemoryCatalogue=await read('/api/dev-memories');devMemoryError='';}
+      catch(error){devMemoryError=error.message;}
+      finally{devMemoryLoading=false;redraw();}
+    }
+    if(snapshot.memory?.dev_v2 && !devMemoryCatalogue && !devMemoryError)void loadDevDirectory();
+    view.querySelector('[data-dev-memory-refresh]')?.addEventListener('click',()=>{devMemoryError='';void loadDevDirectory();});
+    view.querySelectorAll('[data-dev-memory-action]').forEach(button=>button.addEventListener('click',async()=>{
+      const form=button.closest('[data-dev-memory-operation]'),action=button.dataset.devMemoryAction;
+      devMemoryError='';
+      if(!devMemoryCatalogue?.control?.can_operate){devMemoryError='Memory operator authority is not configured on this server';redraw();return;}
+      const actor=form.elements.actor.value.trim(),reason=form.elements.reason.value.trim();
+      if(!actor||!reason||!form.reportValidity()){devMemoryError='Actor and reason are required';redraw();return;}
+      const body={actor,reason};
+      if(action==='expiry'){
+        const raw=form.elements.expires_at.value,expiry=new Date(raw).getTime()/1000;
+        if(!raw||!Number.isFinite(expiry)||expiry<=Date.now()/1000){devMemoryError='Expiry must be a future local date and time';redraw();return;}
+        body.expires_at=expiry;
+      }
+      const irreversible=action==='expiry'||action==='rollback';
+      if(!confirm(`${action==='expiry'?'Set expiry':action==='rollback'?'Roll back':action==='disable'?'Disable':'Enable'} ${form.dataset.memoryId}?\nActor: ${actor}\nReason: ${reason}${irreversible?'\nExpiry and rollback cannot be undone.':''}`))return;
+      button.disabled=true;
+      try{
+        const response=await controlFetch(`/api/dev-memories/${encodeURIComponent(form.dataset.memoryId)}/${action}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const result=await response.json();if(!response.ok)throw new Error(result.error||`HTTP ${response.status}`);
+        devMemoryMessage=`${result.memory_id}: ${result.memory.status}`;
+        devMemoryCatalogue=await read('/api/dev-memories');
+        devMemoryDetail=await read(`/api/dev-memories/${encodeURIComponent(form.dataset.memoryId)}`);
+      }catch(error){devMemoryError=error.message;}
+      redraw();
+    }));
     view.querySelector('[data-memory-refresh]')?.addEventListener('click',async event=>{
       event.currentTarget.disabled=true;
       try{memoryCatalogue=await read('/api/memories');memoryMessage='Catalogue refreshed';}catch(error){memoryMessage=error.message;}redraw();

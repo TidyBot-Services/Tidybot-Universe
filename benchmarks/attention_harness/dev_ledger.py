@@ -1,5 +1,5 @@
 """New isolated SQLite ledger; goal and cell reservations share one transaction."""
-import json,sqlite3,time,math
+import hashlib,json,sqlite3,time,math
 from contextlib import contextmanager
 from pathlib import Path
 from .core.dev_store import DevConflict,DevBudgetExhausted
@@ -64,6 +64,30 @@ def experiment_goal(experiment):
     explicit=experiment.get('goal_id')
     if explicit and legacy and explicit!=legacy:raise DevConflict('experiment goal identity conflict')
     return explicit or legacy or GOAL
+
+def frozen_simulation_target(cell, experiment, config):
+    """Only the manifest-bound Dev RoboCasa365 simulator can skip motion approval."""
+    from .dev_tasks import get_task
+    ref=experiment.get('manifest') or {}
+    try:
+        raw=Path(ref['uri']).read_bytes()
+        if hashlib.sha256(raw).hexdigest()!=ref['sha256']:return False
+        manifest=json.loads(raw)
+        frozen=manifest['configs'][f"{cell['task_id']}:{cell['seed']}"]
+        official_env=get_task(cell['task_id']).official_env
+        if (config!=frozen or cell.get('planner_features')!=manifest.get('planner_features')
+                or not any(row['key']==cell['key'] for row in manifest['cells'])):return False
+    except (KeyError,TypeError,ValueError,OSError):
+        return False
+    return (config.get('schema_version')=='attentionbench.openarm365-dual-dev-config.v2'
+            and config.get('suite')=='robocasa365'
+            and config.get('runner_boundary')=='dev_loop'
+            and config.get('perception_mode')=='sim_gt'
+            and 'execution_target' not in config
+            and config.get('robot')=='OpenArm365'
+            and config.get('task_id')==cell['task_id']
+            and config.get('seed')==cell['seed']
+            and config.get('official_env')==official_env)
 
 
 class DevV2Store:
@@ -242,16 +266,19 @@ class DevV2Store:
                 from .dev_loop import sha
                 version=json.loads(db.execute('SELECT payload FROM v2_versions WHERE cell=? AND version=?',(j['cell'],j['version'])).fetchone()[0])
                 if sha(version['source']['uri'])!=version['source']['sha256']:raise DevConflict('approved source changed')
-                scope=binding(j['cell'],j['version'],Path(version['source']['uri']).read_text(),json.loads((Path(c['artifact_dir'])/'config.json').read_bytes()))
+                config=json.loads((Path(c['artifact_dir'])/'config.json').read_bytes())
+                scope=binding(j['cell'],j['version'],Path(version['source']['uri']).read_text(),config)
                 if scope:
-                    if not approval_id:raise DevConflict('motion execution requires human approval')
-                    found=db.execute('SELECT payload FROM v2_planner_requests WHERE id=?',(approval_id,)).fetchone()
-                    if not found:raise DevConflict('unknown approval')
-                    row=PlannerControl.__new__(PlannerControl);row.store=self
-                    approval=row.refresh(db,json.loads(found[0]))
-                    if approval['state']!='approved' or encoded(approval['binding'])!=encoded(scope):raise DevConflict('approval expired/changed/consumed')
-                    approval.update(state='consumed',consumed_by=jid,consumed_at=time.time())
-                    row.save(db,approval);self.event(db,'planner_approval_consumed',approval)
+                    if not (c['planner_features'].get('approval_rule')=='none'
+                            and frozen_simulation_target(c,exp,config) and approval_id is None):
+                        if not approval_id:raise DevConflict('motion execution requires human approval')
+                        found=db.execute('SELECT payload FROM v2_planner_requests WHERE id=?',(approval_id,)).fetchone()
+                        if not found:raise DevConflict('unknown approval')
+                        row=PlannerControl.__new__(PlannerControl);row.store=self
+                        approval=row.refresh(db,json.loads(found[0]))
+                        if approval['state']!='approved' or encoded(approval['binding'])!=encoded(scope):raise DevConflict('approval expired/changed/consumed')
+                        approval.update(state='consumed',consumed_by=jid,consumed_at=time.time())
+                        row.save(db,approval);self.event(db,'planner_approval_consumed',approval)
             j.update(owner=owner,claimed_at=time.time());db.execute("UPDATE v2_jobs SET state='claimed',payload=? WHERE id=?",(encoded(j),jid));self.event(db,'claimed',j)
     def settle(self,jid,actual,receipt):
         cost(actual)

@@ -84,6 +84,55 @@ def test_sensor_source_needs_no_approval(tmp_path):
         switch(s, c['key'], 'autonomous')
 
 
+def test_none_rule_claims_frozen_sim_motion_without_approval(tmp_path):
+    s, e, c, cfg, owner, root = setup(tmp_path, planner_features={
+        'approval_rule': 'none', 'human_wait_seconds': 0, 'background_seconds': 0})
+    assert planner.binding(c['key'], 1, SOURCE, cfg) is not None
+    manifest = Path(e['manifest']['uri'])
+    before = manifest.read_bytes()
+    add_version(s, c, root)
+    job = s.reserve(c['key'], 1, 'execute', {'executions': 1})
+    s.claim(job['job_id'], owner)
+    assert s.cell(c['key'])['jobs'][0]['state'] == 'claimed'
+    assert manifest.read_bytes() == before
+
+
+@pytest.mark.parametrize('target_change', [
+    {'perception_mode': 'vision'},
+    {'runner_boundary': 'real_robot'},
+    {'execution_target': 'real_robot'},
+    {'schema_version': 'unknown'},
+    {'suite': 'unknown'},
+    {'official_env': 'physical_robot'},
+    {'perception_mode': None},
+    {'__remove__': 'perception_mode'},
+])
+def test_none_rule_never_claims_non_sim_or_unknown_motion(tmp_path, target_change):
+    s, e, c, cfg, owner, root = setup(tmp_path, planner_features={
+        'approval_rule': 'none', 'human_wait_seconds': 0, 'background_seconds': 0})
+    add_version(s, c, root)
+    path = root / 'config.json'
+    path.chmod(0o644)
+    changed = {**cfg, **target_change}
+    if '__remove__' in changed:
+        del changed[changed.pop('__remove__')]
+    path.write_text(json.dumps(changed))
+    # Build an internally consistent frozen fixture for the alternative target.
+    manifest_path = Path(e['manifest']['uri'])
+    manifest = json.loads(manifest_path.read_bytes())
+    manifest['configs'][f"{c['task_id']}:{c['seed']}"] = changed
+    manifest_path.chmod(0o644)
+    manifest_path.write_text(json.dumps(manifest))
+    with s.tx() as db:
+        experiment = s.get(db, 'experiments', c['experiment_id'])
+        experiment['manifest']['sha256'] = sha(manifest_path)
+        s.put(db, 'experiments', c['experiment_id'], experiment)
+    job = s.reserve(c['key'], 1, 'execute', {'executions': 1})
+    with pytest.raises(DevConflict, match='motion execution requires human approval'):
+        s.claim(job['job_id'], owner)
+    assert s.cell(c['key'])['jobs'][0]['state'] == 'reserved'
+
+
 def test_exact_action_only_once_duplicate_and_restart(tmp_path):
     s, e, c, cfg, owner, root = setup(tmp_path)
     add_version(s, c, root)

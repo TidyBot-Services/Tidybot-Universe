@@ -9,6 +9,7 @@ which is separate from the read key and is never sent to the browser.
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
 
 # Operator actions the UI may request. "expiry" changes when a memory stops being usable.
@@ -39,10 +40,24 @@ class MemoryView:
     def public(self) -> dict[str, Any]:
         return {"source": self.source, "can_operate": self.can_operate}
 
+    def dev_control(self) -> dict[str, Any]:
+        # The Dev v2 card only operates through a Service client carrying an
+        # operator key; local write access is not an operator credential.
+        return {"source": self.source, "can_operate": self.source == "service" and self.can_operate}
+
     # -- reading -----------------------------------------------------------------
 
     def catalogue(self, status: str | None = None) -> list[dict[str, Any]]:
         return self.gateway.list_memories(status=status)
+
+    def dev_catalogue(self) -> list[dict[str, Any]]:
+        """The Service's public Dev v2/test-seeded allowlist (no guidance)."""
+        return self.gateway.list_dev_v2_memories()
+
+    def dev_public(self, memory_id: str) -> dict[str, Any]:
+        # The public endpoint rejects IDs outside these two provenance channels.
+        memory = self.gateway.get_dev_v2_memory_public(memory_id)
+        return {"memory": memory, "history": self.gateway.history(memory_id)}
 
     def detail(self, memory_id: str) -> dict[str, Any]:
         """Everything the operator needs to judge one memory, from the authoritative records."""
@@ -94,19 +109,23 @@ class MemoryView:
     # -- operating ---------------------------------------------------------------
 
     def operate(self, memory_id: str, action: str, *, actor: Any, reason: Any,
-                expires_at: Any = None) -> dict[str, Any]:
+                expires_at: Any = None, dev_v2: bool = False) -> dict[str, Any]:
         if action not in ACTIONS:
             raise ValueError(f"unsupported memory action: {action}")
-        if not self.can_operate:
+        if not self.can_operate or (dev_v2 and self.source != "service"):
             raise PermissionError("Memory operator authority is not configured on this server")
         for name, value in (("actor", actor), ("reason", reason)):
             if not isinstance(value, str) or not _TEXT.fullmatch(value.strip() or "\x00"):
                 raise ValueError(f"{name} must be 1-200 printable characters")
         actor, reason = actor.strip(), reason.strip()
+        if dev_v2:
+            self.gateway.get_dev_v2_memory_public(memory_id)
         if action == "expiry":
             if (isinstance(expires_at, bool) or not isinstance(expires_at, (int, float))
                     or expires_at != expires_at or abs(expires_at) == float("inf")):
                 raise ValueError("expires_at must be a finite Unix timestamp")
+            if dev_v2 and expires_at <= time.time():
+                raise ValueError("expires_at must be in the future")
             record = self.gateway.set_expiry(memory_id, expires_at=float(expires_at),
                                              actor=actor, reason=reason)
         else:

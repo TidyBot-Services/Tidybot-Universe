@@ -31,7 +31,7 @@ def projection(store, cell):
             if queued.get('cell')!=cell['key'] or queued.get('version')!=value['version'] or queued.get('kind')!=value['kind']:
                 raise DevConflict('Memory queue display binding mismatch')
             queues.append(dict(version=value['version'],kind=value['kind'],status=queued['status'],
-                               source='待离线导入提案' if value['kind']=='source' else '离线 result 队列',
+                               source='Offline import proposal' if value['kind']=='source' else 'Offline result queue',
                                authority_candidate=queued['authority_candidate'],sha256=value['queue']['sha256']))
         elif kind=='planner_memory_retrieved':
             packet=_evidence(value['packet'])
@@ -42,7 +42,7 @@ def projection(store, cell):
                 seeded=entry.get('seeded_for_tests') if type(entry.get('seeded_for_tests')) is bool else trace.startswith(('seeded-for-tests:','test-seed:'))
                 excluded=entry.get('excluded_from_results') if type(entry.get('excluded_from_results')) is bool else seeded
                 entries.append(dict(memory_id=entry['memory_id'],version=entry['version'],grant_id=entry['grant_id'],
-                                    trusted=True,status=entry.get('status','trusted'),source='手工为测试种入' if seeded else '真实候选' if trace.startswith('dev-v2-source:') else '来源待核实',
+                                    trusted=True,status=entry.get('status','trusted'),source='Seeded for tests' if seeded else 'Dev v2 candidate' if trace.startswith('dev-v2-source:') else 'Source unverified',
                                     seeded_for_tests=seeded,excluded_from_results=excluded,
                                     explicit_flags=type(entry.get('seeded_for_tests')) is bool or type(entry.get('excluded_from_results')) is bool,
                                     authority=entry.get('authority'),
@@ -68,7 +68,7 @@ def projection(store, cell):
                     or record.get('seeded_for_tests') is True or record.get('source')=='test_seed')
             receipts.append(dict(version=value['version'],operation=value['operation'],
                                  status='receipt_recorded',authority_status=record.get('status'),
-                                 source='手工为测试种入' if seeded else '真实候选' if value['operation']=='candidate' else '离线结果',
+                                 source='Seeded for tests' if seeded else 'Dev v2 candidate' if value['operation']=='candidate' else 'Offline result',
                                  memory_id=record.get('memory_id'),memory_version=record.get('version'),
                                  seeded_for_tests=seeded))
     for retrieval in retrievals:

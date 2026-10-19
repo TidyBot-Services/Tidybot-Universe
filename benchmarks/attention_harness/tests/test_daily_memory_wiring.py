@@ -205,14 +205,14 @@ def test_dev_memory_view_projects_frozen_queue_grant_validation_and_result(tmp_p
     assert view['queues'][0]['status']=='pending_offline_import'
     assert view['queues'][1]['status']=='offline_receipt_recorded'
     assert view['retrievals'][0]['entries'][0]['trusted'] is True
-    assert view['retrievals'][0]['entries'][0]['source']=='手工为测试种入'
-    assert view['retrievals'][0]['entries'][1]['source']=='真实候选'
+    assert view['retrievals'][0]['entries'][0]['source']=='Seeded for tests'
+    assert view['retrievals'][0]['entries'][1]['source']=='Dev v2 candidate'
     assert view['retrievals'][0]['entries'][2]['seeded_for_tests'] is True
     assert view['retrievals'][0]['entries'][0]['applicability']['scene_id']=='scene-102'
     assert view['validations'][0]['grant_id']=='validation-3'
     assert view['generations'][0]['memory_packet_sha256']==packet['sha256']
     assert view['receipts'][0]['seeded_for_tests'] is True
-    assert view['receipts'][0]['source']=='手工为测试种入'
+    assert view['receipts'][0]['source']=='Seeded for tests'
     (tmp_path/'memory-input.json').unlink()
     (tmp_path/'memory-input.json').write_text('{}')
     with pytest.raises(DevConflict,match='digest mismatch'):projection(store,cell)
@@ -230,7 +230,7 @@ def test_visual_advisor_creates_only_an_offline_proposal(tmp_path):
     assert queue is not None
     proposal=json.loads(Path(queue['uri']).read_bytes())
     assert proposal['status']=='pending_offline_import' and proposal['authority_candidate'] is False
-    assert projection(store,{'key':'cell-102'})['queues'][0]['source']=='待离线导入提案'
+    assert projection(store,{'key':'cell-102'})['queues'][0]['source']=='Offline import proposal'
     invalid=immutable(tmp_path/'invalid-advisor.json',dict(status='invalid_vision_unavailable',mode='vision',
                                                            request_type='hint',feedback=''))
     invalid_help=immutable(tmp_path/'invalid-help.json',dict(provider='human_proxy',mode='vision',content='invented',

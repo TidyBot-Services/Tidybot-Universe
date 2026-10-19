@@ -7,6 +7,7 @@ from .dev_tasks import get_task
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .parcc_client import ParccClient,ParccResponse,ParccError
 from .dev_planner import PlannerActionBlocked
+from .dev_feedback_projection import input_bound as dev_input_bound, project_messages
 from .formal_runner_boundary import FormalRunRequest,run_with_formal_boundary
 from openarm365_dev_v2.dev_config import ROOT,SIM_PYTHON,ROBocasa,ROBOSUITE,ASSETS
 from openarm365_dev_v2.runner import OpenArm365DevRunnerV2
@@ -69,7 +70,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     if existing and existing['state'] in {'claimed','needs_review'}:raise DevConflict('existing claim cannot be redispatched')
     from .dev_experiment import MODEL
     max_tokens=cell.get('probe_max_tokens',MODEL['max_tokens'] if kind=='model' else 2048)
-    input_bound=sum(len(m['content'].encode()) for m in messages)+1024
+    input_bound=dev_input_bound(messages)
     if runtime and input_bound>runtime['max_input_bytes_per_request']:raise DevBudgetExhausted('input_bound_exceeded: '+str(input_bound))
     seconds=runtime.get('model_reserve_seconds',120)
     reservation={'dev_calls' if kind=='model' else 'advisor_calls':1,'provider_tokens':input_bound+max_tokens,
@@ -687,6 +688,11 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 for resource in ['model_seconds','execution_seconds','help_wait_seconds']:
                     remaining[resource]=max(0,cell['budget'][resource]-sum(j['reservation'].get(resource,0) for j in store.cell(key)['jobs'] if j['state']=='settled'))
             messages=model_messages(config,previous,feedback,packet,remaining,m['trace_visible'],m.get('source_size_limit_bytes'))
+            projection_ref=None
+            if cell.get('runtime'):
+                messages,projection=project_messages(messages,cell['runtime']['max_input_bytes_per_request'])
+                if projection is not None:
+                    projection_ref=immutable(directory/'dev-public-feedback-projection.json',projection)
             if cell.get('planner_features') and cell['planner_features']['memory'] and not (job_for(store.cell(key),version,'model') or {}).get('actual'):
                 from .dev_planner_memory import load_memory
                 load_memory(store,key,version,previous,config,cell['planner_features']['memory'],directory)
@@ -708,6 +714,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 except ValueError:error='Generated code violates the public SDK validator'
             src=immutable(directory/'policy.py',new_source);diff=immutable(directory/'diff.patch',''.join(difflib.unified_diff(previous.splitlines(True),new_source.splitlines(True),fromfile=f'v{version-1}',tofile=f'v{version}')))
             record={'version':version,'source':src,'diff':diff,'reason':reason,'valid':error is None,'validation_error':error,'model_input':request,'model_output':response,'usage':usage,'decision':decision_ref,'help':help_ref,'manifest':exp['manifest'],'config_sha256':sha(root/'config.json'),'formal_eligible':False}
+            if projection_ref:record['dev_public_feedback_projection']=projection_ref
             memory_path=directory/'memory-input.json'
             if memory_path.exists():
                 memory_packet=json.loads(memory_path.read_bytes())

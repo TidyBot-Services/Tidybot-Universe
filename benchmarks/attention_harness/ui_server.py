@@ -909,6 +909,23 @@ def create_server(
                     self._json({"error": "evidence not found"}, HTTPStatus.NOT_FOUND)
                 except ValueError as error:
                     self._json({"error": str(error)}, HTTPStatus.CONFLICT)
+            elif path == "/api/dev-memories" and memory_view is not None:
+                try:
+                    self._json({"control": memory_view.dev_control(),
+                                "memories": memory_view.dev_catalogue()})
+                except Exception as error:
+                    self._json({"error": f"Dev v2 Memory unavailable: {error}"}, HTTPStatus.BAD_GATEWAY)
+            elif path.startswith("/api/dev-memories/") and memory_view is not None:
+                memory_id = unquote(path.removeprefix("/api/dev-memories/"))
+                if not memory_id or "/" in memory_id or "\\" in memory_id:
+                    self._json({"error": "invalid memory id"}, HTTPStatus.BAD_REQUEST)
+                    return
+                try:
+                    self._json(memory_view.dev_public(memory_id))
+                except FileNotFoundError as error:
+                    self._json({"error": str(error)}, HTTPStatus.NOT_FOUND)
+                except Exception as error:
+                    self._json({"error": str(error)}, HTTPStatus.BAD_GATEWAY)
             elif path == "/api/memories" and memory_view is not None:
                 try:
                     self._json({"control": memory_view.public(),
@@ -1039,7 +1056,9 @@ def create_server(
             is_defer = path.startswith("/api/requests/") and path.endswith("/defer")
             is_cancel = path.startswith("/api/requests/") and path.endswith("/cancel")
             is_ignore = path.startswith("/api/requests/") and path.endswith("/ignore")
-            memory_action = next((a for a in MEMORY_ACTIONS if path.startswith("/api/memories/")
+            dev_memory_action = path.startswith("/api/dev-memories/")
+            memory_action = next((a for a in MEMORY_ACTIONS if path.startswith(
+                                  "/api/dev-memories/" if dev_memory_action else "/api/memories/")
                                   and path.endswith("/" + a)), None)
             is_interrupt = path.startswith("/api/runs/") and path.endswith("/interrupt")
             is_dag_start = path == "/api/orchestrator/dispatch"
@@ -1179,7 +1198,8 @@ def create_server(
                     self._json({"error": str(error)}, HTTPStatus.CONFLICT)
                 return
             if memory_action:
-                memory_id = unquote(path[len("/api/memories/"):-len("/" + memory_action)]).strip("/")
+                prefix = "/api/dev-memories/" if dev_memory_action else "/api/memories/"
+                memory_id = unquote(path[len(prefix):-len("/" + memory_action)]).strip("/")
                 if not memory_id or "/" in memory_id or "\\" in memory_id:
                     self._json({"error": "invalid memory id"}, HTTPStatus.BAD_REQUEST)
                     return
@@ -1197,8 +1217,10 @@ def create_server(
                         raise ValueError("body needs actor and reason (and expires_at for expiry)")
                     record = memory_view.operate(memory_id, memory_action, actor=body.get("actor"),
                                                  reason=body.get("reason"),
-                                                 expires_at=body.get("expires_at"))
+                                                 expires_at=body.get("expires_at"), dev_v2=dev_memory_action)
                     self._json({"memory_id": memory_id, "action": memory_action, "memory": record})
+                except FileNotFoundError as error:
+                    self._json({"error": str(error)}, HTTPStatus.NOT_FOUND)
                 except PermissionError as error:
                     self._json({"error": str(error)}, HTTPStatus.FORBIDDEN)
                 except (ValueError, TypeError, json.JSONDecodeError) as error:
