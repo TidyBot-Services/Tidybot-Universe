@@ -38,6 +38,11 @@ def read_experiment(store_path, experiment_id=None):
         if manifest.get('experiment_id') != experiment['experiment_id']:
             raise ValueError('experiment/manifest identity mismatch')
         cells = []
+        seeded_cells=set()
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v2_events'").fetchone():
+            seeded_cells={detail['cell'] for (payload,) in db.execute(
+                "SELECT payload FROM v2_events WHERE kind='planner_memory_retrieved'")
+                if (detail:=json.loads(payload)).get('excluded_from_results') is True}
         found = set()
         for key, payload in db.execute('SELECT id,payload FROM v2_cells WHERE exp=? ORDER BY rowid', (experiment['experiment_id'],)):
             found.add(key)
@@ -108,7 +113,9 @@ def read_experiment(store_path, experiment_id=None):
             unanswered_advisor = [r for r in planner_requests if r.get('request_type') == 'advisor' and
                                   r.get('state') == 'timed_out' and not any(j['state'] == 'settled' and
                                   j['version'] == r.get('version') for j in requests)]
+            memory_seeded=key in seeded_cells or any(v.get('memory_provenance',{}).get('excluded_from_results') is True for v in versions)
             cells.append({'key': key, 'task_id': cell['task_id'], 'seed': cell['seed'], 'policy_id': cell['policy_id'],
+                          'memory_seeded_excluded':memory_seeded,
                           'repeat': cell.get('repeat', 0),
                           'state': cell['state'], 'reason': cell.get('reason'), 'created_at': cell.get('created_at'),
                           'versions': observations, 'generated_versions': len(versions),
@@ -147,11 +154,15 @@ def _rate(successes, denominator):
 def summarize(experiment):
     """Aggregate observations; unknown native outcomes never enter a failure denominator."""
     cells = experiment['cells']
-    quality = summarize_eval_quality(cells)
+    quality = summarize_eval_quality([c for c in cells if not c.get('memory_seeded_excluded')])
     policies = defaultdict(list)
     frontier = defaultdict(list)
     invalid = defaultdict(lambda: {'scene_contract_mismatch': 0, 'vision_unavailable': 0, 'other': 0})
+    seeded=defaultdict(int)
     for cell in cells:
+        if cell.get('memory_seeded_excluded'):
+            seeded[cell['policy_id']]+=1
+            continue
         reason = cell.get('reason') or ''
         if cell['state'] == 'condition_invalid':
             cause = ('scene_contract_mismatch' if 'scene_contract' in reason else
@@ -192,9 +203,9 @@ def summarize(experiment):
                 'fallback_detail': {kind: sum(c.get('fallback_detail', {}).get(kind, 0) for c in rows)
                                     for kind in ('generic_request', 'model_answer')},
                 'eval_compute': {k: sum(c['eval_compute'].get(k, 0) for c in rows) for k in ('eval_calls', 'provider_tokens', 'input_tokens', 'output_tokens', 'model_seconds')}}
-    by_policy = {p: {**aggregate(rows), 'invalid_cells': invalid[p]} for p, rows in sorted(policies.items())}
-    for p in invalid:
-        by_policy.setdefault(p, {**aggregate([]), 'invalid_cells': invalid[p]})
+    by_policy = {p: {**aggregate(rows), 'invalid_cells': invalid[p], 'memory_seeded_excluded':seeded[p]} for p, rows in sorted(policies.items())}
+    for p in set(invalid)|set(seeded):
+        by_policy.setdefault(p, {**aggregate([]), 'invalid_cells': invalid[p], 'memory_seeded_excluded':seeded[p]})
     points = []
     budget_rows = defaultdict(dict)
     for (policy, budget), rows in frontier.items():
@@ -242,6 +253,7 @@ def summarize(experiment):
     return {'schema': 'attentionbench.experiment-summary.v1', 'experiment_id': experiment['experiment_id'],
             'mode': manifest.get('selection', {}).get('mode'), 'budget_tier': manifest.get('budget_tier', 'legacy'),
             'formal_eligible': manifest.get('formal_eligible'),
+            'memory_seeded_excluded':sum(seeded.values()),
             'by_policy': by_policy,
             'cell_results': [{k: c[k] for k in ('key', 'task_id', 'seed', 'policy_id', 'native_success',
                              'final_version_success', 'first_success_version', 'time_to_first_success_seconds',
@@ -250,13 +262,14 @@ def summarize(experiment):
             'frontier_plot_data': points, 'nondominated_policies_by_budget': frontier_by_budget,
             'marginal_utility_by_request': marginal,
             'eval_quality': quality, 'read_errors': {c['key']: c['read_errors'] for c in cells if c['read_errors']},
-            'denominator_rule': 'Only known native outcomes enter success rates; invalid and unknown cells are excluded.'}
+            'denominator_rule': 'Only known native outcomes enter success rates; invalid, unknown and memory-seeded cells are excluded.'}
 
 
 def markdown(value):
     rate = lambda x: 'unknown' if x is None else f'{x:.3f}'
     lines = [f"# Experiment {value['experiment_id']}", '',
-             f"Mode: {value.get('mode')}; budget tier: {value.get('budget_tier')}; formal eligible: {value.get('formal_eligible')}.", '',
+             f"Mode: {value.get('mode')}; budget tier: {value.get('budget_tier')}; formal eligible: {value.get('formal_eligible')}.",
+             f"Memory-seeded (excluded): {value.get('memory_seeded_excluded', 0)}.", '',
              '| Policy | Native success | Final success | First success versions | Time to first success (s) | Requests | Logical human seconds | Unknown attention seconds | Invalid scene / vision / other | Request / execution timeout | Fallback |',
              '|---|---:|---:|---|---|---:|---:|---:|---:|---:|---:|']
     for policy, row in value['by_policy'].items():

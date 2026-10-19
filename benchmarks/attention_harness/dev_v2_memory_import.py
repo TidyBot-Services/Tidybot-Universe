@@ -19,6 +19,14 @@ from .dev_v2_loop import immutable, checked
 
 
 def queue(store, cell, version, directory, kind, refs):
+    if kind=='result':
+        packet_path=Path(directory)/'memory-input.json'
+        if packet_path.is_file():
+            packet=json.loads(packet_path.read_bytes())
+            if packet.get('excluded_from_results') is True or any(
+                    e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True
+                    for e in packet.get('entries',[])):
+                raise DevConflict('test-seeded Memory grant excluded from result queue')
     ref=immutable(Path(directory)/('memory-result.json' if kind=='result' else 'memory-candidate-proposal.json'),dict(
         schema_version='attentionbench.dev-v2-offline-queue.v1',cell=cell,version=version,
         kind=kind,ledger_path=str(store.path.resolve()),evidence=refs,
@@ -34,6 +42,14 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     from .dev_planner_memory import context, sdk_identity
     from .dev_planner import binding
     c=store.cell(cell);v=next(v for v in c['versions'] if v['version']==version)
+    if source is None:
+        packet_path=Path(c['artifact_dir'])/f'v{version}'/'memory-input.json'
+        if packet_path.is_file():
+            packet=json.loads(packet_path.read_bytes())
+            if packet.get('excluded_from_results') is True or any(
+                    e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True
+                    for e in packet.get('entries',[])):
+                raise DevConflict('test-seeded Memory grant excluded from result import')
     with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
     config_ref={'uri':str(Path(c['artifact_dir'])/'config.json')}
     config_ref['sha256']=sha(config_ref['uri']);config=json.loads(checked(config_ref).read_bytes())

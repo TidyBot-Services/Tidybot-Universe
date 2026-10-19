@@ -20,6 +20,8 @@ from openarm365_dev_v2.tests.test_planner_features import setup, TestOnlyGateway
 
 def test_memory_clock_failure_and_restart_not_renewed(tmp_path,monkeypatch):
     s,e,c,cfg,owner,root=setup(tmp_path)
+    from openarm365_dev_v2.scene_contract import registered_contract_ref
+    cfg['scene_contract']=registered_contract_ref()
     class Unavailable:
         def store_id(self):time.sleep(.03);raise ConnectionError('controlled authority failure')
     monkeypatch.setattr(memory,'client_for',lambda _:Unavailable())

@@ -61,7 +61,7 @@ test('daily panel renders proposal, validation, grant, generation and result sou
             {source:'离线 result 队列',version:2,status:'offline_receipt_recorded',kind:'result'}],
     validations:[{version:2,exposure:'candidate_validation',grant_id:'validation-1',status:'dispatched',memory_ids:['memory-1']}],
     retrievals:[{version:2,authority:'fixture-authority',namespace:'daily-test',entries:[{source:'真实候选',memory_id:'memory-1',version:3,trusted:true,grant_id:'dev-grant-3',applicability:{scene_id:'scene-102'}},
-      {source:'手工为测试种入',seeded_for_tests:true,memory_id:'memory-test',version:1,trusted:true,grant_id:'dev-grant-test',applicability:{scene_id:'scene-102'}}]}],
+      {source:'手工为测试种入',seeded_for_tests:true,excluded_from_results:true,memory_id:'memory-test',version:1,status:'trusted',trusted:true,grant_id:'dev-grant-test',applicability:{seed:102,scene_id:'scene-102',camera_names:['front','wrist'],scene_contract_ref:{uri:'/test/contract.json',sha256:'a'.repeat(64)}}}]}],
     generations:[{version:2,memory_packet_sha256:'a'.repeat(64),model_input_sha256:'b'.repeat(64),result_source_sha256:'c'.repeat(64)}],
     receipts:[{source:'手工为测试种入',operation:'result',version:2,seeded_for_tests:true,status:'receipt_recorded'}]};
   const html=panel(snap);
@@ -69,6 +69,10 @@ test('daily panel renders proposal, validation, grant, generation and result sou
     assert.match(html,new RegExp(selector));
   for(const text of ['待离线导入提案','真实候选','手工为测试种入','seeded for tests, excluded from results','scene-102','dev-grant-3'])
     assert.ok(html.includes(text),text);
+  assert.match(html,/ab-memory-test-label/);
+  assert.match(html,/memory-test @ 1 · trusted at retrieval/);
+  assert.match(html,/&quot;seed&quot;:102/);
+  assert.match(html,/scene_contract_ref/);
   assert.doesNotMatch(html,/data-memory-operation/);
   assert.match(source,/data-persist-detail="planner-memory"/);
 });

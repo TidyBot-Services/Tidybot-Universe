@@ -15,6 +15,8 @@ def summarize_eval_quality(cells):
                                     'text_only': 0, 'unavailable': 0, 'unevaluated': 0})
     false_stops = []
     for cell in cells:
+        if cell.get('memory_seeded_excluded'):
+            continue
         policy = cell['policy_id']
         policies[policy]
         versions = cell.get('versions', [])

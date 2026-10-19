@@ -1,0 +1,6 @@
+# Operator template: copy into ~/.config/systemd/user/attentionbench-8769.service.d/override.conf
+# Replace the whole ExecStart placeholder with the current command and all its arguments.
+[Service]
+EnvironmentFile=%h/.config/attentionbench-8769/memory-online.env
+ExecStart=
+ExecStart=<existing 8769 command and all existing arguments> --memory-service-url http://127.0.0.1:8878 --dev-v2-memory-store-id <store_id> --dev-v2-memory-namespace <ns>

@@ -43,6 +43,13 @@ def screen_model_packet(packet):
         copy['public_feedback']=feedback
     public_screen(copy)
 
+def memory_provenance(packet):
+    entries=packet.get('entries',[])
+    return {'seeded_for_tests':packet.get('seeded_for_tests') is True or any(e.get('seeded_for_tests') is True for e in entries),
+            'excluded_from_results':packet.get('excluded_from_results') is True or any(e.get('excluded_from_results') is True for e in entries),
+            'entries':[{k:e.get(k) for k in ('memory_id','version','status','seeded_for_tests','excluded_from_results')}
+                       for e in entries]}
+
 def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     # Only public packet/source fields are accepted before any reservation.
     for m in messages:
@@ -69,7 +76,12 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
                  'input_tokens':input_bound,'output_tokens':max_tokens,'model_seconds':seconds}
     if kind=='advisor':reservation.update(help_count=1,help_credits=1,help_wait_seconds=seconds)
     store.reserve_check(key,reservation,model_name=MODEL['model']) if not existing else None
-    request=immutable(directory/(kind+'-input.json'),{**MODEL,'max_tokens':max_tokens,'messages':messages,'token_reservation':reservation})
+    request_body={**MODEL,'max_tokens':max_tokens,'messages':messages,'token_reservation':reservation}
+    memory_path=directory/'memory-input.json'
+    if kind in {'model','advisor'} and memory_path.is_file():
+        memory_packet=json.loads(memory_path.read_bytes())
+        request_body['memory_provenance']=memory_provenance(memory_packet)
+    request=immutable(directory/(kind+'-input.json'),request_body)
     # Credential loading belongs to the configured runtime; never artifact/log it.
     if client is None:
         credential=os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
@@ -210,6 +222,7 @@ def feedback_for(cell):
 
 def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None):
     from .eval_agent import visible_review
+    attention=prompt_memory_view(attention)
     public_screen(previous);public_screen(feedback);public_screen(attention)
     # Explicit public task + SDK packet; resource paths and evaluator excluded.
     t=get_task(config['task_id']);public_cfg={k:config[k] for k in ['task_id','official_env','task_prompt','seed','robot','execution_arm','controller','layout_id','style_id','scene_id','horizon','sdk_call_limit','attempt_wall_seconds','perception_mode']}
@@ -227,6 +240,17 @@ def model_messages(config,previous,feedback,attention,remaining,trace_visible=Tr
     if 'eval_review' in f:
         opinion='\nEval agent verdict and objective reason for your previous attempt: '+json.dumps(f['eval_review'],ensure_ascii=False)
     return [{'role':'system','content':t.system_prompt(config)+opinion},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
+
+def prompt_memory_view(value):
+    """Keep test exclusion metadata outside all model-visible message bodies."""
+    if isinstance(value,dict):
+        hidden={'seeded_for_tests','excluded_from_results'}
+        if value.get('seeded_for_tests') is True:
+            hidden.update({'source_trace_id','evidence_refs'})
+        return {k:prompt_memory_view(v) for k,v in value.items()
+                if k not in hidden}
+    if isinstance(value,list):return [prompt_memory_view(v) for v in value]
+    return value
 
 def hp_result(text,record):
     if not isinstance(text,str) or not text.strip():raise ValueError('empty HumanProxy hint')
@@ -277,7 +301,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         if decision['request_type']!='hint':raise DevConflict('only hint requests are supported')
         provider=AdvisorProvider();msgs=provider.messages(cell['task_id'],previous,feedback,m['trace_visible'])
         if cell.get('planner_features'):
-            advisor_packet=json.loads(msgs[-1]['content']);advisor_packet['memory']=memory['entries']
+            advisor_packet=json.loads(msgs[-1]['content']);advisor_packet['memory']=prompt_memory_view(memory['entries'])
             msgs[-1]['content']=json.dumps(advisor_packet,ensure_ascii=False,sort_keys=True)
         text,request,response,usage=provider_call(store,key,version,'advisor',msgs,owner,directory,client)
         # Model help is content only; never authorization.
@@ -684,13 +708,19 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 except ValueError:error='Generated code violates the public SDK validator'
             src=immutable(directory/'policy.py',new_source);diff=immutable(directory/'diff.patch',''.join(difflib.unified_diff(previous.splitlines(True),new_source.splitlines(True),fromfile=f'v{version-1}',tofile=f'v{version}')))
             record={'version':version,'source':src,'diff':diff,'reason':reason,'valid':error is None,'validation_error':error,'model_input':request,'model_output':response,'usage':usage,'decision':decision_ref,'help':help_ref,'manifest':exp['manifest'],'config_sha256':sha(root/'config.json'),'formal_eligible':False}
+            memory_path=directory/'memory-input.json'
+            if memory_path.exists():
+                memory_packet=json.loads(memory_path.read_bytes())
+                record['memory_provenance']=memory_provenance(memory_packet)
             immutable(directory/'version.json',record);store.version(key,record)
             if cell.get('planner_features'):
                 from .dev_planner import PlannerControl
                 PlannerControl(store).associate_generation(key,version,request,src)
                 memory_path=directory/'memory-input.json'
                 if memory_path.exists():
-                    with store.tx() as db:store.event(db,'planner_memory_generation',{'cell':key,'version':version,'memory_packet':{'uri':str(memory_path),'sha256':sha(memory_path)},'model_input':request,'result_source':src})
+                    memory_packet=json.loads(memory_path.read_bytes())
+                    provenance=memory_provenance(memory_packet)
+                    with store.tx() as db:store.event(db,'planner_memory_generation',{'cell':key,'version':version,'memory_packet':{'uri':str(memory_path),'sha256':sha(memory_path)},'model_input':request,'result_source':src,'seeded_for_tests':provenance['seeded_for_tests'],'excluded_from_results':provenance['excluded_from_results']})
             if cell.get('planner_features') and cell['planner_features']['memory'] and help_ref:
                 from .dev_planner_memory import stage_candidate
                 feedback_ref=immutable(directory/'candidate-public-feedback.json',feedback)

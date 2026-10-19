@@ -20,6 +20,12 @@ SCOPE = ('benchmark', 'suite', 'task_id', 'robot', 'controller', 'perception_mod
 
 
 def context(config, namespace):
+    required=('task_id','robot','controller','perception_mode','scene_id','object_set_id',
+              'camera_names','camera_width','camera_height','randomize_cameras',
+              'official_env','layout_id','style_id','base_mode','task_prompt','seed',
+              'scene_contract','dev_lock')
+    missing=[key for key in required if key not in config]
+    if missing:raise ValueError('Memory context requires config fields: '+', '.join(missing))
     value = {key: config[key] for key in SCOPE if key in config and key not in {'sdk_sha256', 'namespace'}}
     camera={k:config[k] for k in ('camera_names','camera_width','camera_height','randomize_cameras')}
     identity=sdk_identity(config)
@@ -29,7 +35,19 @@ def context(config, namespace):
                  sdk_sha256=hashlib.sha256(encoded(identity).encode()).hexdigest())
     if set(value) != set(SCOPE) or any(not isinstance(v, str) or not v for v in value.values()):
         raise ValueError('complete task/robot/SDK/scene Memory scope required')
-    value.update(camera_names=config['camera_names'], task_prompt=config['task_prompt'])
+    if type(config.get('seed')) is not int:
+        raise ValueError('Memory context requires integer config seed')
+    cameras=config.get('camera_names')
+    if not isinstance(cameras, (list,tuple)) or not cameras or any(not isinstance(n,str) or not n.strip() for n in cameras) or len(set(cameras))!=len(cameras):
+        raise ValueError('Memory context requires ordered, nonempty camera_names')
+    if not isinstance(config.get('task_prompt'),str) or not config['task_prompt'].strip():
+        raise ValueError('Memory context requires task_prompt')
+    from openarm365_dev_v2.scene_contract import registered_contract_ref
+    contract=registered_contract_ref()
+    if config.get('scene_contract')!=contract:
+        raise ValueError('Memory context requires the current registered scene_contract in cell config')
+    value.update(seed=config['seed'], camera_names=list(cameras), task_prompt=config['task_prompt'],
+                 scene_contract_ref=contract)
     public_screen(value)
     return value
 
@@ -79,15 +97,22 @@ class DevMemory:
                     or grant.get('source_policy_sha256') != hashlib.sha256(source.encode()).hexdigest()
                     or grant.get('guidance') != m.guidance or not grant.get('grant_id')):
                 raise PermissionError('Memory exact version/exposure binding mismatch')
+            if grant.get('seeded_for_tests') is True and grant.get('excluded_from_results') is not True:
+                raise PermissionError('test-seeded Memory grant lacks exclusion flag')
             # Deliberately exclude validation/evaluation internals from online input.
             entry = dict(memory_id=m.memory_id, version=m.version, content=grant['guidance'],
                          grant_id=grant['grant_id'], source_trace_id=grant['source_trace_id'],
                          evidence_refs=grant['evidence_refs'], authority=self.settings['store_id'],
                          context=self.context, development_id=development_id,
-                         source_policy_sha256=grant['source_policy_sha256'])
+                         source_policy_sha256=grant['source_policy_sha256'],
+                         seeded_for_tests=grant.get('seeded_for_tests') is True,
+                         excluded_from_results=grant.get('excluded_from_results') is True,
+                         status=getattr(m.status,'value',m.status))
             public_screen(entry)
             entries.append(entry)
-        return {**EMPTY_MEMORY, 'entries': entries, 'explicit_registry_authorization': True}
+        return {**EMPTY_MEMORY, 'entries': entries, 'explicit_registry_authorization': True,
+                'seeded_for_tests': any(e['seeded_for_tests'] for e in entries),
+                'excluded_from_results': any(e['excluded_from_results'] for e in entries)}
 
     def recheck(self, packet):
         eligible = {m.memory_id: m for m in self.eligible()}
@@ -101,6 +126,8 @@ class DevMemory:
                     context=self.context, guidance=entry['content'], development_id=entry['development_id'],
                     source_policy_sha256=entry['source_policy_sha256']).items()):
                 raise PermissionError('Memory exposure grant no longer matches')
+            if (entry.get('seeded_for_tests') is True)!=(grant.get('seeded_for_tests') is True) or (entry.get('excluded_from_results') is True)!=(grant.get('excluded_from_results') is True):
+                raise PermissionError('Memory exclusion flags changed')
 
 
 def _load_memory(store, cell, version, previous, config, settings, directory):
@@ -119,7 +146,9 @@ def _load_memory(store, cell, version, previous, config, settings, directory):
         with store.tx() as db:
             store.event(db, 'planner_memory_retrieved', dict(cell=cell, version=version,
                         authority=settings['store_id'], namespace=settings['namespace'], packet=ref,
-                        versions=[dict(memory_id=e['memory_id'], version=e['version'], grant_id=e['grant_id']) for e in packet['entries']]))
+                        seeded_for_tests=packet['seeded_for_tests'], excluded_from_results=packet['excluded_from_results'],
+                        versions=[dict(memory_id=e['memory_id'], version=e['version'], grant_id=e['grant_id'],
+                                       seeded_for_tests=e['seeded_for_tests'], excluded_from_results=e['excluded_from_results']) for e in packet['entries']]))
     return packet, service
 
 
@@ -144,6 +173,11 @@ def load_memory(store, cell, version, previous, config, settings, directory):
 
 def journal_result(store, cell, version, packet, source_ref, public_feedback_ref, directory):
     if not packet.get('entries'):return
+    if packet.get('excluded_from_results') is True or any(e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True for e in packet['entries']):
+        with store.tx() as db:
+            store.event(db,'planner_memory_result_skipped',dict(cell=cell,version=version,
+                reason='test_seeded_excluded_from_results',grants=[e['grant_id'] for e in packet['entries']]))
+        return None
     # This is an offline execution import queue, never a self-reported verdict.
     from .dev_v2_memory_import import queue
     return queue(store,cell,version,directory,'result',dict(

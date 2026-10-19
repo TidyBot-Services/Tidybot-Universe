@@ -39,16 +39,21 @@ def projection(store, cell):
             for entry in packet.get('entries',[]):
                 context=entry.get('context',{})
                 trace=entry.get('source_trace_id','')
-                seeded=trace.startswith(('seeded-for-tests:','test-seed:'))
+                seeded=entry.get('seeded_for_tests') if type(entry.get('seeded_for_tests')) is bool else trace.startswith(('seeded-for-tests:','test-seed:'))
+                excluded=entry.get('excluded_from_results') if type(entry.get('excluded_from_results')) is bool else seeded
                 entries.append(dict(memory_id=entry['memory_id'],version=entry['version'],grant_id=entry['grant_id'],
-                                    trusted=True,source='手工为测试种入' if seeded else '真实候选' if trace.startswith('dev-v2-source:') else '来源待核实',
-                                    seeded_for_tests=seeded,authority=entry.get('authority'),
-                                    applicability={k:context.get(k) for k in ('scene_id','object_set_id','camera_config_id','task_variant_id','camera_names','task_prompt') if k in context}))
+                                    trusted=True,status=entry.get('status','trusted'),source='手工为测试种入' if seeded else '真实候选' if trace.startswith('dev-v2-source:') else '来源待核实',
+                                    seeded_for_tests=seeded,excluded_from_results=excluded,
+                                    explicit_flags=type(entry.get('seeded_for_tests')) is bool or type(entry.get('excluded_from_results')) is bool,
+                                    authority=entry.get('authority'),
+                                    applicability={k:context.get(k) for k in ('seed','scene_id','object_set_id','camera_config_id','task_variant_id','camera_names','task_prompt','scene_contract_ref') if k in context}))
             retrievals.append(dict(version=value['version'],authority=value['authority'],namespace=value['namespace'],
                                    packet_sha256=value['packet']['sha256'],entries=entries))
         elif kind=='planner_memory_generation':
             generations.append(dict(version=value['version'],memory_packet_sha256=value['memory_packet']['sha256'],
-                                    model_input_sha256=value['model_input']['sha256'],result_source_sha256=value['result_source']['sha256']))
+                                    model_input_sha256=value['model_input']['sha256'],result_source_sha256=value['result_source']['sha256'],
+                                    seeded_for_tests=value.get('seeded_for_tests') is True,
+                                    excluded_from_results=value.get('excluded_from_results') is True))
         elif kind=='memory_validation_dispatch':
             frozen=_evidence(value['validation_input'])
             validations.append(dict(version=value['version'],memory_ids=frozen.get('memory_ids',[]),
@@ -71,9 +76,10 @@ def projection(store, cell):
             provenance=next((r for r in reversed(receipts) if r['memory_id']==entry['memory_id']
                              and r['memory_version'] in (None,entry['version'])
                              and (r['seeded_for_tests'] or r['operation']=='candidate')),None)
-            if provenance:
+            if provenance and not entry['explicit_flags']:
                 entry['source']=provenance['source']
                 entry['seeded_for_tests']=provenance['seeded_for_tests']
+                entry['excluded_from_results']=provenance['seeded_for_tests']
     for queue in queues:
         if any(r['version']==queue['version'] and r['operation']==queue['kind'] for r in receipts):
             queue['status']='offline_receipt_recorded'

@@ -238,6 +238,8 @@ def test_unknown_provider_never_retries_or_refunds(tmp_path):
 class TestOnlyGateway:
     __test__ = False
     def __init__(self, cfg):
+        from openarm365_dev_v2.scene_contract import registered_contract_ref
+        cfg.setdefault('scene_contract', registered_contract_ref())
         self.ctx = memory.context(cfg, 'controlled-test-only')
         self.record = SimpleNamespace(memory_id='controlled-memory', version=3, status='trusted',
             applicability=self.ctx, guidance='Use bounded world deltas.')
@@ -340,6 +342,12 @@ def test_actual_service_handlers_empty_authority_contract(tmp_path):
 
 
 def test_simulated_full_loop_memory_revision_human_motion_ledger(tmp_path, monkeypatch):
+    # This legacy interactive fixture predates scene contracts. The exact
+    # missing-contract rejection is covered separately by C0b context tests.
+    original_context = memory.context
+    from openarm365_dev_v2.scene_contract import registered_contract_ref
+    monkeypatch.setattr(memory, 'context', lambda config, namespace:
+        original_context({**config, 'scene_contract': registered_contract_ref()}, namespace))
     settings = dict(base_url='http://127.0.0.1:1', store_id='controlled-test-authority', namespace='controlled-test-only')
     s, e, c, cfg, owner, root = setup(tmp_path, target_depth=2, target_valid_executions=2,
         max_versions=2, help_budget=2, planner_features={'human_wait_seconds': 5, 'memory': settings})

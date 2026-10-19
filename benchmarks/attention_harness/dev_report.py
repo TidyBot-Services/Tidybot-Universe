@@ -1,5 +1,5 @@
 """Offline evidence-recomputed Dev comparison. Never imported by policy decisions."""
-import csv,io,json,math
+import csv,io,json,math,sqlite3
 from collections import defaultdict
 from pathlib import Path
 from .dev_loop import sha
@@ -16,6 +16,16 @@ def wilson(successes,n):
 def read(ref):
     if not isinstance(ref,dict) or sha(ref['uri'])!=ref['sha256']:raise ValueError('artifact missing/digest mismatch')
     return json.loads(Path(ref['uri']).read_bytes())
+def memory_seeded_excluded(c):
+    return c.get('memory_seeded_excluded') is True or any(v.get('memory_provenance',{}).get('excluded_from_results') is True
+               for v in c.get('versions',[]))
+def retrieved_seeded_cells(path):
+    with sqlite3.connect('file:'+str(Path(path).resolve())+'?mode=ro',uri=True) as db:
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v2_events'").fetchone():
+            return set()
+        return {detail['cell'] for (payload,) in db.execute(
+            "SELECT payload FROM v2_events WHERE kind='planner_memory_retrieved'")
+            if (detail:=json.loads(payload)).get('excluded_from_results') is True}
 def analyze_cell(c,planned,manifest_ref):
     rows=[];unknown=False;refs=[];first=None;infra=False
     recomputed={k:0 for k in RESOURCES};eval_recomputed={k:0 for k in EVAL_USAGE};eval_cost={k:0 for k in EVAL_USAGE};resource_errors=[]
@@ -54,7 +64,8 @@ def analyze_cell(c,planned,manifest_ref):
         except (OSError,ValueError,KeyError,TypeError) as exc:resource_errors.append(str(exc));unknown=True
     if not resource_errors and not resource_equal(recomputed,c['used']):resource_errors.append('cell used differs from settlement receipts');unknown=True
     if not resource_errors and not resource_equal(eval_recomputed,c.get('eval_usage',{})):resource_errors.append('cell Eval usage differs from settlement receipts');unknown=True
-    eligible=c.get('experiment_eligible',False) and not c.get('mixed_policy',False) and c['state']!='condition_invalid'
+    memory_seeded=memory_seeded_excluded(c)
+    eligible=c.get('experiment_eligible',False) and not c.get('mixed_policy',False) and c['state']!='condition_invalid' and not memory_seeded
     if (c['task_id'],c['seed'])!=(planned['task_id'],planned['seed']):unknown=True
     for v in c['versions']:
         row={'version':v['version'],'valid':v['valid'],'evaluated':False,'native_success':None,'eval_passed':None,'error':None}
@@ -116,7 +127,7 @@ def analyze_cell(c,planned,manifest_ref):
         job=next((j for j in c['jobs'] if j['kind']=='execute' and j['version']==v['version']),None)
         row['failure_classification']=classify(v,job)
     return {'key':c['key'],'task_id':planned['task_id'],'seed':planned['seed'],'policy_id':planned['policy_id'],
-        'state':c['state'],'eligible':eligible,'mixed_policy':c.get('mixed_policy',False),'evaluated':evaluated,
+        'state':c['state'],'eligible':eligible,'memory_seeded_excluded':memory_seeded,'mixed_policy':c.get('mixed_policy',False),'evaluated':evaluated,
         'native_success':success if evaluated else None,'terminal_native_success':known[-1]['native_success'] if evaluated else None,
         'unknown':unknown,'versions':rows,'version_count':len(rows),'first_success':first if evaluated else None,'eval_confusion_matrix':matrix,'eval_false_stops':false_stop,
         'advisor_tokens':sum(j.get('actual',{}).get('provider_tokens',0) for j in c['jobs'] if j['kind']=='advisor' and j['state']=='settled'),'wall_seconds':max((j.get('settled_at',c.get('created_at') or 0) for j in c['jobs']),default=0)-(c.get('created_at') or 0),
@@ -124,11 +135,13 @@ def analyze_cell(c,planned,manifest_ref):
 
 def report(store,exp_id):
     e=snapshot(store,exp_id);m=read(e['manifest']);validate_fairness(m)
+    seeded=retrieved_seeded_cells(store.path)
     actual={c['key']:c for c in e['cells']};cells=[]
     for planned in m['cells']:
         if planned['key'] not in actual:
             cells.append({**planned,'eligible':True,'evaluated':False,'native_success':None,'terminal_native_success':None,'unknown':True,'state':'not_started','resources':{k:0 for k in RESOURCES},'versions':[],'version_count':0,'first_success':None,'evidence_refs':[],'partial_iterations':True,'reason':'missing persisted cell'})
-        else:cells.append(analyze_cell(actual[planned['key']],planned,e['manifest']))
+        else:cells.append(analyze_cell({**actual[planned['key']],
+            'memory_seeded_excluded':planned['key'] in seeded},planned,e['manifest']))
     target=m.get('target_depth',2);valid_target=m.get('target_valid_executions',2)
     for c in cells:
         conditions=c.get('scene_conditions',[])
@@ -148,7 +161,7 @@ def report(store,exp_id):
         eval_cost={k:sum(c.get('eval_cost',{}).get(k,0) for c in eligible) for k in EVAL_USAGE}
         first=[c['first_success'] for c in observed if c['first_success']]
         matrix={k:sum(c.get('eval_confusion_matrix',{}).get(k,0) for c in eligible) for k in ('true_positive','false_positive','true_negative','false_negative','unknown')}
-        groups.append({'task_id':task,'policy_id':policy,'planned':len(rows),'eligible_planned':len(eligible),'excluded_mixed_or_interactive':sum(c.get('mixed_policy') or not c.get('eligible') and not c.get('condition_invalid') for c in rows),'excluded_condition_invalid':sum(c.get('condition_invalid',False) for c in rows),'all_planned_resources':{k:sum(c['resources'].get(k,0) for c in rows) for k in RESOURCES},'eval_confusion_matrix':matrix,'eval_false_stops':sum(c.get('eval_false_stops',0) for c in eligible),
+        groups.append({'task_id':task,'policy_id':policy,'planned':len(rows),'eligible_planned':len(eligible),'memory_seeded_excluded':sum(c.get('memory_seeded_excluded',False) for c in rows),'excluded_mixed_or_interactive':sum((c.get('mixed_policy') or not c.get('eligible') and not c.get('condition_invalid')) and not c.get('memory_seeded_excluded') for c in rows),'excluded_condition_invalid':sum(c.get('condition_invalid',False) and not c.get('memory_seeded_excluded') for c in rows),'all_planned_resources':{k:sum(c['resources'].get(k,0) for c in rows) for k in RESOURCES},'eval_confusion_matrix':matrix,'eval_false_stops':sum(c.get('eval_false_stops',0) for c in eligible),
             'evaluated':n,'success':success,'native_false':n-success,'unevaluated':len(eligible)-n,
             'native_success_rate':success/n if n else None,'wilson95':wilson(success,n),
             'terminal_success':terminal,'terminal_success_rate':terminal/n if n else None,
@@ -162,6 +175,7 @@ def report(store,exp_id):
             'first_success_seconds':[v['seconds_since_cell_dispatch'] for v in first]})
     eval_matrix={k:sum(g['eval_confusion_matrix'][k] for g in groups) for k in ('true_positive','false_positive','true_negative','false_negative','unknown')}
     return {'schema':'attentionbench.dev-report.v2','experiment_id':exp_id,'manifest':e['manifest'],'planned':len(m['cells']),
+        'memory_seeded_excluded':sum(c.get('memory_seeded_excluded',False) for c in cells),
         'groups':groups,'cells':cells,'eval_confusion_matrix':eval_matrix,'eval_false_stops':sum(g['eval_false_stops'] for g in groups),'resource_ledger':store.export_ledger(m.get('goal_id',GOAL)),'formal_eligible':False,
         'scope':'Engineering small sample; not statistically validated and not formal acceptance. 不能判断策略优劣。',
         'configuration':{k:m.get(k) for k in ['target_depth','target_valid_executions','max_versions','coverage','k_trigger_reachable','public_failure_rule']},
@@ -169,11 +183,11 @@ def report(store,exp_id):
         'same_effective_execution_subset':[{'key':c['key'],'task_id':c['task_id'],'policy_id':c['policy_id'],'versions':[v for v in c['versions'] if v.get('evaluated')][:valid_target]} for c in cells if c['fair_conditions_qualified'] and c['E']>=valid_target],
         'compensation_or_interrupted':[{'key':c['key'],'task_id':c['task_id'],'policy_id':c['policy_id'],'G':c['G'],'E':c['E'],'state':c['state'],'reason':c.get('reason'),'compensation':[v for v in c['versions'] if v['version']>target]} for c in cells if c['G']>target or c['partial_iterations']],
         'conclusion':'不能判断策略优劣：每 task×policy 样本不足5或全失败；不排名。' if any(g['evaluated']<5 for g in groups) or not any(g['success'] for g in groups) else 'Descriptive results only.',
-        'denominator_rule':'All manifest cells retained; rates/Wilson use independently evaluated eligible cells only. Unevaluated/unknown are never native false.',
+        'denominator_rule':'All manifest cells retained; rates/Wilson use independently evaluated eligible cells only. Memory-seeded cells are counted separately and excluded; unevaluated/unknown are never native false.',
         'success_rule':'Any independently verified success within the fixed budget; terminal actual execution reported separately. Success versions/times computed offline only.'}
 def report_csv(value):
     eval_columns={k:('eval_calls_used' if k=='eval_calls' else 'eval_'+k+'_used') for k in EVAL_USAGE}
-    output=io.StringIO();fields=['task_id','policy_id','planned','eligible_planned','evaluated','success','native_false','unevaluated','native_success_rate','wilson_low','wilson_high','terminal_success_rate','planned_completion_ratio','partial_iterations','mean_versions','infra_cells','failed_cells','cancelled_cells','needs_review_cells','not_started_cells','unknown_cells','mean_G','mean_E','wall_seconds',*RESOURCES,*eval_columns.values()]
+    output=io.StringIO();fields=['task_id','policy_id','planned','eligible_planned','memory_seeded_excluded','evaluated','success','native_false','unevaluated','native_success_rate','wilson_low','wilson_high','terminal_success_rate','planned_completion_ratio','partial_iterations','mean_versions','infra_cells','failed_cells','cancelled_cells','needs_review_cells','not_started_cells','unknown_cells','mean_G','mean_E','wall_seconds',*RESOURCES,*eval_columns.values()]
     w=csv.DictWriter(output,fieldnames=fields);w.writeheader()
     for g in value['groups']:
         row={k:g.get(k) for k in fields if k not in RESOURCES and k not in eval_columns.values()};interval=g['wilson95'];row.update(wilson_low=interval[0] if interval else None,wilson_high=interval[1] if interval else None,**g['resources'],**{column:g['eval_cost'][k] for k,column in eval_columns.items()});w.writerow(row)
