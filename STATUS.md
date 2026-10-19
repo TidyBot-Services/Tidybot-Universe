@@ -1,3 +1,18 @@
+<!-- ui-run-evidence-20261019 -->
+## 10-18/19：8769 界面真实运行打通；场景合约重登记；Eval/Advisor 重构（工程通过 + 真实运行，非正式验收）
+
+**状态口径**：以下"真实运行"指在 8769 上由界面点击启动、用免费模型（parcc/GLM、parcc/Qwen）跑完的 seed 102、`pick_place_counter_to_sink` 开发运行；它证明"链路能跑"，没有任何原生成功（5 版本全部失败，原因是规划器超时/被拒/关节超限），不是能力结论，也不是正式实验（`formal_eligible=false`）。
+
+- **Start run 可用**：此前 daily 后端的 worker 在调度预检 `KeyError: 'model_reserve_seconds'` 即崩溃（`40fe690`，`dev_experiment.slot_wall_seconds`）。
+- **daily 对比模式之前不复现场景（已修）**：legacy 配置路径不带 `scene_reset_seed`/`scene_contract`，同一 seed 的物体在水槽两侧随机落位，合约也不校验（`b54d3af`）。新建的 experiment 模式 manifest 现在每个 config 带两者；interactive/diagnostic 与旧 manifest 字节不变。
+- **场景合约过期并已重登记**：合约建于控制增益 300，默认增益 10-17 改为 1500 后真实运行第一次对不上（归一化哈希不同，物体位姿 ~1e-5 差）。在 1500 下对 101–103 × 两个任务各 20 个新进程重采集（每组指纹唯一），新文件 `openarm365_dev_v2/scene_contracts/dev-seeds-101-103-v2-20261019-kp1500.json`，sha256 `bb28cd3e…c716`，`scene_contract.REGISTERED_SHA256` 已更新；旧合约文件保留（旧 manifest 仍可加载）。**以后改控制默认值/机器人模型须重验合约。**
+- **Run configuration 对话框重做**（`8253377`）：4 个分区 + Advanced；默认 seed 102、help 5（1–10）、等待 300 s、5 版本、整次 6 h、AI 思考 30 min；SDK 调用由 `task_limits()` 推出；服务端 help 上限 2→10；experiment 模式仅允许已登记合约的种子（`registered_scene_seeds` 由合约读取）。
+- **Eval v3 / AdvisorProxy / 请求视图**（`09de370`、`fadaf8f`）：Eval 输出 `passed`、`reason`（事实）、可选 `reference_suggestion`（含建议的句子被移走）；Dev 只拿 `reason`（所有策略一致）；`dev_request_view.py` 构建"人在界面上看到的内容"，AdvisorProxy（parcc/Qwen 视觉）的输入由它生成（五视角帧+哈希、步骤与停止原因、diff、Eval 评审）；Eval 与 Advisor 允许同模型，条件为提示词/哈希/缓存命名空间/会话命名空间均不同（**唯一被放宽的校验，已知限制：二者共用基础模型**）；账本按每条路径固定一个 advisor 模型；逻辑人工时间按"词"计（读 4、写 0.7 词/秒，答案预留 768 词，分量单独存档；此前误按字符数，已修）；Eval 解析接受围栏/前后文字但键集合仍严格，失败时留原文片段；句子切分不再拆小数。界面：03 区 Eval 评审卡、04 区请求视图面板、回答者标签 `Advisor (simulated human)`。
+- **证据**：最近一次界面启动运行 `devexp-564f691a7a159fbb60511467`：5 版本全部执行并被 Eval 评审（视觉，五视角），4 次 Reactive 求助均由 Qwen 视觉 Advisor 回答，5 次重置均 `verified`、物体位置一致；全量回归 60 failed / 57 errors / 2289 passed，对照 117 个基线失败名称无新增（`fadaf8f`）；截图 `outputs/ui-screenshots-20261019/`。
+- **发现（Ground truth 暴露）**：公开观测的 `perception.source` 为 `official_public_sim_gt`，`perception_mode=sim_gt`：Dev 通过 `sensors.find_objects()` 拿到物体/水槽的模拟器真实坐标；Eval 证据包含执行前后的公开观测（含这些坐标）+ 录像帧，故 Eval 判"没成功"可只靠坐标。两者**拿不到**原生评测结果/安全字段（证据构建有正则拦截）。timeline 写的"Eval 看不到模拟器 oracle"与此不一致，待决定（保持并如实说明，或加"Eval 有/无坐标"消融）。
+- **未做/未验证**：七个策略逐个在 8769 上的可执行性未试（今天只跑了 Autonomous 与 Reactive）；Dev 的"假设/求助理由"字段未做（求助问题仍是固定模板）；Live 模式回退、Memory 真实链路、注意力公式 `A = c0·N + Σ(T_view+T_read+T_write)` 的汇总（c0、T_view 倍速/上限未定，暂定）；diff 全文计入"读的字数"为建模选择；逻辑人工时间仍偏高（~200–380 s/次）；Eval 对成功版本的行为未测；正式档预算倍数未定；104–125 种子筛查与整机底座预筛分支（`screen-20261018`）搁置——测试版只用 seed 102。后续计划见 `~/下载/plan.md`。
+<!-- /ui-run-evidence-20261019 -->
+
 <!-- sidebar-badges-20261017 -->
 ## 侧边栏：strategy / attempt badge 与任务标题整理（2026-10-17，仅前端，未提交）
 
