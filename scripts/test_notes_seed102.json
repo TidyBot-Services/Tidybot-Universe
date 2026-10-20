@@ -1,0 +1,42 @@
+[
+  {
+    "key": "small-steps",
+    "title": "Take small steps",
+    "summary": "Move the arm in small steps and check the distance after each one.",
+    "group": "Approach",
+    "guidance": "Move the arm toward the object in several small steps instead of one long move, check the gripper-to-object distance after each step, and if a grasp misses, back off slightly and try again from a little higher.",
+    "repair": ""
+  },
+  {
+    "key": "slow-sink",
+    "title": "Slow near the sink",
+    "summary": "Move more slowly as the gripper nears the sink so it does not overshoot.",
+    "group": "Approach",
+    "guidance": "Approach the sink with smaller, slower steps and check the position after each one.",
+    "repair": ""
+  },
+  {
+    "key": "regrip",
+    "title": "Re-grip when it slips",
+    "summary": "If the object slips, let go and grip it again a little lower.",
+    "group": "Grasp",
+    "guidance": "When the grasp slips, release and grip again lower on the object.",
+    "repair": ""
+  },
+  {
+    "key": "lift-first",
+    "title": "Lift before turning",
+    "summary": "Lift the object a little before turning so it clears the counter.",
+    "group": "Lift",
+    "guidance": "Raise the object slightly before any turning move to clear the counter edge.",
+    "repair": ""
+  },
+  {
+    "key": "open-early",
+    "title": "Open the gripper early",
+    "summary": "Open the gripper before the final approach so it is ready to close.",
+    "group": "Grasp",
+    "guidance": "Open the gripper before the last move toward the object.",
+    "repair": ""
+  }
+]
