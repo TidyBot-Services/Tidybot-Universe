@@ -6,7 +6,7 @@ const vm=require('node:vm');
 
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const pure=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
-const {runConfigBudget,runConfigSeedOptions,runConfigSummary}=vm.runInNewContext(pure+'\n({runConfigBudget,runConfigSeedOptions,runConfigSummary})');
+const {runConfigBudget,runConfigDefaultModelMinutes,runConfigSeedOptions,runConfigSummary}=vm.runInNewContext(pure+'\n({runConfigBudget,runConfigDefaultModelMinutes,runConfigSeedOptions,runConfigSummary})');
 const profile={sdk_call_limit:320,control_step_limit:9600,attempt_wall_seconds:1920,startup_cleanup_seconds:240};
 const defaults={hint_human_seconds:0,provider_tokens:0,input_tokens:0,output_tokens:0};
 const budget=(versions,help=5,reviewer=true)=>runConfigBudget({versions,help,waitSeconds:300,modelMinutes:30,profile,defaults,reviewer,policyCount:2});
@@ -38,6 +38,14 @@ test('help count boundaries scale credits, advisor and waiting budget',()=>{
     assert.equal(cell.advisor_calls,help);
     assert.equal(cell.help_wait_seconds,help*120+5*300);
   }
+});
+
+test('thinking time default follows the frozen cell budget and rounds up',()=>{
+  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:3000}}),50);
+  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:2761}}),47);
+  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:2400}}),40);
+  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:1800}}),30);
+  assert.equal(runConfigBudget({versions:5,help:5,waitSeconds:300,modelMinutes:50,profile,defaults,reviewer:true}).cell.model_seconds,3000);
 });
 
 test('unregistered experiment seed is labelled; interactive seed is selectable',()=>{

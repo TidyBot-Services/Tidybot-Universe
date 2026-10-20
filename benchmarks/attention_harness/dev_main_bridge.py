@@ -44,7 +44,7 @@ class DevMainBridge:
         from .dev_experiment import MODEL
         from .dev_advisor_proxy import MODEL as ADVISOR_MODEL
         from .daily_dev_v2 import registered_scene_seeds
-        return dict(enabled=True,bridge_schema='main-dev-v3',model_reserve_seconds=240 if tier=='dev' else 120,goal_key=self.goal_key,registered_scene_seeds=registered_scene_seeds(),tasks=[t.public() for t in TASKS.values()],default_cell_budget=default,
+        return dict(enabled=True,bridge_schema='main-dev-v3',model_reserve_seconds=360 if tier=='dev' else 120,goal_key=self.goal_key,registered_scene_seeds=registered_scene_seeds(),tasks=[t.public() for t in TASKS.values()],default_cell_budget=default,
             default_no_eval_cell_budget=without_eval,goal_limits=fill_optional(goal['limits']),default_max_iterations=5,policies=[POLICY],eval_agent_supported=True,
             eval_accounting='不计限额，仅记录' if eval_is_unmetered(eval_default(True)) else '计入限额',
             model_token_accounting={role:('不计限额，仅记录' if is_unmetered_model(model) else '计入限额') for role,model in {'Dev':MODEL['model'],'Advisor':ADVISOR_MODEL,'Eval':eval_default(True)['model']}.items()},

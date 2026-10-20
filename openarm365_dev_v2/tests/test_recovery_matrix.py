@@ -137,9 +137,9 @@ def test_R10a_free_token_cell_capacity_can_be_zero(tmp_path):
  assert created['resources']['limits']['provider_tokens']==0
 
 def test_R10b_minimal_wall(tmp_path):
- sel={**selection('minimal-boundary'),'target_depth':1,'target_valid_executions':1,'max_versions':1,'help_budget':0,'coverage':'budget_limited','wall_limit':2340}
- s,e,b=setup(tmp_path,sel);assert worst_slot(verify_manifest(e))==2340
- with pytest.raises(ValueError,match='zero slot'):create(s,tmp_path/'a',{**sel,'request_key':'minimal-too-short','wall_limit':2339})
+ sel={**selection('minimal-boundary'),'target_depth':1,'target_valid_executions':1,'max_versions':1,'help_budget':0,'coverage':'budget_limited','wall_limit':2460}
+ s,e,b=setup(tmp_path,sel);assert worst_slot(verify_manifest(e))==2460
+ with pytest.raises(ValueError,match='zero slot'):create(s,tmp_path/'a',{**sel,'request_key':'minimal-too-short','wall_limit':2459})
  cl=Client();f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=Runner);assert f['cells'][0]['state']=='completed'
 
 def test_start_threshold_no_dispatch(tmp_path):

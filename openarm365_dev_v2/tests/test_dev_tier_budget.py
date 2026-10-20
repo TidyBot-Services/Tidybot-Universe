@@ -91,16 +91,23 @@ def test_dev_model_deadline_only_and_frozen_legacy_arithmetic():
     from benchmarks.attention_harness.eval_agent import default_config as eval_default
     dev = normalize_configuration({'eval_agent': eval_default(True), 'help_budget': 5})
     old_dev = normalize_configuration({'model_reserve_seconds': 120, 'eval_agent': eval_default(True), 'help_budget': 5})
+    previous_dev = normalize_configuration({'model_reserve_seconds': 240, 'eval_agent': eval_default(True), 'help_budget': 5})
     legacy = normalize_configuration({'budget_tier': 'legacy', 'eval_agent': eval_default(True), 'help_budget': 5})
-    assert (dev['model_reserve_seconds'], old_dev['model_reserve_seconds'], legacy['model_reserve_seconds']) == (240, 120, 120)
-    assert derive_cell_budget(dev)['model_seconds'] == 5*240 + (5+3)*120
-    assert derive_cell_budget(dev)['model_seconds'] - derive_cell_budget(old_dev)['model_seconds'] == 5*120
+    assert (dev['model_reserve_seconds'], old_dev['model_reserve_seconds'], previous_dev['model_reserve_seconds'], legacy['model_reserve_seconds']) == (360, 120, 240, 120)
+    assert derive_cell_budget(dev)['model_seconds'] == 5*360 + (5+3)*120 == 2760
+    assert derive_cell_budget(previous_dev)['model_seconds'] == 5*240 + (5+3)*120 == 2160
+    assert derive_cell_budget(old_dev)['model_seconds'] == derive_cell_budget(legacy)['model_seconds'] == 5*120 + (5+3)*120 == 1560
+    assert derive_cell_budget(dev)['model_seconds'] - derive_cell_budget(old_dev)['model_seconds'] == 5*240
+    assert derive_cell_budget(dev)['model_seconds'] - derive_cell_budget(previous_dev)['model_seconds'] == 5*120
     assert derive_cell_budget(dev)['help_wait_seconds'] == derive_cell_budget(old_dev)['help_wait_seconds']
-    assert worst_slot(dev) - worst_slot(old_dev) == 120
+    assert worst_slot(dev) - worst_slot(old_dev) == 240
+    assert worst_slot(dev) - worst_slot(previous_dev) == 120
     assert slot_wall_seconds({'schema':'attentionbench.dev-experiment.v3', **dev}) == worst_slot(dev)
-    assert [probe_budget('dev', value)['model_seconds'] for value in (120, 240)] == [120, 240]
+    assert slot_wall_seconds({'schema':'attentionbench.dev-experiment.v3', **previous_dev}) == worst_slot(previous_dev)
+    assert [probe_budget('dev', value)['model_seconds'] for value in (120, 240, 360)] == [120, 240, 360]
+    assert probe_budget('dev')['model_seconds'] == 360
     assert probe_budget('legacy')['model_seconds'] == 120
-    for tier, seconds in [('dev', 241), ('legacy', 240)]:
+    for tier, seconds in [('dev', 361), ('legacy', 240), ('legacy', 360)]:
         with pytest.raises(ValueError, match='SDK/provider deadline'):
             normalize_configuration({'budget_tier': tier, 'model_reserve_seconds': seconds})
 

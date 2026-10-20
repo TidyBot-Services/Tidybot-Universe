@@ -56,6 +56,25 @@ def test_existing_goal_bridge_offers_same_scene_and_version_defaults(tmp_path):
     assert options['profiles'][0]['wall_seconds'] == 21600
 
 
+def test_dev_goal_options_use_360_second_default_without_renewing_goal(tmp_path):
+    key = 'run-configuration-dev-test'
+    goal_id = hashlib.sha256(('goal|' + key).encode()).hexdigest()[:32]
+    ledger = tmp_path / 'goal.sqlite3'
+    original_limits = task_goal_limits('dev')
+    store = DevV2Store(ledger, configuration={'goal_id': goal_id, 'limits': original_limits,
+                                               'wall_seconds': task_goal_wall_limit('dev')})
+    with store.tx() as db:
+        goal = store.get(db, 'goals', goal_id)
+        goal['budget_tier'] = 'dev'
+        store.put(db, 'goals', goal_id, goal)
+    bridge = DevMainBridge(ledger, tmp_path / 'artifacts', key)
+    options = bridge.options()
+    assert options['model_reserve_seconds'] == 360
+    assert options['default_cell_budget']['model_seconds'] == 5 * 360 + (5 + 5) * 120 == 3000
+    assert options['default_no_eval_cell_budget']['model_seconds'] == 5 * 360 + 5 * 120 == 2400
+    assert bridge.store.goal(goal_id)['limits'] == original_limits
+
+
 @pytest.mark.parametrize('count', [1, 5, 10])
 def test_help_budget_accepts_visible_range(count):
     assert validate_help_budget(count) == count

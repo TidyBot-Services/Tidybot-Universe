@@ -9,7 +9,7 @@ from .core.dev_store import DevConflict
 from openarm365_dev_v2.diag_budget import task_limits
 def probe_budget(budget_tier='dev',model_reserve_seconds=None):
  limits=task_limits(budget_tier)
- return dict(eval_calls=0,dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=2*limits['sdk_calls'],control_steps=2*limits['control_steps'],help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=model_reserve_seconds if model_reserve_seconds is not None else (240 if budget_tier=='dev' else 120),execution_seconds=2*__import__('math').ceil(540*limits['attempt_seconds']/480))
+ return dict(eval_calls=0,dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=2*limits['sdk_calls'],control_steps=2*limits['control_steps'],help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=model_reserve_seconds if model_reserve_seconds is not None else (360 if budget_tier=='dev' else 120),execution_seconds=2*__import__('math').ceil(540*limits['attempt_seconds']/480))
 PROBE_BUDGET=probe_budget()
 SOURCE='from robot_sdk import sensors\nobservation = sensors.get_observation()\n'
 def create_probe(store,parent):

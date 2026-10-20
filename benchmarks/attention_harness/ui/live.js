@@ -1798,6 +1798,9 @@
   }
 
   // Values shared by the visible limits and the independent Dev v2 ledger.
+  function runConfigDefaultModelMinutes(options) {
+    return Math.ceil(Number(options?.default_cell_budget?.model_seconds ?? 1800)/60);
+  }
   function runConfigBudget({versions,help,waitSeconds,modelMinutes,profile,defaults,reviewer,policyCount=1}) {
     const n=Number(versions),h=Number(help),modelSeconds=Number(modelMinutes)*60;
     const sdk=Number(profile.sdk_call_limit),steps=Number(profile.control_step_limit);
@@ -1876,7 +1879,7 @@
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
             <label class="ab-launch-field">Whole run time limit (seconds)<input name="wall_seconds" type="number" min="30" value="21600" required><small data-wall-description>6 hours · stored in seconds</small></label>
-            <label class="ab-launch-field">AI thinking time per task (minutes)<input name="model_seconds_minutes" type="number" min="5" value="${options?.dev_v2?.model_reserve_seconds===240?40:30}" required>${options?.dev_v2?.model_reserve_seconds===240?'<small>Five Dev versions, five reviews and five hints can reserve 40 minutes.</small>':''}</label>
+            <label class="ab-launch-field">AI thinking time per task (minutes)<input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required>${options?.dev_v2?.model_reserve_seconds===360?'<small>Five Dev versions, five reviews and five hints can reserve 50 minutes.</small>':options?.dev_v2?.model_reserve_seconds===240?'<small>Five Dev versions, five reviews and five hints can reserve 40 minutes.</small>':''}</label>
             <label class="ab-launch-field">Robot time per attempt<output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls)<output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field" data-v2-tokens>AI tokens<output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>

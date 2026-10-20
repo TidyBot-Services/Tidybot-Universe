@@ -8,7 +8,7 @@ PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_fai
 # Successful process exit alone cannot declare task completion. No scoring is read.
 def normalize_configuration(selection):
  tier=selection.get('budget_tier','dev')
- p=dict(target_depth=3,target_valid_executions=3,max_versions=5,coverage='strict_full_depth',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],startup_cleanup_seconds=60,model_reserve_seconds=240 if tier=='dev' else 120,max_input_bytes_per_request=30000,public_failure_rule=PUBLIC_FAILURE_RULE)
+ p=dict(target_depth=3,target_valid_executions=3,max_versions=5,coverage='strict_full_depth',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],startup_cleanup_seconds=60,model_reserve_seconds=360 if tier=='dev' else 120,max_input_bytes_per_request=30000,public_failure_rule=PUBLIC_FAILURE_RULE)
  p.update({k:v for k,v in selection.items() if k in FIELDS})
  if 'goal_key' in p:
   import re
@@ -35,7 +35,7 @@ def normalize_configuration(selection):
  if p['coverage'] not in {'strict_full_depth','budget_limited'}:raise ValueError('unknown coverage')
  if p['public_failure_rule']!=PUBLIC_FAILURE_RULE:raise ValueError('unregistered public failure rule')
  # SDK Safety ceilings are preserved; lowering an experiment wall is supported.
- if p['attempt_wall_seconds']>task_limits(tier)['attempt_seconds'] or p['model_reserve_seconds'] not in ((120,240) if tier=='dev' else (120,)):raise ValueError('SDK/provider deadline contract exceeded')
+ if p['attempt_wall_seconds']>task_limits(tier)['attempt_seconds'] or p['model_reserve_seconds'] not in ((120,240,360) if tier=='dev' else (120,)):raise ValueError('SDK/provider deadline contract exceeded')
  if tier=='dev':p['budget_tier']='dev'
  if p['max_input_bytes_per_request']>30000:raise ValueError('public input contract exceeded')
  return p

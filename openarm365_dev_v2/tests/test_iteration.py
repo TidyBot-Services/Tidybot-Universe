@@ -24,10 +24,19 @@ def test_empty_constructor_and_multigoal(tmp_path):
 def test_formula():
  p=normalize_configuration(selection());b=derive_cell_budget(p,80,2400)
  assert b['provider_tokens']==253008 and b['input_tokens']==210000 and b['execution_seconds']==5940
- assert b['model_seconds']==1440 and b['output_tokens']==43008 and b['control_steps']==7200
+ assert b['model_seconds']==2040 and b['output_tokens']==43008 and b['control_steps']==7200
  assert b['advisor_calls']==p['help_budget']==2
  assert 255056-b['provider_tokens']==p['help_budget']*1024
  assert 45056-b['output_tokens']==p['help_budget']*1024
+@pytest.mark.parametrize('seconds,expected_model_seconds',[(120,840),(240,1440)])
+def test_frozen_dev_model_reserve_survives_manifest_reload(tmp_path,seconds,expected_model_seconds):
+ s,e,_=setup(tmp_path,selection(model_reserve_seconds=seconds))
+ before=Path(e['manifest']['uri']).read_bytes()
+ manifest=verify_manifest(e)
+ assert manifest['model_reserve_seconds']==seconds
+ assert manifest['cell_budget']['model_seconds']==expected_model_seconds
+ assert s.cell(e['cells'][0]['key'])['runtime']['model_reserve_seconds']==seconds
+ assert Path(e['manifest']['uri']).read_bytes()==before
 @pytest.mark.parametrize('depth',[1,3,4])
 def test_depth_and_trigger_reachability(tmp_path,depth):
  s,e,b=setup(tmp_path,{**selection(),'target_depth':depth,'target_valid_executions':depth})
@@ -44,7 +53,7 @@ def test_seven_behavior_input_chain(tmp_path,policy):
  s,e,b=setup(tmp_path,{**selection(),'policies':[policy],'eval_agent':{'enabled':True}});cl=HintClient()
  f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=EvalRunner);c=f['cells'][0]
  assert len(c['versions'])==3 and c['used']['executions']==3
- assert all(j['reservation']['model_seconds']==240 for j in c['jobs'] if j['kind']=='model')
+ assert all(j['reservation']['model_seconds']==360 for j in c['jobs'] if j['kind']=='model')
  assert all(j['reservation']['model_seconds']==120 for j in c['jobs'] if j['kind'] in {'eval','advisor'})
  assert c['used']['eval_calls']==3
  helps=[j for j in c['jobs'] if j['kind'] in {'demo','advisor'}]
