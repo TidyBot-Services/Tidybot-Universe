@@ -1,0 +1,37 @@
+{
+  "control": {
+    "source": "service",
+    "can_operate": true
+  },
+  "memories": [
+    {
+      "memory_id": "c1-seeded-retrieve-disable-001",
+      "version": 1,
+      "status": "trusted",
+      "source_label": "seeded for tests",
+      "seeded_for_tests": true,
+      "excluded_from_results": true,
+      "trust_scope": "test_seeded",
+      "applicability_summary": {
+        "benchmark": "AttentionBench",
+        "suite": "robocasa365",
+        "task_id": "open_cabinet",
+        "seed": 102,
+        "scene_id": "scene-102",
+        "object_set_id": "objects-102",
+        "robot": "OpenArm",
+        "controller": "OSC_POSE",
+        "perception_mode": "vision",
+        "camera_config_id": "robocasa365:example",
+        "task_variant_id": "open_cabinet:layout1:style1:base",
+        "camera_names": [
+          "front",
+          "wrist"
+        ],
+        "task_prompt": "Open the cabinet",
+        "sdk_sha256": "example",
+        "namespace": "daily-test"
+      }
+    }
+  ]
+}

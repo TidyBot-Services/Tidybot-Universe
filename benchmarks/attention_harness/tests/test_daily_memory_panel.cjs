@@ -7,10 +7,10 @@ const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'ui/live.js'),'utf8');
 const real=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ui_real_20261019/devexp-7cf85c4709a356146dfe3b3c.view.json'),'utf8'));
-const directory=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ui_real_20261019/dev_v2_memory_directory.json'),'utf8'));
-const snippet=source.slice(source.indexOf('  function memoryPanel(snapshot) {'),source.indexOf('  function attentionRunContext(snapshot) {'));
+const directory=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ui_real_20261019/dev_v2_memory_directory_with_title.json'),'utf8'));
+const snippet=source.slice(source.indexOf('  function memoryUseSummary(dev) {'),source.indexOf('  function attentionRunContext(snapshot) {'));
 const esc=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const panel=vm.runInNewContext(snippet+'\nmemoryPanel',{memoryCatalogue:null,memorySelected:null,memoryMessage:'',devMemoryCatalogue:directory,devMemoryDetail:null,devMemoryMessage:'',devMemoryError:'',esc});
+const panel=vm.runInNewContext(snippet+'\nmemoryPanel',{memoryCatalogue:null,memorySelected:null,memoryMessage:'',devMemoryCatalogue:directory,devMemoryDetail:null,devMemoryMessage:'',devMemoryError:'',esc,label:value=>String(value).replaceAll('_',' '),taskTitles:{open_cabinet:'Open the cabinet'}});
 const baseline=()=>({memory:{control:null,ingestion:[],uses:[],records:{},dev_v2:{queues:[],validations:[],retrievals:[],generations:[],receipts:[],empty:true}},dev_v2:real});
 const helpSource=source.slice(source.indexOf('  function operatorHelp(snapshot,chosen) {'),source.indexOf('  function operatorBudgetCard('));
 const help=vm.runInNewContext(helpSource+'\noperatorHelp',{
@@ -25,8 +25,8 @@ test('real daily cell payload renders an explicit empty Memory state',()=>{
   assert.equal(real.policy_id,'full_trace_aware_attention_planner');
   const html=panel(baseline());
   assert.match(html,/data-memory-panel/);
-  assert.match(html,/data-dev-memory-empty/);
-  assert.match(html,/No Dev v2 Memory candidates/);
+  assert.match(html,/No memory notes were used in this run/);
+  assert.doesNotMatch(html,/Candidates \/ validation|Other memories|data-dev-memory-empty/);
   assert.match(source,/\$\{runSettings\(snapshot\)\}\$\{runOverview\(snapshot\)\}\$\{executionViewer\(snapshot\)\}\$\{requestPanel\(snapshot,chosen\)\}\$\{resourceDetails\(snapshot\)\}/);
   assert.doesNotMatch(source,/class="panel ab-memory-panel"/);
 });
@@ -39,7 +39,7 @@ test('Dev v2 Memory stays folded inside 04 after the request content in every op
     assert.match(html,/data-help-history><\/div><details data-memory-panel/);
     assert.match(html,/<\/details><\/section>$/);
     assert.doesNotMatch(html,/<details data-memory-panel[^>]* open(?:\s|>)/);
-    assert.match(html,/data-dev-memory-empty/);
+    assert.match(html,/No memory notes were used in this run/);
   }
 });
 
@@ -61,20 +61,23 @@ test('daily panel renders proposal, validation, grant, generation and result sou
     queues:[{source:'Offline import proposal',version:2,status:'pending_offline_import',kind:'source'},
             {source:'Offline result queue',version:2,status:'offline_receipt_recorded',kind:'result'}],
     validations:[{version:2,exposure:'candidate_validation',grant_id:'validation-1',status:'dispatched',memory_ids:['memory-1']}],
-    retrievals:[{version:2,authority:'fixture-authority',namespace:'daily-test',entries:[{source:'Dev v2 candidate',memory_id:'memory-1',version:3,trusted:true,grant_id:'dev-grant-3',applicability:{scene_id:'scene-102'}},
+    retrievals:[{version:2,authority:'fixture-authority',namespace:'daily-test',entries:[{source:'Dev v2 candidate',memory_id:'c1-seeded-retrieve-disable-001',version:3,trusted:true,grant_id:'dev-grant-3',applicability:{scene_id:'scene-102',scene_contract_ref:{uri:'/test/contract.json',sha256:'a'.repeat(64)}}},
       {source:'Seeded for tests',seeded_for_tests:true,excluded_from_results:true,memory_id:'memory-test',version:1,status:'trusted',trusted:true,grant_id:'dev-grant-test',applicability:{seed:102,scene_id:'scene-102',camera_names:['front','wrist'],scene_contract_ref:{uri:'/test/contract.json',sha256:'a'.repeat(64)}}}]}],
     generations:[{version:2,memory_packet_sha256:'a'.repeat(64),model_input_sha256:'b'.repeat(64),result_source_sha256:'c'.repeat(64)}],
     receipts:[{source:'Seeded for tests',operation:'result',version:2,seeded_for_tests:true,status:'receipt_recorded'}]};
   const html=panel(snap);
   for(const selector of ['data-memory-panel','data-dev-memory-panel','data-memory-queue','data-memory-validation','data-memory-retrieval','data-request-memory','data-memory-generation','data-memory-receipt'])
     assert.match(html,new RegExp(selector));
-  for(const text of ['Offline import proposal','Dev v2 candidate','Seeded for tests','seeded for tests, excluded from results','scene-102','dev-grant-3'])
+  for(const text of ['Offline import proposal','Dev v2 candidate','Seeded for tests','Test note · not counted in results','scene-102','dev-grant-3'])
     assert.ok(html.includes(text),text);
   assert.match(html,/ab-memory-test-label/);
-  assert.match(html,/memory-test @ 1 · trusted at retrieval/);
-  assert.match(html,/&quot;seed&quot;:102/);
-  assert.match(html,/scene_contract_ref/);
+  assert.match(html,/Cabinet opening tip/);
+  assert.match(html,/data-memory-use-summary/);
+  assert.doesNotMatch(html,/&quot;seed&quot;:102/);
   assert.match(html,/data-dev-memory-operation/);
+  assert.match(html,/<summary>Details · other records<\/summary>/);
+  assert.match(html,/<dt>scene_contract_ref<\/dt>/);
+  assert.match(html,/<dt>uri<\/dt><dd>\/test\/contract.json<\/dd>/);
   assert.match(html,/c1-seeded-retrieve-disable-001/);
   assert.match(html,/data-dev-memory-directory/);
   for(const action of ['disable','enable','expiry','rollback'])assert.match(html,new RegExp(`data-dev-memory-action="${action}"`));

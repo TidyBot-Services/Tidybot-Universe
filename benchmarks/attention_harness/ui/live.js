@@ -2698,37 +2698,74 @@
         ${active?`<div class="op-controls">${requestAllowed(request,'defer')?'<button type="button" data-defer-request>Handle later</button>':''}${requestAllowed(request,'ignore')?'<button type="button" data-ignore-request>Ignore · use Advisor fallback</button>':''}${requestAllowed(request,'cancel')?'<button type="button" data-cancel-request>Cancel request</button>':''}</div>`:''}</details>`;
     }).join('')}</div>`;
   }
+  function memoryUseSummary(dev) {
+    const uses=(dev?.retrievals||[]).flatMap(r=>(r.entries||[]).map(e=>({version:Number(r.version),id:e.memory_id})));
+    const ids=new Set(uses.map(u=>u.id));
+    const versions=[...new Set(uses.map(u=>u.version).filter(Number.isFinite))].sort((a,b)=>a-b);
+    const spans=[];
+    for(const version of versions) {
+      const last=spans.at(-1);
+      if(last && version===last[1]+1)last[1]=version;
+      else spans.push([version,version]);
+    }
+    const attempts=spans.map(([first,last])=>first===last?String(first):`${first}–${last}`).join(', ');
+    return {count:ids.size,attempts,text:ids.size?`${ids.size} ${ids.size===1?'note was':'notes were'} used in this run · attempts ${attempts}`:'No memory notes were used in this run'};
+  }
+  function memoryScopeDetails(scope) {
+    return `<dl class="ab-memory-scope">${Object.entries(scope||{}).map(([key,value])=>`<div><dt>${esc(key)}</dt><dd>${Array.isArray(value)?esc(value.join(', ')):value&&typeof value==='object'?memoryScopeDetails(value):esc(value)}</dd></div>`).join('')}</dl>`;
+  }
   function memoryPanel(snapshot) {
     const memory=snapshot.memory;
     if (!memory) return '';
     const dev=memory.dev_v2;
     const records=memoryCatalogue?.memories || Object.values(memory.records || {}).map(item=>({...item.record,memory_id:item.memory_id}));
     const canOperate=memoryCatalogue?.control?.can_operate ?? memory.control?.can_operate;
+    const legacyRefresh=Boolean(memory.control||memoryCatalogue?.control);
     const detail=memorySelected || null, record=detail?.record;
     const devCanOperate=devMemoryCatalogue?.control?.can_operate === true;
-    const devControls=id=>`<form data-dev-memory-operation data-memory-id="${esc(id)}"><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><div class="op-controls">${[['disable','Disable'],['enable','Enable'],['expiry','Set expiry'],['rollback','Roll back']].map(([action,label])=>`<button type="button" data-dev-memory-action="${action}" ${devCanOperate?'':'disabled title="Memory operator authority is not configured on this server"'}>${label}</button>`).join('')}</div></form>`;
+    const devControls=id=>`<form data-dev-memory-operation data-memory-id="${esc(id)}"><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><p>Setting an expiry and withdrawing a note cannot be undone; both ask for confirmation.</p>${!devCanOperate?'<p>Actions are unavailable because the operator key is not configured on this server.</p>':''}<div class="op-controls">${[['disable','Turn off'],['enable','Turn back on'],['expiry','Set expiry…'],['rollback','Withdraw…']].map(([action,label])=>`<button type="button" data-dev-memory-action="${action}" ${devCanOperate?'':'disabled title="Memory operator authority is not configured on this server"'}>${label}</button>`).join('')}</div></form>`;
     const devRows=devMemoryCatalogue?.memories || [];
-    return `<details data-memory-panel data-persist-detail="memory-panel"><summary>Memory · candidates & validation queue</summary>
-      ${dev?`<div data-dev-memory-panel><h4>Dev v2 Memory evidence</h4>
-        <button type="button" data-dev-memory-refresh>Refresh Dev v2 Memory directory</button>
-        <p data-dev-memory-message role="status">${esc(devMemoryMessage)}</p><p data-dev-memory-error role="alert">${esc(devMemoryError)}</p>
-        ${!devCanOperate?`<p>Lifecycle controls disabled: ${devMemoryCatalogue?'Memory operator authority is not configured on this server.':'Checking server operator authority.'}</p>`:''}
-        <div data-dev-memory-directory><h5>Current Dev v2 Memory directory</h5>${devRows.length?devRows.map(row=>`<article data-dev-memory-record id="dev-memory-${encodeURIComponent(row.memory_id)}"><b>${esc(row.memory_id)} @ ${esc(row.version)} · ${esc(row.status)}</b><p>Source: ${esc(row.source_label || 'Unverified')}${row.seeded_for_tests||row.excluded_from_results?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}</p><p>Applicability: ${esc(JSON.stringify(row.applicability_summary || {}))}</p>${devControls(row.memory_id)}</article>`).join(''):'<p>No Dev v2 Memory records loaded.</p>'}</div>
-        ${devMemoryDetail?`<details data-dev-memory-history open><summary>Lifecycle events · ${esc(devMemoryDetail.memory?.memory_id)}</summary><p>Current status: ${esc(devMemoryDetail.memory?.status)}</p><pre>${esc(JSON.stringify(devMemoryDetail.history || [],null,2))}</pre></details>`:''}
-        ${dev.empty?'<p data-dev-memory-empty>No Dev v2 Memory candidates, validation dispatches or uses are recorded for this cell.</p>':''}
-        ${dev.queues.map(q=>`<article data-memory-queue><b>${esc(q.source)} · v${esc(q.version)}</b><p>${esc(q.status)} · ${esc(q.kind)}${q.kind==='source'?' · proposal only; not an authority candidate':''}</p></article>`).join('')}
-        ${dev.validations.map(v=>`<article data-memory-validation><b>Validation · v${esc(v.version)}</b><p>${esc(v.exposure)} · grant ${esc(v.grant_id)} · ${esc(v.status)} · ${esc(v.memory_ids.join(', ')||'control')}</p></article>`).join('')}
-        ${dev.retrievals.map(r=>`<article data-memory-retrieval><b>Dev exposure · v${esc(r.version)}</b><p>Authority ${esc(r.authority)} · namespace ${esc(r.namespace)}</p>${r.entries.length?r.entries.map(e=>`<div data-request-memory><p>Source: ${esc(e.source)}${e.excluded_from_results||e.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':e.source==='Source unverified'?' · exclude from results until provenance is verified':''} · ${esc(e.memory_id)} @ ${esc(e.version)} · ${esc(e.status|| (e.trusted?'trusted':'untrusted'))} at retrieval · grant ${esc(e.grant_id)}<br>Applicability: ${esc(JSON.stringify(e.applicability))}</p><a href="#dev-memory-${encodeURIComponent(e.memory_id)}" data-dev-memory-jump>Open directory actions</a></div>`).join(''):'<p>No matching trusted Memory was granted.</p>'}</article>`).join('')}
-        ${dev.generations.map(g=>`<article data-memory-generation><b>Generation use · v${esc(g.version)}</b><p>Memory input ${esc(g.memory_packet_sha256)} · model input ${esc(g.model_input_sha256)} · generated source ${esc(g.result_source_sha256)}</p></article>`).join('')}
-        ${dev.receipts.map(r=>`<article data-memory-receipt><b>Source: ${esc(r.source)} · ${esc(r.operation)} · v${esc(r.version)}</b>${r.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}<p>${esc(r.status)}${r.authority_status?` · ${esc(r.authority_status)}`:''}</p></article>`).join('')}
+    const uses=(dev?.retrievals||[]).flatMap(r=>(r.entries||[]).map(entry=>({...entry,attempt:r.version,authority:r.authority,namespace:r.namespace})));
+    const summary=memoryUseSummary(dev);
+    const otherEvidence=dev && !dev.empty && [dev.queues,dev.validations,dev.generations,dev.receipts].some(items=>items?.length);
+    return `<details data-memory-panel data-persist-detail="memory-panel"><summary>Memory notes</summary>
+      <div class="ab-memory-heading"><p data-memory-use-summary>${esc(summary.text)}</p><button type="button" ${dev?'data-dev-memory-refresh':''} ${legacyRefresh?'data-memory-refresh':''}>Refresh</button></div>
+      ${dev?`<div data-dev-memory-panel>
+        ${devMemoryMessage?`<p data-dev-memory-message role="status">${esc(devMemoryMessage)}</p>`:'<p data-dev-memory-message role="status" hidden></p>'}
+        ${devMemoryError?`<p data-dev-memory-error role="alert">${esc(devMemoryError)}</p>`:'<p data-dev-memory-error role="alert" hidden></p>'}
+        <div data-dev-memory-directory>${devRows.map(row=>{
+          const scope=row.applicability_summary||{};
+          const related=uses.filter(item=>item.memory_id===row.memory_id);
+          const taskId=scope.task_id||related[0]?.applicability?.task_id||snapshot.dev_v2?.task_id;
+          const task=taskTitles[taskId]|| (taskId?label(taskId):'Unknown task');
+          const status=({trusted:'Active',disabled:'Off',expired:'Expired',rolled_back:'Withdrawn'})[row.status]||label(row.status||'Unknown');
+          const title=typeof row.title==='string'&&row.title.trim()?row.title.trim():'Untitled note';
+          const seeded=row.seeded_for_tests||row.excluded_from_results||related.some(item=>item.seeded_for_tests||item.excluded_from_results);
+          return `<article data-dev-memory-record id="dev-memory-${encodeURIComponent(row.memory_id)}"><div class="ab-memory-note-head"><b>${esc(title)}</b><span class="ab-memory-status">${esc(status)}</span>${seeded?'<strong class="ab-memory-test-label">Test note · not counted in results</strong>':''}</div>
+            <p>Used for: ${esc(task)} · scene ${esc(scope.seed??related[0]?.applicability?.seed??'unknown')}</p>
+            <div class="ab-memory-folds"><details data-persist-detail="memory-manage:${esc(row.memory_id)}"><summary>Manage…</summary>${devControls(row.memory_id)}</details>
+            <details data-persist-detail="memory-details:${esc(row.memory_id)}"><summary>Details</summary>
+              <p>Note ID: ${esc(row.memory_id)} · version ${esc(row.version)} · source: ${esc(row.source_label||'Unverified')}</p>
+              <h6>Full applicability</h6>${memoryScopeDetails(scope)}
+              ${related.map(item=>`<article data-memory-retrieval data-request-memory><b>Attempt ${esc(item.attempt)}</b><p>Note version ${esc(item.version)} · grant ${esc(item.grant_id)} · ${esc(item.status||(item.trusted?'trusted':'untrusted'))} at retrieval · ${esc(item.source||'Source unverified')}</p><p>Authority ${esc(item.authority)} · namespace ${esc(item.namespace)}</p>${memoryScopeDetails(item.applicability)}<a href="#dev-memory-${encodeURIComponent(row.memory_id)}" data-dev-memory-jump>Back to note</a></article>`).join('')}
+              ${!related.length?'<p>No retrieval recorded for this note in this run.</p>':''}
+              ${devMemoryDetail?.memory?.memory_id===row.memory_id?`<details data-dev-memory-history><summary>Lifecycle events</summary><p>Current status: ${esc(devMemoryDetail.memory.status)}</p><pre>${esc(JSON.stringify(devMemoryDetail.history||[],null,2))}</pre></details>`:''}
+            </details></div></article>`;
+        }).join('')}</div>
+        ${otherEvidence?`<details data-persist-detail="memory-evidence"><summary>Details · other records</summary>
+          ${dev.queues.map(q=>`<article data-memory-queue><b>${esc(q.source)} · v${esc(q.version)}</b><p>${esc(q.status)} · ${esc(q.kind)}${q.kind==='source'?' · proposal only; not an authority candidate':''}</p></article>`).join('')}
+          ${dev.validations.map(v=>`<article data-memory-validation><b>Validation · v${esc(v.version)}</b><p>${esc(v.exposure)} · grant ${esc(v.grant_id)} · ${esc(v.status)} · ${esc(v.memory_ids.join(', ')||'control')}</p></article>`).join('')}
+          ${dev.generations.map(g=>`<article data-memory-generation><b>Generation use · v${esc(g.version)}</b><p>Memory input ${esc(g.memory_packet_sha256)} · model input ${esc(g.model_input_sha256)} · generated source ${esc(g.result_source_sha256)}</p></article>`).join('')}
+          ${dev.receipts.map(r=>`<article data-memory-receipt><b>Source: ${esc(r.source)} · ${esc(r.operation)} · v${esc(r.version)}</b>${r.seeded_for_tests?'<strong class="ab-memory-test-label">Test note · not counted in results</strong>':''}<p>${esc(r.status)}${r.authority_status?` · ${esc(r.authority_status)}`:''}</p></article>`).join('')}
+        </details>`:''}
       </div>`:''}
+      ${records.length||detail||memory.ingestion?.length||legacyRefresh?`<details data-persist-detail="other-memory-records"><summary>Other memory records</summary>
       <p>${dev?(snapshot.dev_v2?.planner_features?.memory?'Dev v2 Memory authority is configured. The catalogue below shows the separate legacy Memory records.':'No Dev v2 Memory authority is configured for this cell.'):(memory.control?'Reads the same Memory records as the agent.':'Memory service is not configured.')}</p>
       ${(memory.ingestion || []).map(item=>`<p data-memory-ingestion>${esc(item.memory_id || item.request_id)} · ${esc(item.decision)}${item.reason?` · ${esc(item.reason)}`:''}</p>`).join('')}
-      ${memory.control?'<button type="button" data-memory-refresh>Refresh Memory catalogue</button>':''}
       <p data-memory-message role="status">${esc(memoryMessage)}</p>
-      ${['Candidates / validation','Other memories'].map((group,index)=>`<h4>${group}</h4><ul>${records.filter(item=>['candidate','validated'].includes(item.status)===(index===0)).map(item=>`<li><button type="button" data-memory-open="${esc(item.memory_id)}">${esc(item.memory_id)} @ ${esc(item.version ?? '?')} · ${esc(item.status || 'Unknown')}</button></li>`).join('') || '<li>No records loaded</li>'}</ul>`).join('')}
+      ${['Candidates / validation','Other memories'].map((group,index)=>{const groupRows=records.filter(item=>['candidate','validated'].includes(item.status)===(index===0));return groupRows.length?`<h4>${group}</h4><ul>${groupRows.map(item=>`<li><button type="button" data-memory-open="${esc(item.memory_id)}">${esc(item.memory_id)} @ ${esc(item.version ?? '?')} · ${esc(item.status || 'Unknown')}</button></li>`).join('')}</ul>`:''}).join('')}
       ${detail?`<article data-memory-detail><h4>${esc(detail.memory_id)} @ ${esc(record?.version ?? '?')} · ${esc(record?.status || 'Unavailable')}</h4><p>${esc(record?.guidance || detail.error || 'Content unavailable')}</p><details data-persist-detail="memory-validation:${esc(detail.memory_id)}"><summary>Validation, lifecycle and uses</summary><pre>${esc(JSON.stringify({validation:detail.validation,history:detail.history,uses:detail.uses},null,2))}</pre></details>
-        ${canOperate && record?`<form data-memory-operation data-memory-id="${esc(detail.memory_id)}"><label>Operator<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Operation<select name="action"><option value="disable">Disable</option><option value="enable">Enable</option><option value="rollback">Roll back permanently</option><option value="expiry">Set expiry</option></select></label><label>Expiry (Unix seconds, only for set expiry)<input name="expires_at" type="number" min="0" step="any"></label><button type="submit">Apply lifecycle operation</button></form>`:''}</article>`:''}</details>`;
+        ${canOperate && record?`<form data-memory-operation data-memory-id="${esc(detail.memory_id)}"><label>Operator<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Operation<select name="action"><option value="disable">Disable</option><option value="enable">Enable</option><option value="rollback">Roll back permanently</option><option value="expiry">Set expiry</option></select></label><label>Expiry (Unix seconds, only for set expiry)<input name="expires_at" type="number" min="0" step="any"></label><button type="submit">Apply lifecycle operation</button></form>`:''}</article>`:''}</details>`:''}</details>`;
   }
   function attentionRunContext(snapshot) {
     const lock=snapshot.lock, work=snapshot.autonomous_work;
@@ -3364,7 +3401,9 @@
       const author=response?.responder==='advisor_proxy'?'Advisor (simulated human)':response?.responder==='human'?'You':'Operator';
       return {version:Number(request.request_id.match(/:v(\d+):help$/)?.[1]??Infinity),html:`<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${operatorRequestView(request.request_view,request.request_id)}${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`};
     });
-    const memoryNotes=(snapshot.memory?.dev_v2?.retrievals||[]).flatMap(retrieval=>retrieval.entries.map(entry=>({version:retrieval.version,html:`<li data-memory-note-used><div><b>Memory note used · v${esc(retrieval.version)}</b><small>${esc(entry.status)} at retrieval</small></div><div><p>${esc(entry.memory_id)} @ ${esc(entry.version)} · grant ${esc(entry.grant_id)} · ${esc(entry.source)}${entry.seeded_for_tests||entry.excluded_from_results?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}</p></div></li>`})));
+    const memoryRetrievals=snapshot.memory?.dev_v2?.retrievals||[];
+    const used=memoryRetrievals.some(r=>r.entries?.length)?memoryUseSummary(snapshot.memory.dev_v2):null;
+    const memoryNotes=used?.count?[{version:Math.min(...memoryRetrievals.map(r=>Number(r.version))),html:`<li data-memory-note-used><div><b>Memory</b></div><div><p>Memory: ${esc(used.count)} ${used.count===1?'note':'notes'} used in attempts ${esc(used.attempts)} (see Memory notes)</p></div></li>`}]:[];
     const hint=snapshot.dev_session && !snapshot.dev_v2 && snapshot.attention_control?.hint;
     const devReply=hint?.content?`<li><div><b>After attempt ${Math.max(1,hint.version-1)}</b><small>${hint.answered_at != null && hint.created_at != null ? `Answered in ${humanDuration(hint.answered_at-hint.created_at)}`:'Answered'}</small></div><div><p class="op-asked">Asked: "Attempt ${Math.max(1,hint.version-1)} failed. How should I fix it?"</p><span class="op-who">You</span><div class="op-clamp" data-operator-copy>${esc(hint.content)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button></div></li>`:'';
     const history=[...thread,...memoryNotes].sort((a,b)=>a.version-b.version).map(row=>row.html).join('');
