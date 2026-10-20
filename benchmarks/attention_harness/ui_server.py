@@ -700,6 +700,23 @@ def create_server(
             if not urlsplit(self.path).path.startswith('/api/dev-v2/'):return False
             try:
                 if dev_v2_bridge is None:raise FileNotFoundError('isolated Dev v2 bridge not configured')
+                if urlsplit(self.path).path == '/api/dev-v2/memory-monitor':
+                    from .memory_monitor import project, CatalogueUnavailable, EXPERIMENT, _log_failure
+                    experiment_id = parse_qs(urlsplit(self.path).query).get('exp', [''])[0]
+                    if not EXPERIMENT.fullmatch(experiment_id):
+                        self._json({'error': 'invalid experiment id'}, HTTPStatus.BAD_REQUEST)
+                        return True
+                    try:
+                        self._json(project(dev_v2_bridge, memory_view, experiment_id))
+                    except CatalogueUnavailable as error:
+                        _log_failure(error.__cause__ or error, 'online catalogue')
+                        self._json({'error': 'Memory monitor unavailable'}, HTTPStatus.BAD_GATEWAY)
+                    except FileNotFoundError:
+                        self._json({'error': 'run or Memory service unavailable'}, HTTPStatus.NOT_FOUND)
+                    except Exception as error:
+                        _log_failure(error, 'route')
+                        self._json({'error': 'Memory monitor unavailable'}, HTTPStatus.BAD_GATEWAY)
+                    return True
                 result=dev_v2_bridge.get(self.path)
                 value,content=result[:2];status=result[2] if len(result)>2 else 200;headers=result[3] if len(result)>3 else {}
                 if isinstance(value,Path):
@@ -741,6 +758,12 @@ def create_server(
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
             elif path == "/ui/live.js":
                 self._send((UI_DIR / "live.js").read_bytes(), "text/javascript; charset=utf-8")
+            elif path in {"/ui/memory.html", "/ui/memory.js", "/ui/memory.css"}:
+                kind = "text/html; charset=utf-8" if path.endswith('.html') else "text/javascript; charset=utf-8" if path.endswith('.js') else "text/css; charset=utf-8"
+                body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()
+                if path.endswith('.html'):
+                    body = body.replace(b'__CONTROL_TOKEN__', control_token.encode())
+                self._send(body, kind)
             elif path == "/api/orchestrator/snapshot":
                 if orchestrator_url is None:
                     self._json({"error": "Orchestrator not configured"}, HTTPStatus.SERVICE_UNAVAILABLE)

@@ -80,11 +80,11 @@ function operatorAPI(overrides={}) {
   stored:()=>null,isTerminal:s=>['completed','failed','cancelled'].includes(s.run.status),...overrides
  });
 }
-for(const kind of ['formal','dev1','dev2'])test(`OPERATOR-01 presentation: six fields for ${kind}`,()=>{
+for(const kind of ['formal','dev1','dev2'])test(`OPERATOR-01 presentation: ${kind==='dev2'?'seven':'six'} fields for ${kind}`,()=>{
  const snap={run:{run_id:'private_id',display_name:'Lift the cube',suite:'robosuite',seed:101,execution_target:'robosuite_sim',assistance_mode:'live_human_first',policy_id:'reactive_help',developer_model:'provider/GLM',robot:{model:'OpenArm365',execution_arm:'both'},base:{capability:'stationary'},status:'completed'},task_plan:{definition:{description:'Lift the cube safely'}},attention_control:{active_policy:'reactive_help',read_only:true}};
  if(kind!=='formal')snap.dev_session={model:'provider/GLM',locked:{config:{}}};if(kind==='dev2')snap.dev_v2={};
  const html=operatorAPI().operatorSettings(snap);
- assert.match(html,/01.*TASK SETUP/);assert.equal((html.match(/class="op-field(?: |")/g)||[]).length,6);
+ assert.match(html,/01.*TASK SETUP/);assert.equal((html.match(/class="op-field(?: |")/g)||[]).length,kind==='dev2'?7:6);if(kind==='dev2')assert.match(html,/Model source<\/span><b>PARCC \(GLM \+ Qwen\)<\/b>/);
  assert.match(html,/Lift the cube safely/);assert.match(html,/OpenArm · both arms/);
  // big text = the summary, small text = the explanation
  assert.match(html,/<b>Lift the cube<\/b><small>Lift the cube safely<\/small>/);
@@ -129,7 +129,7 @@ test('OPERATOR-05 uses human-readable cards (wall time hidden once a run has end
 
 test('OPERATOR request path/fields and original submit handlers are retained',()=>{
  const frozenCandidates=['../../../../candidate-fontfix','../../../outputs/dev-live-monitor-20261014/candidate-fontfix'].map(p=>require('node:path').resolve(__dirname,p,'benchmarks/attention_harness/ui/live.js'));
- const baseline=fs.readFileSync(frozenCandidates.find(p=>fs.existsSync(p)),'utf8'); // frozen reference: sibling in the candidate layout, or inside outputs/ once merged into the main repo
+ const extra=require('node:path').resolve(__dirname,'../../../../Tidybot-Universe-attention-native/outputs/dev-live-monitor-20261014/candidate-fontfix/benchmarks/attention_harness/ui/live.js');const frozen=[...frozenCandidates,extra].find(p=>fs.existsSync(p));assert.ok(frozen,'frozen UI reference missing');const baseline=fs.readFileSync(frozen,'utf8'); // frozen reference: sibling in the candidate layout, or inside outputs/ once merged into the main repo
  const normalize=text=>text.replaceAll('${DEBUG_VIEW ? error.message : plainError(error.message)}','${error.message}').replaceAll('textContent=DEBUG_VIEW ? error.message : plainError(error.message);','textContent=error.message;');
  const block=(text,start,end)=>normalize(text.slice(text.indexOf(start),text.indexOf(end,text.indexOf(start))));
  assert.equal(block(source,"    view.querySelectorAll('[data-respond]')",'    async function requestAction'),block(baseline,"    view.querySelectorAll('[data-respond]')",'    async function requestAction'));

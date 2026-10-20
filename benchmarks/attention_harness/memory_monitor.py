@@ -1,0 +1,301 @@
+"""Bounded, read-only Dev v2 Memory projection for the monitor.
+
+Usage comes from local experiment ledgers, including test-seeded retrievals.
+The online Memory catalogue supplies note metadata and completed decisions.
+Importer-only use and impact routes are never called; absent validation is
+shown as not tested, with no inferred lift.
+"""
+from __future__ import annotations
+
+import json
+import re
+import sqlite3
+import sys
+import time
+from pathlib import Path
+
+from .dev_loop import sha
+
+EXPERIMENT = re.compile(r'devexp-[0-9a-f]{24}\Z')
+LIMIT = 600
+EVENT_LIMIT = 500
+_USAGE = {}
+EXPERIMENT_LIMIT = 200
+CACHE_SECONDS = 5
+EXTRA_ERRORS = (PermissionError, OSError, ValueError, RuntimeError, KeyError, TypeError, AttributeError)
+
+
+class CatalogueUnavailable(RuntimeError):
+    """The online catalogue could not be read."""
+
+
+def _log_failure(error, context):
+    # Exception messages may contain service responses or note text.
+    print(f'Memory monitor {context}: {type(error).__name__}: details unavailable', file=sys.stderr)
+
+
+def short(value, length):
+    return str(value)[:length] if value is not None else None
+
+
+def effect(row):
+    if row.get('seeded_for_tests') is True:
+        return 'not_tested', None
+    validation = row.get('validation_summary') or {}
+    decision = validation.get('decision')
+    complete = bool(validation.get('completed_pairs'))
+    if decision == 'promoted' and complete:
+        report = validation.get('report') or {}
+        lift = validation.get('lift_pt', report.get('lift_pt'))
+        return 'helps', round(float(lift), 2) if isinstance(lift, (int, float)) and not isinstance(lift, bool) else None
+    if decision == 'rejected' and complete:
+        return 'not_helps', None
+    return 'not_tested', None
+
+
+def status(row):
+    return {'trusted': 'active', 'active': 'active', 'disabled': 'off',
+            'expired': 'expired', 'rolled_back': 'withdrawn', 'withdrawn': 'withdrawn'}.get(row.get('status'), 'off')
+
+
+def _packet_ids(detail):
+    ref = detail.get('packet') or {}
+    path = Path(ref.get('uri', '/missing'))
+    if not path.is_file() or sha(path) != ref.get('sha256'):
+        return []
+    packet = json.loads(path.read_bytes())
+    return [short(row.get('memory_id'), 120) for row in packet.get('entries', [])[:LIMIT]
+            if isinstance(row, dict) and row.get('memory_id')]
+
+
+def _events(store, cells):
+    keys = {cell['key'] for cell in cells}
+    with sqlite3.connect('file:' + str(Path(store.path).resolve()) + '?mode=ro', uri=True) as db:
+        rows = db.execute('SELECT seq, at, kind, payload FROM v2_events ORDER BY seq DESC LIMIT 5000').fetchall()
+    result = []
+    kinds = {'planner_memory_query_started': 'checking notes',
+             'planner_memory_query_finished': 'note check finished',
+             'planner_memory_retrieved': 'used notes',
+             'planner_memory_result_skipped': 'test note excluded'}
+    grants = {}
+    for seq, ledger_at, kind, raw in reversed(rows):
+        if kind not in kinds and kind not in {'settled', 'cell_updated'}:
+            continue
+        detail = json.loads(raw)
+        if detail.get('cell') not in keys:
+            continue
+        if kind == 'settled':
+            if detail.get('kind') != 'eval':
+                continue
+            ref = (detail.get('receipt') or {}).get('eval_review') or (detail.get('receipt') or {}).get('review')
+            if not isinstance(ref, dict):
+                continue
+            path = Path(ref.get('uri', '/missing'))
+            if not path.is_file() or sha(path) != ref.get('sha256'):
+                continue
+            review = json.loads(path.read_bytes())
+            if review.get('status') != 'completed' or not isinstance(review.get('passed'), bool):
+                continue
+            passed = review['passed']
+            result.append({'seq': seq, 'ts': detail.get('settled_at') or ledger_at,
+                           'type': 'eval_passed' if passed else 'eval_failed',
+                           'version': detail.get('version'), 'note_ids': [],
+                           'text': 'passed' if passed else 'failed'})
+            continue
+        if kind == 'cell_updated':
+            n = detail.get('active_version')
+            if isinstance(n, int) and 1 <= n <= 5:
+                result.append({'seq': seq, 'ts': ledger_at, 'type': 'version_started',
+                               'version': n, 'note_ids': [], 'text': 'started'})
+            continue
+        if kind == 'planner_memory_retrieved':
+            versions = detail.get('versions') or []
+            ids = [short(entry.get('memory_id'), 120) for entry in versions
+                   if isinstance(entry, dict) and entry.get('memory_id')]
+            if not ids:
+                ids = _packet_ids(detail)
+            for entry in versions:
+                if isinstance(entry, dict) and entry.get('grant_id') and entry.get('memory_id'):
+                    grants[entry['grant_id']] = entry['memory_id']
+        elif kind == 'planner_memory_result_skipped':
+            ids = [grants[grant] for grant in detail.get('grants', []) if grant in grants]
+        else:
+            ids = []
+        ts = detail.get('ended_at') or detail.get('started_at') or detail.get('at') or ledger_at
+        result.append({'seq': seq, 'ts': ts, 'type': kind, 'version': detail.get('version'),
+                       'note_ids': ids, 'text': kinds[kind]})
+    return result
+
+
+def _usage_from_ledgers(bridge, store):
+    root = Path(getattr(bridge, 'root', Path(store.path).parent))
+    current = Path(store.path).resolve()
+    key = (str(root.resolve()), str(current))
+    cached = _USAGE.get(key)
+    tick = time.monotonic()
+    if cached and tick - cached[0] < CACHE_SECONDS:
+        return cached[1]
+    paths = sorted(root.glob('devexp-*/ledger.sqlite3'),
+                   key=lambda path: path.stat().st_mtime, reverse=True)[:EXPERIMENT_LIMIT]
+    if current not in {path.resolve() for path in paths}:
+        paths = ([current] + paths)[:EXPERIMENT_LIMIT]
+    usage = {}
+    for path in paths:
+        with sqlite3.connect('file:' + str(path.resolve()) + '?mode=ro', uri=True) as db:
+            rows = db.execute("SELECT at, kind, payload FROM v2_events WHERE kind IN "
+                              "('planner_memory_retrieved', 'planner_memory_result_skipped') "
+                              "ORDER BY seq").fetchall()
+        grants = {}
+        seen = set()
+        for at, kind, raw in rows:
+            detail = json.loads(raw)
+            if kind == 'planner_memory_retrieved':
+                versions = detail.get('versions') or []
+                ids = [entry.get('memory_id') for entry in versions if isinstance(entry, dict)]
+                if not ids:
+                    ids = _packet_ids(detail)
+                for entry in versions:
+                    if isinstance(entry, dict) and entry.get('grant_id') and entry.get('memory_id'):
+                        grants[entry['grant_id']] = entry['memory_id']
+            else:
+                ids = [grants[grant] for grant in detail.get('grants', []) if grant in grants]
+            for note_id in ids:
+                if not isinstance(note_id, str) or not note_id:
+                    continue
+                occurrence = (detail.get('cell'), detail.get('version'), note_id)
+                if occurrence in seen:
+                    continue
+                seen.add(occurrence)
+                count, last = usage.get(note_id, (0, None))
+                usage[note_id] = (count + 1, max(last or 0, at) if isinstance(at, (int, float)) else last)
+    if len(_USAGE) > 16:
+        _USAGE.clear()
+    _USAGE[key] = (tick, usage)
+    return usage
+
+
+def _attempt_outcome(cell, version, job):
+    """Use the persisted attempt and verified native bundle, as the main attempt strip does."""
+    if not job or job.get('state') != 'settled':
+        return None
+    receipt = job.get('receipt') or {}
+    native_success = None
+    ref = receipt.get('bundle')
+    if isinstance(ref, dict):
+        path = Path(ref.get('uri', '/missing'))
+        if path.is_file() and sha(path) == ref.get('sha256'):
+            bundle = json.loads(path.read_bytes())
+            expected_attempt = f"attempt:{cell['key']}:{version['version'] - 1}"
+            evaluator = bundle.get('native_evaluator') or {}
+            if (bundle.get('run_id') == 'run:' + cell['key']
+                    and bundle.get('attempt_id') == expected_attempt
+                    and bundle.get('dev_version') == version['version']
+                    and bundle.get('config_sha256') == version.get('config_sha256')
+                    and bundle.get('policy_sha256') == (version.get('source') or {}).get('sha256')
+                    and bundle.get('formal_eligible') is False
+                    and evaluator.get('run_id') == bundle['run_id']
+                    and evaluator.get('attempt_id') == expected_attempt
+                    and evaluator.get('evaluated') is True
+                    and isinstance(bundle.get('native_success'), bool)):
+                native_success = bundle['native_success']
+    # The main page treats a verified native success OR a persisted completed
+    # execution as success; a known native failure or failed execution as failure.
+    if native_success is True or receipt.get('execution_status') == 'completed':
+        return 'passed'
+    if native_success is False or receipt.get('execution_status') in {'failed', 'timed_out', 'timeout'}:
+        return 'failed'
+    return 'finished'
+
+
+def project(bridge, memory_view, experiment_id, *, now=None):
+    if not EXPERIMENT.fullmatch(experiment_id):
+        raise ValueError('invalid experiment id')
+    if memory_view is None:
+        raise FileNotFoundError('Memory service unavailable')
+    experiment, _ = bridge.get('/api/dev-v2/experiments/' + experiment_id)
+    store = bridge.store(experiment_id) if callable(getattr(bridge, 'store', None)) else bridge.store
+    cells = experiment.get('cells', [])
+    events = _events(store, cells)
+    used = {}
+    for event in events:
+        if event['type'] == 'planner_memory_retrieved':
+            for note_id in event['note_ids']:
+                used.setdefault(event['version'], {})[note_id] = event['ts']
+    versions = []
+    for n in range(1, 6):
+        related = [cell for cell in cells if any(v.get('version') == n for v in cell.get('versions', []))]
+        jobs = [job for cell in cells for job in cell.get('jobs', []) if job.get('version') == n]
+        memory_events = [event for event in events if event['version'] == n and event['type'] in
+                         {'planner_memory_query_started', 'planner_memory_query_finished'}]
+        outcomes = []
+        for cell in related:
+            version = next(v for v in cell['versions'] if v.get('version') == n)
+            execute = next((job for job in cell.get('jobs', []) if job.get('version') == n and job.get('kind') == 'execute'), None)
+            outcome = _attempt_outcome(cell, version, execute)
+            if outcome:
+                outcomes.append(outcome)
+            elif version.get('valid') is False:
+                outcomes.append('failed')
+        if 'passed' in outcomes:
+            state = 'passed'
+        elif 'failed' in outcomes:
+            state = 'failed'
+        elif 'finished' in outcomes:
+            state = 'finished'
+        elif any(job.get('kind') == 'execute' and job.get('state') in {'claimed', 'reserved'} for job in jobs) or any(cell.get('active_version') == n and cell.get('active_episode') for cell in cells):
+            state = 'running'
+        elif any(job.get('kind') == 'model' and job.get('state') in {'claimed', 'reserved'} for job in jobs):
+            state = 'generating'
+        elif memory_events and memory_events[-1]['type'] == 'planner_memory_query_started':
+            state = 'reading'
+        elif related or jobs:
+            state = 'generating'
+        else:
+            state = 'waiting'
+        versions.append({'n': n, 'state': state,
+                         'note_ids': list(used.get(n, {}))[:LIMIT], 'started_at': None, 'ended_at': None})
+    for event in events:
+        n = event['version']
+        if not isinstance(n, int) or not 1 <= n <= 5:
+            continue
+        if event['type'] == 'planner_memory_query_started':
+            versions[n-1]['started_at'] = versions[n-1]['started_at'] or event['ts']
+        elif event['type'] == 'planner_memory_query_finished':
+            versions[n-1]['ended_at'] = event['ts']
+    timestamp = now if now is not None else time.time()
+    warnings = []
+    usage_available = True
+    try:
+        usage = _usage_from_ledgers(bridge, store)
+    except EXTRA_ERRORS as error:
+        _log_failure(error, 'ledger usage')
+        warnings.append('Some note details are unavailable.')
+        usage = {}
+        usage_available = False
+    try:
+        catalogue = memory_view.dev_catalogue()
+    except EXTRA_ERRORS as error:
+        raise CatalogueUnavailable('online catalogue unavailable') from error
+    notes = []
+    for row in catalogue[:LIMIT]:
+        note_id = short(row.get('memory_id'), 120)
+        if not note_id:
+            continue
+        if not usage_available:
+            validation, lift, reads, last = 'not_tested', None, 0, None
+        else:
+            try:
+                validation, lift = effect(row)
+                reads, last = usage.get(row['memory_id'], (0, None))
+            except EXTRA_ERRORS as error:
+                _log_failure(error, 'note details')
+                if not warnings:
+                    warnings.append('Some note details are unavailable.')
+                validation, lift, reads, last = 'not_tested', None, 0, None
+        notes.append({'id': note_id, 'title': short(row.get('title') or 'Untitled note', 80),
+                      'summary': short(row.get('summary'), 180), 'group': short(row.get('group') or 'General', 40),
+                      'status': status(row), 'effect': validation, 'lift_pt': lift, 'reads': reads,
+                      'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
+    return {'generated_at': timestamp,
+            'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40), 'versions': versions},
+            'notes': notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}

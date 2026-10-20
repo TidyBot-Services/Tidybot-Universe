@@ -1,0 +1,143 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+const original=fs.readFileSync(path.join(__dirname,'../ui/memory.js'),'utf8');
+
+function element(tag='div'){
+  const handlers={},children=[],classes=new Set();
+  const el={tagName:tag,children,handlers,dataset:{},style:{},attributes:{},hidden:false,clientWidth:780,clientHeight:500,offsetWidth:100,textContent:'',innerHTML:'',
+    className:'',classList:{add(x){classes.add(x)},remove(x){classes.delete(x)},toggle(x,on){if(on===undefined? !classes.has(x):on)classes.add(x);else classes.delete(x)},contains(x){return classes.has(x)}},
+    append(child){children.push(child);child.parent=el;return child},appendChild(child){return el.append(child)},removeChild(child){const i=children.indexOf(child);if(i>=0)children.splice(i,1)},remove(){this.parent?.removeChild(this)},replaceChildren(){children.splice(0)},
+    addEventListener(name,fn){handlers[name]=fn},setAttribute(k,v){this.attributes[k]=v},getBoundingClientRect(){return {left:0,top:0}},setPointerCapture(){},
+    querySelectorAll(sel){if(sel==='button')return children.filter(x=>x.tagName==='button');if(sel==='.n')return children.filter(x=>x.className.startsWith('n '));return []},
+    querySelector(sel){if(sel==='[data-view="3d"]')return children.find(x=>x.dataset.view==='3d');return null},
+    closest(){return this}};
+  return el;
+}
+function fakeThree(){
+  const meshes=[];
+  class Vector3{
+    constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z}
+    clone(){return new Vector3(this.x,this.y,this.z)}
+    copy(v){this.x=v.x;this.y=v.y;this.z=v.z;return this}
+    multiplyScalar(n){this.x*=n;this.y*=n;this.z*=n;return this}
+    applyMatrix4(){return this}
+    project(){return this}
+  }
+  class Quaternion{setFromEuler(){return this}setFromUnitVectors(){return this}setFromAxisAngle(){return this}slerp(){return this}premultiply(){return this}copy(){return this}}
+  class Group{constructor(){this.children=[];this.rotation={x:0,z:0};this.matrix={};this.matrixWorld={};this.quaternion=new Quaternion();this.position=new Vector3();this.scale={setScalar(){}};this.userData={}}
+    add(x){this.children.push(x)}remove(x){this.children.splice(this.children.indexOf(x),1)}updateMatrixWorld(){}}
+  class Geometry{setFromPoints(){return this}dispose(){}}
+  class Color{constructor(v){this.value=v}set(v){this.value=v;return this}setHex(v){this.value=v;return this}getHex(){return typeof this.value==='number'?this.value:parseInt(String(this.value).replace('#',''),16)}}
+  class Material{constructor(options={}){Object.assign(this,options);this.color=new Color(options.color||0)}dispose(){}}
+  class Mesh extends Group{constructor(geometry,material){super();this.geometry=geometry;this.material=material;meshes.push(this)}}
+  class Renderer{constructor(){this.domElement=element('canvas');this.domElement.width=0;this.domElement.height=0}setPixelRatio(){}getPixelRatio(){return 1}setSize(w,h){this.domElement.width=w;this.domElement.height=h}render(){}}
+  class Camera extends Group{updateProjectionMatrix(){}}
+  return {api:{Vector3,Quaternion,Euler:class{},Group,Scene:Group,PerspectiveCamera:Camera,WebGLRenderer:Renderer,Mesh,SphereGeometry:Geometry,BufferGeometry:Geometry,MeshBasicMaterial:Material,LineBasicMaterial:Material,Line:Mesh},meshes};
+}
+function harness(hash,source=original){
+  const ids=new Map(),get=id=>{if(!ids.has(id))ids.set(id,element());return ids.get(id)};
+  const themes=get('themes'),views=get('views');
+  for(const theme of ['light','dark']){const b=element('button');b.dataset.theme=theme;themes.append(b)}
+  for(const view of ['3d','2d']){const b=element('button');b.dataset.view=view;views.append(b)}
+  get('flow').classList.add('on');
+  const frames=[],intervals=[],calls=[],three=fakeThree();
+  const document={body:element('body'),getElementById:get,createElement:element,createElementNS:(_,tag)=>element(tag),addEventListener(){}};
+  const window={document,THREE:three.api,location:{hash,reload(){}},addEventListener(){},confirm:()=>true};
+  const context=vm.createContext({window,document,location:window.location,matchMedia:()=>({matches:false}),localStorage:{getItem:()=>null,setItem(){}},devicePixelRatio:1,
+    requestAnimationFrame:fn=>{frames.push(fn)},setInterval:fn=>{intervals.push(fn);return intervals.length},setTimeout:()=>1,clearTimeout(){},
+    fetch:(url)=>{calls.push(url);return Promise.resolve({ok:true,json:async()=>window.payload})},console});
+  const instrumented=source.replace('  init();','  global.__memoryTest={init,createGlobe,render,renderFlow,sampleTick,applyTheme,setView,select,recordReads,startGlobe(){globe=createGlobe();globe.applyTheme3D();setView("3d");return globe},load(payload){data=adapt(payload);render();feed()},get data(){return data}};');
+  assert.notEqual(instrumented,source);
+  vm.runInContext(instrumented,context,{filename:'memory.js'});
+  return {api:window.__memoryTest,window,get,frames,intervals,calls,meshes:three.meshes,flush(){const fn=frames.shift();assert.ok(fn,'an animation frame was requested');fn()}};
+}
+function realPayload(){
+  const seed='c2-seeded-small-steps-001';
+  const notes=[
+    {id:seed,title:'Take small, retried arm steps',summary:'Use bounded retries.',group:'Motion',status:'active',effect:'not_tested',test_seeded:true,reads:5},
+    {id:'n2',title:'Keep the wrist aligned',group:'Grasp',status:'active',effect:'helps',reads:4},
+    {id:'n3',title:'Lift before turning',group:'Motion',status:'active',effect:'helps',reads:3},
+    {id:'n4',title:'Avoid the edge',group:'Safety',status:'active',effect:'not_helps',reads:2},
+    {id:'n5',title:'Pause before gripping',group:'Grasp',status:'active',effect:'not_tested',reads:1},
+    {id:'n6',title:'Disabled note',group:'Safety',status:'off',effect:'not_tested',reads:0}
+  ];
+  return {run:{state:'running',versions:[1,2,3,4,5].map(n=>({n,state:n===5?'running':'completed',note_ids:n===1?[seed,'n2']:[seed]}))},notes,events:[]};
+}
+function exercise(hash,payload){
+  const h=harness(hash);h.api.startGlobe();h.api.load(payload);h.flush();
+  assert.equal(h.meshes.filter(m=>m.userData.id).length,payload.notes.length,'every note has a 3D ball');
+  const mesh=h.meshes.find(m=>m.userData.id===payload.notes[0].id);
+  const canvas=h.get('globe').children[0],p=mesh.position;
+  canvas.handlers.pointermove({clientX:(p.x*.5+.5)*780,clientY:(-p.y*.5+.5)*500});
+  canvas.handlers.pointerdown({clientX:0,clientY:0,pointerId:1});
+  canvas.handlers.pointerup({});
+  assert.match(h.get('card').innerHTML,/Take small|Slow|Retry|Align|Lift|Open|Check|Back off|Tilt|Pause|Re-grip/);
+  h.get('filters').onclick({target:{dataset:{version:'1'},closest(){return this}}});
+  assert.match(h.get('filters').innerHTML,/data-version="1"/);
+  h.api.setView('2d');
+  const flow=h.get('flow').innerHTML;
+  assert.match(flow,/flow-svg/);assert.match(flow,/flow-connection/);assert.match(flow,/Memory service/);
+  assert.equal((flow.match(/class="flow-connection/g)||[]).length,h.api.data.groups.length+5);
+  assert.equal((flow.match(/<ellipse /g)||[]).length,2);
+  assert.match(flow,/flow-pill-svg/);assert.match(flow,/ C[0-9]+,/);
+  assert.match(flow,/Big bright balls were used/);
+  h.api.applyTheme('dark');assert.match(h.get('flow').innerHTML,/stop-color="#ffd23f"/);
+  h.api.recordReads([{type:'planner_memory_retrieved',version:1,note_ids:[payload.notes[0].id]}]);
+  h.api.render();
+  assert.match(h.get('flow').innerHTML,/<animateMotion/);
+  assert.match(h.get('flow').innerHTML,/flow-connection hot/);
+  h.api.setView('3d');h.flush();
+  return h;
+}
+test('fake THREE executes real shaped notes, click, filter, view, theme and new read',()=>{
+  const h=exercise('#exp=devexp-'+'a'.repeat(24),realPayload());
+  assert.equal(h.get('used-count').textContent,2);
+  assert.equal(h.get('error').textContent,'');
+});
+test('failed and pending versions keep truthful 2D text and ring colors in both views',()=>{
+  const h=harness('#exp=devexp-'+'a'.repeat(24));h.api.startGlobe();
+  const payload=realPayload();
+  payload.run.versions[0].state='failed';
+  payload.run.versions[1].state='passed';
+  payload.run.versions[2].state='finished';
+  h.api.load(payload);
+  assert.equal(h.meshes[2].material.color.value,'#d94545');
+  assert.equal(h.meshes[3].material.color.value,'#1f9d57');
+  assert.equal(h.meshes[4].material.color.value,'#4f7be0');
+  h.api.setView('2d');
+  const cards=h.get('flow').innerHTML;
+  assert.match(cards,/class="version-ring state-failed"[^>]*stroke="#d94545"/);
+  assert.match(cards,/Dev v1<\/text><text[^>]*>Failed<\/text>/);
+  assert.match(cards,/class="version-ring state-passed"[^>]*stroke="#1f9d57"/);
+  assert.match(cards,/class="version-ring state-finished"[^>]*stroke="#4f7be0"/);
+  assert.doesNotMatch(cards,/Dev v1<\/text><text[^>]*>Passed<\/text>/);
+  h.api.applyTheme('dark');
+  assert.equal(h.meshes[2].material.color.value,'#ff5d5d');
+  assert.match(h.get('flow').innerHTML,/class="version-ring state-failed"[^>]*stroke="#ff5d5d"/);
+});
+test('fake THREE executes 150 note demo and advances all five versions into a new run',()=>{
+  const h=exercise('#demo=150',{...realPayload(),notes:realPayload().notes});
+  const demo=harness('#demo=150');
+  demo.api.startGlobe();
+  demo.api.init();
+  assert.equal(demo.calls.length,0,'demo never fetches');
+  assert.equal(demo.api.data.notes.length,150);
+  assert.ok(Number(demo.get('used-count').textContent)>0,'first read is immediate');
+  assert.match(demo.get('feed').innerHTML,/used/);
+  for(let i=0;i<4;i++)demo.intervals[0]();
+  assert.ok(demo.api.data.versions.every(v=>v.note_ids.length>=1),'v1 through v5 read notes');
+  assert.ok(demo.api.data.versions.some(v=>v.state==='passed'||v.state==='failed'));
+  for(let i=0;i<5;i++)demo.intervals[0]();
+  assert.equal(demo.api.data.versions[0].state,'reading','new run starts after v5');
+  assert.ok(Number(demo.get('used-count').textContent)>0);
+  assert.equal(h.calls.length,0);
+});
+test('runtime harness detects the original color shadowing regression',()=>{
+  const broken=original.replace('const ballColor=n.status===\'active\'?color(n.effect):color(\'off\');const ball=',"const color=n.status==='active'?color(n.effect):color('off');const ball=").replace('color:ballColor','color');
+  assert.notEqual(broken,original);
+  const h=harness('#demo=150',broken);h.api.startGlobe();
+  assert.throws(()=>h.api.load(realPayload()),/Cannot access 'color' before initialization/);
+});

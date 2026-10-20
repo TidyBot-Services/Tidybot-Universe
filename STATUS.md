@@ -1,3 +1,17 @@
+<!-- memory-monitor-20261021 -->
+## 10-20/21：Dev 流式调用、Codex 订阅来源、Memory 监看页（工程通过 + 真实页面核对，非正式验收）
+
+**状态口径**：以下"真实页面核对"指在 8769 上用 Chromium（Playwright，WebGL 走 SwiftShader）打开页面并看截图；Memory 监看页只读，不改变任何 Dev/Eval/Advisor 的正式通道、预算、审批或场景合约。
+
+- **流式 Dev 模型调用**（`1697849`）：真实 seed-102 运行在第 3 版被网关在约 301 秒处返回空响应截断（非流式 `urlopen`），360 秒的 Dev 截止时间因此不可达。`dev_provider_worker` 改为流式（SSE，`ParccClient(stream=True)`，默认关闭，其他调用方不变）；首字节等待与总截止都用整个剩余时间；用量缺失仍按错误处理、不编造。真实验证：同一场景 5 个 Dev 版本全部跑完（最长一次 3388 token、104 秒）。注意 GLM 速度随负载剧烈波动（约 6–34 token/s）。
+- **Codex 订阅来源**（`72b2913`）：运行配置新增"Model source"（默认 PARCC；Codex 时 Dev、Eval、AdvisorProxy 固定 `gpt-6-astra`、`high`）；只允许开发档，正式档与 legacy 拒绝；`codex exec --json --ephemeral -s read-only` 在空临时目录运行，环境不含任何 LiteLLM/PARCC/Memory 密钥；用量按 Codex 返回记录（输入 token 含 Codex 自带系统提示，不与 PARCC 可比）；额度读取器读 `~/.codex/sessions` 的 `rate_limits`（每周窗口）。**未做**：真实 Codex 来源的 seed-102 冒烟运行、界面里的额度提示。
+- **Memory 服务**（`26dbe2b`）：笔记新增可选 `summary`（≤80 字符）与 `group`（≤24 字符）；与 `title` 同一严格度，缺省读作 null，旧指纹不变；服务测试 166 项通过。
+- **Memory 监看页**（`/ui/memory.html#exp=<id>`，只读路由 `GET /api/dev-v2/memory-monitor`）：3D 地球 + 2D 流向图两种视图，版本筛选，点球出卡片，管理操作（关闭/恢复/过期/撤回，确认与不可逆提示不变）从主页面搬到这里；浅色（默认，与主页面一致）和深色两套主题，选择记在 localStorage；`#demo=40|150|400` 演示模式用示例数据。主页面不再显示任何 Memory 记录，标题栏只有一个"Memory"按钮和徽标。
+- **数据来源与诚实口径**：读取次数/最近使用来自实验账本，不调用 importer 专用接口（8769 只持有在线密钥）；效果标签只在服务端已有完成的验证结论时才是 Helps/Does not help，测试笔记和未验证笔记一律 Not tested（成对验证仍属 B 阶段，未做）。每个 Dev 版本的状态（passed/failed/finished）取自主页面同一证据，不把"执行完成"当通过。
+- **真实核对中发现并修复**：路由 502（importer-only 调用）、3D 里 `color` 变量遮蔽造成整页崩溃（现有假 THREE 测试覆盖）、演示模式不推进、2D 与设计稿不符、版本状态误显 Passed。
+- **未做/未验证**：真实运行中"新读取时闪烁"的实时行为只用演示模式和单元测试验证，未在运行中的真实实验上观察；移动端布局未逐项核对；`group`/`summary` 在真实数据里目前只有测试笔记。
+<!-- /memory-monitor-20261021 -->
+
 <!-- ui-run-evidence-20261019 -->
 ## 10-18/19：8769 界面真实运行打通；场景合约重登记；Eval/Advisor 重构（工程通过 + 真实运行，非正式验收）
 
