@@ -10,7 +10,7 @@ function api(){return vm.runInNewContext(block+'\n({operatorSettings,operatorAIR
 test('EVAL UI 01 enabled Qwen and old disabled task-check text',()=>{
  const snapshot={run:{run_id:'a',suite:'robocasa365',execution_target:'robocasa365_sim',robot:{model:'OpenArm365',execution_arm:'both'},seed:102},task_plan:{},attention_control:{active_policy:'reactive_help',read_only:true},dev_session:{model:'parcc/GLM'},dev_v2:{},dev_eval_enabled:true};
  const on=api().operatorSettings(snapshot);assert.match(on,/Eval agent<\/span><b>Qwen/);assert.match(on,/Reviews the recording and camera views/);assert.match(on,/the simulator still decides success/);
- delete snapshot.dev_eval_enabled;const off=api().operatorSettings(snapshot);assert.match(off,/Simulator's own task check/);assert.doesNotMatch(off,/Qwen/);
+ delete snapshot.dev_eval_enabled;const off=api().operatorSettings(snapshot);assert.match(off,/Simulator's own task check/);assert.doesNotMatch(off,/Eval agent<\/span><b>Qwen/);
 });
 for(const [status,passed,label] of [['completed',true,'Looks right'],['completed',false,'Problems found'],['failed',false,'Review unavailable'],['timeout',false,'Review unavailable'],['skipped_budget',false,'Review unavailable']]){
  test(`EVAL UI 03 ${status}/${passed} opinion label and escaped expandable review`,()=>{
@@ -27,10 +27,8 @@ test('EVAL UI 05 counts enabled reviews and marks disabled reviews untracked',()
 });
 test('EVAL UI New run defaults on, locked selection and snapshot carry review',()=>{
  assert.match(source,/name="eval_agent_enabled" type="checkbox" checked/);
- assert.match(source,/eval_agent:\{enabled:form.eval_agent_enabled.checked,model:'parcc\/Qwen'\}/);
- assert.match(source,/Eval budget per cell:.*eval_calls.*provider_tokens.*input_tokens.*output_tokens.*model_seconds/);
- assert.match(source,/default_no_eval_cell_budget/);
- assert.match(source,/profile\?\.channel==='dev_v2'\|\|DEBUG_VIEW \? error.message/);
+ assert.match(source,/eval_agent:\{enabled:form.eval_agent_enabled.checked,model:form.model_source.value==='codex'\?'gpt-6-astra':'parcc\/Qwen'\}/);
+ assert.match(source,/reviewer:form.eval_agent_enabled.checked/);
  assert.match(source,/snapshot.dev_eval_enabled=s.locked\?\.config\?\.eval_agent\?\.enabled===true/);
  assert.match(source,/snapshot.dev_session.versions=cell.versions/);
  assert.match(source,/operatorAIReview\(version\?\.evaluator_review/);

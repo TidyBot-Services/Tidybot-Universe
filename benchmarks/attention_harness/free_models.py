@@ -16,10 +16,10 @@ def eval_is_unmetered(config):
     return isinstance(config, dict) and config.get('enabled') is True and config.get('model') == MODEL and is_unmetered_model(MODEL)
 
 
-def limited_resources(*, eval_config=None, model_names=()):
+def limited_resources(*, eval_config=None, model_names=(), model_source='parcc'):
     """Resources still checked when allocating a new Dev experiment."""
     from .dev_ledger import RESOURCES
     free_eval = eval_is_unmetered(eval_config)
-    free_tokens = model_names and all(is_unmetered_model(name) for name in model_names)
+    free_tokens = model_source=='codex' or (model_names and all(is_unmetered_model(name) for name in model_names))
     return tuple(k for k in RESOURCES if not (free_eval and k == 'eval_calls')
                  and not (free_tokens and k in TOKEN_RESOURCES))

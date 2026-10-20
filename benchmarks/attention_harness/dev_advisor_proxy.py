@@ -24,24 +24,29 @@ class AdvisorUnavailable(Exception):
     pass
 
 
-def default_config(enabled=True):
-    return {'enabled':enabled,'model':MODEL,'mode':'vision','prompt_version':PROMPT_VERSION,
+def default_config(enabled=True, model_source='parcc'):
+    from .codex_client import MODEL as CODEX_MODEL
+    if model_source not in {'parcc','codex'}:raise ValueError('unknown model source')
+    result={'enabled':enabled,'model':CODEX_MODEL if model_source=='codex' else MODEL,'mode':'vision','prompt_version':PROMPT_VERSION,
             'prompt_sha256':hashlib.sha256(SYSTEM.encode()).hexdigest(),'max_attempts':2,
             'attempt_timeout_seconds':55,'answer_latency_seconds':0,'reading_seconds':30,
             'max_selected_frames':10,'cache_version':CACHE_VERSION,
             'cache_namespace':'advisor','session_namespace':'advisor-vision'}
+    if model_source=='codex':result.update(model_source='codex',reasoning_effort='high')
+    return result
 
 
-def normalize(value):
+def normalize(value, model_source='parcc'):
     if not isinstance(value,dict):raise ValueError('Advisor configuration must be an object')
     old=value.get('prompt_version')==OLD_PROMPT_VERSION
-    base=default_config(value.get('enabled',True))
+    base=default_config(value.get('enabled',True),model_source)
+    if model_source=='codex' and old:raise ValueError('legacy Advisor cannot use Codex')
     if old:
         base.update(model=OLD_MODEL,mode='text_only',prompt_version=OLD_PROMPT_VERSION,prompt_sha256=hashlib.sha256(OLD_SYSTEM.encode()).hexdigest(),cache_version=OLD_CACHE_VERSION,max_selected_frames=4)
         base.pop('cache_namespace');base.pop('session_namespace')
     if set(value)-set(base):raise ValueError('unknown Advisor configuration')
     out={**base,**value}
-    for key in ('model','mode','prompt_version','prompt_sha256','cache_version','cache_namespace','session_namespace'):
+    for key in ('model','mode','prompt_version','prompt_sha256','cache_version','cache_namespace','session_namespace','model_source','reasoning_effort'):
         if key not in base:continue
         if out[key]!=base[key]:raise ValueError('fixed Advisor configuration required')
     if type(out['enabled']) is not bool:raise ValueError('Advisor enabled must be boolean')
@@ -53,7 +58,7 @@ def normalize(value):
 
 def from_config(config):
     value=config.get('advisor_proxy')
-    return normalize(value) if isinstance(value,dict) and value.get('enabled') else None
+    return normalize(value,config.get('model_source','parcc')) if isinstance(value,dict) and value.get('enabled') else None
 
 
 def logical_seconds(recording_seconds, config, *, selected_moments=(), targeted=False):
@@ -89,7 +94,7 @@ def ask(evidence, config, client, *, cache_dir=None):
             for index,frame in enumerate(frames,1):
                 content.extend(({'type':'text','text':f'frame #{index} ({frame["view"]})'},
                                 {'type':'image_url','image_url':{'url':frame['data_url']}}))
-            response=vision._call(client,config['attempt_timeout_seconds'],model=config['model'],messages=[{'role':'system','content':SYSTEM},{'role':'user','content':content}],max_tokens=MAX_TOKENS,temperature=0)
+            response=vision._call(client,config['attempt_timeout_seconds'],model=config['model'],messages=[{'role':'system','content':SYSTEM},{'role':'user','content':content}],max_tokens=MAX_TOKENS,temperature=0,**({'reasoning_effort':config['reasoning_effort']} if config.get('model_source')=='codex' else {}))
             answer=response.content.strip()[:1500]
             if not answer:last='empty_answer';continue
             public_screen(answer)
@@ -99,6 +104,7 @@ def ask(evidence, config, client, *, cache_dir=None):
                 'views':sorted({f['view'] for f in frames}),'cache_key':key,'cache_hit':False,'attempts':attempt,'usage':response.usage,
                 **human_seconds(evidence,answer),
                 'latency_seconds':time.monotonic()-begun}
+            if config.get('model_source')=='codex':record.update(model_source='codex',quota_before=getattr(client,'quota_before',None),quota_after=getattr(client,'quota_after',None))
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
             return record

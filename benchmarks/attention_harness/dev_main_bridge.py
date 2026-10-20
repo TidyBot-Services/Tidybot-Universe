@@ -44,7 +44,7 @@ class DevMainBridge:
         from .dev_experiment import MODEL
         from .dev_advisor_proxy import MODEL as ADVISOR_MODEL
         from .daily_dev_v2 import registered_scene_seeds
-        return dict(enabled=True,bridge_schema='main-dev-v3',model_reserve_seconds=360 if tier=='dev' else 120,goal_key=self.goal_key,registered_scene_seeds=registered_scene_seeds(),tasks=[t.public() for t in TASKS.values()],default_cell_budget=default,
+        return dict(enabled=True,bridge_schema='main-dev-v3',budget_tier=tier,model_reserve_seconds=360 if tier=='dev' else 120,goal_key=self.goal_key,registered_scene_seeds=registered_scene_seeds(),tasks=[t.public() for t in TASKS.values()],default_cell_budget=default,
             default_no_eval_cell_budget=without_eval,goal_limits=fill_optional(goal['limits']),default_max_iterations=5,policies=[POLICY],eval_agent_supported=True,
             eval_accounting='不计限额，仅记录' if eval_is_unmetered(eval_default(True)) else '计入限额',
             model_token_accounting={role:('不计限额，仅记录' if is_unmetered_model(model) else '计入限额') for role,model in {'Dev':MODEL['model'],'Advisor':ADVISOR_MODEL,'Eval':eval_default(True)['model']}.items()},
@@ -148,8 +148,13 @@ class DevMainBridge:
         if v.get('human_proxy',{}).get('enabled'):raise ValueError('HumanProxy requests are not configured in this isolated bridge')
         from .eval_agent import default_config as eval_default
         review=v.get('eval_agent')
+        source=v.get('model_source','parcc')
+        if source not in ('parcc','codex') or (source=='codex' and g.get('budget_tier','legacy')!='dev'):
+            raise ValueError('Codex model source requires dev tier')
+        if source=='codex' and (v.get('model','gpt-6-astra')!='gpt-6-astra' or v.get('reasoning_effort','high')!='high'):
+            raise ValueError('Codex requires gpt-6-astra at high reasoning effort')
         if v['mode']=='experiment':
-            fixed=eval_default(True)
+            fixed=eval_default(True,source)
             if review not in ({'enabled':True,'model':fixed['model']},fixed):
                 raise ValueError('fixed Qwen Eval selection required')
         elif isinstance(review,dict) and review.get('enabled'):
@@ -165,16 +170,17 @@ class DevMainBridge:
         if not 0<configuration['wall_seconds']<=g['wall_limit']:raise ValueError('wall exceeds original authorization')
         selection={k:v[k] for k in ('request_key','tasks','seeds','policies','mode','help_budget')}
         selection['budget_tier']=g.get('budget_tier','legacy')
+        if source=='codex':selection['model_source']='codex'
         depth=configuration['max_iterations']
         selection.update(goal_key=self.goal_key,goal_limits=g['limits'],wall_limit=g['wall_limit'],cell_budget=budget,
             coverage='budget_limited',target_depth=depth,target_valid_executions=depth,max_versions=depth,
             reproducible_reset=True,planner_features=dict(human_wait_seconds=v.get('human_wait_seconds',60),memory=self.memory))
         # The bridge owns the fixed Eval configuration; UI input only chooses the role.
         from .dev_advisor_proxy import default_config as advisor_default
-        selection.update(eval_agent=eval_default(v['mode']=='experiment'),advisor_proxy=advisor_default(False))
+        selection.update(eval_agent=eval_default(v['mode']=='experiment',source),advisor_proxy=advisor_default(False,source))
         from .free_models import limited_resources
         from .dev_experiment import MODEL
-        limited=limited_resources(eval_config=selection['eval_agent'],model_names=(MODEL['model'],selection['advisor_proxy']['model']))
+        limited=limited_resources(eval_config=selection['eval_agent'],model_names=(('gpt-6-astra' if source=='codex' else MODEL['model']),selection['advisor_proxy']['model']),model_source=source)
         if v['mode']=='experiment':
             required=derive_cell_budget(normalize_configuration(selection))
             actual=fill_optional(budget) if complete_resources(budget) else budget

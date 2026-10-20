@@ -86,16 +86,21 @@ class EvalUnavailable(Exception):
         self.usage=usage or {}
 
 
-def default_config(enabled=True):
-    return {'enabled': enabled, 'model': MODEL, 'prompt_version': PROMPT_VERSION,
+def default_config(enabled=True, model_source='parcc'):
+    from .codex_client import MODEL as CODEX_MODEL
+    if model_source not in {'parcc','codex'}:raise ValueError('unknown model source')
+    result={'enabled': enabled, 'model': CODEX_MODEL if model_source=='codex' else MODEL, 'prompt_version': PROMPT_VERSION,
             'prompt_sha256': hashlib.sha256(SYSTEM_V3.encode()).hexdigest(),
             'max_attempts': 2, 'attempt_timeout_seconds': 55, 'cache_version': CACHE_VERSION,
             'cache_namespace':'eval','session_namespace':'eval-vision'}
+    if model_source=='codex':result.update(model_source='codex',reasoning_effort='high')
+    return result
 
 
-def normalize(value):
+def normalize(value, model_source='parcc'):
     if not isinstance(value, dict):raise ValueError('Eval config must be an object')
-    base=default_config(value.get('enabled', True))
+    base=default_config(value.get('enabled', True), model_source)
+    if model_source=='codex' and value.get('prompt_version')==OLD_PROMPT_VERSION:raise ValueError('legacy Eval cannot use Codex')
     if value.get('prompt_version')==OLD_PROMPT_VERSION:
         base['prompt_version']=OLD_PROMPT_VERSION
         base['prompt_sha256']=hashlib.sha256(SYSTEM_V2.encode()).hexdigest()
@@ -103,7 +108,7 @@ def normalize(value):
     if set(value)-set(base):raise ValueError('unknown Eval configuration')
     out={**base, **value}
     expected_sha=hashlib.sha256((SYSTEM_V2 if out['prompt_version']==OLD_PROMPT_VERSION else SYSTEM_V3).encode()).hexdigest()
-    if type(out['enabled']) is not bool or out['model']!=MODEL or out['prompt_version'] not in (PROMPT_VERSION,OLD_PROMPT_VERSION) or out['prompt_sha256']!=expected_sha or out['cache_version']!=CACHE_VERSION or any(out[k]!=base[k] for k in ('cache_namespace','session_namespace') if k in base):
+    if type(out['enabled']) is not bool or out['model']!=base['model'] or out['prompt_version'] not in (PROMPT_VERSION,OLD_PROMPT_VERSION) or out['prompt_sha256']!=expected_sha or out['cache_version']!=CACHE_VERSION or any(out[k]!=base[k] for k in ('cache_namespace','session_namespace','model_source','reasoning_effort') if k in base):
         raise ValueError('fixed vision Eval configuration required')
     if type(out['max_attempts']) is not int or not 1<=out['max_attempts']<=3 or type(out['attempt_timeout_seconds']) is not int or out['attempt_timeout_seconds']<1 or out['max_attempts']*out['attempt_timeout_seconds']>120:
         raise ValueError('Eval retries exceed reserve')
@@ -113,7 +118,8 @@ def normalize(value):
 def from_config(config):
     value=config.get('eval_agent')
     if isinstance(value,dict) and value.get('enabled'):
-        return normalize(value if set(value)!={'enabled','model'} else {'enabled':value['enabled']})
+        source=config.get('model_source','parcc')
+        return normalize(value if source=='codex' or set(value)!={'enabled','model'} else {'enabled':value['enabled']},source)
     return None
 
 
@@ -131,8 +137,9 @@ def ask(evidence, config, client, *, cache_dir=None):
     for attempt in range(1,config['max_attempts']+1):
         try:
             messages=vision.evaluator_messages(evidence);messages[0]={'role':'system','content':SYSTEM_V2 if config['prompt_version']==OLD_PROMPT_VERSION else SYSTEM_V3}
-            response=vision._call(client,config['attempt_timeout_seconds'],model=config['model'],messages=messages,max_tokens=MAX_TOKENS,temperature=0)
+            response=vision._call(client,config['attempt_timeout_seconds'],model=config['model'],messages=messages,max_tokens=MAX_TOKENS,temperature=0,**({'reasoning_effort':config['reasoning_effort']} if config.get('model_source')=='codex' else {}))
             usage={k:response.usage[k] for k in ('total_tokens','prompt_tokens','completion_tokens') if type(response.usage.get(k)) is int and response.usage[k]>=0}
+            if config.get('model_source')=='codex':usage=dict(response.usage)
             if config['prompt_version']==OLD_PROMPT_VERSION:
                 parsed=vision.parse_eval_result(response.content)
                 if parsed['status']!='completed':last='unparseable_answer';continue
@@ -146,6 +153,7 @@ def ask(evidence, config, client, *, cache_dir=None):
             record={'schema_version':'attentionbench.eval-agent.v2' if config['prompt_version']==OLD_PROMPT_VERSION else 'attentionbench.eval-agent.v3','status':'completed','passed':parsed['passed'],**content,
                 'model':config['model'],'mode':'vision','prompt_version':config['prompt_version'],'frames':[{k:f[k] for k in ('filename','sha256','view') if k in f} for f in frames],
                 'views':sorted({f.get('view','external') for f in frames}),'cache_key':key,'cache_hit':False,'attempts':attempt,'usage':usage,'latency_seconds':time.monotonic()-begun}
+            if config.get('model_source')=='codex':record.update(model_source='codex',quota_before=getattr(client,'quota_before',None),quota_after=getattr(client,'quota_after',None))
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
             return record

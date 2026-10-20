@@ -60,3 +60,14 @@ test('footer summary reflects every visible choice',()=>{
   assert.equal(runConfigSummary({robot:'OpenArm365',arm:'both arms',seed:102,layout:11,style:34,versions:5,help:5,reviewer:true}),
     'OpenArm365 · both arms · seed 102 · layout 11 / style 34 · up to 5 versions · 5 help requests · reviewer on');
 });
+
+test('Codex source is labelled, sent per run, and refused outside the Dev tier',()=>{
+  assert.match(source,/name="model_source" aria-label="Model source"/);
+  assert.match(source,/Codex subscription \(gpt-6-astra, high effort\)/);
+  assert.match(source,/Codex results are not comparable with PARCC results and use the Codex subscription quota/);
+  assert.match(source,/options\?\.dev_v2\?\.budget_tier!=='dev'/);
+  assert.match(source,/selection\.model_source='codex'/);
+  assert.match(source,/selection\.model_source='codex'/);
+  assert.match(runConfigSummary({robot:'OpenArm365',arm:'both arms',seed:102,layout:11,style:34,versions:5,help:5,reviewer:true,modelSource:'codex'}),
+    /Codex subscription \(gpt-6-astra, high effort\)$/);
+});

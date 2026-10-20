@@ -314,13 +314,20 @@ def review_execution(execution_dir, config, client=None, *, output_dir=None, evi
         evidence = evidence if evidence is not None else build_eval_evidence(execution_dir, config)
         review['input_sha256'] = hashlib.sha256(encoded(evidence).encode()).hexdigest()
         review['frames'] = [{k: f[k] for k in ('filename', 'sha256', 'view') if k in f} for f in evidence['frames']]
-        provider = client or ParccClient(api_key=credential(), max_attempts=1, timeout_seconds=VISION_SECONDS)
+        if client is not None:provider=client
+        elif config.get('model_source')=='codex':
+            from .codex_client import CodexClient
+            provider=CodexClient(timeout_seconds=VISION_SECONDS)
+        else:provider=ParccClient(api_key=credential(), max_attempts=1, timeout_seconds=VISION_SECONDS)
         # A Dev/Advisor wire observer must never capture these images as their response.
         observer = getattr(provider, 'response_observer', None)
         if hasattr(provider, 'response_observer'): provider.response_observer = None
         response = None
         try:
-            if evidence['frames'] and not prefer_text_only:
+            if config.get('model_source')=='codex':
+                if not evidence['frames'] or prefer_text_only:raise ValueError('Codex vision review requires frames')
+                response=_call(provider,VISION_SECONDS,model=review['model_requested'],messages=evaluator_messages(evidence),max_tokens=VISION_TOKENS,temperature=0,reasoning_effort='high')
+            elif evidence['frames'] and not prefer_text_only:
                 started = time.monotonic()
                 try:
                     # Cheap text probe first: an unavailable vision model costs seconds, not minutes.
@@ -344,6 +351,9 @@ def review_execution(execution_dir, config, client=None, *, output_dir=None, evi
         finally:
             if hasattr(provider, 'response_observer'): provider.response_observer = observer
         review['usage'] = {k: response.usage[k] for k in ('total_tokens','prompt_tokens','completion_tokens') if type(response.usage.get(k)) is int and response.usage[k]>=0}
+        if config.get('model_source')=='codex':
+            review.update(model_source='codex',quota_before=getattr(provider,'quota_before',None),quota_after=getattr(provider,'quota_after',None))
+            review['usage']=dict(response.usage)
         review.update(parse_eval_result(response.content))
         review['full_text'] = response.content[:6000]
         if review['mode'] == 'text_only' and review['status'] == 'completed':

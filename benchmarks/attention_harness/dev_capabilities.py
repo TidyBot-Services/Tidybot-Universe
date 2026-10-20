@@ -13,6 +13,9 @@ def execution_environment(root, extra=None):
     return env
 
 
-def provider_environment(root):
+def provider_environment(root, model_source='parcc'):
     env=execution_environment(root)
+    if model_source=='codex':
+        from .codex_client import codex_environment
+        return {**codex_environment(), 'PYTHONPATH': str(root), 'PYTHONDONTWRITEBYTECODE': '1'}
     return {k:v for k,v in env.items() if not k.startswith('ATTENTION_MEMORY_')}

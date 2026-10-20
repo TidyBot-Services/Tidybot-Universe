@@ -89,7 +89,10 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
     tier=c.get('budget_tier','legacy')
+    source=c.get('model_source','parcc')
+    if source not in ('parcc','codex') or (source=='codex' and (tier!='dev' or budget_boundary=='formal')):raise ValueError('Codex model source requires dev tier')
     expected=make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier)
+    if source=='codex':expected['model_source']='codex'
     if c.get('contact_exempt_objects') not in ('none','movable_objects'):
         raise ValueError('contact_exempt_objects must be none or movable_objects')
     expected['contact_exempt_objects']=c['contact_exempt_objects']
@@ -114,13 +117,13 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
     if 'eval_agent' in c:
         review=c['eval_agent']
         from benchmarks.attention_harness.eval_agent import normalize as normalize_eval
-        expected['eval_agent']=dict(review) if isinstance(review,dict) and set(review)=={'enabled','model'} and type(review['enabled']) is bool and review['model']=='parcc/Qwen' else normalize_eval(review)
+        expected['eval_agent']=dict(review) if source=='parcc' and isinstance(review,dict) and set(review)=={'enabled','model'} and type(review['enabled']) is bool and review['model']=='parcc/Qwen' else normalize_eval(review,source)
     if 'human_proxy' in c:
         from benchmarks.attention_harness.human_proxy import normalize
         expected['human_proxy']=normalize(c['human_proxy'])
     if 'advisor_proxy' in c:
         from benchmarks.attention_harness.dev_advisor_proxy import normalize
-        expected['advisor_proxy']=normalize(c['advisor_proxy'])
+        expected['advisor_proxy']=normalize(c['advisor_proxy'],source)
     if 'eval_agent' in expected and 'advisor_proxy' in expected:
         from benchmarks.attention_harness.dev_configuration import independent_eval_advisor
         independent_eval_advisor(expected['eval_agent'],expected['advisor_proxy'])

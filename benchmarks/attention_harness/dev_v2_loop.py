@@ -56,6 +56,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     for m in messages:
         if m['role']=='user':screen_model_packet(json.loads(m['content'])) if kind=='model' else public_screen(json.loads(m['content']))
     cell=store.cell(key);runtime=cell.get('runtime',{})
+    with store.tx() as db:source=store.get(db,'experiments',cell['experiment_id']).get('selection',{}).get('model_source','parcc')
     existing=job_for(cell,version,kind)
     if existing and existing['state']=='settled':
         receipt=existing['receipt'];output=json.loads(checked(receipt['response']).read_bytes())
@@ -69,6 +70,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
         return output['content'],receipt['request'],receipt['response'],receipt['usage']
     if existing and existing['state'] in {'claimed','needs_review'}:raise DevConflict('existing claim cannot be redispatched')
     from .dev_experiment import MODEL
+    model='gpt-6-astra' if source=='codex' else MODEL['model']
     max_tokens=cell.get('probe_max_tokens',MODEL['max_tokens'] if kind=='model' else 2048)
     input_bound=dev_input_bound(messages)
     if runtime and input_bound>runtime['max_input_bytes_per_request']:raise DevBudgetExhausted('input_bound_exceeded: '+str(input_bound))
@@ -76,22 +78,25 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     reservation={'dev_calls' if kind=='model' else 'advisor_calls':1,'provider_tokens':input_bound+max_tokens,
                  'input_tokens':input_bound,'output_tokens':max_tokens,'model_seconds':seconds}
     if kind=='advisor':reservation.update(help_count=1,help_credits=1,help_wait_seconds=seconds)
-    store.reserve_check(key,reservation,model_name=MODEL['model']) if not existing else None
-    request_body={**MODEL,'max_tokens':max_tokens,'messages':messages,'token_reservation':reservation}
+    store.reserve_check(key,reservation,model_name=model) if not existing else None
+    request_body={**MODEL,'model':model,'max_tokens':max_tokens,'messages':messages,'token_reservation':reservation}
+    if source=='codex':request_body['reasoning_effort']='high'
+    if source=='codex':request_body['model_source']='codex'
     memory_path=directory/'memory-input.json'
     if kind in {'model','advisor'} and memory_path.is_file():
         memory_packet=json.loads(memory_path.read_bytes())
         request_body['memory_provenance']=memory_provenance(memory_packet)
     request=immutable(directory/(kind+'-input.json'),request_body)
     # Credential loading belongs to the configured runtime; never artifact/log it.
-    if client is None:
+    if client is None and source=='codex':provider=None  # The contained worker owns the Codex call.
+    elif client is None:
         credential=os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
         if not credential:
             path=Path('/home/truares/.litellm-key')
             if path.is_file():credential=path.read_text().strip()
         provider=ParccClient(api_key=credential,max_attempts=1,timeout_seconds=min(seconds,store.goal_for_cell(key)['wall_remaining']))
     else:provider=client
-    job=store.reserve(key,version,kind,reservation,model_name=MODEL['model'])
+    job=store.reserve(key,version,kind,reservation,model_name=model)
     if job.get('claimed_at') or job.get('actual'):raise DevConflict('existing model claim cannot be redispatched')
     wire=[]
     def observed(status,headers,raw):
@@ -115,16 +120,20 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
                 except BaseException as exc:prep_errors.append(type(exc).__name__)
             prep_thread=threading.Thread(target=prepare,name='planner-public-preparation');prep_thread.start()
         try:
-            if features and client is None:
+            if (features or source=='codex') and client is None:
                 response=contained_provider(store,key,kind,request,directory,min(time.time()+seconds,time.time()+store.goal_for_cell(key)['wall_remaining'],wait_row['deadline_epoch'] if wait_row else float('inf')))
                 provider_path=directory/(kind+'-provider-response.json')
                 if provider_path.exists():wire.append(json.loads(provider_path.read_bytes()))
-            else:response=provider.chat(model=MODEL['model'],messages=messages,max_tokens=max_tokens,temperature=0,reasoning_effort=MODEL['reasoning_effort'])
+            else:response=provider.chat(model=model,messages=messages,max_tokens=max_tokens,temperature=0,reasoning_effort='high' if source=='codex' else MODEL['reasoning_effort'])
         except ParccError:
             if not wire or wire[-1]['http_status']!=200 or type(wire[-1]['body'].get('usage',{}).get('total_tokens')) is not int:raise
-            response=ParccResponse(MODEL['model'],'',None,time.monotonic()-begun,1,wire[-1]['body']['usage'])
+            response=ParccResponse(model,'',None,time.monotonic()-begun,1,wire[-1]['body']['usage'])
         output_path=directory/(kind+'-output.json')
-        output={'uri':str(output_path.resolve()),'sha256':sha(output_path)} if features and client is None and output_path.exists() else immutable(output_path,response.artifact())
+        if (features or source=='codex') and client is None and output_path.exists():output={'uri':str(output_path.resolve()),'sha256':sha(output_path)}
+        else:
+            artifact=response.artifact()
+            if source=='codex':artifact.update(model_source=source,quota_before=getattr(provider,'quota_before',None),quota_after=getattr(provider,'quota_after',None))
+            output=immutable(output_path,artifact)
         usage=response.usage
         total=usage.get('total_tokens');input_tokens=usage.get('prompt_tokens');output_tokens=usage.get('completion_tokens')
         if any(type(v) is not int or v<0 for v in [total,input_tokens,output_tokens]) or total!=input_tokens+output_tokens:raise DevConflict('complete actual usage missing/inconsistent; no invented cost')
@@ -151,7 +160,8 @@ def contained_provider(store,key,kind,request,directory,deadline):
     log=(directory/(kind+'-worker.log')).open('ab')
     process=None
     try:
-        process=subprocess.Popen([sys.executable,'-B','-m','benchmarks.attention_harness.dev_provider_worker','--request',request['uri'],'--directory',str(directory),'--kind',kind,'--deadline',str(deadline)],cwd=ROOT,env=__import__('benchmarks.attention_harness.dev_capabilities',fromlist=['provider_environment']).provider_environment(ROOT),stdout=log,stderr=log,start_new_session=True)
+        source=json.loads(Path(request['uri']).read_bytes()).get('model_source','parcc')
+        process=subprocess.Popen([sys.executable,'-B','-m','benchmarks.attention_harness.dev_provider_worker','--request',request['uri'],'--directory',str(directory),'--kind',kind,'--deadline',str(deadline)],cwd=ROOT,env=__import__('benchmarks.attention_harness.dev_capabilities',fromlist=['provider_environment']).provider_environment(ROOT,source),stdout=log,stderr=log,start_new_session=True)
         immutable(directory/(kind+'-owned-process.json'),process_identity(process.pid))
         while process.poll() is None:
             cell=store.cell(key)
@@ -405,8 +415,11 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
 class HumanProxyInvalid(Exception):
     """Eval vision was unavailable after retries: the cell is condition_invalid."""
 
-def proxy_client(client):
+def proxy_client(client,config=None):
     if client is not None:return client
+    if (config or {}).get('model_source')=='codex':
+        from .codex_client import CodexClient
+        return CodexClient(timeout_seconds=90)
     credential=os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
     if not credential:
         path=Path('/home/truares/.litellm-key')
@@ -431,7 +444,7 @@ def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailab
     store.reserve_check(key,reservation,unmetered_eval=unmetered) if not existing else None
     job=store.reserve(key,version,'eval',reservation,unmetered_eval=unmetered,model_name=config['eval_agent']['model']);store.claim(job['job_id'],owner)
     try:
-        record=eva.ask(evidence,eva.from_config(config),proxy_client(client),cache_dir=Path(cell['artifact_dir']).parent.parent/'eval-cache')
+        record=eva.ask(evidence,eva.from_config(config),proxy_client(client,config),cache_dir=Path(cell['artifact_dir']).parent.parent/'eval-cache')
         immutable(artifact,record)
         actual=dict(reservation);usage=record['usage']
         if record['cache_hit']:actual.update(provider_tokens=0,input_tokens=0,output_tokens=0,model_seconds=0)
@@ -580,7 +593,7 @@ def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifac
     store.reserve_check(key,reservation,model_name=proxy['model']) if not existing else None
     job=store.reserve(key,job_version,'advisor',reservation,model_name=proxy['model']);store.claim(job['job_id'],owner)
     try:
-        record=advisor.ask(evidence,proxy,proxy_client(client),cache_dir=Path(cell['artifact_dir']).parent.parent/'advisor-cache')
+        record=advisor.ask(evidence,proxy,proxy_client(client,config),cache_dir=Path(cell['artifact_dir']).parent.parent/'advisor-cache')
         actual_logical=record.get('hint_human_seconds',logical)
         record.update(requested=True,request_type='hint',selected_moments=selected,selected_frame_manifest=selected_frames,localization=localization,question=evidence['question'],logical_human_seconds=actual_logical,recording_seconds=recording_seconds,answer_latency_seconds=proxy['answer_latency_seconds'])
         if proxy['mode']=='vision':record['request_view']=view_ref

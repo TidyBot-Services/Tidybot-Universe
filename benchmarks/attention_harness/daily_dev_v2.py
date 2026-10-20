@@ -22,7 +22,21 @@ def bind_daily_advisor(selection,previous_selection):
     if Path(previous_selection).is_file() and 'advisor_proxy' not in json.loads(Path(previous_selection).read_bytes()):
         return selection
     from .dev_advisor_proxy import default_config
-    return {**selection,'advisor_proxy':selection.get('advisor_proxy',default_config(True))}
+    return {**selection,'advisor_proxy':selection.get('advisor_proxy',default_config(True,selection.get('model_source','parcc')))}
+
+def bind_daily_codex(selection):
+    """Translate the daily dialog's legacy budget envelope to a modern Dev run."""
+    if selection.get('model_source')!='codex' or 'configuration' not in selection:return selection
+    if selection.get('budget_tier')!='dev':raise ValueError('Codex model source requires dev tier')
+    legacy=selection['configuration']
+    from openarm365_dev_v2.scene_contract import registered_contract_ref
+    converted={k:v for k,v in selection.items() if k not in ('configuration','human_wait_seconds')}
+    converted.update(goal_key=legacy['goal_id'],goal_limits=legacy['experiment_budget'],
+        wall_limit=legacy['wall_seconds'],cell_budget=legacy['cell_budget'],
+        target_depth=legacy['max_iterations'],target_valid_executions=legacy['max_iterations'],
+        max_versions=legacy['max_iterations'],coverage='budget_limited',reproducible_reset=True,
+        scene_contract=registered_contract_ref())
+    return converted
 
 def bind_daily_memory(selection, memory, previous_selection=None):
     """New full-planner experiments use the existing v3 contract and budget gates."""
@@ -76,7 +90,7 @@ class DailyDevV2:
         self.profiles=profiles;self.authorization=authorization;self.per_run_budget=per_run_budget;self.memory=memory;self.mutex=threading.Lock();self.workers={}
         self.recover()
     def options(self):
-        return {'enabled':True,'policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
+        return {'enabled':True,'budget_tier':'dev','policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
                 'default_cell_budget':DEFAULT_CELL,'default_max_iterations':5,'registered_scene_seeds':registered_scene_seeds(),'formal_eligible':False,
                 'authorization':{'mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else self.authorization,'matrix':self.matrix(),
                 **({'memory':{k:self.memory[k] for k in ('store_id','namespace','url_sha256')}} if self.memory is not None else {}),
@@ -123,6 +137,7 @@ class DailyDevV2:
         eid='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24];directory,path,budget=self.paths(eid)
         selection=bind_daily_advisor(selection,directory/'selection.json')
         selection=bind_daily_memory(selection,self.memory,directory/'selection.json')
+        selection=bind_daily_codex(selection)
         experiments.validate_selection_fields(selection)
         configuration=selection.get('configuration')
         goal_key=configuration['goal_id'] if configuration is not None else selection.get('goal_key')

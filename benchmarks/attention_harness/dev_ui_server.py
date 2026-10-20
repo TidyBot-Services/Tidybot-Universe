@@ -20,13 +20,15 @@ def budget_preview(selection):
     config=normalize_configuration(selection)
     from .free_models import eval_is_unmetered,is_unmetered_model
     from .dev_experiment import MODEL
+    source=config.get('model_source','parcc')
+    dev_model='gpt-6-astra' if source=='codex' else MODEL['model']
     required=derive_cell_budget(config)
     per_cell=configured_budget(config)
     cells=len(tasks)*len(seeds)*len(policies)
     wait_wall=config['max_versions']*config.get('planner_features',{}).get('human_wait_seconds',0)
     return dict(per_cell=per_cell,required_per_cell=required,cells=cells,
-                eval_accounting='不计限额，仅记录' if config['eval_agent']['enabled'] and eval_is_unmetered(config['eval_agent']) else '计入限额',
-                model_token_accounting={role:('不计限额，仅记录' if is_unmetered_model(model) else '计入限额') for role,model in {'dev':MODEL['model'],'advisor':config['advisor_proxy']['model'],'eval':config['eval_agent']['model']}.items()},
+                eval_accounting='Recorded; no token cap' if source=='codex' else ('不计限额，仅记录' if config['eval_agent']['enabled'] and eval_is_unmetered(config['eval_agent']) else '计入限额'),
+                model_token_accounting={role:('Recorded; no token cap' if source=='codex' else ('不计限额，仅记录' if is_unmetered_model(model) else '计入限额')) for role,model in {'dev':dev_model,'advisor':config['advisor_proxy']['model'],'eval':config['eval_agent']['model']}.items()},
                 eval_safety_call_cap=max(2*config['max_versions'],10),
                 total={key:value*cells for key,value in per_cell.items()},
                 wall_seconds=config.get('wall_limit',cells*(per_cell['model_seconds']+per_cell['execution_seconds']+wait_wall)+3600),

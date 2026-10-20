@@ -8,6 +8,10 @@ PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_fai
 # Successful process exit alone cannot declare task completion. No scoring is read.
 def normalize_configuration(selection):
  tier=selection.get('budget_tier','dev')
+ source=selection.get('model_source','parcc')
+ if source not in {'parcc','codex'} or (source=='codex' and (tier!='dev' or 'configuration' in selection)):raise ValueError('Codex model source requires modern dev tier')
+ if source=='codex' and selection.get('model','gpt-6-astra')!='gpt-6-astra':raise ValueError('Codex model must be gpt-6-astra')
+ if source=='codex' and selection.get('reasoning_effort','high')!='high':raise ValueError('Codex reasoning effort must be high')
  p=dict(target_depth=3,target_valid_executions=3,max_versions=5,coverage='strict_full_depth',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],startup_cleanup_seconds=60,model_reserve_seconds=360 if tier=='dev' else 120,max_input_bytes_per_request=30000,public_failure_rule=PUBLIC_FAILURE_RULE)
  p.update({k:v for k,v in selection.items() if k in FIELDS})
  if 'goal_key' in p:
@@ -25,8 +29,9 @@ def normalize_configuration(selection):
   raise ValueError('legacy human_proxy can be read but not configured for a new v3 experiment')
  from .eval_agent import normalize as normalize_eval,default_config as eval_default
  from .dev_advisor_proxy import normalize as normalize_advisor,default_config as advisor_default
- p['eval_agent']=normalize_eval(selection.get('eval_agent',eval_default(False)))
- p['advisor_proxy']=normalize_advisor(selection.get('advisor_proxy',advisor_default(False)))
+ p['eval_agent']=normalize_eval(selection.get('eval_agent',eval_default(False,source)),source)
+ p['advisor_proxy']=normalize_advisor(selection.get('advisor_proxy',advisor_default(False,source)),source)
+ if source=='codex':p['model_source']='codex'
  independent_eval_advisor(p['eval_agent'],p['advisor_proxy'])
  p['help_budget']=selection.get('help_budget',1)
  for k in ['target_depth','target_valid_executions','max_versions','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request']:
@@ -94,7 +99,7 @@ def configured_budget(p):
  if set(b)!=set(RESOURCES):raise ValueError('complete cell budget required')
  from .free_models import limited_resources
  from .dev_experiment import MODEL
- limited=limited_resources(eval_config=p['eval_agent'],model_names=(MODEL['model'],p['advisor_proxy']['model']))
+ limited=limited_resources(eval_config=p['eval_agent'],model_names=(('gpt-6-astra' if p.get('model_source')=='codex' else MODEL['model']),p['advisor_proxy']['model']),model_source=p.get('model_source','parcc'))
  if p['coverage']=='strict_full_depth' and any(b[k]<required[k] for k in limited):raise ValueError('strict cell budget below worst-case requirement')
  minimum=derive_cell_budget({**p,'max_versions':1,'target_valid_executions':1,'help_budget':0})
  if any(b[k]<minimum[k] for k in limited):raise ValueError('zero capacity budget refused')

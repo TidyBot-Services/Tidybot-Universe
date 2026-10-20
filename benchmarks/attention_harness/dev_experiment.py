@@ -12,7 +12,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
@@ -62,6 +62,9 @@ def create(store,artifact_root,selection):
     budget_tier=selection.get('budget_tier','dev')
     task_limits(budget_tier)
     v3=bool(set(selection)&FIELDS)
+    source=selection.get('model_source','parcc')
+    if source not in {'parcc','codex'} or (source=='codex' and (budget_tier!='dev' or not v3 or 'configuration' in selection or 'human_proxy' in selection)):
+        raise ValueError('Codex model source requires modern dev tier')
     if v3:
         from .eval_agent import default_config as eval_default
         from .dev_advisor_proxy import default_config as advisor_default
@@ -108,6 +111,7 @@ def create(store,artifact_root,selection):
     exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
     if budget_tier=='dev':normalized['budget_tier']='dev'
+    if source=='codex':normalized['model_source']='codex'
     if v3:
         budget=configured_budget(configuration)
         n=len(tasks)*len(seeds)*len(policies)
@@ -115,7 +119,7 @@ def create(store,artifact_root,selection):
         if complete_resources(goal_limits):goal_limits=fill_optional(goal_limits)
         __import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
         from .free_models import limited_resources
-        limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(MODEL['model'],configuration['advisor_proxy']['model']))
+        limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(('gpt-6-astra' if source=='codex' else MODEL['model']),configuration['advisor_proxy']['model']),model_source=source)
         if set(goal_limits)!=set(RESOURCES) or any(n*budget[k]>goal_limits[k] for k in limited):raise ValueError('goal allocation exceeds limits')
         wait_wall=configuration['max_versions']*configuration.get('planner_features',{}).get('human_wait_seconds',0)
         wall_limit=configuration.get('wall_limit',n*(budget['model_seconds']+budget['execution_seconds']+wait_wall)+3600)
@@ -179,6 +183,8 @@ def create(store,artifact_root,selection):
         for config in configs.values():config['human_proxy']=copy.deepcopy(normalized['human_proxy'])
     if 'advisor_proxy' in normalized:
         for config in configs.values():config['advisor_proxy']=copy.deepcopy(normalized['advisor_proxy'])
+    if source=='codex':
+        for config in configs.values():config['model_source']='codex'
     cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
     # Fixed schedule: first cell verifies v1→v2, then all remaining cells v1,
     # then their v2. Coverage is preserved before remaining iteration slots.
@@ -189,11 +195,12 @@ def create(store,artifact_root,selection):
         schedule += [{'cell':c['key'],'through_version':maximum,'compensation':True} for c in cells]
     elif legacy_configuration is None:store.ensure_goal(GOAL,task_goal_limits(budget_tier),task_goal_wall_limit(budget_tier))
     manifest=dict(schema='attentionbench.dev-experiment.v2',experiment_id=exp_id,selection=normalized,
-        model=MODEL,cell_budget=budget,goal_limits=task_goal_limits(budget_tier),wall_limit=task_goal_wall_limit(budget_tier),opening=[] if v3 else store.goal()['opening'],
+        model=({**MODEL,'model':'gpt-6-astra','reasoning_effort':'high'} if source=='codex' else MODEL),cell_budget=budget,goal_limits=task_goal_limits(budget_tier),wall_limit=task_goal_wall_limit(budget_tier),opening=[] if v3 else store.goal()['opening'],
         robot='OpenArm365',execution_arm='both',configs=configs,initial_sources=sources,identity_lock=ref,
         memory=EMPTY_MEMORY,help_pricing=({**HELP_PRICING,'cache':{'credits':0,'count':0}} if v3 else HELP_PRICING),demos=demos,policies=parameters,trace_visible=trace_visible,
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
     if budget_tier=='dev':manifest['budget_tier']='dev'
+    if source=='codex':manifest['model_source']='codex'
     if v3:
         # 2026-10-18 free Eval accounting applies to new v3 manifests only;
         # legacy v2 budget accounting stays unchanged.
@@ -235,7 +242,7 @@ def create(store,artifact_root,selection):
                 for cp, in db.execute('SELECT payload FROM v2_cells WHERE exp=?',(ep['experiment_id'],)):
                     for k,v in json.loads(cp)['budget'].items():allocated[k]+=v
             from .free_models import limited_resources
-            limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(MODEL['model'],configuration['advisor_proxy']['model']))
+            limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(('gpt-6-astra' if source=='codex' else MODEL['model']),configuration['advisor_proxy']['model']),model_source=source)
             if any(allocated[k]+len(cells)*budget[k]>goal_limits.get(k,0) for k in limited):raise ValueError('shared goal allocation exceeds limits')
             existing=db.execute('SELECT payload FROM v2_goals WHERE id=?',(goal_id,)).fetchone()
             if existing:
@@ -264,7 +271,9 @@ def create(store,artifact_root,selection):
     return snapshot(store,exp_id)
 
 def validate_fairness(m):
-    if m['formal_eligible'] is not False or m['model']!=MODEL or m['memory']!=EMPTY_MEMORY:raise ValueError('Dev conditions differ')
+    source=m.get('model_source','parcc')
+    expected_model={**MODEL,'model':'gpt-6-astra','reasoning_effort':'high'} if source=='codex' else MODEL
+    if source not in {'parcc','codex'} or (source=='codex' and (m.get('budget_tier')!='dev' or m.get('schema')!='attentionbench.dev-experiment.v3')) or m['selection'].get('model_source','parcc')!=source or m['formal_eligible'] is not False or m['model']!=expected_model or m['memory']!=EMPTY_MEMORY:raise ValueError('Dev conditions differ')
     if len({c['key'] for c in m['cells']})!=len(m['cells']):raise ValueError('duplicate cell keys')
     expected={(t,s,p) for t in m['selection']['tasks'] for s in m['selection']['seeds'] for p in m['selection']['policies']}
     if expected!={(c['task_id'],c['seed'],c['policy_id']) for c in m['cells']}:raise ValueError('planned denominator incomplete')
@@ -285,6 +294,7 @@ def verify_manifest(exp):
     verify_lock(m['identity_lock'],expected_source_root=epoch_root)
     for c in m['configs'].values():
         if c.get('budget_tier','legacy')!=tier:raise DevConflict('config budget tier differs from manifest')
+        if c.get('model_source','parcc')!=m.get('model_source','parcc'):raise DevConflict('config model source differs from manifest')
         validate_dev_config(c,expected_source_root=epoch_root)
     for t,r in m['initial_sources'].items():
         if hashlib.sha256(r['source'].encode()).hexdigest()!=r['sha256']:raise DevConflict('initial source drift')

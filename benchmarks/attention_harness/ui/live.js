@@ -1816,8 +1816,8 @@
     return seeds.map(seed=>({seed,unregistered:mode==='experiment'&&!registered.includes(seed),
       title:String(seed)+(mode==='experiment'&&!registered.includes(seed)?' (no scene contract · interactive only)':'')}));
   }
-  function runConfigSummary({robot,arm,seed,layout,style,versions,help,reviewer}) {
-    return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests · reviewer ${reviewer?'on':'off'}`;
+  function runConfigSummary({robot,arm,seed,layout,style,versions,help,reviewer,modelSource='parcc'}) {
+    return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests · reviewer ${reviewer?'on':'off'}${modelSource==='codex'?' · Codex subscription (gpt-6-astra, high effort)':''}`;
   }
   function launchSourceProfile(source, profiles, options, preferDev) {
     if(!source)return {profile:null,reason:''};
@@ -1875,6 +1875,7 @@
           </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
           <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
+            <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
@@ -1960,7 +1961,7 @@
         for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled;
         if(profile?.channel==='dev_v2'){
           form.querySelector('[data-launch-preview]').textContent=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
-            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked});
+            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.model_source.value});
           syncSeedOptions();
         }
       }
@@ -1980,6 +1981,10 @@
         form.querySelector('[data-fixed-help]').hidden=v2;
         form.querySelector('[data-v2-mode-field]').hidden=!v2;
         form.querySelector('[data-run-config-section="reviewer"]').hidden=!v2;
+        form.querySelector('[data-model-source-field]').hidden=!v2;
+        form.model_source.disabled=!v2;
+        if(!v2 || options?.dev_v2?.budget_tier!=='dev')form.model_source.value='parcc';
+        form.model_source.querySelector('option[value="codex"]').disabled=options?.dev_v2?.budget_tier!=='dev';
         form.querySelector('[data-v2-tokens]').hidden=!v2;
         form.querySelector('[data-fixed-tokens]').hidden=v2;
         form.querySelector('[data-start-no]').hidden=!v2;
@@ -2082,7 +2087,9 @@
             const n=Number(form.max_attempts.value),help=Number(form.help_count.value);
             const cell=Object.fromEntries([...form.querySelectorAll('[data-v2-cell]')].map(e=>[e.dataset.v2Cell,Number(e.value)]));
             const experiment=Object.fromEntries([...form.querySelectorAll('[data-v2-experiment]')].map(e=>[e.dataset.v2Experiment,Number(e.value)]));
-            selection={eval_agent:{enabled:form.eval_agent_enabled.checked,model:'parcc/Qwen'},request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:form.v2_policy.value==='all'?(options.dev_v2.policies):[form.v2_policy.value],mode:form.v2_mode.value,help_budget:help,human_wait_seconds:Number(form.human_wait_seconds.value),configuration:{goal_id:form.goal_id.value,experiment_budget:experiment,cell_budget:cell,max_iterations:n,wall_seconds:Number(form.wall_seconds.value)}};
+            if(form.model_source.value==='codex'&&options?.dev_v2?.budget_tier!=='dev')throw new Error('Codex model source requires dev tier');
+            selection={eval_agent:{enabled:form.eval_agent_enabled.checked,model:form.model_source.value==='codex'?'gpt-6-astra':'parcc/Qwen'},request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:form.v2_policy.value==='all'?(options.dev_v2.policies):[form.v2_policy.value],mode:form.v2_mode.value,help_budget:help,human_wait_seconds:Number(form.human_wait_seconds.value),configuration:{goal_id:form.goal_id.value,experiment_budget:experiment,cell_budget:cell,max_iterations:n,wall_seconds:Number(form.wall_seconds.value)}};
+            if(form.model_source.value==='codex'){selection.model_source='codex';selection.budget_tier='dev';}
           }
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
@@ -3121,9 +3128,10 @@
       ${field('Task',taskDisplayName(run),(snapshot.task_plan?.definition?.description && snapshot.task_plan.definition.description !== taskDisplayName(run)) ? snapshot.task_plan.definition.description : kitchen,true)}
       ${field('Robot',`${robot}${arms?' · '+arms:''}`,mobile?'Base can move':'Base stays in place')}
       ${field('Where it runs',simulator?`${benchmark} simulator`:'Real robot',run.seed == null?'Scene seed not recorded':`Scene seed ${run.seed}`)}
+      ${snapshot.dev_v2?field('Model source',config.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)',config.model_source==='codex'?'Uses the Codex subscription quota; results are not comparable with PARCC.':'Dev and Eval use PARCC.'):''}
       ${field('Help strategy',policyTitle(policy),`${operatorPolicy(snapshot)} · ${snapshot.dev_v2 || (snapshot.dev_session && !snapshot.attention_control?.binding) || run.assistance_mode !== 'live_human_first' ? 'an automatic advisor answers' : 'a person answers'}`,true,changeable?'<details class="op-strategy" data-persist-detail="operator-strategy"><summary>Change</summary><div data-policy-host></div></details>':'')}
       ${field('Dev agent',snapshot.dev_session?(model&&!/^formal-|-policy$/.test(model)?model:'AI-written plan'):'Fixed plan',snapshot.dev_session?'AI rewrites its plan after each attempt':'Uses an approved fixed plan')}
-      ${snapshot.dev_eval_enabled?(textOnlyReviews(snapshot).length?field('Eval agent','GLM · text only','Qwen was unavailable, so recordings were not reviewed visually · the simulator still decides success').replace('class="op-field','class="op-field op-warn'):field('Eval agent','Qwen',"Reviews the recording and camera views · the simulator still decides success")):field('Eval agent',"Simulator's own task check",'Success is decided by the simulator, not by an AI model')}</div></section>`;
+      ${snapshot.dev_eval_enabled?(textOnlyReviews(snapshot).length?field('Eval agent','GLM · text only','Qwen was unavailable, so recordings were not reviewed visually · the simulator still decides success').replace('class="op-field','class="op-field op-warn'):field('Eval agent',config.model_source==='codex'?'gpt-6-astra':'Qwen',"Reviews the recording and camera views · the simulator still decides success")):field('Eval agent',"Simulator's own task check",'Success is decided by the simulator, not by an AI model')}</div></section>`;
   }
   function operatorWaiting(snapshot) {
     const control = snapshot.attention_control;
@@ -3213,7 +3221,8 @@
   function operatorOverview(snapshot) {
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','How is it going?')}${operatorOutcome(snapshot)}${operatorFlow(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    const source=snapshot.dev_v2?(s?.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'):null;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${operatorFlow(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -4160,7 +4169,7 @@
     const title = needsGuidance?`Waiting for your guidance before version ${s.attention_control.hint.version}`:s.state === 'needs_review' ? 'Execution outcome requires review' : s.state === 'stopping' || (s.stop_requested && !terminal) ? 'Stop requested · awaiting executor confirmation' : terminal ? (s.state==='not_started'?'Ready to start':devEndSummary(s).title) : advisor ? `Advisor preparing guidance for v${advisor.version}` : execute ? `Simulator executing v${execute.version}` : model ? `Model generating v${model.version}` : 'Ready to start the next iteration';
     return `${DEBUG_VIEW ? `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(s.session_id)}" data-phase="${phase}" aria-label="Task Status & Progress">
       <div class="ab-status-panel-heading" aria-hidden="true">Task Status & Progress</div>
-      <div class="ab-status-head"><button type="button" class="ab-overview-drag" data-overview-drag hidden aria-label="Move floating task bar">⠿</button><div><span class="label">RoboCasa365 · Dev automatic iteration</span><h2>${esc(taskDisplayName(snapshot.run))}</h2></div><div class="ab-status-controls"><button type="button" data-overview-open-sidebar>Tasks</button>${launchButton()}${moreButton()}<button class="danger" id="ab-emergency-interrupt" type="button" ${terminal||s.state==='stopping'?'disabled':''}>■ Stop Dev session</button><button type="button" data-dev-resume ${(snapshot.dev_v2?s.state==='not_started':['ready','stopped'].includes(s.state))?'':'disabled'}>Resume session</button><button type="button" class="ab-overview-toggle" data-overview-toggle aria-expanded="true" aria-controls="ab-overview-details">Collapse progress</button></div></div>
+      <div class="ab-status-head"><button type="button" class="ab-overview-drag" data-overview-drag hidden aria-label="Move floating task bar">⠿</button><div><span class="label">RoboCasa365 · Dev automatic iteration${snapshot.dev_v2?` · ${s.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'}`:''}</span><h2>${esc(taskDisplayName(snapshot.run))}</h2></div><div class="ab-status-controls"><button type="button" data-overview-open-sidebar>Tasks</button>${launchButton()}${moreButton()}<button class="danger" id="ab-emergency-interrupt" type="button" ${terminal||s.state==='stopping'?'disabled':''}>■ Stop Dev session</button><button type="button" data-dev-resume ${(snapshot.dev_v2?s.state==='not_started':['ready','stopped'].includes(s.state))?'':'disabled'}>Resume session</button><button type="button" class="ab-overview-toggle" data-overview-toggle aria-expanded="true" aria-controls="ab-overview-details">Collapse progress</button></div></div>
       <div class="ab-status-main"><div class="ab-action-needed" data-action-needed data-needed="${needsGuidance||s.state==='needs_review'?'yes':'no'}" data-connected-needed="${needsGuidance||s.state==='needs_review'?'yes':'no'}" data-connected-text="${needsGuidance?'Reply required · Dev iteration paused':s.state==='needs_review'?'Review required':terminal?'No pending reply':'No human reply required'}" role="status">${needsGuidance?'Reply required · Dev iteration paused':s.state==='needs_review'?'Review required':terminal?'No pending reply':'No human reply required'}</div><div class="ab-phase-copy"><strong>${esc(title)}</strong><span data-attempt-count>Version ${s.versions.at(-1)?.version||'—'} · ${s.used.executions} / ${s.budget.executions} executions</span></div></div>
       <div id="ab-overview-details" data-overview-details>${taskFlow(snapshot)}<div class="ab-status-meta"><span>Simulator</span><span>Automatic policy revision</span><span>${esc(s.model)}</span></div></div>
       <div class="ab-status-alerts">${s.reason?`<details data-run-stop-reason><summary>End details</summary><p>${esc(s.reason)}</p></details>`:''}${snapshot.dev_v2?'<p class="minor" data-v2-reproducibility-warning>Independent results are display only. Scene reproducibility across resets is unverified. These development records do not certify a fair policy comparison.</p>':''}${snapshot.dev_evidence_gaps.length?`<p data-dev-evidence-gap>Some execution evidence is unavailable: ${esc(snapshot.dev_evidence_gaps.join(' · '))}. No outcome is inferred.</p>`:''}<p data-picture-warning hidden></p></div></section>` : operatorOverview(snapshot)}`;
@@ -4208,7 +4217,9 @@
     const snapshot = await devWorkspaceSnapshot(session);
     snapshot.dev_v2=cell;
     snapshot.memory={...(snapshot.memory||{control:launchOptions?.dev_v2?.memory?{can_operate:false}:null,ingestion:[],uses:[],records:{}}),dev_v2:cell.planner_memory||{queues:[],validations:[],retrievals:[],generations:[],receipts:[],empty:true}};
-    snapshot.model_token_accounting=launchOptions?.dev_v2?.model_token_accounting || null;
+    snapshot.model_token_accounting=s.locked?.config?.model_source==='codex'
+      ? {Dev:'Recorded; no token cap',Advisor:'Recorded; no token cap',Eval:'Recorded; no token cap'}
+      : launchOptions?.dev_v2?.model_token_accounting || null;
     snapshot.dev_eval_enabled=s.locked?.config?.eval_agent?.enabled===true;
     snapshot.dev_session.versions=cell.versions;
     if(snapshot.dev_eval_enabled)snapshot.resources.eval_calls={used:cell.eval_usage?.eval_calls??cell.used.eval_calls??0,limit:null};

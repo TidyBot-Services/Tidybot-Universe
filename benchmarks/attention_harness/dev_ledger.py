@@ -12,7 +12,7 @@ OPTIONAL=('eval_calls','hint_human_seconds')
 EVAL_USAGE=('eval_calls','provider_tokens','input_tokens','output_tokens','model_seconds')
 def charged_amount(job,amount):
     """Portion of a receipt subject to a quota; never use for used totals."""
-    free_tokens=job.get('unmetered_eval') or is_unmetered_model(job.get('unmetered_model'))
+    free_tokens=job.get('unmetered_eval') or is_unmetered_model(job.get('unmetered_model')) or job.get('model_source')=='codex'
     return {k:v for k,v in amount.items() if not (job.get('unmetered_eval') and k=='eval_calls')
             and not (free_tokens and k in TOKEN_RESOURCES)}
 def eval_usage_amount(job,amount):
@@ -221,7 +221,7 @@ class DevV2Store:
                 # The request-style Advisor (including planner cells) uses the
                 # fixed Dev provider; only an enabled AdvisorProxy uses its
                 # separately frozen model.
-                expected=proxy['model'] if kind=='advisor' and proxy and proxy.get('enabled',True) else MODEL['model']
+                expected=proxy['model'] if kind=='advisor' and proxy and proxy.get('enabled',True) else ('gpt-6-astra' if exp.get('selection',{}).get('model_source')=='codex' else MODEL['model'])
                 if model_name!=expected:raise DevConflict('model differs from fixed provider configuration')
             if c['state']!='running' or exp.get('cancelled'):raise DevConflict('cell cannot dispatch')
             goal_id=self.cell_goal(db,c);g=self._goal(db,goal_id)
@@ -243,11 +243,13 @@ class DevV2Store:
             for state,p in db.execute("SELECT state,payload FROM v2_jobs WHERE cell=?",(cell,)):
                 cell_jobs.append((state,json.loads(p)))
             cell_metered=quota_used(c['used'],cell_jobs)
-            candidate={'unmetered_eval':unmetered_eval,'unmetered_model':model_name if is_unmetered_model(model_name) else None}
+            source=exp.get('selection',{}).get('model_source','parcc')
+            candidate={'unmetered_eval':unmetered_eval,'unmetered_model':model_name if is_unmetered_model(model_name) else None,'model_source':source}
             if any(v>g['remaining'][k] or cell_metered[k]+held[k]+v>c['budget'].get(k,0) for k,v in charged_amount(candidate,reservation).items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
             jid=f'{cell}:{version}:{kind}';j={'job_id':jid,'cell':cell,'version':version,'kind':kind,'goal_id':goal_id,'reservation':reservation,'reserved_at':time.time()}
             if unmetered_eval:j['unmetered_eval']=True
             if is_unmetered_model(model_name):j['unmetered_model']=model_name
+            if source=='codex':j['model_source']='codex'
             db.execute('INSERT INTO v2_jobs VALUES (?,?,?,?,?,?)',(jid,cell,version,kind,'reserved',encoded(j)))
             self.event(db,'reserved',j);return j
     def claim(self,jid,owner,*,approval_id=None):
@@ -299,7 +301,7 @@ class DevV2Store:
             if not receipt.get('diagnostic_budget_override'):raise DevConflict('diagnostic execution requires budget evidence')
             c=self.get(db,'cells',j['cell']);exp=self.get(db,'experiments',c['experiment_id'])
             if exp['selection']['mode']!='diagnostic':raise DevConflict('diagnostic execution cannot enter normal Dev ledger')
-        if state not in {'claimed','needs_review'} or set(actual)!=set(j['reservation']) or any(actual[k]>v for k,v in j['reservation'].items()):raise DevConflict('missing/excess usage; retain reservation')
+        if state not in {'claimed','needs_review'} or set(actual)!=set(j['reservation']) or any(actual[k]>v for k,v in j['reservation'].items() if not (j.get('model_source')=='codex' and k in TOKEN_RESOURCES)):raise DevConflict('missing/excess usage; retain reservation')
         c=self.get(db,'cells',j['cell']);goal_id=self.cell_goal(db,c);g=self.get(db,'goals',goal_id)
         for k,v in actual.items():c['used'][k]=c['used'].get(k,0)+v;g['used'][k]=g['used'].get(k,0)+v
         if j.get('unmetered_eval'):
@@ -373,7 +375,8 @@ class DevV2Store:
                     for k,v in charged_amount(old,old['reservation']).items():held[k]+=v
             jobs=[(state,json.loads(p)) for state,p in db.execute("SELECT state,payload FROM v2_jobs WHERE cell=?",(key,))]
             metered=quota_used(c['used'],jobs)
-            if g.get('real_finished_at') or g['wall_remaining']<=0 or any(v>g['remaining'][k] or metered[k]+held[k]+v>c['budget'].get(k,0) for k,v in charged_amount({'unmetered_eval':unmetered_eval,'unmetered_model':model_name if is_unmetered_model(model_name) else None},reservation).items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
+            source=self.get(db,'experiments',c['experiment_id']).get('selection',{}).get('model_source','parcc')
+            if g.get('real_finished_at') or g['wall_remaining']<=0 or any(v>g['remaining'][k] or metered[k]+held[k]+v>c['budget'].get(k,0) for k,v in charged_amount({'unmetered_eval':unmetered_eval,'unmetered_model':model_name if is_unmetered_model(model_name) else None,'model_source':source},reservation).items()):raise DevBudgetExhausted('goal/cell budget exhausted before dispatch')
     def export_ledger(self,goal_id=None):
         with self.tx() as db:
             ids=[r[0] for r in db.execute('SELECT id FROM v2_goals ORDER BY rowid')]
