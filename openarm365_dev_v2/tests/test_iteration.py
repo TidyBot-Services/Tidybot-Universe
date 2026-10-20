@@ -24,7 +24,7 @@ def test_empty_constructor_and_multigoal(tmp_path):
 def test_formula():
  p=normalize_configuration(selection());b=derive_cell_budget(p,80,2400)
  assert b['provider_tokens']==253008 and b['input_tokens']==210000 and b['execution_seconds']==5940
- assert b['model_seconds']==840 and b['output_tokens']==43008 and b['control_steps']==7200
+ assert b['model_seconds']==1440 and b['output_tokens']==43008 and b['control_steps']==7200
  assert b['advisor_calls']==p['help_budget']==2
  assert 255056-b['provider_tokens']==p['help_budget']*1024
  assert 45056-b['output_tokens']==p['help_budget']*1024
@@ -44,10 +44,16 @@ def test_seven_behavior_input_chain(tmp_path,policy):
  s,e,b=setup(tmp_path,{**selection(),'policies':[policy],'eval_agent':{'enabled':True}});cl=HintClient()
  f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=EvalRunner);c=f['cells'][0]
  assert len(c['versions'])==3 and c['used']['executions']==3
+ assert all(j['reservation']['model_seconds']==240 for j in c['jobs'] if j['kind']=='model')
+ assert all(j['reservation']['model_seconds']==120 for j in c['jobs'] if j['kind'] in {'eval','advisor'})
  assert c['used']['eval_calls']==3
  helps=[j for j in c['jobs'] if j['kind'] in {'demo','advisor'}]
  if policy=='autonomous':assert not helps
  else:assert helps
+ if policy=='retry_k_then_ask':
+  assert helps[0]['kind']=='advisor'
+  assert helps[0]['reservation']['help_count']==helps[0]['reservation']['help_credits']==1
+  assert c['used']['help_count']==c['used']['help_credits']==1
  if policy=='retry_k_then_ask':assert [j['version'] for j in helps]==[3]
  for v in c['versions']:
   if v['help']:

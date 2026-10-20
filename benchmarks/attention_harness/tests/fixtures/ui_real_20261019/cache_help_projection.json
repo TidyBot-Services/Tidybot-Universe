@@ -1,0 +1,28 @@
+{
+  "help_content": {
+    "provider": "cache",
+    "content": [{"authority": "test-grant", "content": "Use the memory note", "memory_id": "c1-seeded-retrieve-disable-001"}]
+  },
+  "planner_memory": {
+    "empty": false,
+    "queues": [],
+    "validations": [],
+    "generations": [],
+    "receipts": [],
+    "retrievals": [{
+      "version": 1,
+      "authority": "controlled-test-authority",
+      "namespace": "daily-test",
+      "entries": [{
+        "memory_id": "c1-seeded-retrieve-disable-001",
+        "version": 1,
+        "grant_id": "test-grant",
+        "status": "trusted",
+        "source": "Seeded for tests",
+        "seeded_for_tests": true,
+        "excluded_from_results": true,
+        "applicability": {"seed": 102, "scene_id": "scene-102"}
+      }]
+    }]
+  }
+}

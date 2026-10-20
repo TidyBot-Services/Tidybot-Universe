@@ -1876,7 +1876,7 @@
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
             <label class="ab-launch-field">Whole run time limit (seconds)<input name="wall_seconds" type="number" min="30" value="21600" required><small data-wall-description>6 hours · stored in seconds</small></label>
-            <label class="ab-launch-field">AI thinking time per task (minutes)<input name="model_seconds_minutes" type="number" min="5" value="30" required></label>
+            <label class="ab-launch-field">AI thinking time per task (minutes)<input name="model_seconds_minutes" type="number" min="5" value="${options?.dev_v2?.model_reserve_seconds===240?40:30}" required>${options?.dev_v2?.model_reserve_seconds===240?'<small>Five Dev versions, five reviews and five hints can reserve 40 minutes.</small>':''}</label>
             <label class="ab-launch-field">Robot time per attempt<output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls)<output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field" data-v2-tokens>AI tokens<output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
@@ -2710,12 +2710,12 @@
         <button type="button" data-dev-memory-refresh>Refresh Dev v2 Memory directory</button>
         <p data-dev-memory-message role="status">${esc(devMemoryMessage)}</p><p data-dev-memory-error role="alert">${esc(devMemoryError)}</p>
         ${!devCanOperate?`<p>Lifecycle controls disabled: ${devMemoryCatalogue?'Memory operator authority is not configured on this server.':'Checking server operator authority.'}</p>`:''}
-        <div data-dev-memory-directory><h5>Current Dev v2 Memory directory</h5>${devRows.length?devRows.map(row=>`<article data-dev-memory-record><b>${esc(row.memory_id)} @ ${esc(row.version)} · ${esc(row.status)}</b><p>Source: ${esc(row.source_label || 'Unverified')}${row.seeded_for_tests||row.excluded_from_results?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}</p><p>Applicability: ${esc(JSON.stringify(row.applicability_summary || {}))}</p>${devControls(row.memory_id)}</article>`).join(''):'<p>No Dev v2 Memory records loaded.</p>'}</div>
+        <div data-dev-memory-directory><h5>Current Dev v2 Memory directory</h5>${devRows.length?devRows.map(row=>`<article data-dev-memory-record id="dev-memory-${encodeURIComponent(row.memory_id)}"><b>${esc(row.memory_id)} @ ${esc(row.version)} · ${esc(row.status)}</b><p>Source: ${esc(row.source_label || 'Unverified')}${row.seeded_for_tests||row.excluded_from_results?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}</p><p>Applicability: ${esc(JSON.stringify(row.applicability_summary || {}))}</p>${devControls(row.memory_id)}</article>`).join(''):'<p>No Dev v2 Memory records loaded.</p>'}</div>
         ${devMemoryDetail?`<details data-dev-memory-history open><summary>Lifecycle events · ${esc(devMemoryDetail.memory?.memory_id)}</summary><p>Current status: ${esc(devMemoryDetail.memory?.status)}</p><pre>${esc(JSON.stringify(devMemoryDetail.history || [],null,2))}</pre></details>`:''}
         ${dev.empty?'<p data-dev-memory-empty>No Dev v2 Memory candidates, validation dispatches or uses are recorded for this cell.</p>':''}
         ${dev.queues.map(q=>`<article data-memory-queue><b>${esc(q.source)} · v${esc(q.version)}</b><p>${esc(q.status)} · ${esc(q.kind)}${q.kind==='source'?' · proposal only; not an authority candidate':''}</p></article>`).join('')}
         ${dev.validations.map(v=>`<article data-memory-validation><b>Validation · v${esc(v.version)}</b><p>${esc(v.exposure)} · grant ${esc(v.grant_id)} · ${esc(v.status)} · ${esc(v.memory_ids.join(', ')||'control')}</p></article>`).join('')}
-        ${dev.retrievals.map(r=>`<article data-memory-retrieval><b>Dev exposure · v${esc(r.version)}</b><p>Authority ${esc(r.authority)} · namespace ${esc(r.namespace)}</p>${r.entries.length?r.entries.map(e=>`<div data-request-memory><p>Source: ${esc(e.source)}${e.excluded_from_results||e.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':e.source==='Source unverified'?' · exclude from results until provenance is verified':''} · ${esc(e.memory_id)} @ ${esc(e.version)} · ${esc(e.status|| (e.trusted?'trusted':'untrusted'))} at retrieval · grant ${esc(e.grant_id)}<br>Applicability: ${esc(JSON.stringify(e.applicability))}</p>${devControls(e.memory_id)}</div>`).join(''):'<p>No matching trusted Memory was granted.</p>'}</article>`).join('')}
+        ${dev.retrievals.map(r=>`<article data-memory-retrieval><b>Dev exposure · v${esc(r.version)}</b><p>Authority ${esc(r.authority)} · namespace ${esc(r.namespace)}</p>${r.entries.length?r.entries.map(e=>`<div data-request-memory><p>Source: ${esc(e.source)}${e.excluded_from_results||e.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':e.source==='Source unverified'?' · exclude from results until provenance is verified':''} · ${esc(e.memory_id)} @ ${esc(e.version)} · ${esc(e.status|| (e.trusted?'trusted':'untrusted'))} at retrieval · grant ${esc(e.grant_id)}<br>Applicability: ${esc(JSON.stringify(e.applicability))}</p><a href="#dev-memory-${encodeURIComponent(e.memory_id)}" data-dev-memory-jump>Open directory actions</a></div>`).join(''):'<p>No matching trusted Memory was granted.</p>'}</article>`).join('')}
         ${dev.generations.map(g=>`<article data-memory-generation><b>Generation use · v${esc(g.version)}</b><p>Memory input ${esc(g.memory_packet_sha256)} · model input ${esc(g.model_input_sha256)} · generated source ${esc(g.result_source_sha256)}</p></article>`).join('')}
         ${dev.receipts.map(r=>`<article data-memory-receipt><b>Source: ${esc(r.source)} · ${esc(r.operation)} · v${esc(r.version)}</b>${r.seeded_for_tests?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}<p>${esc(r.status)}${r.authority_status?` · ${esc(r.authority_status)}`:''}</p></article>`).join('')}
       </div>`:''}
@@ -3359,11 +3359,13 @@
       const k=attempt?attempt.index+1:null;
       const seconds=response?.created_at!=null && request.created_at!=null ? Math.max(0,Math.round(response.created_at-request.created_at)) : null;
       const author=response?.responder==='advisor_proxy'?'Advisor (simulated human)':response?.responder==='human'?'You':'Operator';
-      return `<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${operatorRequestView(request.request_view,request.request_id)}${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`;
-    }).join('');
+      return {version:Number(request.request_id.match(/:v(\d+):help$/)?.[1]??Infinity),html:`<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${operatorRequestView(request.request_view,request.request_id)}${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`};
+    });
+    const memoryNotes=(snapshot.memory?.dev_v2?.retrievals||[]).flatMap(retrieval=>retrieval.entries.map(entry=>({version:retrieval.version,html:`<li data-memory-note-used><div><b>Memory note used · v${esc(retrieval.version)}</b><small>${esc(entry.status)} at retrieval</small></div><div><p>${esc(entry.memory_id)} @ ${esc(entry.version)} · grant ${esc(entry.grant_id)} · ${esc(entry.source)}${entry.seeded_for_tests||entry.excluded_from_results?'<strong class="ab-memory-test-label">seeded for tests, excluded from results</strong>':''}</p></div></li>`})));
     const hint=snapshot.dev_session && !snapshot.dev_v2 && snapshot.attention_control?.hint;
     const devReply=hint?.content?`<li><div><b>After attempt ${Math.max(1,hint.version-1)}</b><small>${hint.answered_at != null && hint.created_at != null ? `Answered in ${humanDuration(hint.answered_at-hint.created_at)}`:'Answered'}</small></div><div><p class="op-asked">Asked: "Attempt ${Math.max(1,hint.version-1)} failed. How should I fix it?"</p><span class="op-who">You</span><div class="op-clamp" data-operator-copy>${esc(hint.content)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button></div></li>`:'';
-    return thread||devReply?`<ul class="op-thread">${thread}${devReply}</ul>`:'';
+    const history=[...thread,...memoryNotes].sort((a,b)=>a.version-b.version).map(row=>row.html).join('');
+    return history||devReply?`<ul class="op-thread">${history}${devReply}</ul>`:'';
   }
   function operatorRequestView(projection,requestId) {
     if(!projection || !Array.isArray(projection.items))return '';
@@ -3499,7 +3501,7 @@
         rows.push({id:e.request_id,kind:'hint',reason:control?.hint?.request_id===e.request_id?control.hint.reason:null,requestedAt:e.at,answeredAt:closed&&closed.kind==='hint_answered'?closed.at:null,state:closed?closed.kind.slice(5):'pending',responder:'human',nextIndex:e.version});
       }
     } else if (dev) {
-      for (const job of (dev.jobs||[]).filter(j=>['advisor','demo','cache'].includes(j.kind)).sort((a,b)=>a.version-b.version))
+      for (const job of (dev.jobs||[]).filter(j=>['advisor','demo'].includes(j.kind)).sort((a,b)=>a.version-b.version))
         rows.push({id:job.job_id||`${job.kind}:${job.version}`,kind:job.kind==='demo'?'demo':'advisor',reason:null,requestedAt:null,answeredAt:null,state:job.state==='settled'?'answered':'pending',responder:'advisor',nextIndex:job.version-1});
     } else {
       for (const r of snapshot.requests||[]) {
@@ -4149,7 +4151,10 @@
       for (const [key,value] of Object.entries(job.reservation || {})) reserved[key] = (reserved[key] || 0) + value;
     }
     const budget = {...cell.budget,model_calls:cell.budget.dev_calls,tokens:cell.budget.provider_tokens,wall_seconds:(cell.ledger.goal.wall_limit??cell.ledger.goal.limits.wall_seconds)};
-    const used = {...cell.used,model_calls:cell.used.dev_calls,tokens:cell.used.provider_tokens,wall_seconds:cell.ledger.goal.wall_used};
+    const cacheHelpUsed=cell.jobs.filter(j=>j.kind==='cache'&&j.state==='settled').reduce((total,j)=>total+(j.actual?.help_count||0),0);
+    const cacheHelpHeld=cell.jobs.filter(j=>j.kind==='cache'&&['reserved','claimed','needs_review'].includes(j.state)).reduce((total,j)=>total+(j.reservation?.help_count||0),0);
+    const used = {...cell.used,help_count:Math.max(0,cell.used.help_count-cacheHelpUsed),model_calls:cell.used.dev_calls,tokens:cell.used.provider_tokens,wall_seconds:cell.ledger.goal.wall_used};
+    reserved.help_count=Math.max(0,reserved.help_count-cacheHelpHeld);
     reserved.model_calls=reserved.dev_calls;reserved.tokens=reserved.provider_tokens;reserved.wall_seconds=0;
     const remaining = Object.fromEntries(Object.keys(budget).map(k=>[k,Math.max(0,(budget[k]||0)-(used[k]||0)-(reserved[k]||0))]));
     remaining.wall_seconds=cell.ledger.goal.wall_remaining;
@@ -4184,7 +4189,7 @@
     snapshot.requests=[];snapshot.responses={};
     for(const version of cell.versions) {
       const help=version.help_content, decision=version.decision_content;
-      if(!help && decision?.action!=='request')continue;
+      if(help?.provider==='cache'||(!help && decision?.action!=='request'))continue;
       const helpJob=cell.jobs.find(j=>j.version===version.version && ['advisor','demo','cache','human'].includes(j.kind));
       const before=snapshot.attempts.find(a=>a.dev_version===version.version-1);
       const after=snapshot.attempts.find(a=>a.dev_version===version.version);

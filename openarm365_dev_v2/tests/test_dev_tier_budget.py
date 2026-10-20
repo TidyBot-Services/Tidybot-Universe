@@ -84,6 +84,27 @@ def test_explicit_legacy_tier_preserves_old_envelope_and_is_frozen(monkeypatch):
     assert tuple(derive_cell_budget(new)[k] for k in ('sdk_calls','control_steps'))==(960,28800)
 
 
+def test_dev_model_deadline_only_and_frozen_legacy_arithmetic():
+    from benchmarks.attention_harness.dev_configuration import worst_slot
+    from benchmarks.attention_harness.dev_experiment import slot_wall_seconds
+    from benchmarks.attention_harness.dev_probe import probe_budget
+    from benchmarks.attention_harness.eval_agent import default_config as eval_default
+    dev = normalize_configuration({'eval_agent': eval_default(True), 'help_budget': 5})
+    old_dev = normalize_configuration({'model_reserve_seconds': 120, 'eval_agent': eval_default(True), 'help_budget': 5})
+    legacy = normalize_configuration({'budget_tier': 'legacy', 'eval_agent': eval_default(True), 'help_budget': 5})
+    assert (dev['model_reserve_seconds'], old_dev['model_reserve_seconds'], legacy['model_reserve_seconds']) == (240, 120, 120)
+    assert derive_cell_budget(dev)['model_seconds'] == 5*240 + (5+3)*120
+    assert derive_cell_budget(dev)['model_seconds'] - derive_cell_budget(old_dev)['model_seconds'] == 5*120
+    assert derive_cell_budget(dev)['help_wait_seconds'] == derive_cell_budget(old_dev)['help_wait_seconds']
+    assert worst_slot(dev) - worst_slot(old_dev) == 120
+    assert slot_wall_seconds({'schema':'attentionbench.dev-experiment.v3', **dev}) == worst_slot(dev)
+    assert [probe_budget('dev', value)['model_seconds'] for value in (120, 240)] == [120, 240]
+    assert probe_budget('legacy')['model_seconds'] == 120
+    for tier, seconds in [('dev', 241), ('legacy', 240)]:
+        with pytest.raises(ValueError, match='SDK/provider deadline'):
+            normalize_configuration({'budget_tier': tier, 'model_reserve_seconds': seconds})
+
+
 def test_v2_budget_authorization_is_bound_to_tier(tmp_path):
     path=tmp_path/'budget.json'
     original={'goal':dev_experiment.GOAL,'limits':{'dev_calls':28,'advisor_calls':14,

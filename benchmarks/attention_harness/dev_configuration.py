@@ -8,7 +8,7 @@ PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_fai
 # Successful process exit alone cannot declare task completion. No scoring is read.
 def normalize_configuration(selection):
  tier=selection.get('budget_tier','dev')
- p=dict(target_depth=3,target_valid_executions=3,max_versions=5,coverage='strict_full_depth',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],startup_cleanup_seconds=60,model_reserve_seconds=120,max_input_bytes_per_request=30000,public_failure_rule=PUBLIC_FAILURE_RULE)
+ p=dict(target_depth=3,target_valid_executions=3,max_versions=5,coverage='strict_full_depth',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],startup_cleanup_seconds=60,model_reserve_seconds=240 if tier=='dev' else 120,max_input_bytes_per_request=30000,public_failure_rule=PUBLIC_FAILURE_RULE)
  p.update({k:v for k,v in selection.items() if k in FIELDS})
  if 'goal_key' in p:
   import re
@@ -35,7 +35,7 @@ def normalize_configuration(selection):
  if p['coverage'] not in {'strict_full_depth','budget_limited'}:raise ValueError('unknown coverage')
  if p['public_failure_rule']!=PUBLIC_FAILURE_RULE:raise ValueError('unregistered public failure rule')
  # SDK Safety ceilings are preserved; lowering an experiment wall is supported.
- if p['attempt_wall_seconds']>task_limits(tier)['attempt_seconds'] or p['model_reserve_seconds']!=120:raise ValueError('SDK/provider deadline contract exceeded')
+ if p['attempt_wall_seconds']>task_limits(tier)['attempt_seconds'] or p['model_reserve_seconds'] not in ((120,240) if tier=='dev' else (120,)):raise ValueError('SDK/provider deadline contract exceeded')
  if tier=='dev':p['budget_tier']='dev'
  if p['max_input_bytes_per_request']>30000:raise ValueError('public input contract exceeded')
  return p
@@ -85,7 +85,7 @@ def derive_cell_budget(p,sdk_calls=None,horizon=None):
  advisor=p.get('advisor_proxy') or {}
  reading=advisor.get('reading_seconds',30)
  provider_tokens=g*(i+8192)+eval_count*(i+10*FRAME_TOKEN_BOUND+MAX_TOKENS)+h*(i+1024)
- return dict(dev_calls=g,advisor_calls=h,eval_calls=eval_count,executions=e,provider_tokens=provider_tokens,input_tokens=(g+h+eval_count)*i+eval_count*10*FRAME_TOKEN_BOUND,output_tokens=g*8192+eval_count*MAX_TOKENS+h*1024,model_seconds=(g+h+eval_count)*s,help_wait_seconds=h*s+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,hint_human_seconds=h*(p['attempt_wall_seconds']+reading) if advisor.get('enabled') else 0,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon)
+ return dict(dev_calls=g,advisor_calls=h,eval_calls=eval_count,executions=e,provider_tokens=provider_tokens,input_tokens=(g+h+eval_count)*i+eval_count*10*FRAME_TOKEN_BOUND,output_tokens=g*8192+eval_count*MAX_TOKENS+h*1024,model_seconds=g*s+(h+eval_count)*120,help_wait_seconds=h*120+g*p.get('planner_features',{}).get('human_wait_seconds',0),help_count=h,help_credits=h,hint_human_seconds=h*(p['attempt_wall_seconds']+reading) if advisor.get('enabled') else 0,execution_seconds=e*(p['attempt_wall_seconds']+p['startup_cleanup_seconds']),sdk_calls=e*sdk_calls,control_steps=e*horizon)
 
 def configured_budget(p):
  limits=task_limits(p.get('budget_tier','legacy'))
@@ -99,4 +99,4 @@ def configured_budget(p):
  minimum=derive_cell_budget({**p,'max_versions':1,'target_valid_executions':1,'help_budget':0})
  if any(b[k]<minimum[k] for k in limited):raise ValueError('zero capacity budget refused')
  return b
-def worst_slot(p):return ((2+int(p.get('eval_agent',{}).get('enabled',False)))*p['model_reserve_seconds']+p['attempt_wall_seconds']+p['startup_cleanup_seconds']+p.get('planner_features',{}).get('human_wait_seconds',0)+2*p.get('planner_features',{}).get('background_seconds',0))
+def worst_slot(p):return (p['model_reserve_seconds']+120*(1+int(p.get('eval_agent',{}).get('enabled',False)))+p['attempt_wall_seconds']+p['startup_cleanup_seconds']+p.get('planner_features',{}).get('human_wait_seconds',0)+2*p.get('planner_features',{}).get('background_seconds',0))

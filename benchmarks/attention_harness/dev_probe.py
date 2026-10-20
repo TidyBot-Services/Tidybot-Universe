@@ -7,9 +7,9 @@ from .dev_loop import process_identity
 from .dev_v2_loop import provider_call,execute,immutable,job_for
 from .core.dev_store import DevConflict
 from openarm365_dev_v2.diag_budget import task_limits
-def probe_budget(budget_tier='dev'):
+def probe_budget(budget_tier='dev',model_reserve_seconds=None):
  limits=task_limits(budget_tier)
- return dict(eval_calls=0,dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=2*limits['sdk_calls'],control_steps=2*limits['control_steps'],help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=120,execution_seconds=2*__import__('math').ceil(540*limits['attempt_seconds']/480))
+ return dict(eval_calls=0,dev_calls=1,advisor_calls=0,provider_tokens=10000,input_tokens=2000,output_tokens=256,executions=2,sdk_calls=2*limits['sdk_calls'],control_steps=2*limits['control_steps'],help_credits=0,help_count=0,help_wait_seconds=0,model_seconds=model_reserve_seconds if model_reserve_seconds is not None else (240 if budget_tier=='dev' else 120),execution_seconds=2*__import__('math').ceil(540*limits['attempt_seconds']/480))
 PROBE_BUDGET=probe_budget()
 SOURCE='from robot_sdk import sensors\nobservation = sensors.get_observation()\n'
 def create_probe(store,parent):
@@ -21,7 +21,7 @@ def create_probe(store,parent):
  if row:return snapshot(store,eid)
  directory=Path(e['artifact_dir']).parent/eid;directory.mkdir(parents=True,exist_ok=True)
  tasks=m['selection']['tasks'];seed=m['selection']['seeds'][0]
- tier=m.get('budget_tier','legacy');reserve=probe_budget(tier);limits=task_limits(tier)
+ tier=m.get('budget_tier','legacy');reserve=probe_budget(tier,m.get('model_reserve_seconds',120));limits=task_limits(tier)
  if len(tasks)!=2:raise ValueError('probe preflight uses two registered tasks')
  cells=[dict(key=cell_key(eid,t,seed,'autonomous'),task_id=t,seed=seed,policy_id='autonomous') for t in tasks]
  pm=copy.deepcopy(m);pm.update(experiment_id=eid,cells=cells,schedule=[],report_scope='probe only, excluded from comparison')
@@ -37,7 +37,7 @@ def create_probe(store,parent):
   store.put(db,'experiments',eid,pe)
   for i,row in enumerate(cells):
    b={k:0 for k in RESOURCES};b.update(executions=1,sdk_calls=limits['sdk_calls'],control_steps=limits['control_steps'],execution_seconds=reserve['execution_seconds']//2)
-   if i==0:b.update(dev_calls=1,provider_tokens=10000,input_tokens=2000,output_tokens=256,model_seconds=120)
+   if i==0:b.update(dev_calls=1,provider_tokens=10000,input_tokens=2000,output_tokens=256,model_seconds=reserve['model_seconds'])
    payload=dict(row,experiment_id=eid,state='planned',owner=None,mode='probe',mixed_policy=False,experiment_eligible=False,policy_segments=['autonomous'],budget=b,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False,probe_max_tokens=256,runtime={k:m[k] for k in ['model_reserve_seconds','startup_cleanup_seconds','max_input_bytes_per_request','source_size_limit_bytes','public_failure_rule']})
    db.execute('INSERT INTO v2_cells VALUES (?,?,?)',(row['key'],eid,encoded(payload)))
  return snapshot(store,eid)

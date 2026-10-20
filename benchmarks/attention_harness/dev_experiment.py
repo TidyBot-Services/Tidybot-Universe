@@ -191,7 +191,7 @@ def create(store,artifact_root,selection):
     manifest=dict(schema='attentionbench.dev-experiment.v2',experiment_id=exp_id,selection=normalized,
         model=MODEL,cell_budget=budget,goal_limits=task_goal_limits(budget_tier),wall_limit=task_goal_wall_limit(budget_tier),opening=[] if v3 else store.goal()['opening'],
         robot='OpenArm365',execution_arm='both',configs=configs,initial_sources=sources,identity_lock=ref,
-        memory=EMPTY_MEMORY,help_pricing=HELP_PRICING,demos=demos,policies=parameters,trace_visible=trace_visible,
+        memory=EMPTY_MEMORY,help_pricing=({**HELP_PRICING,'cache':{'credits':0,'count':0}} if v3 else HELP_PRICING),demos=demos,policies=parameters,trace_visible=trace_visible,
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
     if budget_tier=='dev':manifest['budget_tier']='dev'
     if v3:

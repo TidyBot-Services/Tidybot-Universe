@@ -8,6 +8,7 @@ const root=path.join(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'ui/live.js'),'utf8');
 const real=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ui_real_20261019/devexp-7cf85c4709a356146dfe3b3c.view.json'),'utf8'));
 const directory=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ui_real_20261019/dev_v2_memory_directory.json'),'utf8'));
+const cached=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ui_real_20261019/cache_help_projection.json'),'utf8'));
 const esc=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const panelSource=source.slice(source.indexOf('  function memoryPanel(snapshot) {'),source.indexOf('  function attentionRunContext(snapshot) {'));
 const bindSource=source.slice(source.indexOf('  function bindAttentionPanels(snapshot,chosen) {'),source.indexOf('  // End Attention mechanism presentation.'));
@@ -42,8 +43,46 @@ test('real-shaped directory shows status, source, scope and four controls in 04'
   assert.match(html,/seeded for tests, excluded from results/);
   assert.match(html,/scene-102/);
   for(const action of Object.keys(h.buttons))assert.match(html,new RegExp(`data-dev-memory-action="${action}"`));
+  for(const action of Object.keys(h.buttons))assert.equal((html.match(new RegExp(`data-dev-memory-action="${action}"`,'g'))||[]).length,1);
   assert.match(source,/\$\{runSettings\(snapshot\)\}\$\{runOverview\(snapshot\)\}\$\{executionViewer\(snapshot\)\}\$\{requestPanel\(snapshot,chosen\)\}\$\{resourceDetails\(snapshot\)\}/);
   assert.match(source,/data-memory-operation/);
+});
+
+test('cache help is a Memory note in 04 and never an Operator reply or Help request',async()=>{
+  const cell=structuredClone(real);
+  cell.versions=cell.versions.slice(0,1);
+  cell.versions[0].help_content=cached.help_content;
+  cell.planner_memory=cached.planner_memory;
+  cell.used.help_count=1;
+  cell.jobs=[{kind:'cache',version:1,state:'settled',actual:{help_count:1},reservation:{help_count:1}}];
+  const projectionSource=source.slice(source.indexOf('  function devV2State('),source.indexOf('  async function updateV2Snapshot('));
+  const historySource=source.slice(source.indexOf('  function operatorHelpHistory('),source.indexOf('  function operatorRequestView('));
+  const ctx=vm.createContext({
+    launchOptions:{dev_v2:{}},v2MonitorIdentities:new Map(),devMemoryCatalogue:directory,
+    devWorkspaceSnapshot:async session=>({dev_session:session,requests:[],responses:{},attempts:[],traces:{},station:{},run:{},resources:{help_count:{used:session.used.help_count,limit:session.budget.help_count}},eval:{native_outcomes:{}},response_evidence:{},dev_evidence_gaps:[]}),
+    esc,operatorLast:()=>null,selectedMomentDetails:()=>'',operatorRequestView:()=>'',readableReply:()=>'',humanDuration:()=>'',
+  });
+  vm.runInContext(projectionSource+historySource,ctx);
+  const session={session_id:'fixture',locked:{config:{eval_agent:{enabled:false}}},artifact_dir:cell.artifact_dir};
+  const projected=await vm.runInContext('devV2WorkspaceSnapshot(session,cell,{state:"completed"})',vm.createContext({...ctx,session,cell}));
+  assert.equal(projected.requests.length,0);
+  assert.equal(projected.resources.help_count.used,0);
+  const ledgerSource=source.slice(source.indexOf('  function attentionLedger('),source.indexOf('  function attentionTime('));
+  const ledgerContext=vm.createContext({isTerminal:()=>false});
+  vm.runInContext(ledgerSource,ledgerContext);
+  ledgerContext.projected=projected;
+  assert.equal(vm.runInContext('attentionLedger(projected).requests',ledgerContext),0);
+  const history=vm.runInContext('operatorHelpHistory(projected)',vm.createContext({...ctx,projected}));
+  assert.match(history,/Memory note used · v1/);
+  assert.match(history,/c1-seeded-retrieve-disable-001/);
+  assert.match(history,/seeded for tests, excluded from results/);
+  assert.doesNotMatch(history,/Operator|op-who|&quot;authority&quot;|\[\{&quot;/);
+  const memorySnapshot={...snapshot,memory:{...snapshot.memory,dev_v2:cached.planner_memory}};
+  const h=harness();
+  h.ctx.memorySnapshot=memorySnapshot;
+  const panel=vm.runInContext('memoryPanel(memorySnapshot)',h.ctx);
+  assert.match(panel,/data-dev-memory-jump/);
+  for(const action of ['disable','enable','expiry','rollback'])assert.equal((panel.match(new RegExp(`data-dev-memory-action="${action}"`,'g'))||[]).length,1);
 });
 
 test('all actions submit actor and reason, refresh state and show lifecycle events',async()=>{

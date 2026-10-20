@@ -426,6 +426,12 @@ def test_simulated_full_loop_memory_revision_human_motion_ledger(tmp_path, monke
     cell = final['cells'][0]
     assert cell['state'] == 'completed' and len(decisions) == 2
     assert cell['used']['executions'] == 2 and cell['used']['dev_calls'] == 2
+    cache_jobs = [job for job in cell['jobs'] if job['kind'] == 'cache']
+    assert len(cache_jobs) == 2
+    assert all(job['reservation'] == job['actual'] ==
+               {'help_count': 0, 'help_credits': 0, 'help_wait_seconds': 0} for job in cache_jobs)
+    assert cell['used']['help_count'] == cell['used']['help_credits'] == 0
+    assert json.loads(Path(e['manifest']['uri']).read_bytes())['help_pricing']['cache'] == {'credits': 0, 'count': 0}
     assert s.export_ledger()['recompute_matches'] and not any(s.export_ledger()['goal']['reserved'].values())
     for v in cell['versions']:
         inp = json.loads(Path(v['model_input']['uri']).read_bytes())

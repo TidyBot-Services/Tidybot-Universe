@@ -2,7 +2,7 @@
 import difflib,json,math,os,re,threading,time,inspect,subprocess,sys,signal
 from pathlib import Path
 from .dev_loop import immutable as write_immutable,sha,public_feedback,numbers,process_identity,validation_diagnostic
-from .dev_help import public_screen,decide,AdvisorProvider,DemoProvider,HumanProvider,policy_parameters
+from .dev_help import public_screen,decide,AdvisorProvider,DemoProvider,HumanProvider,policy_parameters,HELP_PRICING
 from .dev_tasks import get_task
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .parcc_client import ParccClient,ParccResponse,ParccError
@@ -63,7 +63,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
         if cell.get('planner_features') and kind=='advisor':
             from .dev_planner import PlannerControl,advisor_scope
             control=PlannerControl(store);scope=advisor_scope(store,key,version,messages)
-            row=control.request(key,version,'advisor',scope,runtime.get('model_reserve_seconds',120))
+            row=control.request(key,version,'advisor',scope,120)
             row=control.finish_advisor(row['request_id'],response=receipt['response'],current_scope=scope)
             if not row.get('accepted'):raise PlannerActionBlocked('Advisor response no longer valid: '+row['state'])
         return output['content'],receipt['request'],receipt['response'],receipt['usage']
@@ -72,7 +72,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     max_tokens=cell.get('probe_max_tokens',MODEL['max_tokens'] if kind=='model' else 2048)
     input_bound=dev_input_bound(messages)
     if runtime and input_bound>runtime['max_input_bytes_per_request']:raise DevBudgetExhausted('input_bound_exceeded: '+str(input_bound))
-    seconds=runtime.get('model_reserve_seconds',120)
+    seconds=runtime.get('model_reserve_seconds',120) if kind=='model' else 120
     reservation={'dev_calls' if kind=='model' else 'advisor_calls':1,'provider_tokens':input_bound+max_tokens,
                  'input_tokens':input_bound,'output_tokens':max_tokens,'model_seconds':seconds}
     if kind=='advisor':reservation.update(help_count=1,help_credits=1,help_wait_seconds=seconds)
@@ -313,7 +313,8 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         help_record=immutable(directory/'help.json',{**hint,'request':request,'response':response,'usage':usage})
     elif action=='retrieve_memory':
         help_record=immutable(directory/'help.json',{'provider':'cache','content':decision['memory']})
-        job=store.reserve(key,version,'cache',{'help_count':1,'help_credits':1,'help_wait_seconds':0})
+        price=m.get('help_pricing',HELP_PRICING)['cache']
+        job=store.reserve(key,version,'cache',{'help_count':price['count'],'help_credits':price['credits'],'help_wait_seconds':0})
         if not job.get('claimed_at') and not job.get('actual'):store.claim(job['job_id'],owner)
         store.settle(job['job_id'],job['reservation'],{'help':help_record})
     packet={k:v for k,v in decision.items() if k!='context'}
@@ -424,7 +425,7 @@ def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailab
     bundle=json.loads(checked(execution['receipt']['bundle']).read_bytes())
     evidence=build_eval_evidence(bundle['artifact_dir'],config)
     bound=len(json.dumps({k:v for k,v in evidence.items() if k!='frames'},ensure_ascii=False).encode())+len(evidence['frames'])*eva.FRAME_TOKEN_BOUND+4096
-    seconds=cell.get('runtime',{}).get('model_reserve_seconds',120)
+    seconds=120
     reservation={'eval_calls':1,'provider_tokens':bound+eva.MAX_TOKENS,'input_tokens':bound,'output_tokens':eva.MAX_TOKENS,'model_seconds':seconds}
     unmetered=eva.is_unmetered(config.get('eval_agent'))
     store.reserve_check(key,reservation,unmetered_eval=unmetered) if not existing else None
@@ -569,7 +570,7 @@ def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifac
         evidence=request_view
         view_ref=immutable(artifact.parent/'advisor-input.json',request_view)
     public_screen({k:v for k,v in evidence.items() if k!='frames'})
-    bound=advisor.worst_case_input_bound(evidence);seconds=cell.get('runtime',{}).get('model_reserve_seconds',120)
+    bound=advisor.worst_case_input_bound(evidence);seconds=120
     recording_seconds=(execution.get('actual') or {}).get('execution_seconds',0)
     # The visual Advisor allows at most MAX_TOKENS output tokens. At roughly
     # 0.75 English words/token, 1024 tokens reserve 768 answer words.
