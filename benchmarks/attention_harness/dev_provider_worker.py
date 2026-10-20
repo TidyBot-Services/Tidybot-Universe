@@ -35,7 +35,7 @@ def main():
         def observed(status, headers, raw):
             immutable(a.directory / (a.kind + '-provider-response.json'), dict(
                 http_status=status, request_id=headers.get('x-request-id'), body=json.loads(raw)))
-        client = ParccClient(api_key=key, max_attempts=1, timeout_seconds=seconds, response_observer=observed)
+        client = ParccClient(api_key=key, max_attempts=1, timeout_seconds=seconds, response_observer=observed, stream=True)
         response = client.chat(**{k: request[k] for k in ('model', 'max_tokens', 'messages', 'temperature', 'reasoning_effort')})
         immutable(a.directory / (a.kind + '-output.json'), response.artifact())
     finally:
