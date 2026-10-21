@@ -12,6 +12,9 @@ from urllib.request import Request, urlopen
 from .identity import IdentityError, load_lock, verify_files, verify_service, verify_client_imports
 
 
+PLAN_REQUEST_TIMEOUT_SECONDS = 180.0
+
+
 class PlanningRejected(RuntimeError):
     """V2 refused the request. No trajectory may be dispatched."""
 
@@ -57,9 +60,8 @@ class V2Client:
         request = Request(self.url + path, data=None if body is None else json.dumps(body, allow_nan=False).encode(),
                           headers={"Authorization": "Bearer " + self.token, "X-Curobo-Instance": self.nonce,
                                    "Content-Type": "application/json"})
-        # Model compilation belongs to bounded startup. Planning retains the
-        # original 8-second ceiling and never retries after a timeout.
-        with urlopen(request, timeout=min(60. if path == "/warmup" else 8., left)) as response:
+        # Valid plans can exceed 8 s, so planning allows 180 s and never retries after a timeout.
+        with urlopen(request, timeout=min(60. if path == "/warmup" else PLAN_REQUEST_TIMEOUT_SECONDS, left)) as response:
             if (response.headers.get("x-curobo-instance") != self.nonce
                     or response.headers.get("x-curobo-lock") != self.lock_sha):
                 raise IdentityError("Planner response came from a different service instance")
