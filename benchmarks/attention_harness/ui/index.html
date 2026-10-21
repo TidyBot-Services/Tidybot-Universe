@@ -2258,6 +2258,9 @@ html:has(#attentionbench-clear[data-operator-view="true"]),body:has(#attentionbe
 #attentionbench-clear.ab-industrial .ab-record-restore,#attentionbench-clear.ab-industrial .ab-run-actions button{min-width:30px}
 #attentionbench-clear.ab-industrial .ab-sidebar :is(.ab-run-actions button,.ab-record-restore){border-radius:999px;box-shadow:0 1px 2px #24282214}
 #attentionbench-clear.ab-industrial .ab-session-dialog :is(button.ab-button-quiet,button.ab-button-primary,button.ab-button-danger,:is(.ab-launch-header,.ab-dag-dialog-header,.ab-session-modal>.panel-title)>button){border-radius:999px;box-shadow:0 1px 2px #24282214;transform:none}
+/* Replay: the step column is exactly as tall as the video and scrolls on its own; the Eval review spans both columns below (user 2026-10-22). */
+@media(min-width:761px){#attentionbench-clear[data-operator-view="true"] .ab-viewer-layout{align-items:stretch}#attentionbench-clear[data-operator-view="true"] .ab-viewer-trace{contain:size;display:flex;flex-direction:column;min-height:300px;overflow:hidden}#attentionbench-clear[data-operator-view="true"] .ab-viewer-trace .ab-history-events{flex:1 1 0;min-height:60px;max-height:none}#attentionbench-clear[data-operator-view="true"] .ab-viewer-trace>.op-revision{flex:none;max-height:45%;overflow:auto}}
+#attentionbench-clear[data-operator-view="true"] .ab-execution-viewer>.op-eval-review{margin-top:16px}
 /* the sticky running-status bar (z 45) sat on top of the open Notices panel */
 #attentionbench-clear header.top:has(.ab-notices-panel:not([hidden])){z-index:60}
 
