@@ -11,8 +11,11 @@ import hashlib
 import os
 import io
 import json
+import math
 import secrets
+import threading
 import time
+from datetime import datetime, timezone
 from uuid import uuid4
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -44,6 +47,7 @@ from .memory_view import ACTIONS as MEMORY_ACTIONS, MemoryView
 from .gpu_meter import COVERAGE as GPU_COVERAGE
 from .run_recovery import recover_lost_runs
 from .request_lifecycle import request_timeline
+from .codex_quota import read_quota
 
 
 UI_DIR = Path(__file__).with_name("ui")
@@ -549,6 +553,30 @@ def create_server(
     history = UIHistory(store) if store is not None else None
     fixed_ui = FixedUI(artifact_root) if artifact_root is not None else None
     control_token = secrets.token_urlsafe(32)
+    quota_cache = {'until': 0.0, 'value': {'available': False}}
+    quota_lock = threading.Lock()
+
+    def public_codex_quota():
+        with quota_lock:
+            now = time.monotonic()
+            if now >= quota_cache['until']:
+                try:
+                    raw = read_quota()
+                    used = raw.get('used_percent')
+                    window = raw.get('window_minutes')
+                    reset = raw.get('resets_at')
+                    plan = raw.get('plan_type')
+                    value = ({'used_percent': used,
+                              'window_minutes': window if type(window) is int and window > 0 else None,
+                              'resets_at': reset if type(reset) in (int, float) and math.isfinite(reset) else None,
+                              'plan_type': plan if isinstance(plan, str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,31}', plan) else None,
+                              'read_at': datetime.now(timezone.utc).isoformat()}
+                             if isinstance(used, (int, float)) and not isinstance(used, bool) and math.isfinite(used) and 0 <= used <= 100
+                             else {'available': False})
+                except Exception:
+                    value = {'available': False}
+                quota_cache.update(until=now + 10, value=value)
+            return quota_cache['value']
     human_token = os.environ.get('ATTENTION_HUMAN_APPROVAL_TOKEN','')
     if human_token and len(human_token)<24:raise ValueError('separate human capability must have at least 24 characters')
     profiles = load_catalog(run_catalog) if run_catalog is not None else []
@@ -758,6 +786,8 @@ def create_server(
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
             elif path == "/ui/live.js":
                 self._send((UI_DIR / "live.js").read_bytes(), "text/javascript; charset=utf-8")
+            elif path == "/api/codex-quota":
+                self._json(public_codex_quota())
             elif path in {"/ui/memory.html", "/ui/memory.js", "/ui/memory.css"}:
                 kind = "text/html; charset=utf-8" if path.endswith('.html') else "text/javascript; charset=utf-8" if path.endswith('.js') else "text/css; charset=utf-8"
                 body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()

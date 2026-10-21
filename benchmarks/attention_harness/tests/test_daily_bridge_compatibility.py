@@ -542,6 +542,25 @@ def test_daily_http_multiview_preview_files_and_readonly_ledger(experiment, tmp_
     assert store.path.read_bytes() == before
 
 
+def test_cell_view_carries_only_recorded_codex_quota_points(experiment, tmp_path):
+    from benchmarks.attention_harness.dev_v2_loop import immutable
+    bridge, _, e, store = experiment
+    cell = e['cells'][0]
+    root = tmp_path/'quota-version'
+    root.mkdir()
+    output = immutable(root/'model-output.json', {
+        'model_source': 'codex', 'quota_before': {'timestamp': '2026-10-20T01:00:00Z', 'used_percent': 10},
+        'quota_after': {'timestamp': '2026-10-20T01:01:00Z', 'used_percent': 12},
+        'credits_balance': 999, 'account_id': 'private-id'})
+    store.version(cell['key'], {'version': 1, 'source': immutable(root/'policy.py', 'pass'),
+        'diff': immutable(root/'diff.patch', ''), 'model_output': output, 'decision': None,
+        'formal_eligible': False})
+    view, _ = bridge.get('/api/dev-v2/experiments/'+e['experiment_id']+'/cells/'+cell['key']+'/view')
+    assert view['quota_usage'] == {'before': 10, 'after': 12}
+    assert 'credits_balance' not in view['quota_usage']
+    assert 'account_id' not in view['quota_usage']
+
+
 def test_dispatch_deadline_is_capped_by_original_clock_and_never_renewed(tmp_path, monkeypatch):
     bridge = daily.DailyDevV2(tmp_path / 'daily', [], per_run_budget=True)
     eid = 'devexp-' + 'd' * 24

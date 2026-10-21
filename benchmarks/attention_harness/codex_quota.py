@@ -1,5 +1,6 @@
 """Best-effort snapshot of the local Codex subscription window."""
 import json
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +44,44 @@ def read_quota(home=None):
 def quota_mark():
     return {"used_percent": read_quota()['used_percent'],
             "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+def run_quota_usage(cell, read_ref):
+    """Project only the first and last recorded Codex quota percentages."""
+    refs = [version.get('model_output') for version in cell.get('versions', [])]
+    for job in cell.get('jobs', []):
+        receipt = job.get('receipt') or {}
+        refs.extend(receipt.get(key) for key in ('response', 'advisor_answer', 'eval_review', 'review'))
+    calls = []
+    for ref in refs:
+        if not ref:
+            continue
+        try:
+            record = read_ref(ref)
+        except Exception:
+            continue
+        if not isinstance(record, dict) or record.get('model_source') != 'codex':
+            continue
+        marks = []
+        for key in ('quota_before', 'quota_after'):
+            mark = record.get(key)
+            if (isinstance(mark, dict) and isinstance(mark.get('timestamp'), str)
+                    and mark['timestamp']
+                    and isinstance(mark.get('used_percent'), (int, float))
+                    and not isinstance(mark['used_percent'], bool)
+                    and math.isfinite(mark['used_percent']) and 0 <= mark['used_percent'] <= 100):
+                marks.append(mark)
+            else:
+                marks.append(None)
+        if marks[0] or marks[1]:
+            calls.append((min(mark['timestamp'] for mark in marks if mark), marks))
+    if not calls:
+        return None
+    calls.sort(key=lambda call: call[0])
+    first, last = calls[0][1][0], calls[-1][1][1]
+    if first is None or last is None:
+        return None
+    return {'before': first['used_percent'], 'after': last['used_percent']}
 
 
 if __name__ == '__main__':

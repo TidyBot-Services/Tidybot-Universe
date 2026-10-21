@@ -4,9 +4,21 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const block=source.slice(source.indexOf('  // Operator presentation:'),source.indexOf('  // End operator presentation.'));
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-function api(){return vm.runInNewContext(block+'\n({operatorSettings,operatorAIReview,operatorResources})',{
+function api(){return vm.runInNewContext(block+'\n({operatorSettings,operatorAIReview,operatorResources,codexRunQuotaText})',{
  DEBUG_VIEW:false,esc,number:String,pct:()=>0,launches:[],stored:()=>null,isTerminal:()=>true,devEndSummary:()=>({key:'executions'}),taskDisplayName:()=> 'Open cabinet',policyTitle:()=> 'Reactive help'
 });}
+test('Codex run quota line uses recorded first-to-last points only',()=>{
+ const snapshot={run:{run_id:'q'},dev_session:{locked:{config:{model_source:'codex'}},versions:[]},
+   dev_v2:{experiment_id:'e',quota_usage:{before:12.1,after:15.6}},resources:{tokens:{used:100,limit:1000}},attempts:[]};
+ assert.match(api().operatorResources(snapshot),/AI usage:[\s\S]*data-codex-run-quota>Codex quota used by this run: about \+4 points/);
+ snapshot.dev_v2.quota_usage.after=12.1;
+ assert.match(api().operatorResources(snapshot),/Codex quota used by this run: less than 1 point/);
+ snapshot.dev_v2.quota_usage.after=11;
+ assert.doesNotMatch(api().operatorResources(snapshot),/Codex quota used by this run/);
+ snapshot.dev_v2.quota_usage.after=15;
+ snapshot.dev_session.locked.config.model_source='parcc';
+ assert.doesNotMatch(api().operatorResources(snapshot),/Codex quota used by this run/);
+});
 test('EVAL UI 01 enabled Qwen and old disabled task-check text',()=>{
  const snapshot={run:{run_id:'a',suite:'robocasa365',execution_target:'robocasa365_sim',robot:{model:'OpenArm365',execution_arm:'both'},seed:102},task_plan:{},attention_control:{active_policy:'reactive_help',read_only:true},dev_session:{model:'parcc/GLM'},dev_v2:{},dev_eval_enabled:true};
  const on=api().operatorSettings(snapshot);assert.match(on,/Eval agent<\/span><b>Qwen/);assert.match(on,/Reviews the recording and camera views/);assert.match(on,/the simulator still decides success/);

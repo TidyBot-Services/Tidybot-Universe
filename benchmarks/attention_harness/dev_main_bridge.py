@@ -251,6 +251,7 @@ class DevMainBridge:
         return dict(experiment_id=eid,worker_started=True)
 
     def view(self,c):
+        from .codex_quota import run_quota_usage
         def read(ref,text=False):
             if not ref:return None
             if sha(ref['uri'])!=ref['sha256']:raise DevConflict('display evidence drift')
@@ -269,7 +270,7 @@ class DevMainBridge:
                 execution_state=j['state'] if j else 'not_dispatched'))
         planner=PlannerControl(self.store).snapshot(c['key']) if c.get('planner_features') else None
         from .dev_memory_view import projection as memory_projection
-        return dict(c,versions=rows,planner=planner,ledger=self.store.export_ledger(self.goal_id),lifecycle=self.lifecycle({**c,'planner':planner}),planner_memory=memory_projection(self.store,c))
+        return dict(c,versions=rows,planner=planner,ledger=self.store.export_ledger(self.goal_id),lifecycle=self.lifecycle({**c,'planner':planner}),planner_memory=memory_projection(self.store,c),quota_usage=run_quota_usage(c,read))
 
     def get(self,path):
         parsed=urlsplit(path)

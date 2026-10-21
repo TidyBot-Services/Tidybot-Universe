@@ -1810,6 +1810,15 @@
   }
 
   // Values shared by the visible limits and the independent Dev v2 ledger.
+  function codexQuotaText(quota) {
+    const used=quota?.used_percent;
+    if(typeof used!=='number'||!Number.isFinite(used)||used<0||used>100)return {text:'Quota unavailable',low:false};
+    const date=new Date(Number(quota.resets_at)*1000);
+    const reset=Number.isFinite(date.getTime())&&quota.resets_at!=null
+      ? ` · resets ${date.toLocaleDateString('en-US',{weekday:'short'})} ${date.getDate()} ${date.toLocaleDateString('en-US',{month:'short'})}` : '';
+    const low=used>=70;
+    return {text:`Codex quota: ${Math.round(used)}% of ${quota.window_minutes===10080?'this week':'this window'} used${reset}${low?' · Running low this week':''}`,low};
+  }
   function runConfigDefaultModelMinutes(options) {
     return Math.ceil(Number(options?.default_cell_budget?.model_seconds ?? 1800)/60);
   }
@@ -1887,7 +1896,7 @@
           </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
           <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
-            <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
+            <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small data-codex-quota hidden role="status"></small><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
@@ -1912,6 +1921,19 @@
           <details><summary>Entry support matrix</summary>${(options?.dev_v2?.matrix||[]).map(r=>`<p>${esc(r.robot)} / ${esc(r.arm)} · ${esc(r.task)}: ${r.dev_v2_supported?'Supported':esc(r.reason)}</p>`).join('')}</details></div></details>
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
+      const quotaLine=form.querySelector('[data-codex-quota]');
+      let dialogQuota=null;
+      function showQuota() {
+        quotaLine.hidden=form.model_source.value!=='codex'||form.model_source.disabled;
+        if(quotaLine.hidden)return;
+        const message=codexQuotaText(dialogQuota);
+        quotaLine.textContent=message.text;
+        quotaLine.classList.toggle('ab-codex-quota-low',message.low);
+      }
+      fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
+        dialogQuota=value;
+        if(launchDialog.open)showQuota();
+      }).catch(()=>{dialogQuota=null;if(launchDialog.open)showQuota();});
       form.eval_agent_enabled.checked = options?.dev_v2?.eval_agent_supported !== false;
       const requestKey = globalThis.crypto?.randomUUID?.() || `dev-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       let submitting = false;
@@ -1997,6 +2019,7 @@
         form.model_source.disabled=!v2;
         if(!v2 || options?.dev_v2?.budget_tier!=='dev')form.model_source.value='parcc';
         form.model_source.querySelector('option[value="codex"]').disabled=options?.dev_v2?.budget_tier!=='dev';
+        showQuota();
         form.querySelector('[data-v2-tokens]').hidden=!v2;
         form.querySelector('[data-fixed-tokens]').hidden=v2;
         form.querySelector('[data-start-no]').hidden=!v2;
@@ -2071,6 +2094,7 @@
       }
       form.addEventListener('input',budgetInput);
       form.addEventListener('change',budgetInput);
+      form.model_source.addEventListener('change',showQuota);
       form.v2_mode.addEventListener('change',()=>{
         manualBudget=false;
         const experiment=form.v2_mode.value==='experiment';
@@ -3338,6 +3362,15 @@
   function operatorUnavailableResourceCard(name) {
     return `<div class="op-meter op-meter--na" title="Not tracked for this run"><span>${esc(name)}</span><b>—</b><small>Not tracked for this run</small></div>`;
   }
+  function codexRunQuotaText(snapshot) {
+    if(snapshot.dev_session?.locked?.config?.model_source!=='codex')return '';
+    const usage=snapshot.dev_v2?.quota_usage;
+    if(!usage||typeof usage.before!=='number'||typeof usage.after!=='number'||
+        !Number.isFinite(usage.before)||!Number.isFinite(usage.after))return '';
+    const points=usage.after-usage.before;
+    if(points<0)return '';
+    return `Codex quota used by this run: ${points<1?'less than 1 point':`about +${Math.round(points)} points`}`;
+  }
   function operatorResources(snapshot) {
     const resources=snapshot.resources,s=snapshot.dev_session;
     const endedKey=s?devEndSummary(s).key:snapshot.eval?.stopped_reason;
@@ -3349,6 +3382,7 @@
     const tokens=resources.tokens;
     const textOnlyCount=textOnlyReviews(snapshot).length;
     const reviewNote=snapshot.dev_eval_enabled && textOnlyCount?`<strong class="op-warn-text" data-text-only-note>${textOnlyCount} Eval agent review${textOnlyCount===1?' was':'s were'} text-only (Qwen unavailable)</strong> `:'';
+    const quotaLine=codexRunQuotaText(snapshot);
     const ledger=snapshot.dev_v2?.ledger;
     const exportLink=snapshot.dev_v2?`<a href="/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/export.csv" target="_blank" rel="noopener">Download data (CSV)</a>`:'';
     // Wall-clock time keeps running after a run has ended; it only matters when it is why the run ended.
@@ -3356,7 +3390,7 @@
     return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','How much budget is left?')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
       const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
       return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
-    }).join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    }).join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${quotaLine?`<small data-codex-run-quota>${quotaLine}</small>`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.

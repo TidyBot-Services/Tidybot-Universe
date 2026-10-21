@@ -287,6 +287,7 @@ class DailyDevV2:
         return file,'video/mp4' if file.suffix=='.mp4' else 'application/json' if file.suffix=='.json' else 'text/plain; charset=utf-8'
     def view(self,s,c):
         # This projection is consumed only by UI, never the worker/model.
+        from .codex_quota import run_quota_usage
         rows=[]
         def read(ref,text=False):
             if not ref:return None
@@ -306,7 +307,7 @@ class DailyDevV2:
         from .dev_memory_view import projection as memory_projection
         with sqlite3.connect('file:'+str(s.path.resolve())+'?mode=ro',uri=True) as db:
             goal_id=s.get(db,'experiments',c['experiment_id']).get('goal_id')
-        return dict(c,versions=rows,ledger=s.export_ledger(goal_id),planner_memory=memory_projection(s,c))
+        return dict(c,versions=rows,ledger=s.export_ledger(goal_id),planner_memory=memory_projection(s,c),quota_usage=run_quota_usage(c,read))
     def post(self,path,body,*,human_authorized=False):
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.
