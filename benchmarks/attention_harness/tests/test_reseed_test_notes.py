@@ -43,6 +43,7 @@ class FakeMemory:
         assert note_id not in self.rows
         self.rows[note_id] = {'memory_id': note_id, 'status': 'trusted',
                               'seeded_for_tests': True,
+                              'title': body['title'],
                               'applicability_summary': copy.deepcopy(body['context'])}
         self.writes.append(('seed', note_id))
         return {}
@@ -60,6 +61,51 @@ def test_first_seed_and_idempotent_second_run():
     assert command.reseed(gateway, context(), NOTES, out=lines.append) == 0
     assert len(gateway.writes) == 5
     assert lines[-1] == 'Nothing to do'
+
+
+def test_hand_seeded_current_title_is_kept_without_duplicate():
+    gateway = FakeMemory()
+    title = NOTES[0]['title']
+    gateway.rows['hand-seeded'] = {'memory_id': 'hand-seeded', 'status': 'active',
+                                   'seeded_for_tests': True, 'title': f'  {title.upper()}  ',
+                                   'applicability': context()}
+    lines = []
+    assert command.reseed(gateway, context(), NOTES, out=lines.append) == 0
+    assert ('seed', 't-aaaaaaaa-small-steps') not in gateway.writes
+    assert len([kind for kind, _ in gateway.writes if kind == 'seed']) == 4
+    assert f'kept existing: {title}' in lines
+    before = list(gateway.writes)
+    assert command.reseed(gateway, context(), NOTES, check=True, out=lines.append) == 0
+    assert command.reseed(gateway, context(), NOTES, out=lines.append) == 0
+    assert gateway.writes == before
+    assert lines[-1] == 'Nothing to do'
+
+
+def test_hand_seeded_different_title_does_not_satisfy_definition():
+    gateway = FakeMemory()
+    gateway.rows['hand-seeded'] = {'memory_id': 'hand-seeded', 'status': 'active',
+                                   'seeded_for_tests': True, 'title': 'A different note',
+                                   'applicability': context()}
+    gateway.rows['real-note'] = {'memory_id': 'real-note', 'status': 'active',
+                                 'seeded_for_tests': False, 'title': NOTES[0]['title'],
+                                 'applicability': context()}
+    assert command.reseed(gateway, context(), NOTES, out=lambda _: None) == 0
+    assert ('seed', 't-aaaaaaaa-small-steps') in gateway.writes
+    assert gateway.rows['hand-seeded']['status'] == 'active'
+    assert gateway.rows['real-note']['status'] == 'active'
+
+
+def test_hand_seeded_old_identity_is_disabled_and_replaced():
+    gateway = FakeMemory()
+    gateway.rows['hand-seeded'] = {'memory_id': 'hand-seeded', 'status': 'trusted',
+                                   'seeded_for_tests': True, 'title': NOTES[0]['title'],
+                                   'applicability': context('b' * 64)}
+    lines = []
+    assert command.reseed(gateway, context(), NOTES, out=lines.append) == 0
+    assert ('disable', 'hand-seeded') in gateway.writes
+    assert ('seed', 't-aaaaaaaa-small-steps') in gateway.writes
+    assert gateway.rows['hand-seeded']['status'] == 'disabled'
+    assert command.reseed(gateway, context(), NOTES, check=True, out=lambda _: None) == 0
 
 
 def test_identity_change_disables_only_old_test_notes():

@@ -144,40 +144,51 @@ class MemoryHTTP:
             raise RuntimeError(f'Memory service unavailable for {method} {path}') from None
 
 
-def plan(rows: list[dict], context: dict, notes: list[dict]) -> tuple[list[str], list[dict]]:
+def plan(rows: list[dict], context: dict, notes: list[dict]) -> tuple[list[str], list[dict], list[str]]:
     digest = context['sdk_sha256']
     active = {'trusted', 'active'}
     old = []
     by_id = {row.get('memory_id'): row for row in rows}
+    current_titles = set()
     for row in rows:
         scope = row.get('applicability_summary') or row.get('applicability') or {}
+        if (row.get('seeded_for_tests') is True
+                and row.get('status') in active
+                and scope.get('sdk_sha256') == digest
+                and isinstance(row.get('title'), str)):
+            current_titles.add(row['title'].strip().casefold())
         if (row.get('seeded_for_tests') is True
                 and scope.get('namespace') == context['namespace']
                 and scope.get('sdk_sha256') != digest
                 and row.get('status') in active):
             old.append(row['memory_id'])
     missing = []
+    kept = []
     for note in notes:
         note_id = f"t-{digest[:8]}-{note['key']}"
         row = by_id.get(note_id)
-        if row is None:
-            missing.append({'memory_id': note_id, 'context': context,
-                            'actor': ACTOR, 'reason': SEED_REASON,
-                            **{name: note[name] for name in ('title', 'summary', 'group', 'guidance', 'repair')}})
-        else:
+        if row is not None:
             scope = row.get('applicability_summary') or row.get('applicability') or {}
             if (row.get('seeded_for_tests') is not True or row.get('status') not in active
                     or any(scope.get(key) != value for key, value in context.items())):
                 raise ValueError(f'Current note ID is occupied or inactive: {note_id}')
-    return old, missing
+        if row is not None or note['title'].strip().casefold() in current_titles:
+            kept.append(note['title'])
+        else:
+            missing.append({'memory_id': note_id, 'context': context,
+                            'actor': ACTOR, 'reason': SEED_REASON,
+                            **{name: note[name] for name in ('title', 'summary', 'group', 'guidance', 'repair')}})
+    return old, missing, kept
 
 
 def reseed(gateway, context: dict, notes: list[dict], *, check=False, dry_run=False, out=print) -> int:
     rows = gateway.request('GET', '/dev-v2/memories')['memories']
-    old, missing = plan(rows, context, notes)
+    old, missing, kept = plan(rows, context, notes)
     digest = context['sdk_sha256']
     suffix = ' (changed since last seed)' if old else ''
     out(f'Current SDK identity {digest[:8]}…{suffix}')
+    for title in kept:
+        out(f'kept existing: {title}')
     if check:
         out('Ready' if not old and not missing else f'Needs reseed: {len(old)} old active, {len(missing)} missing')
         return 0 if not old and not missing else 1
