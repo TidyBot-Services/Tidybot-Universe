@@ -20,6 +20,10 @@
   root.querySelector('.demo').innerHTML = `${DEBUG_VIEW ? '● STORE' : ''}`;
   const devTag=document.createElement('span');devTag.className='op-dev-tag';devTag.textContent='Development test · not counted in comparisons';devTag.hidden=true;
   const alertsButton=document.createElement('button');alertsButton.type='button';alertsButton.className='op-alerts';alertsButton.title='Play a sound and show a notification when the robot needs your help';
+  const themeButton=document.createElement('button');themeButton.type='button';themeButton.className='op-theme';
+  function applyMainTheme(name){const dark=name==='dark';document.documentElement.dataset.theme=dark?'dark':'light';root.dataset.theme=dark?'dark':'light';themeButton.innerHTML=dark?'<span aria-hidden="true">☀</span> Light':'<span aria-hidden="true">☾</span> Dark';themeButton.setAttribute('aria-label',dark?'Switch to the light theme':'Switch to the dark theme');try{localStorage.setItem('attention.theme',dark?'dark':'light');localStorage.setItem('attention.memory.theme',dark?'dark':'light')}catch(_){}}
+  themeButton.addEventListener('click',()=>applyMainTheme(root.dataset.theme==='dark'?'light':'dark'));
+  {let saved='light';try{saved=localStorage.getItem('attention.theme')||'light'}catch(_){}applyMainTheme(saved);}
   const memoryLink=document.createElement('a');memoryLink.className='op-memory-link';memoryLink.href='/ui/memory.html';memoryLink.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v6M12 14v6M4 12h6M14 12h6"/></svg><span>Memory</span><b class="op-memory-badge" hidden></b>';
   const memoryCounts=new Map();let memoryPulseTimer=null;
   function updateMemoryLink(snapshot){
@@ -33,7 +37,7 @@
   }
 
   let noticeController=null;
-  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';actions.append(memoryLink,noticeHost,devTag,alertsButton);top.prepend(sidebarToggle);top.append(actions);const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);}
+  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';actions.append(memoryLink,noticeHost,devTag,themeButton,alertsButton);top.prepend(sidebarToggle);top.append(actions);const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);}
   let runs = [];
   let launches = [];
   let devSessions = [];
