@@ -44,6 +44,8 @@ test('detail persists by request id, updates live, and escapes reasons',()=>{
  saved.set('attention.efficiency.help:story-run','chosen');let html=api.attentionEfficiency(snap);
  assert.match(html,/&lt;unsafe&gt;/);assert.doesNotMatch(html,/<unsafe>/);assert.match(html,/<a href="#" class="op-attn-watch"[^>]*>Watch Attempt 2<\/a>/);assert.match(html,/Next attempt succeeded/);
  snap.attempts[1].status='running';html=api.attentionEfficiency(snap);assert.match(html,/Next attempt running/);
+ assert.doesNotMatch(html,/Compare with other strategies/);assert.doesNotMatch(html,/No other strategies recorded yet/);
+ snap.comparison={comparable:true,policies:[{policy_id:'planner',average_assistance_used:1,success_rate:.5,successes:1,runs:2},{policy_id:'reactive_help',average_assistance_used:2,success_rate:.25,successes:1,runs:4}]};html=api.attentionEfficiency(snap);
  assert.match(html,/data-persist-detail="attention-compare:story-run"/);assert.match(html,/<summary>Compare with other strategies<\/summary>/);
 });
 test('all effect words and request kinds remain available',()=>{
@@ -59,6 +61,8 @@ test('empty, automatic-only, ended, and twelve-attempt budgets render',()=>{
  assert.match(html,/No attempts yet/);assert.match(html,/no help requested/);assert.match(html,/data-attn-attempt="4"/);
  snap=snapshot({statuses:['failed'],requests:[{after:0}],terminal:true});html=api.attentionEfficiency(snap);
  assert.match(html,/not solved/);assert.match(html,/answered by the automatic advisor, 0 s of human time/);
+ assert.match(html,/class="op-attn-end unsolved"/);assert.match(html,/>Not completed</);assert.doesNotMatch(html,/data-attn-attempt="2"/);assert.match(html,/data-attn-watch="a0"/);
+ assert.doesNotMatch(html,/Was the human attention worth it/);assert.doesNotMatch(html,/op-attn-foot/);
  snap=snapshot({statuses:['failed'],maximum:12,requests:Array.from({length:7},(_,i)=>({id:`h${i}`,after:0}))});
  const model=api.attentionStripModel(api.attentionLedger(snap));assert.equal(model.attempts.length,12);assert.equal(model.requests[6].stack,6);assert.ok(model.width>1900);
 });

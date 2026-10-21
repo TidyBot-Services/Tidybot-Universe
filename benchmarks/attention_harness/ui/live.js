@@ -3183,7 +3183,7 @@
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
     const source=snapshot.dev_v2?(s?.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'):null;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${operatorFlow(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}${runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}${runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -3553,7 +3553,8 @@
     return v<60?`${Math.round(v)}s`:operatorTime(v);
   }
   function attentionStripModel(ledger,minWidth=900) {
-    const count=Math.max(ledger.maximum||0,ledger.attempts.length,ledger.rows.length?1:0);
+    const ended=!!ledger.terminal&&ledger.attempts.length>0;
+    const count=ended?ledger.attempts.length:Math.max(ledger.maximum||0,ledger.attempts.length,ledger.rows.length?1:0);
     const attempts=Array.from({length:count},(_,index)=>{
       const attempt=ledger.attempts.find(a=>a.index===index);
       const solved=attempt&&(ledger.solved?.attempt_id===attempt.attempt_id);
@@ -3566,20 +3567,24 @@
       return {...row,number:index+1,after,stack,dashed:row.effect==='awaiting_reply'||row.effect==='waiting'||row.effect==='running'};
     });
     // One slot per gap between attempts; a gap holding several help arcs widens so their labels never collide.
-    const margin=64,most=Math.max(1,...grouped.values());
-    const slots=Math.max(0,count-1)+(grouped.has(-1)?1:0)+(grouped.has(count-1)?1:0);
-    const base=Math.max(220,...[...grouped.values()].map(n=>n*92+48));
-    const natural=Math.round(Math.max(320,2*margin+slots*base));
-    const step=slots?Math.max(base,(minWidth-2*margin)/slots):base;
+    // An ended run stops at its last attempt and shows an end marker instead of attempts that never ran.
+    const margin=48,most=Math.max(1,...grouped.values()),endsWithHelp=grouped.has(count-1);
+    const endExtra=ended&&!endsWithHelp?130:0,endPad=ended?60:0;
+    const slots=Math.max(0,count-1)+(grouped.has(-1)?1:0)+(endsWithHelp?1:0);
+    const base=Math.max(150,...[...grouped.values()].map(n=>n*92+48));
+    const natural=Math.round(Math.max(320,2*margin+slots*base+endExtra+endPad));
+    const step=slots?Math.min(Math.max(base,(minWidth-2*margin-endExtra-endPad)/slots),Math.max(base,260)):base;
     const left=grouped.has(-1)?margin+step:margin;
-    const width=Math.round(Math.max(320,left+Math.max(0,count-1)*step+(grouped.has(count-1)?step:0)+margin));
+    const lastX=left+Math.max(0,count-1)*step;
+    const endX=ended?(endsWithHelp?lastX+step:lastX+endExtra):null;
+    const width=Math.round(Math.max(320,(ended?endX+58:lastX+(endsWithHelp?step:0))+margin));
     const baseline=Math.round(92+(most-1)*28);
     requests=requests.map(row=>{
       const n=grouped.get(row.after),mid=(row.after<0?left-step:left+row.after*step)+step/2;
       return {...row,mid,x:mid+(row.stack-(n-1)/2)*46,top:baseline-56-row.stack*28};
     });
     attempts.forEach(attempt=>{attempt.x=left+attempt.index*step;});
-    return {attempts,requests,width,natural,left,step,baseline,height:baseline+98,before:grouped.has(-1),after:grouped.has(count-1)};
+    return {attempts,requests,width,natural,left,step,baseline,height:baseline+98,before:grouped.has(-1),after:endsWithHelp&&!ended,ended,endX};
   }
   function attentionFilterMatches(row,filter) {
     return filter==='all'||filter==='human'&&row.responder==='human'||(filter==='paid'||filter==='rate')&&row.effect==='fixed';
@@ -3620,10 +3625,13 @@
     const x=index=>model.left+index*step;
     const lines=model.attempts.slice(0,-1).map((_,i)=>`<line x1="${x(i)+R}" x2="${x(i+1)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`).join('');
     const start=model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
+    const outcome=g.solved?'Completed':(typeof systemFailure==='function'&&systemFailure(snapshot))?'System problem':'Not completed';
+    const endX=model.endX;
+    const endMark=model.ended?`<line x1="${x(model.attempts.length-1)+R}" x2="${endX-58}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/><g class="op-attn-end ${g.solved?'solved':'unsolved'}"><rect x="${endX-58}" y="${baseline-21}" width="116" height="42" rx="21"/><text class="op-attn-end-small" x="${endX}" y="${baseline-4}" text-anchor="middle">Ended</text><text x="${endX}" y="${baseline+12}" text-anchor="middle">${outcome}</text></g>`:'';
     const extra=model.after?`<line x1="${x(model.attempts.length-1)+R}" x2="${x(model.attempts.length)-14}" y1="${baseline}" y2="${baseline}" class="op-attn-connector op-attn-unreached"/><g class="op-attn-endpoint next"><circle cx="${x(model.attempts.length)}" cy="${baseline}" r="14"/><text x="${x(model.attempts.length)}" y="${baseline+44}" text-anchor="middle">Next</text></g>`:'';
     const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human').map(r=>r.seconds));
     const marks=model.requests.map(r=>{
-      const x0=r.after<0?x(-1)+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?x(model.attempts.length)-14:x(r.after+1)-R;
+      const x0=r.after<0?x(-1)+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
       const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
       const bar=r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
@@ -3632,16 +3640,17 @@
       const tip=`${tag} · ${kind[r.kind]||label(r.kind)} · ${who} · ${cost} · ${effect[r.effect][0].replace(/^[^A-Za-z]+/,'')}`;
       return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${tag}</text><rect class="op-attn-cost" x="${r.x-13}" y="${baseline+74-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+90}" text-anchor="middle">${esc(cost)}</text></g>`;
     }).join('');
-    const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}" data-attn-attempt="${a.index+1}"><circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text><text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text></g>`).join('');
-    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="width:100%;min-width:${model.natural}px;max-width:${Math.round(model.width*1.3)}px" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${extra}${marks}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
+    const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text><text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text></g>`).join('');
+    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="width:100%;min-width:${model.natural}px;max-width:${model.width}px" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
     const next=selected&&g.attempts.find(a=>a.index===selected.nextIndex);
     const number=selected?g.rows.indexOf(selected)+1:0;
     const whoTitle=selected?(selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':'Automatic advisor'):'';
     const detail=selected?`<h5>${selected.kind==='demo'?'Example #'+number:'Help #'+number} · ${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</h5><div class="op-attn-detail-grid"><div><span>Why it was asked</span>${esc(selected.reason?label(selected.reason):'No reason recorded')}</div><div><span>Cost</span>${selected.responder==='human'?esc('1 credit · '+attentionTime(selected.seconds).replace(/s$/,' s')):'1 credit · no human time'}</div><div><span>Effect</span><strong class="${effect[selected.effect][1]}">${effect[selected.effect][0]}</strong></div><div><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<em class="op-attn-detail-note">Next attempt not started</em>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
-    const kpis=[['all','progress',String(g.requests),'Help requests',''],['human','spent',time,'Human attention',''],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Progress per attention',rateNote]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
+    const kpis=[['all','progress',String(g.requests),'Help requests',''],['human','spent',time,'Human attention','Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Progress per attention',`${rateNote}. Tasks solved ÷ human attention; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
+    const frontier=attentionFrontier(snapshot);
     const head=g.attemptsRun?`${g.solved?'1':'0'} of ${g.maximum||g.attemptsRun} attempts solved`:'No attempts yet';
     const sub=[state==='unsolved'?'not solved':state==='running'?'in progress':'',requestSummary,humanSummary,creditSummary].filter(Boolean).join(' · ');
-    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><h4>Attention efficiency <small>Was the human attention worth it?</small></h4><p class="op-attn-summary"><b>${esc(head)}</b><span>${esc(sub)}</span></p><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}<div class="op-attn-legend"><span><i class="failed"></i>Failed attempt</span><span><i class="solved"></i>Solved</span><span><i class="automatic"></i>Automatic advisor</span><span><i class="person"></i>Person replied</span><span>Bar under each help = attention it cost</span></div><div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div><p class="op-attn-foot">Progress per attention = tasks solved ÷ human attention. Attention is the time from a help request to a person's reply; automatic-advisor replies count as credits, not human time. Pass/fail only, no partial credit.</p><details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${attentionFrontier(snapshot)||'<p class="op-attn-empty">No other strategies recorded yet.</p>'}</details></div>`;
+    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><h4>Attention efficiency</h4><p class="op-attn-summary"><b>${esc(head)}</b><span>${esc(sub)}</span></p><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}<div class="op-attn-legend"><span><i class="failed"></i>Failed attempt</span><span><i class="solved"></i>Solved</span><span><i class="automatic"></i>Automatic advisor</span><span><i class="person"></i>Person replied</span><span>Bar under each help = attention it cost</span></div><div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
   }
   function bindAttentionEfficiency(snapshot) {
     const runId=snapshot.run.run_id;
@@ -3660,7 +3669,12 @@
       panel.querySelectorAll('[data-attn-filter]').forEach(button=>button.addEventListener('click',()=>redraw('data-attn-filter',button.dataset.attnFilter)));
       panel.querySelectorAll('[data-attn-help]').forEach(mark=>{
         mark.addEventListener('click',()=>redraw('data-attn-help',mark.dataset.attnHelp));
-        mark.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();mark.click();}});
+        mark.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();mark.dispatchEvent(new MouseEvent('click',{bubbles:true}));}});
+      });
+      panel.querySelectorAll('[data-attn-watch]').forEach(circle=>{
+        const watch=()=>{stored(`attention.history:${runId}`,circle.dataset.attnWatch);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});};
+        circle.addEventListener('click',watch);
+        circle.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();watch();}});
       });
       panel.querySelector('[data-history-select]')?.addEventListener('click',event=>{
         event.preventDefault();
