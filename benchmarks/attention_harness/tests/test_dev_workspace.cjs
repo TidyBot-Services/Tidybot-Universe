@@ -74,17 +74,31 @@ test('failed startup needing review is not projected as an executing camera',asy
 // Presentation checks run without a browser. They are not visual acceptance.
 const operatorBlock=source.slice(source.indexOf('  // Operator presentation:'),source.indexOf('  // End operator presentation.'));
 function operatorAPI(overrides={}) {
- return vm.runInNewContext(operatorBlock+'\n({plainAction,plainError,operatorTime,operatorPolicy,operatorSettings,operatorOutcome,operatorFlow,operatorEvents,operatorQuickReplies,operatorHelpHistory,operatorBudgetCard,operatorResources})',{
+ return vm.runInNewContext(operatorBlock+'\n({plainAction,plainError,operatorTime,operatorPolicy,operatorSettings,operatorOutcome,operatorFlow,operatorEvents,operatorQuickReplies,operatorHelpHistory,operatorHelp,modelCallReview,operatorBudgetCard,operatorResources})',{
   DEBUG_VIEW:false,number:value=>String(value),pct:(used,limit)=>limit>0?Math.max(0,Math.min(100,used/limit*100)):0,launches:[],actionableRequests:s=>s.requests.filter(r=>r.state==='pending'&&r.mode==='live_human_first'),dateTime:value=>value?'Recorded time':'Not recorded',executionFailure:t=>t?.failure,replayTarget:()=>({seconds:45}),operatorReplayTarget:(events,index)=>overrides.replayTarget?.(events[index])||{seconds:45,mode:'approximate'},devEndSummary:()=>({key:'executions'}),requestState:r=>r.state,readableReply:r=>'<p>'+r.content+'</p>',esc:value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'),
   taskDisplayName:run=>run.display_name||'Lift the cube',policyTitle:id=>({reactive_help:'Reactive help',autonomous:'Autonomous'})[id]||'Recorded strategy',
   stored:()=>null,isTerminal:s=>['completed','failed','cancelled'].includes(s.run.status),...overrides
  });
 }
-for(const kind of ['formal','dev1','dev2'])test(`OPERATOR-01 presentation: ${kind==='dev2'?'seven':'six'} fields for ${kind}`,()=>{
+test('held Dev v2 model call explains review in status and replies with a safe reason',()=>{
+ const api=operatorAPI(),snap={run:{status:'needs_review'},dev_session:{reason:'unknown'},dev_v2:{reason:'ParccError: parcc/GLM failed after 1 attempts: TimeoutError: /private/key <script> timed out',jobs:[{kind:'model',state:'needs_review'}]},requests:[],attempts:[],responses:{}};
+ const status=api.operatorOutcome(snap),help=api.operatorHelp(snap);
+ for(const html of [status,help]){
+   assert.match(html,/This run stopped because a model call failed or timed out \(details below\)\. It cannot continue by itself, so no reply is needed\. Start a new run to try again\./);
+   assert.match(html,/parcc\/GLM timed out/);
+   assert.doesNotMatch(html,/private\/key|<script>|ParccError|Nothing to do/);
+ }
+ snap.run.status='cancelled';
+ assert.equal(api.modelCallReview(snap),null);
+ assert.doesNotMatch(api.operatorOutcome(snap),/This run stopped because a model call/);
+ snap.run.status='needs_review';snap.dev_v2.jobs[0].kind='execute';
+ assert.equal(api.modelCallReview(snap),null);
+});
+for(const kind of ['formal','dev1','dev2'])test(`OPERATOR-01 presentation: six fields for ${kind}`,()=>{
  const snap={run:{run_id:'private_id',display_name:'Lift the cube',suite:'robosuite',seed:101,execution_target:'robosuite_sim',assistance_mode:'live_human_first',policy_id:'reactive_help',developer_model:'provider/GLM',robot:{model:'OpenArm365',execution_arm:'both'},base:{capability:'stationary'},status:'completed'},task_plan:{definition:{description:'Lift the cube safely'}},attention_control:{active_policy:'reactive_help',read_only:true}};
  if(kind!=='formal')snap.dev_session={model:'provider/GLM',locked:{config:{}}};if(kind==='dev2')snap.dev_v2={};
  const html=operatorAPI().operatorSettings(snap);
- assert.match(html,/01.*TASK SETUP/);assert.equal((html.match(/class="op-field(?: |")/g)||[]).length,kind==='dev2'?7:6);if(kind==='dev2')assert.match(html,/Model source<\/span><b>PARCC \(GLM \+ Qwen\)<\/b>/);
+ assert.match(html,/01.*TASK SETUP/);assert.equal((html.match(/class="op-field(?: |")/g)||[]).length,6);
  assert.match(html,/Lift the cube safely/);assert.match(html,/OpenArm · both arms/);
  // big text = the summary, small text = the explanation
  assert.match(html,/<b>Lift the cube<\/b><small>Lift the cube safely<\/small>/);
@@ -170,6 +184,65 @@ function rendererSnapshot(kind) {
  if(kind==='dev2')snapshot.dev_v2={key:'cell1',mode:'interactive',experiment_id:'experiment1',jobs:[],ledger:{goal_id:'private_goal',goal:{limits:{},used:{},reserved:{}},recompute_matches:true}};
  return snapshot;
 }
+test('Current view keeps its tab selected and holds the first recording frame while waiting',()=>{
+ const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';snap.run.status='running';
+ const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'}}).executionViewer(snap);
+ assert.match(html,/data-history-select="live" aria-pressed="true"/);
+ assert.match(html,/data-history-select="a1" aria-pressed="false"/);
+ assert.match(html,/data-current-replay-note>Waiting for the next attempt\. This is the starting scene it will begin from\./);
+ assert.match(html,/data-starting-video[^>]*preload="metadata"[^>]*src="\/replay\.mp4"/);
+ assert.match(html,/data-history-select="a1">Watch Attempt 1's recording<\/button>/);
+ assert.doesNotMatch(html,/data-history-replay|<video[^>]*controls/);
+});
+test('Current view uses available first-frame image evidence and the selected camera',()=>{
+ const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';snap.run.status='running';
+ snap.traces.t1.recording={views:{external:{name:'Overview'},chest:{name:'Side'},top:{name:'Top-down'},wrist:{name:'Wrist'}}};
+ snap.traces.t1.evidence.push({kind:'recording_frame',mime_type:'image/jpeg',media_url:'/recording_frames/000000.jpg'},{kind:'recording_frame_chest',mime_type:'image/jpeg',media_url:'/side-first.jpg'});
+ const cameraChoices=new Map([['private_record_id:live','chest']]);
+ const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'},cameraChoices}).executionViewer(snap);
+ assert.match(html,/data-starting-scene><img[^>]*src="\/side-first\.jpg"/);
+ assert.match(html,/data-camera-view="chest" aria-pressed="true"/);
+ assert.doesNotMatch(html,/data-starting-video|data-history-replay/);
+ cameraChoices.set('private_record_id:live','top');
+ const fallback=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'},cameraChoices}).executionViewer(snap);
+ assert.match(fallback,/data-camera-view="external" aria-pressed="true"/);
+ assert.match(fallback,/data-starting-scene><img[^>]*src="\/recording_frames\/000000\.jpg"/);
+});
+test('Current view holds the selected camera recording at its first frame',()=>{
+ const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';snap.run.status='running';
+ snap.traces.t1.recording={views:{external:{name:'Overview'},wrist:{name:'Wrist'}}};
+ snap.traces.t1.evidence=[{kind:'advisor_replay',mime_type:'video/mp4',media_url:'/overview.mp4'},{kind:'advisor_replay_wrist',mime_type:'video/mp4',media_url:'/wrist.mp4'}];
+ const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'},cameraChoices:new Map([['private_record_id:live','wrist']])}).executionViewer(snap);
+ assert.match(html,/data-camera-view="wrist" aria-pressed="true"/);
+ assert.match(html,/data-starting-video[^>]*src="\/wrist\.mp4"/);
+ assert.doesNotMatch(html,/data-history-replay|<video[^>]*controls/);
+});
+test('Current view switches to the next active execution preview without a replay note',()=>{
+ const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';snap.run.status='running';
+ snap.attempts.push({attempt_id:'a2',index:1,status:'running',started_at:120,ended_at:null,execution_complete:false,dev_version:2});
+ snap.station={camera_attempt_id:'a2',camera_url:'/current-frame.png',camera_preview_url:'/current-preview.png'};
+ const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'}}).executionViewer(snap);
+ assert.match(html,/data-history-select="live" aria-pressed="true"/);
+ assert.match(html,/data-op-stage="live"/);
+ assert.match(html,/data-preview-url="\/current-preview\.png"/);
+ assert.doesNotMatch(html,/data-current-replay-note|data-starting-scene|data-history-replay/);
+});
+test('Selecting an attempt presses its tab without a Current view replay note',()=>{
+ const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';snap.run.status='running';
+ const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'a1'}}).executionViewer(snap);
+ assert.match(html,/data-history-select="live" aria-pressed="false"/);
+ assert.match(html,/data-history-select="a1" aria-pressed="true"/);
+ assert.match(html,/data-history-replay[^>]*src="\/replay\.mp4"/);
+ assert.doesNotMatch(html,/data-current-replay-note|data-starting-scene/);
+});
+test('Current view explains the starting scene when the run has ended',()=>{
+ const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';
+ const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'}}).executionViewer(snap);
+ assert.match(html,/data-history-select="live" aria-pressed="true"/);
+ assert.match(html,/data-history-select="a1" aria-pressed="false"/);
+ assert.match(html,/data-current-replay-note>The run has ended\. This is the starting scene of the last attempt\./);
+ assert.match(html,/data-starting-scene><video data-starting-video/);
+});
 for(const kind of ['formal','dev1','dev2'])test(`OPERATOR real renderer entries: ${kind} has five clean modules`,()=>{
  const snap=rendererSnapshot(kind),api=rendererAPI(snap);
  const modules=[api.runSettings(snap),api.runOverview(snap),api.executionViewer(snap),api.requestPanel(snap,null),api.resourceDetails(snap)];

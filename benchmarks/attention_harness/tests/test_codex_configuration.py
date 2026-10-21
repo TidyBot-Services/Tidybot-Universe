@@ -165,6 +165,8 @@ def test_explicit_parcc_reuses_byte_identical_default_manifest(tmp_path,monkeypa
     manifest=verify_manifest(second)
     assert manifest.get('model_source','parcc')=='parcc'
     assert 'model_source' not in manifest
+    assert manifest['model']['provider_retries']==0
+    assert manifest['connectivity_retry_max_attempts']==5
 
 
 def test_codex_dev_call_uses_contained_worker_even_without_planner(tmp_path,monkeypatch):
@@ -191,6 +193,181 @@ def test_codex_dev_call_uses_contained_worker_even_without_planner(tmp_path,monk
     answer,_,_,usage=loop.provider_call(store,key,1,'advisor',[{'role':'user','content':'{}'}],owner,directory)
     assert seen==[('advisor','codex','gpt-6-astra','high')]
     assert answer=='hint' and usage['total_tokens']==15003
+
+
+@pytest.mark.parametrize('injected',[False,True])
+def test_nonplanner_parcc_dev_call_streams_unless_client_injected(tmp_path,monkeypatch,injected):
+    from openarm365_dev_v2 import dev_config
+    from benchmarks.attention_harness import dev_v2_loop as loop
+    monkeypatch.setattr(dev_config,'model_sources',lambda **kwargs:{})
+    store=DevV2Store(tmp_path/'ledger.sqlite3')
+    result=create(store,tmp_path/'artifacts',{'request_key':'parcc-stream-call','tasks':['open_cabinet'],
+        'seeds':[101],'policies':['autonomous'],'mode':'interactive','max_versions':3})
+    key=result['cells'][0]['key'];owner=loop.process_identity()
+    store.update_cell(key,state='running',owner=owner)
+    directory=tmp_path/'call';directory.mkdir()
+    constructed=[]
+    class Fake:
+        def __init__(self,**kwargs):
+            constructed.append(kwargs)
+            self.response_observer=None
+        def chat(self,**kwargs):
+            usage={'prompt_tokens':2,'completion_tokens':1,'total_tokens':3}
+            self.response_observer(200,{},json.dumps({'usage':usage}).encode())
+            return ParccResponse(kwargs['model'],'hint',None,.1,1,usage)
+    monkeypatch.setattr(loop,'ParccClient',Fake)
+    monkeypatch.setattr(loop,'contained_provider',lambda *args:pytest.fail('non-planner call used worker'))
+    supplied=Fake() if injected else None
+    answer,_,_,usage=loop.provider_call(store,key,1,'advisor',[{'role':'user','content':'{}'}],owner,directory,supplied)
+    assert answer=='hint' and usage['total_tokens']==3
+    assert len(constructed)==1
+    if injected:assert constructed[0]=={}
+    else:
+        assert constructed[0]['stream'] is True and constructed[0]['max_attempts']==5
+        assert constructed[0]['timeout_seconds']>0
+
+
+def test_planner_parcc_dev_call_keeps_contained_worker(tmp_path,monkeypatch):
+    from openarm365_dev_v2 import dev_config
+    from benchmarks.attention_harness import dev_v2_loop as loop
+    monkeypatch.setattr(dev_config,'model_sources',lambda **kwargs:{})
+    store=DevV2Store(tmp_path/'ledger.sqlite3')
+    result=create(store,tmp_path/'artifacts',{'request_key':'planner-contained-call','tasks':['open_cabinet'],
+        'seeds':[101],'policies':['autonomous'],'mode':'interactive','max_versions':3})
+    key=result['cells'][0]['key'];owner=loop.process_identity()
+    store.update_cell(key,state='running',owner=owner,planner_features={'background_seconds':1})
+    directory=tmp_path/'call';directory.mkdir()
+    class UnusedClient:
+        def __init__(self,**kwargs):pass
+        def chat(self,**kwargs):pytest.fail('planner used in-process PARCC chat')
+    monkeypatch.setattr(loop,'ParccClient',UnusedClient)
+    seen=[]
+    def contained(_store,_key,kind,request,_directory,deadline):
+        seen.append((kind,deadline))
+        response=ParccResponse('parcc/GLM','source',None,.1,1,{'prompt_tokens':2,'completion_tokens':1,'total_tokens':3})
+        loop.immutable(directory/(kind+'-output.json'),response.artifact())
+        return response
+    monkeypatch.setattr(loop,'contained_provider',contained)
+    answer,_,_,_=loop.provider_call(store,key,1,'model',[{'role':'user','content':'{}'}],owner,directory)
+    assert answer=='source' and len(seen)==1 and seen[0][0]=='model'
+
+
+def test_parcc_eval_advisor_proxy_streams_and_honors_injected_client(monkeypatch):
+    from benchmarks.attention_harness import dev_v2_loop as loop
+    seen=[]
+    class Fake:
+        def __init__(self,**kwargs):seen.append(kwargs)
+    monkeypatch.setattr(loop,'ParccClient',Fake)
+    assert loop.proxy_client(None,{'model_source':'parcc','budget_tier':'dev'},'parcc/Qwen') is not None
+    assert seen[0]['stream'] is True and seen[0]['max_attempts']==5
+    assert loop.proxy_client(None,{'model_source':'parcc','budget_tier':'dev'},'paid/model') is not None
+    assert seen[1]['max_attempts']==1
+    assert loop.proxy_client(None,{'model_source':'parcc'},'parcc/Qwen') is not None
+    assert seen[2]['max_attempts']==1
+    injected=object()
+    assert loop.proxy_client(injected,{'model_source':'parcc'}) is injected
+
+
+def test_inprocess_retry_writes_ledger_event_and_output_attempts(tmp_path,monkeypatch):
+    from openarm365_dev_v2 import dev_config
+    from benchmarks.attention_harness import dev_v2_loop as loop
+    from benchmarks.attention_harness.parcc_client import ParccClient
+    monkeypatch.setattr(dev_config,'model_sources',lambda **kwargs:{})
+    store=DevV2Store(tmp_path/'ledger.sqlite3')
+    result=create(store,tmp_path/'artifacts',{'request_key':'parcc-retry-event','tasks':['open_cabinet'],
+        'seeds':[101],'policies':['autonomous'],'mode':'interactive','max_versions':3})
+    key=result['cells'][0]['key'];owner=loop.process_identity()
+    store.update_cell(key,state='running',owner=owner)
+    directory=tmp_path/'call';directory.mkdir()
+    calls=[]
+    def transport(*_args):
+        calls.append(1)
+        if len(calls)==1:return 503,{},b'{"error":{"type":"no_db_connection"}}'
+        return 200,{},b'{"choices":[{"message":{"content":"OK"}}],"usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3}}'
+    provider=ParccClient(api_key='fixture',max_attempts=5,retry_delay_seconds=0,transport=transport)
+    answer,_,output,_=loop.provider_call(store,key,1,'advisor',[{'role':'user','content':'{}'}],owner,directory,provider)
+    assert answer=='OK' and len(calls)==2
+    assert json.loads((directory/'advisor-output.json').read_text())['failed_attempts'][0]['reason']=='http_503_no_db'
+    with store.tx() as db:
+        rows=[json.loads(row[0]) for row in db.execute("SELECT payload FROM v2_events WHERE kind='provider_retry'")]
+    assert len(rows)==1 and rows[0]['version']==1 and rows[0]['kind']=='advisor' and rows[0]['attempt']==2
+
+
+def test_partial_200_with_usage_remains_needs_review(tmp_path,monkeypatch):
+    from contextlib import contextmanager
+    from openarm365_dev_v2 import dev_config
+    from benchmarks.attention_harness import dev_v2_loop as loop
+    from benchmarks.attention_harness.parcc_client import ParccClient,ParccError
+    monkeypatch.setattr(dev_config,'model_sources',lambda **kwargs:{})
+    store=DevV2Store(tmp_path/'ledger.sqlite3')
+    result=create(store,tmp_path/'artifacts',{'request_key':'parcc-partial-review','tasks':['open_cabinet'],
+        'seeds':[101],'policies':['autonomous'],'mode':'interactive','max_versions':3})
+    key=result['cells'][0]['key'];owner=loop.process_identity()
+    store.update_cell(key,state='running',owner=owner)
+    directory=tmp_path/'call';directory.mkdir()
+    calls=[]
+    @contextmanager
+    def transport(*_args):
+        calls.append(1)
+        yield 200,{},iter([b'data: {"choices":[{"delta":{"content":"partial"}}]}\n',
+                           b'data: {"choices":[],"usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3}}\n']),lambda _seconds:None
+    provider=ParccClient(api_key='fixture',max_attempts=5,stream=True,stream_transport=transport)
+    with pytest.raises(ParccError,match='before \\[DONE\\]'):
+        loop.provider_call(store,key,1,'advisor',[{'role':'user','content':'{}'}],owner,directory,provider)
+    assert len(calls)==1
+    assert loop.job_for(store.cell(key),1,'advisor')['state']=='needs_review'
+    assert not (directory/'advisor-output.json').exists()
+
+
+def test_missing_stream_usage_is_held_without_retry(tmp_path,monkeypatch):
+    from contextlib import contextmanager
+    from openarm365_dev_v2 import dev_config
+    from benchmarks.attention_harness import dev_v2_loop as loop
+    from benchmarks.attention_harness.parcc_client import ParccClient
+    from benchmarks.attention_harness.core.dev_store import DevConflict
+    monkeypatch.setattr(dev_config,'model_sources',lambda **kwargs:{})
+    store=DevV2Store(tmp_path/'ledger.sqlite3')
+    result=create(store,tmp_path/'artifacts',{'request_key':'parcc-missing-usage','tasks':['open_cabinet'],
+        'seeds':[101],'policies':['autonomous'],'mode':'interactive','max_versions':3})
+    key=result['cells'][0]['key'];owner=loop.process_identity()
+    store.update_cell(key,state='running',owner=owner)
+    directory=tmp_path/'call';directory.mkdir()
+    calls=[]
+    @contextmanager
+    def transport(*_args):
+        calls.append(1)
+        yield 200,{},iter([b'data: {"choices":[{"delta":{"content":"OK"}}]}\n',
+                           b'data: [DONE]\n']),lambda _seconds:None
+    provider=ParccClient(api_key='fixture',max_attempts=5,stream=True,stream_transport=transport)
+    with pytest.raises(DevConflict,match='usage missing'):
+        loop.provider_call(store,key,1,'advisor',[{'role':'user','content':'{}'}],owner,directory,provider)
+    assert len(calls)==1
+    assert loop.job_for(store.cell(key),1,'advisor')['state']=='needs_review'
+
+
+def test_five_unreachable_attempts_hold_claim_for_review(tmp_path,monkeypatch):
+    from urllib.error import URLError
+    from openarm365_dev_v2 import dev_config
+    from benchmarks.attention_harness import dev_v2_loop as loop,parcc_client
+    from benchmarks.attention_harness.parcc_client import ParccClient,ParccError
+    monkeypatch.setattr(dev_config,'model_sources',lambda **kwargs:{})
+    monkeypatch.setattr(parcc_client.time,'sleep',lambda _delay:None)
+    store=DevV2Store(tmp_path/'ledger.sqlite3')
+    result=create(store,tmp_path/'artifacts',{'request_key':'parcc-five-review','tasks':['open_cabinet'],
+        'seeds':[101],'policies':['autonomous'],'mode':'interactive','max_versions':3})
+    key=result['cells'][0]['key'];owner=loop.process_identity()
+    store.update_cell(key,state='running',owner=owner)
+    directory=tmp_path/'call';directory.mkdir()
+    calls=[]
+    def transport(*_args):
+        calls.append(1)
+        raise URLError('offline')
+    provider=ParccClient(api_key='fixture',max_attempts=5,retry_delay_seconds=0,transport=transport)
+    with pytest.raises(ParccError,match='unreachable after 5 attempts'):
+        loop.provider_call(store,key,1,'advisor',[{'role':'user','content':'{}'}],owner,directory,provider)
+    assert len(calls)==5
+    assert loop.job_for(store.cell(key),1,'advisor')['state']=='needs_review'
+    assert len(json.loads((directory/'advisor-attempts.json').read_text()))==5
 
 
 @pytest.mark.parametrize('source,expected', [('codex','CodexClient'),('parcc','ParccClient')])

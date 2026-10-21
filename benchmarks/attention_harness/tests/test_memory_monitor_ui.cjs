@@ -59,3 +59,21 @@ test('nonempty warnings render as one muted friendly line',()=>{
  assert.equal(monitor.warningText(['secret service detail']),'Some note details are unavailable right now.');
  assert.deepEqual(monitor.adapt({...payload([]),warnings:['unavailable']}).warnings,['unavailable']);
 });
+test('monitor fills viewport and moves sample preview to footer',()=>{
+ assert.match(css,/\.wrap\{max-width:none;width:100%;min-height:calc\(100dvh - 32px\)/);
+ assert.match(css,/#monitor\{flex:1;height:calc\(100dvh - 130px\);min-height:560px/);
+ assert.match(css,/grid-template-columns:minmax\(0,1fr\) 380px/);
+ assert.match(css,/#monitor \.li\{[^}]*overflow-y:auto/);
+ assert.match(css,/@media\(max-width:780px\)[^\n]*grid-template-columns:1fr/);
+ assert.match(page,/<footer class="demo-link">Preview with sample data: <a href="#demo=40">40<\/a> · <a href="#demo=150">150<\/a> · <a href="#demo=400">400<\/a> notes<\/footer>/);
+ assert.match(page,/id="real-data" href="\/ui\/memory.html" hidden>Back to real data/);
+ assert.match(page,/id="sample" class="sample" hidden>Sample data/);
+ assert.match(fs.readFileSync(path.join(root,'ui/memory.js'),'utf8'),/preserveAspectRatio="xMidYMid meet"/);
+ assert.equal(monitor.flowLayout(390),'vertical');assert.equal(monitor.flowLayout(900),'wide');
+});
+test('monitor and main page load the same notices bell',()=>{
+ assert.match(page,/id="memory-notices" class="ab-notices-host"/);
+ assert.match(page,/\.\/notices\.js/);
+ assert.match(live,/AttentionNotices\.createNotices/);
+ assert.match(css,/\.ab-notices-button\[data-level="error"\]/);
+});

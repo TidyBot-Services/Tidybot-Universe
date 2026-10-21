@@ -116,7 +116,7 @@ test('CAMERA UI wiring: live angles only while running, replays from the manifes
  assert.match(source,/for\(const \[key,name,width,height\] of|\['side','Side',960,540\]/);
  assert.match(source,/packet = \{bundle,trace,views:v2\?await readCameraViews\(s, bundle\.artifact_dir\):null\}/);
  assert.match(source,/kind:'advisor_replay_'\+key,mime_type:'video\/mp4'/);
- assert.match(source,/const chosenView=viewOptions && !viewOptions\[wantedView\] \? 'external' : wantedView;/);
+ assert.match(source,/const chosenView=\(currentReplay && !viewOptions \|\| viewOptions && \(!viewOptions\[wantedView\] \|\| currentReplay && !videoForView\(wantedView\) && !imageForView\(wantedView\)\)\) \? 'external' : wantedView;/);
  // the attempt tabs and the per-view video filter already exist and are reused unchanged
  assert.match(source,/allVideos\.filter\(e=>e\.kind===\(chosenView==='external'\?'advisor_replay':`advisor_replay_\$\{chosenView\}`\)\)/);
 });

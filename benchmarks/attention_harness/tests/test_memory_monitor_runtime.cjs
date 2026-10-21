@@ -18,7 +18,7 @@ function element(tag='div'){
   return el;
 }
 function fakeThree(){
-  const meshes=[];
+  const meshes=[],cameras=[];
   class Vector3{
     constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z}
     clone(){return new Vector3(this.x,this.y,this.z)}
@@ -35,8 +35,8 @@ function fakeThree(){
   class Material{constructor(options={}){Object.assign(this,options);this.color=new Color(options.color||0)}dispose(){}}
   class Mesh extends Group{constructor(geometry,material){super();this.geometry=geometry;this.material=material;meshes.push(this)}}
   class Renderer{constructor(){this.domElement=element('canvas');this.domElement.width=0;this.domElement.height=0}setPixelRatio(){}getPixelRatio(){return 1}setSize(w,h){this.domElement.width=w;this.domElement.height=h}render(){}}
-  class Camera extends Group{updateProjectionMatrix(){}}
-  return {api:{Vector3,Quaternion,Euler:class{},Group,Scene:Group,PerspectiveCamera:Camera,WebGLRenderer:Renderer,Mesh,SphereGeometry:Geometry,BufferGeometry:Geometry,MeshBasicMaterial:Material,LineBasicMaterial:Material,Line:Mesh},meshes};
+  class Camera extends Group{constructor(){super();cameras.push(this)}updateProjectionMatrix(){}}
+  return {api:{Vector3,Quaternion,Euler:class{},Group,Scene:Group,PerspectiveCamera:Camera,WebGLRenderer:Renderer,Mesh,SphereGeometry:Geometry,BufferGeometry:Geometry,MeshBasicMaterial:Material,LineBasicMaterial:Material,Line:Mesh},meshes,cameras};
 }
 function harness(hash,source=original,width=780){
   const ids=new Map(),get=id=>{if(!ids.has(id))ids.set(id,element());return ids.get(id)};
@@ -47,15 +47,30 @@ function harness(hash,source=original,width=780){
   const frames=[],intervals=[],calls=[],three=fakeThree();
   const document={body:element('body'),documentElement:{clientWidth:width},getElementById:get,createElement:element,createElementNS:(_,tag)=>element(tag),addEventListener(){}};
   const handlers={};
-  const window={document,innerWidth:width,THREE:three.api,location:{hash,reload(){}},addEventListener(name,fn){handlers[name]=fn},confirm:()=>true};
+  const window={document,innerWidth:width,THREE:three.api,location:{hash,reload(){}},addEventListener(name,fn){handlers[name]=fn},confirm:()=>true,
+    AttentionNotices:{createNotices:()=>({clientError(){}}),installFetchCapture(){}}};
   const context=vm.createContext({window,document,location:window.location,matchMedia:()=>({matches:false}),localStorage:{getItem:()=>null,setItem(){}},devicePixelRatio:1,
     requestAnimationFrame:fn=>{frames.push(fn)},setInterval:fn=>{intervals.push(fn);return intervals.length},setTimeout:()=>1,clearTimeout(){},
     fetch:(url)=>{calls.push(url);return Promise.resolve({ok:true,json:async()=>window.payload})},console});
   const instrumented=source.replace('  init();','  global.__memoryTest={init,createGlobe,render,renderFlow,sampleTick,applyTheme,setView,select,recordReads,startGlobe(){globe=createGlobe();globe.applyTheme3D();setView("3d");return globe},load(payload){data=adapt(payload);render();feed()},get data(){return data}};');
   assert.notEqual(instrumented,source);
   vm.runInContext(instrumented,context,{filename:'memory.js'});
-  return {api:window.__memoryTest,window,get,handlers,frames,intervals,calls,meshes:three.meshes,flush(){const fn=frames.shift();assert.ok(fn,'an animation frame was requested');fn()}};
+  return {api:window.__memoryTest,window,get,handlers,frames,intervals,calls,meshes:three.meshes,cameras:three.cameras,flush(){const fn=frames.shift();assert.ok(fn,'an animation frame was requested');fn()}};
 }
+test('3D camera fits sphere and labels with margin and responds to aspect changes',()=>{
+  for(const [w,h] of [[1080,780],[390,460],[1600,1000]]){
+    const distance=monitor.cameraFitDistance(w,h),halfVertical=42*Math.PI/360;
+    const halfHorizontal=Math.atan(Math.tan(halfVertical)*w/h);
+    assert.ok(1.28/distance/Math.sin(Math.min(halfVertical,halfHorizontal))<=.94+1e-10);
+  }
+  const h=harness('#demo=150');h.get('globe').clientWidth=1080;h.get('globe').clientHeight=780;
+  h.api.startGlobe();h.flush();const camera=h.cameras[0];
+  assert.ok(camera.position.z>2.7);
+  const before=camera.position.z;
+  h.get('globe').clientWidth=390;h.flush();
+  assert.ok(camera.position.z>before);
+  assert.equal(camera.aspect,390/780);
+});
 function realPayload(){
   const seed='c2-seeded-small-steps-001';
   const notes=[

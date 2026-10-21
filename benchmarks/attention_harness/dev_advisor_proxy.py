@@ -104,6 +104,7 @@ def ask(evidence, config, client, *, cache_dir=None):
                 'views':sorted({f['view'] for f in frames}),'cache_key':key,'cache_hit':False,'attempts':attempt,'usage':response.usage,
                 **human_seconds(evidence,answer),
                 'latency_seconds':time.monotonic()-begun}
+            if getattr(response,'failed_attempts',()):record.update(provider_attempts=response.attempts,provider_failed_attempts=list(response.failed_attempts))
             if config.get('model_source')=='codex':record.update(model_source='codex',quota_before=getattr(client,'quota_before',None),quota_after=getattr(client,'quota_after',None))
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
@@ -129,6 +130,7 @@ def _ask_v2(evidence,config,client,*,cache_dir=None):
             if not answer:last='empty_answer';continue
             public_screen(answer)
             record={'schema_version':'attentionbench.advisor-proxy.v2','kind':'hint','status':'completed','feedback':answer,'model':config['model'],'mode':'text_only','prompt_version':config['prompt_version'],'frames':[],'views':[],'cache_key':key,'cache_hit':False,'attempts':attempt,'usage':response.usage,'latency_seconds':time.monotonic()-begun}
+            if getattr(response,'failed_attempts',()):record.update(provider_attempts=response.attempts,provider_failed_attempts=list(response.failed_attempts))
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
             return record

@@ -7,9 +7,12 @@ from .core.dev_store import DevConflict,DevBudgetExhausted
 from .dev_loop import immutable,sha,process_identity,owner_alive
 from .dev_tasks import get_task,validate_selection,options as task_options
 from .dev_help import POLICY_IDS,policy_parameters,DemoProvider,EMPTY_MEMORY,HELP_PRICING,public_screen
+from .free_models import FREE_MODELS
 from openarm365_dev_v2.dev_config import make_lock,make_dev_config,validate_dev_config,verify_lock,ROOT
 from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
+# Frozen model contract: no replay of ambiguous calls. Dev-tier free PARCC
+# connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
 ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source'}|FIELDS
@@ -199,7 +202,10 @@ def create(store,artifact_root,selection):
         robot='OpenArm365',execution_arm='both',configs=configs,initial_sources=sources,identity_lock=ref,
         memory=EMPTY_MEMORY,help_pricing=({**HELP_PRICING,'cache':{'credits':0,'count':0}} if v3 else HELP_PRICING),demos=demos,policies=parameters,trace_visible=trace_visible,
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
-    if budget_tier=='dev':manifest['budget_tier']='dev'
+    if budget_tier=='dev':
+        manifest['budget_tier']='dev'
+        if source=='parcc' and MODEL['model'] in FREE_MODELS:
+            manifest['connectivity_retry_max_attempts']=5
     if source=='codex':manifest['model_source']='codex'
     if v3:
         # 2026-10-18 free Eval accounting applies to new v3 manifests only;

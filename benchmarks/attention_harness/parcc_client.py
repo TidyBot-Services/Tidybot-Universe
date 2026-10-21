@@ -11,14 +11,19 @@ from dataclasses import dataclass
 from typing import Any, Callable, ContextManager, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from .free_models import FREE_MODELS
 
 
 DEFAULT_PARCC_URL = "https://litellm.parcc.upenn.edu/v1/chat/completions"
-RETRYABLE_STATUS = {404, 429, 500, 502, 503, 504}
+RETRYABLE_STATUS = {429, 502, 503, 504}
 
 
 class ParccError(RuntimeError):
     """A bounded PARCC request failed or returned an unusable response."""
+
+
+class _NoFirstByte(TimeoutError):
+    """The successful response has not supplied any body bytes."""
 
 
 @dataclass(frozen=True)
@@ -31,6 +36,7 @@ class ParccResponse:
     usage: dict[str, Any]
     request_id: str | None = None
     finish_reason: str | None = None
+    failed_attempts: tuple[dict[str, Any], ...] = ()
 
     def artifact(self, *, include_content: bool = True) -> dict[str, Any]:
         value = {
@@ -43,6 +49,8 @@ class ParccResponse:
         }
         if include_content:
             value["content"] = self.content
+        if self.failed_attempts:
+            value["failed_attempts"] = list(self.failed_attempts)
         return value
 
 
@@ -64,6 +72,7 @@ class ParccClient:
         response_observer: Callable[[int, dict[str, str], bytes], None] | None = None,
         stream: bool = False,
         stream_transport: StreamTransport | None = None,
+        retry_observer: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.endpoint = endpoint or os.environ.get("PARCC_URL", DEFAULT_PARCC_URL)
         self._api_key = api_key or os.environ.get("PARCC_API_KEY") or os.environ.get("LITELLM_KEY")
@@ -74,6 +83,7 @@ class ParccClient:
         self.stream = stream
         self._stream_transport = stream_transport or _urlopen_stream_transport
         self.response_observer = response_observer
+        self.retry_observer = retry_observer
         if not self._api_key:
             raise ParccError(
                 "PARCC credential unavailable; set PARCC_API_KEY or LITELLM_KEY "
@@ -107,55 +117,101 @@ class ParccClient:
             "Content-Type": "application/json",
         }
         started = time.monotonic()
-        last_error = "unknown failure"
-        for attempt in range(1, self.max_attempts + 1):
+        deadline = started + self.timeout_seconds
+        allowed_attempts = min(self.max_attempts, 5) if model in FREE_MODELS else 1
+        failed_attempts: list[dict[str, Any]] = []
+        last_error = "deadline exceeded"
+        retry_reason = None
+        for attempt in range(1, allowed_attempts + 1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            if retry_reason is not None and self.retry_observer is not None:
+                self.retry_observer({'attempt': attempt, 'reason': retry_reason,
+                                     'max_attempts': allowed_attempts})
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+            attempt_started = time.monotonic()
+            reason = None
             try:
                 if self.stream:
-                    status, response_headers, raw = self._read_stream(
-                        headers, encoded, started + self.timeout_seconds
-                    )
+                    status, response_headers, raw = self._read_stream(headers, encoded, deadline)
                 else:
-                    status, response_headers, raw = self._transport(
-                        self.endpoint, headers, encoded, self.timeout_seconds
-                    )
-                if self.response_observer is not None:
-                    self.response_observer(status, response_headers, raw)
-                body = json.loads(raw)
+                    status, response_headers, raw = self._transport(self.endpoint, headers, encoded,
+                                                                     self.timeout_seconds if attempt == 1 else remaining)
+                if status == 200 and time.monotonic() >= deadline:
+                    raise ParccError("PARCC total deadline exceeded")
                 if status >= 400:
-                    last_error = (f"PARCC returned HTTP {status}" if self.stream
-                                  else _safe_http_error(status, body))
-                    if status not in RETRYABLE_STATUS:
+                    try:
+                        body = json.loads(raw)
+                    except (ValueError, UnicodeDecodeError):
+                        body = None
+                    last_error = f"PARCC returned HTTP {status}"
+                    has_generation = isinstance(body, dict) and bool({'choices', 'usage'} & body.keys())
+                    if not has_generation and (status in RETRYABLE_STATUS or
+                                               status == 500 and isinstance(body, dict) and 'error' in body):
+                        error = body.get('error') if isinstance(body, dict) else None
+                        reason = (f"http_{status}_no_db" if status == 503 and
+                                  isinstance(error, dict) and error.get('type') == 'no_db_connection'
+                                  else f"http_{status}")
+                    if reason is None:
+                        if self.response_observer is not None:
+                            self.response_observer(status, response_headers, raw if isinstance(body, dict) else b'{}')
                         raise ParccError(last_error)
                 else:
-                    choice = body.get("choices", [{}])[0]
+                    try:
+                        body = json.loads(raw)
+                    except (ValueError, UnicodeDecodeError) as exc:
+                        raise ParccError("PARCC HTTP 200 response contained invalid JSON") from exc
+                    if not isinstance(body, dict):
+                        raise ParccError("PARCC HTTP 200 response contained invalid body")
+                    if self.response_observer is not None:
+                        self.response_observer(status, response_headers, raw)
+                    choices = body.get('choices')
+                    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                        raise ParccError("PARCC HTTP 200 response contained invalid choices")
+                    choice = choices[0]
                     message = choice.get("message", {})
+                    if not isinstance(message, dict):
+                        raise ParccError("PARCC HTTP 200 response contained invalid message")
                     content = message.get("content")
                     if isinstance(content, str) and content.strip():
+                        usage = body.get('usage') or {}
+                        if not isinstance(usage, dict):
+                            raise ParccError("PARCC HTTP 200 response contained invalid usage")
                         return ParccResponse(
-                            model=model,
-                            content=content,
+                            model=model, content=content,
                             reasoning=message.get("reasoning", message.get("reasoning_content")),
                             latency_seconds=round(time.monotonic() - started, 3),
-                            attempts=attempt,
-                            usage=dict(body.get("usage") or {}),
+                            attempts=attempt, usage=dict(usage),
                             request_id=response_headers.get("x-request-id"),
                             finish_reason=choice.get("finish_reason"),
+                            failed_attempts=tuple(failed_attempts),
                         )
-                    last_error = "HTTP 200 response contained no final content"
+                    raise ParccError("HTTP 200 response contained no final content")
             except ParccError:
                 raise
-            except TimeoutError as exc:
-                if self.stream:
-                    raise
-                last_error = f"{type(exc).__name__}: {exc}"
-            except (HTTPError, URLError, OSError, ValueError, json.JSONDecodeError) as exc:
-                last_error = f"{type(exc).__name__}: {exc}"
-            if attempt < self.max_attempts:
+            except HTTPError as exc:
+                if exc.code not in RETRYABLE_STATUS:
+                    raise ParccError(f"PARCC returned HTTP {exc.code}") from exc
+                reason = f'http_{exc.code}'
+                last_error = f"PARCC returned HTTP {exc.code}"
+            except (TimeoutError, URLError, OSError) as exc:
+                reason = 'no_first_byte' if isinstance(exc, TimeoutError) else 'connect_error'
+                last_error = reason
+            failed_attempts.append({'attempt': attempt, 'reason': reason,
+                                    'seconds_spent': round(time.monotonic() - attempt_started, 3)})
+            if attempt < allowed_attempts:
+                delay = self.retry_delay_seconds * (2 ** (attempt - 1))
                 jitter = random.uniform(0.0, min(0.25, self.retry_delay_seconds / 4))
-                time.sleep(self.retry_delay_seconds + jitter)
-        raise ParccError(
-            f"{model} failed after {self.max_attempts} attempts: {last_error}"
-        )
+                if time.monotonic() + delay + jitter >= deadline:
+                    break
+                retry_reason = reason
+                time.sleep(delay + jitter)
+        error = ParccError(f"{model} unreachable after {len(failed_attempts)} attempts: {last_error}")
+        error.failed_attempts = tuple(failed_attempts)
+        raise error
 
     def _read_stream(
         self, headers: dict[str, str], encoded: bytes, deadline: float
@@ -172,11 +228,20 @@ class ParccClient:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         raise TimeoutError("PARCC stream total deadline exceeded")
-                    set_read_timeout(remaining)
+                    try:
+                        set_read_timeout(remaining)
+                    except OSError as exc:
+                        if status not in RETRYABLE_STATUS:
+                            raise ParccError(f"PARCC returned HTTP {status}") from exc
+                        raise
                     try:
                         part = next(iterator)
                     except StopIteration:
                         break
+                    except (TimeoutError, OSError) as exc:
+                        if status not in RETRYABLE_STATUS:
+                            raise ParccError(f"PARCC returned HTTP {status}") from exc
+                        raise
                     if time.monotonic() >= deadline:
                         raise TimeoutError("PARCC stream total deadline exceeded")
                     parts.append(part)
@@ -187,6 +252,7 @@ class ParccClient:
                     raw = b"{}"
                 return status, response_headers, raw
             first: dict[str, Any] | None = None
+            body_started = False
             content: list[str] = []
             reasoning: dict[str, list[str]] = {}
             role = "assistant"
@@ -196,14 +262,29 @@ class ParccClient:
             while True:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise TimeoutError("PARCC stream total deadline exceeded")
-                set_read_timeout(remaining)
+                    if body_started:
+                        raise ParccError("PARCC stream total deadline exceeded after body started")
+                    raise _NoFirstByte("PARCC response supplied no first byte")
+                try:
+                    set_read_timeout(remaining)
+                except OSError as exc:
+                    if body_started:
+                        raise ParccError("PARCC stream failed after HTTP 200 body started") from exc
+                    raise _NoFirstByte("PARCC response supplied no first byte") from exc
                 try:
                     line = next(iterator)
                 except StopIteration:
                     break
+                except (TimeoutError, OSError) as exc:
+                    if body_started:
+                        raise ParccError("PARCC stream failed after HTTP 200 body started") from exc
+                    raise _NoFirstByte("PARCC response supplied no first byte") from exc
                 if time.monotonic() >= deadline:
-                    raise TimeoutError("PARCC stream total deadline exceeded")
+                    if body_started:
+                        raise ParccError("PARCC stream total deadline exceeded after body started")
+                    raise _NoFirstByte("PARCC response supplied no first byte")
+                if line:
+                    body_started = True
                 line = line.strip()
                 if not line or line.startswith(b":"):
                     continue
@@ -263,7 +344,11 @@ def _urlopen_transport(
     request = Request(endpoint, data=data, method="POST", headers=headers)
     try:
         with urlopen(request, timeout=timeout) as response:
-            return response.status, {k.lower(): v for k, v in response.headers.items()}, response.read()
+            try:
+                raw = response.read()
+            except (TimeoutError, OSError) as exc:
+                raise ParccError("PARCC HTTP 200 body read failed") from exc
+            return response.status, {k.lower(): v for k, v in response.headers.items()}, raw
     except HTTPError as exc:
         return exc.code, {k.lower(): v for k, v in exc.headers.items()}, exc.read()
 
@@ -286,7 +371,28 @@ def _urlopen_stream_transport(
         def set_read_timeout(seconds: float) -> None:
             _set_stream_socket_timeout(response, seconds)
 
-        yield response.status, {k.lower(): v for k, v in response.headers.items()}, response, set_read_timeout
+        lines = _tracked_stream_lines(response) if hasattr(response, 'read') else response
+        yield response.status, {k.lower(): v for k, v in response.headers.items()}, lines, set_read_timeout
+
+
+def _tracked_stream_lines(response: Any) -> Iterable[bytes]:
+    """Read one byte first so a stalled partial line cannot look like an empty response."""
+    body_started = False
+    while True:
+        try:
+            first = response.read(1)
+        except (TimeoutError, OSError) as exc:
+            if body_started:
+                raise ParccError("PARCC stream failed after HTTP 200 body started") from exc
+            raise _NoFirstByte("PARCC response supplied no first byte") from exc
+        if not first:
+            return
+        body_started = True
+        try:
+            rest = response.readline()
+        except (TimeoutError, OSError) as exc:
+            raise ParccError("PARCC stream failed after HTTP 200 body started") from exc
+        yield first + rest
 
 
 def _set_stream_socket_timeout(response: Any, seconds: float) -> None:

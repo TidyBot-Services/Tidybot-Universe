@@ -318,7 +318,10 @@ def review_execution(execution_dir, config, client=None, *, output_dir=None, evi
         elif config.get('model_source')=='codex':
             from .codex_client import CodexClient
             provider=CodexClient(timeout_seconds=VISION_SECONDS)
-        else:provider=ParccClient(api_key=credential(), max_attempts=1, timeout_seconds=VISION_SECONDS)
+        else:
+            from .free_models import FREE_MODELS
+            provider=ParccClient(api_key=credential(), max_attempts=5 if config.get('budget_tier')=='dev' and review['model_requested'] in FREE_MODELS else 1,
+                                 timeout_seconds=VISION_SECONDS)
         # A Dev/Advisor wire observer must never capture these images as their response.
         observer = getattr(provider, 'response_observer', None)
         if hasattr(provider, 'response_observer'): provider.response_observer = None

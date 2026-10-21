@@ -6,6 +6,7 @@ from .dev_help import public_screen,decide,AdvisorProvider,DemoProvider,HumanPro
 from .dev_tasks import get_task
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from .parcc_client import ParccClient,ParccResponse,ParccError
+from .free_models import FREE_MODELS
 from .dev_planner import PlannerActionBlocked
 from .dev_feedback_projection import input_bound as dev_input_bound, project_messages
 from .formal_runner_boundary import FormalRunRequest,run_with_formal_boundary
@@ -56,7 +57,8 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     for m in messages:
         if m['role']=='user':screen_model_packet(json.loads(m['content'])) if kind=='model' else public_screen(json.loads(m['content']))
     cell=store.cell(key);runtime=cell.get('runtime',{})
-    with store.tx() as db:source=store.get(db,'experiments',cell['experiment_id']).get('selection',{}).get('model_source','parcc')
+    with store.tx() as db:selection=store.get(db,'experiments',cell['experiment_id']).get('selection',{})
+    source=selection.get('model_source','parcc')
     existing=job_for(cell,version,kind)
     if existing and existing['state']=='settled':
         receipt=existing['receipt'];output=json.loads(checked(receipt['response']).read_bytes())
@@ -80,6 +82,8 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     if kind=='advisor':reservation.update(help_count=1,help_credits=1,help_wait_seconds=seconds)
     store.reserve_check(key,reservation,model_name=model) if not existing else None
     request_body={**MODEL,'model':model,'max_tokens':max_tokens,'messages':messages,'token_reservation':reservation}
+    retry_limit=5 if source=='parcc' and model in FREE_MODELS and selection.get('budget_tier','dev')=='dev' else 1
+    if retry_limit>1:request_body['connectivity_retry_max_attempts']=retry_limit
     if kind in {'model','advisor'}:
         visible=json.loads(messages[-1]['content'])
         truncated=(visible.get('attention_control',{}).get('memory_truncated') if kind=='model'
@@ -99,7 +103,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
         if not credential:
             path=Path('/home/truares/.litellm-key')
             if path.is_file():credential=path.read_text().strip()
-        provider=ParccClient(api_key=credential,max_attempts=1,timeout_seconds=min(seconds,store.goal_for_cell(key)['wall_remaining']))
+        provider=ParccClient(api_key=credential,max_attempts=retry_limit,timeout_seconds=min(seconds,store.goal_for_cell(key)['wall_remaining']),stream=True)
     else:provider=client
     job=store.reserve(key,version,kind,reservation,model_name=model)
     if job.get('claimed_at') or job.get('actual'):raise DevConflict('existing model claim cannot be redispatched')
@@ -108,6 +112,10 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
         row={'http_status':status,'request_id':headers.get('x-request-id'),'body':json.loads(raw)};wire.append(row)
         immutable(directory/(kind+'-provider-response.json'),row)
     if hasattr(provider,'response_observer'):provider.response_observer=observed
+    if hasattr(provider,'retry_observer'):
+        def retried(row):
+            with store.tx() as db:store.event(db,'provider_retry',{'cell':key,'version':version,'kind':kind,**row})
+        provider.retry_observer=retried
     try:store.claim(job['job_id'],owner)
     except BaseException:
         if job_for(store.cell(key),version,kind)['state']=='reserved':store.release_unclaimed(job['job_id'])
@@ -130,9 +138,9 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
                 provider_path=directory/(kind+'-provider-response.json')
                 if provider_path.exists():wire.append(json.loads(provider_path.read_bytes()))
             else:response=provider.chat(model=model,messages=messages,max_tokens=max_tokens,temperature=0,reasoning_effort='high' if source=='codex' else MODEL['reasoning_effort'])
-        except ParccError:
-            if not wire or wire[-1]['http_status']!=200 or type(wire[-1]['body'].get('usage',{}).get('total_tokens')) is not int:raise
-            response=ParccResponse(model,'',None,time.monotonic()-begun,1,wire[-1]['body']['usage'])
+        except ParccError as exc:
+            if getattr(exc,'failed_attempts',()):immutable(directory/(kind+'-attempts.json'),list(exc.failed_attempts))
+            raise
         output_path=directory/(kind+'-output.json')
         if (features or source=='codex') and client is None and output_path.exists():output={'uri':str(output_path.resolve()),'sha256':sha(output_path)}
         else:
@@ -164,18 +172,40 @@ def contained_provider(store,key,kind,request,directory,deadline):
     # background task. Termination leaves a held claim, never an automatic retry.
     log=(directory/(kind+'-worker.log')).open('ab')
     process=None
+    version=next((j['version'] for j in store.cell(key)['jobs'] if j['kind']==kind and j['state']=='claimed'),None)
+    seen_retries=set()
+    def collect_retries():
+        for path in sorted(directory.glob(kind+'-retry-*.json')):
+            if path.name in seen_retries:continue
+            try:row=json.loads(path.read_bytes())
+            except (OSError,ValueError):continue  # The child may still be writing this immutable file.
+            if version is not None:
+                with store.tx() as db:
+                    store.event(db,'provider_retry',{'cell':key,'version':version,
+                                                     'kind':kind,**row})
+            seen_retries.add(path.name)
     try:
         source=json.loads(Path(request['uri']).read_bytes()).get('model_source','parcc')
         process=subprocess.Popen([sys.executable,'-B','-m','benchmarks.attention_harness.dev_provider_worker','--request',request['uri'],'--directory',str(directory),'--kind',kind,'--deadline',str(deadline)],cwd=ROOT,env=__import__('benchmarks.attention_harness.dev_capabilities',fromlist=['provider_environment']).provider_environment(ROOT,source),stdout=log,stderr=log,start_new_session=True)
         immutable(directory/(kind+'-owned-process.json'),process_identity(process.pid))
         while process.poll() is None:
+            collect_retries()
             cell=store.cell(key)
             with store.tx() as db:exp=store.get(db,'experiments',cell['experiment_id'])
             if exp.get('cancelled') or time.time()>=deadline:raise DevConflict('provider interrupted/deadline; paid request retained for review')
             time.sleep(.05)
-        if process.returncode:raise DevConflict('provider child failed; paid request retained for review')
+        collect_retries()
+        if process.returncode:
+            attempts_path=directory/(kind+'-attempts.json')
+            if source=='parcc' and attempts_path.is_file():
+                attempts=json.loads(attempts_path.read_bytes())
+                if attempts:
+                    model=json.loads(Path(request['uri']).read_bytes())['model']
+                    raise DevConflict(f"{model} unreachable after {len(attempts)} attempts: {attempts[-1]['reason']}")
+            raise DevConflict('provider child failed; paid request retained for review')
         value=json.loads((directory/(kind+'-output.json')).read_bytes())
-        return ParccResponse(value['model'],value['content'],None,value['latency_seconds'],value['attempts'],value['usage'],value.get('request_id'))
+        return ParccResponse(value['model'],value['content'],None,value['latency_seconds'],value['attempts'],value['usage'],value.get('request_id'),
+                             failed_attempts=tuple(value.get('failed_attempts',())))
     finally:
         if process:
             if process.poll() is None:
@@ -442,7 +472,7 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
 class HumanProxyInvalid(Exception):
     """Eval vision was unavailable after retries: the cell is condition_invalid."""
 
-def proxy_client(client,config=None):
+def proxy_client(client,config=None,model=None):
     if client is not None:return client
     if (config or {}).get('model_source')=='codex':
         from .codex_client import CodexClient
@@ -451,7 +481,14 @@ def proxy_client(client,config=None):
     if not credential:
         path=Path('/home/truares/.litellm-key')
         if path.is_file():credential=path.read_text().strip()
-    return ParccClient(api_key=credential,max_attempts=1,timeout_seconds=90)
+    return ParccClient(api_key=credential,max_attempts=5 if (config or {}).get('budget_tier')=='dev' and model in FREE_MODELS else 1,timeout_seconds=90,stream=True)
+
+def proxy_retry_events(provider,store,key,version,kind):
+    if hasattr(provider,'retry_observer'):
+        def retried(row):
+            with store.tx() as db:store.event(db,'provider_retry',{'cell':key,'version':version,'kind':kind,**row})
+        provider.retry_observer=retried
+    return provider
 
 def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailable=False):
     """Automatic, non-attention Eval after a settled execution."""
@@ -471,7 +508,8 @@ def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailab
     store.reserve_check(key,reservation,unmetered_eval=unmetered) if not existing else None
     job=store.reserve(key,version,'eval',reservation,unmetered_eval=unmetered,model_name=config['eval_agent']['model']);store.claim(job['job_id'],owner)
     try:
-        record=eva.ask(evidence,eva.from_config(config),proxy_client(client,config),cache_dir=Path(cell['artifact_dir']).parent.parent/'eval-cache')
+        provider=proxy_retry_events(proxy_client(client,config,config['eval_agent']['model']),store,key,version,'eval')
+        record=eva.ask(evidence,eva.from_config(config),provider,cache_dir=Path(cell['artifact_dir']).parent.parent/'eval-cache')
         immutable(artifact,record)
         actual=dict(reservation);usage=record['usage']
         if record['cache_hit']:actual.update(provider_tokens=0,input_tokens=0,output_tokens=0,model_seconds=0)
@@ -620,7 +658,8 @@ def advisor_answer(store,key,exec_version,job_version,config,proxy,owner,artifac
     store.reserve_check(key,reservation,model_name=proxy['model']) if not existing else None
     job=store.reserve(key,job_version,'advisor',reservation,model_name=proxy['model']);store.claim(job['job_id'],owner)
     try:
-        record=advisor.ask(evidence,proxy,proxy_client(client,config),cache_dir=Path(cell['artifact_dir']).parent.parent/'advisor-cache')
+        provider=proxy_retry_events(proxy_client(client,config,proxy['model']),store,key,job_version,'advisor')
+        record=advisor.ask(evidence,proxy,provider,cache_dir=Path(cell['artifact_dir']).parent.parent/'advisor-cache')
         actual_logical=record.get('hint_human_seconds',logical)
         record.update(requested=True,request_type='hint',selected_moments=selected,selected_frame_manifest=selected_frames,localization=localization,question=evidence['question'],logical_human_seconds=actual_logical,recording_seconds=recording_seconds,answer_latency_seconds=proxy['answer_latency_seconds'])
         if proxy['mode']=='vision':record['request_view']=view_ref

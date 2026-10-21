@@ -48,6 +48,7 @@ from .gpu_meter import COVERAGE as GPU_COVERAGE
 from .run_recovery import recover_lost_runs
 from .request_lifecycle import request_timeline
 from .codex_quota import read_quota
+from .notices import NoticeReader
 
 
 UI_DIR = Path(__file__).with_name("ui")
@@ -586,6 +587,7 @@ def create_server(
         authorization = json.loads(dev_v2_authorization.read_bytes()) if dev_v2_authorization else None
         dev_v2_bridge = DailyDevV2(dev_v2_root, profiles, authorization,
                                   per_run_budget=dev_v2_per_run_budget,memory=dev_v2_memory)
+    notices = NoticeReader(dev_v2_bridge, memory_view, public_codex_quota, store=store)
 
     from . import dev_loop
     from .core.dev_store import DevConflict
@@ -767,6 +769,16 @@ def create_server(
             return True
 
         def do_GET(self) -> None:
+            if urlsplit(self.path).path == '/api/notices':
+                params = parse_qs(urlsplit(self.path).query)
+                exp = params.get('exp', [None])[0]
+                run = params.get('run', [None])[0]
+                try:self._json(notices.read(exp, run))
+                except Exception:
+                    self._json({'generated_at': datetime.now(timezone.utc).isoformat(), 'notices': [
+                        NoticeReader._notice('notices-unavailable', 'error', 'system', 'Some status details are unavailable',
+                                             'The page could not read current status.', 'Try refreshing the page.', time.time())]})
+                return
             if self._v2_get():return
             if self._dev_get(urlsplit(self.path).path):return
             if self._fixed_get(urlsplit(self.path).path):return
@@ -784,8 +796,8 @@ def create_server(
                     page = page.replace('data-mode="live"',
                                         f'data-mode="live" data-control-token="{control_token}"', 1)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
-            elif path == "/ui/live.js":
-                self._send((UI_DIR / "live.js").read_bytes(), "text/javascript; charset=utf-8")
+            elif path in {"/ui/live.js", "/ui/notices.js"}:
+                self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
             elif path == "/api/codex-quota":
                 self._json(public_codex_quota())
             elif path in {"/ui/memory.html", "/ui/memory.js", "/ui/memory.css"}:

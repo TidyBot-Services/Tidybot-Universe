@@ -63,12 +63,13 @@ def test_stream_assembles_completion_and_observer_matches_nonstream(reasoning_ke
 
 def test_missing_usage_is_not_invented():
     observed = []
-    client = ParccClient(api_key="secret", stream=True, max_attempts=1,
+    client = ParccClient(api_key="secret", stream=True, max_attempts=5,
                          stream_transport=fake_stream([event({"choices": [{"delta": {"content": "OK"}}]}),
                                                        b"data: [DONE]\n"]),
                          response_observer=lambda _status, _headers, raw: observed.append(json.loads(raw)))
     response = chat(client)
     assert response.usage == {}
+    assert response.attempts == 1
     assert "usage" not in observed[0]
     assert not all(type(response.usage.get(k)) is int for k in
                    ("total_tokens", "prompt_tokens", "completion_tokens"))
@@ -88,7 +89,7 @@ def test_midstream_errors_are_safe(line, message):
 
 
 def test_truncated_stream_rejected():
-    client = ParccClient(api_key="secret", stream=True, max_attempts=1,
+    client = ParccClient(api_key="secret", stream=True, max_attempts=5,
                          stream_transport=fake_stream([event({"choices": [{"delta": {"content": "partial"}}]})]))
     with pytest.raises(ParccError, match="before \\[DONE\\]"):
         chat(client)
@@ -119,7 +120,7 @@ def test_total_deadline_expires_while_chunks_keep_arriving(monkeypatch):
 
     client = ParccClient(api_key="secret", stream=True, timeout_seconds=1.0,
                          max_attempts=1, stream_transport=transport)
-    with pytest.raises(TimeoutError, match="total deadline"):
+    with pytest.raises(ParccError, match="total deadline"):
         chat(client)
     assert timeouts and timeouts[-1] < timeouts[0]
 
@@ -162,8 +163,63 @@ def test_stream_header_wait_past_deadline_raises_timeout_without_retry():
 
     client = ParccClient(api_key="secret", stream=True, timeout_seconds=0.01,
                          max_attempts=2, stream_transport=transport)
-    with pytest.raises(TimeoutError, match="total deadline"):
+    with pytest.raises(ParccError, match="unreachable after 1 attempts"):
         chat(client)
+    assert len(calls) == 1
+
+
+def test_no_first_byte_timeout_then_success_within_deadline(monkeypatch):
+    monkeypatch.setattr(parcc_client.time, 'sleep', lambda _delay: None)
+    calls = []
+    @contextmanager
+    def transport(*_args):
+        calls.append(1)
+        if len(calls) == 1:
+            def stalled():
+                raise TimeoutError('waiting for first byte')
+                yield b''
+            yield 200, {}, stalled(), lambda _seconds: None
+        else:
+            yield 200, {}, iter([event({'choices': [{'delta': {'content': 'OK'}}]}), b'data: [DONE]\n']), lambda _seconds: None
+    client = ParccClient(api_key='secret', stream=True, max_attempts=5,
+                         stream_transport=transport)
+    response = chat(client)
+    assert response.attempts == 2
+    assert response.artifact()['failed_attempts'][0]['reason'] == 'no_first_byte'
+    assert len(calls) == 2
+
+
+def test_stream_503_no_db_twice_then_success(monkeypatch):
+    monkeypatch.setattr(parcc_client.time, 'sleep', lambda _delay: None)
+    calls = []
+    @contextmanager
+    def transport(*_args):
+        calls.append(1)
+        if len(calls) < 3:
+            yield 503, {}, iter([b'{"error":{"type":"no_db_connection"}}']), lambda _seconds: None
+        else:
+            yield 200, {}, iter([event({'choices': [{'delta': {'content': 'OK'}}]}),
+                                 event({'choices': [], 'usage': {'prompt_tokens': 1, 'completion_tokens': 1, 'total_tokens': 2}}),
+                                 b'data: [DONE]\n']), lambda _seconds: None
+    response = chat(ParccClient(api_key='secret', stream=True, max_attempts=5,
+                                stream_transport=transport))
+    assert response.attempts == 3
+    assert len(response.artifact()['failed_attempts']) == 2
+    assert [row['reason'] for row in response.artifact()['failed_attempts']] == ['http_503_no_db'] * 2
+
+
+def test_partial_stream_timeout_never_retries(monkeypatch):
+    monkeypatch.setattr(parcc_client.time, 'sleep', lambda *_: pytest.fail('unexpected retry'))
+    calls = []
+    @contextmanager
+    def transport(*_args):
+        calls.append(1)
+        def lines():
+            yield event({'choices': [{'delta': {'content': 'partial'}}]})
+            raise TimeoutError('late failure')
+        yield 200, {}, lines(), lambda _seconds: None
+    with pytest.raises(ParccError, match='after HTTP 200 body started'):
+        chat(ParccClient(api_key='secret', stream=True, max_attempts=5, stream_transport=transport))
     assert len(calls) == 1
 
 
@@ -220,7 +276,7 @@ def test_default_client_uses_nonstream_transport():
     assert client.stream is False
     assert chat(client).content == "OK"
     assert calls == ["ordinary"]
-    assert timeouts == [180.0]
+    assert len(timeouts) == 1 and 179.9 < timeouts[0] <= 180.0
 
 
 def test_urlopen_stream_transport_sets_socket_read_timeout(monkeypatch):
@@ -244,6 +300,25 @@ def test_urlopen_stream_transport_sets_socket_read_timeout(monkeypatch):
     client = ParccClient(api_key="secret", stream=True, max_attempts=1, timeout_seconds=5)
     assert chat(client).request_id == "req-1"
     assert timeouts and all(0 < value <= 5 for value in timeouts)
+
+
+def test_urlopen_partial_line_timeout_is_not_retried(monkeypatch):
+    calls = []
+    class Response:
+        status = 200
+        headers = {}
+        def __enter__(self):return self
+        def __exit__(self, *_args):return False
+        def read(self, _size):return b'd'
+        def readline(self):raise TimeoutError('partial line')
+    def open_response(*_args, **_kwargs):
+        calls.append(1)
+        return Response()
+    monkeypatch.setattr(parcc_client, 'urlopen', open_response)
+    monkeypatch.setattr(parcc_client.time, 'sleep', lambda *_: pytest.fail('unexpected retry'))
+    with pytest.raises(ParccError, match='after HTTP 200 body started'):
+        chat(ParccClient(api_key='secret', stream=True, max_attempts=5))
+    assert len(calls) == 1
 
 
 def test_urlopen_http_error_uses_safe_message(monkeypatch):
@@ -272,7 +347,7 @@ def test_urlopen_http_error_uses_safe_message(monkeypatch):
 
 def test_worker_enables_stream(monkeypatch, tmp_path):
     request = tmp_path / "request.json"
-    request.write_text(json.dumps({"model": "parcc/GLM", "max_tokens": 8, "messages": [],
+    request.write_text(json.dumps({"model": "parcc/GLM", "connectivity_retry_max_attempts": 5, "max_tokens": 8, "messages": [],
                                    "temperature": 0, "reasoning_effort": "low"}))
     captured = {}
 
@@ -290,5 +365,67 @@ def test_worker_enables_stream(monkeypatch, tmp_path):
                                       "--kind", "model", "--deadline", str(time.time() + 10)])
     dev_provider_worker.main()
     assert captured["stream"] is True
-    assert captured["max_attempts"] == 1
+    assert captured["max_attempts"] == 5
     assert (tmp_path / "model-output.json").is_file()
+
+
+@pytest.mark.parametrize('model,expected', [('parcc/Qwen', 5), ('paid/model', 1)])
+def test_worker_retries_only_free_parcc_models(monkeypatch, tmp_path, model, expected):
+    request = tmp_path / 'request.json'
+    request.write_text(json.dumps({'model': model, 'connectivity_retry_max_attempts': 5,
+                                   'max_tokens': 1, 'messages': [], 'temperature': 0,
+                                   'reasoning_effort': 'low'}))
+    seen = []
+    class FakeClient:
+        def __init__(self, **kwargs):seen.append(kwargs['max_attempts'])
+        def chat(self, **kwargs):return ParccResponse(kwargs['model'], 'OK', None, 0, 1, {})
+    monkeypatch.setenv('PARCC_API_KEY', 'fake')
+    monkeypatch.setattr(dev_provider_worker, 'ParccClient', FakeClient)
+    monkeypatch.setattr(sys, 'argv', ['worker', '--request', str(request), '--directory', str(tmp_path),
+                                     '--kind', 'model', '--deadline', str(time.time() + 10)])
+    dev_provider_worker.main()
+    assert seen == [expected]
+
+
+def test_worker_codex_source_uses_no_parcc_retry(monkeypatch, tmp_path):
+    request = tmp_path / 'request.json'
+    request.write_text(json.dumps({'model': 'gpt-6-astra', 'model_source': 'codex',
+                                   'connectivity_retry_max_attempts': 5, 'max_tokens': 1,
+                                   'messages': [], 'temperature': 0, 'reasoning_effort': 'high'}))
+    seen = []
+    class FakeCodex:
+        quota_before = quota_after = None
+        def __init__(self, **kwargs):seen.append(kwargs)
+        def chat(self, **kwargs):return ParccResponse(kwargs['model'], 'OK', None, 0, 1, {})
+    monkeypatch.setattr(dev_provider_worker, 'CodexClient', FakeCodex)
+    monkeypatch.setattr(dev_provider_worker, 'ParccClient', lambda **_: pytest.fail('PARCC client used'))
+    monkeypatch.setattr(sys, 'argv', ['worker', '--request', str(request), '--directory', str(tmp_path),
+                                     '--kind', 'model', '--deadline', str(time.time() + 10)])
+    dev_provider_worker.main()
+    assert len(seen) == 1 and 'max_attempts' not in seen[0]
+
+
+def test_worker_failed_retries_write_immutable_attempts_record(monkeypatch, tmp_path):
+    from urllib.error import URLError
+    request = tmp_path / 'request.json'
+    request.write_text(json.dumps({'model': 'parcc/GLM', 'connectivity_retry_max_attempts': 5,
+                                   'max_tokens': 1, 'messages': [], 'temperature': 0,
+                                   'reasoning_effort': 'low'}))
+    calls = []
+    def transport(*_args):
+        calls.append(1)
+        raise URLError('secret endpoint')
+    def factory(**kwargs):
+        kwargs['stream'] = False
+        return ParccClient(**kwargs, transport=transport, retry_delay_seconds=0)
+    monkeypatch.setenv('PARCC_API_KEY', 'fixture')
+    monkeypatch.setattr(dev_provider_worker, 'ParccClient', factory)
+    monkeypatch.setattr(sys, 'argv', ['worker', '--request', str(request), '--directory', str(tmp_path),
+                                     '--kind', 'model', '--deadline', str(time.time() + 10)])
+    with pytest.raises(ParccError, match='after 5 attempts'):
+        dev_provider_worker.main()
+    assert len(calls) == 5
+    rows = json.loads((tmp_path / 'model-attempts.json').read_text())
+    assert [row['attempt'] for row in rows] == [1, 2, 3, 4, 5]
+    assert all(row['reason'] == 'connect_error' for row in rows)
+    assert sorted(path.name for path in tmp_path.glob('model-retry-*.json')) == [f'model-retry-{i}.json' for i in range(2, 6)]

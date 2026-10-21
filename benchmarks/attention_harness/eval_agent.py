@@ -153,6 +153,7 @@ def ask(evidence, config, client, *, cache_dir=None):
             record={'schema_version':'attentionbench.eval-agent.v2' if config['prompt_version']==OLD_PROMPT_VERSION else 'attentionbench.eval-agent.v3','status':'completed','passed':parsed['passed'],**content,
                 'model':config['model'],'mode':'vision','prompt_version':config['prompt_version'],'frames':[{k:f[k] for k in ('filename','sha256','view') if k in f} for f in frames],
                 'views':sorted({f.get('view','external') for f in frames}),'cache_key':key,'cache_hit':False,'attempts':attempt,'usage':usage,'latency_seconds':time.monotonic()-begun}
+            if getattr(response,'failed_attempts',()):record.update(provider_attempts=response.attempts,provider_failed_attempts=list(response.failed_attempts))
             if config.get('model_source')=='codex':record.update(model_source='codex',quota_before=getattr(client,'quota_before',None),quota_after=getattr(client,'quota_after',None))
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
