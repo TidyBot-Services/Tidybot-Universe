@@ -23,6 +23,12 @@ from openarm365_dev_v2.tests.test_iteration import HintClient
 SOURCE = 'from robot_sdk import left_arm\nleft_arm.move_delta(0,0,0.01)\n'
 SENSOR = 'from robot_sdk import sensors\nobservation=sensors.get_observation()\n'
 
+@pytest.fixture(autouse=True)
+def missing_model_copy_fixture(monkeypatch):
+    # This checkout lacks the native model copy; all other lock and scene checks run.
+    from openarm365_dev_v2 import dev_config
+    monkeypatch.setattr(dev_config, 'model_sources', lambda *args, **kwargs: {})
+
 
 def setup(tmp_path, **kw):
     selection = dict(request_key='threefeature-test', tasks=['open_cabinet'], seeds=[113],
@@ -313,7 +319,7 @@ def test_memory_exact_scope_grants_revisions_and_revocation(tmp_path):
     assert packet['entries'][0]['version'] == 3
     service.recheck(packet)
     messages = loop.model_messages(cfg, SOURCE, {}, {'memory': packet}, {})
-    assert json.loads(messages[1]['content'])['attention_control']['memory']['entries'][0]['grant_id'] == 'test-grant'
+    assert json.loads(messages[1]['content'])['attention_control']['memory'] == [{'content':'Use bounded world deltas.'}]
     for bad in ['robot', 'task_id', 'sdk_sha256', 'scene_id', 'namespace', 'object_set_id', 'controller', 'camera_config_id', 'task_variant_id']:
         old = gw.record.applicability
         gw.record.applicability = {**gw.ctx, bad: 'different'}
@@ -436,8 +442,9 @@ def test_simulated_full_loop_memory_revision_human_motion_ledger(tmp_path, monke
     for v in cell['versions']:
         inp = json.loads(Path(v['model_input']['uri']).read_bytes())
         packet = json.loads(inp['messages'][1]['content'])
-        entries = packet['attention_control']['help']['content']
-        assert entries[0]['memory_id'] == 'controlled-memory' and entries[0]['version'] == 3
+        entries = packet['attention_control']['memory']
+        assert entries == [{'content':'Use bounded world deltas.'}]
+        assert packet['attention_control']['help'] == {'provider':'cache'}
         assert Path(v['source']['uri']).with_name('memory-result.json').exists()
     from benchmarks.attention_harness.dev_report import report
     result = report(s, e['experiment_id'])

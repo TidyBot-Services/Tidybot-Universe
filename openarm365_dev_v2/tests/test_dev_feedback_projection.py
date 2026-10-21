@@ -19,7 +19,7 @@ CONFIG = dict(task_id='pick_place_counter_to_sink', official_env='PickPlaceCount
 def messages(feedback, hint=''):
     return model_messages(CONFIG, 'from robot_sdk import sensors\n' + '# previous source\n' * 130,
                           feedback, {'action': 'continue', 'help': {'content': hint},
-                                     'memory': [{'guidance': 'Keep a bounded base transform.'}]},
+                                     'memory': [{'content': 'Keep a bounded base transform.'}]},
                           {'dev_calls': 3, 'input_tokens': 50000}, True, 12000)
 
 

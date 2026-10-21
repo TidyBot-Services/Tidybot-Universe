@@ -89,6 +89,12 @@ class DevMemory:
 
     def packet(self, *, development_id, source):
         entries = []
+        # Retrieve records carry authority and guidance; the separate public
+        # catalogue carries display text. Match it by exact id and version.
+        catalogue = (self.gateway.list_dev_v2_memories(status='trusted')
+                     if callable(getattr(self.gateway, 'list_dev_v2_memories', None)) else [])
+        display = {(row['memory_id'], row['version']): row for row in catalogue
+                   if row.get('status') == 'trusted'}
         for m in self.eligible():
             grant = self.gateway.authorize_dev_use(memory_id=m.memory_id, memory_version=m.version, development_id=development_id,
                 context=self.context, source_policy_sha256=hashlib.sha256(source.encode()).hexdigest(), now=time.time())
@@ -108,6 +114,12 @@ class DevMemory:
                          seeded_for_tests=grant.get('seeded_for_tests') is True,
                          excluded_from_results=grant.get('excluded_from_results') is True,
                          status=getattr(m.status,'value',m.status))
+            # Catalogue copy is descriptive only; the grant still binds guidance,
+            # source, context and version exactly as before.
+            for field in ('title', 'summary'):
+                value = display.get((m.memory_id, m.version), {}).get(field)
+                if isinstance(value, str) and value:
+                    entry[field] = value
             public_screen(entry)
             entries.append(entry)
         return {**EMPTY_MEMORY, 'entries': entries, 'explicit_registry_authorization': True,

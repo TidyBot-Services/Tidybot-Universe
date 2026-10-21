@@ -30,8 +30,9 @@ class FakeGateway:
     def list_memories(self, *, status=None):
         return []  # The general catalogue deliberately excludes this provenance channel.
 
-    def list_dev_v2_memories(self):
-        return [self.get_dev_v2_memory_public(MEMORY_ID)]
+    def list_dev_v2_memories(self, *, status=None):
+        note = self.get_dev_v2_memory_public(MEMORY_ID)
+        return [note] if status is None or note['status'] == status else []
 
     def get_dev_v2_memory_public(self, memory_id):
         if memory_id != MEMORY_ID:

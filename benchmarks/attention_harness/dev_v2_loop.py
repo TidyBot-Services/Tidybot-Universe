@@ -80,6 +80,11 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     if kind=='advisor':reservation.update(help_count=1,help_credits=1,help_wait_seconds=seconds)
     store.reserve_check(key,reservation,model_name=model) if not existing else None
     request_body={**MODEL,'model':model,'max_tokens':max_tokens,'messages':messages,'token_reservation':reservation}
+    if kind in {'model','advisor'}:
+        visible=json.loads(messages[-1]['content'])
+        truncated=(visible.get('attention_control',{}).get('memory_truncated') if kind=='model'
+                   else visible.get('memory_truncated'))
+        if truncated:request_body['memory_truncated']=truncated
     if source=='codex':request_body['reasoning_effort']='high'
     if source=='codex':request_body['model_source']='codex'
     memory_path=directory/'memory-input.json'
@@ -253,15 +258,35 @@ def model_messages(config,previous,feedback,attention,remaining,trace_visible=Tr
     return [{'role':'system','content':t.system_prompt(config)+opinion},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
 
 def prompt_memory_view(value):
-    """Keep test exclusion metadata outside all model-visible message bodies."""
-    if isinstance(value,dict):
-        hidden={'seeded_for_tests','excluded_from_results'}
-        if value.get('seeded_for_tests') is True:
-            hidden.update({'source_trace_id','evidence_refs'})
-        return {k:prompt_memory_view(v) for k,v in value.items()
-                if k not in hidden}
-    if isinstance(value,list):return [prompt_memory_view(v) for v in value]
-    return value
+    """Project an attention packet to one bounded, guidance-only Memory view."""
+    if not isinstance(value,dict):
+        return value
+    result=dict(value)
+    help_value=result.get('help')
+    if isinstance(help_value,dict) and help_value.get('provider')=='cache':
+        result['help']={k:v for k,v in help_value.items() if k!='content'}
+    memory=result.get('memory')
+    if memory is None:
+        return result
+    entries=memory.get('entries',[]) if isinstance(memory,dict) else memory
+    notes,truncated=compact_memory(entries)
+    result['memory']=notes
+    if truncated:result['memory_truncated']=truncated
+    return result
+
+def compact_memory(entries):
+    """Keep the current id/version order, without exposing grant metadata."""
+    ordered=sorted(entries,key=lambda e:(e.get('memory_id',''),e.get('version',0)))
+    notes=[];cut=0
+    for entry in ordered[:8]:
+        content=entry['content']
+        if len(content)>1200:
+            content=content[:1200];cut+=1
+        note={k:entry[k] for k in ('title','summary') if isinstance(entry.get(k),str) and entry[k]}
+        note['content']=content
+        notes.append(note)
+    truncated={'omitted_notes':max(0,len(ordered)-8),'cut_notes':cut}
+    return notes,truncated if any(truncated.values()) else None
 
 def hp_result(text,record):
     if not isinstance(text,str) or not text.strip():raise ValueError('empty HumanProxy hint')
@@ -312,7 +337,9 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         if decision['request_type']!='hint':raise DevConflict('only hint requests are supported')
         provider=AdvisorProvider();msgs=provider.messages(cell['task_id'],previous,feedback,m['trace_visible'])
         if cell.get('planner_features'):
-            advisor_packet=json.loads(msgs[-1]['content']);advisor_packet['memory']=prompt_memory_view(memory['entries'])
+            advisor_packet=json.loads(msgs[-1]['content'])
+            advisor_packet['memory'],truncated=compact_memory(memory['entries'])
+            if truncated:advisor_packet['memory_truncated']=truncated
             msgs[-1]['content']=json.dumps(advisor_packet,ensure_ascii=False,sort_keys=True)
         text,request,response,usage=provider_call(store,key,version,'advisor',msgs,owner,directory,client)
         # Model help is content only; never authorization.

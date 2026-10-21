@@ -125,6 +125,10 @@ def test_exact_dev_grant_and_visual_proxy_hint_share_generated_input(tmp_path,mo
     monkeypatch.setattr(dev_planner_memory,'context',lambda config,namespace:scope)
     class Gateway:
         def store_id(self):return _memory()['store_id']
+        def list_dev_v2_memories(self, *, status=None):
+            note = dict(memory_id='real-memory-1',version=3,status='trusted',
+                        title='Gripper alignment',summary='Check alignment before grasping')
+            return [note] if status is None or note['status'] == status else []
         def retrieve(self,context,now):
             return [SimpleNamespace(memory_id='real-memory-1',version=3,status='trusted',applicability=scope,
                                     guidance='Check the gripper alignment.')]
@@ -158,7 +162,8 @@ def test_exact_dev_grant_and_visual_proxy_hint_share_generated_input(tmp_path,mo
     messages=dev_v2_loop.model_messages(config,'previous source',{},answer,{'dev_calls':1})
     generated_input=dev_v2_loop.immutable(tmp_path/'model-input.json',{'messages':messages})
     user=json.loads(json.loads(Path(generated_input['uri']).read_bytes())['messages'][-1]['content'])
-    assert user['attention_control']['memory'][0]['version']==3
+    assert user['attention_control']['memory']==[{'title':'Gripper alignment',
+        'summary':'Check alignment before grasping','content':'Check the gripper alignment.'}]
     assert 'side camera' in user['attention_control']['help']['content']
 
     for conflict in (dict(human_wait_seconds=60,background_seconds=0,approval_rule='generated_motion_policy'),
