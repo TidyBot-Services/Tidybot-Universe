@@ -104,7 +104,7 @@ def _events(store, cells):
             continue
         if kind == 'cell_updated':
             n = detail.get('active_version')
-            if isinstance(n, int) and 1 <= n <= 5:
+            if isinstance(n, int) and 1 <= n <= 12:
                 result.append({'seq': seq, 'ts': ledger_at, 'type': 'version_started',
                                'version': n, 'note_ids': [], 'text': 'started'})
             continue
@@ -207,6 +207,26 @@ def _attempt_outcome(cell, version, job):
     return 'finished'
 
 
+def _max_versions(experiment, cells, events=()):
+    """Use the frozen run limit, falling back to observed versions for old runs."""
+    ref = experiment.get('manifest') or {}
+    path = Path(ref.get('uri', '/missing')) if isinstance(ref, dict) else Path('/missing')
+    if path.is_file() and sha(path) == ref.get('sha256'):
+        manifest = json.loads(path.read_bytes())
+        configured = manifest.get('max_versions', manifest.get('max_iterations'))
+        if configured is None:
+            configured = ((manifest.get('selection') or {}).get('configuration') or {}).get('max_iterations')
+        if isinstance(configured, int) and not isinstance(configured, bool):
+            return max(1, min(12, configured))
+    seen = [n for cell in cells for n in
+            [cell.get('active_version')] + [v.get('version') for v in cell.get('versions', [])] +
+            [job.get('version') for job in cell.get('jobs', [])]
+            if isinstance(n, int) and not isinstance(n, bool) and n > 0]
+    seen.extend(event['version'] for event in events if isinstance(event.get('version'), int)
+                and not isinstance(event['version'], bool) and event['version'] > 0)
+    return max(1, min(12, max(seen))) if seen else 5
+
+
 def project(bridge, memory_view, experiment_id, *, now=None):
     if not EXPERIMENT.fullmatch(experiment_id):
         raise ValueError('invalid experiment id')
@@ -216,13 +236,14 @@ def project(bridge, memory_view, experiment_id, *, now=None):
     store = bridge.store(experiment_id) if callable(getattr(bridge, 'store', None)) else bridge.store
     cells = experiment.get('cells', [])
     events = _events(store, cells)
+    max_versions = _max_versions(experiment, cells, events)
     used = {}
     for event in events:
         if event['type'] == 'planner_memory_retrieved':
             for note_id in event['note_ids']:
                 used.setdefault(event['version'], {})[note_id] = event['ts']
     versions = []
-    for n in range(1, 6):
+    for n in range(1, max_versions + 1):
         related = [cell for cell in cells if any(v.get('version') == n for v in cell.get('versions', []))]
         jobs = [job for cell in cells for job in cell.get('jobs', []) if job.get('version') == n]
         memory_events = [event for event in events if event['version'] == n and event['type'] in
@@ -256,7 +277,7 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                          'note_ids': list(used.get(n, {}))[:LIMIT], 'started_at': None, 'ended_at': None})
     for event in events:
         n = event['version']
-        if not isinstance(n, int) or not 1 <= n <= 5:
+        if not isinstance(n, int) or not 1 <= n <= max_versions:
             continue
         if event['type'] == 'planner_memory_query_started':
             versions[n-1]['started_at'] = versions[n-1]['started_at'] or event['ts']
@@ -297,5 +318,6 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'status': status(row), 'effect': validation, 'lift_pt': lift, 'reads': reads,
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
     return {'generated_at': timestamp,
-            'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40), 'versions': versions},
+            'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40),
+                    'max_versions': max_versions, 'versions': versions},
             'notes': notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}

@@ -123,6 +123,50 @@ def test_route_reports_passed_and_unknown_attempt_outcomes(tmp_path, monkeypatch
         assert [v['state'] for v in json.loads(raw)['run']['versions']] == ['failed'] * 4 + [expected]
 
 
+def test_route_uses_manifest_version_budget_and_keeps_later_versions_waiting(tmp_path, monkeypatch):
+    monkeypatch.setattr(ui_server, 'ThreadingHTTPServer', lambda address, handler: handler)
+    ledger = tmp_path / 'ledger.sqlite3'
+    with sqlite3.connect(ledger) as db:
+        db.execute('CREATE TABLE v2_events (seq INTEGER PRIMARY KEY, at REAL, kind TEXT, payload TEXT)')
+
+    class FixtureBridge:
+        root = tmp_path
+        store = SimpleNamespace(path=ledger)
+
+        def __init__(self, limit):
+            self.limit = limit
+
+        def get(self, path):
+            assert path == '/api/dev-v2/experiments/' + EXPERIMENT
+            manifest = tmp_path / f'manifest-{self.limit}.json'
+            manifest.write_text(json.dumps({'max_versions': self.limit}))
+            return {'state': 'completed', 'manifest': {'uri': str(manifest), 'sha256': memory_monitor.sha(manifest)},
+                    'cells': [{'key': 'fixture-cell', 'versions': [{'version': 1, 'valid': True}],
+                               'jobs': [{'version': 1, 'kind': 'execute', 'state': 'settled',
+                                         'receipt': {'execution_status': 'completed'}}]}]}, 'application/json'
+
+    for limit in (3, 8):
+        handler = ui_server.create_server(dev_v2_bridge=FixtureBridge(limit), memory_view=Memory([]))
+        status, raw, _ = request(handler, '/api/dev-v2/memory-monitor?exp=' + EXPERIMENT)
+        assert status == 200
+        run = json.loads(raw)['run']
+        assert run['max_versions'] == limit
+        assert [v['n'] for v in run['versions']] == list(range(1, limit + 1))
+        assert [v['state'] for v in run['versions']] == ['passed'] + ['waiting'] * (limit - 1)
+
+
+def test_version_budget_fallback_and_clamp(tmp_path):
+    cells = [{'active_version': 8, 'versions': [{'version': 3}], 'jobs': []}]
+    assert memory_monitor._max_versions({}, cells) == 8
+    assert memory_monitor._max_versions({}, []) == 5
+    assert memory_monitor._max_versions({}, [{'versions': [{'version': 0}], 'jobs': []}]) == 5
+    manifest = tmp_path / 'manifest.json'
+    for configured, expected in ((0, 1), (20, 12)):
+        manifest.write_text(json.dumps({'max_versions': configured}))
+        ref = {'uri': str(manifest), 'sha256': memory_monitor.sha(manifest)}
+        assert memory_monitor._max_versions({'manifest': ref}, cells) == expected
+
+
 def test_route_serves_monitor_files_and_bounds_payload_with_errors(monkeypatch, capsys):
     monkeypatch.setattr(ui_server, 'ThreadingHTTPServer', lambda address, handler: handler)
     bridge = Bridge(RUN / 'ledger.sqlite3')

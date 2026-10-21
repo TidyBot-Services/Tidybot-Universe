@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
 const original=fs.readFileSync(path.join(__dirname,'../ui/memory.js'),'utf8');
+const monitor=require('../ui/memory.js');
 
 function element(tag='div'){
   const handlers={},children=[],classes=new Set();
@@ -37,22 +38,23 @@ function fakeThree(){
   class Camera extends Group{updateProjectionMatrix(){}}
   return {api:{Vector3,Quaternion,Euler:class{},Group,Scene:Group,PerspectiveCamera:Camera,WebGLRenderer:Renderer,Mesh,SphereGeometry:Geometry,BufferGeometry:Geometry,MeshBasicMaterial:Material,LineBasicMaterial:Material,Line:Mesh},meshes};
 }
-function harness(hash,source=original){
+function harness(hash,source=original,width=780){
   const ids=new Map(),get=id=>{if(!ids.has(id))ids.set(id,element());return ids.get(id)};
   const themes=get('themes'),views=get('views');
   for(const theme of ['light','dark']){const b=element('button');b.dataset.theme=theme;themes.append(b)}
   for(const view of ['3d','2d']){const b=element('button');b.dataset.view=view;views.append(b)}
   get('flow').classList.add('on');
   const frames=[],intervals=[],calls=[],three=fakeThree();
-  const document={body:element('body'),getElementById:get,createElement:element,createElementNS:(_,tag)=>element(tag),addEventListener(){}};
-  const window={document,THREE:three.api,location:{hash,reload(){}},addEventListener(){},confirm:()=>true};
+  const document={body:element('body'),documentElement:{clientWidth:width},getElementById:get,createElement:element,createElementNS:(_,tag)=>element(tag),addEventListener(){}};
+  const handlers={};
+  const window={document,innerWidth:width,THREE:three.api,location:{hash,reload(){}},addEventListener(name,fn){handlers[name]=fn},confirm:()=>true};
   const context=vm.createContext({window,document,location:window.location,matchMedia:()=>({matches:false}),localStorage:{getItem:()=>null,setItem(){}},devicePixelRatio:1,
     requestAnimationFrame:fn=>{frames.push(fn)},setInterval:fn=>{intervals.push(fn);return intervals.length},setTimeout:()=>1,clearTimeout(){},
     fetch:(url)=>{calls.push(url);return Promise.resolve({ok:true,json:async()=>window.payload})},console});
   const instrumented=source.replace('  init();','  global.__memoryTest={init,createGlobe,render,renderFlow,sampleTick,applyTheme,setView,select,recordReads,startGlobe(){globe=createGlobe();globe.applyTheme3D();setView("3d");return globe},load(payload){data=adapt(payload);render();feed()},get data(){return data}};');
   assert.notEqual(instrumented,source);
   vm.runInContext(instrumented,context,{filename:'memory.js'});
-  return {api:window.__memoryTest,window,get,frames,intervals,calls,meshes:three.meshes,flush(){const fn=frames.shift();assert.ok(fn,'an animation frame was requested');fn()}};
+  return {api:window.__memoryTest,window,get,handlers,frames,intervals,calls,meshes:three.meshes,flush(){const fn=frames.shift();assert.ok(fn,'an animation frame was requested');fn()}};
 }
 function realPayload(){
   const seed='c2-seeded-small-steps-001';
@@ -104,9 +106,8 @@ test('failed and pending versions keep truthful 2D text and ring colors in both 
   payload.run.versions[1].state='passed';
   payload.run.versions[2].state='finished';
   h.api.load(payload);
-  assert.equal(h.meshes[2].material.color.value,'#d94545');
-  assert.equal(h.meshes[3].material.color.value,'#1f9d57');
-  assert.equal(h.meshes[4].material.color.value,'#4f7be0');
+  assert.equal(h.meshes[2].material.color.value,'hsl(195, 70%, 44%)');
+  assert.notEqual(h.meshes[2].material.color.value,h.meshes[3].material.color.value);
   h.api.setView('2d');
   const cards=h.get('flow').innerHTML;
   assert.match(cards,/class="version-ring state-failed"[^>]*stroke="#d94545"/);
@@ -115,7 +116,7 @@ test('failed and pending versions keep truthful 2D text and ring colors in both 
   assert.match(cards,/class="version-ring state-finished"[^>]*stroke="#4f7be0"/);
   assert.doesNotMatch(cards,/Dev v1<\/text><text[^>]*>Passed<\/text>/);
   h.api.applyTheme('dark');
-  assert.equal(h.meshes[2].material.color.value,'#ff5d5d');
+  assert.equal(h.meshes[2].material.color.value,'hsl(195, 84%, 68%)');
   assert.match(h.get('flow').innerHTML,/class="version-ring state-failed"[^>]*stroke="#ff5d5d"/);
 });
 test('fake THREE executes 150 note demo and advances all five versions into a new run',()=>{
@@ -134,6 +135,66 @@ test('fake THREE executes 150 note demo and advances all five versions into a ne
   assert.equal(demo.api.data.versions[0].state,'reading','new run starts after v5');
   assert.ok(Number(demo.get('used-count').textContent)>0);
   assert.equal(h.calls.length,0);
+});
+test('3 and 8 version runs render matching rings, cards, chips and responsive flow',()=>{
+  assert.equal(monitor.flowLayout(699),'vertical');
+  assert.equal(monitor.flowLayout(700),'wide');
+  for(const count of [3,8]){
+    const radii=monitor.orbitRadii(count);
+    assert.equal(radii[0],.34);
+    assert.ok(Math.abs(radii.at(-1)-.86)<1e-12);
+    const payload=realPayload();
+    payload.run.max_versions=count;
+    payload.run.versions=Array.from({length:count},(_,i)=>({n:i+1,state:i?'waiting':'passed',note_ids:i===0?['n2']:[]}));
+    for(const width of [780,390]){
+      const h=harness('#exp=devexp-'+'a'.repeat(24),original,width);
+      h.get('globe').clientWidth=width;
+      h.api.startGlobe();h.api.load(payload);h.flush();
+      assert.equal(h.get('labels').children.filter(x=>x.className==='rl').length,count);
+      assert.equal(new Set(h.get('labels').children.filter(x=>x.className==='rl').map(x=>x.style.color)).size,count);
+      assert.equal((h.get('filters').innerHTML.match(/data-version=/g)||[]).length,count+1);
+      h.api.setView('2d');
+      const flow=h.get('flow').innerHTML;
+      assert.equal((flow.match(/class="version-ring/g)||[]).length,count);
+      assert.equal((flow.match(/class="flow-connection/g)||[]).length,h.api.data.groups.length+count);
+      assert.match(flow,width<700?/viewBox="0 0 390 900"/:/viewBox="0 0 780 456"/);
+      assert.match(flow,/1 used/);
+      h.window.innerWidth=width<700?780:390;h.handlers.resize();
+      assert.match(h.get('flow').innerHTML,width<700?/viewBox="0 0 780 456"/:/viewBox="0 0 390 900"/);
+    }
+  }
+});
+test('phone 3D shows four latest callouts and card height is capped',()=>{
+  const h=harness('#exp=devexp-'+'a'.repeat(24),original,390);
+  h.get('globe').clientWidth=390;
+  const payload=realPayload();
+  payload.notes=Array.from({length:9},(_,i)=>({id:'n'+i,title:'Note '+i,group:'Motion',status:'active',effect:'helps',reads:1,last_used_at:i+1}));
+  payload.run.versions[0].note_ids=payload.notes.map(n=>n.id);
+  h.api.startGlobe();h.api.load(payload);h.flush();
+  const labels=h.get('labels').children.filter(x=>x.className.startsWith('n '));
+  assert.equal(labels.length,4);
+  assert.ok(labels.some(x=>x.textContent.includes('Note 8')));
+  assert.ok(!labels.some(x=>x.textContent.includes('Note 0')));
+  const css=fs.readFileSync(path.join(__dirname,'../ui/memory.css'),'utf8');
+  assert.match(css,/@media\(max-width:699px\)/);
+  assert.match(css,/#monitor \.flow-svg\{min-width:0;width:100%;height:auto\}/);
+  assert.match(css,/#monitor \.card\{max-height:45%\}/);
+});
+test('demo n selects 3 or 8 versions and wraps after that budget',()=>{
+  for(const count of [3,8]){
+    const h=harness(`#demo=150&n=${count}`);
+    h.api.init();
+    assert.equal(h.api.data.run.max_versions,count);
+    assert.equal(h.api.data.versions.length,count);
+    for(let i=0;i<count+4;i++)h.intervals[0]();
+    assert.equal(h.api.data.versions.length,count);
+    assert.equal(h.api.data.versions[0].state,'reading');
+    assert.equal(h.calls.length,0);
+  }
+  for(const [n,expected] of [[0,1],[99,12]]){
+    const h=harness(`#demo=40&n=${n}`);h.api.init();
+    assert.equal(h.api.data.versions.length,expected);
+  }
 });
 test('runtime harness detects the original color shadowing regression',()=>{
   const broken=original.replace('const ballColor=n.status===\'active\'?color(n.effect):color(\'off\');const ball=',"const color=n.status==='active'?color(n.effect):color('off');const ball=").replace('color:ballColor','color');
