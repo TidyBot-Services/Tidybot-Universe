@@ -42,7 +42,7 @@ test('four filter buttons match the correct help requests',()=>{
 test('detail persists by request id, updates live, and escapes reasons',()=>{
  const {api,saved}=setup();const snap=snapshot({requests:[{id:'chosen',after:0,person:true,seconds:42,reason:'<unsafe>'}]});
  saved.set('attention.efficiency.help:story-run','chosen');let html=api.attentionEfficiency(snap);
- assert.match(html,/&lt;unsafe&gt;/);assert.doesNotMatch(html,/<unsafe>/);assert.match(html,/<a href="#" class="op-attn-watch"[^>]*>Watch Attempt 2<\/a>/);assert.match(html,/Next attempt succeeded/);
+ assert.match(html,/data-attn-step="-1"[^>]*disabled/);assert.match(html,/data-attn-step="1"[^>]*disabled/);assert.match(html,/data-attn-close/);assert.match(html,/class="op-attn-outcome solved">Solved</);assert.match(html,/on attempt 2 of 4/);assert.match(html,/&lt;unsafe&gt;/);assert.doesNotMatch(html,/<unsafe>/);assert.match(html,/<a href="#" class="op-attn-watch"[^>]*>Watch Attempt 2<\/a>/);assert.match(html,/Next attempt succeeded/);
  snap.attempts[1].status='running';html=api.attentionEfficiency(snap);assert.match(html,/Next attempt running/);
  assert.doesNotMatch(html,/Compare with other strategies/);assert.doesNotMatch(html,/No other strategies recorded yet/);
  snap.comparison={comparable:true,policies:[{policy_id:'planner',average_assistance_used:1,success_rate:.5,successes:1,runs:2},{policy_id:'reactive_help',average_assistance_used:2,success_rate:.25,successes:1,runs:4}]};html=api.attentionEfficiency(snap);
