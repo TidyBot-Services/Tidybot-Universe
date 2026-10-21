@@ -26,17 +26,18 @@ function fakeThree(){
     multiplyScalar(n){this.x*=n;this.y*=n;this.z*=n;return this}
     applyMatrix4(){return this}
     project(){return this}
+    normalize(){return this}
   }
   class Quaternion{setFromEuler(){return this}setFromUnitVectors(){return this}setFromAxisAngle(){return this}slerp(){return this}premultiply(){return this}copy(){return this}}
   class Group{constructor(){this.children=[];this.rotation={x:0,z:0};this.matrix={};this.matrixWorld={};this.quaternion=new Quaternion();this.position=new Vector3();this.scale={setScalar(){}};this.userData={}}
-    add(x){this.children.push(x)}remove(x){this.children.splice(this.children.indexOf(x),1)}updateMatrixWorld(){}}
-  class Geometry{setFromPoints(){return this}dispose(){}}
+    add(x){this.children.push(x)}remove(x){this.children.splice(this.children.indexOf(x),1)}updateMatrixWorld(){}updateMatrix(){}}
+  class Geometry{setFromPoints(){return this}rotateX(){return this}dispose(){}}
   class Color{constructor(v){this.value=v}set(v){this.value=v;return this}setHex(v){this.value=v;return this}getHex(){return typeof this.value==='number'?this.value:parseInt(String(this.value).replace('#',''),16)}}
   class Material{constructor(options={}){Object.assign(this,options);this.color=new Color(options.color||0)}dispose(){}}
   class Mesh extends Group{constructor(geometry,material){super();this.geometry=geometry;this.material=material;meshes.push(this)}}
   class Renderer{constructor(){this.domElement=element('canvas');this.domElement.width=0;this.domElement.height=0}setPixelRatio(){}getPixelRatio(){return 1}setSize(w,h){this.domElement.width=w;this.domElement.height=h}render(){}}
   class Camera extends Group{constructor(){super();cameras.push(this)}updateProjectionMatrix(){}}
-  return {api:{Vector3,Quaternion,Euler:class{},Group,Scene:Group,PerspectiveCamera:Camera,WebGLRenderer:Renderer,Mesh,SphereGeometry:Geometry,BufferGeometry:Geometry,MeshBasicMaterial:Material,LineBasicMaterial:Material,Line:Mesh},meshes,cameras};
+  return {api:{Vector3,Quaternion,Euler:class{},Group,Scene:Group,PerspectiveCamera:Camera,WebGLRenderer:Renderer,Mesh,SphereGeometry:Geometry,TorusGeometry:Geometry,BufferGeometry:Geometry,MeshBasicMaterial:Material,LineBasicMaterial:Material,Line:Mesh},meshes,cameras};
 }
 function harness(hash,source=original,width=780){
   const ids=new Map(),get=id=>{if(!ids.has(id))ids.set(id,element());return ids.get(id)};
