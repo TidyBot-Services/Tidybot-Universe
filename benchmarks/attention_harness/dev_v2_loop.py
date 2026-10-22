@@ -328,6 +328,7 @@ def compact_memory(entries):
 
 def memory_label(entry):
     """Prompt label for a note that is not trusted for this scene."""
+    if entry.get('run_note') is True:return f"This run (v{entry['help_version']}) · Unvalidated: "
     if entry.get('trusted_here') is not False:return ''
     if entry.get('match_level')=='same_task':
         seed=entry.get('source_seed')
@@ -356,7 +357,10 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     # prompt the same way and never changes a policy's help decision; only the
     # full planner still sees it, as a logged retrieve_memory decision.
     decision_memory=memory if not shared or policy=='full_trace_aware_attention_planner' else m['memory']
-    deliver=bool(cell.get('planner_features')) or shared
+    from . import memory_run_notes
+    run_notes=memory_run_notes.deliver(store,key,version,directory) if cell.get('run_notes') is True else []
+    prompt_entries=memory_run_notes.merge(memory['entries'],run_notes) if run_notes else memory['entries']
+    deliver=bool(cell.get('planner_features')) or shared or bool(run_notes)
     if decision_path.exists():decision=json.loads(decision_path.read_bytes())
     else:
         eval_review=feedback.get('eval_review')
@@ -371,7 +375,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         job=next((j for j in cell['jobs'] if j['version']==version and j['kind'] in {'demo','advisor','human','cache'}),None)
         if job and job['state']=='settled':
             packet={k:v for k,v in decision.items() if k!='context'};packet['help']={k:saved[k] for k in ['provider','content','rejected'] if k in saved}
-            if deliver:packet['memory']=memory['entries']
+            if deliver:packet['memory']=prompt_entries
             public_screen(packet)
             return packet,ref,help_record
     if action=='use_demo':
@@ -413,7 +417,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     packet={k:v for k,v in decision.items() if k!='context'}
     if help_record:
         saved=json.loads(checked(help_record).read_bytes());packet['help']={k:saved[k] for k in ['provider','content','rejected'] if k in saved}
-    if deliver:packet['memory']=memory['entries']
+    if deliver:packet['memory']=prompt_entries
     public_screen(packet)
     return packet,ref,help_record
 
@@ -490,9 +494,12 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         actual={'executions':1,'sdk_calls':receipt['sdk_call_budget']['dispatched'],'control_steps':receipt['control_steps'],'execution_seconds':receipt['elapsed_seconds']}
         store.settle(job['job_id'],actual,{**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),**({'dev_tier_budget':result['dev_tier_budget']} if result.get('dev_tier_budget') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
         memory_path=directory/'memory-input.json'
-        if (cell.get('planner_features') or layered(cell)) and memory_path.exists():
+        if ((cell.get('planner_features') or layered(cell)) and memory_path.exists()) or cell.get('run_notes') is True:
             from .dev_planner_memory import journal_result
-            journal_result(store,key,version,json.loads(memory_path.read_bytes()),record['source'],feedback,directory)
+            journal_result(store,key,version,json.loads(memory_path.read_bytes()) if memory_path.exists() else {},record['source'],feedback,directory)
+        if cell.get('run_notes') is True:
+            from .memory_run_notes import outcomes
+            outcomes(store,key,version,directory,projected)
         if result['status']!='condition_invalid':
             # Any asking policy: an effective AdvisorProxy answer becomes a
             # provisional proposal for the offline importer. Never fails the run.
@@ -839,6 +846,10 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             if memory_path.exists():
                 memory_packet=json.loads(memory_path.read_bytes())
                 record['memory_provenance']=memory_provenance(memory_packet)
+            if cell.get('run_notes') is True:
+                from .memory_run_notes import delivered
+                run_entries=delivered(directory)
+                if run_entries:record['run_notes']={'note_ids':[e['note_id'] for e in run_entries],'excluded_from_results':True}
             immutable(directory/'version.json',record);store.version(key,record)
             if cell.get('planner_features'):
                 from .dev_planner import PlannerControl

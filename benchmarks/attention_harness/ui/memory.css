@@ -33,3 +33,10 @@ body.dark .page-title .eyebrow{color:#e8b26a}
 .page-title .title-links{margin:6px 0 0;font-size:13px}.page-title .title-links:has(#real-data[hidden]){display:none}.page-title a{color:var(--ink)}
 #monitor{height:calc(100dvh - 68px - 160px)}
 @media(max-width:780px){.top{padding:10px 16px}.top .logo{font-size:26px}.wrap{padding:16px}#monitor{height:auto}}
+
+/* Local run notes have their own colour in both monitor themes. */
+[data-run-note-off]{margin-top:12px;cursor:pointer}
+
+#monitor{--cr:#51ddd0}
+#monitor.light{--cr:#087c73}
+#monitor .chips span.r,#monitor .n.r{color:var(--cr);border-color:var(--cr)}

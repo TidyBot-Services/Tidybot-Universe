@@ -245,3 +245,53 @@ test('reference-only banner appears before any reads and clears for scene scope'
   payload.run.memory_scope={level:'scene'};h.api.load(payload);
   assert.equal(h.get('memory-scope').hidden,true);
 });
+
+test('2D service counts exclude local run notes in both themes and layouts',()=>{
+ for(const width of [780,390]){
+   const h=harness('#exp=devexp-'+'a'.repeat(24),original,width);
+   const payload=realPayload();
+   payload.run_notes=Array.from({length:3},(_,i)=>({id:'r-'+i,cell:'cell',title:'Run note '+i,help_version:2,uses:0,off:false}));
+   h.api.load(payload);h.api.setView('2d');
+   for(const theme of ['light','dark']){
+     h.api.applyTheme(theme);
+     const flow=h.get('flow').innerHTML;
+     assert.match(flow,/Memory service<\/text><text[^>]*>5 notes on<\/text>/);
+     assert.match(flow,/<text[^>]*>\+ 3 run notes \(this run, local\)<\/text>/);
+     assert.equal((flow.match(/class="flow-connection/g)||[]).length,h.api.data.groups.length+payload.run.versions.length);
+     if(width>=700){
+       const legend=flow.match(/<g class="flow-legend"[^>]*>(.*?)<\/g>/)[1];
+       assert.match(legend,new RegExp(`<circle[^>]*fill="${monitor.themes[theme].efc.r}"/><text[^>]*>This run</text>`));
+       for(const label of ['Helps','Does not help','Not tested','Unvalidated'])assert.ok(legend.includes('>'+label+'</text>'));
+     }
+   }
+   payload.run_notes[0].off=true;payload.run_notes[1].off=true;
+   h.api.load(payload);
+   assert.match(h.get('flow').innerHTML,/>5 notes on<\/text>/);
+   assert.match(h.get('flow').innerHTML,/>\+ 1 run note \(this run, local\)<\/text>/);
+   payload.notes=[];h.api.load(payload);
+   assert.match(h.get('flow').innerHTML,/>0 notes on<\/text>/);
+   payload.run_notes=[];h.api.load(payload);
+   assert.doesNotMatch(h.get('flow').innerHTML,/\(this run, local\)/);
+ }
+});
+
+test('run-note balls, counts and local controls render in both themes without Memory authority',async()=>{
+ const h=harness('#exp=devexp-'+'a'.repeat(24));
+ const payload={run:{can_operate_run_notes:true,versions:[{n:1,note_ids:[]},{n:2,note_ids:[]},{n:3,note_ids:['r-one']} ]},notes:[],run_notes:[{id:'r-one',cell:'cell',title:'Keep the grasp',help_version:2,uses:1,failure_gone:1,off:false}],events:[{type:'planner_memory_run_note_created',text:'v2 learned: Keep the grasp',note_ids:['r-one']}]};
+ h.api.load(payload);h.api.startGlobe();
+ for(const theme of ['light','dark']){
+   h.api.applyTheme(theme);h.api.setView('2d');
+   assert.match(h.get('flow').innerHTML,/ball-run-note/);
+   assert.match(h.get('flow').innerHTML,new RegExp(monitor.themes[theme].efc.r));
+   assert.equal(h.get('count-run-note').textContent,1);
+   assert.match(h.get('feed').innerHTML,/v2 learned: Keep the grasp/);
+   h.api.select(h.api.data.byId.get('r-one'));
+   assert.match(h.get('card').innerHTML,/Turn off for this run/);
+   assert.ok(h.meshes.some(m=>m.userData.id==='r-one'&&m.material.color.value===monitor.themes[theme].efc.r));
+ }
+ h.window.payload={...payload,run_notes:[{...payload.run_notes[0],off:true}]};
+ const button={disabled:false};
+ await h.get('card').onclick({target:{closest:s=>s==='[data-run-note-off]'?button:null}});
+ assert.ok(h.calls.some(url=>url.endsWith('/run-note-off')));
+ assert.doesNotMatch(h.get('card').innerHTML,/Turn off for this run/);
+});

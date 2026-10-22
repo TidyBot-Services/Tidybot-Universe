@@ -67,8 +67,21 @@ def test_opt_in_materializes_v3_and_old_request_remains_v2(tmp_path,monkeypatch)
     dispatch=bridge.dispatch_budget(bridge.store(created['experiment_id']),created,directory,authorization)
     dev_experiment.validate_budget_file(dispatch,manifest,bridge.store(created['experiment_id']),created['manifest'])
 
+    # New daily runs also retain local notes with no Memory service configured.
+    local=daily.DailyDevV2(tmp_path/'local',[],per_run_budget=True)
+    local_body=_body()
+    local_created=local.create(local_body)
+    assert local_created['cells'][0]['run_notes'] is True
+    assert 'memory_authority' not in local_created['cells'][0]
+    assert local.create(local_body)['manifest']==local_created['manifest']
+
     old=daily.DailyDevV2(tmp_path/'old',[],per_run_budget=True)
     body=_body();body['selection']['request_key']='daily-no-memory-102'
+    # Materialize an existing pre-run-notes selection; new selections now opt in.
+    eid='devexp-'+__import__('hashlib').sha256(body['selection']['request_key'].encode()).hexdigest()[:24]
+    old_selection=old.root/eid/'selection.json'
+    old_selection.parent.mkdir(parents=True,exist_ok=True)
+    old_selection.write_text(json.dumps(daily.bind_daily_advisor(body['selection'],old_selection)))
     old_created=old.create(body)
     old_manifest=json.loads(Path(old_created['manifest']['uri']).read_bytes())
     assert old_manifest['schema']=='attentionbench.dev-experiment.v2'
