@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Home · Tidybot AttentionBench</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="./home.css"></head>
+<body>
+<header class="top"><button class="tasksbtn" id="tasks" type="button" aria-expanded="true" aria-controls="side" title="Show or hide the task list (T)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Tasks</span></button><a class="logo" href="/ui/home.html" aria-label="Tidybot Attention Bench">ATTENTION BENCH</a><span class="sp"></span><a class="hp" href="/ui/memory.html">◎ Memory</a><a class="hp" href="/ui/">Main UI →</a></header>
+<div class="wrap" id="wrap">
+<aside class="side" id="side"><div class="side-in"><h4>TASKS</h4><div class="meta" id="side-meta">Loading…</div><a class="srch" href="/ui/">⌕ Search and all history in the main UI</a><div id="recent"></div></div></aside>
+<main class="main" id="main">
+<div class="bgimg" id="bg0"></div><div class="bgimg" id="bg1"></div><div class="shade"></div><div class="grid" aria-hidden="true"></div><div class="scan" aria-hidden="true"></div>
+<div class="content">
+<div class="eyebrow" id="eyebrow"><span class="dot warn pulse"></span>STANDBY · READY FOR THE NEXT RUN</div>
+<h1 id="headline" aria-label="Tidybot AttentionBench"><span class="l1" data-split>TIDYBOT</span><span class="l2" data-split>ATTENTIONBENCH</span></h1>
+<div class="cta"><a class="go" id="go" href="/ui/#new-run"><span class="ring" aria-hidden="true"></span><span class="tri"></span><span id="go-label">NEW RUN</span></a></div>
+<div class="error" id="error" role="alert" hidden></div>
+<div class="row2"><div class="today" id="today"></div></div>
+<div class="inst" id="inst" aria-label="System status"></div>
+</div>
+</main></div>
+<script src="./home.js" defer></script>
+</body></html>

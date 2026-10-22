@@ -588,6 +588,8 @@ def create_server(
         dev_v2_bridge = DailyDevV2(dev_v2_root, profiles, authorization,
                                   per_run_budget=dev_v2_per_run_budget,memory=dev_v2_memory)
     notices = NoticeReader(dev_v2_bridge, memory_view, public_codex_quota, store=store)
+    from . import home_status
+    home_probe = home_status.ProviderProbe()  # Idle home page readiness; cached background checks.
 
     from . import dev_loop
     from .core.dev_store import DevConflict
@@ -800,6 +802,28 @@ def create_server(
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
             elif path == "/api/codex-quota":
                 self._json(public_codex_quota())
+            elif path in {"/ui/home.html", "/ui/home.js", "/ui/home.css"}:
+                kind = "text/html; charset=utf-8" if path.endswith('.html') else "text/javascript; charset=utf-8" if path.endswith('.js') else "text/css; charset=utf-8"
+                body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()
+                if path.endswith('.html'):
+                    body = body.replace(b'__CONTROL_TOKEN__', control_token.encode())
+                self._send(body, kind)
+            elif path == "/api/home/status":
+                if not hasattr(dev_v2_bridge, 'root'):
+                    self._json({"error": "Home needs the daily Dev v2 bridge (--dev-v2-root)"}, HTTPStatus.SERVICE_UNAVAILABLE)
+                    return
+                if parse_qs(parsed.query).get('refresh') == ['1']:
+                    home_probe.snapshot(force=True)
+                self._json(home_status.status(dev_v2_bridge, home_probe, public_codex_quota()))
+            elif path == "/api/home/scene":
+                rows = sorted(dev_v2_bridge.list(), key=lambda r: r['created_at'], reverse=True) if hasattr(dev_v2_bridge, 'root') else []
+                query = parse_qs(parsed.query)
+                wanted, view = query.get('run', [''])[0], query.get('view', ['overview'])[0]
+                frame = home_status.scene_for(rows, dev_v2_bridge.root, wanted, view) if wanted else home_status.latest_scene(rows, dev_v2_bridge.root)
+                if frame is None:
+                    self._json({"error": "No recorded scene yet"}, HTTPStatus.NOT_FOUND)
+                    return
+                self._send(frame.read_bytes(), "image/png" if frame.suffix == '.png' else "image/jpeg")
             elif path in {"/ui/memory.html", "/ui/memory.js", "/ui/memory.css"}:
                 kind = "text/html; charset=utf-8" if path.endswith('.html') else "text/javascript; charset=utf-8" if path.endswith('.js') else "text/css; charset=utf-8"
                 body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()
