@@ -42,11 +42,17 @@ def bind_daily_run_notes(selection, previous_selection):
     """New dev selections opt in; an existing selection keeps its frozen value."""
     if Path(previous_selection).is_file():
         old=json.loads(Path(previous_selection).read_bytes())
-        bound={k:v for k,v in selection.items() if k!='run_notes'}
+        bound={k:v for k,v in selection.items() if k not in ('run_notes','memory_family')}
         if 'run_notes' in old:bound['run_notes']=old['run_notes']
+        if 'memory_family' in old:bound['memory_family']=old['memory_family']
         return bound
     if selection.get('budget_tier','dev')=='dev':
-        return {**selection,'run_notes':selection.get('run_notes',True)}
+        from .memory_layers import FAMILY_DEFAULT
+        bound={k:v for k,v in selection.items() if k!='memory_family'}
+        bound['run_notes']=selection.get('run_notes',True)
+        if selection.get('memory_family',FAMILY_DEFAULT) is True:
+            bound['memory_family']=True
+        return bound
     return selection
 
 def bind_daily_memory(selection, memory, previous_selection=None):

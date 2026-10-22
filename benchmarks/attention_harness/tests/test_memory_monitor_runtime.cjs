@@ -295,3 +295,26 @@ test('run-note balls, counts and local controls render in both themes without Me
  assert.ok(h.calls.some(url=>url.endsWith('/run-note-off')));
  assert.doesNotMatch(h.get('card').innerHTML,/Turn off for this run/);
 });
+
+test('layer controls update 2D balls, 3D visibility and version counts in both themes',()=>{
+ const h=harness('#exp=devexp-'+'a'.repeat(24));
+ const p=realPayload();p.notes.forEach((n,i)=>{n.layer=i===0?'scene':'task';n.path='Validated on scene 102'});
+ p.run.family_reference=false;
+ h.api.load(p);h.api.startGlobe();
+ for(const theme of ['light','dark']){
+  h.api.applyTheme(theme);
+  assert.match(h.get('layer-legend').innerHTML,/Family<b>off<\/b>/);
+  h.get('layer-filters').onclick({target:{closest:()=>({dataset:{layer:'scene'}})}});
+  const visible=h.meshes.filter(m=>m.userData.id&&m.visible);
+  assert.deepEqual(visible.map(m=>m.userData.id),[p.notes[0].id]);
+  assert.match(h.get('filters').innerHTML,/v1<b>1<\/b>/);
+  h.api.setView('2d');h.api.renderFlow();
+  assert.ok(h.get('flow').innerHTML.includes(p.notes[0].title));
+  assert.ok(!h.get('flow').innerHTML.includes(p.notes[1].title));
+  h.api.select(h.api.data.notes[0]);
+  assert.match(h.get('card').innerHTML,/Scene layer/);
+  assert.match(h.get('card').innerHTML,/Validated on scene 102/);
+  h.get('layer-filters').onclick({target:{closest:()=>({dataset:{layer:'family'}})}});
+  assert.equal(h.meshes.filter(m=>m.userData.id&&m.visible).length,0);
+ }
+});

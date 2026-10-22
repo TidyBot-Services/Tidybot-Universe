@@ -71,7 +71,7 @@ def create(store,artifact_root,selection):
     # envelope without changing its runtime, budget or accounting rules.
     from .dev_configuration import validate_run_notes
     validate_run_notes(selection)
-    modern_fields=FIELDS-{'run_notes'} if 'configuration' in selection else FIELDS
+    modern_fields=FIELDS-{'run_notes','memory_family'} if 'configuration' in selection else FIELDS
     v3=bool(set(selection)&modern_fields)
     source=selection.get('model_source','parcc')
     if source not in {'parcc','codex'} or (source=='codex' and (budget_tier!='dev' or not v3 or 'configuration' in selection or 'human_proxy' in selection)):
@@ -122,6 +122,7 @@ def create(store,artifact_root,selection):
     exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
     if 'run_notes' in selection:normalized['run_notes']=selection['run_notes']
+    if 'memory_family' in selection:normalized['memory_family']=selection['memory_family']
     if budget_tier=='dev':normalized['budget_tier']='dev'
     if source=='codex':normalized['model_source']='codex'
     if v3:
@@ -212,6 +213,7 @@ def create(store,artifact_root,selection):
         memory=EMPTY_MEMORY,help_pricing=({**HELP_PRICING,'cache':{'credits':0,'count':0}} if v3 else HELP_PRICING),demos=demos,policies=parameters,trace_visible=trace_visible,
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
     if 'run_notes' in selection:manifest['run_notes']=selection['run_notes']
+    if 'memory_family' in selection:manifest['memory_family']=selection['memory_family']
     if budget_tier=='dev':
         manifest['budget_tier']='dev'
         if source=='parcc' and MODEL['model'] in FREE_MODELS:
@@ -284,6 +286,7 @@ def create(store,artifact_root,selection):
                 if 'planner_features' in manifest:payload['planner_features']=manifest['planner_features']
                 if 'memory_authority' in manifest:payload['memory_authority']=manifest['memory_authority']
                 if 'run_notes' in manifest:payload['run_notes']=manifest['run_notes']
+                if 'memory_family' in manifest:payload['memory_family']=manifest['memory_family']
                 db.execute('INSERT INTO v2_cells VALUES (?,?,?)',(row['key'],exp_id,encoded(payload)))
             store.event(db,'experiment_created',{'experiment_id':exp_id,'manifest':mref})
     return snapshot(store,exp_id)

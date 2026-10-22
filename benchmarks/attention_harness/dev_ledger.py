@@ -78,6 +78,7 @@ def frozen_simulation_target(cell, experiment, config):
         if (config!=frozen or cell.get('planner_features')!=manifest.get('planner_features')
                 or cell.get('memory_authority')!=manifest.get('memory_authority')
                 or cell.get('run_notes')!=manifest.get('run_notes')
+                or cell.get('memory_family')!=manifest.get('memory_family')
                 or not any(row['key']==cell['key'] for row in manifest['cells'])):return False
     except (KeyError,TypeError,ValueError,OSError):
         return False

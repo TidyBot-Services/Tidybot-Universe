@@ -108,6 +108,21 @@ def _origin_review(cell, origin_version):
     return json.loads(Path(ref['uri']).read_bytes())
 
 
+def run_note_link(store, key, version, directory):
+    """Return the provenance link only for a digest-verified local run note."""
+    cell = store.cell(key)
+    run_note = Path(directory) / 'memory-run-note.json'
+    if cell.get('run_notes') is True and run_note.is_file():
+        from .memory_run_notes import events, PREFIX
+        created = next((e for kind, e in events(store, key)
+                        if kind == PREFIX + 'created' and e.get('help_version') == version), None)
+        if created and sha(run_note) == created['note']['sha256']:
+            note = json.loads(run_note.read_bytes())
+            return dict(experiment_id=cell['experiment_id'], cell=key,
+                        version=version, run_note_id=note['note_id'])
+    return None
+
+
 def stage(store, key, version, directory):
     """Write ``memory-provisional-proposal.json`` for version H when it qualifies.
 
@@ -163,6 +178,9 @@ def stage(store, key, version, directory):
                     eval_reason_class=eval_reason_class(_origin_review(cell, version - 1)),
                     context=memory_context, refs=refs, help_content=content, status='pending_import', authority_candidate=False,
                     unvalidated=True, excluded_from_results=True)
+    link = run_note_link(store, key, version, directory)
+    if link is not None:
+        proposal['from_run_note'] = link
     target = directory / 'memory-provisional-proposal.json'
     if target.exists():
         # Immutable: a resumed version reuses the proposal it already wrote.

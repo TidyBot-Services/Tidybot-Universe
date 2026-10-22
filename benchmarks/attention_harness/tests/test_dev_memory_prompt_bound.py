@@ -98,6 +98,39 @@ def test_guidance_cut_is_reported_and_advisor_uses_same_view(tmp_path, monkeypat
     assert json.loads((tmp_path/'help.json').read_bytes())['content']=='Move the gripper slowly.'
 
 
+@pytest.mark.parametrize('trusted_count,run_count,family', [(5,2,False),(5,2,True),(10,3,True)])
+def test_layered_prompt_retains_capped_references(trusted_count, run_count, family):
+    from benchmarks.attention_harness import memory_layers as layers
+    trusted=[dict(e, trusted_here=True, layer='scene') for e in packet(trusted_count)['entries']]
+    runs=[dict(title=f'Run {v}',content='r'*1300,layer='run',trusted_here=False,help_version=v)
+          for v in range(1,run_count+1)]
+    others=[dict(title='Scene',content='s',layer='scene',trusted_here=False),
+            dict(title='Task',content='t',layer='task',trusted_here=False,source_seed=103),
+            dict(title='Family',content='f',layer='family',trusted_here=False,source_task_id='pick_place_cup')]
+    entries=layers.order(trusted+others,runs,family=family)
+    frozen=copy.deepcopy(entries)
+    notes,truncated=loop.compact_memory(entries)
+    kept=trusted[:layers.TRUSTED_PROMPT_CAP]+entries[trusted_count:]
+    assert len(notes)==min(trusted_count,8)+run_count+2+int(family)
+    assert [n['title'] for n in notes]==[layers.label(e)+e['title'] for e in kept]
+    assert all(len(n['content'])<=1200 for n in notes)
+    assert truncated=={'omitted_notes':max(0,trusted_count-8),'cut_notes':run_count}
+    assert entries==frozen
+
+
+@pytest.mark.parametrize('shared', [False,True])
+@pytest.mark.parametrize('count', range(9))
+def test_small_prompt_byte_identity(shared, count):
+    entries=packet(count,long=True)['entries'][::-1]
+    if shared:
+        for e in entries:e.update(trusted_here=False,match_level='same_task',source_seed=103)
+    ordered=entries if shared else sorted(entries,key=lambda e:(e.get('memory_id',''),e.get('version',0)))
+    expected=[dict(title=loop.memory_label(e)+e['title'],summary=e['summary'],content=e['content'][:1200])
+              for e in ordered]
+    cuts=sum(len(e['content'])>1200 for e in ordered)
+    assert json.dumps(loop.compact_memory(entries))==json.dumps((expected,{'omitted_notes':0,'cut_notes':cuts} if cuts else None))
+
+
 @pytest.mark.parametrize('kind', ['model','advisor'])
 def test_truncation_flag_is_saved_in_request_artifact(tmp_path, kind):
     notes,truncated=loop.compact_memory(packet(12,long=True)['entries'])

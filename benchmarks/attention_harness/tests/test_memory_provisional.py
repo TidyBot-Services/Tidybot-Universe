@@ -318,22 +318,22 @@ def test_every_policy_prompt_gets_notes_with_cap_order_and_labels(tmp_path, monk
     directory = root / 'v1'; directory.mkdir()
     packet, _, _ = loop.attention(store, cell['key'], 1, {}, SOURCE, 0, [], manifest, process_identity(), directory, None)
     assert [(e['memory_id'], e['match_level'], e['trusted_here']) for e in packet['memory']] == [
-        ('seed-here', 'same_scene', True), ('p-new', 'same_scene', False), ('seed-other', 'same_task', False)]
+        ('seed-here', 'same_scene', True), ('p-new', 'same_scene', False), ('p-old', 'same_scene', False)]
     assert sum(not e['trusted_here'] for e in packet['memory']) == memory.NOT_TRUSTED_HERE_CAP
     messages = loop.model_messages(config, SOURCE, {}, packet, {'dev_calls': 1})
     notes = json.loads(messages[1]['content'])['attention_control']['memory']
-    assert [n['title'] for n in notes] == ['Trusted here', 'Unvalidated: New unvalidated', 'Reference (scene 101): Other scene']
+    assert [n['title'] for n in notes] == ['Trusted here', 'Unvalidated: New unvalidated', 'Unvalidated: Old unvalidated']
     assert 'grant_id' not in json.dumps(notes) and 'trusted_here' not in json.dumps(notes)
     flagged = events(store, 'planner_memory_unvalidated_used')
-    assert flagged == [dict(cell=cell['key'], version=1, memory_ids=['p-new', 'seed-other'],
-                            match_levels=['same_scene', 'same_task'], excluded_from_results=True)]
+    assert flagged == [dict(cell=cell['key'], version=1, memory_ids=['p-new', 'p-old'],
+                            match_levels=['same_scene', 'same_scene'], layers=['scene', 'scene'], excluded_from_results=True)]
     retrieved = events(store, 'planner_memory_retrieved')[0]
     assert retrieved['not_trusted_here'] is True and retrieved['unvalidated'] is True
     from benchmarks.attention_harness.dev_memory_view import projection
     view = projection(store, cell)
     assert view['unvalidated_used'] is True
     assert [(e['memory_id'], e['trusted'], e['match_level']) for e in view['retrievals'][0]['entries']] == [
-        ('seed-here', True, 'same_scene'), ('p-new', False, 'same_scene'), ('seed-other', False, 'same_task')]
+        ('seed-here', True, 'same_scene'), ('p-new', False, 'same_scene'), ('p-old', False, 'same_scene')]
     # Delivery never changes a policy's own help decision; the planner's
     # retrieve_memory decision is only logged (no help record, no cost).
     if policy != 'full_trace_aware_attention_planner':
@@ -358,11 +358,11 @@ def test_journal_queues_provisional_outcome_never_a_result(tmp_path, monkeypatch
     queued = events(store, 'planner_memory_offline_queued')
     assert [e['kind'] for e in queued] == ['provisional_outcome']
     item = json.loads(Path(queued[0]['queue']['uri']).read_bytes())
-    assert [g['memory_id'] for g in item['evidence']['grants']] == ['p-new']
+    assert [g['memory_id'] for g in item['evidence']['grants']] == ['p-new', 'p-old']
     assert events(store, 'planner_memory_result_skipped')[0]['reason'] == 'not_trusted_here_excluded_from_results'
     assert not (directory / 'memory-result.json').exists()
     counts = importer.run([store.path], client=gateway, namespace=SETTINGS['namespace'])
-    assert counts['outcomes'] == 1
+    assert counts['outcomes'] == 2
     row = next(r for r in gateway.svc.list_dev_v2_memories() if r['memory_id'] == 'p-new')
     assert row['uses'] == {'grants': 1, 'outcomes': 1, 'failure_gone': 1}
     assert row['status'] == 'provisional'
@@ -376,7 +376,7 @@ def test_sdk_implementation_change_keeps_notes_interface_change_drops_them(tmp_p
     rebuilt = memory.DevMemory(gateway, SETTINGS, config, layered=True)
     assert rebuilt.context['sdk_sha256'] != here['sdk_sha256']
     assert rebuilt.context['sdk_interface_sha256'] == here['sdk_interface_sha256']
-    assert [n.memory_id for n in rebuilt.selected()] == ['seed-here', 'p-new', 'seed-other']
+    assert [n.memory_id for n in rebuilt.selected()] == ['seed-here', 'p-new', 'p-old']
     monkeypatch.setattr(memory, 'sdk_identity', lambda cfg: {**original(cfg), 'prompt': 'changed SDK text'})
     assert memory.DevMemory(gateway, SETTINGS, config, layered=True).selected() == []
 
@@ -421,7 +421,7 @@ def test_importer_builds_payload_and_real_service_accepts_it_idempotently(tmp_pa
     memory_id = provisional.memory_id(cell['experiment_id'], cell['key'], 2)
     note = gateway.svc.store.get_memory(memory_id)
     assert note.status.value == 'provisional'
-    assert gateway.svc.v2.provenance(memory_id)['title'] == 'Avoid PlanningRejected on left_arm.move_delta'
+    assert gateway.svc.v2.provenance(memory_id)['title'] == ADVICE['content']
     receipts = events(store, importer.RECEIPT)
     assert receipts[0]['memory_id'] == memory_id and receipts[0]['status'] == 'provisional'
     assert importer.run([store.path], client=gateway, namespace=SETTINGS['namespace']) == dict(

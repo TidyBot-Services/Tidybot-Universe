@@ -13,15 +13,12 @@ from .core.dev_store import DevConflict
 from .dev_help import EMPTY_MEMORY, public_screen
 from .dev_ledger import encoded
 from .dev_loop import immutable, sha
+from .memory_layers import (OTHER_UNVALIDATED_CAP as NOT_TRUSTED_HERE_CAP, LEVELS,
+                            FAMILY_CAP, layer_of, order)
 
 SCOPE = ('benchmark', 'suite', 'task_id', 'robot', 'controller', 'perception_mode',
          'scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id',
          'sdk_sha256', 'namespace')
-# Plan 0d (second revision): after the trusted same-scene notes, a Dev prompt
-# carries at most this many notes that are not trusted for its scene
-# (provisional notes and notes from other scenes of the same task).
-NOT_TRUSTED_HERE_CAP = 2
-LEVELS = ('same_scene', 'same_task')
 
 
 def cell_memory(cell):
@@ -124,13 +121,15 @@ def client_for(settings):
 class Note:
     """One retrieved note with its applicability level for this Dev context."""
     def __init__(self, memory_id, version, guidance, status, applicability, *, created_at=0.0,
-                 match_level='same_scene', trusted_here=None, source_seed=None):
+                 match_level='same_scene', trusted_here=None, source_seed=None, source_task_id=None):
         self.memory_id, self.version, self.guidance = memory_id, version, guidance
         self.status, self.applicability, self.created_at = status, applicability or {}, created_at or 0.0
         self.match_level = match_level
         self.trusted_here = (status == 'trusted' and match_level == 'same_scene') if trusted_here is None else trusted_here
         self.unvalidated = status == 'provisional'
         self.source_seed = source_seed
+        self.source_task_id = source_task_id or self.applicability.get("task_id")
+        self.layer = layer_of(self)
 
 
 TASK_SCOPE = ('benchmark', 'suite', 'task_id', 'robot', 'controller', 'perception_mode', 'namespace')
@@ -138,8 +137,9 @@ SCENE_SCOPE = ('scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id
 
 
 class DevMemory:
-    def __init__(self, gateway, settings, config, *, layered=False, mode='experiment'):
+    def __init__(self, gateway, settings, config, *, layered=False, mode='experiment', family=False):
         self.gateway, self.settings, self.layered = gateway, settings, layered
+        self.family = layered and family is True
         self.scope = memory_scope(config, mode if layered else 'experiment')
         # An absent/unregistered contract cannot form an authorized context.
         # Keep an explicit empty packet; never substitute a different contract.
@@ -170,13 +170,15 @@ class DevMemory:
             return []
         reference_only = self.scope['level'] == 'reference_only'
         now = time.time()
+        levels = [level for level in LEVELS if (not reference_only or level != 'same_scene')
+                  and (self.family or level != 'same_family')]
         if callable(getattr(self.gateway, 'retrieve_entries', None)):
             rows = [Note(r['memory_id'], r['version'], r['guidance'], r['status'], r.get('applicability'),
                          created_at=r.get('created_at'), match_level=r.get('match_level', 'same_scene'),
-                         trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'))
+                         trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'), source_task_id=r.get('source_task_id'))
                     for r in self.gateway.retrieve_entries(self.context, now=now,
-                        match_levels=['same_task'] if reference_only else list(LEVELS))
-                    if not reference_only or r.get('match_level') == 'same_task' and r.get('trusted_here') is False]
+                        match_levels=levels)
+                    if not reference_only or r.get('match_level') in levels and r.get('trusted_here') is False]
         else:
             if reference_only:
                 return []  # Old gateways cannot explicitly attest same-task reference trust.
@@ -186,11 +188,22 @@ class DevMemory:
                     for m in self.gateway.retrieve(self.context, now=now)]
         result = []
         for n in rows:
-            if reference_only and (n.match_level != 'same_task' or n.trusted_here is not False):
+            if reference_only and (n.match_level not in levels or n.trusted_here is not False):
                 continue
+            family_scope = n.match_level == 'same_family'
+            if family_scope:
+                try:
+                    from attention_memory_service.families import family_of
+                    source_family = family_of(n.applicability.get('task_id'))
+                    if (not self.family or source_family is None
+                            or source_family != family_of(self.context.get('task_id'))
+                            or n.applicability.get('task_id') == self.context.get('task_id')):
+                        continue
+                except ImportError:
+                    continue
             if (n.status not in {'trusted', 'provisional'} or type(n.version) is not int or n.version < 1
-                    or n.match_level not in LEVELS or n.trusted_here is not (n.status == 'trusted' and n.match_level == 'same_scene')
-                    or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE)
+                    or n.match_level not in levels or n.trusted_here is not (n.status == 'trusted' and n.match_level == 'same_scene')
+                    or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (family_scope and k == 'task_id'))
                     or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):
                 continue
             result.append(n)
@@ -204,7 +217,7 @@ class DevMemory:
         if not self.layered:
             return self.eligible()
         notes = self.notes()
-        return [n for n in notes if n.trusted_here] + [n for n in notes if not n.trusted_here][:NOT_TRUSTED_HERE_CAP]
+        return order(notes, family=self.family)
 
     def packet(self, *, development_id, source):
         entries = []
@@ -239,7 +252,7 @@ class DevMemory:
                         or not m.trusted_here and grant.get('excluded_from_results') is not True
                         or m.unvalidated and (grant.get('unvalidated') is not True or grant.get('trust_scope') != 'provisional')):
                     raise PermissionError('Memory grant trust level/exclusion mismatch')
-                entry.update(match_level=m.match_level, trusted_here=m.trusted_here, unvalidated=m.unvalidated,
+                entry.update(layer=layer_of(m), source_task_id=m.source_task_id, created_at=m.created_at, match_level=m.match_level, trusted_here=m.trusted_here, unvalidated=m.unvalidated,
                              trust_scope=grant.get('trust_scope'), source_seed=grant.get('source_seed', m.source_seed),
                              excluded_from_results=grant.get('excluded_from_results') is True or not m.trusted_here)
             # Catalogue copy is descriptive only; the grant still binds guidance,
@@ -254,7 +267,7 @@ class DevMemory:
                   'seeded_for_tests': any(e['seeded_for_tests'] for e in entries),
                   'excluded_from_results': any(e['excluded_from_results'] for e in entries)}
         if self.layered:
-            packet.update(layered=True, not_trusted_here_cap=NOT_TRUSTED_HERE_CAP,
+            packet.update(layered=True, family_reference=self.family, family_cap=FAMILY_CAP, not_trusted_here_cap=NOT_TRUSTED_HERE_CAP,
                           unvalidated=any(e['unvalidated'] for e in entries),
                           not_trusted_here=any(not e['trusted_here'] for e in entries))
         if self.scope['level'] == 'reference_only':
@@ -262,6 +275,8 @@ class DevMemory:
         return packet
 
     def recheck(self, packet):
+        if packet.get("family_reference", False) is not self.family:
+            raise PermissionError("Memory packet family reference switch changed")
         if (packet.get('scope') == 'reference_only') != (self.scope['level'] == 'reference_only'):
             raise PermissionError('Memory packet scene scope changed')
         if self.scope['level'] == 'reference_only' and (
@@ -299,7 +314,7 @@ def _load_memory(store, cell, version, previous, config, settings, directory, la
             store.event(db, 'planner_memory_scope', dict(cell=cell, version=version,
                         level=scope['level'], reason=scope.get('reason'), seed=config.get('seed')))
     gateway = None if scope.get('reason') in {'scene_contract_missing', 'scene_contract_not_registered'} else client_for(settings)
-    service = DevMemory(gateway, settings, config, layered=layered, mode=mode)
+    service = DevMemory(gateway, settings, config, layered=layered, mode=mode, family=layered and store.cell(cell).get('memory_family') is True)
     path = Path(directory) / 'memory-input.json'
     if path.exists():
         packet = json.loads(path.read_bytes())
@@ -309,7 +324,7 @@ def _load_memory(store, cell, version, previous, config, settings, directory, la
     else:
         packet = service.packet(development_id=f'{cell}:v{version}', source=previous)
         ref = immutable(path, packet)
-        trust = ('match_level', 'trusted_here', 'unvalidated', 'trust_scope', 'source_seed') if layered else ()
+        trust = ('layer', 'source_task_id', 'match_level', 'trusted_here', 'unvalidated', 'trust_scope', 'source_seed') if layered else ()
         with store.tx() as db:
             store.event(db, 'planner_memory_retrieved', dict(cell=cell, version=version,
                         authority=settings['store_id'], namespace=settings['namespace'], packet=ref,
@@ -325,6 +340,7 @@ def _load_memory(store, cell, version, previous, config, settings, directory, la
                 store.event(db, 'planner_memory_unvalidated_used', dict(cell=cell, version=version,
                             memory_ids=[e['memory_id'] for e in untrusted],
                             match_levels=[e['match_level'] for e in untrusted],
+                            layers=[layer_of(e) for e in untrusted],
                             excluded_from_results=True))
     return packet, service
 

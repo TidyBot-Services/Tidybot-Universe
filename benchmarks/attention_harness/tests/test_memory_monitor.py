@@ -273,7 +273,7 @@ def test_projection_shows_unvalidated_uses_expiry_and_other_scene_reference():
     now = 1792471444
     memory = Memory([row('p-here', status='provisional', unvalidated=True, source_seed=seed, validation_summary=None,
                          uses={'grants': 4, 'outcomes': 4, 'failure_gone': 3, 'bogus': 'x'}, expires_at=now + 12 * 86400 - 5),
-                     row('other-scene', source_seed=seed + 7),
+                     row('other-scene', source_seed=seed + 7, applicability_summary={'task_id': bridge.get('/api/dev-v2/experiments/' + EXPERIMENT)[0]['cells'][0]['task_id']}),
                      row('same-scene', source_seed=seed)])
     payload = memory_monitor.project(bridge, memory, EXPERIMENT, now=now)
     notes = {n['id']: n for n in payload['notes']}

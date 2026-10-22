@@ -6,6 +6,7 @@ from pathlib import Path
 from . import memory_provisional
 from .core.dev_store import DevConflict
 from .dev_loop import sha
+from .memory_layers import layer_of
 from .dev_planner_memory import cell_memory, memory_scope
 
 
@@ -76,6 +77,7 @@ def projection(store, cell):
                 seeded=entry.get('seeded_for_tests') if type(entry.get('seeded_for_tests')) is bool else trace.startswith(('seeded-for-tests:','test-seed:'))
                 excluded=entry.get('excluded_from_results') if type(entry.get('excluded_from_results')) is bool else seeded
                 entries.append(dict(memory_id=entry['memory_id'],version=entry['version'],grant_id=entry['grant_id'],
+                                    layer=layer_of(entry),
                                     trusted=entry.get('trusted_here') is not False,match_level=entry.get('match_level','same_scene'),
                                     unvalidated=entry.get('unvalidated') is True,source_seed=entry.get('source_seed'),status=entry.get('status','trusted'),source='Seeded for tests' if seeded else 'Dev v2 candidate' if trace.startswith('dev-v2-source:') else 'Source unverified',
                                     seeded_for_tests=seeded,excluded_from_results=excluded,

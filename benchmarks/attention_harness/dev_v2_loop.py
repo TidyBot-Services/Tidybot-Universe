@@ -50,7 +50,7 @@ def memory_provenance(packet):
     return {'seeded_for_tests':packet.get('seeded_for_tests') is True or any(e.get('seeded_for_tests') is True for e in entries),
             'excluded_from_results':packet.get('excluded_from_results') is True or any(e.get('excluded_from_results') is True for e in entries),
             'entries':[{k:e.get(k) for k in ('memory_id','version','status','seeded_for_tests','excluded_from_results')}
-                       |{k:e[k] for k in ('match_level','trusted_here','unvalidated') if k in e}
+                       |{k:e[k] for k in ('layer','source_task_id','match_level','trusted_here','unvalidated') if k in e}
                        for e in entries],
             **({'not_trusted_here':any(e.get('trusted_here') is False for e in entries)} if any('trusted_here' in e for e in entries) else {})}
 
@@ -309,12 +309,18 @@ def prompt_memory_view(value):
 def compact_memory(entries):
     """Keep the current id/version order, without exposing grant metadata.
 
-    Layered packets (shared Memory) are already ordered: trusted notes for this
-    scene, then at most two that are not trusted here; those carry a label."""
+    Layered packets already cap run notes and references separately. Only
+    trusted scene notes count toward the trusted prompt cap here."""
+    from .memory_layers import TRUSTED_PROMPT_CAP, layer_of
     shared=any('trusted_here' in e for e in entries)
     ordered=list(entries) if shared else sorted(entries,key=lambda e:(e.get('memory_id',''),e.get('version',0)))
-    notes=[];cut=0
-    for entry in ordered[:8]:
+    notes=[];cut=0;trusted=0;omitted=0
+    for entry in ordered:
+        if layer_of(entry)=='scene' and entry.get('trusted_here') is not False:
+            trusted+=1
+            if trusted>TRUSTED_PROMPT_CAP:
+                omitted+=1
+                continue
         content=entry['content']
         if len(content)>1200:
             content=content[:1200];cut+=1
@@ -323,17 +329,12 @@ def compact_memory(entries):
         if label:note['title']=label+(note.get('title') or 'note')
         note['content']=content
         notes.append(note)
-    truncated={'omitted_notes':max(0,len(ordered)-8),'cut_notes':cut}
+    truncated={'omitted_notes':omitted,'cut_notes':cut}
     return notes,truncated if any(truncated.values()) else None
 
 def memory_label(entry):
-    """Prompt label for a note that is not trusted for this scene."""
-    if entry.get('run_note') is True:return f"This run (v{entry['help_version']}) · Unvalidated: "
-    if entry.get('trusted_here') is not False:return ''
-    if entry.get('match_level')=='same_task':
-        seed=entry.get('source_seed')
-        return ('Unvalidated reference' if entry.get('unvalidated') else 'Reference')+(f' (scene {seed}): ' if seed is not None else ': ')
-    return 'Unvalidated: '
+    from .memory_layers import label
+    return label(entry)
 
 def hp_result(text,record):
     if not isinstance(text,str) or not text.strip():raise ValueError('empty HumanProxy hint')
@@ -359,7 +360,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     decision_memory=memory if not shared or policy=='full_trace_aware_attention_planner' else m['memory']
     from . import memory_run_notes
     run_notes=memory_run_notes.deliver(store,key,version,directory) if cell.get('run_notes') is True else []
-    prompt_entries=memory_run_notes.merge(memory['entries'],run_notes) if run_notes else memory['entries']
+    prompt_entries=memory_run_notes.merge(memory['entries'],run_notes, family=cell.get('memory_family') is True) if run_notes else memory['entries']
     deliver=bool(cell.get('planner_features')) or shared or bool(run_notes)
     if decision_path.exists():decision=json.loads(decision_path.read_bytes())
     else:
@@ -439,7 +440,7 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
             mode=cell.get('mode','experiment')
             scope=memory_scope(config,mode if layered(cell) else 'experiment')
             gateway=None if scope.get('reason') in {'scene_contract_missing','scene_contract_not_registered'} else client_for(settings)
-            DevMemory(gateway,settings,config,layered=layered(cell),mode=mode).recheck(json.loads(memory_path.read_bytes()))
+            DevMemory(gateway,settings,config,layered=layered(cell),mode=mode,family=cell.get('memory_family') is True).recheck(json.loads(memory_path.read_bytes()))
         recheck_memory()
     approval_id=None
     if cell.get('planner_features') and cell['planner_features'].get('approval_rule')!='none':
