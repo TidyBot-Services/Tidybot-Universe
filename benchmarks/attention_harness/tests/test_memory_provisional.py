@@ -14,9 +14,12 @@ from benchmarks.attention_harness import dev_planner_memory as memory
 from benchmarks.attention_harness import dev_v2_loop as loop
 from benchmarks.attention_harness import memory_auto_import as importer
 from benchmarks.attention_harness import memory_provisional as provisional
+from benchmarks.attention_harness.core.dev_store import DevConflict
+from benchmarks.attention_harness.daily_dev_v2 import DailyDevV2
 from benchmarks.attention_harness.dev_experiment import create
 from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.dev_loop import immutable, process_identity, sha
+from benchmarks.attention_harness.dev_memory_view import projection
 from openarm365_dev_v2.scene_contract import registered_contract_ref
 
 SOURCE = 'from robot_sdk import left_arm\nleft_arm.move_delta(0,0,0.01)\n'
@@ -143,6 +146,65 @@ def test_reactive_without_planner_features_stages_proposal(tmp_path):
     assert [(e['kind'], e['version']) for e in queued] == [('provisional', 2)]
     assert provisional.stage_safely(store, cell['key'], 2, directory) == ref
     assert len(events(store, 'planner_memory_offline_queued')) == 1
+
+
+@pytest.fixture
+def staged_display_proposal(tmp_path):
+    store, cell, config, manifest, root = make(tmp_path, 'reactive_help')
+    write_version(root, 1, public=REJECTED)
+    directory = write_version(root, 2, public=TIMEOUT, help_value=ADVICE)
+    ref = provisional.stage(store, cell['key'], 2, directory)
+    return store, cell, ref
+
+
+def test_staged_proposal_displays_in_projection_daily_bridge_and_monitor(tmp_path, monkeypatch, staged_display_proposal):
+    from benchmarks.attention_harness import memory_monitor
+
+    store, cell, ref = staged_display_proposal
+    proposal = json.loads(Path(ref['uri']).read_bytes())
+    assert 'version' not in proposal and 'kind' not in proposal
+    expected = [dict(version=2, kind='provisional', status='pending_import',
+                     source='Provisional note proposal', authority_candidate=False, sha256=ref['sha256'])]
+    assert projection(store, cell)['queues'] == expected
+
+    bridge = DailyDevV2(tmp_path / 'daily', [])
+    monkeypatch.setattr(bridge, 'store', lambda eid: store)
+    path = '/api/dev-v2/experiments/' + cell['experiment_id']
+    view, content_type = bridge.get(path + '/cells/' + cell['key'] + '/view')
+    assert content_type == 'application/json'
+    assert view['planner_memory']['queues'] == expected
+    monitor = memory_monitor.project(bridge, SimpleNamespace(dev_catalogue=lambda: []), cell['experiment_id'])
+    assert monitor['run']['experiment_id'] == cell['experiment_id']
+    assert monitor['warnings'] == []
+
+
+@pytest.mark.parametrize('field,value', [
+    ('help_version', 3), ('cell', 'another-cell'), ('schema_version', 'another-schema'),
+])
+def test_provisional_display_rejects_binding_mismatch(staged_display_proposal, field, value):
+    store, cell, ref = staged_display_proposal
+    path = Path(ref['uri'])
+    proposal = json.loads(path.read_bytes())
+    proposal[field] = value
+    path.chmod(0o644)
+    path.write_text(json.dumps(proposal))
+    # Keep the digest valid so the binding check itself must reject the proposal.
+    event = events(store, 'planner_memory_offline_queued')[0]
+    event['queue']['sha256'] = sha(path)
+    with store.tx() as db:
+        db.execute('UPDATE v2_events SET payload=? WHERE kind=?',
+                   (json.dumps(event), 'planner_memory_offline_queued'))
+    with pytest.raises(DevConflict, match='Memory queue display binding mismatch'):
+        projection(store, cell)
+
+
+def test_provisional_display_rejects_digest_drift(staged_display_proposal):
+    store, cell, ref = staged_display_proposal
+    path = Path(ref['uri'])
+    path.chmod(0o644)
+    path.write_bytes(path.read_bytes() + b'\n')
+    with pytest.raises(DevConflict, match='Memory display evidence digest mismatch'):
+        projection(store, cell)
 
 
 @pytest.mark.parametrize('help_value,public,reason', [

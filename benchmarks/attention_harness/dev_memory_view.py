@@ -3,6 +3,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+from . import memory_provisional
 from .core.dev_store import DevConflict
 from .dev_loop import sha
 from .dev_planner_memory import cell_memory, memory_scope
@@ -52,7 +53,12 @@ def projection(store, cell):
         kind=event['kind'];value=event['detail']
         if kind=='planner_memory_offline_queued':
             queued=_evidence(value['queue'])
-            if queued.get('cell')!=cell['key'] or queued.get('version')!=value['version'] or queued.get('kind')!=value['kind']:
+            if value['kind']=='provisional':
+                # Staged proposals bind the helped version through their own schema.
+                if (queued.get('schema_version')!=memory_provisional.SCHEMA or queued.get('cell')!=cell['key']
+                        or queued.get('help_version')!=value['version']):
+                    raise DevConflict('Memory queue display binding mismatch')
+            elif queued.get('cell')!=cell['key'] or queued.get('version')!=value['version'] or queued.get('kind')!=value['kind']:
                 raise DevConflict('Memory queue display binding mismatch')
             queues.append(dict(version=value['version'],kind=value['kind'],status=queued['status'],
                                source={'source':'Offline import proposal','provisional':'Provisional note proposal',
