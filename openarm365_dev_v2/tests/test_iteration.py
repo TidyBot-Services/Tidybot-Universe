@@ -23,10 +23,10 @@ def test_empty_constructor_and_multigoal(tmp_path):
  with pytest.raises(DevConflict):create(s,tmp_path/'a',{**selection('separate-goal-a'),'target_depth':4})
 def test_formula():
  p=normalize_configuration(selection());b=derive_cell_budget(p,80,2400)
- assert b['provider_tokens']==253008 and b['input_tokens']==210000 and b['execution_seconds']==5940
+ assert b['provider_tokens']==1093008 and b['input_tokens']==1050000 and b['execution_seconds']==5940
  assert b['model_seconds']==2040 and b['output_tokens']==43008 and b['control_steps']==7200
  assert b['advisor_calls']==p['help_budget']==2
- assert 255056-b['provider_tokens']==p['help_budget']*1024
+ assert 1095056-b['provider_tokens']==p['help_budget']*1024
  assert 45056-b['output_tokens']==p['help_budget']*1024
 @pytest.mark.parametrize('seconds,expected_model_seconds',[(120,840),(240,1440)])
 def test_frozen_dev_model_reserve_survives_manifest_reload(tmp_path,seconds,expected_model_seconds):
@@ -82,7 +82,7 @@ def test_validation_compensation_and_restart(tmp_path):
 def test_input_bound_rejected_no_reserve(tmp_path):
  s,e,b=setup(tmp_path);c=e['cells'][0];owner=process_identity();s.update_cell(c['key'],state='running',owner=owner)
  cl=Client()
- with pytest.raises(Exception,match='input_bound_exceeded'):provider_call(s,c['key'],1,'model',[dict(role='user',content=json.dumps({'source':'x'*31000}))],owner,tmp_path,cl)
+ with pytest.raises(Exception,match='input_bound_exceeded'):provider_call(s,c['key'],1,'model',[dict(role='user',content=json.dumps({'source':'x'*151000}))],owner,tmp_path,cl)
  assert not cl.inputs and not s.cell(c['key'])['jobs']
 def test_native_dataflow_invariance(tmp_path):
  packets=[]

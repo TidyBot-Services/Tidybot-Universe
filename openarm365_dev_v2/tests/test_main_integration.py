@@ -236,7 +236,7 @@ def test_main_bridge_maps_actual_frozen_configuration_and_no_clock_on_refresh(tm
     assert options['default_cell_budget']['advisor_calls']==5  # help_budget=5
     assert options['default_cell_budget']['eval_calls']==5  # target_valid_executions=5 with Eval enabled
     assert options['default_cell_budget']['help_wait_seconds']==5*120+5*300  # five helps and 300 s per version
-    assert options['default_cell_budget']['provider_tokens']-options['default_no_eval_cell_budget']['provider_tokens']==5*75056
+    assert options['default_cell_budget']['provider_tokens']-options['default_no_eval_cell_budget']['provider_tokens']==5*195056
     assert options['default_cell_budget']['model_seconds']-options['default_no_eval_cell_budget']['model_seconds']==5*120
     assert len(e['cells'])==2
     m=json.loads(Path(e['manifest']['uri']).read_bytes())

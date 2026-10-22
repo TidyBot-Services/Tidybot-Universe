@@ -49,7 +49,7 @@ def test_existing_goal_bridge_offers_same_scene_and_version_defaults(tmp_path):
     assert options['default_cell_budget']['advisor_calls'] == 5
     assert options['default_cell_budget']['eval_calls'] == 5
     assert options['default_no_eval_cell_budget']['eval_calls'] == 0
-    assert options['default_cell_budget']['provider_tokens'] - options['default_no_eval_cell_budget']['provider_tokens'] == 5 * 75056
+    assert options['default_cell_budget']['provider_tokens'] - options['default_no_eval_cell_budget']['provider_tokens'] == 5 * 195056
     assert options['default_cell_budget']['model_seconds'] - options['default_no_eval_cell_budget']['model_seconds'] == 5 * 120
     assert options['default_cell_budget']['help_wait_seconds'] == 5 * 120 + 5 * 300
     assert options['default_cell_budget']['model_seconds'] == 1800

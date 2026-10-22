@@ -6,13 +6,17 @@ FIELDS={'planner_features','scene_contract','reproducible_reset','goal_key','goa
 PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_failure':True,'execution_statuses':['failed','timeout','timed_out'],'public_errors':True,'completion_signal':'none_registered','no_declared_completion_is_failure':True}
 # The public trace has no authored completion signal in the current SDK contract.
 # Successful process exit alone cannot declare task completion. No scoring is read.
+# Per-request Dev input ceiling in UTF-8 bytes; raised from 30000 by the user on 2026-10-22
+# after a run stopped at v8 with input_bound_exceeded. Cell token budgets scale with it.
+MAX_INPUT_BYTES=150000
+
 def normalize_configuration(selection):
  tier=selection.get('budget_tier','dev')
  source=selection.get('model_source','parcc')
  if source not in {'parcc','codex'} or (source=='codex' and (tier!='dev' or 'configuration' in selection)):raise ValueError('Codex model source requires modern dev tier')
  if source=='codex' and selection.get('model','gpt-6-astra')!='gpt-6-astra':raise ValueError('Codex model must be gpt-6-astra')
  if source=='codex' and selection.get('reasoning_effort','high')!='high':raise ValueError('Codex reasoning effort must be high')
- p=dict(target_depth=3,target_valid_executions=3,max_versions=5,coverage='strict_full_depth',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],startup_cleanup_seconds=60,model_reserve_seconds=360 if tier=='dev' else 120,max_input_bytes_per_request=30000,public_failure_rule=PUBLIC_FAILURE_RULE)
+ p=dict(target_depth=3,target_valid_executions=3,max_versions=5,coverage='strict_full_depth',attempt_wall_seconds=task_limits(tier)['attempt_seconds'],startup_cleanup_seconds=60,model_reserve_seconds=360 if tier=='dev' else 120,max_input_bytes_per_request=MAX_INPUT_BYTES,public_failure_rule=PUBLIC_FAILURE_RULE)
  p.update({k:v for k,v in selection.items() if k in FIELDS})
  if 'goal_key' in p:
   import re
@@ -42,7 +46,7 @@ def normalize_configuration(selection):
  # SDK Safety ceilings are preserved; lowering an experiment wall is supported.
  if p['attempt_wall_seconds']>task_limits(tier)['attempt_seconds'] or p['model_reserve_seconds'] not in ((120,240,360) if tier=='dev' else (120,)):raise ValueError('SDK/provider deadline contract exceeded')
  if tier=='dev':p['budget_tier']='dev'
- if p['max_input_bytes_per_request']>30000:raise ValueError('public input contract exceeded')
+ if p['max_input_bytes_per_request']>MAX_INPUT_BYTES:raise ValueError('public input contract exceeded')
  return p
 
 def independent_eval_advisor(evaluation,advisor):

@@ -68,12 +68,26 @@ def _compact(feedback):
     return result
 
 
+def _failed(event):
+    return event.get('status') == 'failed' or bool(event.get('error'))
+
+
+def _select(events, k, f):
+    """First K, last K, and failed events (all of them, or the first and last F)."""
+    failures = [i for i, event in enumerate(events) if _failed(event)]
+    kept = set(failures) if f is None else set(failures[:f] + failures[len(failures) - f:] if f else [])
+    return {i for i in range(len(events)) if i < k or i >= len(events) - k or i in kept}, len(failures) - len(kept)
+
+
 def project_messages(messages, max_input_bytes):
     """Return messages and audit data; leave fitting requests byte-for-byte intact.
 
     First reduce observation precision and discard joint arrays. Then try K
     from ceil(N/2) down to zero, keeping the first K, last K, and every failed
-    or error-bearing event in original order. The first fitting K wins.
+    or error-bearing event in original order. The first fitting K wins. If even
+    K=0 does not fit, keep only the first and last F failures, F decreasing to
+    zero. An inspect_trace decision repeats the trace as
+    attention_control.public_trace_summary; that copy gets the same selection.
     """
     before = input_bound(messages)
     if before <= max_input_bytes:
@@ -82,11 +96,16 @@ def project_messages(messages, max_input_bytes):
     original = packet['public_feedback']
     compact = _compact(original)
     events = compact.get('action_trace', [])
+    attention = packet.get('attention_control')
+    summary = attention.get('public_trace_summary') if isinstance(attention, dict) else None
+    summary = _compact({'action_trace': summary})['action_trace'] if isinstance(summary, list) and summary else None
     original_size = len(encoded(original))
     target = max_input_bytes - PROJECTION_MARGIN_BYTES
-    for k in range((len(events) + 1) // 2, -1, -1):
-        indices = {i for i, event in enumerate(events)
-                   if i < k or i >= len(events) - k or event.get('status') == 'failed' or event.get('error')}
+    failure_count = max(sum(1 for event in trace if _failed(event)) for trace in (events, summary or []))
+    steps = [(k, None) for k in range((len(events) + 1) // 2, -1, -1)]
+    steps += [(0, f) for f in range((failure_count - 1) // 2, -1, -1)]
+    for k, f in steps:
+        indices, dropped = _select(events, k, f)
         projected = {**compact, 'action_trace': [event for i, event in enumerate(events) if i in indices]}
         omitted = len(events) - len(indices)
         # Count bytes removed from the feedback payload before adding metadata.
@@ -94,16 +113,26 @@ def project_messages(messages, max_input_bytes):
         projected['truncation'] = {'message': f'{omitted} events omitted',
                                    'omitted_events': omitted, 'removed_bytes': removed,
                                    'head_tail_k': k}
+        if f is not None:
+            projected['truncation'].update(message=f'{omitted} events omitted, including {dropped} failed events',
+                                           omitted_failure_events=dropped, failure_head_tail=f)
+        shown = {**packet, 'public_feedback': projected}
+        if summary is not None:
+            kept, _ = _select(summary, k, f)
+            shown['attention_control'] = {**attention, 'public_trace_summary': [e for i, e in enumerate(summary) if i in kept]}
         candidate = list(messages)
-        candidate[-1] = {**candidate[-1], 'content': encoded({**packet, 'public_feedback': projected}).decode()}
+        candidate[-1] = {**candidate[-1], 'content': encoded(shown).decode()}
         bound = input_bound(candidate)
         if bound <= target:
-            return candidate, {'schema_version': 'attentionbench.dev-feedback-projection.v1',
-                               'original_feedback_bytes': original_size,
-                               'projected_feedback_bytes': len(encoded(projected)),
-                               'input_bound_before': before, 'input_bound_after': bound,
-                               'max_input_bytes': max_input_bytes,
-                               'margin_bytes': max_input_bytes - bound,
-                               'public_feedback': projected}
-    # Other fields or mandatory failure events can alone exceed the bound.
+            audit = {'schema_version': 'attentionbench.dev-feedback-projection.v1',
+                     'original_feedback_bytes': original_size,
+                     'projected_feedback_bytes': len(encoded(projected)),
+                     'input_bound_before': before, 'input_bound_after': bound,
+                     'max_input_bytes': max_input_bytes,
+                     'margin_bytes': max_input_bytes - bound,
+                     'public_feedback': projected}
+            if summary is not None:
+                audit['trace_summary_events'] = len(shown['attention_control']['public_trace_summary'])
+            return candidate, audit
+    # Only the task, source, memory or other non-trace fields can still exceed the bound.
     return messages, None

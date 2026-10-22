@@ -97,3 +97,40 @@ def test_projection_audit_can_be_recovered_immutably(tmp_path):
     ref = immutable(path, audit)
     assert immutable(path, audit) == ref
     assert json.loads(path.read_bytes()) == audit
+
+
+def test_inspect_trace_copy_gets_the_same_projection():
+    # v9 of devexp-14a2a2eab120adc4fd9b94c8 stopped because inspect_trace repeated
+    # the whole trace in attention_control and only the feedback copy was projected.
+    feedback = json.loads(FIXTURE.read_bytes())
+    attention = {'action': 'inspect_trace', 'reason': 'trace_needs_inspection',
+                 'public_trace_summary': copy.deepcopy(feedback['action_trace'])}
+    before = model_messages(CONFIG, 'from robot_sdk import sensors\n' + '# previous source\n' * 130,
+                            feedback, attention, {'dev_calls': 3}, True, 12000)
+    assert input_bound(before) > 2 * len(encoded(feedback['action_trace']))
+    projected, audit = project_messages(before, 30000)
+    assert audit is not None and input_bound(projected) <= 30000 - 512
+    assert project_messages(before, 30000) == (projected, audit)
+    packet = json.loads(projected[-1]['content'])
+    trace = packet['public_feedback']['action_trace']
+    assert packet['attention_control']['public_trace_summary'] == trace
+    assert audit['trace_summary_events'] == len(trace)
+    assert trace[-1]['error'] == feedback['action_trace'][-1]['error']
+
+
+def test_too_many_failures_keep_the_first_and_last_failures():
+    feedback = json.loads(FIXTURE.read_bytes())
+    for i, event in enumerate(feedback['action_trace']):
+        event['status'] = 'failed'
+        event['error'] = {'message': f'failure {i:02} ' + 'x' * 600, 'type': 'RuntimeError'}
+    before = messages(feedback)
+    projected, audit = project_messages(before, 30000)
+    assert audit is not None and input_bound(projected) <= 30000 - 512
+    assert project_messages(before, 30000) == (projected, audit)
+    shown = audit['public_feedback']
+    trace, truncation = shown['action_trace'], shown['truncation']
+    assert truncation['head_tail_k'] == 0 and truncation['omitted_failure_events'] > 0
+    assert trace[0]['error'] == feedback['action_trace'][0]['error']
+    assert trace[-1]['error'] == feedback['action_trace'][-1]['error']
+    assert truncation['omitted_events'] == 40 - len(trace) == truncation['omitted_failure_events']
+    assert truncation['message'] == f"{truncation['omitted_events']} events omitted, including {truncation['omitted_failure_events']} failed events"
