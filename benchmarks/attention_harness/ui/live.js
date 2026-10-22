@@ -1,5 +1,6 @@
 (function () {
   const root = document.getElementById('attentionbench-clear');
+  let launchRequested = location.hash === '#new-run';
   if (!root || root.dataset.mode !== 'live') return;
 
   const DEBUG_VIEW = new URLSearchParams(location.search).get('debug') === '1';
@@ -37,7 +38,7 @@
   }
 
   let noticeController=null;
-  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';actions.append(memoryLink,noticeHost,devTag,themeButton,alertsButton);top.prepend(sidebarToggle);top.append(actions);const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);}
+  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';const homeLink=document.createElement('a');homeLink.className='op-memory-link op-home-link';homeLink.href='/ui/home.html';homeLink.innerHTML='<span aria-hidden="true">⌂</span><span>Home</span>';homeLink.setAttribute('aria-label','Back to the cover');actions.append(homeLink,memoryLink,noticeHost,devTag,themeButton,alertsButton);top.prepend(sidebarToggle);top.append(actions);const brand=top.querySelector('.brand');if(brand){const toCover=()=>{location.href='/ui/home.html'};brand.style.cursor='pointer';brand.title='Back to the cover';brand.setAttribute('role','link');brand.tabIndex=0;brand.addEventListener('click',toCover);brand.addEventListener('keydown',e=>{if(e.key==='Enter')toCover();});}const roomy=matchMedia('(min-width:1200px)'),fitHome=()=>{homeLink.style.display=roomy.matches?'':'none'};roomy.addEventListener('change',fitHome);addEventListener('resize',fitHome);fitHome();const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);}
   let runs = [];
   let launches = [];
   let devSessions = [];
@@ -1875,6 +1876,13 @@
     return source?`<p class="ab-launch-note" data-launch-source>${profile?'Task, robot and arm copied from the current record.':`The current configuration is unavailable for a new run: ${esc(reason)} Choose a supported configuration below.`} Source: ${esc(displayRun(source))}</p>`:'';
   }
 
+  // The cover's New run links here with #new-run. Startup may rewrite the address to the newest
+  // record before the first render, so the request is read at load and used once.
+  function openRequestedLaunch() {
+    const open=view.querySelector('[data-open-launch]');
+    if(!launchRequested||!open||open.disabled)return;
+    launchRequested=false;if(location.hash==='#new-run')history.replaceState(null,'',location.pathname+location.search);open.click();
+  }
   function bindLaunch() {
     view.querySelectorAll('[data-open-launch],[data-open-run-again]').forEach(button=>button.addEventListener('click', () => {
       const repeat=button.hasAttribute('data-open-run-again')?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
@@ -4069,7 +4077,7 @@
       } catch(error) {view.querySelector('#ab-live-message').textContent=`Pause failed: ${DEBUG_VIEW ? error.message : plainError(error.message)}`;button.disabled=false;}
     });
     mountPolicyController();
-    bindLaunch();
+    bindLaunch();openRequestedLaunch();
     view.querySelector('[data-open-more]')?.addEventListener('click',openMore);
     view.querySelectorAll('[data-open-flow-node]').forEach(button=>button.addEventListener('click',()=>openFlowDetail(currentSnapshot,button.dataset.openFlowNode)));
     bindOverview(snapshot);
@@ -4193,7 +4201,7 @@
     view.querySelectorAll('[data-persist-detail]').forEach(e => { e.open = expanded.includes(e.dataset.persistDetail); });
     mountPolicyController();
     if(!DEBUG_VIEW){document.title=launch?'◌ Starting · Attention Bench':'Attention Bench';initStages();}
-    bindLaunch();view.querySelector('[data-open-more]')?.addEventListener('click',openMore);refreshMoreDialog();
+    bindLaunch();openRequestedLaunch();view.querySelector('[data-open-more]')?.addEventListener('click',openMore);refreshMoreDialog();
   }
   // Dev workspace projection: read-only, version-bound display data.
   const devEvidenceCache = new Map();
