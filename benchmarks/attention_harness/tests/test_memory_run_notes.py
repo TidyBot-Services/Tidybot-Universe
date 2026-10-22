@@ -81,7 +81,7 @@ def test_progress_and_invalid_signature_and_public_screen(tmp_path, monkeypatch)
     assert notes.create(store, cell['key'], 2, directory) is None
     assert events(store, notes.PREFIX+'skipped')[-1]['reason'] == 'signature_invalid'
     assert notes.title('  First   sentence. Second sentence.\nThird') == 'First sentence.'
-    assert notes.title('x'*100) == 'x'*79+'…'
+    assert notes.title('x'*100) == 'Hint'  # Key-like text fails public title validation.
 
 
 def test_no_scene_contract_stages_local_note_but_keeps_proposal_refusal(tmp_path, monkeypatch):
@@ -147,10 +147,10 @@ def test_order_labels_and_decision_isolation_every_policy(tmp_path, monkeypatch,
     monkeypatch.setattr(loop, 'decide', decide)
     directory = root/'v3'; directory.mkdir()
     packet, _, _ = loop.attention(store, cell['key'], 3, {}, SOURCE, 0, [], manifest, process_identity(), directory, None)
-    assert [e.get('note_id', e.get('memory_id')) for e in packet['memory']] == ['seed-here', note['note_id'], 'p-new', 'seed-other']
+    assert [e.get('note_id', e.get('memory_id')) for e in packet['memory']] == ['seed-here', note['note_id'], 'p-new', 'p-old']
     prompt = loop.prompt_memory_view(packet)['memory']
     assert [e['title'] for e in prompt] == ['Trusted here', 'This run (v2) · Unvalidated: '+note['title'],
-                                         'Unvalidated: New unvalidated', 'Reference (scene 101): Other scene']
+                                         'Unvalidated: New unvalidated', 'Unvalidated: Old unvalidated']
     saved = json.loads((directory/'memory-input.json').read_bytes())
     assert note['note_id'] not in json.dumps(saved)
     memory.DevMemory(gateway, SETTINGS, config, layered=True).recheck(saved)
@@ -206,7 +206,7 @@ def test_results_excluded_provisional_outcomes_preserved_and_importer_isolated(t
             return gateway.record_provisional_outcome(**kw)
         def __getattr__(self, name):
             pytest.fail('unexpected Memory import: '+name)
-    assert importer.run([store.path], client=Guard(), namespace=SETTINGS['namespace'])['outcomes'] == 1
+    assert importer.run([store.path], client=Guard(), namespace=SETTINGS['namespace'])['outcomes'] == 2
     # Even a normal, countable trusted packet must not queue a result after local guidance.
     trusted = dict(packet, entries=[dict(packet['entries'][0], excluded_from_results=False, seeded_for_tests=False)], excluded_from_results=False)
     memory.journal_result(store, cell['key'], 3, trusted, source, feedback, directory)
@@ -258,7 +258,8 @@ def test_monitor_and_kill_switch_endpoint_auth(tmp_path, monkeypatch):
     notes.outcomes(store, cell['key'], 3, root/'v3', TIMEOUT)
     payload = memory_monitor.project(bridge, None, cell['experiment_id'])
     assert [v['note_ids'] for v in payload['run']['versions']] == [[],[],[note['note_id']]]
-    assert payload['run_notes'] == [dict(id=note['note_id'],cell=cell['key'],title=note['title'],help_version=2,from_version=3,uses=1,failure_gone=1,off=False)]
+    assert payload['run_notes'] == [dict(id=note['note_id'],cell=cell['key'],layer='run',
+        path=f"Learned in {cell['experiment_id'][:15]}… v2 → this run only",title=note['title'],help_version=2,from_version=3,uses=1,failure_gone=1,off=False)]
     assert any(e['text'] == 'v2 learned: '+note['title'] for e in payload['events'])
     path = '/api/dev-v2/experiments/'+cell['experiment_id']+'/run-note-off'
     body = dict(cell=cell['key'],note_id=note['note_id'])
@@ -329,6 +330,10 @@ def test_offline_replay_recorded_run(tmp_path, capsys):
     assert report[1]['learned'] and report[2]['read'] == [2]
     assert all(all(h < row['version'] for h in row['read']) for row in report)
     assert events(store,'planner_memory_offline_queued') == []
+    from attention_memory_service.note_title import validate_title
+    headings = [json.loads((root/f'v{v}'/'memory-run-note.json').read_bytes())['title'] for v in (2,4,5)]
+    assert len({h.casefold() for h in headings}) == 3
+    assert all(validate_title(h) == h and not h.startswith('Avoid PlanningRejected') for h in headings)
     # This is a replay of recorded evidence, not a counterfactual execution.
     with capsys.disabled():
         print('\nOffline replay devexp-4a6bb2d8387428ca4f32b849:',json.dumps(report))

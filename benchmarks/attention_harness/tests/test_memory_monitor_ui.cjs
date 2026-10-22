@@ -126,3 +126,26 @@ test('local run notes have version membership, counts, distinct themes and a loc
  assert.equal(monitor.feedLabel({type:'planner_memory_run_note_created',text:'v2 learned: Lift cup'}),'v2 learned: Lift cup');
  assert.equal(monitor.feedLabel({type:'planner_memory_run_note_off',text:'turned off for this run: Lift cup'}),'turned off for this run: Lift cup');
 });
+
+test('nested layers filter jointly with version and used-only, with public path cards',()=>{
+ const data=monitor.adapt({run:{family_reference:false,layer_counts:{run:1,scene:1,task:1,family:1},versions:[{n:1,note_ids:['s','t']},{n:2,note_ids:['r','f']}]},
+  notes:[{id:'s',layer:'scene',status:'active',path:'Test note → scene 102'},
+         {id:'t',layer:'task',status:'active',path:'Validated on scene 101 → read here as task reference'},
+         {id:'f',layer:'family',status:'active',path:'Validated on scene 103 → read here as family reference'},
+         {id:'other',layer:null,status:'active'}],
+  run_notes:[{id:'r',layer:'run',title:'Lift cup',help_version:2,path:'Learned in devexp-abc… v2 → this run only'}]});
+ assert.deepEqual(monitor.visibleNotes(data,1,true,'task').map(n=>n.id),['t']);
+ assert.deepEqual(monitor.visibleNotes(data,2,true,'task'),[]);
+ assert.equal(monitor.versionCount(data,data.versions[0],0,false,'scene'),1);
+ assert.equal(monitor.visibleNotes(data,0,false,'all').length,5);
+ for(const layer of ['run','scene','task','family']){
+  const note=data.notes.find(n=>n.layer===layer),html=monitor.cardHtml(note);
+  assert.match(html,new RegExp(layer[0].toUpperCase()+layer.slice(1)+' layer'));
+  assert.ok(html.includes(note.path));
+ }
+ assert.match(monitor.layerLegend(data),/Family<b>off<\/b>/);
+ assert.match(monitor.layerLegend(data),/class="layer-badge">R<\/i>Run/);
+ assert.match(page,/id="layer-legend"/);assert.match(page,/id="layer-filters"/);
+ assert.match(css,/\.layer-badge\{[^}]*border:1px solid currentColor/);
+ assert.match(css,/#monitor\s+\.lg\s+i\.layer-badge\s*\{[^}]*\bborder-radius:\s*4px\s*[;}]/);
+});

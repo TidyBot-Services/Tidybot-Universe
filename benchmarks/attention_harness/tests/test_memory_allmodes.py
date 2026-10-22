@@ -193,7 +193,8 @@ def test_interactive_daily_provisional_use_is_imported_without_result(tmp_path, 
     item = json.loads(Path(queued[0]['queue']['uri']).read_bytes())
     assert item['kind'] == 'provisional_outcome'
     assert item['evidence']['grants'] == [
-        {k: entry[k] for k in ('grant_id', 'memory_id', 'development_id')}]
+        {k: e[k] for k in ('grant_id', 'memory_id', 'development_id')}
+        for e in packet['entries'] if e.get('trust_scope') == 'provisional']
     assert item['evidence']['public_feedback'] == public
     assert not (directory/'memory-result.json').exists()
     assert events(store, 'planner_memory_result_skipped')[-1]['reason'] == 'not_trusted_here_excluded_from_results'
@@ -201,11 +202,11 @@ def test_interactive_daily_provisional_use_is_imported_without_result(tmp_path, 
     assert note()['uses'] == dict(grants=1, outcomes=0, failure_gone=0)
 
     assert importer.run([store.path], client=gateway, namespace=_memory()['namespace']) == dict(
-        created=0, outcomes=1, refused=0, deferred=0, planned=0)
-    assert gateway.calls == [('outcome', entry['grant_id'])]
+        created=0, outcomes=2, refused=0, deferred=0, planned=0)
+    assert gateway.calls == [('outcome', e['grant_id']) for e in packet['entries'] if e.get('trust_scope') == 'provisional']
     assert note()['uses'] == dict(grants=1, outcomes=1, failure_gone=1)
     assert note()['status'] == 'provisional'
-    receipt, = events(store, importer.RECEIPT)
+    receipt = next(e for e in events(store, importer.RECEIPT) if e['memory_id'] == 'p-new')
     assert receipt['kind'] == 'provisional_outcome' and receipt['memory_id'] == 'p-new'
     assert receipt['grant_id'] == entry['grant_id'] and receipt['signature_present'] is False
 
@@ -230,7 +231,7 @@ def test_interactive_daily_provisional_use_is_imported_without_result(tmp_path, 
     assert importer.run([store.path, ref_store.path], client=gateway, namespace=_memory()['namespace']) == dict(
         created=0, outcomes=0, refused=0, deferred=0, planned=0)
     assert events(ref_store, importer.RECEIPT) == []
-    assert gateway.calls == [('outcome', entry['grant_id'])]
+    assert gateway.calls == [('outcome', e['grant_id']) for e in packet['entries'] if e.get('trust_scope') == 'provisional']
     assert note()['uses'] == before
 
 

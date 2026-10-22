@@ -20,6 +20,7 @@ from pathlib import Path
 
 from .dev_loop import sha
 from .memory_provisional import SCHEMA, memory_id as provisional_id
+from .memory_titles import note_title, unique_title
 
 ENV = 'ATTENTION_MEMORY_AUTO_IMPORT_KEYS'
 KEY_NAMES = ('ATTENTION_MEMORY_API_KEY', 'ATTENTION_MEMORY_IMPORTER_KEY')
@@ -76,11 +77,6 @@ def _verified(ref):
     return path
 
 
-def title_for(signature):
-    error = signature['public_error_class'].split(': ')[-1]
-    return f"Avoid {error} on {signature['operation']}"[:80]
-
-
 def summary_for(guidance):
     text = ' '.join(guidance.split())
     first = re.split(r'(?<=[.!?。！？])\s', text, maxsplit=1)[0]
@@ -93,7 +89,7 @@ def summary_for(guidance):
         return None  # The summary is display text only; omit it when not plain.
 
 
-def provisional_payload(proposal, namespace):
+def provisional_payload(proposal, namespace, *, taken=()):
     if proposal.get('schema_version') != SCHEMA or proposal.get('status') != 'pending_import':
         raise Refused('not a pending provisional proposal')
     refs = proposal['refs']
@@ -114,7 +110,9 @@ def provisional_payload(proposal, namespace):
                    context=context, guidance=guidance, failure_signature=proposal['failure_signature'], origin=origin,
                    origin_public_feedback_text=paths['origin_public_feedback'].read_bytes().decode('utf-8'),
                    help_public_feedback_text=paths['help_public_feedback'].read_bytes().decode('utf-8'),
-                   title=title_for(proposal['failure_signature']))
+                   title=unique_title(note_title(guidance, proposal['failure_signature']), taken, proposal['help_version']))
+    if 'from_run_note' in proposal:
+        payload['from_run_note'] = proposal['from_run_note']
     summary = summary_for(guidance)
     if summary:
         payload['summary'] = summary
@@ -168,12 +166,28 @@ def run(ledgers, *, client, namespace, dry_run=False, out=print, redact=Redactor
     """Submit every pending item once. Returns counts by outcome."""
     counts = dict(created=0, outcomes=0, refused=0, deferred=0, planned=0)
     for ledger in ledgers:
+        # Replay all proposals, including receipted ones, in queue order so
+        # collision suffixes remain deterministic across importer restarts.
+        title_inputs, taken = {}, []
+        for kind, event in _events(ledger):
+            if kind != 'planner_memory_offline_queued' or event.get('kind') != 'provisional':
+                continue
+            if event['queue']['sha256'] in title_inputs:
+                continue
+            try:
+                proposal = _queue_value(event['queue'])
+                chosen = unique_title(note_title(proposal['help_content'], proposal['failure_signature']),
+                                      taken, proposal['help_version'])
+                title_inputs[event['queue']['sha256']] = tuple(taken)
+                taken.append(chosen)
+            except (Refused, KeyError, ValueError, OSError):
+                continue
         for item, kind, event, target in pending(ledger):
             label = f"{Path(ledger).parent.name} {event['cell'][:12]} v{event['version']} {kind}"
             try:
                 if kind == 'provisional':
                     proposal = _queue_value(target)
-                    payload = provisional_payload(proposal, namespace)
+                    payload = provisional_payload(proposal, namespace, taken=title_inputs[target['sha256']])
                 else:
                     payload = outcome_payload(target)
             except (Refused, KeyError, ValueError, OSError) as exc:

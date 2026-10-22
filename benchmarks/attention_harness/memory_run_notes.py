@@ -5,7 +5,6 @@ observations use the same public-evidence rules as provisional proposals.
 """
 import hashlib
 import json
-import re
 import sqlite3
 import time
 from pathlib import Path
@@ -15,9 +14,11 @@ from .dev_loop import immutable, sha
 from .memory_provisional import (PROVIDERS, NotStaged, _ref, derive_signature,
                                  effective_reason, progress, signature_present)
 
+from .memory_layers import RUN_NOTE_CAP, order
+from .memory_titles import note_title, unique_title
+
 SCHEMA = 'attentionbench.dev-v2-run-note.v1'
 INPUT_SCHEMA = 'attentionbench.dev-v2-run-notes-input.v1'
-RUN_NOTE_CAP = 3
 PREFIX = 'planner_memory_run_note_'
 
 
@@ -45,10 +46,7 @@ def _skip(store, key, version, reason, **extra):
         pass  # Local observations must never interrupt execution.
 
 
-def title(content):
-    first = re.split(r'[\r\n]|(?<=[.!?。！？])\s+', content.strip(), maxsplit=1)[0]
-    first = ' '.join(first.split())
-    return first if len(first) <= 80 else first[:79] + '…'
+title = note_title
 
 
 def create(store, key, version, directory):
@@ -79,7 +77,9 @@ def create(store, key, version, directory):
         except Exception as exc:
             raise NotStaged('signature_invalid') from exc
         reason = effective_reason(origin, helped, signature)
-        heading = title(content)
+        taken = [e['title'] for kind, e in events(store, key)
+                 if kind == PREFIX + 'created' and e['help_version'] < version]
+        heading = unique_title(note_title(content, signature), taken, version)
         public_screen(heading)
         public_screen(content)
         target = directory / 'memory-run-note.json'
@@ -95,6 +95,8 @@ def create(store, key, version, directory):
                     raise ValueError('saved note changed')
             except (ValueError, KeyError) as exc:
                 raise NotStaged('run_note_already_differs') from exc
+        if saved is not None:
+            heading = saved['title']  # Old immutable notes retain their original title.
         note = dict(schema_version=SCHEMA,
                     note_id='r-' + hashlib.sha256(f"{cell['experiment_id']}:{key}:{version}".encode()).hexdigest()[:24],
                     experiment_id=cell['experiment_id'], cell=key, help_version=version, origin_version=version - 1,
@@ -102,6 +104,8 @@ def create(store, key, version, directory):
                     title=heading, content=content, failure_signature=signature, effective_reason=reason,
                     origin_progress=progress(origin), help_progress=progress(helped), refs=refs,
                     run_local=True, unvalidated=True, excluded_from_results=True)
+        if saved is None or 'layer' in saved:
+            note['layer'] = 'run'
         if saved is not None and saved != note:
             raise NotStaged('run_note_already_differs')
         ref = _ref(target) if saved is not None else immutable(target, note)
@@ -148,7 +152,7 @@ def deliver(store, key, version, directory):
                 continue
         notes = sorted(active.values(), key=lambda n: (-n['help_version'], n['note_id']))
         entries = [dict({k: note[k] for k in ('note_id', 'help_version', 'title', 'content', 'failure_signature')},
-                        run_note=True, unvalidated=True, trusted_here=False, match_level='run_note',
+                        layer='run', run_note=True, unvalidated=True, trusted_here=False, match_level='run_note',
                         excluded_from_results=True) for note in notes[:RUN_NOTE_CAP]]
         packet = dict(schema=INPUT_SCHEMA, cell=key, version=version, cap=RUN_NOTE_CAP,
                       omitted=max(0, len(notes) - RUN_NOTE_CAP), entries=entries)
@@ -157,18 +161,15 @@ def deliver(store, key, version, directory):
     if entries:
         ids = [e['note_id'] for e in entries]
         _once(store, 'planner_memory_run_notes_delivered', dict(cell=key, version=version, packet=_ref(path),
-              note_ids=ids, help_versions=[e['help_version'] for e in entries]))
+              layer='run', layers=['run'] * len(ids), note_ids=ids, help_versions=[e['help_version'] for e in entries]))
         _once(store, 'planner_memory_unvalidated_used', dict(cell=key, version=version,
-              memory_ids=ids, match_levels=['run_note'] * len(ids), excluded_from_results=True),
+              memory_ids=ids, layers=['run'] * len(ids), match_levels=['run_note'] * len(ids), excluded_from_results=True),
               ('cell', 'version', 'match_levels'))
     return entries
 
 
-def merge(memory, notes):
-    """Keep legacy trusted order, or insert between the shared Memory layers."""
-    trusted = [e for e in memory if e.get('trusted_here') is not False]
-    others = [e for e in memory if e.get('trusted_here') is False]
-    return trusted + notes + others
+def merge(memory, notes, *, family=False):
+    return order(memory, notes, family=family)
 
 
 def outcomes(store, key, version, directory, feedback):

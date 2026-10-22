@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from .dev_loop import sha
+from .memory_layers import LAYERS, layer_of
 
 EXPERIMENT = re.compile(r'devexp-[0-9a-f]{24}\Z')
 LIMIT = 600
@@ -105,9 +106,14 @@ def _layered_reads(store, cells):
             continue
         if kind == 'planner_memory_unvalidated_used':
             flagged = True
-        for entry in detail.get('versions') or []:
-            if isinstance(entry, dict) and entry.get('match_level') in ('same_scene', 'same_task'):
-                levels[entry.get('memory_id')] = entry['match_level']
+        entries = detail.get('versions') or []
+        ref = detail.get('packet') or {}
+        path = Path(ref.get('uri', '/missing'))
+        if path.is_file() and sha(path) == ref.get('sha256'):
+            entries = json.loads(path.read_bytes()).get('entries', entries)
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get('memory_id'):
+                levels[entry['memory_id']] = layer_of(entry)
     return flagged, levels
 
 
@@ -300,6 +306,42 @@ def _max_versions(experiment, cells, events=()):
     return max(1, min(12, max(seen))) if seen else 5
 
 
+def _here_layer(row, cells):
+    task = (row.get('applicability_summary') or {}).get('task_id')
+    same = [cell for cell in cells if task is not None and cell.get('task_id') == task]
+    if same:
+        return 'scene' if any(cell.get('seed') == _note_seed(row) for cell in same) else 'task'
+    try:
+        from attention_memory_service.families import family_of
+        family = family_of(task)
+        if family is not None and any(family_of(cell.get('task_id')) == family for cell in cells):
+            return 'family'
+    except ImportError:
+        pass
+    return None
+
+
+def _learned(origin):
+    return f"Learned in {str(origin['experiment_id'])[:15]}… v{origin['help_version']}"
+
+
+def _path(row, layer, catalogue):
+    seed = _note_seed(row)
+    origin = row.get('origin_summary')
+    if origin:
+        path = f"{_learned(origin)} → provisional on scene {seed}"
+    elif row.get('seeded_for_tests'):
+        path = f"Test note → scene {seed}"
+    else:
+        path = f"Validated on scene {seed}"
+        prior = catalogue.get(row.get('from_provisional')) or {}
+        if prior.get('origin_summary'):
+            path = f"{_learned(prior['origin_summary'])} → provisional on scene {_note_seed(prior)} → " + path
+    if layer in ('task', 'family'):
+        path += f" → read here as {layer} reference"
+    return path
+
+
 def project(bridge, memory_view, experiment_id, *, now=None):
     if not EXPERIMENT.fullmatch(experiment_id):
         raise ValueError('invalid experiment id')
@@ -374,7 +416,7 @@ def project(bridge, memory_view, experiment_id, *, now=None):
             raise CatalogueUnavailable('online catalogue unavailable') from error
         catalogue = []
         warnings.append('Service notes are unavailable; run notes are shown.')
-    seeds = {cell.get('seed') for cell in cells if type(cell.get('seed')) is int}
+    catalogue_by_id = {row.get('memory_id'): row for row in catalogue}
     try:
         unvalidated_used, levels = _layered_reads(store, cells)
     except EXTRA_ERRORS as error:
@@ -401,11 +443,12 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'status': status(row), 'effect': validation, 'lift_pt': lift, 'reads': reads,
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
         seed = _note_seed(row)
-        level = levels.get(row.get('memory_id'))
+        layer = levels.get(row.get('memory_id'), _here_layer(row, cells))
+        notes[-1].update(layer=layer, path=_path(row, layer, catalogue_by_id))
         notes[-1].update(unvalidated=row.get('status') == 'provisional' or row.get('unvalidated') is True,
                          uses=_uses(row), expires_in_days=_expires_in_days(row, timestamp), scene_seed=seed,
                          # Another scene of the same task: readable only as a labelled reference.
-                         reference=level == 'same_task' or level is None and seed is not None and bool(seeds) and seed not in seeds)
+                         reference=layer in ('task', 'family'))
     from .memory_run_notes import events as local_events, PREFIX
     run_notes = []
     for cell in cells:
@@ -419,7 +462,8 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                     and note_id in e['note_ids']}
             gone = {e['version'] for k, e in history if k == PREFIX + 'outcome'
                     and e['note_id'] == note_id and e['failure_gone']}
-            run_notes.append(dict(id=note_id, cell=cell['key'], title=short(event['title'], 80),
+            run_notes.append(dict(id=note_id, cell=cell['key'], layer='run',
+                                  path=f"{_learned(dict(experiment_id=experiment_id, help_version=event['help_version']))} → this run only", title=short(event['title'], 80),
                                   help_version=event['help_version'], from_version=event['help_version'] + 1,
                                   uses=len(uses), failure_gone=len(gone), off=note_id in off))
     from .dev_memory_view import scope_projection
@@ -429,5 +473,7 @@ def project(bridge, memory_view, experiment_id, *, now=None):
     return {'generated_at': timestamp,
             'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40),
                     'max_versions': max_versions, 'versions': versions, 'unvalidated_used': unvalidated_used,
-                    'memory_scope': scope, 'can_operate_run_notes': local_enabled},
+                    'memory_scope': scope, 'can_operate_run_notes': local_enabled,
+                    'family_reference': any(cell.get('memory_family') is True for cell in cells),
+                    'layer_counts': {layer: sum(n.get('layer') == layer for n in notes + run_notes) for layer in LAYERS}},
             'notes': notes, 'run_notes': run_notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}
