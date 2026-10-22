@@ -756,6 +756,8 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             with store.tx() as db:current=store.get(db,'experiments',cell['experiment_id'])
             if cell['state']=='condition_invalid':return
             if current['cancelled']:store.update_cell(key,state='cancelled',reason='operator_cancel');return
+            # Step boundary: the previous step settled and the next has not started.
+            if current.get('pause_requested_at'):store.update_cell(key,state='planned',reason='operator_paused');return
             # Task boundary only. Any interactive switch makes a mixed session.
             if cell.get('pending_policy'):
                 store.update_cell(key,policy_id=cell['pending_policy'],pending_policy=None,policy_segments=cell['policy_segments']+[cell['pending_policy']])

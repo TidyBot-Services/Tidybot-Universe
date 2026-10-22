@@ -171,9 +171,13 @@ class DevV2Store:
             for k,v in charged_amount(j,j['reservation']).items():quota_held[k]+=v
         metered=quota_used(g['used'],jobs)
         g['reserved']=held;g['remaining']={k:max(0,g['limits'].get(k,0)-metered[k]-quota_held[k]) for k in RESOURCES}
-        g['wall_used']=max(0,(g.get('real_finished_at') or time.time())-g['real_started_at']) if g['real_started_at'] else 0
+        # Time spent paused (closed intervals plus an open one) is not run time: it neither
+        # uses the wall budget nor moves the authorized deadline closer (user decision 2026-10-22).
+        now=time.time();paused=g.get('paused_seconds',0)+(max(0,now-g['paused_at']) if g.get('paused_at') else 0)
+        g['paused_seconds_total']=paused
+        g['wall_used']=max(0,(g.get('real_finished_at') or now)-g['real_started_at']-paused) if g['real_started_at'] else 0
         g['wall_remaining']=max(0,g['wall_limit']-g['wall_used'])
-        if g.get('authorized_until') is not None:g['wall_remaining']=min(g['wall_remaining'],max(0,g['authorized_until']-time.time()))
+        if g.get('authorized_until') is not None:g['wall_remaining']=min(g['wall_remaining'],max(0,g['authorized_until']+paused-now))
         return g
     def opening(self,ref):
         from .dev_loop import sha

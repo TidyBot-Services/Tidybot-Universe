@@ -226,8 +226,10 @@ class DailyDevV2:
         s=self.store(eid);e=experiments.snapshot(s,eid);directory,path,budget=self.paths(eid)
         if not self.per_run_budget and (not self.authorization or time.time()>=self.authorization['deadline_epoch']):raise DevBudgetExhausted('No current authorization: create offline or supply a new explicit run budget')
         with self.mutex:
-            if eid in self.workers and self.workers[eid].poll() is None:return {'experiment_id':eid,'deduplicated':True}
-            if e.get('owner') and owner_alive(e['owner']):return {'experiment_id':eid,'deduplicated':True}
+            if (eid in self.workers and self.workers[eid].poll() is None) or (e.get('owner') and owner_alive(e['owner'])):
+                # Resume while the worker is still finishing its step means "keep running".
+                if experiments.withdraw_pause(s,eid):return {'experiment_id':eid,'pause_withdrawn':True}
+                return {'experiment_id':eid,'deduplicated':True}
             if e['state']=='completed':return {'experiment_id':eid,'deduplicated':True}
             if e['cancelled']:raise DevConflict('Cancelled experiment is read-only; create a new independent experiment')
             for row in self.list():
@@ -245,6 +247,8 @@ class DailyDevV2:
             runtime=Path(json.loads(Path(lockref['path']).read_bytes())['source_root'])
             if not runtime.is_dir():raise DevConflict('frozen experiment runtime missing')
             if self.per_run_budget:budget=self.dispatch_budget(s,e,directory,budget)
+            if e['state']=='paused':experiments.resume_paused(s,eid)
+            else:experiments.withdraw_pause(s,eid)  # A worker lost while pausing leaves a stale request.
             with (directory/'scheduler.log').open('ab') as log:
                 p=subprocess.Popen([sys.executable,'-B','-u','-m',__name__,'--worker',eid,'--root',str(self.root),'--budget',str(budget)],cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,start_new_session=True)
             self.workers[eid]=p;immutable(directory/f'scheduler-process-{p.pid}.json',process_identity(p.pid))
@@ -267,7 +271,7 @@ class DailyDevV2:
             if goal.get('real_started_at') is not None:deadline=min(deadline,goal['real_started_at']+goal['wall_limit'])
             declaration={**creation,'deadline_epoch':deadline}
             immutable(dispatch,declaration)
-        if declaration['deadline_epoch']<=time.time():raise DevBudgetExhausted('Run time budget exhausted; create a new run')
+        if declaration['deadline_epoch']+experiments.paused_seconds(store,experiment.get('goal_id'))<=time.time():raise DevBudgetExhausted('Run time budget exhausted; create a new run')
         with store.tx() as db:
             gid=experiment.get('goal_id',store.goal_id);goal=store.get(db,'goals',gid)
             if goal.get('authorized_until') not in (None,declaration['deadline_epoch']):raise DevConflict('existing run deadline cannot be extended')
@@ -334,14 +338,46 @@ class DailyDevV2:
         from .dev_memory_view import projection as memory_projection
         with sqlite3.connect('file:'+str(s.path.resolve())+'?mode=ro',uri=True) as db:
             goal_id=s.get(db,'experiments',c['experiment_id']).get('goal_id')
-        return dict(c,versions=rows,ledger=s.export_ledger(goal_id),planner_memory=memory_projection(s,c),quota_usage=run_quota_usage(c,read))
+        return dict(c,versions=rows,ledger=s.export_ledger(goal_id),planner_memory=memory_projection(s,c),quota_usage=run_quota_usage(c,read),run_controls=self.run_controls(s,c))
+    STEP_NAMES={'model':'writing v{v}','execute':'running v{v} on the robot','eval':'reviewing v{v}','advisor':'asking the advisor about v{v}','human':'waiting for your reply about v{v}'}
+    def run_controls(self,s,c):
+        """Pause/Resume state for the operator UI, with every blocked state explained in plain words."""
+        eid=c['experiment_id'];workers=getattr(self,'workers',{})
+        with s.tx() as db:e=s.get(db,'experiments',eid);cell_keys=[r[0] for r in db.execute('SELECT id FROM v2_cells WHERE exp=? ORDER BY rowid',(eid,))]
+        cells=[s.cell(k) for k in cell_keys] or [c];jobs=[j for row in cells for j in row.get('jobs',[])]
+        try:g=s.goal(experiments.experiment_goal(e))
+        except (KeyError,TypeError,DevConflict):g=None  # Records without a goal row (old fixtures): no clock-based reasons.
+        alive=bool(e.get('owner') and owner_alive(e['owner'])) or (eid in workers and workers[eid].poll() is None)
+        claimed=next((j for j in reversed(jobs) if j['state']=='claimed'),None)
+        step=self.STEP_NAMES.get(claimed['kind'],'the current step').format(v=claimed['version']) if claimed else None
+        unknown=[j for j in jobs if j['state']=='needs_review']
+        interrupted=None
+        if e.get('cancelled') and unknown and any('provider interrupted' in str(row.get('reason') or '') for row in cells):
+            j=unknown[-1];interrupted={'kind':j['kind'],'version':j['version'],'step':self.STEP_NAMES.get(j['kind'],'a step').format(v=j['version'])}
+        pausing=alive and bool(e.get('pause_requested_at')) and e.get('state')!='paused'
+        paused=e.get('state')=='paused' and not e.get('cancelled')
+        state='pausing' if pausing else 'paused' if paused else 'running' if alive else 'ended' if e.get('cancelled') or e.get('state') in {'completed','needs_review','condition_invalid'} else 'idle'
+        blocked=None
+        if e.get('cancelled'):blocked='This run was ended with Stop run, so it cannot be resumed. Start a new run instead.'
+        elif unknown or any(row.get('state')=='needs_review' for row in cells):blocked='A step stopped part-way and its result is unknown, so this run cannot continue by itself. Start a new run instead.'
+        elif e.get('state')=='completed':blocked='This run has finished.'
+        elif state=='running':blocked=None
+        elif g is not None and g['wall_remaining']<=0:blocked="This run's time budget is used up. Start a new run instead."
+        elif paused and any(row.get('owner') and owner_alive(row['owner']) for row in self.list() if row['experiment_id']!=eid):blocked='Another run is using the robot right now. Resume this one after it finishes.'
+        resumable=paused or (state=='idle' and any(row.get('versions') for row in cells))  # e.g. worker lost while pausing
+        return dict(state=state,can_pause=state=='running' and not e.get('cancelled'),can_resume=resumable and blocked is None,
+            can_keep_running=pausing,resume_blocked_reason=None if state in {'running','pausing'} or (resumable and blocked is None) else blocked,
+            current_step=step,paused_since=e.get('paused_at'),paused_seconds_total=g['paused_seconds_total'] if g else 0,interrupted_by_stop=interrupted)
     def post(self,path,body,*,human_authorized=False):
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.
         if path=='/api/dev-v2/experiments':return self.create(body)
-        m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch)',path)
+        m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch|pause)',path)
         if not m:raise FileNotFoundError('Unknown Dev v2 command')
         eid,command=m.groups();s=self.store(eid)
+        if command=='pause':
+            if body:raise ValueError('Command body must be empty')
+            return experiments.request_pause(s,eid)
         if command=='switch':
             if set(body)!={'cell','policy'}:raise ValueError('cell and policy required')
             if s.cell(body['cell'])['experiment_id']!=eid:raise ValueError('cell outside experiment')
@@ -352,9 +388,11 @@ class DailyDevV2:
 def main():
     p=argparse.ArgumentParser();p.add_argument('--worker',required=True);p.add_argument('--root',type=Path,required=True);p.add_argument('--budget',type=Path,required=True);a=p.parse_args()
     declaration=json.loads(a.budget.read_bytes());s=DevV2Store(a.root/a.worker/'ledger.sqlite3');done=threading.Event()
+    # Pauses only accrue while no worker runs, so this worker's shift is fixed at start.
+    end=declaration['deadline_epoch']+experiments.snapshot(s,a.worker)['resources']['paused_seconds_total']
     def deadline():
         while not done.wait(.2):
-            if time.time()>=declaration['deadline_epoch']:
+            if time.time()>=end:
                 experiments.cancel(s,a.worker);return
     threading.Thread(target=deadline,daemon=True).start()
     try:experiments.run(s,a.worker,max_cells=len(experiments.snapshot(s,a.worker)['cells']),budget_file=a.budget)
