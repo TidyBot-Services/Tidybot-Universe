@@ -30,6 +30,12 @@ VIEWS = {
 VIDEO_NAMES = {key: f'advisor_replay_{key}.mp4' for key in VIEWS}
 
 
+def live_version(context):
+    """Live metadata carries the Dev version as the int the live monitor compares with the cell's active version."""
+    value = context.get('dev_version')
+    return int(value) if str(value).isdigit() else value
+
+
 def _json(path, value):
     temporary = path.with_name(path.name + '.tmp')
     temporary.write_text(json.dumps(value, sort_keys=True, allow_nan=False) + '\n')
@@ -129,7 +135,7 @@ class ExtraViews:
         image = folder / f'frame-{sequence:06d}.jpg'
         temporary = image.with_suffix('.jpg.tmp')
         temporary.write_bytes(data); temporary.replace(image)
-        _json(folder / 'latest.json', dict(episode_id=self.episode, version=self.context.get('dev_version'),
+        _json(folder / 'latest.json', dict(episode_id=self.episode, version=live_version(self.context),
               sequence=sequence, control_step=sequence, monotonic=time.monotonic(), wall_time=wall,
               file=image.name, sha256=digest, source_width=WIDTH, source_height=HEIGHT, view=key))
         for old in sorted(folder.glob('frame-*.jpg'))[:-LIVE_KEEP]:

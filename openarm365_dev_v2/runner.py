@@ -12,6 +12,11 @@ def write(path,value):
     path.write_text(json.dumps(_json_safe(value),ensure_ascii=False,sort_keys=True,indent=2,allow_nan=False)+'\n')
     return {'uri':str(path.resolve()),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
 
+def dev_version_label(attempt_id):
+    # Attempt ids end with the 0-based index (attempt:<cell>:<version-1>); the live monitor wants the 1-based Dev version.
+    index=(attempt_id or 'attempt:0').rsplit(':',1)[-1]
+    return str(int(index)+1) if index.isdigit() else index
+
 class OpenArm365DevRunnerV2:
     suite='robocasa365'
     # The formal subclass overrides these; the defaults are the Dev behaviour.
@@ -60,7 +65,7 @@ class OpenArm365DevRunnerV2:
         (episode/'policy.py').write_bytes(request.policy_code_path.read_bytes())
         (episode/'config.json').write_bytes(request.config_path.read_bytes())
         recording_context=dict(**ids,camera_name='robot0_agentview_left',started_monotonic=started,
-            origin='native_pipe://owned-openarm365-v2',dev_version=(request.attempt_id or 'attempt:0').rsplit(':',1)[-1])
+            origin='native_pipe://owned-openarm365-v2',dev_version=dev_version_label(request.attempt_id))
         write(episode/'recording_context.json',recording_context)
         owner=NativeOwner(python=self.python,config=episode/'config.json',evidence=episode,deadline=deadline,
             cancel_check=self.cancel_event.is_set,process_observer=self.process_observer)

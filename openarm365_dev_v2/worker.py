@@ -44,6 +44,7 @@ def main():
         planner.prepare(planner.names)
         from benchmarks.attention_harness.robocasa365.recording import StepRecorder
         from benchmarks.attention_harness.robocasa365.human_camera import capture_human_view
+        from .extra_views import live_version
         context=json.loads((args.evidence/'recording_context.json').read_bytes())
         recorder=StepRecorder(args.evidence,context)
         # Display-only extra angles (side, top, both wrists). Never policy input; every failure is contained.
@@ -60,7 +61,7 @@ def main():
                 live=args.evidence/'live';live.mkdir(exist_ok=True)
                 image=live/f'frame-{sequence:06d}.jpg'
                 shutil.copyfile(recorder.directory/f'{recorder.count-1:06d}.jpg',image)
-                row={'episode_id':episode,'version':context.get('dev_version'), 'sequence':sequence,
+                row={'episode_id':episode,'version':live_version(context), 'sequence':sequence,
                      'control_step':sequence,'monotonic':time.monotonic(),'wall_time':time.time(),
                      'file':image.name,'sha256':hashlib.sha256(image.read_bytes()).hexdigest()}
                 tmp=live/'latest.tmp';tmp.write_text(json.dumps(row));tmp.replace(live/'latest.json')
