@@ -217,6 +217,7 @@ def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp
     bridge = daily.DailyDevV2(tmp_path / 'daily', [], per_run_budget=True)
     expected = {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
     expected['advisor_proxy'] = dev_advisor_proxy.normalize(dev_advisor_proxy.default_config(True))
+    expected['run_notes'] = True
 
     class MaterializationReached(Exception):
         pass
@@ -225,7 +226,7 @@ def test_daily_create_ignores_main_ui_human_wait_without_loosening_selection(tmp
         saved = json.loads(Path(argv[argv.index('--selection') + 1]).read_bytes())
         dev_experiment.validate_selection_fields(saved)  # create's exact field gate
         assert saved == expected
-        assert set(saved) - (set(selection) - {'human_wait_seconds'}) == {'advisor_proxy'}
+        assert set(saved) - (set(selection) - {'human_wait_seconds'}) == {'advisor_proxy', 'run_notes'}
         raise MaterializationReached
 
     monkeypatch.setattr(daily.subprocess, 'run', stop_before_materialization)
@@ -295,6 +296,7 @@ def test_daily_ui_create_reaches_first_cell_without_v3_runtime_fields(
     manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
     saved_request = {k: v for k, v in selection.items() if k != 'human_wait_seconds'}
     saved_request['advisor_proxy'] = dev_advisor_proxy.normalize(dev_advisor_proxy.default_config(True))
+    saved_request['run_notes'] = True
     request_file = bridge.paths(experiment['experiment_id'])[0] / 'selection.json'
     assert json.loads(request_file.read_bytes()) == saved_request
     expected_eval = eval_agent.normalize(eval_agent.default_config(True))

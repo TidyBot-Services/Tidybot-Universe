@@ -1047,6 +1047,7 @@ def create_server(
                 self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:
+            # Includes run-note-off: the same token and bounded JSON as run/cancel/switch/pause.
             if urlsplit(self.path).path.startswith('/api/dev-v2/'):
                 if not secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token):
                     self._json({'error':'control token required'},403);return

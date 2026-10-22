@@ -105,3 +105,24 @@ test('main page tags a run that read unvalidated memory, with the exclusion tool
  const index=fs.readFileSync(path.join(root,'ui/index.html'),'utf8');
  assert.match(index,/\.op-memory-flag\{/);assert.match(index,/\[data-theme="dark"\] \.op-memory-flag\{/);
 });
+
+test('local run notes have version membership, counts, distinct themes and a local kill switch',()=>{
+ const data=monitor.adapt({run:{versions:[{n:2,note_ids:[]},{n:3,note_ids:['r-note']},{n:4,note_ids:['r-note']}]},notes:[],run_notes:[{id:'r-note',cell:'cell-a',title:'Lift <cup>',help_version:2,from_version:3,uses:2,failure_gone:1,off:false}]});
+ const note=data.byId.get('r-note');
+ assert.equal(note.run_note,true);assert.equal(note.effect,'run_note');
+ assert.deepEqual(monitor.visibleNotes(data,2,false),[]);
+ assert.deepEqual(monitor.visibleNotes(data,3,true),[note]);
+ const html=monitor.cardHtml(note,true);
+ assert.match(html,/Lift &lt;cup&gt;/);assert.match(html,/This run · used 2 · failure gone 1/);
+ assert.match(html,/Unvalidated · not counted in results/);assert.match(html,/Turn off for this run/);
+ assert.doesNotMatch(html,/data-manage|Withdraw|Set expiry/);
+ assert.doesNotMatch(monitor.cardHtml(note,false),/data-run-note-off/);
+ assert.doesNotMatch(monitor.cardHtml({...note,status:'off'},true),/data-run-note-off/);
+ for(const theme of Object.values(monitor.themes))assert.ok(theme.efc.r&&!Object.entries(theme.efc).some(([k,v])=>k!=='r'&&v===theme.efc.r));
+ const req=monitor.runNoteOffRequest('devexp-a',note);
+ assert.equal(req.url,'/api/dev-v2/experiments/devexp-a/run-note-off');
+ assert.equal(req.options.method,'POST');assert.ok('X-Attention-Token' in req.options.headers);
+ assert.deepEqual(JSON.parse(req.options.body),{cell:'cell-a',note_id:'r-note'});
+ assert.equal(monitor.feedLabel({type:'planner_memory_run_note_created',text:'v2 learned: Lift cup'}),'v2 learned: Lift cup');
+ assert.equal(monitor.feedLabel({type:'planner_memory_run_note_off',text:'turned off for this run: Lift cup'}),'turned off for this run: Lift cup');
+});

@@ -45,11 +45,14 @@ def projection(store, cell):
         events=[dict(seq=seq,kind=kind,detail=json.loads(payload))
                 for seq,kind,payload in db.execute('SELECT seq,kind,payload FROM v2_events ORDER BY seq')
                 if kind in {'planner_memory_offline_queued','planner_memory_authority_receipt',
-                            'planner_memory_retrieved','planner_memory_generation','memory_validation_dispatch'}
+                            'planner_memory_retrieved','planner_memory_generation','memory_validation_dispatch',
+                            'planner_memory_run_notes_delivered'}
                 and json.loads(payload).get('cell')==cell['key']]
     queues=[];retrievals=[];generations=[];validations=[];receipts=[]
     for event in events:
         kind=event['kind'];value=event['detail']
+        if kind=='planner_memory_run_notes_delivered':
+            continue
         if kind=='planner_memory_offline_queued':
             queued=_evidence(value['queue'])
             if queued.get('cell')!=cell['key'] or queued.get('version')!=value['version'] or queued.get('kind')!=value['kind']:
@@ -110,7 +113,9 @@ def projection(store, cell):
         if any(r['version']==queue['version'] and r['operation']==queue['kind'] for r in receipts):
             queue['status']='offline_receipt_recorded'
     # Run flag: read a note not trusted for this scene (excluded from results).
-    unvalidated_used=any(not e['trusted'] for r in retrievals for e in r['entries'])
+    unvalidated_used=(any(not e['trusted'] for r in retrievals for e in r['entries'])
+                      or any(e['kind']=='planner_memory_run_notes_delivered' for e in events)
+                      or any(v.get('run_notes',{}).get('note_ids') for v in cell.get('versions',[])))
     return dict(queues=queues,validations=validations,retrievals=retrievals,
                 scope=scope_projection(store, cell),
                 generations=generations,receipts=receipts,unvalidated_used=unvalidated_used,

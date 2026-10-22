@@ -2,7 +2,8 @@
 import math
 from .dev_ledger import cost,RESOURCES,complete_resources,fill_optional
 from openarm365_dev_v2.diag_budget import task_limits
-FIELDS={'planner_features','memory_authority','scene_contract','reproducible_reset','goal_key','goal_limits','wall_limit','cell_budget','target_depth','target_valid_executions','max_versions','coverage','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request','public_failure_rule'}
+MAIN_MATRIX_RUN_NOTES = False  # decided at the freeze (plan 0d, run notes)
+FIELDS={'run_notes','planner_features','memory_authority','scene_contract','reproducible_reset','goal_key','goal_limits','wall_limit','cell_budget','target_depth','target_valid_executions','max_versions','coverage','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request','public_failure_rule'}
 PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_failure':True,'execution_statuses':['failed','timeout','timed_out'],'public_errors':True,'completion_signal':'none_registered','no_declared_completion_is_failure':True}
 # The public trace has no authored completion signal in the current SDK contract.
 # Successful process exit alone cannot declare task completion. No scoring is read.
@@ -10,8 +11,14 @@ PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_fai
 # after a run stopped at v8 with input_bound_exceeded. Cell token budgets scale with it.
 MAX_INPUT_BYTES=150000
 
+def validate_run_notes(selection):
+ if 'run_notes' in selection:
+  if type(selection['run_notes']) is not bool:raise ValueError('run_notes must be a bool')
+  if selection['run_notes'] and selection.get('budget_tier','dev')!='dev' and not MAIN_MATRIX_RUN_NOTES:raise ValueError('run_notes not enabled at the matrix freeze')
+
 def normalize_configuration(selection):
  tier=selection.get('budget_tier','dev')
+ validate_run_notes(selection)
  source=selection.get('model_source','parcc')
  if source not in {'parcc','codex'} or (source=='codex' and (tier!='dev' or 'configuration' in selection)):raise ValueError('Codex model source requires modern dev tier')
  if source=='codex' and selection.get('model','gpt-6-astra')!='gpt-6-astra':raise ValueError('Codex model must be gpt-6-astra')

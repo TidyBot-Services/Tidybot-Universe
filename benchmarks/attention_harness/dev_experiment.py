@@ -67,7 +67,12 @@ def create(store,artifact_root,selection):
         raise ValueError('new experiments require current Eval and Advisor prompts')
     budget_tier=selection.get('budget_tier','dev')
     task_limits(budget_tier)
-    v3=bool(set(selection)&FIELDS)
+    # Run notes are local metadata, also supported by the daily legacy budget
+    # envelope without changing its runtime, budget or accounting rules.
+    from .dev_configuration import validate_run_notes
+    validate_run_notes(selection)
+    modern_fields=FIELDS-{'run_notes'} if 'configuration' in selection else FIELDS
+    v3=bool(set(selection)&modern_fields)
     source=selection.get('model_source','parcc')
     if source not in {'parcc','codex'} or (source=='codex' and (budget_tier!='dev' or not v3 or 'configuration' in selection or 'human_proxy' in selection)):
         raise ValueError('Codex model source requires modern dev tier')
@@ -116,6 +121,7 @@ def create(store,artifact_root,selection):
         if any(legacy_configuration['cell_budget'].get(k,0)>legacy_configuration['experiment_budget'].get(k,0) for k in RESOURCES):raise ValueError('cell exceeds experiment resource budget')
     exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
+    if 'run_notes' in selection:normalized['run_notes']=selection['run_notes']
     if budget_tier=='dev':normalized['budget_tier']='dev'
     if source=='codex':normalized['model_source']='codex'
     if v3:
@@ -205,6 +211,7 @@ def create(store,artifact_root,selection):
         robot='OpenArm365',execution_arm='both',configs=configs,initial_sources=sources,identity_lock=ref,
         memory=EMPTY_MEMORY,help_pricing=({**HELP_PRICING,'cache':{'credits':0,'count':0}} if v3 else HELP_PRICING),demos=demos,policies=parameters,trace_visible=trace_visible,
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
+    if 'run_notes' in selection:manifest['run_notes']=selection['run_notes']
     if budget_tier=='dev':
         manifest['budget_tier']='dev'
         if source=='parcc' and MODEL['model'] in FREE_MODELS:
@@ -276,6 +283,7 @@ def create(store,artifact_root,selection):
                 if v3:payload['runtime']={k:manifest[k] for k in ['model_reserve_seconds','startup_cleanup_seconds','max_input_bytes_per_request','source_size_limit_bytes','public_failure_rule']}
                 if 'planner_features' in manifest:payload['planner_features']=manifest['planner_features']
                 if 'memory_authority' in manifest:payload['memory_authority']=manifest['memory_authority']
+                if 'run_notes' in manifest:payload['run_notes']=manifest['run_notes']
                 db.execute('INSERT INTO v2_cells VALUES (?,?,?)',(row['key'],exp_id,encoded(payload)))
             store.event(db,'experiment_created',{'experiment_id':exp_id,'manifest':mref})
     return snapshot(store,exp_id)

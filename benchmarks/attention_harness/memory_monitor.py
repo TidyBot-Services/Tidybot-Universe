@@ -121,11 +121,28 @@ def _events(store, cells):
              'planner_memory_retrieved': 'used notes',
              'planner_memory_result_skipped': 'test note excluded'}
     grants = {}
+    run_titles = {}
     for seq, ledger_at, kind, raw in reversed(rows):
-        if kind not in kinds and kind not in {'settled', 'cell_updated'}:
+        if kind not in kinds and kind not in {'settled', 'cell_updated'} and not kind.startswith('planner_memory_run_note'):
             continue
         detail = json.loads(raw)
         if detail.get('cell') not in keys:
+            continue
+        if kind.startswith('planner_memory_run_note'):
+            note_id = detail.get('note_id')
+            if kind == 'planner_memory_run_note_created':
+                run_titles[note_id] = short(detail.get('title'), 80)
+                text = f"v{detail['help_version']} learned: {run_titles[note_id]}"
+            elif kind == 'planner_memory_run_note_off':
+                text = 'turned off for this run: ' + (run_titles.get(note_id) or 'note')
+            elif kind == 'planner_memory_run_note_outcome':
+                text = 'failure gone' if detail.get('failure_gone') else 'failure seen'
+            elif kind == 'planner_memory_run_notes_delivered':
+                text = 'used run notes'
+            else:
+                continue
+            result.append(dict(seq=seq, ts=ledger_at, type=kind, version=detail.get('version'),
+                               note_ids=detail.get('note_ids', [note_id] if note_id else []), text=text))
             continue
         if kind == 'settled':
             if detail.get('kind') != 'eval':
@@ -173,6 +190,7 @@ def _events(store, cells):
                 'test_seeded_excluded_from_results': 'test note excluded',
                 'not_trusted_here_excluded_from_results': 'not counted in results',
                 'reference_only_no_scene_contract': 'reference only · not counted',
+                'run_note_excluded_from_results': 'not counted in results',
             }.get(event['reason'], 'test note excluded')
         result.append(event)
     return result
@@ -285,16 +303,17 @@ def _max_versions(experiment, cells, events=()):
 def project(bridge, memory_view, experiment_id, *, now=None):
     if not EXPERIMENT.fullmatch(experiment_id):
         raise ValueError('invalid experiment id')
-    if memory_view is None:
-        raise FileNotFoundError('Memory service unavailable')
     experiment, _ = bridge.get('/api/dev-v2/experiments/' + experiment_id)
     store = bridge.store(experiment_id) if callable(getattr(bridge, 'store', None)) else bridge.store
     cells = experiment.get('cells', [])
+    local_enabled = any(cell.get('run_notes') is True for cell in cells)
+    if memory_view is None and not local_enabled:
+        raise FileNotFoundError('Memory service unavailable')
     events = _events(store, cells)
     max_versions = _max_versions(experiment, cells, events)
     used = {}
     for event in events:
-        if event['type'] == 'planner_memory_retrieved':
+        if event['type'] in {'planner_memory_retrieved', 'planner_memory_run_notes_delivered'}:
             for note_id in event['note_ids']:
                 used.setdefault(event['version'], {})[note_id] = event['ts']
     versions = []
@@ -349,9 +368,12 @@ def project(bridge, memory_view, experiment_id, *, now=None):
         usage = {}
         usage_available = False
     try:
-        catalogue = memory_view.dev_catalogue()
+        catalogue = memory_view.dev_catalogue() if memory_view is not None else []
     except EXTRA_ERRORS as error:
-        raise CatalogueUnavailable('online catalogue unavailable') from error
+        if not local_enabled:
+            raise CatalogueUnavailable('online catalogue unavailable') from error
+        catalogue = []
+        warnings.append('Service notes are unavailable; run notes are shown.')
     seeds = {cell.get('seed') for cell in cells if type(cell.get('seed')) is int}
     try:
         unvalidated_used, levels = _layered_reads(store, cells)
@@ -384,6 +406,22 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                          uses=_uses(row), expires_in_days=_expires_in_days(row, timestamp), scene_seed=seed,
                          # Another scene of the same task: readable only as a labelled reference.
                          reference=level == 'same_task' or level is None and seed is not None and bool(seeds) and seed not in seeds)
+    from .memory_run_notes import events as local_events, PREFIX
+    run_notes = []
+    for cell in cells:
+        history = local_events(store, cell['key'])
+        off = {e['note_id'] for kind, e in history if kind == PREFIX + 'off'}
+        for kind, event in history:
+            if kind != PREFIX + 'created':
+                continue
+            note_id = event['note_id']
+            uses = {e['version'] for k, e in history if k == 'planner_memory_run_notes_delivered'
+                    and note_id in e['note_ids']}
+            gone = {e['version'] for k, e in history if k == PREFIX + 'outcome'
+                    and e['note_id'] == note_id and e['failure_gone']}
+            run_notes.append(dict(id=note_id, cell=cell['key'], title=short(event['title'], 80),
+                                  help_version=event['help_version'], from_version=event['help_version'] + 1,
+                                  uses=len(uses), failure_gone=len(gone), off=note_id in off))
     from .dev_memory_view import scope_projection
     scopes = [scope_projection(store, cell) for cell in cells]
     # A multi-cell run must still explain any cell restricted to references.
@@ -391,5 +429,5 @@ def project(bridge, memory_view, experiment_id, *, now=None):
     return {'generated_at': timestamp,
             'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40),
                     'max_versions': max_versions, 'versions': versions, 'unvalidated_used': unvalidated_used,
-                    'memory_scope': scope},
-            'notes': notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}
+                    'memory_scope': scope, 'can_operate_run_notes': local_enabled},
+            'notes': notes, 'run_notes': run_notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}

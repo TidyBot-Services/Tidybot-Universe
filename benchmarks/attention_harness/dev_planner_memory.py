@@ -349,21 +349,30 @@ def load_memory(store, cell, version, previous, config, settings, directory, lay
 
 
 def journal_result(store, cell, version, packet, source_ref, public_feedback_ref, directory):
-    if packet.get('scope') == 'reference_only':
+    from .memory_run_notes import delivered
+    run_notes=delivered(directory) if store.cell(cell).get('run_notes') is True else []
+    if packet.get('scope') == 'reference_only' and not run_notes:
         with store.tx() as db:
             store.event(db, 'planner_memory_result_skipped', dict(cell=cell, version=version,
                         reason='reference_only_no_scene_contract',
                         grants=[e['grant_id'] for e in packet.get('entries', [])]))
         return None
-    if not packet.get('entries'):return
+    if not packet.get('entries') and not run_notes:return
     from .dev_v2_memory_import import queue
-    provisional=[e for e in packet['entries'] if e.get('trust_scope')=='provisional']
+    provisional=[e for e in packet.get('entries',[]) if e.get('trust_scope')=='provisional'
+                 and packet.get('scope') != 'reference_only']
     if provisional:
         # Observational use records only; the importer sends the raw public
         # feedback and the Service computes the outcome itself.
         queue(store,cell,version,directory,'provisional_outcome',dict(
             grants=[dict(grant_id=e['grant_id'],memory_id=e['memory_id'],development_id=e['development_id']) for e in provisional],
             public_feedback=public_feedback_ref))
+    if run_notes:
+        with store.tx() as db:
+            store.event(db,'planner_memory_result_skipped',dict(cell=cell,version=version,
+                reason='run_note_excluded_from_results',note_ids=[e['note_id'] for e in run_notes],
+                grants=[e['grant_id'] for e in packet.get('entries',[])]))
+        return None
     if packet.get('excluded_from_results') is True or any(e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True or e.get('trusted_here') is False for e in packet['entries']):
         layered_skip=any(e.get('trusted_here') is False for e in packet['entries'])
         with store.tx() as db:

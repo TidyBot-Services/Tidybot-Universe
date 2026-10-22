@@ -181,6 +181,8 @@ def stage(store, key, version, directory):
 
 def stage_safely(store, key, version, directory):
     """Never break or slow the run: any problem becomes a skip event."""
+    from .memory_run_notes import create
+    create(store, key, version, directory)
     try:
         return stage(store, key, version, directory)
     except Exception as exc:

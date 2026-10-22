@@ -145,7 +145,8 @@ def test_daily_binding_prompt_and_budgets(tmp_path, monkeypatch, mode, policy):
     _, _, _, plain, _, plain_manifest, _ = make(tmp_path/'plain', mode=mode, policy=policy, bound=False)
     assert cell['memory_authority'] == manifest['memory_authority'] == _memory()
     assert cell['budget'] == plain['budget'] == daily.DEFAULT_CELL
-    assert manifest['cell_budget'] == plain_manifest['selection']['configuration']['cell_budget']
+    assert manifest['cell_budget'] == plain_manifest['cell_budget']
+    assert cell['run_notes'] is plain['run_notes'] is True
     if mode != 'experiment':
         assert not manifest['selection']['advisor_proxy']['enabled']
         assert not cell['experiment_eligible']

@@ -38,6 +38,17 @@ def bind_daily_codex(selection):
         scene_contract=registered_contract_ref())
     return converted
 
+def bind_daily_run_notes(selection, previous_selection):
+    """New dev selections opt in; an existing selection keeps its frozen value."""
+    if Path(previous_selection).is_file():
+        old=json.loads(Path(previous_selection).read_bytes())
+        bound={k:v for k,v in selection.items() if k!='run_notes'}
+        if 'run_notes' in old:bound['run_notes']=old['run_notes']
+        return bound
+    if selection.get('budget_tier','dev')=='dev':
+        return {**selection,'run_notes':selection.get('run_notes',True)}
+    return selection
+
 def bind_daily_memory(selection, memory, previous_selection=None):
     """Bind the server's Memory authority for every policy (plan 0d, second revision).
 
@@ -162,6 +173,7 @@ class DailyDevV2:
         key=selection.get('request_key','')
         if not re.fullmatch(r'[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
         eid='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24];directory,path,budget=self.paths(eid)
+        selection=bind_daily_run_notes(selection,directory/'selection.json')
         selection=bind_daily_advisor(selection,directory/'selection.json')
         selection=bind_daily_memory(selection,self.memory,directory/'selection.json')
         selection=bind_daily_codex(selection)
@@ -372,9 +384,14 @@ class DailyDevV2:
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.
         if path=='/api/dev-v2/experiments':return self.create(body)
-        m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch|pause)',path)
+        m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch|pause|run-note-off)',path)
         if not m:raise FileNotFoundError('Unknown Dev v2 command')
         eid,command=m.groups();s=self.store(eid)
+        if command=='run-note-off':
+            if set(body)!={'cell','note_id'}:raise ValueError('cell and note_id required')
+            if s.cell(body['cell'])['experiment_id']!=eid:raise ValueError('cell outside experiment')
+            from .memory_run_notes import turn_off
+            return turn_off(s,body['cell'],body['note_id'])
         if command=='pause':
             if body:raise ValueError('Command body must be empty')
             return experiments.request_pause(s,eid)
