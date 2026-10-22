@@ -27,12 +27,15 @@ def task_cell_budget(budget_tier='dev'):
             'control_steps':2*limits['control_steps'],
             'execution_seconds':__import__('math').ceil(1000*limits['attempt_seconds']/480)}
 def cell_key(exp_id,task,seed,policy):return hashlib.sha256(f'{exp_id}|{task}|{seed}|{policy}'.encode()).hexdigest()
+def paused_seconds(store,goal_id):
+    """Seconds this goal has spent paused; a fixed run deadline moves later by exactly this much."""
+    return store.goal(goal_id)['paused_seconds_total'] if goal_id else 0
 def validate_budget_file(path,manifest=None,store=None,manifest_ref=None):
     b=json.loads(Path(path).read_bytes());limits=b.get('limits')
     legacy=(manifest or {}).get('selection',{}).get('configuration')
     if legacy is not None:
         if b.get('configuration')!=legacy or Path(b.get('ledger_path','/missing')).resolve()!=store.path.resolve():raise ValueError('independent authorization/ledger binding mismatch')
-        if b.get('deadline_epoch',0)<=time.time():raise DevBudgetExhausted('authorization deadline expired')
+        if b.get('deadline_epoch',0)+paused_seconds(store,b.get('goal_id'))<=time.time():raise DevBudgetExhausted('authorization deadline expired')
         return b
     if manifest and 'goal_id' in manifest:
         expected=dict(goal_id=manifest['goal_id'],experiment_id=manifest['experiment_id'],limits=manifest['goal_limits'],wall_limit=manifest['wall_limit'])
@@ -318,9 +321,47 @@ def snapshot(store,exp_id):
     return {**e,'cells':cells,'resources':store.goal(experiment_goal(e))}
 def list_experiments(store):
     with store.tx() as db:return [json.loads(r[0]) for r in db.execute('SELECT payload FROM v2_experiments ORDER BY rowid DESC')]
+def close_pause(store,db,e,now):
+    """Close an open pause interval on the goal clock; returns its length in seconds."""
+    gid=experiment_goal(e);g=store.get(db,'goals',gid)
+    if not g.get('paused_at'):return 0
+    span=max(0,now-g['paused_at']);g['paused_seconds']=g.get('paused_seconds',0)+span;g['paused_at']=None
+    store.put(db,'goals',gid,g);return span
+def request_pause(store,exp_id):
+    """Graceful pause: the worker finishes and settles its current step, then parks before the next one."""
+    with store.tx() as db:
+        e=store.get(db,'experiments',exp_id)
+        if e['cancelled'] or e['state'] in {'cancelled','completed','needs_review','condition_invalid','paused'}:raise DevConflict('This run is not running, so it cannot be paused.')
+        if not (e.get('owner') and owner_alive(e['owner'])):raise DevConflict('Nothing is running right now, so there is nothing to pause.')
+        if not e.get('pause_requested_at'):
+            e['pause_requested_at']=time.time();store.put(db,'experiments',exp_id,e)
+            store.event(db,'experiment_pause_requested',{'experiment_id':exp_id,'requested_at':e['pause_requested_at']})
+    return snapshot(store,exp_id)
+def withdraw_pause(store,exp_id):
+    """Keep running: cancel a pause request the worker has not acted on yet."""
+    with store.tx() as db:
+        e=store.get(db,'experiments',exp_id)
+        if not e.get('pause_requested_at') or e['state']=='paused':return False
+        e.pop('pause_requested_at');store.put(db,'experiments',exp_id,e)
+        store.event(db,'experiment_pause_withdrawn',{'experiment_id':exp_id})
+    return True
+def resume_paused(store,exp_id):
+    """Close the pause interval before a new worker continues with the next step."""
+    with store.tx() as db:
+        e=store.get(db,'experiments',exp_id)
+        if e['cancelled'] or e['state']!='paused':raise DevConflict('Only a paused run can be resumed.')
+        now=time.time();span=close_pause(store,db,e,now)
+        e.setdefault('pauses',[]).append(dict(requested_at=e.pop('pause_requested_at',None),paused_at=e.pop('paused_at',None),resumed_at=now,seconds=span))
+        e['state']='planned';store.put(db,'experiments',exp_id,e)
+        for key,p in db.execute('SELECT id,payload FROM v2_cells WHERE exp=?',(exp_id,)).fetchall():
+            c=json.loads(p)
+            if c.get('reason')=='operator_paused':c['reason']=None;store.put(db,'cells',key,c)
+        store.event(db,'experiment_resumed',{'experiment_id':exp_id,'paused_seconds':span})
+    return span
 def cancel(store,exp_id):
     with store.tx() as db:
-        e=store.get(db,'experiments',exp_id);e.setdefault('cancelled_at',time.time());e.update(cancelled=True,state='cancelled');store.put(db,'experiments',exp_id,e)
+        e=store.get(db,'experiments',exp_id);close_pause(store,db,e,time.time())
+        e.setdefault('cancelled_at',time.time());e.update(cancelled=True,state='cancelled');store.put(db,'experiments',exp_id,e)
         for key,p in db.execute('SELECT id,payload FROM v2_cells WHERE exp=?',(exp_id,)).fetchall():
             c=json.loads(p)
             if c['state']=='planned':c.update(state='cancelled',reason='operator_cancel');store.put(db,'cells',key,c)
@@ -530,7 +571,7 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
             if max_slots is not None and slots>=max_slots:break
             c=store.cell(key)
             with store.tx() as db:current=store.get(db,'experiments',exp_id)
-            if current['cancelled']:break
+            if current['cancelled'] or current.get('pause_requested_at'):break
             if c['state'] in {'completed','failed','cancelled','unknown','needs_review','not_started','condition_invalid'}:continue
             goal=store.goal(m.get('goal_id',GOAL))
             g=len(c['versions']);ex=sum(j['kind']=='execute' and j['state']=='settled' and not (j.get('receipt') or {}).get('diagnostic') for j in c['jobs'])
@@ -556,6 +597,7 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
             run_cell(store,e,m,key,slot['through_version'],owner,client=client,runner_factory=runner_factory)
             e['recovered_human_waits']=[r for r in e.get('recovered_human_waits',[]) if r['cell']!=key]
             after=store.cell(key)
+            if after.get('reason')=='operator_paused':break
             if after['state'] in {'needs_review','condition_invalid'}:
                 # Infrastructure/unknown never leads to another real dispatch.
                 for row in m['cells']:
@@ -565,7 +607,14 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
         with store.tx() as db:
             states=[json.loads(p)['state'] for p, in db.execute('SELECT payload FROM v2_cells WHERE exp=?',(exp_id,))]
             current=store.get(db,'experiments',exp_id)
-            if not current['cancelled']:current['state']='needs_review' if 'needs_review' in states else 'condition_invalid' if 'condition_invalid' in states else 'planned' if 'planned' in states else 'completed'
+            if not current['cancelled']:
+                current['state']='needs_review' if 'needs_review' in states else 'condition_invalid' if 'condition_invalid' in states else 'planned' if 'planned' in states else 'completed'
+                if current.get('pause_requested_at') and current['state']=='planned':
+                    # Park: nothing is running and the goal clock stops until Resume.
+                    now=time.time();current.update(state='paused',paused_at=now)
+                    gid=experiment_goal(current);g=store.get(db,'goals',gid);g['paused_at']=now;store.put(db,'goals',gid,g)
+                    store.event(db,'experiment_paused',{'experiment_id':exp_id,'paused_at':now})
+                elif current.get('pause_requested_at'):current.pop('pause_requested_at')  # Ended anyway; nothing to resume.
             store.put(db,'experiments',exp_id,current)
     except BaseException as exc:
         with store.tx() as db:

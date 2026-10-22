@@ -212,3 +212,26 @@ test('Dev v2 refresh reads the real experiment state and reason beside its cell 
   assert.equal(projected[0].e.reason,experiment.reason);
   assert.match(projected[0].e.reason,/model_reserve_seconds/);
 });
+
+test('Pause, Keep running and Resume explain every run state in plain words',()=>{
+  const ui=vm.runInNewContext(replay+operator+'\n({devStartButton,operatorOutcome})',{
+    DEBUG_VIEW:false,esc,isTerminal:terminal,operatorLast:s=>s.attempts.at(-1),operatorWaiting:()=>false,devEndSummary:()=>({key:null}),
+    plainError:()=>'',executionFailure:()=>null,launches:[],dateTime:()=>'10/22/2026, 10:30:00',humanDuration:()=>'',
+    actionableRequests:()=>[],cameraStation:s=>s.station,number:String,pct:()=>0,operatorTime:()=>'0:00'});
+  const run=(rc,status='running',jobs=[])=>({...snapshot(status,''),dev_v2:{experiment_id:'devexp-x',run_controls:rc,jobs}});
+  let html=ui.devStartButton(run({state:'running',can_pause:true,can_resume:false,can_keep_running:false,resume_blocked_reason:null}));
+  assert.match(html,/data-dev-pause>⏸ Pause/);assert.match(html,/data-dev-resume disabled>▶ Resume/);assert.doesNotMatch(html,/data-run-control-note/);
+  html=ui.devStartButton(run({state:'pausing',can_pause:false,can_keep_running:true,current_step:'writing v6'}));
+  assert.doesNotMatch(html,/data-dev-pause/);assert.match(html,/data-dev-resume>Keep running/);assert.match(html,/the current step \(writing v6\) will finish first/);
+  assert.match(ui.operatorOutcome(run({state:'pausing',current_step:'writing v6'})),/data-operator-outcome="pausing"[\s\S]*writing v6\) will finish normally[\s\S]*Keep running/);
+  html=ui.devStartButton(run({state:'paused',can_resume:true}));
+  assert.match(html,/data-dev-resume\s*>▶ Resume/);assert.match(html,/time budget is not counting/);
+  html=ui.operatorOutcome(run({state:'paused',can_resume:true,paused_since:1792634400}));
+  assert.match(html,/⏸ PAUSED/);assert.match(html,/since 10\/22\/2026, 10:30:00/);assert.match(html,/Press Resume to continue/);assert.doesNotMatch(html,/RUNNING/);
+  const ended='This run was ended with Stop run, so it cannot be resumed. Start a new run instead.';
+  html=ui.devStartButton(run({state:'ended',can_resume:false,resume_blocked_reason:ended},'needs_review'));
+  assert.match(html,/data-dev-resume disabled>▶ Resume/);assert.match(html,/ended with Stop run, so it cannot be resumed/);
+  // A Stop that cut off an AI call is reported as the operator's stop, never as a timeout.
+  html=ui.operatorOutcome(run({state:'ended',interrupted_by_stop:{kind:'model',version:6,step:'writing v6'},resume_blocked_reason:ended},'needs_review',[{state:'needs_review',kind:'model'}]));
+  assert.match(html,/You ended this run with Stop while the AI was writing v6/);assert.match(html,/not a timeout/);assert.doesNotMatch(html,/timed out/);
+});

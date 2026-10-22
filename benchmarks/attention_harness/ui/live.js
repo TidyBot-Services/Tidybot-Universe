@@ -3059,9 +3059,29 @@
     if(end?.key==='action_approval')return `${end.title} · ${name} · Attention Bench`;
     return `${copy?.short || ({waiting:'⚠ Needs you',running:'● Running',failed:'✕ Failed',success:'✓ Done'})[operatorState(snapshot)]} · ${name} · Attention Bench`;
   }
+  function confirmEndRun(rc) {
+    // Stop is permanent; say so, and warn when an in-flight AI call would be cut off.
+    return new Promise(resolve => {
+      const dialog=document.createElement('dialog');dialog.className='ab-session-dialog';dialog.dataset.endRunDialog='';
+      dialog.setAttribute('aria-label','End this run permanently');dialog.style.cssText='width:min(480px,calc(100vw - 24px));padding:20px 22px';
+      const step=rc.current_step,aiCall=step&&!/on the robot/.test(step);
+      const warning=!step?'':aiCall?`The AI is ${step} right now. Ending now cuts that call off and its result is lost.`:`Right now the run is ${step}. Ending now stops that step.`;
+      dialog.innerHTML=`<form method="dialog"><h2 style="margin:0 0 10px">End this run permanently?</h2><p>An ended run cannot be resumed. To continue later, use Pause instead.</p>${warning?`<p data-end-run-warning>${esc(warning)}</p>`:''}<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button value="keep" autofocus>Keep running</button><button value="end" class="danger" data-end-run-confirm>End run</button></div></form>`;
+      dialog.addEventListener('close',()=>{resolve(dialog.returnValue==='end');dialog.remove();},{once:true});
+      root.appendChild(dialog);dialog.showModal();
+    });
+  }
   function devStartButton(snapshot) {
     const l=snapshot.dev_v2?.lifecycle;
     if(l)return `<button type="button" data-dev-resume ${l.can_start?'':'disabled'}>${esc(l.start_label)}</button><small>Schedules the existing experiment · all ${l.scope_count} cells</small>`;
+    const rc=snapshot.dev_v2?.run_controls;
+    if(rc){
+      // Pause waits for the current step; Resume while pausing means "keep running".
+      const pause=rc.can_pause?'<button type="button" data-dev-pause>⏸ Pause</button>':'';
+      const resume=rc.can_keep_running?'<button type="button" data-dev-resume>Keep running</button>':`<button type="button" data-dev-resume ${rc.can_resume?'':'disabled'}>▶ Resume</button>`;
+      const note=rc.state==='pausing'?`Pausing · the current step${rc.current_step?` (${rc.current_step})`:''} will finish first`:rc.state==='paused'?"Paused · the run's time budget is not counting":rc.resume_blocked_reason||'';
+      return pause+resume+(note?`<small data-run-control-note>${esc(note)}</small>`:'');
+    }
     const s=snapshot.dev_session;
     return s?`<button type="button" data-dev-resume ${(snapshot.dev_v2?s.state==='not_started':['ready','stopped'].includes(s.state))?'':'disabled'}>Resume</button>`:'';
   }
@@ -3124,6 +3144,9 @@
   function modelCallReview(snapshot) {
     if(snapshot.run.status!=='needs_review'||!snapshot.dev_v2?.jobs?.some(job=>
       job.state==='needs_review'&&['model','advisor','eval'].includes(job.kind)))return null;
+    const interrupted=snapshot.dev_v2.run_controls?.interrupted_by_stop;
+    if(interrupted)return {message:`You ended this run with Stop while the AI was ${interrupted.step}. That call was cut off, so this run cannot continue. Start a new run to try again.`,
+      reason:'Ended by you · not a timeout'};
     const raw=String(snapshot.dev_v2.reason||'');
     const model=raw.match(/\b(?:parcc\/[A-Za-z0-9._-]+|gpt-[A-Za-z0-9._-]+)\b/i)?.[0];
     const outcome=/timed?\s*out|TimeoutError|deadline/i.test(raw)?'timed out':/fail|error/i.test(raw)?'failed':'outcome is unknown';
@@ -3131,6 +3154,9 @@
       reason:model?`${model} ${outcome}`:`Model call ${outcome}`};
   }
   function operatorOutcome(snapshot) {
+    const rc=snapshot.dev_v2?.run_controls;
+    if(rc?.state==='paused')return `<div class="op-outcome waiting" data-operator-outcome="paused" role="status"><strong>⏸ PAUSED</strong><div><p>${esc(`Paused${rc.paused_since==null?'':` since ${dateTime(rc.paused_since)}`}. Nothing is running and the run's time budget is not counting.`)}</p><p>${esc(rc.can_resume?'Press Resume to continue with the next step.':rc.resume_blocked_reason||'')}</p></div></div>`;
+    if(rc?.state==='pausing')return `<div class="op-outcome waiting" data-operator-outcome="pausing" role="status"><strong>● PAUSING</strong><div><p>${esc(`The current step${rc.current_step?` (${rc.current_step})`:''} will finish normally, then the run pauses before the next step.`)}</p><p>Press Keep running to cancel the pause.</p></div></div>`;
     const status=snapshot.run.status,reason=String(snapshot.dev_session?.reason||snapshot.eval?.stopped_reason||'');
     const modelReview=modelCallReview(snapshot);
     if(['condition_invalid','needs_review','cancelled','stopped','not_started'].includes(status)) {
@@ -4001,6 +4027,7 @@
     view.querySelectorAll('#ab-emergency-interrupt,#ab-cancel-run').forEach(button => button.addEventListener('click', async event => {
       const button = event.currentTarget;
       button.disabled = true;
+      if (snapshot.dev_v2?.run_controls && !await confirmEndRun(snapshot.dev_v2.run_controls)) { button.disabled = false; return; }
       try {
         const response = await controlFetch(snapshot.dev_v2 ? `/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/cancel` : snapshot.dev_session ? `/api/dev/sessions/${encodeURIComponent(run.run_id)}/stop` : `/api/runs/${encodeURIComponent(run.run_id)}/interrupt`, {
           method: 'POST', headers: {'Content-Type':'application/json','X-Attention-Token': root.dataset.controlToken || ''},
@@ -4023,6 +4050,14 @@
         const result=await response.json();if(!response.ok)throw new Error(result.error||`HTTP ${response.status}`);
         lastRendered='';await refresh();
       } catch(error) {view.querySelector('#ab-live-message').textContent=`Start / continue failed: ${DEBUG_VIEW ? error.message : plainError(error.message)}`;button.disabled=false;}
+    });
+    view.querySelector('[data-dev-pause]')?.addEventListener('click',async event=>{
+      const button=event.currentTarget;button.disabled=true;
+      try {
+        const response=await controlFetch(`/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/pause`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        const result=await response.json();if(!response.ok)throw new Error(result.error||`HTTP ${response.status}`);
+        lastRendered='';await refresh();
+      } catch(error) {view.querySelector('#ab-live-message').textContent=`Pause failed: ${DEBUG_VIEW ? error.message : plainError(error.message)}`;button.disabled=false;}
     });
     mountPolicyController();
     bindLaunch();
