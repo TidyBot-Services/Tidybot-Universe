@@ -404,7 +404,7 @@ def test_importer_defers_unreachable_service_and_dry_run_writes_nothing(tmp_path
 
 def test_cli_never_prints_or_logs_keys(tmp_path, monkeypatch, capsys):
     store, cell, ref, root = staged(tmp_path)
-    keys = tmp_path / 'keys.env'
+    keys = tmp_path / 'synthetic-credentials.fixture'
     keys.write_text(f'ATTENTION_MEMORY_API_KEY={API_KEY}\nexport ATTENTION_MEMORY_IMPORTER_KEY="{IMPORTER_KEY}"\n')
     seen = {}
 
@@ -437,7 +437,7 @@ def test_hook_is_off_without_env_and_launches_detached_with_it(tmp_path):
     popen = lambda argv, **kw: launched.append((argv, kw)) or 'process'
     assert importer.launch_after_run(directory, environ={}, popen=popen) is None
     assert importer.launch_after_run(directory, environ={importer.ENV: str(tmp_path / 'missing')}, popen=popen) is None
-    keys = tmp_path / 'keys.env'; keys.write_text('ATTENTION_MEMORY_API_KEY=x\n')
+    keys = tmp_path / 'synthetic-credentials.fixture'; keys.write_text('ATTENTION_MEMORY_API_KEY=x\n')
     assert importer.launch_after_run(directory, environ={importer.ENV: str(keys)}, popen=popen) == 'process'
     argv, kw = launched[0]
     assert argv[argv.index('--ledger') + 1] == str(store.path)

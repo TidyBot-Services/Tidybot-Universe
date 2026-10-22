@@ -9,11 +9,14 @@ import pytest
 from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment as experiments
 from benchmarks.attention_harness import dev_planner_memory as memory, dev_v2_loop as loop
 from benchmarks.attention_harness import memory_provisional as provisional, memory_monitor, dev_probe
+from benchmarks.attention_harness import memory_auto_import as importer
+from benchmarks.attention_harness.dev_help import POLICY_IDS
 from benchmarks.attention_harness.dev_memory_view import projection
 from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.dev_loop import immutable, process_identity
 from benchmarks.attention_harness.tests.test_daily_memory_wiring import _body, _memory
 from benchmarks.attention_harness.tests.test_memory_provisional import events, write_version, ADVICE, REJECTED, TIMEOUT
+from benchmarks.attention_harness.tests import test_memory_provisional as provisional_tests
 from openarm365_dev_v2.scene_contract import registered_contract_ref
 
 SOURCE = 'from robot_sdk import sensors\nobservation = sensors.get_observation()\n'
@@ -136,7 +139,7 @@ def test_unavailable_manifest_scope_before_first_use(tmp_path, monkeypatch, fail
 
 
 @pytest.mark.parametrize('mode', ['interactive', 'diagnostic', 'experiment'])
-@pytest.mark.parametrize('policy', ['reactive_help', 'autonomous'])
+@pytest.mark.parametrize('policy', POLICY_IDS)
 def test_daily_binding_prompt_and_budgets(tmp_path, monkeypatch, mode, policy):
     bridge, store, exp, cell, config, manifest, root = make(tmp_path/'bound', mode=mode, policy=policy)
     _, _, _, plain, _, plain_manifest, _ = make(tmp_path/'plain', mode=mode, policy=policy, bound=False)
@@ -149,6 +152,8 @@ def test_daily_binding_prompt_and_budgets(tmp_path, monkeypatch, mode, policy):
     assert projection(store, cell)['scope'] == {'level': 'scene'}
     gateway = Gateway(config)
     monkeypatch.setattr(memory, 'client_for', lambda _: gateway)
+    # demo_first claims a local demo job while constructing the prompt.
+    store.update_cell(cell['key'], owner=process_identity())
     packet, notes = prompt(store, cell, config, manifest, root)
     assert [n['title'] for n in notes] == ['Guidance 0', 'Unvalidated reference (scene 102): Guidance 1',
                                           'Reference (scene 102): Guidance 2']
@@ -158,6 +163,74 @@ def test_daily_binding_prompt_and_budgets(tmp_path, monkeypatch, mode, policy):
     assert gateway.levels and all(x == ['same_scene', 'same_task'] for x in gateway.levels)
     assert projection(store, cell)['unvalidated_used'] is True
     assert monitor_scope(bridge, store, exp)['level'] == 'scene'
+
+
+def test_interactive_daily_provisional_use_is_imported_without_result(tmp_path, monkeypatch):
+    _, store, _, cell, config, manifest, root = make(tmp_path/'scene', mode='interactive', seed=102)
+    # Reuse the real in-process Service gateway with the daily bridge's authority.
+    monkeypatch.setattr(provisional_tests, 'SETTINGS', _memory())
+    gateway, _ = provisional_tests.populated(tmp_path, config)
+    monkeypatch.setattr(memory, 'client_for', lambda _: gateway)
+
+    def note():
+        return next(row for row in gateway.svc.list_dev_v2_memories() if row['memory_id'] == 'p-new')
+
+    assert note()['uses'] == dict(grants=0, outcomes=0, failure_gone=0)
+    packet, notes = prompt(store, cell, config, manifest, root)
+    entry = next(e for e in packet['entries'] if e['memory_id'] == 'p-new')
+    assert projection(store, cell)['scope']['level'] == 'scene'
+    assert entry['match_level'] == 'same_scene' and entry['trust_scope'] == 'provisional'
+    assert any(n['title'] == 'Unvalidated: New unvalidated' and
+               n['content'] == 'Newest unvalidated guidance.' for n in notes)
+    assert note()['uses'] == dict(grants=1, outcomes=0, failure_gone=0)
+    directory = root/'v1'
+    public = immutable(directory/'public-feedback.json', TIMEOUT)
+    source = immutable(directory/'policy.py', SOURCE)
+    memory.journal_result(store, cell['key'], 1, packet, source, public, directory)
+    queued = events(store, 'planner_memory_offline_queued')
+    assert [e['kind'] for e in queued] == ['provisional_outcome']
+    item = json.loads(Path(queued[0]['queue']['uri']).read_bytes())
+    assert item['kind'] == 'provisional_outcome'
+    assert item['evidence']['grants'] == [
+        {k: entry[k] for k in ('grant_id', 'memory_id', 'development_id')}]
+    assert item['evidence']['public_feedback'] == public
+    assert not (directory/'memory-result.json').exists()
+    assert events(store, 'planner_memory_result_skipped')[-1]['reason'] == 'not_trusted_here_excluded_from_results'
+    assert gateway.calls == []
+    assert note()['uses'] == dict(grants=1, outcomes=0, failure_gone=0)
+
+    assert importer.run([store.path], client=gateway, namespace=_memory()['namespace']) == dict(
+        created=0, outcomes=1, refused=0, deferred=0, planned=0)
+    assert gateway.calls == [('outcome', entry['grant_id'])]
+    assert note()['uses'] == dict(grants=1, outcomes=1, failure_gone=1)
+    assert note()['status'] == 'provisional'
+    receipt, = events(store, importer.RECEIPT)
+    assert receipt['kind'] == 'provisional_outcome' and receipt['memory_id'] == 'p-new'
+    assert receipt['grant_id'] == entry['grant_id'] and receipt['signature_present'] is False
+
+    # The same stored provisional note is readable at seed 104, but reference-only
+    # use must not produce an outcome or change the Service's outcome counters.
+    _, ref_store, _, ref_cell, ref_config, ref_manifest, ref_root = make(
+        tmp_path/'reference', mode='interactive', seed=104)
+    ref_packet, ref_notes = prompt(ref_store, ref_cell, ref_config, ref_manifest, ref_root)
+    assert ref_packet['scope'] == 'reference_only' and ref_packet['scope_reason'] == 'no_scene_contract'
+    ref_entry = next(e for e in ref_packet['entries'] if e['memory_id'] == 'p-new')
+    assert ref_entry['match_level'] == 'same_task' and ref_entry['trust_scope'] == 'provisional'
+    assert any(n['title'] == 'Unvalidated reference (scene 102): New unvalidated' for n in ref_notes)
+    before = note()['uses']
+    ref_directory = ref_root/'v1'
+    ref_public = immutable(ref_directory/'public-feedback.json', TIMEOUT)
+    ref_source = immutable(ref_directory/'policy.py', SOURCE)
+    memory.journal_result(ref_store, ref_cell['key'], 1, ref_packet, ref_source, ref_public, ref_directory)
+    assert events(ref_store, 'planner_memory_offline_queued') == []
+    assert not (ref_directory/'memory-provisional-outcome.json').exists()
+    assert not (ref_directory/'memory-result.json').exists()
+    assert events(ref_store, 'planner_memory_result_skipped')[-1]['reason'] == 'reference_only_no_scene_contract'
+    assert importer.run([store.path, ref_store.path], client=gateway, namespace=_memory()['namespace']) == dict(
+        created=0, outcomes=0, refused=0, deferred=0, planned=0)
+    assert events(ref_store, importer.RECEIPT) == []
+    assert gateway.calls == [('outcome', entry['grant_id'])]
+    assert note()['uses'] == before
 
 
 @pytest.mark.parametrize('mode', ['interactive', 'diagnostic'])
