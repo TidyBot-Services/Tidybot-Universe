@@ -46,6 +46,12 @@ test('media references cannot escape the session artifact directory',async()=>{
  const {s,api}=setup(({bundle})=>{bundle.recording.video='/private/foreign.mp4';});const snap=await api.devWorkspaceSnapshot(s);assert.equal(Object.values(snap.traces)[0].evidence.length,0);
  assert.equal(api.devFile(s,root+'/../foreign.mp4'),null);assert.equal(api.devFile(s,root+'/.owner-tokens.json'),null);
 });
+test('a program that ran to its end is only a success when the simulator says so',async()=>{
+ for(const [native,expected] of [[false,'failed'],[true,'succeeded']]){
+  const {s,api,receipt}=setup(({bundle,trace})=>{bundle.native_success=native;trace.status='completed';delete trace.error;});receipt.execution_status='completed';
+  const snap=await api.devWorkspaceSnapshot(s);assert.equal(snap.attempts[0].status,expected);assert.equal(snap.eval.native_outcomes[snap.attempts[0].attempt_id].native_success,native);
+ }
+});
 test('claimed next version cannot borrow a previous native outcome or recording',async()=>{
  const {s,api}=setup();s.state='running';s.versions.push({version:2,source:{sha256:'e'.repeat(64)},valid:true});s.jobs.push({kind:'execute',version:2,state:'claimed'});
  const snap=await api.devWorkspaceSnapshot(s);assert.equal(snap.attempts[1].status,'running');assert.equal(snap.eval.native_success,null);assert.equal(Object.keys(snap.eval.native_outcomes).length,1);assert.equal(snap.station.camera_attempt_id,'attempt:attention-'+sid+':1');

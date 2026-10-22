@@ -3114,6 +3114,7 @@
     if (/tokens|AI/.test(key || '')) return 'it ran out of AI budget';
     if (/wall|deadline|seconds/.test(key || '') || /wall|deadline/.test(reason)) return 'it ran out of time';
     if (['stopped','cancelled'].includes(s?.state || snapshot.run.status) || /interrupt|cancel|stopped/.test(reason)) return 'someone stopped it';
+    if (/input_bound_exceeded/.test(reason)) return "the AI's input for the next version got too long (a system limit, not the robot's fault)";
     if (s?.state === 'failed' || /executor_failed|service|system error|infrastructure|dispatch unknown|outcome_unknown/.test(reason)) return "of a system problem (not the robot's fault)";
     if (s?.state === 'needs_review' || /needs_review|incomplete|unavailable/.test(reason)) return 'the result needs a human check';
     if (/budget|limit/.test(reason)) return 'it ran out of its allowed budget';
@@ -3154,7 +3155,8 @@
     const state = success ? 'success' : terminal ? 'failed' : waiting ? 'waiting' : 'running';
     const system = state==='failed' && systemFailure(snapshot);
     const title = system ? '⚠ SYSTEM PROBLEM' : {success:'✓ COMPLETED',failed:'✕ NOT COMPLETED',waiting:'● WAITING FOR YOU',running:'● RUNNING'}[state];
-    const failure = plainError(executionFailure(trace)?.message || snapshot.attention_control?.hint?.feedback?.public_error);
+    const failureText = executionFailure(trace)?.message || snapshot.attention_control?.hint?.feedback?.public_error;
+    const failure = !failureText && trace && outcome?.evaluated === true && outcome.native_success === false ? 'the robot finished its plan, but the task was not completed' : plainError(failureText);
     const time = operatorFailureTime(trace,(trace?.evidence || []).some(e=>e.media_url && e.mime_type?.startsWith('video/')));
     const copy = permissionStopped ? (end.authorization_exhausted?'Action permission closed · Original authorization or budget exhausted. This action was not executed.':'The run ended at the action approval gate. This action was not executed.') : system ? (neverStarted(snapshot) ? "The robot never started because of a system problem. This is not the robot's fault." : "The run stopped because of a system problem. This is not the robot's fault.") : success ? `Completed on attempt ${k} of ${maximum}.` : terminal ? k ? `All ${k} attempts failed. In the last attempt ${failure}${time == null ? '' : ` at ${operatorTime(time)}`}.` : 'This run ended without a recorded attempt.' : waiting ? `Attempt ${k} failed. The robot is paused and asking for help, so please reply in section 04.` : (() => {
       const jobs=snapshot.dev_session?.jobs || [], next=Math.min(k + 1,maximum);
@@ -3166,7 +3168,7 @@
     const pending = snapshot.attention_control?.hint || actionableRequests(snapshot)[0];
     const startedAt=snapshot.run.started_at || snapshot.dev_session?.created_at,endedAt=snapshot.run.ended_at || snapshot.dev_session?.ended_at;
     const endReason=operatorEndReason(snapshot,maximum),took=epoch(startedAt)!=null&&epoch(endedAt)!=null?` · took ${humanDuration(epoch(endedAt)-epoch(startedAt))}`:'';
-    const sub = system ? `${dateTime(startedAt)} · please tell the research team` : terminal ? `${endReason==='the run ended'?'Ended':`Ended because ${endReason}`}${startedAt==null?'':` · ${dateTime(startedAt)}`}${took}` : waiting ? `${Math.max(0,maximum-k)} attempt(s) left${pending?.created_at == null ? '' : ` · paused for ${operatorTime(Date.now()/1000-pending.created_at)}`}` : '';
+    const sub = system ? `Started ${dateTime(startedAt)} · please tell the research team` : terminal ? `${endReason==='the run ended'?'Ended':`Ended because ${endReason}`}${startedAt==null?'':` · started ${dateTime(startedAt)}`}${took}` : waiting ? `${Math.max(0,maximum-k)} attempt(s) left${pending?.created_at == null ? '' : ` · paused for ${operatorTime(Date.now()/1000-pending.created_at)}`}` : '';
     return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}</div></div>`;
   }
   function operatorFlow(snapshot) {
@@ -3517,7 +3519,7 @@
   // Attention is the time between a help request and a person's reply, plus the logical credit each reply costs.
   function attentionLedger(snapshot) {
     const attempts=[...snapshot.attempts].sort((a,b)=>a.index-b.index);
-    const succeeded=a=>snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true||a.status==='succeeded';
+    const succeeded=a=>{const n=snapshot.eval?.native_outcomes?.[a.attempt_id];return n?.evaluated===true?n.native_success===true:a.status==='succeeded';};
     const solved=attempts.find(succeeded)||null;
     const rows=[], control=snapshot.attention_control, dev=snapshot.dev_session;
     if (dev && !snapshot.dev_v2) {
@@ -4232,6 +4234,8 @@
           evidence:videoUrl&&recording?.video_saved?[{kind:'advisor_replay',mime_type:'video/mp4',media_url:videoUrl,evidence_id:recording.frame_manifest_sha256},...extraVideos]:[]};
         const native = bundle.native_evaluator;
         if (native?.run_id === nativeRun && native.attempt_id === attemptId && native.evaluated === true && typeof bundle.native_success === 'boolean') outcomes[attemptId] = {evaluated:true,native_success:bundle.native_success};
+        // "completed" only means the program ran to its end; the simulator's own check decides success.
+        if (status === 'succeeded' && outcomes[attemptId]?.native_success === false) attempts[attempts.length-1].status = 'failed';
         // End time is not fabricated. A separate persisted completion flag permits
         // the existing current-view replay without inventing an epoch timestamp.
         attempts.at(-1).execution_complete = settled;
