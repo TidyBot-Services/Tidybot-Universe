@@ -347,7 +347,7 @@
     if(!DEBUG_VIEW&&item.development&&item.status==='running')return 'Running';
     if(!DEBUG_VIEW&&item.development&&item.status==='completed')return 'Finished';
     if(item.development&&item.status==='budget_exhausted'&&item.end_summary)return item.end_summary.short;
-    if(item.development)return {ready:'Ready',running:'Developing',stopping:'Stopping',stopped:'Stopped',budget_exhausted:'Budget reached',needs_review:'Needs review',failed:'Failed'}[item.status]||label(item.status||'Not recorded');
+    if(item.development)return {ready:'Ready',running:'Developing',stopping:'Stopping',stopped:'Stopped',budget_exhausted:'Budget reached',needs_review:'Needs review',failed:'Failed',paused:'Paused'}[item.status]||label(item.status||'Not recorded');
     return {running:'Running',completed:'Finished',succeeded:'Succeeded',failed:'Failed',cancelled:'Stopped',timed_out:'Timed out'}[item.status]||label(item.status||'Not recorded');
   }
   // End task navigation projection.
@@ -3054,6 +3054,8 @@
     const terminalTitle={condition_invalid:'⚠ Condition invalid',needs_review:'⚠ Needs review',cancelled:'○ Cancelled',stopped:'○ Stopped',not_started:'○ Not started',
       failed:'✕ Failed',timed_out:'✕ Timed out',budget_exhausted:'✕ Budget reached'}[snapshot.run.status];
     if(terminalTitle)return `${terminalTitle} · ${name} · Attention Bench`;
+    const pauseTitle={paused:'⏸ Paused',pausing:'● Pausing'}[snapshot.dev_v2?.run_controls?.state];
+    if(pauseTitle)return `${pauseTitle} · ${name} · Attention Bench`;
     const copy=operatorLifecycleCopy(snapshot);
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session);
     if(end?.key==='action_approval')return `${end.title} · ${name} · Attention Bench`;
@@ -3066,7 +3068,8 @@
       dialog.setAttribute('aria-label','End this run permanently');dialog.style.cssText='width:min(480px,calc(100vw - 24px));padding:20px 22px';
       const step=rc.current_step,aiCall=step&&!/on the robot/.test(step);
       const warning=!step?'':aiCall?`The AI is ${step} right now. Ending now cuts that call off and its result is lost.`:`Right now the run is ${step}. Ending now stops that step.`;
-      dialog.innerHTML=`<form method="dialog"><h2 style="margin:0 0 10px">End this run permanently?</h2><p>An ended run cannot be resumed. To continue later, use Pause instead.</p>${warning?`<p data-end-run-warning>${esc(warning)}</p>`:''}<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button value="keep" autofocus>Keep running</button><button value="end" class="danger" data-end-run-confirm>End run</button></div></form>`;
+      const pill='white-space:nowrap;padding:8px 18px;border-radius:999px;font:600 14px var(--body,inherit);cursor:pointer;width:auto;flex:0 0 auto';
+      dialog.innerHTML=`<form method="dialog"><h2 style="margin:0 0 12px">End this run permanently?</h2><p style="margin:0 0 8px">An ended run cannot be resumed. To continue later, use Pause instead.</p>${warning?`<p data-end-run-warning style="margin:0 0 8px">${esc(warning)}</p>`:''}<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px"><button value="keep" autofocus style="${pill};background:var(--op-paper,#f8f6f0);color:var(--op-ink,#242822);border:1px solid var(--op-line,#d3d4c6)">Keep running</button><button value="end" data-end-run-confirm style="${pill};background:var(--op-red,#a23f32);color:#fff;border:1px solid var(--op-red,#a23f32)">End run</button></div></form>`;
       dialog.addEventListener('close',()=>{resolve(dialog.returnValue==='end');dialog.remove();},{once:true});
       root.appendChild(dialog);dialog.showModal();
     });
@@ -4317,7 +4320,7 @@
   }
   // Adapt persisted Dev v2 records to the original five-region workspace.
   function devV2State(cellState, experimentState) {
-    if(['needs_review','cancelled','condition_invalid','failed','stopped','budget_exhausted','not_started'].includes(experimentState))
+    if(['needs_review','cancelled','condition_invalid','failed','stopped','budget_exhausted','not_started','paused'].includes(experimentState))
       return experimentState;
     if(['planned','running'].includes(cellState) && ['running','completed'].includes(experimentState))
       return experimentState;

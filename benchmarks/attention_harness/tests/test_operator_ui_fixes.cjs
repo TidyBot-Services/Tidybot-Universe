@@ -214,7 +214,7 @@ test('Dev v2 refresh reads the real experiment state and reason beside its cell 
 });
 
 test('Pause, Keep running and Resume explain every run state in plain words',()=>{
-  const ui=vm.runInNewContext(replay+operator+'\n({devStartButton,operatorOutcome})',{
+  const ui=vm.runInNewContext(replay+operator+'\n({devStartButton,operatorOutcome,operatorPageTitle})',{
     DEBUG_VIEW:false,esc,isTerminal:terminal,operatorLast:s=>s.attempts.at(-1),operatorWaiting:()=>false,devEndSummary:()=>({key:null}),
     plainError:()=>'',executionFailure:()=>null,launches:[],dateTime:()=>'10/22/2026, 10:30:00',humanDuration:()=>'',
     actionableRequests:()=>[],cameraStation:s=>s.station,number:String,pct:()=>0,operatorTime:()=>'0:00'});
@@ -234,4 +234,8 @@ test('Pause, Keep running and Resume explain every run state in plain words',()=
   // A Stop that cut off an AI call is reported as the operator's stop, never as a timeout.
   html=ui.operatorOutcome(run({state:'ended',interrupted_by_stop:{kind:'model',version:6,step:'writing v6'},resume_blocked_reason:ended},'needs_review',[{state:'needs_review',kind:'model'}]));
   assert.match(html,/You ended this run with Stop while the AI was writing v6/);assert.match(html,/not a timeout/);assert.doesNotMatch(html,/timed out/);
+  // Tab title and sidebar say Paused / Pausing instead of Running or Planned.
+  assert.match(ui.operatorPageTitle(run({state:'paused'}),'Pick Place'),/^⏸ Paused · Pick Place/);
+  assert.match(ui.operatorPageTitle(run({state:'pausing'}),'Pick Place'),/^● Pausing · Pick Place/);
+  assert.equal(sidebar.recordStatus({development:true,status:'paused'}),'Paused');
 });
