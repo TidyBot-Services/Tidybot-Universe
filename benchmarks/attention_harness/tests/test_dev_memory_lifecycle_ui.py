@@ -1,7 +1,6 @@
 """Dev v2 lifecycle UI wiring with an in-process fake gateway; no Memory Service process."""
 import io
 import json
-from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pytest
@@ -173,16 +172,17 @@ def test_disabled_note_is_absent_from_next_retrieval_and_stops_frozen_version(tm
     with pytest.raises(PermissionError, match='disabled/expired/rolled back'):
         service.recheck(packet)
 
-    class FakeStore:
+    from benchmarks.attention_harness.dev_ledger import DevV2Store
+
+    class FakeStore(DevV2Store):
         events = []
         def start_cell_clock(self, cell):
             pass
-        def tx(self):
-            return nullcontext(None)
         def event(self, db, kind, payload):
+            super().event(db, kind, payload)
             self.events.append((kind, payload))
 
-    store = FakeStore()
+    store = FakeStore(tmp_path / "ledger.sqlite3")
     (tmp_path/'memory-input.json').write_text(json.dumps(packet))
     with pytest.raises(PermissionError, match='disabled/expired/rolled back'):
         planner_memory.load_memory(store, 'cell', 1, 'source', {}, settings, tmp_path)

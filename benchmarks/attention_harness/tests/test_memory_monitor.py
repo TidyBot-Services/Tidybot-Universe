@@ -85,6 +85,29 @@ def test_projection_uses_real_ledger_packet_and_scrubs_service_secrets():
     assert 'top-secret' not in json.dumps(payload) and 'api_key' not in json.dumps(payload)
 
 
+def test_skipped_events_preserve_reason_and_exclusion_text(tmp_path):
+    cases = [
+        ('test_seeded_excluded_from_results', 'test note excluded'),
+        ('not_trusted_here_excluded_from_results', 'not counted in results'),
+        ('reference_only_no_scene_contract', 'reference only · not counted'),
+        ('unknown_reason', 'test note excluded'),
+        (None, 'test note excluded'),
+    ]
+    ledger = tmp_path / 'ledger.sqlite3'
+    with sqlite3.connect(ledger) as db:
+        db.execute('CREATE TABLE v2_events (seq INTEGER PRIMARY KEY, at REAL, kind TEXT, payload TEXT)')
+        for version, (reason, _) in enumerate(cases, 1):
+            detail = {'cell': 'fixture-cell', 'version': version, 'grants': []}
+            if reason is not None:
+                detail['reason'] = reason
+            db.execute('INSERT INTO v2_events (at, kind, payload) VALUES (?, ?, ?)',
+                       (version, 'planner_memory_result_skipped', json.dumps(detail)))
+    events = memory_monitor._events(SimpleNamespace(path=ledger), [{'key': 'fixture-cell'}])
+    assert [(e['reason'], e['text']) for e in events] == cases
+    assert [e['version'] for e in events] == list(range(1, 6))
+    assert all(e['type'] == 'planner_memory_result_skipped' for e in events)
+
+
 def test_effect_requires_completed_real_validation_and_status_is_conservative():
     assert memory_monitor.effect(row('n', validation_summary={'decision': 'promoted', 'completed_pairs': 0})) == ('not_tested', None)
     assert memory_monitor.effect(row('n', validation_summary={'decision': 'rejected', 'completed_pairs': 0})) == ('not_tested', None)

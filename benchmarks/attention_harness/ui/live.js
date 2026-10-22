@@ -1853,9 +1853,14 @@
       provider_tokens:200000*n, input_tokens:170000*n,output_tokens:30000*n};
     return {cell,experiment:Object.fromEntries(Object.entries(cell).map(([key,value])=>[key,value*policyCount]))};
   }
-  function runConfigSeedOptions(seeds,registered,mode) {
+  function runConfigSeedOptions(seeds,registered,mode,memory=false) {
     return seeds.map(seed=>({seed,unregistered:mode==='experiment'&&!registered.includes(seed),
-      title:String(seed)+(mode==='experiment'&&!registered.includes(seed)?' (no scene contract · interactive only)':'')}));
+      title:String(seed)+(!registered.includes(seed)?(mode==='experiment'?' (no scene contract · interactive only)':mode==='interactive'&&memory?' (no scene contract · Memory reference only)':''):'')}));
+  }
+  function runConfigSeedNote(seed,registered,mode,memory=false) {
+    if(registered.includes(seed))return '';
+    if(mode==='experiment')return 'No scene contract for this seed. Choose Interactive or a registered seed.';
+    return mode==='interactive'&&memory?'Memory: reference only — this seed has no scene contract.':'';
   }
   function runConfigSummary({robot,arm,seed,layout,style,versions,help,reviewer,modelSource='parcc'}) {
     return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests · reviewer ${reviewer?'on':'off'}${modelSource==='codex'?' · Codex subscription (gpt-6-astra, high effort)':''}`;
@@ -1983,10 +1988,9 @@
         const registered=options?.dev_v2?.registered_scene_seeds||[];
         const seeds=v2?(options?.dev_v2?.tasks?.find(t=>t.task_id===profile.task_id)?.seeds||Array.from({length:25},(_,i)=>101+i)):[profile?.seed??101];
         const previous=Number(form.seed.value);
-        form.seed.innerHTML=runConfigSeedOptions(seeds,registered,form.v2_mode.value).map(row=>`<option value="${row.seed}">${esc(row.title)}</option>`).join('');
+        form.seed.innerHTML=runConfigSeedOptions(seeds,registered,form.v2_mode.value,v2&&!!options?.dev_v2?.memory).map(row=>`<option value="${row.seed}">${esc(row.title)}</option>`).join('');
         form.seed.value=seeds.includes(previous)?String(previous):String(v2&&seeds.includes(102)?102:seeds[0]);
-        const missing=v2&&form.v2_mode.value==='experiment'&&!registered.includes(Number(form.seed.value));
-        form.querySelector('[data-seed-note]').textContent=missing?'No scene contract for this seed. Choose Interactive or a registered seed.':'';
+        form.querySelector('[data-seed-note]').textContent=v2?runConfigSeedNote(Number(form.seed.value),registered,form.v2_mode.value,!!options?.dev_v2?.memory):'';
       }
       function syncBudget() {
         const profile=selectedProfile();
@@ -3228,11 +3232,17 @@
     const tip='This run read a note that has not been validated. Excluded from results.';
     return `<p class="op-memory-flag-row"><span class="op-memory-flag" data-unvalidated-memory title="${tip}" aria-label="Used unvalidated memory. ${tip}">Used unvalidated memory</span></p>`;
   }
+  function memoryScopeNotice(snapshot) {
+    const scope=snapshot?.memory?.dev_v2?.scope;
+    if(scope?.level!=='reference_only')return '';
+    const text=scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract';
+    return `<p class="op-memory-flag-row" data-memory-reference-only role="status"><span class="op-memory-flag">${text}</span></p>`;
+  }
   function operatorOverview(snapshot) {
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
     const source=snapshot.dev_v2?(s?.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'):null;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}${runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}${runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
