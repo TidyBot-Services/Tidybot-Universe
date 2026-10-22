@@ -124,6 +124,11 @@ def stage(store, key, version, directory):
     content = help_value.get('content')
     if help_value.get('rejected') or not isinstance(content, str) or not content.strip():
         raise NotStaged('help_rejected_or_empty')
+    from .dev_planner_memory import memory_scope
+    cell = store.cell(key)
+    config = json.loads((directory.parent / 'config.json').read_bytes())
+    if memory_scope(config, cell.get('mode', 'experiment'))['level'] != 'scene':
+        raise NotStaged('no_scene_contract')
     origin_dir = directory.parent / f'v{version - 1}'
     origin_feedback = _ref(origin_dir / 'public-feedback.json')
     help_feedback = _ref(directory / 'public-feedback.json')
@@ -140,12 +145,11 @@ def stage(store, key, version, directory):
     model_input = record.get('model_input')
     if not isinstance(model_input, dict) or sha(model_input['uri']) != model_input['sha256']:
         raise NotStaged('missing_evidence:model-input.json')
-    cell = store.cell(key)
     # The exact Memory tuple is computed here, where the runtime SDK still
     # equals the run's frozen identity; the importer only adds its namespace.
     try:
         from .dev_planner_memory import context
-        memory_context = context(json.loads((directory.parent / 'config.json').read_bytes()), 'importer-namespace')
+        memory_context = context(config, 'importer-namespace')
         memory_context.pop('namespace')
     except Exception as exc:
         raise NotStaged('context_unavailable:' + type(exc).__name__) from exc

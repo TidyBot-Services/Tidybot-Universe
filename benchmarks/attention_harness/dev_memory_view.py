@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .core.dev_store import DevConflict
 from .dev_loop import sha
+from .dev_planner_memory import cell_memory, memory_scope
 
 
 def _evidence(ref):
@@ -13,6 +14,29 @@ def _evidence(ref):
     if sha(ref['uri']) != ref['sha256']:
         raise DevConflict('Memory display evidence digest mismatch')
     return json.loads(Path(ref['uri']).read_bytes())
+
+
+def scope_projection(store, cell):
+    """Latest recorded scope, or the bound manifest's scope before first use."""
+    with sqlite3.connect('file:'+str(store.path.resolve())+'?mode=ro', uri=True) as db:
+        row = db.execute("SELECT payload FROM v2_events WHERE kind='planner_memory_scope' "
+                         "AND json_extract(payload, '$.cell')=? ORDER BY seq DESC LIMIT 1",
+                         (cell['key'],)).fetchone()
+        if row:
+            return json.loads(row[0])
+        if not cell_memory(cell):
+            return None
+        row = db.execute('SELECT payload FROM v2_experiments WHERE id=?', (cell['experiment_id'],)).fetchone()
+    try:
+        manifest = _evidence(json.loads(row[0])['manifest'])
+        config = manifest['configs'][f"{cell['task_id']}:{cell['seed']}"]
+        if not isinstance(config, dict):
+            raise TypeError('Manifest config must be an object')
+    except (DevConflict, OSError, ValueError, KeyError, TypeError):
+        # This pre-first-use hint is optional; lifecycle reports manifest drift.
+        # Keep _evidence strict and never interpret a manifest with a bad digest.
+        return {'level': 'unknown', 'reason': 'manifest_unavailable'}
+    return memory_scope(config, cell.get('mode', 'experiment'))
 
 
 def projection(store, cell):
@@ -88,5 +112,6 @@ def projection(store, cell):
     # Run flag: read a note not trusted for this scene (excluded from results).
     unvalidated_used=any(not e['trusted'] for r in retrievals for e in r['entries'])
     return dict(queues=queues,validations=validations,retrievals=retrievals,
+                scope=scope_projection(store, cell),
                 generations=generations,receipts=receipts,unvalidated_used=unvalidated_used,
                 empty=not any((queues,validations,retrievals,generations,receipts)))

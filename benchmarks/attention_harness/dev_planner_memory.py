@@ -37,6 +37,29 @@ def layered(cell):
     return bool(cell.get('memory_authority'))
 
 
+def memory_scope(config, mode):
+    """Classify non-experiment cells without weakening the existing context checks.
+
+    Experiments retain their existing scene gate and context failure behaviour.
+    """
+    if mode == 'experiment':
+        return {'level': 'scene'}
+    from openarm365_dev_v2.scene_contract import registered_contract_ref, load_contract, seed_entry
+    ref = config.get('scene_contract')
+    if not ref:
+        reason = 'scene_contract_missing'
+    elif ref != registered_contract_ref():
+        reason = 'scene_contract_not_registered'
+    else:
+        try:
+            seed_entry(load_contract(ref), config['task_id'], config['seed'])
+        except (KeyError, ValueError):
+            reason = 'no_scene_contract'
+        else:
+            return {'level': 'scene'}
+    return {'level': 'reference_only', 'reason': reason, 'seed': config.get('seed')}
+
+
 def sdk_interface_sha256(identity):
     """Hash of the SDK contract plus the SDK text given to Dev."""
     return hashlib.sha256(encoded({'contract': identity['contract'], 'prompt': identity['prompt']}).encode()).hexdigest()
@@ -115,8 +138,14 @@ SCENE_SCOPE = ('scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id
 
 
 class DevMemory:
-    def __init__(self, gateway, settings, config, *, layered=False):
+    def __init__(self, gateway, settings, config, *, layered=False, mode='experiment'):
         self.gateway, self.settings, self.layered = gateway, settings, layered
+        self.scope = memory_scope(config, mode if layered else 'experiment')
+        # An absent/unregistered contract cannot form an authorized context.
+        # Keep an explicit empty packet; never substitute a different contract.
+        self.context = None
+        if self.scope.get('reason') in {'scene_contract_missing', 'scene_contract_not_registered'}:
+            return
         self.context = context(config, settings['namespace'])
         if not layered:
             # Frozen planner-Memory manifests keep the exact pre-split context.
@@ -125,6 +154,8 @@ class DevMemory:
             raise PermissionError('Memory Service authority identity mismatch')
 
     def eligible(self):
+        if self.context is None:
+            return []
         if self.layered:
             return [n for n in self.notes() if n.trusted_here]
         return sorted([m for m in self.gateway.retrieve(self.context, now=time.time())
@@ -135,19 +166,28 @@ class DevMemory:
 
     def notes(self):
         """Every note readable here (uncapped): trusted here first, then others newest first."""
+        if self.context is None:
+            return []
+        reference_only = self.scope['level'] == 'reference_only'
         now = time.time()
         if callable(getattr(self.gateway, 'retrieve_entries', None)):
             rows = [Note(r['memory_id'], r['version'], r['guidance'], r['status'], r.get('applicability'),
                          created_at=r.get('created_at'), match_level=r.get('match_level', 'same_scene'),
                          trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'))
-                    for r in self.gateway.retrieve_entries(self.context, now=now, match_levels=list(LEVELS))]
+                    for r in self.gateway.retrieve_entries(self.context, now=now,
+                        match_levels=['same_task'] if reference_only else list(LEVELS))
+                    if not reference_only or r.get('match_level') == 'same_task' and r.get('trusted_here') is False]
         else:
+            if reference_only:
+                return []  # Old gateways cannot explicitly attest same-task reference trust.
             rows = [Note(m.memory_id, m.version, m.guidance, getattr(m.status, 'value', m.status), m.applicability,
                          created_at=getattr(m, 'created_at', 0.0), match_level=getattr(m, 'match_level', 'same_scene'),
                          source_seed=(m.applicability or {}).get('seed'))
                     for m in self.gateway.retrieve(self.context, now=now)]
         result = []
         for n in rows:
+            if reference_only and (n.match_level != 'same_task' or n.trusted_here is not False):
+                continue
             if (n.status not in {'trusted', 'provisional'} or type(n.version) is not int or n.version < 1
                     or n.match_level not in LEVELS or n.trusted_here is not (n.status == 'trusted' and n.match_level == 'same_scene')
                     or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE)
@@ -159,6 +199,8 @@ class DevMemory:
         return here + rest
 
     def selected(self):
+        if self.context is None:
+            return []
         if not self.layered:
             return self.eligible()
         notes = self.notes()
@@ -168,7 +210,7 @@ class DevMemory:
         entries = []
         # Retrieve records carry authority and guidance; the separate public
         # catalogue carries display text. Match it by exact id and version.
-        lister = getattr(self.gateway, 'list_dev_v2_memories', None)
+        lister = getattr(self.gateway, 'list_dev_v2_memories', None) if self.context is not None else None
         catalogue = ((lister() if self.layered else lister(status='trusted')) if callable(lister) else [])
         display = {(row['memory_id'], row['version']): row for row in catalogue
                    if row.get('status') in ({'trusted', 'provisional'} if self.layered else {'trusted'})}
@@ -215,9 +257,16 @@ class DevMemory:
             packet.update(layered=True, not_trusted_here_cap=NOT_TRUSTED_HERE_CAP,
                           unvalidated=any(e['unvalidated'] for e in entries),
                           not_trusted_here=any(not e['trusted_here'] for e in entries))
+        if self.scope['level'] == 'reference_only':
+            packet.update(scope='reference_only', scope_reason=self.scope['reason'], excluded_from_results=True)
         return packet
 
     def recheck(self, packet):
+        if (packet.get('scope') == 'reference_only') != (self.scope['level'] == 'reference_only'):
+            raise PermissionError('Memory packet scene scope changed')
+        if self.scope['level'] == 'reference_only' and (
+                packet.get('scope_reason') != self.scope['reason'] or packet.get('excluded_from_results') is not True):
+            raise PermissionError('Memory packet scene exclusion changed')
         if bool(packet.get('layered')) != self.layered:
             raise PermissionError('Memory packet trust rules changed')
         eligible = {m.memory_id: m for m in (self.notes() if self.layered else self.eligible())}
@@ -240,7 +289,17 @@ class DevMemory:
 def _load_memory(store, cell, version, previous, config, settings, directory, layered=False):
     if not settings:
         return EMPTY_MEMORY, None
-    service = DevMemory(client_for(settings), settings, config, layered=layered)
+    mode = store.cell(cell).get('mode', 'experiment') if layered else 'experiment'
+    scope = memory_scope(config, mode)
+    with store.tx() as db:
+        exists = db.execute("SELECT 1 FROM v2_events WHERE kind='planner_memory_scope' "
+                            "AND json_extract(payload, '$.cell')=? AND json_extract(payload, '$.version')=?",
+                            (cell, version)).fetchone()
+        if not exists:
+            store.event(db, 'planner_memory_scope', dict(cell=cell, version=version,
+                        level=scope['level'], reason=scope.get('reason'), seed=config.get('seed')))
+    gateway = None if scope.get('reason') in {'scene_contract_missing', 'scene_contract_not_registered'} else client_for(settings)
+    service = DevMemory(gateway, settings, config, layered=layered, mode=mode)
     path = Path(directory) / 'memory-input.json'
     if path.exists():
         packet = json.loads(path.read_bytes())
@@ -290,6 +349,12 @@ def load_memory(store, cell, version, previous, config, settings, directory, lay
 
 
 def journal_result(store, cell, version, packet, source_ref, public_feedback_ref, directory):
+    if packet.get('scope') == 'reference_only':
+        with store.tx() as db:
+            store.event(db, 'planner_memory_result_skipped', dict(cell=cell, version=version,
+                        reason='reference_only_no_scene_contract',
+                        grants=[e['grant_id'] for e in packet.get('entries', [])]))
+        return None
     if not packet.get('entries'):return
     from .dev_v2_memory_import import queue
     provisional=[e for e in packet['entries'] if e.get('trust_scope')=='provisional']

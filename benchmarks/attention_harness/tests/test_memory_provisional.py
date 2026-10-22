@@ -49,7 +49,7 @@ def missing_model_copy_fixture(monkeypatch):
 
 
 def make(tmp_path, policy, *, key=None, **extra):
-    selection = dict(request_key=key or ('provisional-' + policy), tasks=['open_cabinet'], seeds=[113],
+    selection = dict(request_key=key or ('provisional-' + policy), tasks=['open_cabinet'], seeds=[102],
                      policies=[policy], mode='interactive', target_depth=1, target_valid_executions=1,
                      max_versions=3, help_budget=1, scene_contract=registered_contract_ref())
     selection.update(extra)
@@ -60,7 +60,7 @@ def make(tmp_path, policy, *, key=None, **extra):
     root = Path(experiment['artifact_dir']) / 'cells' / cell['key']
     root.mkdir(parents=True)
     manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
-    config = manifest['configs']['open_cabinet:113']
+    config = manifest['configs'][f"open_cabinet:{selection['seeds'][0]}"]
     immutable(root / 'config.json', config)
     store.update_cell(cell['key'], state='running', owner=process_identity(), artifact_dir=str(root))
     return store, store.cell(cell['key']), config, manifest, root

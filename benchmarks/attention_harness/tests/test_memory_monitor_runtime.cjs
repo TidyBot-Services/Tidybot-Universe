@@ -84,6 +84,21 @@ function realPayload(){
   ];
   return {run:{state:'running',versions:[1,2,3,4,5].map(n=>({n,state:n===5?'running':'completed',note_ids:n===1?[seed,'n2']:[seed]}))},notes,events:[]};
 }
+test('feed labels skipped results by reason with a legacy fallback',()=>{
+  const cases=[
+    ['test_seeded_excluded_from_results','test note excluded'],
+    ['not_trusted_here_excluded_from_results','not counted in results'],
+    ['reference_only_no_scene_contract','reference only · not counted'],
+    ['unknown_reason','test note excluded'],
+    [undefined,'test note excluded'],
+  ];
+  const h=harness('#exp=devexp-'+'a'.repeat(24));
+  const payload=realPayload();
+  payload.events=cases.map(([reason],i)=>({seq:i+1,version:i+1,type:'planner_memory_result_skipped',note_ids:[],...(reason===undefined?{}:{reason})}));
+  h.api.load(payload);
+  const labels=[...h.get('feed').innerHTML.matchAll(/<div[^>]*>([^<]*)<\/div>/g)].map(match=>match[1]);
+  assert.deepEqual(labels,cases.map(([,label],i)=>`v${i+1} ${label}`).reverse());
+});
 function exercise(hash,payload){
   const h=harness(hash);h.api.startGlobe();h.api.load(payload);h.flush();
   assert.equal(h.meshes.filter(m=>m.userData.id).length,payload.notes.length,'every note has a 3D ball');
@@ -217,4 +232,16 @@ test('runtime harness detects the original color shadowing regression',()=>{
   assert.notEqual(broken,original);
   const h=harness('#demo=150',broken);h.api.startGlobe();
   assert.throws(()=>h.api.load(realPayload()),/Cannot access 'color' before initialization/);
+});
+
+test('reference-only banner appears before any reads and clears for scene scope',()=>{
+  const h=harness('#exp=devexp-'+'a'.repeat(24));
+  const payload={run:{versions:[],memory_scope:{level:'reference_only',reason:'no_scene_contract'}},notes:[],events:[]};
+  h.api.load(payload);
+  assert.equal(h.get('memory-scope').hidden,false);
+  assert.equal(h.get('memory-scope').textContent,'Memory: reference only — this seed has no scene contract');
+  payload.run.memory_scope.reason='scene_contract_missing';h.api.load(payload);
+  assert.equal(h.get('memory-scope').textContent,'Memory unavailable — this seed has no scene contract');
+  payload.run.memory_scope={level:'scene'};h.api.load(payload);
+  assert.equal(h.get('memory-scope').hidden,true);
 });

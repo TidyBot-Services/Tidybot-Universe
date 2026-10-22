@@ -67,8 +67,13 @@
     if(!confirmFn(`${label} ${note.title}?\nActor: ${body.actor}\nReason: ${body.reason}${irreversible?'\nExpiry and rollback cannot be undone.':''}`))return null;
     return {url:`/api/dev-memories/${encodeURIComponent(note.id)}/${action}`,options:{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':global.document?.body?.dataset?.controlToken||''},body:JSON.stringify(body)}};
   }
+  function memoryScopeText(run) {
+    const scope=run?.memory_scope;
+    if(scope?.level!=='reference_only')return '';
+    return scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract';
+  }
   const warningText=warnings=>Array.isArray(warnings)&&warnings.length?'Some note details are unavailable right now.':'';
-  const api={adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
+  const api={memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   if(!global.document)return;
   const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -98,6 +103,9 @@
   function select(note){selected=note;$('card').innerHTML=cardHtml(note,canOperate,!!demo);$('card').classList.add('on');$('hint').style.display='none';globe?.select(note);}
   function render(){if(!data)return;
     $('warning').textContent=warningText(data.warnings);
+    const scopeBanner=$('memory-scope');
+    scopeBanner.textContent=memoryScopeText(data.run);
+    scopeBanner.hidden=!scopeBanner.textContent;
     const notes=data.notes,active=notes.filter(n=>n.status==='active'),used=active.filter(n=>n.version>0),counts={helps:0,not_helps:0,not_tested:0,unvalidated:0,off:notes.length-active.length};
     active.forEach(n=>counts[n.effect]++);$('used-count').textContent=used.length;
     Object.keys(counts).forEach(k=>{const el=$('count-'+k.replace('_','-'));if(el)el.textContent=counts[k]});
@@ -182,7 +190,7 @@
     flow.onclick=e=>{const hit=e.target.closest?.('[data-note]');if(hit){const n=data.byId.get(hit.dataset.note);if(n)select(n)}};
   }
   function recordReads(events){const now=Date.now();events.filter(e=>e.type==='planner_memory_retrieved').forEach(e=>(e.note_ids||[]).forEach(id=>{flashUntil.set(id,now+4500);readFlights.push({id,version:Number(e.version),until:now+2000})}));}
-  function feed(fresh=[]){if(!data)return;const newKeys=new Set(fresh.map(eventKey));$('feed').innerHTML=data.events.slice(-5).reverse().map(ev=>{const name=ev.note_ids?.length?data.byId.get(ev.note_ids[0])?.title:null;const label=ev.type==='planner_memory_retrieved'?`v${ev.version} used ${name||'notes'}`:ev.type==='planner_memory_result_skipped'?`v${ev.version} test note excluded`:ev.type==='planner_memory_query_finished'?`v${ev.version} note check finished`:ev.type==='eval_failed'?`v${ev.version} failed`:ev.type==='eval_passed'?`v${ev.version} passed`:ev.type==='version_started'?`v${ev.version} started`:`v${ev.version} checking notes`;return `<div class="e ${ev.type==='planner_memory_retrieved'?'u':''} ${newKeys.has(eventKey(ev))?'new':''}">${escapeHtml(label)}</div>`}).join('');}
+  function feed(fresh=[]){if(!data)return;const newKeys=new Set(fresh.map(eventKey));$('feed').innerHTML=data.events.slice(-5).reverse().map(ev=>{const name=ev.note_ids?.length?data.byId.get(ev.note_ids[0])?.title:null;const label=ev.type==='planner_memory_retrieved'?`v${ev.version} used ${name||'notes'}`:ev.type==='planner_memory_result_skipped'?`v${ev.version} ${ev.reason==='not_trusted_here_excluded_from_results'?'not counted in results':ev.reason==='reference_only_no_scene_contract'?'reference only · not counted':'test note excluded'}`:ev.type==='planner_memory_query_finished'?`v${ev.version} note check finished`:ev.type==='eval_failed'?`v${ev.version} failed`:ev.type==='eval_passed'?`v${ev.version} passed`:ev.type==='version_started'?`v${ev.version} started`:`v${ev.version} checking notes`;return `<div class="e ${ev.type==='planner_memory_retrieved'?'u':''} ${newKeys.has(eventKey(ev))?'new':''}">${escapeHtml(label)}</div>`}).join('');}
   function sample(count){const verbs=['Slow','Retry','Align','Lift','Open','Check','Back off','Tilt','Pause','Re-grip'],nouns=['grasp','wrist','sink','handle','mug','lid','door','tray','cup','jar','approach','release'],intros=['Move more slowly near the object so the gripper does not overshoot.','If the grasp misses, back off a little and try again.','Line up the wrist with the object before moving in.','Lift the object a little before turning, to clear the counter.','Open the gripper early so it is ready when it arrives.','Check the distance to the object after each small step.','Back away first, then approach again from a new angle.','Tilt the wrist a few degrees to avoid hitting the edge.','Pause briefly before closing the gripper.','If the object slips, let go and grip it again lower.'],groups=['Grasp','Reach','Motion','Release','Vision','Safety'];let seed=11+count;const rand=()=>{seed=(seed*9301+49297)%233280;return seed/233280};const notes=Array.from({length:count},(_,i)=>{const vi=(i*3)%10,ni=Math.floor(i/10)%12,k=Math.floor(i/120);return {id:'sample-'+i,title:verbs[vi]+' '+nouns[(ni+vi)%12]+(k?' '+(k+1):''),summary:intros[vi],group:groups[Math.floor(Math.pow(rand(),1.3)*6)],status:rand()>.14?'active':'off',effect:rand()<.3?'not_tested':rand()<.6?'helps':'not_helps',reads:Math.floor(rand()*30),last_used_at:Date.now()/1000-rand()*3600,test_seeded:false}});return {run:{experiment_id:'sample',state:'running',max_versions:demoVersions,versions:Array.from({length:demoVersions},(_,i)=>({n:i+1,state:i===0?'running':'waiting',note_ids:[]}))},notes,events:[]};}
   function sampleTick(){if(!data?.notes.length)return;
     const tick=demoTick++,versions=data.run.versions,now=Date.now(),fresh=[];

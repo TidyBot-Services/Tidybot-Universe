@@ -41,7 +41,7 @@ def bind_daily_codex(selection):
 def bind_daily_memory(selection, memory, previous_selection=None):
     """Bind the server's Memory authority for every policy (plan 0d, second revision).
 
-    New experiments get ``memory_authority``; Memory is no longer a planner
+    New runs get ``memory_authority``; Memory is no longer a planner
     feature, so approval/wait/background stay whatever the selection asked for.
     A selection that already exists keeps exactly the binding it was created with.
     """
@@ -54,7 +54,7 @@ def bind_daily_memory(selection, memory, previous_selection=None):
             return selection
     if (selection.get('planner_features',{}).get('memory') or selection.get('memory_authority')) and memory is None:
         raise ValueError('daily Memory authority is not configured')
-    if memory is None or selection.get('mode','experiment')!='experiment':
+    if memory is None:
         return selection
     features=selection.get('planner_features')
     if selection.get('memory_authority') not in (None,memory) or (features and features.get('memory') not in (None,memory)):

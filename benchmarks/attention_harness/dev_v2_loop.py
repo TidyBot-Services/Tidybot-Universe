@@ -430,8 +430,13 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
     from .dev_planner_memory import cell_memory,layered
     settings=cell_memory(cell)
     if settings and memory_path.is_file():
-        from .dev_planner_memory import DevMemory,client_for
-        DevMemory(client_for(settings),settings,config,layered=layered(cell)).recheck(json.loads(memory_path.read_bytes()))
+        from .dev_planner_memory import DevMemory,client_for,memory_scope
+        def recheck_memory():
+            mode=cell.get('mode','experiment')
+            scope=memory_scope(config,mode if layered(cell) else 'experiment')
+            gateway=None if scope.get('reason') in {'scene_contract_missing','scene_contract_not_registered'} else client_for(settings)
+            DevMemory(gateway,settings,config,layered=layered(cell),mode=mode).recheck(json.loads(memory_path.read_bytes()))
+        recheck_memory()
     approval_id=None
     if cell.get('planner_features') and cell['planner_features'].get('approval_rule')!='none':
         from .dev_planner import wait_for_approval
@@ -441,7 +446,7 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         if seconds<=20:raise DevBudgetExhausted('insufficient execution time after human wait')
         reservation['execution_seconds']=seconds+cleanup
     if settings and memory_path.is_file():
-        DevMemory(client_for(settings),settings,config,layered=layered(cell)).recheck(json.loads(memory_path.read_bytes()))
+        recheck_memory()
     def observe(pid):
         identity=process_identity(pid);proc=Path('/proc')/str(pid)
         canary={'identity':identity,'cmdline':(proc/'cmdline').read_bytes().replace(b'\x00',b' ').decode(),'cwd':str((proc/'cwd').resolve()),'exe':str((proc/'exe').resolve())}

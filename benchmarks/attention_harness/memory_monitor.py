@@ -165,8 +165,16 @@ def _events(store, cells):
         else:
             ids = []
         ts = detail.get('ended_at') or detail.get('started_at') or detail.get('at') or ledger_at
-        result.append({'seq': seq, 'ts': ts, 'type': kind, 'version': detail.get('version'),
-                       'note_ids': ids, 'text': kinds[kind]})
+        event = {'seq': seq, 'ts': ts, 'type': kind, 'version': detail.get('version'),
+                 'note_ids': ids, 'text': kinds[kind]}
+        if kind == 'planner_memory_result_skipped':
+            event['reason'] = short(detail.get('reason'), 120)
+            event['text'] = {
+                'test_seeded_excluded_from_results': 'test note excluded',
+                'not_trusted_here_excluded_from_results': 'not counted in results',
+                'reference_only_no_scene_contract': 'reference only · not counted',
+            }.get(event['reason'], 'test note excluded')
+        result.append(event)
     return result
 
 
@@ -253,14 +261,18 @@ def _attempt_outcome(cell, version, job):
 def _max_versions(experiment, cells, events=()):
     """Use the frozen run limit, falling back to observed versions for old runs."""
     ref = experiment.get('manifest') or {}
-    path = Path(ref.get('uri', '/missing')) if isinstance(ref, dict) else Path('/missing')
-    if path.is_file() and sha(path) == ref.get('sha256'):
-        manifest = json.loads(path.read_bytes())
-        configured = manifest.get('max_versions', manifest.get('max_iterations'))
-        if configured is None:
-            configured = ((manifest.get('selection') or {}).get('configuration') or {}).get('max_iterations')
-        if isinstance(configured, int) and not isinstance(configured, bool):
-            return max(1, min(12, configured))
+    try:
+        path = Path(ref.get('uri', '/missing')) if isinstance(ref, dict) else Path('/missing')
+        if path.is_file() and sha(path) == ref.get('sha256'):
+            manifest = json.loads(path.read_bytes())
+            configured = manifest.get('max_versions', manifest.get('max_iterations'))
+            if configured is None:
+                configured = ((manifest.get('selection') or {}).get('configuration') or {}).get('max_iterations')
+            if isinstance(configured, int) and not isinstance(configured, bool):
+                return max(1, min(12, configured))
+    except (OSError, ValueError, TypeError, AttributeError):
+        # An unavailable manifest must not prevent displaying observed versions.
+        pass
     seen = [n for cell in cells for n in
             [cell.get('active_version')] + [v.get('version') for v in cell.get('versions', [])] +
             [job.get('version') for job in cell.get('jobs', [])]
@@ -372,7 +384,12 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                          uses=_uses(row), expires_in_days=_expires_in_days(row, timestamp), scene_seed=seed,
                          # Another scene of the same task: readable only as a labelled reference.
                          reference=level == 'same_task' or level is None and seed is not None and bool(seeds) and seed not in seeds)
+    from .dev_memory_view import scope_projection
+    scopes = [scope_projection(store, cell) for cell in cells]
+    # A multi-cell run must still explain any cell restricted to references.
+    scope = next((s for s in scopes if s and s['level'] == 'reference_only'), next((s for s in scopes if s), None))
     return {'generated_at': timestamp,
             'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40),
-                    'max_versions': max_versions, 'versions': versions, 'unvalidated_used': unvalidated_used},
+                    'max_versions': max_versions, 'versions': versions, 'unvalidated_used': unvalidated_used,
+                    'memory_scope': scope},
             'notes': notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}
