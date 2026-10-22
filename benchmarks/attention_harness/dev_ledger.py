@@ -76,6 +76,7 @@ def frozen_simulation_target(cell, experiment, config):
         frozen=manifest['configs'][f"{cell['task_id']}:{cell['seed']}"]
         official_env=get_task(cell['task_id']).official_env
         if (config!=frozen or cell.get('planner_features')!=manifest.get('planner_features')
+                or cell.get('memory_authority')!=manifest.get('memory_authority')
                 or not any(row['key']==cell['key'] for row in manifest['cells'])):return False
     except (KeyError,TypeError,ValueError,OSError):
         return False

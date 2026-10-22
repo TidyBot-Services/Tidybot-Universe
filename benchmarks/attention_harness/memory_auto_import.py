@@ -1,0 +1,290 @@
+"""Offline importer for provisional Memory proposals and their observed uses.
+
+Opt-in only: a finished daily run launches it when
+``ATTENTION_MEMORY_AUTO_IMPORT_KEYS`` names a readable key file. Keys are read
+from that file and never printed, logged or stored. Every submission is
+idempotent: a receipt or a terminal refusal is recorded in the ledger once.
+
+    python -m benchmarks.attention_harness.memory_auto_import \\
+        (--ledger LEDGER [...] | --root EXPERIMENTS_ROOT) \\
+        --base-url URL --store-id ID --namespace NS --keys KEYS_FILE [--dry-run]
+"""
+import argparse
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
+
+from .dev_loop import sha
+from .memory_provisional import SCHEMA, memory_id as provisional_id
+
+ENV = 'ATTENTION_MEMORY_AUTO_IMPORT_KEYS'
+KEY_NAMES = ('ATTENTION_MEMORY_API_KEY', 'ATTENTION_MEMORY_IMPORTER_KEY')
+ACTOR = 'memory-auto-import'
+RECEIPT, REFUSED = 'planner_memory_provisional_receipt', 'planner_memory_provisional_refused'
+REF_KEYS = ('origin_public_feedback', 'origin_source', 'help', 'help_model_input', 'help_source', 'help_public_feedback')
+
+
+class Refused(Exception):
+    """Terminal: the evidence or the Service refused this item; never retried."""
+
+
+def read_keys(path):
+    values = {}
+    for line in Path(path).read_text().splitlines():
+        line = line.strip()
+        if line.startswith('export '):
+            line = line[7:]
+        if line and not line.startswith('#') and '=' in line:
+            name, value = line.split('=', 1)
+            values[name.strip()] = value.strip().strip('"\'')
+    missing = [name for name in KEY_NAMES if not values.get(name)]
+    if missing:
+        raise ValueError('key file lacks: ' + ', '.join(missing))
+    return {name: values[name] for name in KEY_NAMES}
+
+
+class Redactor:
+    def __init__(self, secrets=()):
+        self.secrets = [s for s in secrets if s]
+
+    def __call__(self, text):
+        text = str(text)
+        for secret in self.secrets:
+            text = text.replace(secret, '[redacted]')
+        return text
+
+
+def _events(ledger):
+    with sqlite3.connect('file:' + str(Path(ledger).resolve()) + '?mode=ro', uri=True) as db:
+        return [(kind, json.loads(raw)) for kind, raw in
+                db.execute('SELECT kind, payload FROM v2_events ORDER BY seq')]
+
+
+def _done(events):
+    """Item keys that already have a receipt or a terminal refusal."""
+    return {event['item'] for kind, event in events if kind in (RECEIPT, REFUSED) and 'item' in event}
+
+
+def _verified(ref):
+    path = Path(ref['uri'])
+    if not path.is_file() or sha(path) != ref['sha256']:
+        raise Refused('evidence digest drift: ' + path.name)
+    return path
+
+
+def title_for(signature):
+    error = signature['public_error_class'].split(': ')[-1]
+    return f"Avoid {error} on {signature['operation']}"[:80]
+
+
+def summary_for(guidance):
+    text = ' '.join(guidance.split())
+    first = re.split(r'(?<=[.!?。！？])\s', text, maxsplit=1)[0]
+    if len(first) > 80:
+        first = first[:79].rsplit(' ', 1)[0].rstrip(',;:') + '…'
+    try:
+        from attention_memory_service.note_title import validate_summary
+        return validate_summary(first)
+    except Exception:
+        return None  # The summary is display text only; omit it when not plain.
+
+
+def provisional_payload(proposal, namespace):
+    if proposal.get('schema_version') != SCHEMA or proposal.get('status') != 'pending_import':
+        raise Refused('not a pending provisional proposal')
+    refs = proposal['refs']
+    if set(refs) != set(REF_KEYS):
+        raise Refused('proposal evidence refs incomplete')
+    paths = {name: _verified(refs[name]) for name in REF_KEYS}
+    help_value = json.loads(paths['help'].read_bytes())
+    guidance = proposal['help_content']
+    if help_value.get('content') != guidance or help_value.get('provider') != proposal['provider']:
+        raise Refused('help content differs from the proposal')
+    context = {**proposal['context'], 'namespace': namespace}
+    origin = dict(experiment_id=proposal['experiment_id'], cell=proposal['cell'], policy_id=proposal['policy_id'],
+                  origin_version=proposal['origin_version'], help_version=proposal['help_version'],
+                  provider=proposal['provider'], effective_reason=proposal['effective_reason'],
+                  eval_reason_class=proposal['eval_reason_class'],
+                  digests={name: refs[name]['sha256'] for name in REF_KEYS})
+    payload = dict(actor=ACTOR, memory_id=provisional_id(proposal['experiment_id'], proposal['cell'], proposal['help_version']),
+                   context=context, guidance=guidance, failure_signature=proposal['failure_signature'], origin=origin,
+                   origin_public_feedback_text=paths['origin_public_feedback'].read_bytes().decode('utf-8'),
+                   help_public_feedback_text=paths['help_public_feedback'].read_bytes().decode('utf-8'),
+                   title=title_for(proposal['failure_signature']))
+    summary = summary_for(guidance)
+    if summary:
+        payload['summary'] = summary
+    return payload
+
+
+def pending(ledger):
+    """Yield ``(item_key, kind, cell, version, payload_builder)`` not yet receipted."""
+    events = _events(ledger)
+    done = _done(events)
+    for kind, event in events:
+        if kind != 'planner_memory_offline_queued' or event.get('kind') not in ('provisional', 'provisional_outcome'):
+            continue
+        queue = event['queue']
+        if event['kind'] == 'provisional':
+            item = 'provisional:' + queue['sha256']
+            if item not in done:
+                yield item, 'provisional', event, queue
+        else:
+            for grant in _queue_value(queue).get('evidence', {}).get('grants', []):
+                item = 'outcome:' + grant['grant_id']
+                if item not in done:
+                    yield item, 'provisional_outcome', event, dict(queue=queue, grant=grant)
+
+
+def _queue_value(queue):
+    return json.loads(_verified(queue).read_bytes())
+
+
+def outcome_payload(target):
+    value = _queue_value(target['queue'])
+    feedback = _verified(value['evidence']['public_feedback'])
+    text = feedback.read_bytes().decode('utf-8')
+    return dict(grant_id=target['grant']['grant_id'], development_id=target['grant']['development_id'],
+                public_feedback_text=text, public_feedback_sha256=sha(feedback))
+
+
+def _record(ledger, kind, value):
+    from .dev_ledger import DevV2Store
+    store = DevV2Store(ledger)
+    with store.tx() as db:
+        store.event(db, kind, value)
+
+
+def terminal(exc):
+    """The Service refused the content itself (HTTP 409/422): never retried."""
+    return isinstance(exc, ValueError) or type(exc).__name__ == 'StateConflictError'
+
+
+def run(ledgers, *, client, namespace, dry_run=False, out=print, redact=Redactor()):
+    """Submit every pending item once. Returns counts by outcome."""
+    counts = dict(created=0, outcomes=0, refused=0, deferred=0, planned=0)
+    for ledger in ledgers:
+        for item, kind, event, target in pending(ledger):
+            label = f"{Path(ledger).parent.name} {event['cell'][:12]} v{event['version']} {kind}"
+            try:
+                if kind == 'provisional':
+                    proposal = _queue_value(target)
+                    payload = provisional_payload(proposal, namespace)
+                else:
+                    payload = outcome_payload(target)
+            except (Refused, KeyError, ValueError, OSError) as exc:
+                reason = redact(exc)[:300]
+                counts['refused'] += 1
+                out(f'refused {label}: {reason}')
+                if not dry_run:
+                    _record(ledger, REFUSED, dict(item=item, cell=event['cell'], version=event['version'], kind=kind,
+                                                  error_class=type(exc).__name__, message=reason))
+                continue
+            if dry_run:
+                counts['planned'] += 1
+                shown = payload.get('memory_id') or payload.get('grant_id')
+                out(f'would submit {label}: {shown}')
+                continue
+            try:
+                if kind == 'provisional':
+                    response = client.create_provisional_note(**payload)
+                else:
+                    response = client.record_provisional_outcome(**payload)
+            except Exception as exc:
+                if not terminal(exc):
+                    # Unreachable, unauthorised or server error: no receipt,
+                    # the next run retries.
+                    counts['deferred'] += 1
+                    out(f'deferred {label}: {type(exc).__name__}: {redact(exc)[:200]}')
+                    continue
+                reason = redact(exc)[:300]
+                counts['refused'] += 1
+                out(f'refused {label}: {type(exc).__name__}: {reason}')
+                _record(ledger, REFUSED, dict(item=item, cell=event['cell'], version=event['version'], kind=kind,
+                                              error_class=type(exc).__name__, message=reason))
+                continue
+            receipt = dict(item=item, cell=event['cell'], version=event['version'], kind=kind)
+            if kind == 'provisional':
+                receipt.update(memory_id=response.get('memory_id'), status=response.get('status'),
+                               expires_at=response.get('expires_at'))
+                counts['created'] += 1
+            else:
+                receipt.update(grant_id=payload['grant_id'], memory_id=response.get('memory_id'),
+                               signature_present=response.get('signature_present'), progress=response.get('progress'))
+                counts['outcomes'] += 1
+            _record(ledger, RECEIPT, receipt)
+            out(f"imported {label}: {receipt.get('memory_id')} {receipt.get('status') or ''}".rstrip())
+    return counts
+
+
+def ledgers_for(args):
+    paths = [Path(p) for p in args.ledger or []]
+    if args.root:
+        paths += sorted(Path(args.root).glob('devexp-*/ledger.sqlite3'))
+    return paths
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Import provisional Memory proposals (offline importer role).')
+    parser.add_argument('--ledger', action='append')
+    parser.add_argument('--root')
+    parser.add_argument('--base-url', required=True)
+    parser.add_argument('--store-id', required=True)
+    parser.add_argument('--namespace', required=True)
+    parser.add_argument('--keys', required=True)
+    parser.add_argument('--dry-run', action='store_true')
+    args = parser.parse_args(argv)
+    redact = Redactor()
+    try:
+        ledgers = ledgers_for(args)
+        if not ledgers:
+            raise ValueError('no ledger selected')
+        client = None
+        if not args.dry_run:
+            keys = read_keys(args.keys)
+            redact = Redactor(keys.values())
+            from .memory_service_client import MemoryServiceClient
+            client = MemoryServiceClient(args.base_url, api_key=keys['ATTENTION_MEMORY_API_KEY'],
+                                         importer_key=keys['ATTENTION_MEMORY_IMPORTER_KEY'], timeout=10)
+            if client.store_id() != args.store_id:
+                raise PermissionError('Memory Service authority identity mismatch')
+        counts = run(ledgers, client=client, namespace=args.namespace, dry_run=args.dry_run,
+                     out=lambda line: print(redact(line), flush=True), redact=redact)
+        print('summary ' + json.dumps(counts, sort_keys=True), flush=True)
+        return 0
+    except Exception as exc:
+        print(f'error: {type(exc).__name__}: {redact(exc)[:300]}', file=sys.stderr, flush=True)
+        return 2
+
+
+def launch_after_run(experiment_dir, *, environ=None, popen=subprocess.Popen):
+    """Opt-in hook for a finished daily run. Never waits and never raises."""
+    environ = os.environ if environ is None else environ
+    try:
+        keys = environ.get(ENV)
+        if not keys or not os.access(keys, os.R_OK) or not Path(keys).is_file():
+            return None
+        directory = Path(experiment_dir)
+        ledger = directory / 'ledger.sqlite3'
+        with sqlite3.connect('file:' + str(ledger.resolve()) + '?mode=ro', uri=True) as db:
+            experiment = json.loads(db.execute('SELECT payload FROM v2_experiments').fetchone()[0])
+        manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
+        settings = manifest.get('memory_authority') or (manifest.get('planner_features') or {}).get('memory')
+        if not settings:
+            return None
+        log = (directory / 'memory-auto-import.log').open('ab')
+        return popen([sys.executable, '-B', '-m', 'benchmarks.attention_harness.memory_auto_import',
+                      '--ledger', str(ledger), '--base-url', settings['base_url'], '--store-id', settings['store_id'],
+                      '--namespace', settings['namespace'], '--keys', keys],
+                     stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True,
+                     env={**environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+    except Exception:
+        return None
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -37,21 +37,26 @@ def configuration(value):
             raise ValueError('bounded positive planner duration required: ' + key)
     if p['approval_rule']=='none' and (p['human_wait_seconds'] or p['background_seconds']):
         raise ValueError('planner without approval cannot prepare or wait for approval')
-    m = p['memory']
-    if m is not None:
-        if not isinstance(m, dict) or set(m) not in ({'base_url', 'store_id', 'namespace'}, {'base_url', 'store_id', 'namespace', 'url_sha256'}):
-            raise ValueError('Memory endpoint, authority and isolated namespace required')
-        if not all(isinstance(v, str) and v.strip() for v in m.values()):
-            raise ValueError('nonempty Memory configuration required')
-        from urllib.parse import urlsplit
-        url = urlsplit(m['base_url'])
-        if (url.username or url.password or url.query or url.fragment or
-                url.scheme not in {'http', 'https'} or not url.hostname or
-                url.scheme == 'http' and url.hostname not in {'127.0.0.1', 'localhost'}):
-            raise ValueError('Memory endpoint must be credential-free HTTPS or loopback')
-        if 'url_sha256' in m and m['url_sha256'] != hashlib.sha256(m['base_url'].encode()).hexdigest():
-            raise ValueError('Memory endpoint digest mismatch')
+    if p['memory'] is not None:
+        memory_settings(p['memory'])
     return p
+
+
+def memory_settings(m):
+    """Validate a Memory authority binding (planner feature or shared authority)."""
+    if not isinstance(m, dict) or set(m) not in ({'base_url', 'store_id', 'namespace'}, {'base_url', 'store_id', 'namespace', 'url_sha256'}):
+        raise ValueError('Memory endpoint, authority and isolated namespace required')
+    if not all(isinstance(v, str) and v.strip() for v in m.values()):
+        raise ValueError('nonempty Memory configuration required')
+    from urllib.parse import urlsplit
+    url = urlsplit(m['base_url'])
+    if (url.username or url.password or url.query or url.fragment or
+            url.scheme not in {'http', 'https'} or not url.hostname or
+            url.scheme == 'http' and url.hostname not in {'127.0.0.1', 'localhost'}):
+        raise ValueError('Memory endpoint must be credential-free HTTPS or loopback')
+    if 'url_sha256' in m and m['url_sha256'] != hashlib.sha256(m['base_url'].encode()).hexdigest():
+        raise ValueError('Memory endpoint digest mismatch')
+    return m
 
 
 def digest(value):

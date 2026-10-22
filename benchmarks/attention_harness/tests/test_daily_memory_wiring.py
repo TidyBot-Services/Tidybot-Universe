@@ -51,13 +51,18 @@ def test_opt_in_materializes_v3_and_old_request_remains_v2(tmp_path,monkeypatch)
     manifest=json.loads(Path(created['manifest']['uri']).read_bytes())
     selection=json.loads((bridge.root/created['experiment_id']/'selection.json').read_bytes())
     assert manifest['schema']=='attentionbench.dev-experiment.v3'
-    assert selection['planner_features']['memory']==_memory()
-    assert manifest['planner_features']['memory']==_memory()
-    assert manifest['planner_features']['approval_rule']=='none'
-    assert manifest['planner_features']['human_wait_seconds']==0
+    # Plan 0d second revision: Memory is a shared authority, not a planner feature.
+    assert selection['memory_authority']==_memory()
+    assert manifest['memory_authority']==_memory()
+    assert 'planner_features' not in manifest and 'planner_features' not in selection
     assert 'configuration' not in selection
     assert 'api_key' not in json.dumps(manifest).lower()
-    assert created['cells'][0]['planner_features']['memory']==_memory()
+    assert created['cells'][0]['memory_authority']==_memory()
+    assert 'planner_features' not in created['cells'][0]
+    reactive=_body('reactive_help');reactive['selection']['request_key']='daily-memory-reactive-102'
+    reactive['selection']['configuration']['goal_id']='daily-memory-goal-reactive-102'
+    other=bridge.create(reactive)
+    assert other['cells'][0]['memory_authority']==_memory() and 'planner_features' not in other['cells'][0]
     directory,_,authorization=bridge.paths(created['experiment_id'])
     dispatch=bridge.dispatch_budget(bridge.store(created['experiment_id']),created,directory,authorization)
     dev_experiment.validate_budget_file(dispatch,manifest,bridge.store(created['experiment_id']),created['manifest'])

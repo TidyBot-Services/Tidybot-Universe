@@ -28,7 +28,11 @@ def test_exact_seeded_context_and_missing_fields(tmp_path, monkeypatch):
     assert result['camera_names'] == list(cfg['camera_names'])
     assert result['task_prompt'] == cfg['task_prompt']
     assert result['scene_contract_ref'] == registered_contract_ref()
-    assert set(result) == set(memory.SCOPE) | {'seed', 'camera_names', 'task_prompt', 'scene_contract_ref'}
+    assert set(result) == set(memory.SCOPE) | {'seed', 'camera_names', 'task_prompt', 'scene_contract_ref',
+                                               'sdk_interface_sha256'}
+    identity = memory.sdk_identity(cfg)
+    assert result['sdk_interface_sha256'] == memory.sdk_interface_sha256(identity)
+    assert result['sdk_interface_sha256'] != result['sdk_sha256']
     for key, expected in [('seed', 'seed'), ('camera_names', 'camera_names'),
                           ('task_prompt', 'task_prompt'), ('scene_contract', 'scene_contract')]:
         bad = copy.deepcopy(cfg); bad.pop(key)

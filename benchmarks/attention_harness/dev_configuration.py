@@ -2,7 +2,7 @@
 import math
 from .dev_ledger import cost,RESOURCES,complete_resources,fill_optional
 from openarm365_dev_v2.diag_budget import task_limits
-FIELDS={'planner_features','scene_contract','reproducible_reset','goal_key','goal_limits','wall_limit','cell_budget','target_depth','target_valid_executions','max_versions','coverage','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request','public_failure_rule'}
+FIELDS={'planner_features','memory_authority','scene_contract','reproducible_reset','goal_key','goal_limits','wall_limit','cell_budget','target_depth','target_valid_executions','max_versions','coverage','attempt_wall_seconds','startup_cleanup_seconds','model_reserve_seconds','max_input_bytes_per_request','public_failure_rule'}
 PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_failure':True,'execution_statuses':['failed','timeout','timed_out'],'public_errors':True,'completion_signal':'none_registered','no_declared_completion_is_failure':True}
 # The public trace has no authored completion signal in the current SDK contract.
 # Successful process exit alone cannot declare task completion. No scoring is read.
@@ -29,6 +29,11 @@ def normalize_configuration(selection):
    features={**features,'human_wait_seconds':0,'background_seconds':0,'approval_rule':'none'}
   p['planner_features']=configuration(features)
   if selection.get('policies')!=[POLICY]:raise ValueError('planner features require only the full planner policy')
+ if 'memory_authority' in p:
+  # Shared Memory authority (plan 0d, second revision): every policy reads it.
+  from .dev_planner import memory_settings
+  memory_settings(p['memory_authority'])
+  if (p.get('planner_features') or {}).get('memory') is not None:raise ValueError('Memory authority is bound once, outside planner features')
  if 'human_proxy' in selection:
   raise ValueError('legacy human_proxy can be read but not configured for a new v3 experiment')
  from .eval_agent import normalize as normalize_eval,default_config as eval_default

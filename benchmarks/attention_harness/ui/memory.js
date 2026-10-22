@@ -1,9 +1,9 @@
 (function (global) {
   'use strict';
-  const TD={name:'dark',amber:'#ffd23f',amberHex:0xffd23f,onAmber:'#1a1400',flashLine:'#fff',ink:'#ffffff',mut:'#9fb0d0',mut2:'#7f93bd',mut3:'#6f84ad',card:'#101a36',cardLine:'#3a4f86',pill:'#0a1020',pillInk:'#ffffff',stroke:'#6f9bff',coreGlow2:'#5f8dff',stWait:'#3a4a74',stGo:'#6f93ff',pass:'#3ddc84',fail:'#ff5d5d',bk:['#dfe7ff','#7f9dff','#2c4aa8'],ec:{u:0x3ddc84,x:0xff5d5d,k:0x9db4ff},sc:{u:0x2fd37a,x:0xff4d4d,k:0x6f93ff},efc:{u:'#3ddc84',x:'#ff5d5d',k:'#9db4ff'},off:0x59606e,vc:[0x5fd4ff,0x7fa8ff,0x9a8cff,0xc58cff,0xff8cd0],ringOp:.45,shell:0x4f78d8,shellOp:.06,fill:0x14224a,fillOp:.18,core:0x2d63d9,coreGlow:0x5f8dff,additive:true,bg:0x0a1020,gc:['#3d8bf0','#25c48d','#e977a6','#8f7cf0','#6fbf3a','#9aa1ad']};
-  const TL={name:'light',amber:'#f2a100',amberHex:0xf2a100,onAmber:'#1a1400',flashLine:'#8a5a00',ink:'#242822',mut:'#5f6258',mut2:'#6f7066',mut3:'#8a877d',card:'#ffffff',cardLine:'#cfc9ba',pill:'#ffffff',pillInk:'#242822',stroke:'#7d8fbd',coreGlow2:'#6f94ee',stWait:'#b8bfd6',stGo:'#4f7be0',pass:'#1f9d57',fail:'#d94545',bk:['#e4ebff','#6c84c8','#2f4a9a'],ec:{u:0x1f9d57,x:0xd94545,k:0x6c84c8},sc:{u:0x1f9d57,x:0xd94545,k:0x5870c0},efc:{u:'#1f9d57',x:'#d94545',k:'#6c84c8'},off:0xaeb2ba,vc:[0x1c9fd6,0x3b6fe0,0x6a4fd8,0xa24fd8,0xd6489d],ringOp:.6,shell:0x6f86b8,shellOp:.2,fill:0xe4dfd2,fillOp:.55,core:0x2d63d9,coreGlow:0x6f94ee,additive:false,bg:0xf1eee6,gc:['#3d8bf0','#1f9d57','#c45b86','#795cc5','#688f2e','#8a8d91']};
+  const TD={name:'dark',amber:'#ffd23f',amberHex:0xffd23f,onAmber:'#1a1400',flashLine:'#fff',ink:'#ffffff',mut:'#9fb0d0',mut2:'#7f93bd',mut3:'#6f84ad',card:'#101a36',cardLine:'#3a4f86',pill:'#0a1020',pillInk:'#ffffff',stroke:'#6f9bff',coreGlow2:'#5f8dff',stWait:'#3a4a74',stGo:'#6f93ff',pass:'#3ddc84',fail:'#ff5d5d',bk:['#dfe7ff','#7f9dff','#2c4aa8'],ec:{u:0x3ddc84,x:0xff5d5d,k:0x9db4ff},sc:{u:0x2fd37a,x:0xff4d4d,k:0x6f93ff},efc:{u:'#3ddc84',x:'#ff5d5d',k:'#9db4ff',v:'#c79bff'},off:0x59606e,vc:[0x5fd4ff,0x7fa8ff,0x9a8cff,0xc58cff,0xff8cd0],ringOp:.45,shell:0x4f78d8,shellOp:.06,fill:0x14224a,fillOp:.18,core:0x2d63d9,coreGlow:0x5f8dff,additive:true,bg:0x0a1020,gc:['#3d8bf0','#25c48d','#e977a6','#8f7cf0','#6fbf3a','#9aa1ad']};
+  const TL={name:'light',amber:'#f2a100',amberHex:0xf2a100,onAmber:'#1a1400',flashLine:'#8a5a00',ink:'#242822',mut:'#5f6258',mut2:'#6f7066',mut3:'#8a877d',card:'#ffffff',cardLine:'#cfc9ba',pill:'#ffffff',pillInk:'#242822',stroke:'#7d8fbd',coreGlow2:'#6f94ee',stWait:'#b8bfd6',stGo:'#4f7be0',pass:'#1f9d57',fail:'#d94545',bk:['#e4ebff','#6c84c8','#2f4a9a'],ec:{u:0x1f9d57,x:0xd94545,k:0x6c84c8},sc:{u:0x1f9d57,x:0xd94545,k:0x5870c0},efc:{u:'#1f9d57',x:'#d94545',k:'#6c84c8',v:'#8a4fd0'},off:0xaeb2ba,vc:[0x1c9fd6,0x3b6fe0,0x6a4fd8,0xa24fd8,0xd6489d],ringOp:.6,shell:0x6f86b8,shellOp:.2,fill:0xe4dfd2,fillOp:.55,core:0x2d63d9,coreGlow:0x6f94ee,additive:false,bg:0xf1eee6,gc:['#3d8bf0','#1f9d57','#c45b86','#795cc5','#688f2e','#8a8d91']};
   let theme=TL;
-  const color=kind=>kind==='off'?`#${theme.off.toString(16).padStart(6,'0')}`:theme.efc[{helps:'u',not_helps:'x',not_tested:'k'}[kind]||'k'];
+  const color=kind=>kind==='off'?`#${theme.off.toString(16).padStart(6,'0')}`:theme.efc[{helps:'u',not_helps:'x',not_tested:'k',unvalidated:'v'}[kind]||'k'];
   const groupColor=i=>theme.gc[i%6];
   const versionColor=i=>`hsl(${Math.round((195+i*137.5)%360)}, ${theme===TD?84:70}%, ${theme===TD?68:44}%)`;
   const versionStroke=state=>state==='passed'?theme.pass:state==='failed'?theme.fail:state==='waiting'?theme.stWait:theme.stGo;
@@ -23,12 +23,16 @@
     const byId=new Map();
     const notes=rows.map((row,i)=>{
       const key=String(row.group||'General').trim().toLowerCase()||'general';
+      const unvalidated=row.status==='unvalidated'||row.unvalidated===true;
+      const uses=row.uses&&typeof row.uses==='object'?{grants:Math.max(0,Number(row.uses.grants)||0),failure_gone:Math.max(0,Number(row.uses.failure_gone)||0)}:null;
       const note={id:String(row.id||''),title:String(row.title||'Untitled note').slice(0,80),summary:row.summary?String(row.summary).slice(0,180):null,
         group:main.includes(key)?groupCounts.get(key).name:'Other',groupIndex:main.includes(key)?main.indexOf(key):5,
-        status:['active','off','expired','withdrawn'].includes(row.status)?row.status:'off',
-        effect:row.test_seeded?'not_tested':['helps','not_helps','not_tested'].includes(row.effect)?row.effect:'not_tested',
+        status:row.status==='unvalidated'?'active':['active','off','expired','withdrawn'].includes(row.status)?row.status:'off',
+        effect:unvalidated&&row.status!=='off'?'unvalidated':row.test_seeded?'not_tested':['helps','not_helps','not_tested'].includes(row.effect)?row.effect:'not_tested',
         lift_pt:row.test_seeded?null:Number.isFinite(row.lift_pt)?row.lift_pt:null,reads:Math.max(0,Number(row.reads)||0),
-        last_used_at:row.last_used_at||null,test_seeded:row.test_seeded===true,index:i,flash:0};
+        last_used_at:row.last_used_at||null,test_seeded:row.test_seeded===true,index:i,flash:0,
+        unvalidated,uses,expires_in_days:Number.isFinite(row.expires_in_days)?Math.max(0,Math.round(row.expires_in_days)):null,
+        reference:row.reference===true,scene_seed:Number.isInteger(row.scene_seed)?row.scene_seed:null};
       byId.set(note.id,note);return note;
     });
     notes.forEach(note=>{note.versions=versions.filter(v=>v.note_ids.includes(note.id)).map(v=>v.n);note.version=note.versions.at(-1)||0});
@@ -44,10 +48,14 @@
   function cardHtml(note,canOperate=false,demo=false){
     if(!note)return '';
     const effect=note.status==='active'?note.effect:'off';
-    const label={helps:'Helps',not_helps:'Does not help',not_tested:'Not tested',off:'Off'}[effect];
+    const label={helps:'Helps',not_helps:'Does not help',not_tested:'Not tested',unvalidated:'Unvalidated',off:'Off'}[effect];
+    const seed=note.scene_seed==null?'':` ${note.scene_seed}`;
+    const scope=note.reference?(note.unvalidated?`Unvalidated · from scene${seed}`:note.test_seeded?`Reference · test note from scene${seed}`:`Reference · validated on scene${seed}`):'';
+    const excluded=note.unvalidated||note.reference?'<span class="nr">Not counted in results</span>':'';
+    const uses=note.unvalidated?`Used ${note.uses?.grants??0} · failure gone ${note.uses?.failure_gone??0}${note.expires_in_days==null?'':` · Expires in ${note.expires_in_days} day${note.expires_in_days===1?'':'s'}`}`:'';
     const where=note.version?`Used by Dev ${note.versions.map(v=>'v'+v).join(', ')}`:'Not used in this run';
     const statusText={off:'Off',expired:'Expired',withdrawn:'Withdrawn'}[note.status]||where;
-    return `<button class="close" type="button" data-close aria-label="Close">×</button><h4>${escapeHtml(note.title)}</h4><p>${escapeHtml(note.summary||'No summary yet.')}</p><div class="chips"><span class="${effect==='helps'?'u':effect==='not_helps'?'x':'k'}">${label}${note.lift_pt!=null&&effect==='helps'?` (+${escapeHtml(note.lift_pt)} pt)`:''}</span><span>${escapeHtml(note.status==='active'?where:statusText)}</span><span>${escapeHtml(note.group)}</span>${note.test_seeded?'<span>Test note</span>':''}</div><div class="meta">Read ${note.reads} times · last used ${ago(note.last_used_at)}</div>${demo?'':`<details class="manage"><summary>Manage…</summary><form data-manage><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><small>Setting an expiry and withdrawing a note cannot be undone. Both ask for confirmation.</small>${canOperate?'':'<small>Actions are unavailable because the operator key is not configured on this server.</small>'}<div class="actions">${[['disable','Turn off'],['enable','Turn back on'],['expiry','Set expiry…'],['rollback','Withdraw…']].map(([a,t])=>`<button type="button" data-action="${a}" ${canOperate?'':'disabled'}>${t}</button>`).join('')}</div></form></details><details class="details"><summary>Details</summary><p>Note ID: ${escapeHtml(note.id)}</p></details>`}`;
+    return `<button class="close" type="button" data-close aria-label="Close">×</button><h4>${escapeHtml(note.title)}</h4><p>${escapeHtml(note.summary||'No summary yet.')}</p><div class="chips"><span class="${effect==='helps'?'u':effect==='not_helps'?'x':effect==='unvalidated'?'v':'k'}">${label}${note.lift_pt!=null&&effect==='helps'?` (+${escapeHtml(note.lift_pt)} pt)`:''}</span><span>${escapeHtml(note.status==='active'?where:statusText)}</span><span>${escapeHtml(note.group)}</span>${note.test_seeded?'<span>Test note</span>':''}${scope?`<span class="ref">${escapeHtml(scope)}</span>`:''}${excluded}</div>${uses?`<div class="meta" data-uses>${escapeHtml(uses)}</div>`:''}<div class="meta">Read ${note.reads} times · last used ${ago(note.last_used_at)}</div>${demo?'':`<details class="manage"><summary>Manage…</summary><form data-manage><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><small>Setting an expiry and withdrawing a note cannot be undone. Both ask for confirmation.</small>${canOperate?'':'<small>Actions are unavailable because the operator key is not configured on this server.</small>'}<div class="actions">${[['disable','Turn off'],['enable','Turn back on'],['expiry','Set expiry…'],['rollback','Withdraw…']].map(([a,t])=>`<button type="button" data-action="${a}" ${canOperate?'':'disabled'}>${t}</button>`).join('')}</div></form></details><details class="details"><summary>Details</summary><p>Note ID: ${escapeHtml(note.id)}</p></details>`}`;
   }
   function manageRequest(note,action,actor,reason,expiryRaw,confirmFn=global.confirm){
     if(!actor?.trim()||!reason?.trim())throw Error('Actor and reason are required');
@@ -90,10 +98,10 @@
   function select(note){selected=note;$('card').innerHTML=cardHtml(note,canOperate,!!demo);$('card').classList.add('on');$('hint').style.display='none';globe?.select(note);}
   function render(){if(!data)return;
     $('warning').textContent=warningText(data.warnings);
-    const notes=data.notes,active=notes.filter(n=>n.status==='active'),used=active.filter(n=>n.version>0),counts={helps:0,not_helps:0,not_tested:0,off:notes.length-active.length};
+    const notes=data.notes,active=notes.filter(n=>n.status==='active'),used=active.filter(n=>n.version>0),counts={helps:0,not_helps:0,not_tested:0,unvalidated:0,off:notes.length-active.length};
     active.forEach(n=>counts[n.effect]++);$('used-count').textContent=used.length;
-    Object.keys(counts).forEach(k=>{$('count-'+k.replace('_','-')).textContent=counts[k]});
-    const kinds=['helps','not_helps','not_tested'];kinds.forEach(k=>{$('bar-'+k.replace('_','-')).style.width=(used.length?used.filter(n=>n.effect===k).length/used.length*100:0)+'%'});
+    Object.keys(counts).forEach(k=>{const el=$('count-'+k.replace('_','-'));if(el)el.textContent=counts[k]});
+    const kinds=['helps','not_helps','not_tested','unvalidated'];kinds.forEach(k=>{$('bar-'+k.replace('_','-')).style.width=(used.length?used.filter(n=>n.effect===k).length/used.length*100:0)+'%'});
     $('filters').innerHTML=`<button class="vc ${version===0?'on':''}" data-version="0">All</button>`+data.versions.map(v=>`<button class="vc ${version===v.n?'on':''}" data-version="${v.n}">v${v.n}<b>${v.note_ids.length}</b></button>`).join('');
     $('empty').hidden=notes.length>0;renderFlow();globe?.update(data,version,usedOnly,flashUntil);
     if(selected){selected=data.byId.get(selected.id)||null;if(selected){$('card').innerHTML=cardHtml(selected,canOperate,!!demo)}else $('card').classList.remove('on')}
@@ -103,7 +111,7 @@
     const flow=$('flow'),now=Date.now(),visible=visibleNotes(data,version,usedOnly),selectedId=selected?.id;
     const cx=195,cy=350,groupY=i=>38+i*44,slot=420/Math.max(1,data.versions.length),cardH=Math.min(58,slot-4),versionY=i=>440+i*slot,notePos=new Map();
     const gradient=(id,a,b,c)=>`<radialGradient id="${id}" cx="35%" cy="30%" r="80%"><stop stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient>`;
-    let svg=`<defs>${gradient('ball-help','#c8ffe0',theme.pass,'#12703c')}${gradient('ball-harm','#ffd0d0',theme.fail,'#8a1f1f')}${gradient('ball-unknown',...theme.bk)}${gradient('ball-off','#a9b0c0','#59606e','#2a2f3a')}${gradient('ball-gold','#fff6c4',theme.amber,'#b57c00')}${gradient('ball-core','#a9c4ff','#2d63d9','#10306e')}<radialGradient id="core-glow"><stop stop-color="${theme.coreGlow2}" stop-opacity=".55"/><stop offset="1" stop-color="${theme.coreGlow2}" stop-opacity="0"/></radialGradient></defs>`;
+    let svg=`<defs>${gradient('ball-help','#c8ffe0',theme.pass,'#12703c')}${gradient('ball-harm','#ffd0d0',theme.fail,'#8a1f1f')}${gradient('ball-unknown',...theme.bk)}${gradient('ball-unvalidated','#efe2ff',theme.efc.v,'#4b2385')}${gradient('ball-off','#a9b0c0','#59606e','#2a2f3a')}${gradient('ball-gold','#fff6c4',theme.amber,'#b57c00')}${gradient('ball-core','#a9c4ff','#2d63d9','#10306e')}<radialGradient id="core-glow"><stop stop-color="${theme.coreGlow2}" stop-opacity=".55"/><stop offset="1" stop-color="${theme.coreGlow2}" stop-opacity="0"/></radialGradient></defs>`;
     svg+=`<g class="flow-head" fill="${theme.mut2}"><text x="16" y="23">1 · NOTES, BY GROUP</text><text x="${cx}" y="302" text-anchor="middle">2 · MEMORY SERVICE</text><text x="16" y="429">3 · DEV VERSIONS OF THIS RUN</text></g>`;
     let paths='',cards='',balls='';
     data.groups.forEach((g,gi)=>{const ns=visible.filter(n=>n.groupIndex===gi),y=groupY(gi),usedCount=ns.filter(n=>n.version).length,reads=ns.reduce((sum,n)=>sum+n.versions.length,0),hot=ns.some(n=>flashUntil.get(n.id)>now),width=2+Math.sqrt(reads)*1.8;
@@ -111,7 +119,7 @@
       cards+=`<rect x="16" y="${y}" width="358" height="38" rx="9" fill="${theme.card}" stroke="${groupColor(gi)}" stroke-opacity=".65"/><text x="27" y="${y+15}" class="flow-title" fill="${theme.ink}">${escapeHtml(g.name)}</text><text x="364" y="${y+15}" text-anchor="end" class="flow-small" fill="${theme.mut}">${ns.length} notes · ${usedCount} used</text>`;
       const space=ns.length>90?5:ns.length>50?6:ns.length>30?8:11,cols=Math.floor(330/space);
       ns.forEach((n,i)=>{const x=30+(i%cols)*space,yy=y+25+Math.floor(i/cols)*Math.min(space,6),hotNote=flashUntil.get(n.id)>now,isUsed=n.version>0,isOff=n.status!=='active',r=selectedId===n.id?6:isOff?2:isUsed?4:2.5;
-        notePos.set(n.id,{x,y:yy});const fill=hotNote?'ball-gold':isOff?'ball-off':n.effect==='helps'?'ball-help':n.effect==='not_helps'?'ball-harm':'ball-unknown';
+        notePos.set(n.id,{x,y:yy});const fill=hotNote?'ball-gold':isOff?'ball-off':n.effect==='helps'?'ball-help':n.effect==='not_helps'?'ball-harm':n.effect==='unvalidated'?'ball-unvalidated':'ball-unknown';
         balls+=`<circle data-note="${escapeHtml(n.id)}" cx="${x}" cy="${yy}" r="${r}" fill="url(#${fill})" opacity="${isOff?.65:isUsed||hotNote?1:.58}" class="flow-note"><title>${escapeHtml(n.title)}</title></circle>`;
       });
     });
@@ -135,7 +143,7 @@
     const CX=392,CY=226,RX=520,groupY=i=>34+i*66,slot=390/Math.max(1,data.versions.length),cardH=Math.min(68,slot-7),versionY=i=>34+i*slot,notePos=new Map();
     const pathVersion=i=>{const y=versionY(i)+cardH/2;return `M426,${CY} C492,${CY} 450,${y} ${RX},${y}`};
     const gradient=(id,a,b,c)=>`<radialGradient id="${id}" cx="35%" cy="30%" r="80%"><stop stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient>`;
-    let svg=`<defs>${gradient('ball-help','#c8ffe0',theme.pass,'#12703c')}${gradient('ball-harm','#ffd0d0',theme.fail,'#8a1f1f')}${gradient('ball-unknown',...theme.bk)}${gradient('ball-off','#a9b0c0','#59606e','#2a2f3a')}${gradient('ball-gold','#fff6c4',theme.amber,'#b57c00')}${gradient('ball-core','#a9c4ff','#2d63d9','#10306e')}<radialGradient id="core-glow"><stop stop-color="${theme.coreGlow2}" stop-opacity=".55"/><stop offset="1" stop-color="${theme.coreGlow2}" stop-opacity="0"/></radialGradient></defs>`;
+    let svg=`<defs>${gradient('ball-help','#c8ffe0',theme.pass,'#12703c')}${gradient('ball-harm','#ffd0d0',theme.fail,'#8a1f1f')}${gradient('ball-unknown',...theme.bk)}${gradient('ball-unvalidated','#efe2ff',theme.efc.v,'#4b2385')}${gradient('ball-off','#a9b0c0','#59606e','#2a2f3a')}${gradient('ball-gold','#fff6c4',theme.amber,'#b57c00')}${gradient('ball-core','#a9c4ff','#2d63d9','#10306e')}<radialGradient id="core-glow"><stop stop-color="${theme.coreGlow2}" stop-opacity=".55"/><stop offset="1" stop-color="${theme.coreGlow2}" stop-opacity="0"/></radialGradient></defs>`;
     svg+=`<g class="flow-head" fill="${theme.mut2}"><text x="10" y="18">1 · NOTES, BY GROUP</text><text x="${CX}" y="18" text-anchor="middle">2 · MEMORY SERVICE</text><text x="${RX}" y="18">3 · DEV VERSIONS OF THIS RUN</text></g>`;
     svg+=`<ellipse cx="${CX}" cy="${CY}" rx="88" ry="30" transform="rotate(-18 ${CX} ${CY})" fill="none" stroke="${theme.stroke}" stroke-opacity=".35"/><ellipse cx="${CX}" cy="${CY}" rx="66" ry="22" transform="rotate(24 ${CX} ${CY})" fill="none" stroke="${theme.stroke}" stroke-opacity=".35"/>`;
     let paths='',cards='',balls='';
@@ -145,7 +153,7 @@
       cards+=`<rect x="10" y="${y}" width="240" height="56" rx="12" fill="${theme.card}" stroke="${groupColor(gi)}" stroke-opacity=".65"/><text x="24" y="${y+19}" class="flow-title" fill="${theme.ink}">${escapeHtml(g.name)}</text><text x="238" y="${y+19}" text-anchor="end" class="flow-small" fill="${theme.mut}">${ns.length} notes · ${usedCount} used</text>`;
       const space=ns.length>180?5:ns.length>110?6:ns.length>70?7:ns.length>40?8:ns.length>25?10:ns.length>15?12:15,cols=Math.floor(214/space);
       ns.forEach((n,i)=>{const x=26+(i%cols)*space,yy=y+34+Math.floor(i/cols)*space,hotNote=flashUntil.get(n.id)>now,isUsed=n.version>0,isOff=n.status!=='active',r=selectedId===n.id?8:isOff?space*.26:isUsed?Math.min(6.5,space*.5):space*.33;
-        notePos.set(n.id,{x,y:yy});const fill=hotNote?'ball-gold':isOff?'ball-off':n.effect==='helps'?'ball-help':n.effect==='not_helps'?'ball-harm':'ball-unknown';
+        notePos.set(n.id,{x,y:yy});const fill=hotNote?'ball-gold':isOff?'ball-off':n.effect==='helps'?'ball-help':n.effect==='not_helps'?'ball-harm':n.effect==='unvalidated'?'ball-unvalidated':'ball-unknown';
         if(hotNote||selectedId===n.id)balls+=`<circle cx="${x}" cy="${yy}" r="${r+9}" fill="url(#core-glow)" class="flow-glow"/>`;
         balls+=`<circle data-note="${escapeHtml(n.id)}" cx="${x}" cy="${yy}" r="${r}" fill="url(#${fill})" opacity="${isOff?.65:isUsed||hotNote?1:.58}" class="flow-note"><title>${escapeHtml(n.title)}</title></circle>`;
       });
@@ -165,7 +173,7 @@
     svg+=paths+cards+balls;
     const active=data.notes.filter(n=>n.status==='active').length,coreHot=[...flashUntil.values()].some(t=>t>now);
     svg+=`<circle cx="${CX}" cy="${CY}" r="64" fill="url(#core-glow)"/><circle cx="${CX}" cy="${CY}" r="32" fill="url(#ball-core)" ${coreHot?`stroke="${theme.amber}" stroke-width="3"`:''}/><text x="${CX}" y="${CY+54}" text-anchor="middle" class="flow-title" fill="${theme.ink}">Memory service</text><text x="${CX}" y="${CY+69}" text-anchor="middle" class="flow-small" fill="${theme.mut2}">${active} notes on</text>`;
-    svg+=`<g class="flow-legend" fill="${theme.mut}"><circle cx="22" cy="440" r="4.5" fill="${theme.efc.u}"/><text x="32" y="444">Helps</text><circle cx="86" cy="440" r="4.5" fill="${theme.efc.x}"/><text x="96" y="444">Does not help</text><circle cx="196" cy="440" r="4.5" fill="${theme.efc.k}"/><text x="206" y="444">Not tested</text><text x="296" y="444" fill="${theme.mut3}">Big bright balls were used in this run · line width = how often</text></g>`;
+    svg+=`<g class="flow-legend" fill="${theme.mut}"><circle cx="22" cy="440" r="4.5" fill="${theme.efc.u}"/><text x="32" y="444">Helps</text><circle cx="86" cy="440" r="4.5" fill="${theme.efc.x}"/><text x="96" y="444">Does not help</text><circle cx="196" cy="440" r="4.5" fill="${theme.efc.k}"/><text x="206" y="444">Not tested</text><circle cx="278" cy="440" r="4.5" fill="${theme.efc.v}"/><text x="288" y="444">Unvalidated</text><text x="370" y="444" fill="${theme.mut3}">Big bright balls were used in this run · line width = how often</text></g>`;
     readFlights=readFlights.filter(f=>f.until>now);
     readFlights.forEach((f,i)=>{const n=data.byId.get(f.id),pos=notePos.get(f.id);if(!n||!pos)return;const j=f.version-1;if(j<0||j>=data.versions.length)return;const y=versionY(j)+cardH/2,path=`M${pos.x},${pos.y} C${pos.x+60},${pos.y} 292,${CY} 358,${CY} L426,${CY} C492,${CY} 450,${y} ${RX},${y}`;
       svg+=`<circle r="6" fill="url(#ball-gold)" stroke="${theme.ink}" stroke-width="1"><animateMotion dur="1.6s" begin="${i*.2}s" fill="freeze" path="${path}"/></circle>`;

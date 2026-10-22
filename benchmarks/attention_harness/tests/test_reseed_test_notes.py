@@ -243,3 +243,28 @@ def test_current_identity_is_deterministic_against_configured_checkout():
     second = command.current_context(root, namespace)
     assert first == second
     assert len(first['sdk_sha256']) == 64
+
+
+def test_interface_identity_survives_implementation_only_change():
+    gateway = FakeMemory()
+    interface = {**context(), 'sdk_interface_sha256': 'c' * 64}
+    assert command.reseed(gateway, interface, NOTES, out=lambda line: None) == 0
+    assert {row['memory_id'] for row in gateway.rows.values()} == {'t-cccccccc-' + n['key'] for n in NOTES}
+    lines = []
+    rebuilt = {**interface, 'sdk_sha256': 'b' * 64}
+    assert command.reseed(gateway, rebuilt, NOTES, check=True, out=lines.append) == 0
+    assert lines[-1] == 'Ready'
+    lines.clear()
+    changed = {**interface, 'sdk_interface_sha256': 'd' * 64}
+    assert command.reseed(gateway, changed, NOTES, check=True, out=lines.append) == 1
+    assert lines[-1] == 'Needs reseed: 5 old active, 5 missing'
+
+
+def test_legacy_notes_without_interface_identity_are_replaced_once():
+    gateway = FakeMemory()
+    assert command.reseed(gateway, context(), NOTES, out=lambda line: None) == 0
+    interface = {**context(), 'sdk_interface_sha256': 'c' * 64}
+    lines = []
+    assert command.reseed(gateway, interface, NOTES, check=True, out=lines.append) == 1
+    assert command.reseed(gateway, interface, NOTES, out=lines.append) == 0
+    assert command.reseed(gateway, {**interface, 'sdk_sha256': 'e' * 64}, NOTES, check=True, out=lines.append) == 0

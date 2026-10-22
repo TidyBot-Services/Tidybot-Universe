@@ -272,6 +272,7 @@ def create(store,artifact_root,selection):
                     budget=budget,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False)
                 if v3:payload['runtime']={k:manifest[k] for k in ['model_reserve_seconds','startup_cleanup_seconds','max_input_bytes_per_request','source_size_limit_bytes','public_failure_rule']}
                 if 'planner_features' in manifest:payload['planner_features']=manifest['planner_features']
+                if 'memory_authority' in manifest:payload['memory_authority']=manifest['memory_authority']
                 db.execute('INSERT INTO v2_cells VALUES (?,?,?)',(row['key'],exp_id,encoded(payload)))
             store.event(db,'experiment_created',{'experiment_id':exp_id,'manifest':mref})
     return snapshot(store,exp_id)

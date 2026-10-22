@@ -17,6 +17,29 @@ from .dev_loop import immutable, sha
 SCOPE = ('benchmark', 'suite', 'task_id', 'robot', 'controller', 'perception_mode',
          'scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id',
          'sdk_sha256', 'namespace')
+# Plan 0d (second revision): after the trusted same-scene notes, a Dev prompt
+# carries at most this many notes that are not trusted for its scene
+# (provisional notes and notes from other scenes of the same task).
+NOT_TRUSTED_HERE_CAP = 2
+LEVELS = ('same_scene', 'same_task')
+
+
+def cell_memory(cell):
+    """Memory settings for a cell: the shared authority, or legacy planner Memory."""
+    if cell.get('memory_authority'):
+        return cell['memory_authority']
+    return (cell.get('planner_features') or {}).get('memory')
+
+
+def layered(cell):
+    """Only cells bound through the shared authority use the layered rules;
+    frozen planner-Memory manifests keep the exact trusted-only behaviour."""
+    return bool(cell.get('memory_authority'))
+
+
+def sdk_interface_sha256(identity):
+    """Hash of the SDK contract plus the SDK text given to Dev."""
+    return hashlib.sha256(encoded({'contract': identity['contract'], 'prompt': identity['prompt']}).encode()).hexdigest()
 
 
 def context(config, namespace):
@@ -48,6 +71,8 @@ def context(config, namespace):
         raise ValueError('Memory context requires the current registered scene_contract in cell config')
     value.update(seed=config['seed'], camera_names=list(cameras), task_prompt=config['task_prompt'],
                  scene_contract_ref=contract)
+    # Matching identity; sdk_sha256 (implementation) stays for audit.
+    value['sdk_interface_sha256'] = sdk_interface_sha256(identity)
     public_screen(value)
     return value
 
@@ -73,29 +98,81 @@ def client_for(settings):
     return MemoryServiceClient(settings['base_url'], api_key=key, timeout=5)
 
 
+class Note:
+    """One retrieved note with its applicability level for this Dev context."""
+    def __init__(self, memory_id, version, guidance, status, applicability, *, created_at=0.0,
+                 match_level='same_scene', trusted_here=None, source_seed=None):
+        self.memory_id, self.version, self.guidance = memory_id, version, guidance
+        self.status, self.applicability, self.created_at = status, applicability or {}, created_at or 0.0
+        self.match_level = match_level
+        self.trusted_here = (status == 'trusted' and match_level == 'same_scene') if trusted_here is None else trusted_here
+        self.unvalidated = status == 'provisional'
+        self.source_seed = source_seed
+
+
+TASK_SCOPE = ('benchmark', 'suite', 'task_id', 'robot', 'controller', 'perception_mode', 'namespace')
+SCENE_SCOPE = ('scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id')
+
+
 class DevMemory:
-    def __init__(self, gateway, settings, config):
-        self.gateway, self.settings = gateway, settings
+    def __init__(self, gateway, settings, config, *, layered=False):
+        self.gateway, self.settings, self.layered = gateway, settings, layered
         self.context = context(config, settings['namespace'])
+        if not layered:
+            # Frozen planner-Memory manifests keep the exact pre-split context.
+            self.context.pop('sdk_interface_sha256', None)
         if gateway.store_id() != settings['store_id']:
             raise PermissionError('Memory Service authority identity mismatch')
 
     def eligible(self):
+        if self.layered:
+            return [n for n in self.notes() if n.trusted_here]
         return sorted([m for m in self.gateway.retrieve(self.context, now=time.time())
                 if getattr(m.status, 'value', m.status) == 'trusted'
                 and type(m.version) is int and m.version > 0
                 and all(m.applicability.get(k) == v for k, v in self.context.items() if k in SCOPE)],
                 key=lambda m: (m.memory_id, m.version))
 
+    def notes(self):
+        """Every note readable here (uncapped): trusted here first, then others newest first."""
+        now = time.time()
+        if callable(getattr(self.gateway, 'retrieve_entries', None)):
+            rows = [Note(r['memory_id'], r['version'], r['guidance'], r['status'], r.get('applicability'),
+                         created_at=r.get('created_at'), match_level=r.get('match_level', 'same_scene'),
+                         trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'))
+                    for r in self.gateway.retrieve_entries(self.context, now=now, match_levels=list(LEVELS))]
+        else:
+            rows = [Note(m.memory_id, m.version, m.guidance, getattr(m.status, 'value', m.status), m.applicability,
+                         created_at=getattr(m, 'created_at', 0.0), match_level=getattr(m, 'match_level', 'same_scene'),
+                         source_seed=(m.applicability or {}).get('seed'))
+                    for m in self.gateway.retrieve(self.context, now=now)]
+        result = []
+        for n in rows:
+            if (n.status not in {'trusted', 'provisional'} or type(n.version) is not int or n.version < 1
+                    or n.match_level not in LEVELS or n.trusted_here is not (n.status == 'trusted' and n.match_level == 'same_scene')
+                    or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE)
+                    or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):
+                continue
+            result.append(n)
+        here = sorted((n for n in result if n.trusted_here), key=lambda n: (n.memory_id, n.version))
+        rest = sorted((n for n in result if not n.trusted_here), key=lambda n: (-n.created_at, n.memory_id))
+        return here + rest
+
+    def selected(self):
+        if not self.layered:
+            return self.eligible()
+        notes = self.notes()
+        return [n for n in notes if n.trusted_here] + [n for n in notes if not n.trusted_here][:NOT_TRUSTED_HERE_CAP]
+
     def packet(self, *, development_id, source):
         entries = []
         # Retrieve records carry authority and guidance; the separate public
         # catalogue carries display text. Match it by exact id and version.
-        catalogue = (self.gateway.list_dev_v2_memories(status='trusted')
-                     if callable(getattr(self.gateway, 'list_dev_v2_memories', None)) else [])
+        lister = getattr(self.gateway, 'list_dev_v2_memories', None)
+        catalogue = ((lister() if self.layered else lister(status='trusted')) if callable(lister) else [])
         display = {(row['memory_id'], row['version']): row for row in catalogue
-                   if row.get('status') == 'trusted'}
-        for m in self.eligible():
+                   if row.get('status') in ({'trusted', 'provisional'} if self.layered else {'trusted'})}
+        for m in self.selected():
             grant = self.gateway.authorize_dev_use(memory_id=m.memory_id, memory_version=m.version, development_id=development_id,
                 context=self.context, source_policy_sha256=hashlib.sha256(source.encode()).hexdigest(), now=time.time())
             if (type(grant.get('memory_version')) is not int or grant.get('memory_id') != m.memory_id or grant.get('memory_version') != m.version
@@ -114,6 +191,15 @@ class DevMemory:
                          seeded_for_tests=grant.get('seeded_for_tests') is True,
                          excluded_from_results=grant.get('excluded_from_results') is True,
                          status=getattr(m.status,'value',m.status))
+            if self.layered:
+                if (grant.get('match_level', m.match_level) != m.match_level
+                        or grant.get('trusted_here', m.trusted_here) is not m.trusted_here
+                        or not m.trusted_here and grant.get('excluded_from_results') is not True
+                        or m.unvalidated and (grant.get('unvalidated') is not True or grant.get('trust_scope') != 'provisional')):
+                    raise PermissionError('Memory grant trust level/exclusion mismatch')
+                entry.update(match_level=m.match_level, trusted_here=m.trusted_here, unvalidated=m.unvalidated,
+                             trust_scope=grant.get('trust_scope'), source_seed=grant.get('source_seed', m.source_seed),
+                             excluded_from_results=grant.get('excluded_from_results') is True or not m.trusted_here)
             # Catalogue copy is descriptive only; the grant still binds guidance,
             # source, context and version exactly as before.
             for field in ('title', 'summary'):
@@ -122,30 +208,39 @@ class DevMemory:
                     entry[field] = value
             public_screen(entry)
             entries.append(entry)
-        return {**EMPTY_MEMORY, 'entries': entries, 'explicit_registry_authorization': True,
-                'seeded_for_tests': any(e['seeded_for_tests'] for e in entries),
-                'excluded_from_results': any(e['excluded_from_results'] for e in entries)}
+        packet = {**EMPTY_MEMORY, 'entries': entries, 'explicit_registry_authorization': True,
+                  'seeded_for_tests': any(e['seeded_for_tests'] for e in entries),
+                  'excluded_from_results': any(e['excluded_from_results'] for e in entries)}
+        if self.layered:
+            packet.update(layered=True, not_trusted_here_cap=NOT_TRUSTED_HERE_CAP,
+                          unvalidated=any(e['unvalidated'] for e in entries),
+                          not_trusted_here=any(not e['trusted_here'] for e in entries))
+        return packet
 
     def recheck(self, packet):
-        eligible = {m.memory_id: m for m in self.eligible()}
+        if bool(packet.get('layered')) != self.layered:
+            raise PermissionError('Memory packet trust rules changed')
+        eligible = {m.memory_id: m for m in (self.notes() if self.layered else self.eligible())}
         for entry in packet['entries']:
             if entry.get('authority')!=self.settings['store_id'] or entry.get('context')!=self.context:raise PermissionError('Memory packet authority/context changed')
             m = eligible.get(entry['memory_id'])
             if m is None or m.version != entry['version'] or m.guidance != entry['content']:
                 raise PermissionError('Memory disabled/expired/rolled back/version changed before exposure')
+            if self.layered and (m.match_level != entry.get('match_level') or m.trusted_here is not entry.get('trusted_here')):
+                raise PermissionError('Memory trust level changed before exposure')
             grant = self.gateway.get_dev_use(entry['grant_id'])
             if any(grant.get(k) != v for k, v in dict(memory_id=entry['memory_id'], memory_version=entry['version'],
                     context=self.context, guidance=entry['content'], development_id=entry['development_id'],
                     source_policy_sha256=entry['source_policy_sha256']).items()):
                 raise PermissionError('Memory exposure grant no longer matches')
-            if (entry.get('seeded_for_tests') is True)!=(grant.get('seeded_for_tests') is True) or (entry.get('excluded_from_results') is True)!=(grant.get('excluded_from_results') is True):
+            if (entry.get('seeded_for_tests') is True)!=(grant.get('seeded_for_tests') is True) or (entry.get('excluded_from_results') is True)!=(grant.get('excluded_from_results') is True or self.layered and entry.get('trusted_here') is False):
                 raise PermissionError('Memory exclusion flags changed')
 
 
-def _load_memory(store, cell, version, previous, config, settings, directory):
+def _load_memory(store, cell, version, previous, config, settings, directory, layered=False):
     if not settings:
         return EMPTY_MEMORY, None
-    service = DevMemory(client_for(settings), settings, config)
+    service = DevMemory(client_for(settings), settings, config, layered=layered)
     path = Path(directory) / 'memory-input.json'
     if path.exists():
         packet = json.loads(path.read_bytes())
@@ -155,23 +250,34 @@ def _load_memory(store, cell, version, previous, config, settings, directory):
     else:
         packet = service.packet(development_id=f'{cell}:v{version}', source=previous)
         ref = immutable(path, packet)
+        trust = ('match_level', 'trusted_here', 'unvalidated', 'trust_scope', 'source_seed') if layered else ()
         with store.tx() as db:
             store.event(db, 'planner_memory_retrieved', dict(cell=cell, version=version,
                         authority=settings['store_id'], namespace=settings['namespace'], packet=ref,
                         seeded_for_tests=packet['seeded_for_tests'], excluded_from_results=packet['excluded_from_results'],
+                        **({'not_trusted_here': packet['not_trusted_here'], 'unvalidated': packet['unvalidated']} if layered else {}),
                         versions=[dict(memory_id=e['memory_id'], version=e['version'], grant_id=e['grant_id'],
-                                       seeded_for_tests=e['seeded_for_tests'], excluded_from_results=e['excluded_from_results']) for e in packet['entries']]))
+                                       seeded_for_tests=e['seeded_for_tests'], excluded_from_results=e['excluded_from_results'],
+                                       **{k: e.get(k) for k in trust}) for e in packet['entries']]))
+            untrusted = [e for e in packet['entries'] if layered and e.get('trusted_here') is False]
+            if untrusted:
+                # Run flag: this run read a note not trusted for its own scene;
+                # summaries exclude it and the UI tags it "Used unvalidated memory".
+                store.event(db, 'planner_memory_unvalidated_used', dict(cell=cell, version=version,
+                            memory_ids=[e['memory_id'] for e in untrusted],
+                            match_levels=[e['match_level'] for e in untrusted],
+                            excluded_from_results=True))
     return packet, service
 
 
-def load_memory(store, cell, version, previous, config, settings, directory):
+def load_memory(store, cell, version, previous, config, settings, directory, layered=False):
     if not settings:return EMPTY_MEMORY, None
     store.start_cell_clock(cell)
     started=time.time();status='failed';error=None
     with store.tx() as db:
         store.event(db,'planner_memory_query_started',dict(cell=cell,version=version,started_at=started,owner=__import__('benchmarks.attention_harness.dev_loop',fromlist=['process_identity']).process_identity()))
     try:
-        result=_load_memory(store,cell,version,previous,config,settings,directory)
+        result=_load_memory(store,cell,version,previous,config,settings,directory,layered)
         status='completed';return result
     except BaseException as exc:
         error=type(exc).__name__;raise
@@ -185,13 +291,22 @@ def load_memory(store, cell, version, previous, config, settings, directory):
 
 def journal_result(store, cell, version, packet, source_ref, public_feedback_ref, directory):
     if not packet.get('entries'):return
-    if packet.get('excluded_from_results') is True or any(e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True for e in packet['entries']):
+    from .dev_v2_memory_import import queue
+    provisional=[e for e in packet['entries'] if e.get('trust_scope')=='provisional']
+    if provisional:
+        # Observational use records only; the importer sends the raw public
+        # feedback and the Service computes the outcome itself.
+        queue(store,cell,version,directory,'provisional_outcome',dict(
+            grants=[dict(grant_id=e['grant_id'],memory_id=e['memory_id'],development_id=e['development_id']) for e in provisional],
+            public_feedback=public_feedback_ref))
+    if packet.get('excluded_from_results') is True or any(e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True or e.get('trusted_here') is False for e in packet['entries']):
+        layered_skip=any(e.get('trusted_here') is False for e in packet['entries'])
         with store.tx() as db:
             store.event(db,'planner_memory_result_skipped',dict(cell=cell,version=version,
-                reason='test_seeded_excluded_from_results',grants=[e['grant_id'] for e in packet['entries']]))
+                reason='not_trusted_here_excluded_from_results' if layered_skip else 'test_seeded_excluded_from_results',
+                grants=[e['grant_id'] for e in packet['entries']]))
         return None
     # This is an offline execution import queue, never a self-reported verdict.
-    from .dev_v2_memory_import import queue
     return queue(store,cell,version,directory,'result',dict(
         grants=[e['grant_id'] for e in packet['entries']],result_source=source_ref,
         public_feedback=public_feedback_ref))

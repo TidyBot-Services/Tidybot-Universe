@@ -144,8 +144,17 @@ class MemoryHTTP:
             raise RuntimeError(f'Memory service unavailable for {method} {path}') from None
 
 
+def identity(context: dict) -> tuple[str, str]:
+    """Notes match on the SDK interface identity when the context has one; an
+    implementation-only SDK change then needs no reseed. Notes seeded before the
+    interface identity existed count as old once and are replaced."""
+    if context.get('sdk_interface_sha256'):
+        return 'sdk_interface_sha256', context['sdk_interface_sha256']
+    return 'sdk_sha256', context['sdk_sha256']
+
+
 def plan(rows: list[dict], context: dict, notes: list[dict]) -> tuple[list[str], list[dict], list[str]]:
-    digest = context['sdk_sha256']
+    field, digest = identity(context)
     active = {'trusted', 'active'}
     old = []
     by_id = {row.get('memory_id'): row for row in rows}
@@ -154,12 +163,12 @@ def plan(rows: list[dict], context: dict, notes: list[dict]) -> tuple[list[str],
         scope = row.get('applicability_summary') or row.get('applicability') or {}
         if (row.get('seeded_for_tests') is True
                 and row.get('status') in active
-                and scope.get('sdk_sha256') == digest
+                and scope.get(field) == digest
                 and isinstance(row.get('title'), str)):
             current_titles.add(row['title'].strip().casefold())
         if (row.get('seeded_for_tests') is True
                 and scope.get('namespace') == context['namespace']
-                and scope.get('sdk_sha256') != digest
+                and scope.get(field) != digest
                 and row.get('status') in active):
             old.append(row['memory_id'])
     missing = []
@@ -170,7 +179,8 @@ def plan(rows: list[dict], context: dict, notes: list[dict]) -> tuple[list[str],
         if row is not None:
             scope = row.get('applicability_summary') or row.get('applicability') or {}
             if (row.get('seeded_for_tests') is not True or row.get('status') not in active
-                    or any(scope.get(key) != value for key, value in context.items())):
+                    or any(scope.get(key) != value for key, value in context.items()
+                           if not (key == 'sdk_sha256' and field == 'sdk_interface_sha256'))):
                 raise ValueError(f'Current note ID is occupied or inactive: {note_id}')
         if row is not None or note['title'].strip().casefold() in current_titles:
             kept.append(note['title'])
@@ -184,7 +194,7 @@ def plan(rows: list[dict], context: dict, notes: list[dict]) -> tuple[list[str],
 def reseed(gateway, context: dict, notes: list[dict], *, check=False, dry_run=False, out=print) -> int:
     rows = gateway.request('GET', '/dev-v2/memories')['memories']
     old, missing, kept = plan(rows, context, notes)
-    digest = context['sdk_sha256']
+    digest = identity(context)[1]
     suffix = ' (changed since last seed)' if old else ''
     out(f'Current SDK identity {digest[:8]}…{suffix}')
     for title in kept:

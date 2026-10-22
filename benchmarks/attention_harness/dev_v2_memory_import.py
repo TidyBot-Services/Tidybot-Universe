@@ -27,7 +27,8 @@ def queue(store, cell, version, directory, kind, refs):
                     e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True
                     for e in packet.get('entries',[])):
                 raise DevConflict('test-seeded Memory grant excluded from result queue')
-    ref=immutable(Path(directory)/('memory-result.json' if kind=='result' else 'memory-candidate-proposal.json'),dict(
+    names={'result':'memory-result.json','provisional_outcome':'memory-provisional-outcome.json'}
+    ref=immutable(Path(directory)/names.get(kind,'memory-candidate-proposal.json'),dict(
         schema_version='attentionbench.dev-v2-offline-queue.v1',cell=cell,version=version,
         kind=kind,ledger_path=str(store.path.resolve()),evidence=refs,
         status='pending_offline_import',authority_candidate=False))

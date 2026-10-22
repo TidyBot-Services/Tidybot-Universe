@@ -39,12 +39,36 @@ def bind_daily_codex(selection):
     return converted
 
 def bind_daily_memory(selection, memory, previous_selection=None):
-    """New full-planner experiments use the existing v3 contract and budget gates."""
-    from .dev_planner import POLICY, configuration as planner_configuration
+    """Bind the server's Memory authority for every policy (plan 0d, second revision).
+
+    New experiments get ``memory_authority``; Memory is no longer a planner
+    feature, so approval/wait/background stay whatever the selection asked for.
+    A selection that already exists keeps exactly the binding it was created with.
+    """
+    from .dev_planner import configuration as planner_configuration
     if previous_selection is not None and Path(previous_selection).is_file():
         old=json.loads(Path(previous_selection).read_bytes())
-        if not old.get('planner_features',{}).get('memory'):
+        if old.get('planner_features',{}).get('memory'):
+            return _bind_planner_memory(selection,memory)
+        if 'memory_authority' not in old:
             return selection
+    if (selection.get('planner_features',{}).get('memory') or selection.get('memory_authority')) and memory is None:
+        raise ValueError('daily Memory authority is not configured')
+    if memory is None or selection.get('mode','experiment')!='experiment':
+        return selection
+    features=selection.get('planner_features')
+    if selection.get('memory_authority') not in (None,memory) or (features and features.get('memory') not in (None,memory)):
+        raise ValueError('daily Memory authority differs from server configuration')
+    bound={**selection,'memory_authority':memory}
+    if features is not None:
+        features={k:v for k,v in features.items() if k!='memory'}
+        if features:bound['planner_features']=planner_configuration(features)
+        else:bound.pop('planner_features')
+    return _modern(bound)
+
+def _bind_planner_memory(selection, memory):
+    """Pre-split behaviour for daily selections created with planner Memory."""
+    from .dev_planner import POLICY, configuration as planner_configuration
     if selection.get('planner_features',{}).get('memory') and memory is None:
         raise ValueError('daily Memory authority is not configured')
     if memory is None or selection.get('mode','experiment')!='experiment' or selection.get('policies')!=[POLICY]:
@@ -57,9 +81,12 @@ def bind_daily_memory(selection, memory, previous_selection=None):
     else:
         features={**features,'memory':memory}
     planner_configuration(features)
+    return _modern({**selection,'planner_features':features})
+
+def _modern(selection):
     legacy=selection.get('configuration')
     if legacy is None:
-        return {**selection,'planner_features':features}
+        return selection
     from openarm365_dev_v2.scene_contract import registered_contract_ref
     converted={k:v for k,v in selection.items() if k!='configuration'}
     # The daily UI's finite legacy limits stay byte-for-byte as supplied. Its
@@ -69,7 +96,7 @@ def bind_daily_memory(selection, memory, previous_selection=None):
         wall_limit=legacy['wall_seconds'],cell_budget=legacy['cell_budget'],
         target_depth=legacy['max_iterations'],target_valid_executions=legacy['max_iterations'],
         max_versions=legacy['max_iterations'],coverage='budget_limited',
-        reproducible_reset=True,scene_contract=registered_contract_ref(),planner_features=features)
+        reproducible_reset=True,scene_contract=registered_contract_ref())
     converted.pop('human_wait_seconds',None)
     return converted
 
@@ -331,5 +358,10 @@ def main():
                 experiments.cancel(s,a.worker);return
     threading.Thread(target=deadline,daemon=True).start()
     try:experiments.run(s,a.worker,max_cells=len(experiments.snapshot(s,a.worker)['cells']),budget_file=a.budget)
-    finally:done.set()
+    finally:
+        done.set()
+        # Opt-in (ATTENTION_MEMORY_AUTO_IMPORT_KEYS): detached importer for this
+        # run's provisional proposals; the run never waits for or fails on it.
+        from .memory_auto_import import launch_after_run
+        launch_after_run(a.root/a.worker)
 if __name__=='__main__':main()

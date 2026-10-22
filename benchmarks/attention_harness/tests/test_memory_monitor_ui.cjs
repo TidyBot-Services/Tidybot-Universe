@@ -77,3 +77,31 @@ test('monitor and main page load the same notices bell',()=>{
  assert.match(live,/AttentionNotices\.createNotices/);
  assert.match(css,/\.ab-notices-button\[data-level="error"\]/);
 });
+test('provisional notes show Unvalidated with their own colour, use counts and expiry',()=>{
+ const data=monitor.adapt(payload([{id:'p',title:'Avoid PlanningRejected',status:'unvalidated',unvalidated:true,uses:{grants:4,outcomes:4,failure_gone:3},expires_in_days:12,scene_seed:102},
+  {id:'r',title:'Other scene',status:'active',effect:'helps',reference:true,scene_seed:101},
+  {id:'q',title:'Other scene draft',status:'unvalidated',unvalidated:true,reference:true,scene_seed:103,uses:{grants:1,failure_gone:0},expires_in_days:1}]));
+ const [p,r,q]=data.notes;
+ assert.equal(p.status,'active');assert.equal(p.effect,'unvalidated');
+ const html=monitor.cardHtml(p,true);
+ assert.match(html,/class="v">Unvalidated</);assert.match(html,/Not counted in results/);
+ assert.match(html,/Used 4 · failure gone 3 · Expires in 12 days/);assert.doesNotMatch(html,/Test note/);
+ assert.match(monitor.cardHtml(r,true),/Reference · validated on scene 101/);
+ assert.match(monitor.cardHtml(r,true),/Not counted in results/);
+ const qh=monitor.cardHtml(q,true);assert.match(qh,/Unvalidated · from scene 103/);assert.match(qh,/Expires in 1 day</);
+ assert.match(css,/#monitor\{--cv:#c79bff/);
+ const t={...data.notes[1],test_seeded:true};assert.match(monitor.cardHtml(t,true),/Reference · test note from scene 101/);assert.match(css,/#monitor\.light\{--cv:#8a4fd0/);assert.match(css,/#monitor \.chips span\.v\{/);
+ assert.match(page,/id="count-unvalidated"/);assert.match(page,/id="bar-unvalidated"/);
+});
+test('main page tags a run that read unvalidated memory, with the exclusion tooltip',()=>{
+ const start=live.indexOf('  function unvalidatedMemoryTag(snapshot) {'),end=live.indexOf('  function operatorOverview(snapshot) {',start);
+ const ctx=vm.createContext({});vm.runInContext(live.slice(start,end),ctx);
+ assert.equal(ctx.unvalidatedMemoryTag({memory:{dev_v2:{unvalidated_used:false}}}),'');
+ assert.equal(ctx.unvalidatedMemoryTag({}),'');
+ const html=ctx.unvalidatedMemoryTag({memory:{dev_v2:{unvalidated_used:true}}});
+ assert.match(html,/>Used unvalidated memory</);
+ assert.match(html,/title="This run read a note that has not been validated\. Excluded from results\."/);
+ assert.match(live,/\$\{operatorOutcome\(snapshot\)\}\$\{unvalidatedMemoryTag\(snapshot\)\}/);
+ const index=fs.readFileSync(path.join(root,'ui/index.html'),'utf8');
+ assert.match(index,/\.op-memory-flag\{/);assert.match(index,/\[data-theme="dark"\] \.op-memory-flag\{/);
+});

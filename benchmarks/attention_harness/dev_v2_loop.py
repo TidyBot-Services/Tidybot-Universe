@@ -50,7 +50,9 @@ def memory_provenance(packet):
     return {'seeded_for_tests':packet.get('seeded_for_tests') is True or any(e.get('seeded_for_tests') is True for e in entries),
             'excluded_from_results':packet.get('excluded_from_results') is True or any(e.get('excluded_from_results') is True for e in entries),
             'entries':[{k:e.get(k) for k in ('memory_id','version','status','seeded_for_tests','excluded_from_results')}
-                       for e in entries]}
+                       |{k:e[k] for k in ('match_level','trusted_here','unvalidated') if k in e}
+                       for e in entries],
+            **({'not_trusted_here':any(e.get('trusted_here') is False for e in entries)} if any('trusted_here' in e for e in entries) else {})}
 
 def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     # Only public packet/source fields are accepted before any reservation.
@@ -305,18 +307,32 @@ def prompt_memory_view(value):
     return result
 
 def compact_memory(entries):
-    """Keep the current id/version order, without exposing grant metadata."""
-    ordered=sorted(entries,key=lambda e:(e.get('memory_id',''),e.get('version',0)))
+    """Keep the current id/version order, without exposing grant metadata.
+
+    Layered packets (shared Memory) are already ordered: trusted notes for this
+    scene, then at most two that are not trusted here; those carry a label."""
+    shared=any('trusted_here' in e for e in entries)
+    ordered=list(entries) if shared else sorted(entries,key=lambda e:(e.get('memory_id',''),e.get('version',0)))
     notes=[];cut=0
     for entry in ordered[:8]:
         content=entry['content']
         if len(content)>1200:
             content=content[:1200];cut+=1
         note={k:entry[k] for k in ('title','summary') if isinstance(entry.get(k),str) and entry[k]}
+        label=memory_label(entry)
+        if label:note['title']=label+(note.get('title') or 'note')
         note['content']=content
         notes.append(note)
     truncated={'omitted_notes':max(0,len(ordered)-8),'cut_notes':cut}
     return notes,truncated if any(truncated.values()) else None
+
+def memory_label(entry):
+    """Prompt label for a note that is not trusted for this scene."""
+    if entry.get('trusted_here') is not False:return ''
+    if entry.get('match_level')=='same_task':
+        seed=entry.get('source_seed')
+        return ('Unvalidated reference' if entry.get('unvalidated') else 'Reference')+(f' (scene {seed}): ' if seed is not None else ': ')
+    return 'Unvalidated: '
 
 def hp_result(text,record):
     if not isinstance(text,str) or not text.strip():raise ValueError('empty HumanProxy hint')
@@ -330,15 +346,22 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     features=cell.get('planner_features') or {}
     if proxy and features and (features.get('human_wait_seconds',0)>0 or features.get('background_seconds',0)>0 or features.get('approval_rule','generated_motion_policy')!='none'):
         raise DevConflict('Advisor is incompatible with planner waiting preparation and approval')
+    from .dev_planner_memory import cell_memory,layered
+    shared=layered(cell)
     memory=m['memory']
-    if features.get('memory'):
+    if cell_memory(cell):
         from .dev_planner_memory import load_memory
-        memory,_=load_memory(store,key,version,previous,config,features['memory'],directory)
+        memory,_=load_memory(store,key,version,previous,config,cell_memory(cell),directory,shared)
+    # Shared Memory (plan 0d, second revision) is delivered to every policy's Dev
+    # prompt the same way and never changes a policy's help decision; only the
+    # full planner still sees it, as a logged retrieve_memory decision.
+    decision_memory=memory if not shared or policy=='full_trace_aware_attention_planner' else m['memory']
+    deliver=bool(cell.get('planner_features')) or shared
     if decision_path.exists():decision=json.loads(decision_path.read_bytes())
     else:
         eval_review=feedback.get('eval_review')
         decision=decide(policy,params,version,feedback,failures,prior,help_remaining=int(remaining),
-            demo_available=remaining>0,memory=memory,trace_visible=m['trace_visible'],eval_review=eval_review,
+            demo_available=remaining>0,memory=decision_memory,trace_visible=m['trace_visible'],eval_review=eval_review,
             eval_available=eval_review is not None,diagnostic_fallback=m['selection']['mode'] in ('interactive','diagnostic'))
     ref=immutable(directory/'decision.json',decision);help_record=None
     action=decision['action']
@@ -348,7 +371,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         job=next((j for j in cell['jobs'] if j['version']==version and j['kind'] in {'demo','advisor','human','cache'}),None)
         if job and job['state']=='settled':
             packet={k:v for k,v in decision.items() if k!='context'};packet['help']={k:saved[k] for k in ['provider','content','rejected'] if k in saved}
-            if cell.get('planner_features'):packet['memory']=memory['entries']
+            if deliver:packet['memory']=memory['entries']
             public_screen(packet)
             return packet,ref,help_record
     if action=='use_demo':
@@ -366,7 +389,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     elif action=='request':
         if decision['request_type']!='hint':raise DevConflict('only hint requests are supported')
         provider=AdvisorProvider();msgs=provider.messages(cell['task_id'],previous,feedback,m['trace_visible'])
-        if cell.get('planner_features'):
+        if cell.get('planner_features') and not shared:
             advisor_packet=json.loads(msgs[-1]['content'])
             advisor_packet['memory'],truncated=compact_memory(memory['entries'])
             if truncated:advisor_packet['memory_truncated']=truncated
@@ -378,6 +401,9 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
             # Known paid response was rejected; no injection persisted in visible help.
             hint={'provider':'advisor','content':'','rejected':True,'reason':'public help boundary rejected response'}
         help_record=immutable(directory/'help.json',{**hint,'request':request,'response':response,'usage':usage})
+    elif action=='retrieve_memory' and shared:
+        # Logged decision only: the notes already reach the Dev prompt, no cost.
+        pass
     elif action=='retrieve_memory':
         help_record=immutable(directory/'help.json',{'provider':'cache','content':decision['memory']})
         price=m.get('help_pricing',HELP_PRICING)['cache']
@@ -387,7 +413,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     packet={k:v for k,v in decision.items() if k!='context'}
     if help_record:
         saved=json.loads(checked(help_record).read_bytes());packet['help']={k:saved[k] for k in ['provider','content','rejected'] if k in saved}
-    if cell.get('planner_features'):packet['memory']=memory['entries']
+    if deliver:packet['memory']=memory['entries']
     public_screen(packet)
     return packet,ref,help_record
 
@@ -401,10 +427,11 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         if exp['selection']['mode']!='diagnostic':raise DevConflict('scaled attempt requires diagnostic experiment')
     reservation={'executions':1,'sdk_calls':config['sdk_call_limit'],'control_steps':config['horizon'],'execution_seconds':seconds+cleanup}
     memory_path=Path(directory)/'memory-input.json'
-    if cell.get('planner_features',{}).get('memory') and memory_path.is_file():
+    from .dev_planner_memory import cell_memory,layered
+    settings=cell_memory(cell)
+    if settings and memory_path.is_file():
         from .dev_planner_memory import DevMemory,client_for
-        settings=cell['planner_features']['memory']
-        DevMemory(client_for(settings),settings,config).recheck(json.loads(memory_path.read_bytes()))
+        DevMemory(client_for(settings),settings,config,layered=layered(cell)).recheck(json.loads(memory_path.read_bytes()))
     approval_id=None
     if cell.get('planner_features') and cell['planner_features'].get('approval_rule')!='none':
         from .dev_planner import wait_for_approval
@@ -413,8 +440,8 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         seconds=min(seconds,store.goal_for_cell(key)['wall_remaining']-cleanup)
         if seconds<=20:raise DevBudgetExhausted('insufficient execution time after human wait')
         reservation['execution_seconds']=seconds+cleanup
-    if cell.get('planner_features',{}).get('memory') and memory_path.is_file():
-        DevMemory(client_for(settings),settings,config).recheck(json.loads(memory_path.read_bytes()))
+    if settings and memory_path.is_file():
+        DevMemory(client_for(settings),settings,config,layered=layered(cell)).recheck(json.loads(memory_path.read_bytes()))
     def observe(pid):
         identity=process_identity(pid);proc=Path('/proc')/str(pid)
         canary={'identity':identity,'cmdline':(proc/'cmdline').read_bytes().replace(b'\x00',b' ').decode(),'cwd':str((proc/'cwd').resolve()),'exe':str((proc/'exe').resolve())}
@@ -458,9 +485,14 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         actual={'executions':1,'sdk_calls':receipt['sdk_call_budget']['dispatched'],'control_steps':receipt['control_steps'],'execution_seconds':receipt['elapsed_seconds']}
         store.settle(job['job_id'],actual,{**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),**({'dev_tier_budget':result['dev_tier_budget']} if result.get('dev_tier_budget') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
         memory_path=directory/'memory-input.json'
-        if cell.get('planner_features') and memory_path.exists():
+        if (cell.get('planner_features') or layered(cell)) and memory_path.exists():
             from .dev_planner_memory import journal_result
             journal_result(store,key,version,json.loads(memory_path.read_bytes()),record['source'],feedback,directory)
+        if result['status']!='condition_invalid':
+            # Any asking policy: an effective AdvisorProxy answer becomes a
+            # provisional proposal for the offline importer. Never fails the run.
+            from .memory_provisional import stage_safely
+            stage_safely(store,key,version,directory)
         if result['status']=='condition_invalid':store.update_cell(key,state='condition_invalid',reason='scene_contract_mismatch',scene_condition=result.get('scene_condition'))
     except BaseException as exc:
         current=job_for(store.cell(key),version,'execute')
@@ -773,9 +805,10 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 messages,projection=project_messages(messages,cell['runtime']['max_input_bytes_per_request'])
                 if projection is not None:
                     projection_ref=immutable(directory/'dev-public-feedback-projection.json',projection)
-            if cell.get('planner_features') and cell['planner_features']['memory'] and not (job_for(store.cell(key),version,'model') or {}).get('actual'):
+            from .dev_planner_memory import cell_memory,layered
+            if cell_memory(cell) and not (job_for(store.cell(key),version,'model') or {}).get('actual'):
                 from .dev_planner_memory import load_memory
-                load_memory(store,key,version,previous,config,cell['planner_features']['memory'],directory)
+                load_memory(store,key,version,previous,config,cell_memory(cell),directory,layered(cell))
             text,request,response,usage=provider_call(store,key,version,'model',messages,owner,directory,client)
             text=text.strip()
             if text.startswith('```'):text=re.sub(r'^```(?:json)?\s*|\s*```$','',text)

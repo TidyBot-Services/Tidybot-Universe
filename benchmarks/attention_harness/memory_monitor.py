@@ -8,6 +8,7 @@ shown as not tested, with no inferred lift.
 from __future__ import annotations
 
 import json
+import math
 import re
 import sqlite3
 import sys
@@ -54,7 +55,7 @@ def effect(row):
 
 
 def status(row):
-    return {'trusted': 'active', 'active': 'active', 'disabled': 'off',
+    return {'trusted': 'active', 'active': 'active', 'provisional': 'unvalidated', 'disabled': 'off',
             'expired': 'expired', 'rolled_back': 'withdrawn', 'withdrawn': 'withdrawn'}.get(row.get('status'), 'off')
 
 
@@ -66,6 +67,48 @@ def _packet_ids(detail):
     packet = json.loads(path.read_bytes())
     return [short(row.get('memory_id'), 120) for row in packet.get('entries', [])[:LIMIT]
             if isinstance(row, dict) and row.get('memory_id')]
+
+
+def _count(value):
+    return value if type(value) is int and value >= 0 else 0
+
+
+def _uses(row):
+    uses = row.get('uses')
+    if not isinstance(uses, dict):
+        return None
+    return {key: _count(uses.get(key)) for key in ('grants', 'outcomes', 'failure_gone')}
+
+
+def _expires_in_days(row, now):
+    expires = row.get('expires_at')
+    if not isinstance(expires, (int, float)) or isinstance(expires, bool):
+        return None
+    return max(0, math.ceil((expires - now) / 86400))
+
+
+def _note_seed(row):
+    seed = row.get('source_seed', (row.get('applicability_summary') or {}).get('seed'))
+    return seed if type(seed) is int else None
+
+
+def _layered_reads(store, cells):
+    """Run flag and per-note match levels from this run's own ledger."""
+    keys = {cell['key'] for cell in cells}
+    flagged, levels = False, {}
+    with sqlite3.connect('file:' + str(Path(store.path).resolve()) + '?mode=ro', uri=True) as db:
+        rows = db.execute("SELECT kind, payload FROM v2_events WHERE kind IN "
+                          "('planner_memory_unvalidated_used', 'planner_memory_retrieved') ORDER BY seq").fetchall()
+    for kind, raw in rows:
+        detail = json.loads(raw)
+        if detail.get('cell') not in keys:
+            continue
+        if kind == 'planner_memory_unvalidated_used':
+            flagged = True
+        for entry in detail.get('versions') or []:
+            if isinstance(entry, dict) and entry.get('match_level') in ('same_scene', 'same_task'):
+                levels[entry.get('memory_id')] = entry['match_level']
+    return flagged, levels
 
 
 def _events(store, cells):
@@ -297,6 +340,12 @@ def project(bridge, memory_view, experiment_id, *, now=None):
         catalogue = memory_view.dev_catalogue()
     except EXTRA_ERRORS as error:
         raise CatalogueUnavailable('online catalogue unavailable') from error
+    seeds = {cell.get('seed') for cell in cells if type(cell.get('seed')) is int}
+    try:
+        unvalidated_used, levels = _layered_reads(store, cells)
+    except EXTRA_ERRORS as error:
+        _log_failure(error, 'memory read levels')
+        unvalidated_used, levels = False, {}
     notes = []
     for row in catalogue[:LIMIT]:
         note_id = short(row.get('memory_id'), 120)
@@ -317,7 +366,13 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'summary': short(row.get('summary'), 180), 'group': short(row.get('group') or 'General', 40),
                       'status': status(row), 'effect': validation, 'lift_pt': lift, 'reads': reads,
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
+        seed = _note_seed(row)
+        level = levels.get(row.get('memory_id'))
+        notes[-1].update(unvalidated=row.get('status') == 'provisional' or row.get('unvalidated') is True,
+                         uses=_uses(row), expires_in_days=_expires_in_days(row, timestamp), scene_seed=seed,
+                         # Another scene of the same task: readable only as a labelled reference.
+                         reference=level == 'same_task' or level is None and seed is not None and bool(seeds) and seed not in seeds)
     return {'generated_at': timestamp,
             'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40),
-                    'max_versions': max_versions, 'versions': versions},
+                    'max_versions': max_versions, 'versions': versions, 'unvalidated_used': unvalidated_used},
             'notes': notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}

@@ -242,3 +242,22 @@ def test_usage_scans_sibling_ledgers_and_caches_briefly(tmp_path, monkeypatch):
     assert memory_monitor.project(bridge, memory, EXPERIMENT)['notes'][0]['reads'] == 6
     monkeypatch.setattr(memory_monitor, 'CACHE_SECONDS', 0)
     assert memory_monitor.project(bridge, memory, EXPERIMENT)['notes'][0]['reads'] == 7
+
+
+def test_projection_shows_unvalidated_uses_expiry_and_other_scene_reference():
+    bridge = Bridge(RUN / 'ledger.sqlite3')
+    seed = bridge.get('/api/dev-v2/experiments/' + EXPERIMENT)[0]['cells'][0]['seed']
+    now = 1792471444
+    memory = Memory([row('p-here', status='provisional', unvalidated=True, source_seed=seed, validation_summary=None,
+                         uses={'grants': 4, 'outcomes': 4, 'failure_gone': 3, 'bogus': 'x'}, expires_at=now + 12 * 86400 - 5),
+                     row('other-scene', source_seed=seed + 7),
+                     row('same-scene', source_seed=seed)])
+    payload = memory_monitor.project(bridge, memory, EXPERIMENT, now=now)
+    notes = {n['id']: n for n in payload['notes']}
+    assert notes['p-here']['status'] == 'unvalidated' and notes['p-here']['unvalidated'] is True
+    assert notes['p-here']['uses'] == {'grants': 4, 'outcomes': 4, 'failure_gone': 3}
+    assert notes['p-here']['expires_in_days'] == 12 and notes['p-here']['reference'] is False
+    assert notes['other-scene']['reference'] is True and notes['other-scene']['scene_seed'] == seed + 7
+    assert notes['same-scene']['reference'] is False and notes['same-scene']['uses'] is None
+    assert payload['run']['unvalidated_used'] is False
+    assert 'top-secret' not in json.dumps(payload)

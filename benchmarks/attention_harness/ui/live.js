@@ -3185,11 +3185,17 @@
     else if (operatorLast(snapshot)?.status !== 'running' && snapshot.attempts.length < (snapshot.dev_session?.budget?.executions ?? snapshot.task_plan?.max_attempts ?? 0)) nodes.push('<div class="op-node next"><small>Next</small><b>Attempt '+(snapshot.attempts.length+1)+'</b></div>');
     return `<div class="op-flow" data-task-flow aria-label="Task progress">${nodes.join('<span class="op-arrow" aria-hidden="true"></span>')}</div>`;
   }
+  function unvalidatedMemoryTag(snapshot) {
+    // Plan 0d: a run that read a note not trusted for its scene is flagged and excluded from results.
+    if (snapshot?.memory?.dev_v2?.unvalidated_used !== true) return '';
+    const tip='This run read a note that has not been validated. Excluded from results.';
+    return `<p class="op-memory-flag-row"><span class="op-memory-flag" data-unvalidated-memory title="${tip}" aria-label="Used unvalidated memory. ${tip}">Used unvalidated memory</span></p>`;
+  }
   function operatorOverview(snapshot) {
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
     const source=snapshot.dev_v2?(s?.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'):null;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}${runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}${runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {

@@ -31,7 +31,8 @@ def projection(store, cell):
             if queued.get('cell')!=cell['key'] or queued.get('version')!=value['version'] or queued.get('kind')!=value['kind']:
                 raise DevConflict('Memory queue display binding mismatch')
             queues.append(dict(version=value['version'],kind=value['kind'],status=queued['status'],
-                               source='Offline import proposal' if value['kind']=='source' else 'Offline result queue',
+                               source={'source':'Offline import proposal','provisional':'Provisional note proposal',
+                                       'provisional_outcome':'Provisional use record'}.get(value['kind'],'Offline result queue'),
                                authority_candidate=queued['authority_candidate'],sha256=value['queue']['sha256']))
         elif kind=='planner_memory_retrieved':
             packet=_evidence(value['packet'])
@@ -42,7 +43,8 @@ def projection(store, cell):
                 seeded=entry.get('seeded_for_tests') if type(entry.get('seeded_for_tests')) is bool else trace.startswith(('seeded-for-tests:','test-seed:'))
                 excluded=entry.get('excluded_from_results') if type(entry.get('excluded_from_results')) is bool else seeded
                 entries.append(dict(memory_id=entry['memory_id'],version=entry['version'],grant_id=entry['grant_id'],
-                                    trusted=True,status=entry.get('status','trusted'),source='Seeded for tests' if seeded else 'Dev v2 candidate' if trace.startswith('dev-v2-source:') else 'Source unverified',
+                                    trusted=entry.get('trusted_here') is not False,match_level=entry.get('match_level','same_scene'),
+                                    unvalidated=entry.get('unvalidated') is True,source_seed=entry.get('source_seed'),status=entry.get('status','trusted'),source='Seeded for tests' if seeded else 'Dev v2 candidate' if trace.startswith('dev-v2-source:') else 'Source unverified',
                                     seeded_for_tests=seeded,excluded_from_results=excluded,
                                     explicit_flags=type(entry.get('seeded_for_tests')) is bool or type(entry.get('excluded_from_results')) is bool,
                                     authority=entry.get('authority'),
@@ -83,6 +85,8 @@ def projection(store, cell):
     for queue in queues:
         if any(r['version']==queue['version'] and r['operation']==queue['kind'] for r in receipts):
             queue['status']='offline_receipt_recorded'
+    # Run flag: read a note not trusted for this scene (excluded from results).
+    unvalidated_used=any(not e['trusted'] for r in retrievals for e in r['entries'])
     return dict(queues=queues,validations=validations,retrievals=retrievals,
-                generations=generations,receipts=receipts,
+                generations=generations,receipts=receipts,unvalidated_used=unvalidated_used,
                 empty=not any((queues,validations,retrievals,generations,receipts)))
