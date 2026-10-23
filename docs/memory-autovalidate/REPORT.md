@@ -200,3 +200,56 @@ Earlier uncommitted work was retained. Unrelated output/robot directories were
 not changed by this follow-up. No file under `openarm365/model` or
 `openarm_mobile/model` was changed.
 
+
+
+## Pinned source symlinks — 2026-10-24
+
+The service now verifies explicit source-only `links` at registration and read,
+including each one-hop target, registered source catalog, exact sealed digest,
+regular terminal file, eight-hop limit and cycle refusal. Existing allowlists,
+role separation and legacy symlink checks are unchanged.
+
+The main patch builds one catalog per link-chain directory and registers target
+catalogs first, including after merging origin and arm inventories. Provisioning
+and the offline exporter check supplied link pins. Both historical interpreter
+aliases and the terminal file are sealed without changing historical locks.
+The registration-roots example includes both actual interpreter directories.
+
+Service changes were applied in `wt-autoval-svc`. The session filesystem policy
+allowed writes only there and in `/tmp`, so the main changes were prepared and
+tested in `/tmp/autoval-symlink-main`, with the original main worktree used only
+as a read-only import fallback. They are delivered as `/tmp/main-symlink-pin.patch`
+and have not been applied to `wt-autoval`. No commits, live service calls,
+simulators, model calls or GPU jobs were made.
+
+Validation (all commands used `PYTHONDONTWRITEBYTECODE=1`):
+
+```bash
+AUTOVAL_PY=/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python
+SERVICE=/home/truares/桌面/AttentionBench-Workspace/development/wt-autoval-svc
+MAIN_SERVICE=/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service
+MAIN=/home/truares/桌面/AttentionBench-Workspace/development/wt-autoval
+SHADOW=/tmp/autoval-symlink-main
+
+# From SERVICE; external sandbox-only AnyIO wakeup plugin, no assertion changes.
+PYTHONPATH="$SERVICE:/tmp" PYTEST_PLUGINS=autoval_pytest_wakeup "$AUTOVAL_PY" -m pytest -q tests --tb=short
+# 394 passed in 197.57s (370 existing + 24 new).
+
+# From SHADOW; repeat with SERVICE and MAIN_SERVICE respectively.
+PYTHONPATH="$SHADOW:$MAIN:$SERVICE" "$AUTOVAL_PY" -m pytest -q benchmarks/attention_harness/tests/test_{memory_independent_validator,memory_validation_worker,memory_validation_runtime,memory_validation_provision,memory_autovalidate_contracts,memory_source_links,memory_layers,codex_quota,dev_memory_prompt_bound,notices,memory_provisional,memory_run_notes,memory_monitor,daily_memory_wiring,pause_resume,memory_validation_task}.py -p no:cacheprovider --tb=short
+# Worktree service: 260 passed in 62.98s.
+# Main service: 259 passed, 1 skipped in 62.52s.
+# Only the new in-process linked-lock import is skipped: main service lacks links.
+
+PYTHONPATH="$SHADOW:$MAIN:$SERVICE" "$AUTOVAL_PY" scripts/autovalidate_fake_e2e.py
+# PASS: provisioned ten-arm promotion, later demotion, early safety rejection.
+
+node --test benchmarks/attention_harness/tests/test_{memory_autovalidate_ui,memory_monitor_ui,memory_monitor_runtime,memory_allmodes,dev_memory_lifecycle_ui,notices_ui}.cjs
+# 6 passed, 0 failed.
+```
+
+New tests cover the exact two-directory catalog shape and registration order,
+provisioning and export pin checks, real interpreter aliases (hashing only),
+cycle/depth/directory-link/digest refusal, and a synthetic two-hop execution import
+through the in-process service with retarget refusal. The native config/export
+regression now uses the historical interpreter alias without canonicalizing it.

@@ -44,13 +44,16 @@ class Provisioner:
         refs=self.config.get('evidence_catalogs')
         if not refs:raise DevConflict('Origin import catalogs are not configured')
         catalogs={cid:read(ref) for cid,ref in refs.items()}
-        for catalog in catalogs.values():
+        from .memory_source_catalogs import verify_source_link,registration_order
+        for cid,catalog in catalogs.items():
             root=Path(catalog['root']).resolve()
             for name,digest in catalog['files'].items():
+                if name in catalog.get('links',{}):
+                    verify_source_link(catalogs,cid,name,digest);continue
                 path=root/name
                 if not path.resolve().is_relative_to(root):raise DevConflict('Origin catalog path escapes its root')
                 checked(dict(uri=str(path),sha256=digest))
-        return catalogs
+        return registration_order(catalogs)
 
     def resolve(self,note):
         if self.client is None:raise DevConflict('Memory provenance reader is unavailable')
@@ -96,10 +99,10 @@ class Provisioner:
             if source_version[field]['sha256']!=digests[name]:raise DevConflict('Source help evidence differs from the note: '+name)
         if version['config_sha256']!=fd['config']['sha256'] or bundle['config_sha256']!=fd['config']['sha256'] or bundle['policy_sha256']!=source['sha256']:raise DevConflict('Origin execution binding differs')
         if sd['validator_id'] not in catalogs:raise DevConflict('Independent source validator catalog is missing')
-        from .memory_source_catalogs import manifest_sources
+        from .memory_source_catalogs import manifest_sources,registration_order
         catalogs.update(manifest_sources(fd['manifest'],fd['context'],self.root,contract=config.get('scene_contract')))
         sealed=dict(manifest=fd['manifest'],config=fd['config'],source=source,cell=summary['cell'],version=summary['version'])
-        return dict(sealed=sealed,config=config,feedback=feedback,signature=signature,context=fd['context'],policy_id=cell['policy_id'],catalogs=catalogs,
+        return dict(sealed=sealed,config=config,feedback=feedback,signature=signature,context=fd['context'],policy_id=cell['policy_id'],catalogs=registration_order(catalogs),
                     failed_execution=dict(import_id=sd['failed_execution_import_id'],catalog_id=fc,descriptor=fn),source_import=dict(import_id='source-'+hashlib.sha256((sc+sn).encode()).hexdigest()[:24],catalog_id=sc,descriptor=sn))
 
     def __call__(self,note,operation):
