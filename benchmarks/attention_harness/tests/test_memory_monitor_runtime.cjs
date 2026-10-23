@@ -131,24 +131,25 @@ test('fake THREE executes real shaped notes, click, filter, view, theme and new 
   assert.equal(h.get('error').textContent,'');
 });
 test('failed and pending versions keep truthful 2D text and ring colors in both views',()=>{
+  // The canvas is an instrument surface (2026-10-23): one palette whichever page theme is on.
   const h=harness('#exp=devexp-'+'a'.repeat(24));h.api.startGlobe();
   const payload=realPayload();
   payload.run.versions[0].state='failed';
   payload.run.versions[1].state='passed';
   payload.run.versions[2].state='finished';
   h.api.load(payload);
-  assert.equal(h.meshes[2].material.color.value,'hsl(195, 70%, 44%)');
-  assert.notEqual(h.meshes[2].material.color.value,h.meshes[3].material.color.value);
-  h.api.setView('2d');
-  const cards=h.get('flow').innerHTML;
-  assert.match(cards,/class="version-ring state-failed"[^>]*stroke="#d94545"/);
-  assert.match(cards,/Dev v1<\/text><text[^>]*>Failed<\/text>/);
-  assert.match(cards,/class="version-ring state-passed"[^>]*stroke="#1f9d57"/);
-  assert.match(cards,/class="version-ring state-finished"[^>]*stroke="#4f7be0"/);
-  assert.doesNotMatch(cards,/Dev v1<\/text><text[^>]*>Passed<\/text>/);
-  h.api.applyTheme('dark');
-  assert.equal(h.meshes[2].material.color.value,'hsl(195, 84%, 68%)');
-  assert.match(h.get('flow').innerHTML,/class="version-ring state-failed"[^>]*stroke="#ff5d5d"/);
+  for(const theme of ['light','dark']){
+    h.api.applyTheme(theme);h.api.setView('3d');
+    assert.equal(h.meshes[2].material.color.value,'hsl(195, 84%, 68%)');
+    assert.notEqual(h.meshes[2].material.color.value,h.meshes[3].material.color.value);
+    h.api.setView('2d');
+    const cards=h.get('flow').innerHTML;
+    assert.match(cards,/class="version-ring state-failed"[^>]*stroke="#ff5d5d"/);
+    assert.match(cards,/Dev v1<\/text><text[^>]*>Failed<\/text>/);
+    assert.match(cards,/class="version-ring state-passed"[^>]*stroke="#3ddc84"/);
+    assert.match(cards,/class="version-ring state-finished"[^>]*stroke="#6f93ff"/);
+    assert.doesNotMatch(cards,/Dev v1<\/text><text[^>]*>Passed<\/text>/);
+  }
 });
 test('fake THREE executes 150 note demo and advances all five versions into a new run',()=>{
   const h=exercise('#demo=150',{...realPayload(),notes:realPayload().notes});

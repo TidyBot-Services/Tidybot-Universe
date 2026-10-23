@@ -12,7 +12,7 @@
   const view = root.querySelector('.view');
   let currentSnapshot = null;
   root.dataset.operatorView = String(!DEBUG_VIEW);
-  const workspace=document.createElement('div');workspace.className='ab-workspace';
+  const workspace=document.createElement('div');workspace.className='ab-workspace ab-enter';
   view.before(workspace);workspace.append(view);
   const sidebar=document.createElement('aside');sidebar.className='ab-sidebar';sidebar.dataset.sidebar='';sidebar.setAttribute('aria-label','Tasks and Attention policy');workspace.prepend(sidebar);
   const sidebarToggle=document.createElement('button');sidebarToggle.type='button';sidebarToggle.dataset.sidebarToggle='';sidebarToggle.className='ab-sidebar-toggle';sidebarToggle.textContent='☰ Tasks';workspace.before(sidebarToggle);
@@ -20,25 +20,28 @@
   root.querySelector('.ribbon').textContent = DEBUG_VIEW ? 'LIVE OPERATIONS · PERSISTED ATTENTION STORE' : 'TIDYBOT · LIVE OPERATIONS';
   root.querySelector('.demo').innerHTML = `${DEBUG_VIEW ? '● STORE' : ''}`;
   const devTag=document.createElement('span');devTag.className='op-dev-tag';devTag.textContent='Development test · not counted in comparisons';devTag.hidden=true;
-  const alertsButton=document.createElement('button');alertsButton.type='button';alertsButton.className='op-alerts';alertsButton.title='Play a sound and show a notification when the robot needs your help';
-  const themeButton=document.createElement('button');themeButton.type='button';themeButton.className='op-theme';
-  function applyMainTheme(name){const dark=name==='dark';document.documentElement.dataset.theme=dark?'dark':'light';root.dataset.theme=dark?'dark':'light';themeButton.innerHTML=dark?'<span aria-hidden="true">☀</span> Light':'<span aria-hidden="true">☾</span> Dark';themeButton.setAttribute('aria-label',dark?'Switch to the light theme':'Switch to the dark theme');try{localStorage.setItem('attention.theme',dark?'dark':'light');localStorage.setItem('attention.memory.theme',dark?'dark':'light')}catch(_){}}
-  themeButton.addEventListener('click',()=>applyMainTheme(root.dataset.theme==='dark'?'light':'dark'));
-  {let saved='light';try{saved=localStorage.getItem('attention.theme')||'light'}catch(_){}applyMainTheme(saved);}
-  const memoryLink=document.createElement('a');memoryLink.className='op-memory-link';memoryLink.href='/ui/memory.html';memoryLink.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v6M12 14v6M4 12h6M14 12h6"/></svg><span>Memory</span><b class="op-memory-badge" hidden></b>';
+  const alertsButton=document.createElement('button');alertsButton.type='button';alertsButton.className='op-alerts ab-shell-pill icon';alertsButton.title='Play a sound and show a notification when the robot needs your help';
+  // Light | Dark and Home · Run · Memory come from shell.js, so the cover, this page and Memory share one bar and one theme key.
+  // Without shell.js (bare test pages) the page keeps the saved theme and builds no switcher.
+  const shell=window.AttentionShell||null;
+  const themeButton=shell?shell.themeSwitch():document.createElement('div');
+  function applyMainTheme(name){const dark=name==='dark';document.documentElement.dataset.theme=dark?'dark':'light';root.dataset.theme=dark?'dark':'light';}
+  if(shell){shell.onTheme(applyMainTheme);applyMainTheme(shell.theme());}else{let saved='light';try{saved=localStorage.getItem('attention.theme')||'light'}catch(_){}applyMainTheme(saved);}
+  const pages=shell?shell.pageSwitcher('run'):document.createElement('nav');if(!shell)pages.innerHTML='<a href="/ui/memory.html" data-page="memory">Memory<b class="ab-badge" hidden></b></a>';
+  const memoryLink=pages.querySelector('a[data-page="memory"]');
   const memoryCounts=new Map();let memoryPulseTimer=null;
   function updateMemoryLink(snapshot){
     const id=snapshot?.dev_v2?.experiment_id||null;
     memoryLink.href=id?'/ui/memory.html#exp='+encodeURIComponent(id):'/ui/memory.html';
     const ids=new Set((snapshot?.memory?.dev_v2?.retrievals||[]).flatMap(r=>(r.entries||[]).map(e=>e.memory_id)).filter(Boolean));
-    const count=ids.size,badge=memoryLink.querySelector('.op-memory-badge');
+    const count=ids.size,badge=memoryLink.querySelector('.ab-badge');
     const previous=id?memoryCounts.get(id):undefined;
     if(id){if(previous!=null&&count>previous){memoryLink.classList.remove('pulse');void memoryLink.offsetWidth;memoryLink.classList.add('pulse');clearTimeout(memoryPulseTimer);memoryPulseTimer=setTimeout(()=>memoryLink.classList.remove('pulse'),4000)}memoryCounts.set(id,count)}
     badge.hidden=count===0;badge.textContent=count||'';
   }
 
   let noticeController=null;
-  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';const homeLink=document.createElement('a');homeLink.className='op-memory-link op-home-link';homeLink.href='/ui/home.html';homeLink.innerHTML='<span aria-hidden="true">⌂</span><span>Home</span>';homeLink.setAttribute('aria-label','Back to the cover');actions.append(memoryLink,noticeHost,devTag,themeButton,alertsButton);actions.prepend(homeLink);top.prepend(sidebarToggle);top.append(actions);const brand=top.querySelector('.brand');if(brand){const toCover=()=>{location.href='/ui/home.html'};brand.style.cursor='pointer';brand.title='Back to the cover';brand.setAttribute('role','link');brand.tabIndex=0;brand.addEventListener('click',toCover);brand.addEventListener('keydown',e=>{if(e.key==='Enter')toCover();});}const roomy=matchMedia('(min-width:1200px)'),fitHome=()=>{homeLink.style.display=roomy.matches?'':'none'};roomy.addEventListener('change',fitHome);addEventListener('resize',fitHome);fitHome();const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);}
+  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';top.classList.add('ab-shell-top');sidebarToggle.classList.add('ab-shell-ctx');devTag.classList.add('ab-shell-flag');actions.classList.add('ab-shell-actions');actions.append(devTag,alertsButton,noticeHost,themeButton);top.prepend(sidebarToggle);const brand=top.querySelector('.brand'),spacer=document.createElement('span');spacer.className='ab-shell-sp';if(brand){brand.after(pages,spacer);const logo=brand.querySelector('b');logo.classList.add('ab-shell-logo');shell?.turnLogo(logo,'run');const toCover=()=>{location.href='/ui/home.html'};brand.style.cursor='pointer';brand.title='Back to the cover';brand.setAttribute('role','link');brand.tabIndex=0;brand.addEventListener('click',toCover);brand.addEventListener('keydown',e=>{if(e.key==='Enter')toCover();});}else top.append(pages,spacer);top.append(actions);const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);}
   let runs = [];
   let launches = [];
   let devSessions = [];
@@ -867,7 +870,7 @@
   const animatedRuns=new Set(), lastOperatorState=new Map(), framesSeen=new Set();
   let loadingTicker=null, keysBound=false, audioContext=null;
   const alertsOn=()=>preference('attention.alerts')==='on';
-  function paintAlertsButton(){alertsButton.setAttribute('aria-pressed',String(alertsOn()));alertsButton.textContent=alertsOn()?'🔔 Alerts on':'🔕 Alerts off';}
+  function paintAlertsButton(){const on=alertsOn();alertsButton.setAttribute('aria-pressed',String(on));alertsButton.setAttribute('aria-label',on?'Alerts on':'Alerts off');alertsButton.title=(on?'Alerts on':'Alerts off')+': play a sound and show a notification when the robot needs your help';alertsButton.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'+(on?'':'<path d="M3 3l18 18"/>')+'</svg>';}
   alertsButton.addEventListener('click',async()=>{
     if(alertsOn()){preference('attention.alerts','off');paintAlertsButton();toast('Alerts turned off');return;}
     try{if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();}catch(_){}
