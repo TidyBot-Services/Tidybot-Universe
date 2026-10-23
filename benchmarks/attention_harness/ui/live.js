@@ -346,14 +346,17 @@
     if(!DEBUG_VIEW&&item.all_attempts_failed)return 'Failed';
     if(!DEBUG_VIEW&&item.development&&/infrastructure|dispatch unknown|outcome_unknown/i.test(String(item.reason||'')))return 'System problem';
     if(item.development&&['condition_invalid','needs_review','cancelled','failed','not_started'].includes(item.status))
-      return ({condition_invalid:'Condition Invalid',needs_review:'Needs review',cancelled:'Stopped',failed:'Failed',not_started:'Not started'})[item.status];
+      return ({condition_invalid:'Condition invalid',needs_review:'Needs review',cancelled:'Stopped',failed:'Failed',not_started:'Not started'})[item.status];
     if(item.development&&item.lifecycle)return ({prepared:'Prepared / Not started',queued:'Queued / Next round',model:'Model working',advisor:'Waiting for Advisor',approval:'Needs human approval',sdk:'SDK running',preparing:'Preparing public work',review:'Needs review',terminal:'Ended'})[item.lifecycle.phase] || 'Unconfirmed';
     if(!DEBUG_VIEW&&item.development&&item.status==='running')return 'Running';
-    if(!DEBUG_VIEW&&item.development&&item.status==='completed')return 'Finished';
+    // Same words as the cover's task rail (shell.js outcome): a completed run says whether it solved the task.
+    if(!DEBUG_VIEW&&item.development&&item.status==='completed')return item.reason==='eval_passed'?'Solved':'Not solved';
     if(item.development&&item.status==='budget_exhausted'&&item.end_summary)return item.end_summary.short;
     if(item.development)return {ready:'Ready',running:'Developing',stopping:'Stopping',stopped:'Stopped',budget_exhausted:'Budget reached',needs_review:'Needs review',failed:'Failed',paused:'Paused'}[item.status]||label(item.status||'Not recorded');
     return {running:'Running',completed:'Finished',succeeded:'Succeeded',failed:'Failed',cancelled:'Stopped',timed_out:'Timed out'}[item.status]||label(item.status||'Not recorded');
   }
+  // Colour of a status word, the same as the cover's task rail (shell.js outcome): ok, bad, run, or '' (amber).
+  function outcomeKind(word){return word==='Solved'?'ok':['Not solved','Failed','System problem','Condition invalid'].includes(word)?'bad':['Running','Waiting'].includes(word)?'run':'';}
   // End task navigation projection.
   function policyTitle(id){return ({autonomous:'Autonomous',reactive_help:'Reactive help',trace_aware_hint_only:'Trace aware Hint',full_trace_aware_attention_planner:'Full trace aware planner',retry_k_then_ask:'Retry K then ask'})[id]||label(id);}
   function devEndSummary(s){
@@ -498,7 +501,7 @@
     const arm={both:'Both arms',left:'Left arm',right:'Right arm',single:'Single arm'}[r.robot?.execution_arm];
     const meta=[r.robot?.model,arm].filter(Boolean).join(' · ')||(DEBUG_VIEW?'Robot details unavailable':'');
     const title=customRunName(r)||(DEBUG_VIEW?recordTime(r):relativeTime(r.created_at??r.started_at,recordTime(r)));
-    return `<article data-run-entry="${esc(r.run_id)}" data-viewing="${viewing}" data-development="${Boolean(r.development)}" data-tone="${recordTone(r)}"><div class="ab-sidebar-run-head"><button type="button" ${target} aria-current="${viewing?'page':'false'}" title="${esc(displayRun(r))}"><strong data-run-name title="${esc(recordTime(r))}">${pins.has(r.run_id)?'★ ':''}${esc(title)}</strong><span class="ab-run-status" data-active="${recordIsActive(r)}" data-status="${esc(r.all_attempts_failed?'failed':r.status||'unknown')}"${r.all_attempts_failed?` title="${esc(`Ran all ${r.attempts_limit??''} attempts; none succeeded`.replace('  ',' '))}"`:''}>${esc(recordStatus(r))}</span></button>${r.session_id?.startsWith('v2-')?`${DEBUG_VIEW ? '<span title="Immutable experiment evidence">Retained</span>' : ''}`:r.history_deleted_at?`<button type="button" class="ab-record-restore" data-restore-record="${esc(r.run_id)}" data-record-kind="${kind}">Restore</button>`:`<button type="button" class="ab-record-delete" data-delete-record="${esc(r.run_id)}" data-record-kind="${kind}" aria-label="Delete ${esc(displayRun(r))}" title="${recordIsActive(r)?'Stop this record before deleting it':'Delete record · recoverable'}" ${recordIsActive(r)?'disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>`}<details class="ab-record-more" data-record-more="${esc(r.run_id)}"><summary aria-label="More options for ${esc(displayRun(r))}">⋯</summary><div class="ab-record-menu"><button type="button" data-pin-run="${esc(r.run_id)}" aria-pressed="${pins.has(r.run_id)}">${pins.has(r.run_id)?'Unpin record':'Pin record'}</button>${!r.development?`<div class="ab-run-actions"><button type="button" data-copy-run="${esc(r.run_id)}">Copy configuration</button><button type="button" data-retry-run="${esc(r.run_id)}">Retry run</button></div><details data-run-name-editor="${esc(r.run_id)}"><summary>Edit name</summary><form data-run-rename="${esc(r.run_id)}"><input name="display_name" aria-label="Run display name" value="${esc(customRunName(r)||'')}" placeholder="Give this execution a name" maxlength="160" required><button>Save name</button></form></details>${policyPath(r)}`:`<small>${r.versions.length} policy versions · ${r.jobs.filter(j=>j.kind==='execute').length} executions</small>`}<small>Started ${esc(dateTime(r.created_at??r.started_at))} · Seed ${esc(r.seed??'Not recorded')}</small>${DEBUG_VIEW ? `<code>${esc(r.run_id)}</code><button type="button" data-copy-record-id="${esc(r.run_id)}">Copy full ID</button>` : ''}</div></details></div>${sidebarRunBadges(r)}${meta?`<small class="ab-run-metadata">${esc(meta)}</small>`:''}${r.development?'<span class="ab-development-tag">Development</span>':''}${customRunName(r)?`<small class="ab-record-time">${esc(recordTime(r))}</small>`:''}</article>`;
+    return `<article data-run-entry="${esc(r.run_id)}" data-viewing="${viewing}" data-development="${Boolean(r.development)}" data-tone="${recordTone(r)}"><div class="ab-sidebar-run-head"><button type="button" ${target} aria-current="${viewing?'page':'false'}" title="${esc(displayRun(r))}"><strong data-run-name title="${esc(recordTime(r))}">${pins.has(r.run_id)?'★ ':''}${esc(title)}</strong><span class="ab-run-status" data-active="${recordIsActive(r)}" data-outcome="${outcomeKind(recordStatus(r))}" data-status="${esc(r.all_attempts_failed?'failed':r.status||'unknown')}"${r.all_attempts_failed?` title="${esc(`Ran all ${r.attempts_limit??''} attempts; none succeeded`.replace('  ',' '))}"`:''}>${esc(recordStatus(r))}</span></button>${r.session_id?.startsWith('v2-')?`${DEBUG_VIEW ? '<span title="Immutable experiment evidence">Retained</span>' : ''}`:r.history_deleted_at?`<button type="button" class="ab-record-restore" data-restore-record="${esc(r.run_id)}" data-record-kind="${kind}">Restore</button>`:`<button type="button" class="ab-record-delete" data-delete-record="${esc(r.run_id)}" data-record-kind="${kind}" aria-label="Delete ${esc(displayRun(r))}" title="${recordIsActive(r)?'Stop this record before deleting it':'Delete record · recoverable'}" ${recordIsActive(r)?'disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>`}<details class="ab-record-more" data-record-more="${esc(r.run_id)}"><summary aria-label="More options for ${esc(displayRun(r))}">⋯</summary><div class="ab-record-menu"><button type="button" data-pin-run="${esc(r.run_id)}" aria-pressed="${pins.has(r.run_id)}">${pins.has(r.run_id)?'Unpin record':'Pin record'}</button>${!r.development?`<div class="ab-run-actions"><button type="button" data-copy-run="${esc(r.run_id)}">Copy configuration</button><button type="button" data-retry-run="${esc(r.run_id)}">Retry run</button></div><details data-run-name-editor="${esc(r.run_id)}"><summary>Edit name</summary><form data-run-rename="${esc(r.run_id)}"><input name="display_name" aria-label="Run display name" value="${esc(customRunName(r)||'')}" placeholder="Give this execution a name" maxlength="160" required><button>Save name</button></form></details>${policyPath(r)}`:`<small>${r.versions.length} policy versions · ${r.jobs.filter(j=>j.kind==='execute').length} executions</small>`}<small>Started ${esc(dateTime(r.created_at??r.started_at))} · Seed ${esc(r.seed??'Not recorded')}</small>${DEBUG_VIEW ? `<code>${esc(r.run_id)}</code><button type="button" data-copy-record-id="${esc(r.run_id)}">Copy full ID</button>` : ''}</div></details></div>${sidebarRunBadges(r)}${meta?`<small class="ab-run-metadata">${esc(meta)}</small>`:''}${r.development?'<span class="ab-development-tag">Development</span>':''}${customRunName(r)?`<small class="ab-record-time">${esc(recordTime(r))}</small>`:''}</article>`;
   }
   function sidebarControlIcon(name){
     const paths={
@@ -2919,7 +2922,7 @@
     const at=epoch(value);if(at==null)return fallback;
     const diff=Date.now()/1000-at;
     if(diff<45)return 'just now';if(diff<3600)return `${Math.max(1,Math.round(diff/60))} min ago`;
-    if(diff<86400)return `${Math.round(diff/3600)} h ago`;if(diff<86400*14)return `${Math.round(diff/86400)} days ago`;
+    if(diff<86400)return `${Math.round(diff/3600)} h ago`;if(diff<86400*14){const days=Math.round(diff/86400);return `${days} day${days===1?'':'s'} ago`;}
     return fallback||new Date(at*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'});
   }
   function recordTone(r) {
@@ -3508,6 +3511,17 @@
   }
 
   // End operator presentation.
+  // Page title, the same pattern as the Memory monitor's: amber eyebrow, condensed headline, the run's status on the right.
+  function operatorTitle(snapshot) {
+    const run = snapshot.run, name = taskDisplayName(run), cut = name.indexOf(':');
+    const record = navigationRecords().find(r => r.development ? r.session_id === selectedDev : !selectedDev && r.run_id === selectedRun);
+    const policy = snapshot.attention_control?.active_policy || run.policy_id;
+    const eyebrow = ['Run', relativeTime(record?.created_at ?? run.created_at), policy ? policyTitle(policy) : '', run.seed == null ? '' : `Scene seed ${run.seed}`].filter(Boolean).join(' · ');
+    const head = cut > 0 ? `${esc(name.slice(0, cut))} <em>${esc(name.slice(cut + 1).trim())}</em>` : esc(name);
+    const word = record ? recordStatus(record) : '';
+    const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}</p><h1>${head}</h1></div>${status}</header>`;
+  }
 
   function runSettings(snapshot = null, launch = null) {
     const title = '<h3>Task & Run Settings</h3>';
@@ -3550,7 +3564,7 @@
       <div class="ab-settings-agents" data-settings-agents aria-label="Developer and evaluator">
         ${armStatus(snapshot)}<div class="agent-row" data-agent-role="developer"><span class="agent-icon" aria-hidden="true">DEV</span><div class="agent-info"><b>Developer</b><small>${esc(developerActivity || (run.developer_model ? 'Policy development' : 'Model information unavailable'))}</small>${developerFields}</div></div>
         <div class="agent-row eval" data-agent-role="evaluator"><span class="agent-icon" aria-hidden="true">EVAL</span><div class="agent-info"><b>Evaluator</b><small>${snapshot.dev_session?'Independent native task evaluation':esc(diagnosticStatus(snapshot.eval?.status))}</small>${snapshot.eval?.status === 'failed' ? '<small data-diagnostic-note>Diagnosis only; the native task outcome is reported separately.</small>' : ''}${evaluatorFields}</div></div>
-      </div></section>` : operatorSettings(snapshot)}`;
+      </div></section>` : operatorTitle(snapshot)+operatorSettings(snapshot)}`;
   }
   function parameterDecks(settings) {
     const decks = [

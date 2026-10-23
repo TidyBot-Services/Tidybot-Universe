@@ -106,3 +106,16 @@ def test_a_stopped_experiment_wins_over_a_cell_still_marked_planned():
     assert home.shown_state({'state': 'planned', 'experiment_state': 'needs_review'}) == 'needs_review'
     assert home.shown_state({'state': 'running', 'experiment_state': 'running'}) == 'running'
     assert home.shown_state({'state': 'failed', 'experiment_state': 'completed'}) == 'failed'
+
+
+def test_attempts_and_status_flags_match_the_main_ui():
+    # Attempts are executions that ran (used.executions), not written versions.
+    row = {'state': 'needs_review', 'reason': 'DevConflict: Native execution infrastructure/unresolved', 'versions': [1],
+           'used': {'executions': 0}, 'budget': {'executions': 5}, 'jobs': []}
+    assert home.attempts_used(row) == 0 and home.attempts_limit(row) == 5
+    assert home.SYSTEM_PROBLEM.search(row['reason'])
+    failed = {'state': 'completed', 'jobs': [{'kind': 'execute', 'receipt': {'execution_status': 'failed'}}] * 2}
+    assert home.all_attempts_failed(failed)
+    assert not home.all_attempts_failed({**failed, 'jobs': [{'kind': 'execute', 'receipt': {'execution_status': 'completed'}}]})
+    assert not home.all_attempts_failed({'state': 'completed', 'jobs': []})
+

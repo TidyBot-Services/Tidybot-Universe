@@ -4,6 +4,7 @@ Display only; nothing here starts or changes a run. New runs start from the main
 """
 import json
 import os
+import re
 import shutil
 import ssl
 import statistics
@@ -21,12 +22,32 @@ TASK_TITLES = {'pick_place_counter_to_sink': 'Pick Place: Counter → Sink', 'op
                'counter_to_sink': 'Move to the sink', 'counter_to_cab': 'Move into the cabinet'}
 PROBE_TTL_SECONDS = 60
 ENDED = {'needs_review', 'cancelled', 'condition_invalid', 'completed', 'failed'}
+# Same test as the main UI's recordStatus: these reasons are a system problem, not the robot's.
+SYSTEM_PROBLEM = re.compile(r'infrastructure|dispatch unknown|outcome_unknown', re.I)
+
+
+def attempts_used(row):
+    """Attempts the robot actually ran, counted like the main UI (used.executions); a version that never ran is not an attempt."""
+    used = (row.get('used') or {}).get('executions')
+    return used if isinstance(used, int) else len(row.get('versions') or [])
+
+
+def attempts_limit(row):
+    limit = (row.get('budget') or {}).get('executions')
+    return limit if isinstance(limit, int) else None
+
+
+def all_attempts_failed(row):
+    """Ran to the end with every execution failed, as the main UI marks it."""
+    runs = [j for j in row.get('jobs') or [] if j.get('kind') == 'execute']
+    return row.get('state') == 'completed' and bool(runs) and all((j.get('receipt') or {}).get('execution_status') == 'failed' for j in runs)
 
 
 def plain_reason(row):
     """One plain sentence for why a run ended, for an operator who does not read logs."""
     reason, state = str(row.get('reason') or ''), row.get('state')
     versions = len(row.get('versions') or [])
+    attempts = attempts_used(row)
     if reason == 'eval_passed':
         return 'Solved: the reviewer confirmed the task was done.'
     if 'unreachable' in reason or ('TimeoutError' in reason and 'parcc' in reason):
@@ -42,7 +63,7 @@ def plain_reason(row):
     if 'dispatch unknown' in reason or 'infrastructure' in reason:
         return 'A system problem stopped it (not the robot).'
     if reason in {'target_G_E_reached', 'max_versions_reached'}:
-        return f'All {versions} attempts were used without solving the task.'
+        return f'All {attempts} attempts were used without solving the task.'
     if state == 'running':
         return 'Running now.'
     return reason.split(':')[0][:120] or 'Ended.'
@@ -61,7 +82,7 @@ def today_summary(rows, now):
     day = datetime.fromtimestamp(now).date()
     today = [r for r in rows if datetime.fromtimestamp(r['created_at']).date() == day]
     return {'runs': len(today), 'solved': sum(solved(r) for r in today),
-            'attempts': sum(len(r.get('versions') or []) for r in today)}
+            'attempts': sum(attempts_used(r) for r in today)}
 
 
 class ProviderProbe:
@@ -193,5 +214,6 @@ def status(bridge, probe, quota, *, now=None):
             'today': today_summary(rows, now), 'readiness': ready, 'planner_seconds': timing,
             'scenes': scenes(rows, bridge.root),
             'recent': [{'experiment_id': r['experiment_id'], 'key': r['key'], 'at': r['created_at'], 'task': TASK_TITLES.get(r['task_id'], r['task_id']),
-                        'policy': r['policy_id'], 'state': shown_state(r), 'attempts': len(r.get('versions') or []),
-                        'why': plain_reason(r), 'solved': solved(r)} for r in rows[:12]]}
+                        'policy': r['policy_id'], 'state': shown_state(r), 'attempts': attempts_used(r), 'attempts_limit': attempts_limit(r),
+                        'why': plain_reason(r), 'solved': solved(r), 'all_failed': all_attempts_failed(r),
+                        'system': bool(SYSTEM_PROBLEM.search(str(r.get('reason') or '')))} for r in rows[:12]]}

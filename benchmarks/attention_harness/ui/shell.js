@@ -6,8 +6,9 @@
   const doc = global.document;
   const THEME_KEY = 'attention.theme', OLD_MEMORY_KEY = 'attention.memory.theme';
   const PAGES = [['home', 'Home', '/ui/home.html'], ['run', 'Run', '/ui/'], ['memory', 'Memory', '/ui/memory.html']];
-  const TAGS = {completed: ['bad', 'Not solved'], needs_review: ['', 'Needs review'], failed: ['bad', 'Failed'], cancelled: ['', 'Stopped'],
-    condition_invalid: ['bad', 'Condition invalid'], running: ['run', 'Running'], planned: ['run', 'Waiting'], not_started: ['', 'Not started']};
+  // Run status words, the same as the main UI's task list (live.js recordStatus).
+  const TAGS = {completed: ['bad', 'Not solved'], needs_review: ['', 'Needs review'], failed: ['bad', 'Failed'], cancelled: ['', 'Stopped'], stopped: ['', 'Stopped'],
+    condition_invalid: ['bad', 'Condition invalid'], budget_exhausted: ['', 'Budget reached'], running: ['run', 'Running'], planned: ['run', 'Waiting'], not_started: ['', 'Not started']};
   const POLICIES = {autonomous: 'Autonomous', reactive_help: 'Reactive help', full_trace_aware_attention_planner: 'Attention planner'};
 
   function read(store, key) { try { return global[store].getItem(key); } catch (_) { return null; } }
@@ -122,12 +123,26 @@
   const clock = t => new Date(t * 1000).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
   const runUrl = r => `/ui/?dev=v2-${encodeURIComponent(r.key)}#exp=${encodeURIComponent(r.experiment_id)}`;
 
+  function outcome(r) {
+    if (r.solved) return ['ok', 'Solved'];
+    if (r.all_failed) return ['bad', 'Failed'];
+    if (r.system) return ['bad', 'System problem'];
+    return TAGS[r.state] || ['', r.state];
+  }
+
+  // Attempts the robot ran out of the allowed number, written like the main UI's badge.
+  function attemptsText(r) {
+    const used = Number(r.attempts) || 0, limit = r.attempts_limit;
+    if (!(limit > 0)) return `${used} attempt${used === 1 ? '' : 's'}`;
+    return r.state === 'running' && used < limit ? `Attempt ${used + 1}/${limit}` : `${used}/${limit} attempt${limit === 1 ? '' : 's'}`;
+  }
+
   // Recent runs from /api/home/status, the same rows on the cover and in Memory.
   function taskRail({list, meta, status, href = runUrl, current}) {
     meta.textContent = `${status.today.runs} runs today · ${status.running.length} running`;
     list.innerHTML = status.recent.map(r => {
-      const [kind, word] = r.solved ? ['ok', 'Solved'] : TAGS[r.state] || ['', r.state];
-      const attempts = `${r.attempts} attempt${r.attempts === 1 ? '' : 's'}`;
+      const [kind, word] = outcome(r);
+      const attempts = attemptsText(r);
       return `<a class="ab-rec" href="${escape(href(r))}" title="${escape(r.why)}"${r.experiment_id === current ? ' aria-current="true"' : ''}><span>${escape(clock(r.at))} · ${escape(r.task)}<small>${escape(POLICIES[r.policy] || r.policy)} · ${attempts}</small></span><span class="ab-tag ${kind}">${escape(word)}</span></a>`;
     }).join('');
   }
@@ -138,7 +153,7 @@
     for (const logo of doc.querySelectorAll('.ab-shell-logo[data-shell-page]')) turnLogo(logo, logo.dataset.shellPage);
   }
 
-  const api = {theme: () => theme, setTheme, onTheme: fn => listeners.push(fn), themeSwitch, pageSwitcher, turnLogo, setMemory, setRunHref, drawer, taskRail, runUrl, TAGS, POLICIES};
+  const api = {theme: () => theme, setTheme, onTheme: fn => listeners.push(fn), themeSwitch, pageSwitcher, turnLogo, setMemory, setRunHref, drawer, taskRail, outcome, attemptsText, runUrl, TAGS, POLICIES};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.AttentionShell = api;
   if (doc) { if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', mount); else mount(); }

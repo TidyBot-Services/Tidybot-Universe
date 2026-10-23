@@ -44,10 +44,15 @@ test('terminal condition and review states keep their title, reason and sidebar 
   }
   assert.equal(api.operatorState(snapshot('condition_invalid','')),'condition_invalid');
   assert.equal(api.operatorState(snapshot('needs_review','')),'review');
-  for(const [status,expected] of [['condition_invalid','Condition Invalid'],['needs_review','Needs review'],['failed','Failed']]){
+  for(const [status,expected] of [['condition_invalid','Condition invalid'],['needs_review','Needs review'],['failed','Failed']]){
     assert.equal(sidebar.recordStatus({development:true,status,lifecycle:{phase:'terminal'}}),expected);
     assert.equal(sidebar.recordIsActive({development:true,status,lifecycle:{phase:'sdk'}}),false);
   }
+  // The same words as the cover's task rail (shell.js outcome, tests/test_shell_status.cjs).
+  assert.equal(sidebar.recordStatus({development:true,status:'completed',reason:'eval_passed'}),'Solved');
+  assert.equal(sidebar.recordStatus({development:true,status:'completed',reason:'target_G_E_reached'}),'Not solved');
+  assert.equal(sidebar.recordStatus({development:true,status:'completed',all_attempts_failed:true}),'Failed');
+  assert.equal(sidebar.recordStatus({development:true,status:'needs_review',reason:'DevConflict: Native execution infrastructure/unresolved'}),'System problem');
   const running={...snapshot('running',''),dev_v2:null};
   assert.equal(api.operatorState(running),'running');
   assert.match(api.operatorOutcome(running),/● RUNNING/);
