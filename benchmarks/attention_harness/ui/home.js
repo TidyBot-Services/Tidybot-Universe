@@ -5,28 +5,18 @@
   const $ = id => document.getElementById(id);
   const WORDS = {ready: ['ok', 'Ready'], unstable: ['warn', 'Unstable'], blocked: ['bad', 'Blocked'], down: ['bad', 'Down'],
     low: ['warn', 'Low'], checking: ['dim', 'Checking'], unknown: ['dim', 'Unknown']};
-  const TAGS = {completed: ['bad', 'Not solved'], needs_review: ['', 'Needs review'], failed: ['bad', 'Failed'], cancelled: ['', 'Stopped'],
-    condition_invalid: ['bad', 'Condition invalid'], running: ['run', 'Running'], planned: ['run', 'Waiting'], not_started: ['', 'Not started']};
-  const POLICIES = {autonomous: 'Autonomous', reactive_help: 'Reactive help', full_trace_aware_attention_planner: 'Attention planner'};
-  const policy = id => POLICIES[id] || id;
-  const recordUrl = r => `/ui/?dev=v2-${encodeURIComponent(r.key)}#exp=${encodeURIComponent(r.experiment_id)}`;
-  const clock = t => new Date(t * 1000).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+  const shell = window.AttentionShell;
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const SCENE_SECONDS = 14;
   let status = null, firstPaint = true, sceneKeys = '', sceneTimer = null;
 
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function dot(kind, pulse) { return el('span', `dot ${kind}${pulse ? ' pulse' : ''}`); }
-  function remember(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* private window: keep the default */ } }
-  function recall(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
 
   // Tasks shows or hides the task drawer, like the main UI's Tasks button; the choice is remembered.
-  function setDrawer(open) { $('wrap').classList.toggle('closed', !open); $('tasks').setAttribute('aria-expanded', String(open)); remember('attention.home.tasks', open ? 'open' : 'closed'); }
-  $('tasks').addEventListener('click', () => setDrawer($('wrap').classList.contains('closed')));
-  addEventListener('keydown', e => {  // Same T shortcut as the main UI's task list.
-    if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.metaKey && !e.altKey && !/input|textarea|select/i.test(e.target.tagName)) setDrawer($('wrap').classList.contains('closed'));
-  });
-  setDrawer(recall('attention.home.tasks') !== 'closed');
+  shell.drawer({button: $('tasks'), wrap: $('wrap'), key: 'attention.home.tasks', open: true});
+  const notices = window.AttentionNotices?.createNotices({mount: $('home-notices'), experiment: () => status?.running?.[0]?.experiment_id || null});
+  if (notices) window.AttentionNotices.installFetchCapture(notices);
 
   // Title entrance: letters rise one by one, then the second line gets a slow light sweep.
   (function title() {
@@ -73,21 +63,12 @@
     }
   }
 
-  function renderSide(s) {
-    $('side-meta').textContent = `${s.today.runs} runs today · ${s.running.length} running`;
-    const list = $('recent'); list.replaceChildren();
-    for (const r of s.recent) {
-      const a = el('a', 'rec'); a.href = recordUrl(r); a.title = r.why;
-      const left = el('span'); left.append(document.createTextNode(`${clock(r.at)} · ${r.task}`), el('small', null, `${policy(r.policy)} · ${r.attempts} attempt${r.attempts === 1 ? '' : 's'}`));
-      const [kind, word] = r.solved ? ['ok', 'Solved'] : TAGS[r.state] || ['', r.state];
-      a.append(left, el('span', `tag ${kind}`, word)); list.append(a);
-    }
-  }
+  function renderSide(s) { shell.taskRail({list: $('recent'), meta: $('side-meta'), status: s}); }
 
   function renderHero(s) {
     const running = s.running[0], go = $('go');
     $('eyebrow').replaceChildren(dot(running ? 'ok' : 'warn', true), document.createTextNode(running ? 'LIVE · A RUN IS GOING' : 'STANDBY · READY FOR THE NEXT RUN'));
-    go.href = running ? recordUrl(running) : '/ui/#new-run';
+    go.href = running ? shell.runUrl(running) : '/ui/#new-run';
     $('go-label').textContent = running ? 'OPEN THE RUN' : 'NEW RUN';
   }
 

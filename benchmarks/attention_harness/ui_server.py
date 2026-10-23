@@ -802,8 +802,10 @@ def create_server(
                     page = page.replace('data-mode="live"',
                                         f'data-mode="live" data-control-token="{control_token}"', 1)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
-            elif path in {"/ui/live.js", "/ui/notices.js"}:
+            elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js"}:
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
+            elif path == "/ui/shell.css":
+                self._send((UI_DIR / "shell.css").read_bytes(), "text/css; charset=utf-8")
             elif path == "/api/codex-quota":
                 self._json(public_codex_quota())
             elif path in {"/ui/home.html", "/ui/home.js", "/ui/home.css"}:

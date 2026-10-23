@@ -1,8 +1,8 @@
 (function (global) {
   'use strict';
-  const TD={name:'dark',amber:'#ffd23f',amberHex:0xffd23f,onAmber:'#1a1400',flashLine:'#fff',ink:'#ffffff',mut:'#9fb0d0',mut2:'#7f93bd',mut3:'#6f84ad',card:'#101a36',cardLine:'#3a4f86',pill:'#0a1020',pillInk:'#ffffff',stroke:'#6f9bff',coreGlow2:'#5f8dff',stWait:'#3a4a74',stGo:'#6f93ff',pass:'#3ddc84',fail:'#ff5d5d',bk:['#dfe7ff','#7f9dff','#2c4aa8'],ec:{u:0x3ddc84,x:0xff5d5d,k:0x9db4ff},sc:{u:0x2fd37a,x:0xff4d4d,k:0x6f93ff},efc:{u:'#3ddc84',x:'#ff5d5d',k:'#9db4ff',v:'#c79bff',r:'#51ddd0'},off:0x59606e,vc:[0x5fd4ff,0x7fa8ff,0x9a8cff,0xc58cff,0xff8cd0],ringOp:.45,shell:0x4f78d8,shellOp:.06,fill:0x14224a,fillOp:.18,core:0x2d63d9,coreGlow:0x5f8dff,additive:true,bg:0x0a1020,gc:['#3d8bf0','#25c48d','#e977a6','#8f7cf0','#6fbf3a','#9aa1ad']};
-  const TL={name:'light',amber:'#f2a100',amberHex:0xf2a100,onAmber:'#1a1400',flashLine:'#8a5a00',ink:'#242822',mut:'#5f6258',mut2:'#6f7066',mut3:'#8a877d',card:'#ffffff',cardLine:'#cfc9ba',pill:'#ffffff',pillInk:'#242822',stroke:'#7d8fbd',coreGlow2:'#6f94ee',stWait:'#b8bfd6',stGo:'#4f7be0',pass:'#1f9d57',fail:'#d94545',bk:['#e4ebff','#6c84c8','#2f4a9a'],ec:{u:0x1f9d57,x:0xd94545,k:0x6c84c8},sc:{u:0x1f9d57,x:0xd94545,k:0x5870c0},efc:{u:'#1f9d57',x:'#d94545',k:'#6c84c8',v:'#8a4fd0',r:'#087c73'},off:0xaeb2ba,vc:[0x1c9fd6,0x3b6fe0,0x6a4fd8,0xa24fd8,0xd6489d],ringOp:.6,shell:0x6f86b8,shellOp:.2,fill:0xe4dfd2,fillOp:.55,core:0x2d63d9,coreGlow:0x6f94ee,additive:false,bg:0xf1eee6,gc:['#3d8bf0','#1f9d57','#c45b86','#795cc5','#688f2e','#8a8d91']};
-  let theme=TL;
+  const TD={name:'dark',amber:'#ffd23f',amberHex:0xffd23f,onAmber:'#1a1400',flashLine:'#fff',ink:'#ffffff',mut:'#a3a199',mut2:'#8e8c85',mut3:'#7a7870',card:'#14181d',cardLine:'#3a3f45',pill:'#0d0f12',pillInk:'#ffffff',stroke:'#6f9bff',coreGlow2:'#5f8dff',stWait:'#3a3f45',stGo:'#6f93ff',pass:'#3ddc84',fail:'#ff5d5d',bk:['#dfe7ff','#7f9dff','#2c4aa8'],ec:{u:0x3ddc84,x:0xff5d5d,k:0x9db4ff},sc:{u:0x2fd37a,x:0xff4d4d,k:0x6f93ff},efc:{u:'#3ddc84',x:'#ff5d5d',k:'#9db4ff',v:'#c79bff',r:'#51ddd0'},off:0x59606e,vc:[0x5fd4ff,0x7fa8ff,0x9a8cff,0xc58cff,0xff8cd0],ringOp:.45,shell:0x8a96aa,shellOp:.07,fill:0x161b22,fillOp:.18,core:0x2d63d9,coreGlow:0x5f8dff,additive:true,bg:0x0d0f12,gc:['#3d8bf0','#25c48d','#e977a6','#8f7cf0','#6fbf3a','#9aa1ad']};
+  // One drawing palette: the canvas is an instrument surface and ignores Light | Dark; only the page around it follows the theme.
+  const theme=TD;
   const LAYERS=['run','scene','task','family'];
   const layerName=layer=>layer[0].toUpperCase()+layer.slice(1);
   const color=kind=>kind==='off'?`#${theme.off.toString(16).padStart(6,'0')}`:theme.efc[{helps:'u',not_helps:'x',not_tested:'k',unvalidated:'v',run_note:'r'}[kind]||'k'];
@@ -88,21 +88,28 @@
     return scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract';
   }
   const warningText=warnings=>Array.isArray(warnings)&&warnings.length?'Some note details are unavailable right now.':'';
-  const api={automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TL},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
+  const api={automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   if(!global.document)return;
   const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function applyTheme(name){theme=name==='dark'?TD:TL;document.body.classList.toggle('dark',theme===TD);$('monitor').classList.toggle('light',theme===TL);$('themes').querySelectorAll('button').forEach(b=>b.classList.toggle('act',b.dataset.theme===theme.name));globe?.applyTheme3D();render();}
-  let savedTheme='light';try{savedTheme=localStorage.getItem('attention.memory.theme')||'light'}catch(_){}
-  $('themes').onclick=e=>{const name=e.target.dataset.theme;if(!name)return;applyTheme(name);try{localStorage.setItem('attention.memory.theme',name)}catch(_){}};
+  function applyTheme(name){const dark=name==='dark';document.body.classList.toggle('dark',dark);$('monitor').classList.toggle('light',!dark);render();}
+  const shell=global.AttentionShell;
+  let savedTheme='light';try{savedTheme=localStorage.getItem('attention.theme')||localStorage.getItem('attention.memory.theme')||'light'}catch(_){}
+  shell?.onTheme(applyTheme);
   const hash=location.hash,match=/^#exp=(devexp-[a-f0-9]{24})$/.exec(hash),demo=/^#demo=(40|150|400)(?:&n=(\d+))?$/.exec(hash);
   const demoVersions=demo?Math.max(1,Math.min(12,Number(demo[2]||5))):5;
   let experimentId=match?.[1]||null,data=null,previous=null,view='2d',version=0,layer='all',usedOnly=false,selected=null,canOperate=false,globe=null,flashUntil=new Map(),pollTimer=null;
   let readFlights=[],demoTick=0,demoSeq=0;
   const noticeController=global.AttentionNotices.createNotices({mount:$('memory-notices'),experiment:()=>experimentId});
   global.AttentionNotices.installFetchCapture(noticeController);
+  if(shell&&$('side')){
+    shell.drawer({button:$('tasks'),wrap:$('wrap'),key:'attention.memory.tasks',open:false});
+    $('tasks').addEventListener('click',()=>setTimeout(()=>global.dispatchEvent(new Event('resize')),360));
+    const rail=async()=>{try{const r=await fetch('/api/home/status',{cache:'no-store'});const status=await r.json();if(!r.ok)throw Error(status.error||'HTTP '+r.status);shell.taskRail({list:$('recent'),meta:$('side-meta'),status,href:x=>'/ui/memory.html#exp='+encodeURIComponent(x.experiment_id),current:experimentId})}catch(e){$('side-meta').textContent='Could not read the run list: '+e.message}};
+    rail();setInterval(rail,30000);
+  }
   $('real-data').hidden=!demo;
-  applyTheme(savedTheme);
+  applyTheme(shell?shell.theme():savedTheme);
   if(experimentId)$('back').href='/ui/#exp='+encodeURIComponent(experimentId);
   function setView(next){view=next;const is3=next==='3d'&&!!globe;$('globe').style.display=is3?'':'none';$('labels').style.display=is3?'':'none';$('flow').classList.toggle('on',!is3);$('views').querySelectorAll('button').forEach(b=>b.classList.toggle('act',b.dataset.view===(is3?'3d':'2d')));renderFlow();}
   $('views').onclick=e=>{const v=e.target.dataset.view;if(v)setView(v)};

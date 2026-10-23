@@ -23,6 +23,6 @@ test('Memory panel, row and other records are absent from the main page',()=>{
 });
 
 test('monitor includes reference controls and all four display states',()=>{
- for(const text of ['Back to run','Light','Dark','3D','2D','Show only used notes','Just now','Helps','Does not help','Not tested','Off'])assert.ok(page.includes(text),text);
+ for(const text of ['Tasks','Home','Run','Memory','Light','Dark','3D','2D','Show only used notes','Just now','Helps','Does not help','Not tested','Off'])assert.ok(page.includes(text),text);
  assert.match(page,/integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1\/ey98U3t2vZ0qQ=="/);
 });
