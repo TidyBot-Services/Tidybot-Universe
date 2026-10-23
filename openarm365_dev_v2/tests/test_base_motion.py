@@ -343,8 +343,9 @@ def test_world_and_pose_target_follow_moved_mount(monkeypatch):
     monkeypatch.setattr(planner_module,'mount_pose',lambda e:e.mount)
     planner=object.__new__(planner_module.MujocoV2Planner)
     planner.env=env;planner.names=[f'openarm_left_joint{i}' for i in range(1,8)]
+    planner.planner_mode='plan';planner.ik_candidates=None;planner.ik_max_joint_jump=None
     caught={}
-    planner.plan=lambda path,extra,active,epoch:caught.update(extra)
+    planner.plan=lambda path,extra,active,epoch,**kwargs:caught.update(extra)
     planner.plan_pose(np.array([1.,0.,.5]),np.eye(3),side='left',epoch='test')
     assert np.allclose(caught['targets']['openarm_left_hand_tcp']['position'],expected)
 

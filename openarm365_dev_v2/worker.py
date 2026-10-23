@@ -39,7 +39,8 @@ def main():
             generative_textures=None,control_freq=c['control_freq'],horizon=c['horizon'],**({'scene_reset_seed':c['scene_reset_seed']} if 'scene_reset_seed' in c else {}))
         env.reset();validate_physical_model(env);configure_display_camera(env)
         planner=MujocoV2Planner(env,evidence=args.evidence/'planner',deadline=args.deadline,cancel_check=stop.is_set,
-            contact_exempt_objects=c['contact_exempt_objects'])
+            contact_exempt_objects=c['contact_exempt_objects'],planner_mode=c.get('planner_mode','plan'),
+            ik_candidates=c.get('ik_candidates'),ik_max_joint_jump=c.get('ik_max_joint_jump'))
         send({'kind':'spawn','pid':planner.owner.process.pid})
         planner.prepare(planner.names)
         from benchmarks.attention_harness.robocasa365.recording import StepRecorder

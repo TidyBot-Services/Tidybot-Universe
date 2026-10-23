@@ -52,7 +52,13 @@ def test_formal_config_bytes_and_rejection(monkeypatch):
     assert formal_config.validate_formal_config(formal)==formal
     assert tuple(formal[k] for k in ('sdk_call_limit','horizon','attempt_wall_seconds','whole_case_wall_seconds')) == (40,2400,120,300)
     raw=json.dumps(formal,sort_keys=True,separators=(',',':')).encode()
-    assert hashlib.sha256(raw).hexdigest()=='5b12aa4630e9bd6be7099cbc9e1ee6892057a3c4445b4c7c971a39959f38e913'
+    assert hashlib.sha256(raw).hexdigest()=='988f8028318e7eb54cd8edc10275e80d5e7077237c253422357840f5fdab1567'
+    legacy=dict(formal,contact_exempt_objects='none')
+    for key in dev_config.PLANNER_CONFIG_KEYS:del legacy[key]
+    legacy_raw=json.dumps(legacy,sort_keys=True,separators=(',',':')).encode()
+    assert formal_config.validate_formal_config(legacy)==legacy
+    assert json.dumps(legacy,sort_keys=True,separators=(',',':')).encode()==legacy_raw
+    assert hashlib.sha256(legacy_raw).hexdigest()=='5b12aa4630e9bd6be7099cbc9e1ee6892057a3c4445b4c7c971a39959f38e913'
     assert formal_task_limits()=={'sdk_calls':80,'control_steps':2400,'attempt_seconds':480}
     with pytest.raises(ValueError):formal_config.make_formal_config('pick_place_counter_to_sink',102,lock,
         attempt_wall_seconds=1920,whole_case_wall_seconds=1920,sdk_call_limit=320)
