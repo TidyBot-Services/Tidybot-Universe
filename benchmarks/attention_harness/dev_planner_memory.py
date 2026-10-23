@@ -178,7 +178,11 @@ class DevMemory:
                          trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'), source_task_id=r.get('source_task_id'))
                     for r in self.gateway.retrieve_entries(self.context, now=now,
                         match_levels=levels)
-                    if not reference_only or r.get('match_level') in levels and r.get('trusted_here') is False]
+                    if (not reference_only or r.get('match_level') in levels and r.get('trusted_here') is False)
+                    and (r.get('match_level') != 'same_family' or
+                         r.get('status') in {'provisional','trusted'} and not r.get('seeded_for_tests')
+                         and (r.get('expires_at') is None or r['expires_at']>now)
+                         and not any(r.get(k) for k in ('disabled','expired','withdrawn')))]
         else:
             if reference_only:
                 return []  # Old gateways cannot explicitly attest same-task reference trust.
@@ -237,6 +241,8 @@ class DevMemory:
                 raise PermissionError('Memory exact version/exposure binding mismatch')
             if grant.get('seeded_for_tests') is True and grant.get('excluded_from_results') is not True:
                 raise PermissionError('test-seeded Memory grant lacks exclusion flag')
+            if getattr(m,'match_level',None)=='same_family' and grant.get('seeded_for_tests') is True:
+                raise PermissionError('test-seeded Memory cannot be a family reference')
             # Deliberately exclude validation/evaluation internals from online input.
             entry = dict(memory_id=m.memory_id, version=m.version, content=grant['guidance'],
                          grant_id=grant['grant_id'], source_trace_id=grant['source_trace_id'],
@@ -365,6 +371,7 @@ def load_memory(store, cell, version, previous, config, settings, directory, lay
 
 
 def journal_result(store, cell, version, packet, source_ref, public_feedback_ref, directory):
+    if (Path(directory)/'memory-validation-input.json').exists():return None
     from .memory_run_notes import delivered
     run_notes=delivered(directory) if store.cell(cell).get('run_notes') is True else []
     if packet.get('scope') == 'reference_only' and not run_notes:
@@ -375,7 +382,9 @@ def journal_result(store, cell, version, packet, source_ref, public_feedback_ref
         return None
     if not packet.get('entries') and not run_notes:return
     from .dev_v2_memory_import import queue
-    provisional=[e for e in packet.get('entries',[]) if e.get('trust_scope')=='provisional'
+    provisional=[e for e in packet.get('entries',[]) if (e.get('trust_scope')=='provisional'
+                 or e.get('status')=='trusted' and e.get('trusted_here') is not False)
+                 and not e.get('seeded_for_tests')
                  and packet.get('scope') != 'reference_only']
     if provisional:
         # Observational use records only; the importer sends the raw public

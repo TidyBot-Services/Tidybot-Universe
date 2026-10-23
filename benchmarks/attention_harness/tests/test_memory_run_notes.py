@@ -209,7 +209,11 @@ def test_results_excluded_provisional_outcomes_preserved_and_importer_isolated(t
     assert importer.run([store.path], client=Guard(), namespace=SETTINGS['namespace'])['outcomes'] == 2
     # Even a normal, countable trusted packet must not queue a result after local guidance.
     trusted = dict(packet, entries=[dict(packet['entries'][0], excluded_from_results=False, seeded_for_tests=False)], excluded_from_results=False)
-    memory.journal_result(store, cell['key'], 3, trusted, source, feedback, directory)
+    # Trusted outcomes now have an observational queue too. Rebinding this
+    # already sealed version to a different grant set must remain impossible.
+    from benchmarks.attention_harness.core.dev_store import DevConflict
+    with pytest.raises(DevConflict,match='immutable recovery artifact conflict'):
+        memory.journal_result(store, cell['key'], 3, trusted, source, feedback, directory)
     assert not (directory/'memory-result.json').exists()
 
 

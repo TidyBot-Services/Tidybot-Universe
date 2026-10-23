@@ -24,6 +24,37 @@ EVENT_LIMIT = 500
 _USAGE = {}
 EXPERIMENT_LIMIT = 200
 CACHE_SECONDS = 5
+
+
+def automatic_checks(root=None,gateway=None):
+    """Public worker state only: no requests, guidance, keys, or evidence paths."""
+    import os
+    from .memory_validation_worker import settings
+    from .notices import safe_text,safe_detail
+    root=root or os.environ.get('ATTENTION_MEMORY_VALIDATION_STATE')
+    value=dict(enabled=False,status='Off',runs_today=0,queue=[],current=None,results=[],events=[],errors=[],notices=[])
+    if root:
+        try:
+            value['enabled']=settings(root)['enabled'];path=Path(root)/'state.json'
+            state=json.loads(path.read_bytes()) if path.exists() else {}
+            value['status']=safe_text(state.get('status'),'Waiting for worker' if value['enabled'] else 'Off') if value['enabled'] else 'Off'
+            value['runs_today']=state.get('runs_today',0)
+            quota=state.get('weekly_quota')
+            if type(quota) in (int,float) and 0<=quota<=100:value['weekly_quota']=quota
+            value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
+            value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
+            current=state.get('current')
+            if current:value['current']=dict(title=safe_text(current['title']),pair=current['pair_index']+1,arm=current['arm'],paused=bool(current.get('pause_requested')))
+            for row in state.get('results',[])[-20:]:
+                report=row.get('decision',{}).get('report',{})
+                value['results'].append(dict(title=safe_text(row['title']),status=row['status'],reason=safe_text(row.get('decision',{}).get('reason')),pairs=report.get('paired_runs'),control=report.get('control_signature_count'),treatment=report.get('treatment_signature_count')))
+        except Exception as exc:value['errors'].append('Automatic checks state unavailable: '+safe_detail(str(exc)))
+    if gateway:
+        try:
+            value['queue']=[{k:r.get(k) for k in ('memory_id','title','uses','failure_gone')} for r in gateway.validation_queue()]
+            value['events']=[{k:r.get(k) for k in ('seq','memory_id','title','event','reason','time')} for r in gateway.memory_events(after=0)[-100:]]
+        except Exception as exc:value['errors'].append('Automatic checks service feed unavailable: '+safe_detail(str(exc)))
+    return value
 EXTRA_ERRORS = (PermissionError, OSError, ValueError, RuntimeError, KeyError, TypeError, AttributeError)
 
 

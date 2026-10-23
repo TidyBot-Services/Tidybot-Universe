@@ -59,8 +59,11 @@ def slot_wall_seconds(manifest):
             startup_cleanup_seconds=60,eval_agent=manifest['selection'].get('eval_agent',{})))
     return worst_slot(manifest)
 
-def create(store,artifact_root,selection):
+def create(store,artifact_root,selection,*,validation_origin=None):
     validate_selection_fields(selection)
+    if validation_origin is not None:
+        from .memory_validation_provision import validate_creation
+        validate_creation(selection,validation_origin)
     from .eval_agent import OLD_PROMPT_VERSION
     from .dev_advisor_proxy import OLD_PROMPT_VERSION as OLD_ADVISOR_PROMPT_VERSION
     if selection.get('eval_agent',{}).get('prompt_version')==OLD_PROMPT_VERSION or selection.get('advisor_proxy',{}).get('prompt_version')==OLD_ADVISOR_PROMPT_VERSION:
@@ -127,7 +130,7 @@ def create(store,artifact_root,selection):
     if source=='codex':normalized['model_source']='codex'
     if v3:
         budget=configured_budget(configuration)
-        n=len(tasks)*len(seeds)*len(policies)
+        n=10 if validation_origin is not None else len(tasks)*len(seeds)*len(policies)
         goal_limits=configuration.get('goal_limits',{k:n*v for k,v in budget.items()})
         if complete_resources(goal_limits):goal_limits=fill_optional(goal_limits)
         __import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
@@ -168,8 +171,10 @@ def create(store,artifact_root,selection):
         if row:
             e=json.loads(row[0])
             if e['selection']!=normalized:raise DevConflict('request key reused with different experiment conditions')
-            verify_manifest(e)
-    if row:return snapshot(store,e['experiment_id'])
+            verified=verify_manifest(e)
+    if row:
+        if verified.get('validation_origin')!=validation_origin:raise DevConflict('validation origin changed')
+        return snapshot(store,e['experiment_id'])
     # Existing independent ledgers return above with their original immutable
     # manifest. New legacy experiment cells need the same physical scene gate
     # as v3; interactive and diagnostic cells retain their original reset path.
@@ -182,11 +187,16 @@ def create(store,artifact_root,selection):
             for seed in seeds:seed_entry(contract,task,seed)
     directory=Path(artifact_root).resolve()/exp_id;directory.mkdir(parents=True,exist_ok=True)
     lock_path=directory/'identity-lock.json'
-    ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path)
-    verify_lock(ref)
-    configs={f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier) for t in tasks for s in seeds}
+    if validation_origin is not None:
+        from .dev_v2_loop import checked
+        original=json.loads(checked(validation_origin['manifest']).read_bytes())
+        ref=original['identity_lock']
+    else:ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path)
+    if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])
+    else:verify_lock(ref)
+    configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier) for t in tasks for s in seeds}
     sources={t:{'source':Path(get_task(t).initial_policy).read_text(),'sha256':sha(get_task(t).initial_policy)} for t in tasks}
-    demos={t:DemoProvider().freeze(t) for t in tasks}
+    demos={t:original['demos'][t] for t in tasks} if validation_origin is not None else {t:DemoProvider().freeze(t) for t in tasks}
     # All base conditions live once, outside the policy specifications.
     budget=budget if v3 else dict(task_cell_budget(budget_tier),help_credits=help_budget,help_count=help_budget,advisor_calls=min(2,help_budget))
     if legacy_configuration is not None:budget=dict(legacy_configuration['cell_budget'])
@@ -199,6 +209,9 @@ def create(store,artifact_root,selection):
     if source=='codex':
         for config in configs.values():config['model_source']='codex'
     cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
+    if validation_origin is not None:
+        base=cells[0]
+        cells=[dict(base,key=hashlib.sha256(f"{base['key']}|{i}|{arm}".encode()).hexdigest(),validation_pair=i,validation_arm=arm) for i in range(5) for arm in ('control','treatment')]
     # Fixed schedule: first cell verifies v1→v2, then all remaining cells v1,
     # then their v2. Coverage is preserved before remaining iteration slots.
     schedule=[{'cell':cells[0]['key'],'through_version':2}]+[{'cell':c['key'],'through_version':1} for c in cells[1:]]+[{'cell':c['key'],'through_version':2} for c in cells[1:]]
@@ -245,11 +258,19 @@ def create(store,artifact_root,selection):
             for c in configs.values():
                 c['scene_reset_seed']=c['seed']
                 c['scene_contract']=legacy_scene_ref
+    if validation_origin is not None:
+        frozen=json.loads(checked(validation_origin['config']).read_bytes())
+        configs.clear();configs[f"{tasks[0]}:{seeds[0]}"]=frozen
+        origin_text=checked(validation_origin['source']).read_text()
+        sources.clear();sources[tasks[0]]=dict(source=origin_text,sha256=validation_origin['source']['sha256'])
+        manifest.update(validation_origin=validation_origin,validation_experiment=True)
+        manifest['schedule']=[dict(cell=c['key'],through_version=1) for c in cells]
     public_screen(sources);public_screen(demos);validate_fairness(manifest)
     manifest_path=directory/'manifest.json'
     mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
     if json.loads(manifest_path.read_bytes())!=manifest:raise DevConflict('immutable manifest conflict')
     exp=dict(experiment_id=exp_id,selection=normalized,manifest=mref,artifact_dir=str(directory),state='planned',cancelled=False,owner=None,created_at=time.time(),formal_eligible=False)
+    if validation_origin is not None:exp['validation_experiment']=True
     if v3 or legacy_configuration is not None:exp['goal_id']=goal_id
     with store.tx() as db:
         if v3:
@@ -282,6 +303,12 @@ def create(store,artifact_root,selection):
                 payload=dict(row,experiment_id=exp_id,state='planned',owner=None,mode=mode,
                     mixed_policy=False,experiment_eligible=mode=='experiment',policy_segments=[row['policy_id']],
                     budget=budget,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False)
+                if validation_origin is not None:
+                    payload.update(validation_experiment=True,experiment_eligible=False,artifact_dir=str(directory/row['key']))
+                    config_path=Path(payload['artifact_dir'])/'config.json';config_text=checked(validation_origin['config']).read_text()
+                    if config_path.exists():
+                        if config_path.read_text()!=config_text:raise DevConflict('validation config artifact drift')
+                    else:immutable(config_path,config_text)
                 if v3:payload['runtime']={k:manifest[k] for k in ['model_reserve_seconds','startup_cleanup_seconds','max_input_bytes_per_request','source_size_limit_bytes','public_failure_rule']}
                 if 'planner_features' in manifest:payload['planner_features']=manifest['planner_features']
                 if 'memory_authority' in manifest:payload['memory_authority']=manifest['memory_authority']
@@ -298,7 +325,19 @@ def validate_fairness(m):
     if len({c['key'] for c in m['cells']})!=len(m['cells']):raise ValueError('duplicate cell keys')
     expected={(t,s,p) for t in m['selection']['tasks'] for s in m['selection']['seeds'] for p in m['selection']['policies']}
     if expected!={(c['task_id'],c['seed'],c['policy_id']) for c in m['cells']}:raise ValueError('planned denominator incomplete')
+    validation=m.get('validation_experiment') is True
+    if validation:
+        from .memory_validation_provision import validate_creation
+        validate_creation(m['selection'],m['validation_origin'])
+        if len(m['cells'])!=10 or {(c['validation_pair'],c['validation_arm']) for c in m['cells']}!={(i,a) for i in range(5) for a in ('control','treatment')}:raise ValueError('ten validation arms required')
+        if m['goal_limits']!={k:10*v for k,v in m['cell_budget'].items()} or m['cell_budget']!=m['selection']['cell_budget'] or m['goal_limits']!=m['selection']['goal_limits']:raise ValueError('validation budget differs')
+        if any(m.get(k) is not False for k in ('run_notes','memory_family')) or m.get('memory_authority') or m.get('planner_features'):raise ValueError('validation Memory binding differs')
+        if any(v['sha256']!=m['validation_origin']['source']['sha256'] for v in m['initial_sources'].values()):raise ValueError('validation source differs')
     for c in m['cells']:
+        if validation:
+            expected_key=hashlib.sha256(f"{cell_key(m['experiment_id'],c['task_id'],c['seed'],c['policy_id'])}|{c['validation_pair']}|{c['validation_arm']}".encode()).hexdigest()
+            if c['key']!=expected_key:raise ValueError('validation cell identity mismatch')
+            continue
         if c['key']!=cell_key(m['experiment_id'],c['task_id'],c['seed'],c['policy_id']):raise ValueError('cell identity mismatch')
     return True
 
@@ -315,7 +354,10 @@ def verify_manifest(exp):
     verify_lock(m['identity_lock'],expected_source_root=epoch_root)
     for c in m['configs'].values():
         if c.get('budget_tier','legacy')!=tier:raise DevConflict('config budget tier differs from manifest')
-        if c.get('model_source','parcc')!=m.get('model_source','parcc'):raise DevConflict('config model source differs from manifest')
+        if m.get('validation_experiment'):
+            from .dev_v2_loop import checked
+            if c!=json.loads(checked(m['validation_origin']['config']).read_bytes()):raise DevConflict('validation frozen config drift')
+        elif c.get('model_source','parcc')!=m.get('model_source','parcc'):raise DevConflict('config model source differs from manifest')
         validate_dev_config(c,expected_source_root=epoch_root)
     for t,r in m['initial_sources'].items():
         if hashlib.sha256(r['source'].encode()).hexdigest()!=r['sha256']:raise DevConflict('initial source drift')

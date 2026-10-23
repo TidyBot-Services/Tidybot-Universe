@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "base_url": "http://127.0.0.1:18000",
+  "key_file": "/absolute/path/to/offline-importer.env",
+  "experiments_root": "/absolute/path/to/experiments",
+  "validator_root": "/absolute/path/to/independent-validator",
+  "provision_factory": "benchmarks.attention_harness.memory_validation_provision:provision_factory",
+  "activity_ledger_roots": ["/absolute/path/to/experiments", "/absolute/path/to/main-matrix"],
+  "activity_ledgers": [],
+  "quota_home": "/home/example",
+  "evidence_catalogs": {
+    "original-executor": {"uri": "/absolute/path/to/prepared/catalog.json", "sha256": "REPLACE_WITH_SEALED_CATALOG_SHA256"},
+    "original-validator": {"uri": "/absolute/path/to/validator/catalog.json", "sha256": "REPLACE_WITH_SEALED_CATALOG_SHA256"}
+  }
+}

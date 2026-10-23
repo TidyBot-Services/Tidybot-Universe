@@ -18,6 +18,7 @@ from benchmarks.attention_harness.tests.test_daily_memory_wiring import _body, _
 from benchmarks.attention_harness.tests.test_memory_provisional import events, write_version, ADVICE, REJECTED, TIMEOUT
 from benchmarks.attention_harness.tests import test_memory_provisional as provisional_tests
 from openarm365_dev_v2.scene_contract import registered_contract_ref
+from openarm365_dev_v2.diag_budget import TIERS
 
 SOURCE = 'from robot_sdk import sensors\nobservation = sensors.get_observation()\n'
 
@@ -147,6 +148,8 @@ def test_daily_binding_prompt_and_budgets(tmp_path, monkeypatch, mode, policy):
     assert cell['budget'] == plain['budget'] == daily.DEFAULT_CELL
     assert manifest['cell_budget'] == plain_manifest['cell_budget']
     assert cell['run_notes'] is plain['run_notes'] is True
+    assert cell['memory_family'] is plain['memory_family'] is True
+    assert manifest['selection']['memory_family'] is plain_manifest['selection']['memory_family'] is True
     if mode != 'experiment':
         assert not manifest['selection']['advisor_proxy']['enabled']
         assert not cell['experiment_eligible']
@@ -161,7 +164,7 @@ def test_daily_binding_prompt_and_budgets(tmp_path, monkeypatch, mode, policy):
     assert [e['trusted_here'] for e in packet['entries']] == [True, False, False]
     prompt(store, cell, config, manifest, root)  # Resume rechecks without a duplicate scope event.
     assert events(store, 'planner_memory_scope') == [dict(cell=cell['key'], version=1, level='scene', reason=None, seed=102)]
-    assert gateway.levels and all(x == ['same_scene', 'same_task'] for x in gateway.levels)
+    assert gateway.levels and all(x == ['same_scene', 'same_task', 'same_family'] for x in gateway.levels)
     assert projection(store, cell)['unvalidated_used'] is True
     assert monitor_scope(bridge, store, exp)['level'] == 'scene'
 
@@ -255,7 +258,7 @@ def test_uncovered_reference_only_no_proposal_or_outcome(tmp_path, monkeypatch, 
     assert notes[0]['title'].startswith('Unvalidated reference (scene 102):')
     assert notes[1]['title'].startswith('Reference (scene 102):')
     prompt(store, cell, config, manifest, root)
-    assert all(levels == ['same_task'] for levels in gateway.levels)
+    assert all(levels == ['same_task', 'same_family'] for levels in gateway.levels)
     scope = events(store, 'planner_memory_scope')
     assert scope == [dict(cell=cell['key'], version=1, level='reference_only', reason='no_scene_contract', seed=104)]
     assert projection(store, cell)['scope'] == scope[0]
@@ -269,7 +272,7 @@ def test_uncovered_reference_only_no_proposal_or_outcome(tmp_path, monkeypatch, 
     assert events(store, 'planner_memory_offline_queued') == []
     assert events(store, 'planner_memory_result_skipped')[-1]['reason'] == 'reference_only_no_scene_contract'
     # Exact grant binding and use-time rechecks still fail closed.
-    service = memory.DevMemory(gateway, _memory(), config, layered=True, mode=mode)
+    service = memory.DevMemory(gateway, _memory(), config, layered=True, mode=mode, family=cell['memory_family'])
     service.recheck(packet)
     gateway.grants[packet['entries'][0]['grant_id']]['source_policy_sha256'] = 'changed'
     with pytest.raises(PermissionError, match='no longer matches'):
@@ -385,7 +388,7 @@ def test_reference_only_execution_rechecks_keep_mode_and_skip_results(tmp_path, 
     directory = root/'v1'
     source = immutable(directory/'policy.py', SOURCE)
     loop.execute(store, cell['key'], 1, {'source':source}, config, owner, directory, Runner)
-    assert len(gateway.levels) >= 3 and all(levels == ['same_task'] for levels in gateway.levels)
+    assert len(gateway.levels) >= 3 and all(levels == ['same_task', 'same_family'] for levels in gateway.levels)
     assert events(store, 'planner_memory_offline_queued') == []
     assert events(store, 'planner_memory_result_skipped')[-1]['reason'] == 'reference_only_no_scene_contract'
 
@@ -399,3 +402,22 @@ def test_missing_contract_scope_is_visible_before_first_dev_call(tmp_path):
     assert events(store, 'planner_memory_scope') == []
     assert projection(store, cell)['scope'] == dict(level='reference_only', reason='scene_contract_missing', seed=102)
     assert events(store, 'planner_memory_scope') == []  # The projection remains read-only.
+
+
+@pytest.mark.parametrize('selection', [dict(memory_family=False),
+    dict(budget_tier='dev', memory_family=False),
+    *[dict(budget_tier=tier) for tier in TIERS if tier != 'dev']])
+@pytest.mark.parametrize('seed,expected_levels', [(102, ['same_scene', 'same_task']), (104, ['same_task'])])
+def test_family_opt_out_and_nondev_selections_have_no_family_level(tmp_path, selection, seed, expected_levels):
+    bound = daily.bind_daily_run_notes(selection, tmp_path/'new-selection.json')
+    assert bound.get('memory_family', False) is False
+    if selection.get('budget_tier', 'dev') != 'dev':
+        assert 'memory_family' not in bound
+    _, _, _, _, config, _, _ = make(tmp_path/'context', seed=seed)
+    gateway = Gateway(config)
+    service = memory.DevMemory(gateway, _memory(), config, layered=True, mode='interactive',
+                               family=bound.get('memory_family') is True)
+    service.notes()
+    assert service.family is False
+    assert gateway.levels == [expected_levels]
+    assert all('same_family' not in levels for levels in gateway.levels)

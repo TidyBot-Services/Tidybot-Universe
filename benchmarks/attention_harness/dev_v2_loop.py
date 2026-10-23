@@ -268,9 +268,11 @@ def feedback_for(cell):
             else:break
     return feedback,source,failures,prior
 
-def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None):
+def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None,*,validation_memory=False):
     from .eval_agent import visible_review
-    attention=prompt_memory_view(attention)
+    if validation_memory:
+        if set(attention)!={'memory'} or not isinstance(attention['memory'],list) or len(attention['memory'])>1 or any(set(e)!={'content'} or not isinstance(e['content'],str) for e in attention['memory']):raise DevConflict('clean validation Memory required')
+    else:attention=prompt_memory_view(attention)
     public_screen(previous);public_screen(feedback);public_screen(attention)
     # Explicit public task + SDK packet; resource paths and evaluator excluded.
     t=get_task(config['task_id']);public_cfg={k:config[k] for k in ['task_id','official_env','task_prompt','seed','robot','execution_arm','controller','layout_id','style_id','scene_id','horizon','sdk_call_limit','attempt_wall_seconds','perception_mode']}
@@ -479,8 +481,14 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         if approval_id:raise PlannerActionBlocked('motion approval invalidated before dispatch')
         raise
     watcher.start()
+    meter=None;measurement=None
     try:
-        result=run_with_formal_boundary(request,runner=runner)
+        if memory_validation and runner_factory is None:
+            from .gpu_meter import GpuMeter
+            meter=GpuMeter().start()
+        try:result=run_with_formal_boundary(request,runner=runner)
+        finally:
+            if meter is not None:measurement=meter.stop()
         bundle=immutable(directory/'bundle.json',{**result,'channel':'diagnostic' if result.get('diagnostic_budget_override') else 'dev_v2','formal_eligible':False,'dev_version':version,'policy_id':cell['policy_id'],'config_lock':{'uri':str(config_path),'sha256':sha(config_path)}})
         if result.get('infrastructure_failure') or result.get('outcome_unknown'):raise DevConflict('native infrastructure/dispatch unknown; no revision/retry')
         trace=json.loads(checked(result['artifacts']['trace']).read_bytes());projected={'schema_version':'attentionbench.dev-public-feedback.v1','execution_status':'condition_invalid','public_error':'scene_contract_mismatch','action_trace':[]} if result['status']=='condition_invalid' else public_feedback(trace)
@@ -493,7 +501,10 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         public_screen(projected);feedback=immutable(directory/'public-feedback.json',projected)
         receipt=json.loads(checked(result['artifacts']['sandbox_receipt']).read_bytes())
         actual={'executions':1,'sdk_calls':receipt['sdk_call_budget']['dispatched'],'control_steps':receipt['control_steps'],'execution_seconds':receipt['elapsed_seconds']}
-        store.settle(job['job_id'],actual,{**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),**({'dev_tier_budget':result['dev_tier_budget']} if result.get('dev_tier_budget') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
+        gpu={}
+        if measurement is not None:
+            gpu['gpu_measurement']=immutable(directory/'gpu-measurement.json',dict(measurement,source='harness_gpu_meter',cell=key,version=version,bundle_sha256=bundle['sha256'],attempt_id=result['attempt_id']))
+        store.settle(job['job_id'],actual,{**gpu,**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),**({'dev_tier_budget':result['dev_tier_budget']} if result.get('dev_tier_budget') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
         memory_path=directory/'memory-input.json'
         if ((cell.get('planner_features') or layered(cell)) and memory_path.exists()) or cell.get('run_notes') is True:
             from .dev_planner_memory import journal_result

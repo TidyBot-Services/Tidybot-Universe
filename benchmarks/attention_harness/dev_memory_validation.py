@@ -7,7 +7,7 @@ from .core.dev_store import DevConflict
 from .dev_v2_loop import immutable, checked, job_for
 
 
-def prepare_validation(store,cell,version,config,context,client,memory_id,exposure,directory):
+def prepare_validation(store,cell,version,config,context,client,memory_id,exposure,directory,*,origin_source_sha256=None):
     """Operator invokes only after independent scene prerequisites and plan pass.
 
     Does not run an evaluator, mint a budget or approve a motion. Online planner
@@ -19,7 +19,8 @@ def prepare_validation(store,cell,version,config,context,client,memory_id,exposu
     config_ref={'uri':str(Path(c['artifact_dir'])/'config.json'),'sha256':record['config_sha256']}
     if json.loads(checked(config_ref).read_bytes())!=config:raise DevConflict('validation config drift')
     grant=client.authorize_dev_v2_validation(memory_id=memory_id,cell=cell,version=version,seed=config['seed'],
-        context=context,policy_sha256=record['source']['sha256'],config_sha256=record['config_sha256'],exposure=exposure)
+        context=context,policy_sha256=record['source']['sha256'],config_sha256=record['config_sha256'],exposure=exposure,
+        **({'origin_source_sha256':origin_source_sha256} if origin_source_sha256 is not None else {}))
     value=dict(memory_ids=[memory_id] if exposure=='candidate_validation' else [],exposure=exposure,
         context=context,policy_sha256=record['source']['sha256'],config_sha256=record['config_sha256'],validation_grant_id=grant['grant_id'])
     guidance=client.get_memory(memory_id).guidance if value['memory_ids'] else None

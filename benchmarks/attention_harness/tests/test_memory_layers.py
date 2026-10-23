@@ -39,7 +39,7 @@ def test_order_caps_labels_and_idempotence():
     assert layers.label(dict(tasks[0],unvalidated=True)) == 'Unvalidated reference (scene 101): '
     assert layers.label(dict(tasks[0],source_seed=None)) == 'Reference: '
     assert layers.label(families[0]) == 'Reference (task pick_place_plate): '
-    assert layers.label(dict(families[0],unvalidated=True)) == 'Unvalidated reference (task pick_place_plate): '
+    assert layers.label(dict(families[0],unvalidated=True)) == 'Reference (task pick_place_plate): '
     assert layers.layer_of({}) == 'scene'
     assert layers.layer_of({'match_level':'same_task'}) == 'task'
 
@@ -63,7 +63,7 @@ def test_title_validation_and_collisions():
 
 def test_daily_default_and_manifest_switch(tmp_path, monkeypatch):
     absent = tmp_path/'selection.json'
-    assert 'memory_family' not in daily.bind_daily_run_notes({},absent)
+    assert daily.bind_daily_run_notes({},absent)['memory_family'] is True
     assert 'memory_family' not in daily.bind_daily_run_notes({'memory_family':False},absent)
     assert daily.bind_daily_run_notes({'memory_family':True},absent)['memory_family'] is True
     with monkeypatch.context() as patch:

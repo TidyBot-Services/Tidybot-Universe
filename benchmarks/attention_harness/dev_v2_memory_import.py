@@ -39,7 +39,7 @@ def queue(store, cell, version, directory, kind, refs):
     return ref
 
 
-def prepare(store, cell, version, namespace, output, catalog_root, *, source=None):
+def prepare(store, cell, version, namespace, output, catalog_root, *, source=None, source_catalogs=None):
     from .dev_planner_memory import context, sdk_identity
     from .dev_planner import binding
     c=store.cell(cell);v=next(v for v in c['versions'] if v['version']==version)
@@ -97,6 +97,18 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     def pin(path,expected=None):
         p=Path(path)
         if not p.is_absolute():raise ValueError('only original absolute evidence paths are pinned')
+        # This registered contract is sealed in a source or separate contract
+        # catalog. Only exact locked source files may use source catalogs.
+        if config.get('scene_contract')=={'uri':str(p),'sha256':expected}:
+            from openarm365_dev_v2.scene_contract import registered_contract_ref
+            if config['scene_contract']==registered_contract_ref():return
+        if not p.is_relative_to(root):
+            for catalog in (source_catalogs or {}).values():
+                base=Path(catalog['root'])
+                if (catalog['role']=='source' and catalog['context']==descriptor['context'] and p.is_relative_to(base)
+                        and p.resolve()==p and catalog['files'].get(str(p.relative_to(base)))==expected):
+                    if sha(p)!=expected:raise DevConflict('source evidence digest drift: '+str(p))
+                    return
         if not p.is_relative_to(root) or not p.resolve().is_relative_to(root):raise ValueError('catalog root must contain only explicitly pinned evidence: '+str(p))
         actual=sha(p)
         if expected and actual!=expected:raise DevConflict('source evidence digest drift: '+str(p))
