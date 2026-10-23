@@ -8,10 +8,19 @@ test('automatic checks show switch, queue, pair, counts, demotion and escaped er
  for(const text of ['Off','Runs today: 7 of 20','Codex weekly use: 43.5%','Trusted on this scene','pair 2 of 5','treatment','paused','used 3 times','failure gone 1 times','without note 5 of 5','with note 0 of 5','Unvalidated','role="alert"','&lt;script&gt;'])assert.ok(html.includes(text),text);
  assert.ok(!html.includes('<script>'));
 });
-test('section inherits both page themes without setting a light background',()=>{
+test('section follows both page themes through the shared shell tokens',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../ui/memory.html'),'utf8');
  const css=fs.readFileSync(path.join(__dirname,'../ui/memory.css'),'utf8');
- assert.ok(html.includes('id="automatic-checks"'));assert.ok(css.includes('color:inherit;background:transparent'));
+ assert.ok(html.includes('id="automatic-checks"'));
+ const rule=css.match(/#automatic-checks\{[^}]*\}/)[0];
+ assert.match(rule,/background:var\(--sh-panel\)/);assert.match(rule,/color:var\(--sh-ink\)/);assert.doesNotMatch(rule,/#fff|white/);
+});
+test('switched off with nothing to show is one quiet line; anything to show opens the three columns',()=>{
+ const off=automaticHtml({enabled:false,status:'Off',runs_today:0});
+ assert.ok(off.includes('Off'));assert.ok(!off.includes('Off · Off'));assert.ok(!off.includes('ac-grid'));
+ assert.ok(automaticHtml({enabled:false,status:'Off',errors:['x']}).includes('role="alert"'));
+ for(const value of [{enabled:true,status:'Waiting'},{enabled:false,queue:[{title:'Cup'}]},{enabled:false,results:[{title:'Cup',status:'trusted',control:5,treatment:0}]}])
+  assert.ok(automaticHtml(value).includes('ac-grid'));
 });
 test('inconclusive and early safety rejection use plain reasons without invented five-pair counts',()=>{
  const html=automaticHtml({enabled:true,status:'Waiting',results:[{title:'Cup',status:'inconclusive',reason:'Could not finish the check: the scene did not reproduce',pairs:0},{title:'Glass',status:'rejected',reason:'Rejected: a run with the note failed the independent safety check',pairs:0}]});
