@@ -14,7 +14,8 @@ from openarm365_dev import planner as planner_module
 
 @pytest.fixture
 def planner(monkeypatch, tmp_path):
-    monkeypatch.delenv('ATTN_IK_MAX_JOINT_JUMP', raising=False)
+    for name in ('ATTN_PLANNER_MODE', 'ATTN_IK_CANDIDATES', 'ATTN_IK_MAX_JOINT_JUMP'):
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(planner_module, 'mount_pose', lambda env: np.eye(4))
     attachment = types.ModuleType('openarm365_dev.attachment')
     attachment.planner_context = lambda *args: None
@@ -43,6 +44,9 @@ def planner(monkeypatch, tmp_path):
 
     result = planner_module.MujocoV2Planner.__new__(planner_module.MujocoV2Planner)
     result.env = object()
+    result.planner_mode = 'plan'
+    result.ik_candidates = None
+    result.ik_max_joint_jump = None
     result.evidence = tmp_path
     result.prepared = {tuple(f'openarm_left_joint{i}' for i in range(1, 8))}
     result.sequence = 1
@@ -82,6 +86,10 @@ def test_plan_mode_keeps_original_request(monkeypatch, planner, mode):
     assert planner.client.calls[-1] == ('/plan', expected_body())
     assert json.dumps(planner.client.calls[-1][1]).encode() == json.dumps(expected_body()).encode()
     assert response['plan_id'] == 'test-plan-id'
+    receipt = json.loads((planner.evidence / 'trajectory-0001.json').read_text())
+    assert receipt['planner_mode'] == 'plan'
+    assert receipt['planner_mode_source'] == ('config' if mode is None else 'ATTN_PLANNER_MODE')
+    assert not {'ik_candidates', 'ik_candidates_source', 'max_joint_jump', 'max_joint_jump_source'} & receipt.keys()
 
 
 @pytest.mark.parametrize('raw, count', [(None, 1), ('8', 8)])
@@ -99,6 +107,24 @@ def test_ik_path_reaches_client_and_ledger(monkeypatch, planner, raw, count):
     assert planner.ledger.issued[0][0]['max_joint_jump_source'] == 'default'
     assert planner.ledger.issued[0][1]['epoch'] == 7
     assert json.loads((planner.evidence / 'trajectory-0001.json').read_text())['source'] == 'ik_path'
+    assert response['planner_mode'] == 'ik_path'
+    assert response['planner_mode_source'] == 'ATTN_PLANNER_MODE'
+    assert response['ik_candidates'] == count
+    assert response['ik_candidates_source'] == ('default' if raw is None else 'ATTN_IK_CANDIDATES')
+
+
+def test_legacy_config_mode_override_records_defaults(monkeypatch, planner):
+    monkeypatch.setenv('ATTN_PLANNER_MODE', 'ik_path')
+    assert planner.planner_mode == 'plan'
+    assert planner.ik_candidates is None
+    assert planner.ik_max_joint_jump is None
+    response = request(planner)
+    assert planner.client.calls[-1] == ('/plan/ik_path', dict(expected_body(), ik_candidates=1))
+    receipt = json.loads((planner.evidence / 'trajectory-0001.json').read_text())
+    assert receipt == response
+    assert receipt['ik_candidates'] == 1
+    assert receipt['ik_candidates_source'] == 'default'
+    assert receipt['max_joint_jump_source'] == 'default'
 
 
 @pytest.mark.parametrize('mode, path', [(None, '/plan'), ('plan', '/plan'),
@@ -148,5 +174,89 @@ def test_bad_candidate_count(monkeypatch, planner, bad):
 def test_bad_mode(monkeypatch, planner):
     monkeypatch.setenv('ATTN_PLANNER_MODE', 'other')
     with pytest.raises(ValueError, match='^ATTN_PLANNER_MODE must be plan or ik_path$'):
+        request(planner)
+    assert not planner.client.calls
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_frozen_config_routes_and_records(monkeypatch, planner, legacy):
+    from openarm365_dev_v2 import dev_config
+    monkeypatch.setattr(dev_config, 'verify_lock', lambda *a, **kw: None)
+    config = dev_config.make_dev_config('open_cabinet', 102, {})
+    if legacy:
+        for key in dev_config.PLANNER_CONFIG_KEYS:
+            del config[key]
+        config['contact_exempt_objects'] = 'none'
+    dev_config.validate_dev_config(config)
+    planner.planner_mode = config.get('planner_mode', 'plan')
+    planner.ik_candidates = config.get('ik_candidates')
+    planner.ik_max_joint_jump = config.get('ik_max_joint_jump')
+    response = request(planner)
+    body = expected_body()
+    if not legacy:
+        body.update(ik_candidates=8, max_joint_jump=1.0)
+    assert planner.client.calls[-1] == ('/plan' if legacy else '/plan/ik_path', body)
+    receipt = json.loads((planner.evidence / 'trajectory-0001.json').read_text())
+    assert receipt == response
+    assert receipt['planner_mode'] == ('plan' if legacy else 'ik_path')
+    assert receipt['planner_mode_source'] == 'config'
+    if legacy:
+        assert not {'ik_candidates', 'max_joint_jump'} & receipt.keys()
+    else:
+        assert (receipt['ik_candidates'], receipt['max_joint_jump']) == (8, 1.0)
+        assert receipt['ik_candidates_source'] == receipt['max_joint_jump_source'] == 'config'
+        assert planner.ledger.issued[0][0]['max_joint_jump_source'] == 'config'
+    assert not {'ik_candidates', 'max_joint_jump', 'planner_mode'} & planner.client.calls[0][1].keys()
+
+
+@pytest.mark.parametrize('override', ['mode', 'candidates', 'jump', 'all'])
+def test_overrides_win_over_config(monkeypatch, planner, override):
+    planner.planner_mode = 'ik_path'
+    planner.ik_candidates = 8
+    planner.ik_max_joint_jump = 1.0
+    if override == 'mode':
+        monkeypatch.setenv('ATTN_PLANNER_MODE', 'plan')
+    if override == 'all':
+        planner.planner_mode = 'plan'
+        monkeypatch.setenv('ATTN_PLANNER_MODE', 'ik_path')
+    if override in ('candidates', 'all'):
+        # Diagnostic candidate validation historically has no upper bound.
+        monkeypatch.setenv('ATTN_IK_CANDIDATES', '33')
+    if override in ('jump', 'all'):
+        monkeypatch.setenv('ATTN_IK_MAX_JOINT_JUMP', '.8')
+    receipt = request(planner)
+    assert receipt == json.loads((planner.evidence / 'trajectory-0001.json').read_text())
+    assert receipt['planner_mode_source'] == ('ATTN_PLANNER_MODE' if override in ('mode', 'all') else 'config')
+    if override == 'mode':
+        assert planner.client.calls[-1] == ('/plan', expected_body())
+        assert receipt['planner_mode'] == 'plan'
+        assert not {'ik_candidates', 'max_joint_jump'} & receipt.keys()
+    else:
+        candidates = 33 if override in ('candidates', 'all') else 8
+        jump = .8 if override in ('jump', 'all') else 1.0
+        assert planner.client.calls[-1] == ('/plan/ik_path', dict(expected_body(),
+            ik_candidates=candidates, max_joint_jump=jump))
+        assert receipt['ik_candidates'] == candidates
+        assert receipt['max_joint_jump'] == jump
+        assert receipt['ik_candidates_source'] == ('ATTN_IK_CANDIDATES' if override in ('candidates', 'all') else 'config')
+        assert receipt['max_joint_jump_source'] == ('override' if override in ('jump', 'all') else 'config')
+
+
+def test_jump_override_rejected_when_env_switches_to_plan(monkeypatch, planner):
+    planner.planner_mode = 'ik_path'
+    planner.ik_max_joint_jump = 1.0
+    monkeypatch.setenv('ATTN_PLANNER_MODE', 'plan')
+    monkeypatch.setenv('ATTN_IK_MAX_JOINT_JUMP', '1.0')
+    with pytest.raises(ValueError, match='^ATTN_IK_MAX_JOINT_JUMP is only valid in ik_path mode$'):
+        request(planner)
+    assert not planner.client.calls
+
+
+@pytest.mark.parametrize('raw', ['0', '-1', '2.5', 'nan', 'inf', 'True', ' 1.0'])
+def test_config_ik_path_preserves_jump_error(monkeypatch, planner, raw):
+    planner.planner_mode = 'ik_path'
+    planner.ik_max_joint_jump = 1.0
+    monkeypatch.setenv('ATTN_IK_MAX_JOINT_JUMP', raw)
+    with pytest.raises(ValueError, match='^ATTN_IK_MAX_JOINT_JUMP must be a finite positive decimal at most 2\\.0 rad$'):
         request(planner)
     assert not planner.client.calls

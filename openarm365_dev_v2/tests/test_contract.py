@@ -17,17 +17,22 @@ def test_task_config(lock,task,seed):
     if task=='open_cabinet':assert 'sink' not in prompt and 'Panda' not in prompt
     assert c['robot']=='OpenArm365' and c['execution_arm']=='both'
     assert c['budget_tier']=='dev' and c['sdk_call_limit']==320 and c['horizon']==9600
-    assert c['contact_exempt_objects']=='none'
+    assert c['contact_exempt_objects']=='movable_objects'
 
 def test_contact_exemption_is_frozen_and_hashed(monkeypatch):
     # The worktree intentionally omits some copied native model files; config
     # field validation can be checked without weakening production lock checks.
     monkeypatch.setattr(dev_config,'verify_lock',lambda *args,**kwargs: None)
     c=dev_config.make_dev_config('pick_place_counter_to_sink',102,{'path':'fixture','sha256':'fixture'})
-    enabled=dict(c,contact_exempt_objects='movable_objects')
-    assert dev_config.validate_dev_config(enabled)==enabled
+    disabled=dict(c,contact_exempt_objects='none')
+    assert dev_config.validate_dev_config(disabled)==disabled
+    legacy=dict(disabled)
+    for key in dev_config.PLANNER_CONFIG_KEYS:legacy.pop(key)
+    assert dev_config.validate_dev_config(legacy)==legacy
+    assert dev_config.validate_dev_config(c)==c
     digest=lambda x:hashlib.sha256(json.dumps(x,sort_keys=True,allow_nan=False).encode()).hexdigest()
-    assert digest(c)!=digest(enabled)
+    assert digest(c)!=digest(disabled)
+    assert digest(c)!=digest(legacy)
     with pytest.raises(ValueError,match='contact_exempt_objects'):
         dev_config.validate_dev_config(dict(c,contact_exempt_objects='fixture'))
 @pytest.mark.parametrize('seed',[-1,0,100,126,True,101.0,'101',None])

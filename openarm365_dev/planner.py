@@ -22,8 +22,10 @@ def contact_exemption_mode(configured):
     return override if override is not None else configured
 
 class MujocoV2Planner:
-    def __init__(self, env, *, evidence, deadline, cancel_check, contact_exempt_objects='none'):
+    def __init__(self, env, *, evidence, deadline, cancel_check, contact_exempt_objects='none',
+                 planner_mode='plan',ik_candidates=None,ik_max_joint_jump=None):
         self.env=env;self.evidence=Path(evidence);self.evidence.mkdir(parents=True,exist_ok=True)
+        self.planner_mode=planner_mode;self.ik_candidates=ik_candidates;self.ik_max_joint_jump=ik_max_joint_jump
         self.contact_exemption_configured=contact_exempt_objects
         self.contact_exemption_mode=contact_exemption_mode(contact_exempt_objects)
         lock_path=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime-lock.json')
@@ -97,7 +99,7 @@ class MujocoV2Planner:
                 raise IdentityError('Actual 365 robot/TCP differs from authenticated V2 URDF')
             self.prepared.add(tuple(active));return errors
         return self.guard(op)
-    def plan(self,path,extra,active,epoch):
+    def plan(self,path,extra,active,epoch,*,planner_settings=None):
         def op():
             if tuple(active) not in self.prepared:self.prepare(active)
             world,receipt=self.upload();body=self.body(active);body.update(extra)
@@ -108,9 +110,15 @@ class MujocoV2Planner:
             if 'targets' in body:warm['tool_frames']=list(body['targets'])
             self.client.call('/warmup',warm)
             response=self.client.call(path,body)
+            if path in {'/plan','/plan/ik_path'}:
+                response['planner_mode']='ik_path' if path=='/plan/ik_path' else 'plan'
+                response['planner_mode_source']='config'
             if path=='/plan/ik_path':
+                response['ik_candidates']=body.get('ik_candidates',1)
+                response['ik_candidates_source']='config' if 'ik_candidates' in body else 'default'
                 response['max_joint_jump']=body.get('max_joint_jump',DEFAULT_MAX_JOINT_JUMP)
-                response['max_joint_jump_source']='override' if 'max_joint_jump' in body else 'default'
+                response['max_joint_jump_source']='config' if 'max_joint_jump' in body else 'default'
+            if planner_settings:response.update(planner_settings)
             pid=self.ledger.issue(response,epoch=epoch,state=body['current_q'],world=world['cuboids'],
                 identity=self.client.identity,attachment=attachment)
             response.update(plan_id=pid,epoch=epoch,world_receipt=receipt)
@@ -126,18 +134,26 @@ class MujocoV2Planner:
         local=np.linalg.inv(mount_pose(self.env));pos=(local@np.r_[position,1])[:3]
         rot=local[:3,:3]@orientation;quat=Rotation.from_matrix(rot).as_quat()[[3,0,1,2]].tolist()
         active=[f'openarm_{side}_joint{i}' for i in range(1,8)]
-        mode=os.environ.get('ATTN_PLANNER_MODE','plan')
+        mode=os.environ.get('ATTN_PLANNER_MODE',self.planner_mode)
         if mode not in {'plan','ik_path'}:
             raise ValueError('ATTN_PLANNER_MODE must be plan or ik_path')
         max_joint_jump=diagnostic_max_joint_jump(mode)
+        settings=dict(planner_mode=mode,
+            planner_mode_source='ATTN_PLANNER_MODE' if 'ATTN_PLANNER_MODE' in os.environ else 'config')
         extra=dict(targets={f'openarm_{side}_hand_tcp':dict(position=pos.tolist(),quaternion_wxyz=quat)})
         if mode=='ik_path':
-            raw=os.environ.get('ATTN_IK_CANDIDATES','1')
-            if not raw.isdecimal() or int(raw)<1:
-                raise ValueError('ATTN_IK_CANDIDATES must be a positive integer')
-            extra['ik_candidates']=int(raw)
+            raw=os.environ.get('ATTN_IK_CANDIDATES')
+            if raw is not None:
+                if not raw.isdecimal() or int(raw)<1:
+                    raise ValueError('ATTN_IK_CANDIDATES must be a positive integer')
+                extra['ik_candidates']=int(raw)
+            else:extra['ik_candidates']=self.ik_candidates if self.ik_candidates is not None else 1
+            settings['ik_candidates_source']=('ATTN_IK_CANDIDATES' if raw is not None else
+                'config' if self.ik_candidates is not None else 'default')
+            if max_joint_jump is not None:settings['max_joint_jump_source']='override'
+            else:max_joint_jump=self.ik_max_joint_jump
             if max_joint_jump is not None:extra['max_joint_jump']=max_joint_jump
-        return self.plan('/plan' if mode=='plan' else '/plan/ik_path',extra,active,epoch)
+        return self.plan('/plan' if mode=='plan' else '/plan/ik_path',extra,active,epoch,planner_settings=settings)
     def claim(self,pid,epoch):
         def op():
             self.client.attest()

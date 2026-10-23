@@ -46,6 +46,9 @@ def make_planner(kind, monkeypatch, tmp_path):
         monkeypatch.setattr(sys.modules['openarm365_dev'], 'attachment', attachment, raising=False)
         planner = module.MujocoV2Planner.__new__(module.MujocoV2Planner)
         planner.env = object()
+        planner.planner_mode = 'plan'
+        planner.ik_candidates = None
+        planner.ik_max_joint_jump = None
         planner.tools = {}
         planner.body = lambda active: dict(env_id='robocasa365', current_q=[0.] * 14,
             joint_names=NAMES, locked_joints={}, active_joints=list(active))

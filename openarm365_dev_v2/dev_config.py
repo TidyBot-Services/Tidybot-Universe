@@ -1,10 +1,16 @@
 """New development conditions and immutable resource lock, separate from v1 freeze."""
-import copy,hashlib,json
+import copy,hashlib,json,math
 from pathlib import Path
 from benchmarks.attention_harness.dev_tasks import get_task,validate_selection
 from benchmarks.attention_harness.robocasa365.config import EXPECTED
 from openarm365_dev.config import LOCK,LOCK_SHA
 from .diag_budget import task_limits,formal_task_limits,case_wall_seconds,check_tier
+from curobo_v2.ik_path_jump import MAX_DIAGNOSTIC_JOINT_JUMP
+DEFAULT_CONTACT_EXEMPT_OBJECTS='movable_objects'
+DEFAULT_PLANNER_MODE='ik_path'
+DEFAULT_IK_CANDIDATES=8
+DEFAULT_IK_MAX_JOINT_JUMP=1.0
+PLANNER_CONFIG_KEYS=('planner_mode','ik_candidates','ik_max_joint_jump')
 SCHEMA='attentionbench.openarm365-dual-dev-config.v2'
 ROOT=Path(__file__).resolve().parents[1]
 SIM_PYTHON=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python')
@@ -81,7 +87,9 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
        asset_manifest_sha256=sha(ASSETS),object_set_id='robocasa365:pretrain:'+sha(ASSETS),
        base_mode='commanded_motion',runner_boundary='dev_loop',execution_controller_input='absolute',
        reset_controller_input='delta',global_random_seed=seed,gripper_command_endpoints_m=[.001,.043],
-       dev_lock=lock,contact_exempt_objects='none',held_reference_mode='fixed')
+       dev_lock=lock,contact_exempt_objects=DEFAULT_CONTACT_EXEMPT_OBJECTS,held_reference_mode='fixed',
+       planner_mode=DEFAULT_PLANNER_MODE,ik_candidates=DEFAULT_IK_CANDIDATES,
+       ik_max_joint_jump=DEFAULT_IK_MAX_JOINT_JUMP)
     from .environment import initial_joints
     c['initial_joint_targets']=initial_joints(task_id)
     if budget_tier=='dev':c['budget_tier']='dev'
@@ -96,6 +104,20 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
     if c.get('contact_exempt_objects') not in ('none','movable_objects'):
         raise ValueError('contact_exempt_objects must be none or movable_objects')
     expected['contact_exempt_objects']=c['contact_exempt_objects']
+    present=[key in c for key in PLANNER_CONFIG_KEYS]
+    if any(present) and not all(present):
+        raise ValueError('planner_mode, ik_candidates and ik_max_joint_jump must be present together')
+    if all(present):
+        if c['planner_mode'] not in ('plan','ik_path'):
+            raise ValueError('planner_mode must be plan or ik_path')
+        if type(c['ik_candidates']) is not int or not 1<=c['ik_candidates']<=32:
+            raise ValueError('ik_candidates must be an integer in 1..32')
+        jump=c['ik_max_joint_jump']
+        if type(jump) not in (int,float) or not 0<jump<=MAX_DIAGNOSTIC_JOINT_JUMP or not math.isfinite(jump):
+            raise ValueError('ik_max_joint_jump must be finite and in (0, 2.0]')
+        expected.update({key:c[key] for key in PLANNER_CONFIG_KEYS})
+    else:
+        for key in PLANNER_CONFIG_KEYS:expected.pop(key)
     if c.get('held_reference_mode') not in ('fixed','settled'):
         raise ValueError('held_reference_mode must be fixed or settled')
     expected['held_reference_mode']=c['held_reference_mode']

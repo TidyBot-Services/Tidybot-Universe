@@ -32,7 +32,7 @@ are separate evidence and are not counted as this RoboCasa365 Dev loop.
 
 ## `ik_path` move_delta
 
-With `ATTN_PLANNER_MODE=ik_path`, `move_delta(dx,dy,dz, rotation_delta)`
+Since 2026-10-24 new Dev v2 configs freeze `planner_mode=ik_path` (8 IK candidates, max joint jump 1.0 rad) together with `contact_exempt_objects=movable_objects`; configs without these fields keep `plan` mode. In `ik_path` mode (frozen, or `ATTN_PLANNER_MODE=ik_path`), `move_delta(dx,dy,dz, rotation_delta)`
 targets the requested tool **endpoint pose**. The service checks the endpoint
 within 4 mm position and 0.03 rad orientation, then continuously certifies the
 actual quintic joint-space path against the geometry. The tool path need not be
