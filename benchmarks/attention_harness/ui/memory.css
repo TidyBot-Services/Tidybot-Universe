@@ -57,7 +57,7 @@ html[data-theme="dark"] #automatic-checks{--ac-fail:#e08670}
 #automatic-checks .ac-what{color:var(--sh-mut)}
 #automatic-checks .ac-runs{margin-left:auto;display:flex;align-items:center;gap:10px;color:var(--sh-mut);font-size:12px;white-space:nowrap}
 #automatic-checks .ac-meter{width:120px;height:6px;border-radius:3px;background:var(--sh-sunk);overflow:hidden}#automatic-checks .ac-meter i{display:block;height:100%;border-radius:3px;background:var(--sh-acc)}
-#automatic-checks .ac-err{margin:12px 0 0;padding:9px 12px;border-radius:10px;background:var(--sh-badbg);color:var(--sh-badink)}
+#automatic-checks [role=alert]{color:var(--sh-badink);margin:12px 0 0;padding:9px 12px;border-radius:10px;background:var(--sh-badbg)}
 #automatic-checks .ac-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:12px;margin-top:14px}
 #automatic-checks .ac-col{min-width:0;padding:12px 14px;border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card)}
 #automatic-checks .ac-col h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--sh-mut)}

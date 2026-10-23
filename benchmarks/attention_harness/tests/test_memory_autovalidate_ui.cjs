@@ -22,6 +22,22 @@ test('switched off with nothing to show is one quiet line; anything to show open
  for(const value of [{enabled:true,status:'Waiting'},{enabled:false,queue:[{title:'Cup'}]},{enabled:false,results:[{title:'Cup',status:'trusted',control:5,treatment:0}]}])
   assert.ok(automaticHtml(value).includes('ac-grid'));
 });
+test('automatic check errors have readable contrast on both shared shell backgrounds',()=>{
+ const css=fs.readFileSync(path.join(__dirname,'../ui/memory.css'),'utf8');
+ const shell=fs.readFileSync(path.join(__dirname,'../ui/shell.css'),'utf8');
+ const alert=css.match(/#automatic-checks \[role=alert\]\{color:([^;}]+)/)[1];
+ const blocks=[':root','html[data-theme="dark"]'].map(selector=>shell.slice(shell.indexOf(selector)).match(/\{([^}]+)\}/)[1]);
+ const luminance=hex=>hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+ for(const block of blocks){
+  const vars=Object.fromEntries([...block.matchAll(/(--[\w-]+):(#[\da-f]+)/g)].map(m=>[m[1],m[2]]));
+  const foreground=alert.startsWith('var(')?vars[alert.slice(4,-1)]:alert;
+  // The alert is a strip on --sh-badbg (2026-10-24); check it and the page behind it.
+  for(const ground of ['--sh-bg','--sh-badbg']){
+   const a=luminance(foreground),b=luminance(vars[ground]);
+   assert.ok((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5,`${foreground} on ${vars[ground]}`);
+  }
+ }
+});
 test('inconclusive and early safety rejection use plain reasons without invented five-pair counts',()=>{
  const html=automaticHtml({enabled:true,status:'Waiting',results:[{title:'Cup',status:'inconclusive',reason:'Could not finish the check: the scene did not reproduce',pairs:0},{title:'Glass',status:'rejected',reason:'Rejected: a run with the note failed the independent safety check',pairs:0}]});
  for(const text of ['Could not finish the check: the scene did not reproduce','note stays Unvalidated','failed the independent safety check'])assert.ok(html.includes(text));
