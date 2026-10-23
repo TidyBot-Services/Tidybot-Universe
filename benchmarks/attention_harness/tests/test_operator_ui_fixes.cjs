@@ -236,6 +236,8 @@ test('Pause, Keep running and Resume explain every run state in plain words',()=
   const ended='This run was ended with Stop run, so it cannot be resumed. Start a new run instead.';
   html=ui.devStartButton(run({state:'ended',can_resume:false,resume_blocked_reason:ended},'needs_review'));
   assert.match(html,/data-dev-resume disabled>▶ Resume/);assert.match(html,/ended with Stop run, so it cannot be resumed/);
+  // The reason is the disabled Resume button's tooltip, not a line of small text in the controls row.
+  assert.match(html,/title="This run was ended with Stop run, so it cannot be resumed\. Start a new run instead\." data-dev-resume disabled>/);assert.doesNotMatch(html,/data-run-control-note/);
   // A Stop that cut off an AI call is reported as the operator's stop, never as a timeout.
   html=ui.operatorOutcome(run({state:'ended',interrupted_by_stop:{kind:'model',version:6,step:'writing v6'},resume_blocked_reason:ended},'needs_review',[{state:'needs_review',kind:'model'}]));
   assert.match(html,/You ended this run with Stop while the AI was writing v6/);assert.match(html,/not a timeout/);assert.doesNotMatch(html,/timed out/);

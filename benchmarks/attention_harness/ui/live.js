@@ -1302,9 +1302,11 @@
     }
   }
 
-  function launchButton(snapshot=null) {
-    if(snapshot?.dev_v2?.lifecycle?.can_create_new===false)return '<button class="ab-button-primary" type="button" data-open-launch disabled title="Original goal resources or worker availability prevent a new run">New run</button>';
-    return `<button class="ab-button-primary" type="button" data-open-launch ${(launchOptions?.dev_v2?.profiles?.some(p=>p.enabled) || launchOptions?.dev_loop?.profiles?.length || launchOptions?.profiles?.some(p => p.certified_bimanual_v2)) ? '' : 'disabled'}>New run</button>`;
+  // hero: the page-title call to action once a run has ended (the cover's NEW RUN look); otherwise the plain button in the controls row.
+  function launchButton(snapshot=null,hero=false) {
+    const cls=hero?'ab-button-primary op-new-run':'ab-button-primary',label=hero?'<span class="op-new-run-tri" aria-hidden="true"></span>New run':'New run';
+    if(snapshot?.dev_v2?.lifecycle?.can_create_new===false)return `<button class="${cls}" type="button" data-open-launch disabled title="Original goal resources or worker availability prevent a new run">${label}</button>`;
+    return `<button class="${cls}" type="button" data-open-launch ${(launchOptions?.dev_v2?.profiles?.some(p=>p.enabled) || launchOptions?.dev_loop?.profiles?.length || launchOptions?.profiles?.some(p => p.certified_bimanual_v2)) ? '' : 'disabled'}>${label}</button>`;
   }
   function runAgainButton(snapshot) {
     return snapshot?.dev_v2 && isTerminal(snapshot)
@@ -3099,8 +3101,10 @@
     if(rc){
       // Pause waits for the current step; Resume while pausing means "keep running".
       const pause=rc.can_pause?'<button type="button" data-dev-pause>⏸ Pause</button>':'';
-      const resume=rc.can_keep_running?'<button type="button" data-dev-resume>Keep running</button>':`<button type="button" data-dev-resume ${rc.can_resume?'':'disabled'}>▶ Resume</button>`;
-      const note=rc.state==='pausing'?`Pausing · the current step${rc.current_step?` (${rc.current_step})`:''} will finish first`:rc.state==='paused'?"Paused · the run's time budget is not counting":rc.resume_blocked_reason||'';
+      // Why Resume is unavailable lives in its tooltip; the row stays one line (the banner above already explains the stop).
+      const why=!rc.can_resume&&rc.resume_blocked_reason?` title="${esc(rc.resume_blocked_reason)}"`:'';
+      const resume=rc.can_keep_running?'<button type="button" data-dev-resume>Keep running</button>':`<button type="button"${why} data-dev-resume ${rc.can_resume?'':'disabled'}>▶ Resume</button>`;
+      const note=rc.state==='pausing'?`Pausing · the current step${rc.current_step?` (${rc.current_step})`:''} will finish first`:rc.state==='paused'?"Paused · the run's time budget is not counting":'';
       return pause+resume+(note?`<small data-run-control-note>${esc(note)}</small>`:'');
     }
     const s=snapshot.dev_session;
@@ -3248,7 +3252,7 @@
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
     const source=snapshot.dev_v2?(s?.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'):null;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls"><button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}${runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`${runAgainButton(snapshot)}<span class="op-controls-sp"></span>`:''}<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${isTerminal(snapshot)?'':launchButton(snapshot)+runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -3520,7 +3524,8 @@
     const head = cut > 0 ? `${esc(name.slice(0, cut))} <em>${esc(name.slice(cut + 1).trim())}</em>` : esc(name);
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}</p><h1>${head}</h1></div>${status}</header>`;
+    const newRun = isTerminal(snapshot) ? launchButton(snapshot, true) : '';
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {
