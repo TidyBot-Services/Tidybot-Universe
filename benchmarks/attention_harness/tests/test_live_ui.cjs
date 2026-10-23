@@ -3276,7 +3276,7 @@ for(const width of [1280,390])test(`SIDEBAR-BADGES: read-only strategy and attem
   assert.equal((await status('v2-mixed').innerText()).trim(),'Failed');
   assert.equal(await status('v2-mixed').getAttribute('data-status'),'failed');
   assert.equal(await page.locator('[data-run-entry="v2-mixed"]').getAttribute('data-tone'),'failed');
-  assert.equal((await status('v2-nojobs').innerText()).trim(),'Finished');
+  assert.equal((await status('v2-nojobs').innerText()).trim(),'Not solved');
   assert.equal(await page.locator('[data-run-entry="v2-nojobs"]').getAttribute('data-tone'),'idle');
   assert.equal(await badge('v2-mixed','attempts').innerText(),'2/3 attempts');
   assert.equal(await badge('v2-mixed','attempts').getAttribute('data-live'),'false');

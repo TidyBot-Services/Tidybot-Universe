@@ -41,7 +41,6 @@ body{background:var(--sh-bg);transition:background-color var(--sh-t2) var(--sh-e
   background-image:linear-gradient(#ffffff09 1px,transparent 1px),linear-gradient(90deg,#ffffff09 1px,transparent 1px);background-size:56px 56px;animation:sh-grid 26s linear infinite}
 #monitor .li{background:var(--sh-panel);border:1px solid var(--sh-line2);border-radius:16px;padding:16px 18px!important;transition:background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
 #monitor .e{border-radius:0 8px 8px 0}
-@keyframes sh-grid{to{background-position:56px 56px,56px 56px}}
 @media(prefers-reduced-motion:reduce){#monitor .cv{animation:none}}
 
 /* Automatic checks (M-8), restyled 2026-10-24: a paper card like the side panel, following Light | Dark. */

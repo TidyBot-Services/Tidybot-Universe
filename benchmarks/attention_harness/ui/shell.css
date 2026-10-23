@@ -65,6 +65,31 @@ html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .b
 html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand b.ab-shell-logo::after{width:.42em;height:.42em;margin-left:.35em;background:var(--sh-acc)}
 html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .op-top-actions{width:auto;flex-wrap:nowrap;gap:10px}
 
+/* Run page title in the main UI: the same amber eyebrow and condensed headline as the Memory monitor. */
+html #attentionbench-clear[data-operator-view="true"] .op-page-title{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:12px 0 16px}
+html #attentionbench-clear[data-operator-view="true"] .op-page-title p{margin:0;font:600 12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--sh-amb)}
+html #attentionbench-clear[data-operator-view="true"] .op-page-title h1{margin:8px 0 0;font:800 clamp(40px,4.2vw,60px)/.9 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.01em;color:var(--sh-ink)}
+html #attentionbench-clear[data-operator-view="true"] .op-page-title h1 em{font-style:normal;color:var(--sh-acc)}
+.op-title-status{display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:999px;font:600 13px "DM Sans",system-ui,sans-serif}
+/* Status chips in the main UI use the cover's colours: '' amber, bad, ok, run. */
+.op-title-status[data-outcome],html #attentionbench-clear[data-operator-view="true"] .ab-run-status[data-outcome]:not([data-active="true"]){background:var(--sh-warnbg)!important;color:var(--sh-warnink)!important}
+.op-title-status[data-outcome="bad"],html #attentionbench-clear[data-operator-view="true"] .ab-run-status[data-outcome="bad"]:not([data-active="true"]){background:var(--sh-badbg)!important;color:var(--sh-badink)!important}
+.op-title-status[data-outcome="ok"],html #attentionbench-clear[data-operator-view="true"] .ab-run-status[data-outcome="ok"]:not([data-active="true"]){background:var(--sh-okbg)!important;color:var(--sh-okink)!important}
+.op-title-status[data-outcome="run"],html #attentionbench-clear[data-operator-view="true"] .ab-run-status[data-outcome="run"]:not([data-active="true"]){background:var(--sh-runbg)!important;color:var(--sh-runink)!important}
+
+/* Replay stage in the main UI is an instrument surface, like the cover hero and the Memory canvas. */
+html #attentionbench-clear[data-operator-view="true"] .op-live-strip[data-state]{background:var(--sh-ins2);color:var(--sh-insink);border:1px solid #ffffff1a;border-bottom-color:#ffffff12}
+html #attentionbench-clear[data-operator-view="true"] .op-live-strip[data-state] b{font:600 11.5px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.16em;color:#e8b26a}
+html #attentionbench-clear[data-operator-view="true"] .op-live-strip[data-state] time{color:var(--sh-insmut)}
+html #attentionbench-clear[data-operator-view="true"] .op-idle[data-camera-empty]{min-height:260px;align-content:center;justify-items:center;text-align:center;border:1px solid #ffffff1a;border-top:0;color:var(--sh-insink);background-color:var(--sh-ins);background-image:linear-gradient(#ffffff0a 1px,transparent 1px),linear-gradient(90deg,#ffffff0a 1px,transparent 1px);background-size:56px 56px;animation:sh-grid 26s linear infinite}
+html #attentionbench-clear[data-operator-view="true"] .op-idle[data-camera-empty] b{font:700 26px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--sh-insink)}
+html #attentionbench-clear[data-operator-view="true"] .op-idle[data-camera-empty] p{color:var(--sh-insmut)}
+html #attentionbench-clear[data-operator-view="true"] .op-idle[data-camera-empty] button{background:var(--sh-ins2);border:1px solid #ffffff2e;color:var(--sh-insink);border-radius:999px}
+html #attentionbench-clear[data-operator-view="true"] .op-idle[data-camera-empty] button:hover{border-color:var(--sh-acc)}
+html #attentionbench-clear[data-operator-view="true"] .op-stage{background:var(--sh-ins);border:1px solid #ffffff1a;border-top:0}
+html #attentionbench-clear[data-operator-view="true"] .op-stage .ab-station-camera{background:var(--sh-ins)}
+@keyframes sh-grid{to{background-position:56px 56px,56px 56px}}
+
 /* Task rail shared by the cover and the Memory monitor. */
 .ab-shell-body{display:flex;min-height:calc(100dvh - 68px)}
 .ab-rail{flex:none;width:300px;height:calc(100dvh - 68px);position:sticky;top:68px;align-self:flex-start;overflow:hidden;background:var(--sh-panel);border-right:1px solid var(--sh-line2);color:var(--sh-ink);transition:width var(--sh-t2) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
@@ -87,7 +112,7 @@ html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .o
 .ab-enter{animation:sh-rise var(--sh-t3) var(--sh-ease) both}
 @media (prefers-reduced-motion:reduce){
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
-  .ab-enter,.ab-pages a.pulse .ab-badge{animation:none!important}
+  .ab-enter,.ab-pages a.pulse .ab-badge,#attentionbench-clear .op-idle[data-camera-empty]{animation:none!important}
   .ab-pages .ind.sh-anim,.ab-themes .ind.sh-anim,.ab-shell-logo::after,.ab-rail,.ab-rec,.ab-shell-ctx{transition:none!important}
 }
 @media (max-width:860px){.ab-shell-top{height:auto;min-height:60px;flex-wrap:wrap;padding:10px 16px;row-gap:8px}.ab-shell-logo{font-size:26px}.ab-pages{order:5;margin-left:0}.ab-shell-body{display:block}.ab-rail{display:none}}
