@@ -44,7 +44,8 @@
     const original=global.fetch.bind(global);
     global.fetch=async function(url,options) {const thing=routeThing(url);try{const response=await original(url,options);if(response.status>=500&&!(String(url?.url||url).includes('/api/orchestrator/snapshot')&&response.status===503))controller.clientError(thing);else if(response.ok)controller.clientOk(thing);return response}catch(error){controller.clientError(thing);throw error}};
     global.addEventListener('error',()=>controller.clientError('page display'));
-    global.addEventListener('unhandledrejection',()=>controller.clientError('page data'));
+    // A page switch the browser chose to skip (a view transition) is not a failed load.
+    global.addEventListener('unhandledrejection',e=>{const r=e?.reason;if(r?.name==='AbortError'&&/transition/i.test(String(r.message)))return;controller.clientError('page data')});
   }
   const api={sortNotices,renderNotices,routeThing,createNotices,installFetchCapture};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;

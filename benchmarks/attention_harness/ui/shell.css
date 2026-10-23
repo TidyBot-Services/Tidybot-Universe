@@ -1,0 +1,93 @@
+/* Shared shell (2026-10-23) for the cover, the main UI and the Memory monitor.
+   Two kinds of surface: paper (top bar, task rail, cards) follows Light | Dark;
+   instrument (cover hero, replay, Memory canvas) is #0d0f12 in both themes. */
+:root{--sh-ease:cubic-bezier(.2,.8,.2,1);--sh-t1:160ms;--sh-t2:320ms;--sh-t3:600ms;
+  --sh-bg:#ece9e2;--sh-top:#ece9e2e6;--sh-panel:#f8f6f0;--sh-card:#ffffff;--sh-line:#d3d4c6;--sh-line2:#e3dfd3;--sh-ink:#242822;--sh-mut:#62685e;--sh-amb:#8f5c10;
+  --sh-acc:#d94d27;--sh-fill:#c44420;--sh-fill-hover:#b23d1c;--sh-chip:#ffffff;--sh-sunk:#ebe8df;--sh-shadow:0 6px 14px -8px #242822aa;
+  --sh-okbg:#d9ecd9;--sh-okink:#2f5e2c;--sh-warnbg:#f5e6cf;--sh-warnink:#7d5210;--sh-badbg:#f3d6d0;--sh-badink:#8a2c1f;--sh-runbg:#dfe9f6;--sh-runink:#24507e;
+  --sh-ins:#0d0f12;--sh-ins2:#14181d;--sh-insline:#ffffff24;--sh-insink:#f3f1ea;--sh-insmut:#a3a199}
+html[data-theme="dark"]{color-scheme:dark;--sh-bg:#15171a;--sh-top:#15171ae6;--sh-panel:#1d2024;--sh-card:#262a2f;--sh-line:#3a3f45;--sh-line2:#30353b;--sh-ink:#ecebe6;--sh-mut:#a3a199;--sh-amb:#e8b26a;
+  --sh-acc:#ec6a43;--sh-chip:#262a2f;--sh-sunk:#1a1d21;--sh-shadow:0 6px 14px -8px #000000cc;
+  --sh-okbg:#1f3a2a;--sh-okink:#9fdcb7;--sh-warnbg:#3a2f1a;--sh-warnink:#f0c983;--sh-badbg:#3d2420;--sh-badink:#f2b3a5;--sh-runbg:#1f2c40;--sh-runink:#a9c8ee}
+
+/* Page switch: the top bar stays put, the rest of the page rises in (Chrome's cross-document view transitions; other browsers just load). */
+@view-transition{navigation:auto}
+.ab-shell-top{view-transition-name:ab-top}
+::view-transition-old(root){animation:sh-fade 180ms var(--sh-ease) both}
+::view-transition-new(root){animation:sh-rise 420ms var(--sh-ease) both}
+@keyframes sh-fade{to{opacity:0}}
+@keyframes sh-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* Top bar. The main UI's older rules are more specific, so the bar's own parts are pinned here. */
+.ab-shell-top{position:sticky;top:0;z-index:30;box-sizing:border-box;height:68px;display:flex;align-items:center;gap:14px;padding:0 24px;background:var(--sh-top);border-bottom:1px solid var(--sh-line);color:var(--sh-ink);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
+.ab-shell-sp{flex:1}
+.ab-shell-actions{display:flex;align-items:center;gap:10px}
+.ab-shell-ctx{display:inline-flex!important;align-items:center;gap:8px;height:40px;margin:0!important;padding:0 14px 0 12px!important;border:0!important;border-radius:10px!important;background:var(--sh-fill)!important;color:#fff!important;font:600 14px "DM Sans",system-ui,sans-serif!important;letter-spacing:0!important;text-decoration:none;white-space:nowrap;cursor:pointer;box-shadow:var(--sh-shadow)!important;position:static!important;transition:transform var(--sh-t1) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease)}
+.ab-shell-ctx:hover{background:var(--sh-fill-hover)!important;transform:none}
+.ab-shell-ctx:active{transform:scale(.97)}
+.ab-shell-ctx[aria-expanded="false"]{background:var(--sh-ink)!important;color:var(--sh-bg)!important}
+.ab-shell-logo{font:700 34px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em;white-space:nowrap;color:var(--sh-ink);text-decoration:none}
+.ab-shell-logo::after{content:"";display:inline-block;width:.42em;height:.42em;margin-left:.35em;background:var(--sh-acc);border-radius:2px;transform:rotate(var(--sh-turn,45deg))!important;translate:0 -.1em;transition:transform var(--sh-t3) var(--sh-ease)}
+
+/* Home · Run · Memory and Light | Dark: one control, an orange pill that slides to the choice. */
+.ab-pages,.ab-themes{position:relative;display:inline-flex;align-items:center;padding:3px;border:1px solid var(--sh-line);border-radius:999px;background:var(--sh-chip);flex:none;transition:background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
+.ab-pages{margin-left:6px}
+.ab-pages .ind,.ab-themes .ind{position:absolute;top:3px;left:0;width:0;height:34px;border-radius:999px;background:var(--sh-fill);box-shadow:var(--sh-shadow);pointer-events:none}
+.ab-pages .ind.sh-anim,.ab-themes .ind.sh-anim{transition:transform var(--sh-t2) var(--sh-ease),width var(--sh-t2) var(--sh-ease)}
+.ab-pages a,.ab-themes button{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px!important;box-sizing:border-box;margin:0!important;border:0!important;border-radius:999px!important;background:transparent!important;color:var(--sh-mut)!important;font:600 13px "DM Sans",system-ui,sans-serif!important;letter-spacing:0!important;text-decoration:none!important;white-space:nowrap;cursor:pointer;box-shadow:none!important;transform:none!important;transition:color var(--sh-t2) var(--sh-ease)}
+.ab-pages a{min-width:88px;padding:0 14px!important}
+.ab-themes button{width:66px;padding:0!important}
+.ab-pages a:hover,.ab-themes button:hover{color:var(--sh-ink)!important}
+.ab-pages a[aria-current="page"],.ab-themes button[aria-pressed="true"]{color:#fff!important}
+.ab-pages a:focus-visible,.ab-themes button:focus-visible,.ab-shell-ctx:focus-visible{outline:2px solid var(--sh-acc);outline-offset:2px}
+.ab-pages .ab-badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:var(--sh-fill);color:#fff;font:700 11px/1 "DM Sans",sans-serif;transition:background-color var(--sh-t2) var(--sh-ease),color var(--sh-t2) var(--sh-ease)}
+.ab-pages .ab-badge[hidden]{display:none}
+.ab-pages a[aria-current="page"] .ab-badge{background:#fff;color:var(--sh-fill)}
+.ab-pages a.pulse .ab-badge{animation:sh-badge 1.2s var(--sh-ease) 2}
+@keyframes sh-badge{40%{transform:scale(1.25)}}
+
+/* Notices and the other pill buttons in the bar look the same on every page. */
+.ab-shell-top .ab-notices-button,.ab-shell-top .ab-shell-pill{display:inline-flex!important;align-items:center;gap:7px;height:40px!important;padding:0 14px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-chip)!important;color:var(--sh-ink)!important;font:600 13px "DM Sans",system-ui,sans-serif!important;box-shadow:none!important;cursor:pointer;transition:border-color var(--sh-t1) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease),color var(--sh-t2) var(--sh-ease)}
+.ab-shell-top .ab-notices-button:hover,.ab-shell-top .ab-shell-pill:hover{border-color:var(--sh-acc)!important}
+.ab-shell-top .ab-notices-button b{min-width:18px;height:18px;border-radius:999px;background:#8f5c10!important;color:#fff!important;font-size:11px}
+.ab-shell-top .ab-notices-button[data-level="error"] b{background:var(--sh-fill)!important}
+.ab-shell-top .ab-shell-actions{gap:10px}
+.ab-shell-top .ab-notices-panel{border-color:var(--sh-line);background:var(--sh-card);color:var(--sh-ink)}
+.ab-shell-top .ab-shell-pill.icon{width:40px;padding:0!important;justify-content:center}
+.ab-shell-top .ab-shell-pill[aria-pressed="true"]{border-color:var(--sh-acc)!important;color:var(--sh-acc)!important}
+.ab-shell-top .ab-shell-flag{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid #e0a53b;border-radius:999px;background:var(--sh-warnbg);color:var(--sh-warnink);font:500 12.5px "DM Sans",system-ui,sans-serif;white-space:nowrap}
+.ab-shell-top .ab-shell-flag[hidden]{display:none}
+
+/* The main UI builds the same bar in live.js; its older #attentionbench-clear rules are more specific than the ones above. */
+html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top{height:68px;padding:0 24px;gap:14px;flex-wrap:nowrap;align-items:center;background:var(--sh-top);border-bottom:1px solid var(--sh-line)}
+html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand{flex:none}
+html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand b.ab-shell-logo{font:700 34px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em;color:var(--sh-ink)}
+html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand b.ab-shell-logo::after{width:.42em;height:.42em;margin-left:.35em;background:var(--sh-acc)}
+html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .op-top-actions{width:auto;flex-wrap:nowrap;gap:10px}
+
+/* Task rail shared by the cover and the Memory monitor. */
+.ab-shell-body{display:flex;min-height:calc(100dvh - 68px)}
+.ab-rail{flex:none;width:300px;height:calc(100dvh - 68px);position:sticky;top:68px;align-self:flex-start;overflow:hidden;background:var(--sh-panel);border-right:1px solid var(--sh-line2);color:var(--sh-ink);transition:width var(--sh-t2) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
+.closed>.ab-rail{width:0;border-right-width:0}
+.ab-rail-in{width:300px;height:100%;box-sizing:border-box;padding:20px 18px;overflow:auto}
+.ab-rail-h{margin:0;font:700 26px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em}
+.ab-rail-meta{font-size:12px;color:var(--sh-mut);margin:4px 0 14px}
+.ab-rail-search{display:block;border:1px solid var(--sh-line);background:var(--sh-card);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--sh-mut);margin-bottom:14px;text-decoration:none;transition:border-color var(--sh-t1) var(--sh-ease)}
+.ab-rail-search:hover{border-color:var(--sh-acc)}
+.ab-rail-k{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px;font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--sh-mut)}
+.ab-rail-k span+span{font:400 11.5px "DM Sans",sans-serif;letter-spacing:0;text-transform:none}
+.ab-rec{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--sh-line2);background:var(--sh-card);border-radius:12px;padding:9px 11px;margin-bottom:7px;font-size:12.5px;line-height:1.4;color:var(--sh-ink);text-decoration:none;transition:border-color var(--sh-t1) var(--sh-ease),transform var(--sh-t1) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease)}
+.ab-rec:hover{border-color:var(--sh-acc);transform:translateX(2px)}
+.ab-rec[aria-current="true"]{border-color:var(--sh-acc);box-shadow:inset 3px 0 0 var(--sh-acc)}
+.ab-rec small{display:block;color:var(--sh-mut);font-size:11.5px;margin-top:2px}
+.ab-tag{font:600 11px "DM Sans",sans-serif;padding:2px 9px;border-radius:999px;white-space:nowrap;background:var(--sh-warnbg);color:var(--sh-warnink)}
+.ab-tag.bad{background:var(--sh-badbg);color:var(--sh-badink)}.ab-tag.ok{background:var(--sh-okbg);color:var(--sh-okink)}.ab-tag.run{background:var(--sh-runbg);color:var(--sh-runink)}
+
+/* Shared motion. Content rises in once when a page opens; later refreshes update in place. */
+.ab-enter{animation:sh-rise var(--sh-t3) var(--sh-ease) both}
+@media (prefers-reduced-motion:reduce){
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
+  .ab-enter,.ab-pages a.pulse .ab-badge{animation:none!important}
+  .ab-pages .ind.sh-anim,.ab-themes .ind.sh-anim,.ab-shell-logo::after,.ab-rail,.ab-rec,.ab-shell-ctx{transition:none!important}
+}
+@media (max-width:860px){.ab-shell-top{height:auto;min-height:60px;flex-wrap:wrap;padding:10px 16px;row-gap:8px}.ab-shell-logo{font-size:26px}.ab-pages{order:5;margin-left:0}.ab-shell-body{display:block}.ab-rail{display:none}}
