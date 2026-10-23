@@ -1,0 +1,13 @@
+{
+  "executor": ["/absolute/path/to/experiments"],
+  "validator": ["/absolute/path/to/independent-validator"],
+  "contract": [],
+  "source": [
+    "/absolute/path/to/checkout/openarm365_dev_v2",
+    "/absolute/path/to/checkout/openarm365_dev",
+    "/absolute/path/to/checkout/openarm365",
+    "/absolute/path/to/checkout/curobo_v2",
+    "/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin",
+    "/home/truares/miniconda3/envs/maniskill/bin"
+  ]
+}

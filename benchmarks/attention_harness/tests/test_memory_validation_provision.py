@@ -119,7 +119,6 @@ def test_validation_creation_preserves_real_registered_config_and_checks(tmp_pat
     from openarm365_dev_v2 import dev_config
     from openarm365_dev_v2.scene_contract import registered_contract_ref
     monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})
-    monkeypatch.setattr(dev_config,'SIM_PYTHON',dev_config.SIM_PYTHON.resolve())
     origin_store=DevV2Store(tmp_path/'origin.sqlite3')
     selection=dict(request_key='original-001',tasks=['open_cabinet'],seeds=[102],policies=['autonomous'],mode='diagnostic',budget_tier='dev',target_depth=1,target_valid_executions=1,max_versions=1,help_budget=0,reproducible_reset=True,scene_contract=registered_contract_ref())
     original=experiments.create(origin_store,tmp_path/'original',selection)

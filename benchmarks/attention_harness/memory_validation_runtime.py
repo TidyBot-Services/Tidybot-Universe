@@ -14,7 +14,7 @@ from .dev_v2_loop import checked,immutable,job_for
 from .dev_loop import process_identity,owner_alive
 from .memory_validation_worker import freeze_plan,contract_catalog
 from .memory_independent_validator import validate_arm,replay_fresh
-from .memory_source_catalogs import manifest_sources,covers
+from .memory_source_catalogs import manifest_sources,covers,registration_order
 
 
 class LedgerRunner:
@@ -50,7 +50,7 @@ class LedgerRunner:
         covered=any(c['role']=='source' and c['context']==batch['context'] and covers(c,config['scene_contract']) for c in catalogs.values())
         if covered:catalogs={cid:c for cid,c in catalogs.items() if not (c['role']=='contract' and covers(c,config['scene_contract']))}
         else:self.client.register_dev_v2_catalog(catalog_id='contract-'+batch['config']['sha256'],catalog=contract_catalog(batch['context']))
-        for cid,catalog in catalogs.items():self.client.register_dev_v2_catalog(catalog_id=cid,catalog=catalog)
+        for cid,catalog in registration_order(catalogs).items():self.client.register_dev_v2_catalog(catalog_id=cid,catalog=catalog)
         failed=self.client.import_dev_v2_execution(**batch['failed_execution'])
         origin_summary=note['source_summary']
         if (failed['cell']!=origin_summary['cell'] or failed['version']!=origin_summary['version']
@@ -164,7 +164,7 @@ class LedgerRunner:
         with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
         config=json.loads(checked(current['config']).read_bytes())
         sources=manifest_sources(e['manifest'],current['context'],e['artifact_dir'],contract=config.get('scene_contract'))
-        for cid,sealed in sources.items():self.client.register_dev_v2_catalog(catalog_id=cid,catalog=sealed)
+        for cid,sealed in registration_order(sources).items():self.client.register_dev_v2_catalog(catalog_id=cid,catalog=sealed)
         output=Path(e['artifact_dir'])/'validation-import'/key
         ref=output/'catalog.json'
         if not ref.exists():prepare(store,key,1,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources)

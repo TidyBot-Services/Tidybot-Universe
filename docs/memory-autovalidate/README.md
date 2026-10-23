@@ -2,7 +2,8 @@
 
 The worker is **Off by default**. No unit has been installed and no live service,
 model, simulator, or GPU job was started by this change. The implementation and
-acceptance fixtures are in `wt-autoval`; the service worktree was read only.
+acceptance fixtures belong to `wt-autoval`; pinned source links also require the
+corresponding service change in `wt-autoval-svc`.
 
 The deterministic worker, validator, Dev request/receipt producer, ledger runtime
 adapter, registration client, Memory page, Notices, trusted use outcomes, and
@@ -156,7 +157,13 @@ complete Python source sets and all locked file digests, with streaming digest
 checks before registration and service rechecks on reads. They contain only
 explicitly locked files plus the exact registered contract when covered by the
 source root, never a recursive home-directory inventory. The producer
-refuses noncanonical source paths. When exporting original prerequisites, pass
+refuses implicit symlink traversal. Locked symlinks retain their original paths
+and pin every one-hop target with source-only `links`; the terminal regular file
+and each link name share the locked digest. The builder emits a source catalog
+for every directory along a chain, seals only needed files, and orders target
+catalogs before their referring catalogs. Self-directory links are supported;
+cycles and chains longer than eight hops are refused. Provisioning and export
+recheck every supplied pin before the service independently verifies it. When exporting original prerequisites, pass
 `source_catalogs=manifest_sources(manifest_ref, context, executor_root,
 contract=config["scene_contract"])` to
 `dev_v2_memory_import.prepare`; the arm exporter does this automatically.
@@ -188,7 +195,7 @@ and catalog hashes. `scripts/memory-autovalidate.service.example` is an uninstal
 user-unit example; its pre-start command explicitly sets the switch Off on every
 start. Nothing in this handoff installs, starts or enables either example.
 
-The four M-8 test files import only main-repository fixture helpers. Tests requiring
+The M-8 test files import only main-repository fixture helpers. Tests requiring
 service auto-validation, scene contracts, source catalogs, arm generation or failed
 checks guard those features with “needs the M-8 Memory service”. Independent tests
 continue to run against the older service checkout. The first fake e2e scenario
@@ -196,11 +203,19 @@ uses the default provisioning adapter, real experiment/goal creation, a controll
 SDK registry, synthetic executor receipts/replay and the actual in-process service.
 It proves wiring and bookkeeping, not native or GPU execution.
 
-Live-input limitation found during this follow-up: the harness currently declares
-`/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python`,
-which resolves through a symlink. An original identity lock pinning that alias
-is refused by the existing canonical source-file check before provisioning.
-Historical locks are never rewritten or silently canonicalized. The native-config
-export test explicitly creates a new test lock with a canonical interpreter path;
-it does not establish acceptance of such historical locks. This is a source-input
-compatibility limitation, not an unavailable service endpoint.
+The historical interpreter alias
+`/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python`
+is pinned through `/home/truares/miniconda3/envs/maniskill/bin/python` to that
+directory's regular `python3.11`. Historical locks are not changed.
+`scripts/memory-registration-roots.example.json` includes both interpreter
+directories as source roots. Pass an operator-adjusted copy to the Memory service's
+`--dev-v2-registration-roots`; the runtime example remains disabled. Add the other
+exact original SDK/model/asset directories required by your lock. Keep all roles
+disjoint; a scene contract inside the SDK source directory shares its source
+catalog and needs no overlapping contract root. No examples are installed or run.
+
+A synthetic two-hop lock is imported through the in-process service. A separate
+builder test hashes the real interpreter chain without executing it. The native
+config/export test now uses the original interpreter alias, without canonicalizing
+its new test lock. Tests requiring link-aware service resolution skip explicitly
+when run against a checkout without that feature.

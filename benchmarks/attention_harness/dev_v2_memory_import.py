@@ -103,10 +103,15 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
             from openarm365_dev_v2.scene_contract import registered_contract_ref
             if config['scene_contract']==registered_contract_ref():return
         if not p.is_relative_to(root):
-            for catalog in (source_catalogs or {}).values():
+            for cid,catalog in (source_catalogs or {}).items():
                 base=Path(catalog['root'])
                 if (catalog['role']=='source' and catalog['context']==descriptor['context'] and p.is_relative_to(base)
-                        and p.resolve()==p and catalog['files'].get(str(p.relative_to(base)))==expected):
+                        and catalog['files'].get(str(p.relative_to(base)))==expected):
+                    name=str(p.relative_to(base))
+                    if name in catalog.get('links',{}):
+                        from .memory_source_catalogs import verify_source_link
+                        verify_source_link(source_catalogs,cid,name,expected);return
+                    if p.resolve()!=p:raise DevConflict('canonical original source file required: '+str(p))
                     if sha(p)!=expected:raise DevConflict('source evidence digest drift: '+str(p))
                     return
         if not p.is_relative_to(root) or not p.resolve().is_relative_to(root):raise ValueError('catalog root must contain only explicitly pinned evidence: '+str(p))
