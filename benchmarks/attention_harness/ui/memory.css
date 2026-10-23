@@ -44,4 +44,4 @@ body{background:var(--sh-bg);transition:background-color var(--sh-t2) var(--sh-e
 @keyframes sh-grid{to{background-position:56px 56px,56px 56px}}
 @media(prefers-reduced-motion:reduce){#monitor .cv{animation:none}}
 
-#automatic-checks{margin:24px 0;padding:20px;border:1px solid currentColor;border-radius:12px;color:inherit;background:transparent}#automatic-checks h2{margin-top:0}#automatic-checks li{margin:6px 0}#automatic-checks [role=alert]{color:#d65c57}
+#automatic-checks{margin:24px 0;padding:20px;border:1px solid currentColor;border-radius:12px;color:inherit;background:transparent}#automatic-checks h2{margin-top:0}#automatic-checks li{margin:6px 0}#automatic-checks [role=alert]{color:var(--sh-badink)}
