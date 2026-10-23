@@ -227,6 +227,18 @@ class NoticeReader:
         if self.memory_view is not None and self.memory_view.source == 'service' and not self._cached_health('memory', self._memory_health):
             add('memory-down', 'error', 'memory', 'Memory service is not reachable; notes cannot be read',
                 'The Memory service did not answer a health check.', 'Try again when the service is available.', stamp)
+        from .memory_monitor import automatic_checks
+        auto=automatic_checks(gateway=self.memory_view.gateway if self.memory_view is not None else None)
+        for n in auto['notices']:
+            add('auto-'+n['title'],'warning' if 'paused' in n['title'].lower() else 'info','memory',n['title'],'','',n['at'])
+        for error in auto['errors']:add('auto-error-'+error,'error','memory',error,'','',stamp)
+        for event in auto['events']:
+            kind=event['event'];title=safe_text(event['title'],'Note')
+            wording={'promoted':f'Note checked and trusted: {title} — the failure stopped when Dev had the note.',
+                     'rejected':f'Note rejected after check: {title}.',
+                     'inconclusive':safe_text(event.get('reason'),'Could not finish the check')+' — '+title,
+                     'demoted':f'Note moved back to Unvalidated: {title} — the failure came back in 3 of its last 5 uses.'}
+            if kind in wording:add('memory-event-'+str(event['seq']),'info','memory',wording[kind],'','',event.get('time') or stamp)
         priority = {'error': 0, 'warning': 1, 'info': 2}
         rows.sort(key=lambda n: (priority[n['level']], n['since']), reverse=False)
         rows = sorted(rows, key=lambda n: (priority[n['level']], -datetime.fromisoformat(n['since']).timestamp()))[:20]

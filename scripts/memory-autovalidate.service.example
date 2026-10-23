@@ -1,0 +1,17 @@
+# Example only. Not installed. Replace all /absolute paths before use.
+# Every service start explicitly sets the master switch Off.
+[Unit]
+Description=Memory automatic scene checks (Off by default)
+
+[Service]
+Type=simple
+WorkingDirectory=/absolute/path/to/main-worktree
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONPATH=/absolute/path/to/main-worktree:/absolute/path/to/memory-service
+Environment=TZ=Asia/Shanghai
+ExecStartPre=/absolute/path/to/python -B -m benchmarks.attention_harness.memory_validation_worker --state-dir /absolute/path/to/worker-state --set-enabled false --once
+ExecStart=/absolute/path/to/python -B -m benchmarks.attention_harness.memory_validation_worker --state-dir /absolute/path/to/worker-state --adapter benchmarks.attention_harness.memory_validation_runtime:build_runtime
+Restart=no
+
+[Install]
+WantedBy=default.target

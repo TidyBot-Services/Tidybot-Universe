@@ -160,6 +160,7 @@ class DailyDevV2:
                 rows.extend(self.sessions(experiments.snapshot(DevV2Store(path),e['experiment_id'])))
         return rows
     def sessions(self,e):
+        if e.get('validation_experiment'):return []
         config=json.loads(Path(e['manifest']['uri']).read_bytes())
         return [dict(c,channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],locked={'config':dict(config['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=config['model']['model'],experiment_state=e['state'],manifest=e['manifest'],name_suffix=e['selection'].get('name_suffix','')) for c in e['cells']]
     def create(self,body):

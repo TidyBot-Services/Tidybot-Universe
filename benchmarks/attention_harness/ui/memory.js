@@ -88,7 +88,7 @@
     return scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract';
   }
   const warningText=warnings=>Array.isArray(warnings)&&warnings.length?'Some note details are unavailable right now.':'';
-  const api={layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
+  const api={automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   if(!global.document)return;
   const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -242,7 +242,20 @@
     data=adapt(data);recordReads(fresh);render();feed(fresh);
   }
   async function poll(){if(!experimentId)return;try{const response=await fetch('/api/dev-v2/memory-monitor?exp='+encodeURIComponent(experimentId),{cache:'no-store',credentials:'same-origin'});const payload=await response.json();if(!response.ok)throw Error(payload.error||`HTTP ${response.status}`);const fresh=newEvents(previous,payload.events);previous=payload.events||[];recordReads(fresh);data=adapt(payload);$('error').textContent='';render();feed(fresh);clearTimeout(pollTimer);pollTimer=setTimeout(poll,['running','planned'].includes(payload.run?.state)?2000:10000);}catch(error){$('error').textContent='Memory data is unavailable right now.';noticeController.clientError('Memory');if(!data){data=adapt({run:{state:'unavailable',versions:[]},notes:[],events:[]});render()}clearTimeout(pollTimer);pollTimer=setTimeout(poll,10000)}}
-  async function init(){if(!demo&&!experimentId){try{const r=await fetch('/api/dev-v2/experiments',{credentials:'same-origin'});const sessions=await r.json();const items=Array.isArray(sessions)?sessions:sessions.sessions||[];experimentId=items.filter(x=>x.experiment_id).sort((a,b)=>(b.created_at||0)-(a.created_at||0))[0]?.experiment_id||null;if(experimentId)$('back').href='/ui/#exp='+encodeURIComponent(experimentId);}catch(_){}}
+  function automaticHtml(value){
+    const esc=escapeHtml;
+    const statusText=s=>({trusted:'Trusted on this scene',rejected:'Rejected',inconclusive:'Could not finish'}[s]||s);
+    const resultText=n=>n.status==='inconclusive'?`Could not finish · ${esc(n.reason||'The check could not be completed')} · note stays Unvalidated`:n.status==='rejected'&&n.pairs!==undefined&&n.pairs<5?`Rejected · ${esc(n.reason||'The check failed')}`:`${esc(statusText(n.status))} · failure seen without note ${n.control??'?'} of 5 times, with note ${n.treatment??'?'} of 5 times`;
+    const quota=typeof value.weekly_quota==='number'&&Number.isFinite(value.weekly_quota)&&value.weekly_quota>=0&&value.weekly_quota<=100?` · Codex weekly use: ${value.weekly_quota}%`:'';
+    return `<p><strong>${value.enabled?'On':'Off'}</strong> · ${esc(statusText(value.status))}</p><p>Runs today: ${esc(value.runs_today??0)} of 20${quota}</p>${value.current?`<p>${esc(value.current.title)} · pair ${value.current.pair} of 5 · ${esc(value.current.arm)}${value.current.paused?' · paused':''}</p>`:''}<h3>Waiting notes</h3><ul>${(value.queue||[]).map(n=>`<li>${esc(n.title)} · used ${n.uses||0} times · failure gone ${n.failure_gone||0} times</li>`).join('')||'<li>No used notes waiting</li>'}</ul><h3>Results</h3><ul>${(value.results||[]).map(n=>`<li>${esc(n.title)} · ${resultText(n)}</li>`).join('')}</ul><ul>${(value.events||[]).filter(n=>n.event==='demoted').map(n=>`<li>${esc(n.title)} moved back to Unvalidated — the failure came back in 3 of its last 5 uses.</li>`).join('')}</ul>${(value.errors||[]).map(e=>`<p role="alert">${esc(e)}</p>`).join('')}`;
+  }
+  async function pollAutomatic(){
+    const target=$('automatic-checks-body');if(!target)return;
+    try{const response=await fetch('/api/dev-v2/automatic-checks',{cache:'no-store',credentials:'same-origin'});if(!response.ok)throw Error();target.innerHTML=automaticHtml(await response.json());}
+    catch(_){target.textContent='Automatic checks status is unavailable.';}
+    setTimeout(pollAutomatic,10000);
+  }
+  async function init(){if(!demo)pollAutomatic();if(!demo&&!experimentId){try{const r=await fetch('/api/dev-v2/experiments',{credentials:'same-origin'});const sessions=await r.json();const items=Array.isArray(sessions)?sessions:sessions.sessions||[];experimentId=items.filter(x=>x.experiment_id).sort((a,b)=>(b.created_at||0)-(a.created_at||0))[0]?.experiment_id||null;if(experimentId)$('back').href='/ui/#exp='+encodeURIComponent(experimentId);}catch(_){}}
     if(!demo)fetch('/api/dev-memories',{credentials:'same-origin'}).then(async c=>{if(c.ok){canOperate=(await c.json()).control?.can_operate===true;if(selected)$('card').innerHTML=cardHtml(selected,selected.run_note?data?.run.can_operate_run_notes:canOperate,false)}}).catch(()=>{});
     if(global.THREE){try{globe=createGlobe();globe.applyTheme3D();setView('3d')}catch(_){globe=null}}
     if(!globe){$('views').querySelector('[data-view="3d"]').hidden=true;setView('2d')}

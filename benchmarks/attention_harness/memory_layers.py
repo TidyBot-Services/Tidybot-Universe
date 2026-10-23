@@ -6,7 +6,7 @@ RUN_NOTE_CAP = 3
 TRUSTED_PROMPT_CAP = 8
 OTHER_UNVALIDATED_CAP = 2
 FAMILY_CAP = 1
-FAMILY_DEFAULT = False  # Plan 0d fourth revision: family references are off by default.
+FAMILY_DEFAULT = True  # New development selections only; old manifests remain opt-in.
 
 
 def _get(entry, key, default=None):
@@ -43,4 +43,4 @@ def label(entry):
     if layer == 'task':
         seed = _get(entry, 'source_seed')
         return prefix + (f' (scene {seed}): ' if seed is not None else ': ')
-    return prefix + f" (task {_get(entry, 'source_task_id')}): "
+    return f"Reference (task {_get(entry, 'source_task_id')}): "

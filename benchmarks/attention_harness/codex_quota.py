@@ -5,13 +5,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def read_quota(home=None):
+def read_quota(home=None,*,newest_session=False):
     root = Path(home).expanduser() if home is not None else Path.home()
     newest = None
     result = {"used_percent": None, "window_minutes": None, "resets_at": None,
               "plan_type": None, "credits_balance": None}
     try:
-        paths = root.joinpath('.codex', 'sessions').rglob('rollout-*.jsonl')
+        paths = root.joinpath('.codex', 'sessions').rglob('*.jsonl' if newest_session else 'rollout-*.jsonl')
+        if newest_session:
+            paths=list(paths);paths=[max(paths,key=lambda p:(p.stat().st_mtime_ns,str(p)))] if paths else []
         for path in paths:
             try:
                 with path.open() as stream:
@@ -24,7 +26,8 @@ def read_quota(home=None):
                             stamp = row.get('timestamp') or ''
                             if newest is not None and stamp < newest:
                                 continue
-                            primary = limits.get('primary') or {}
+                            primary = next((limits.get(key) for key in ('primary','secondary')
+                                            if isinstance(limits.get(key),dict) and limits[key].get('window_minutes')==10080),{})
                             credits = limits.get('credits') or {}
                             newest = stamp
                             result = {"used_percent": primary.get('used_percent'),

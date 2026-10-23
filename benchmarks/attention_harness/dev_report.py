@@ -135,6 +135,7 @@ def analyze_cell(c,planned,manifest_ref):
 
 def report(store,exp_id):
     e=snapshot(store,exp_id);m=read(e['manifest']);validate_fairness(m)
+    if m.get('validation_experiment'):raise ValueError('Automatic validation experiments are excluded from ordinary reports; use the Memory check result.')
     seeded=retrieved_seeded_cells(store.path)
     actual={c['key']:c for c in e['cells']};cells=[]
     for planned in m['cells']:
