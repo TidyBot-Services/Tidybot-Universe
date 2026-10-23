@@ -177,7 +177,7 @@ function rendererAPI(snapshot,debug=false,overrides={}) {
  return vm.runInNewContext(functions+'\n({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',{
   DEBUG_VIEW:debug,Map,Set,Date,URL,URLSearchParams,console,
   taskTitles:{cube_lift:'Lift the cube',pick_place_counter_to_sink:'Pick Place: Counter → Sink'},
-  root:{dataset:{}},launches:[],launchOptions:null,currentSnapshot:snapshot,selectedRequest:null,
+  root:{dataset:{}},runs:[],launches:[],devSessions:[],launchOptions:null,currentSnapshot:snapshot,selectedRequest:null,
   observedRunPhase:null,newlyLinkedRun:null,runNotice:{hidden:true},submissionReceipts:new Map(),
   cameraChoices:new Map(),devGuidancePending:new Set(),
   localStorage:{getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)},...overrides,
