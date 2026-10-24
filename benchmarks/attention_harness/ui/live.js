@@ -1310,7 +1310,76 @@
   }
   function runAgainButton(snapshot) {
     return snapshot?.dev_v2 && isTerminal(snapshot)
-      ? '<button type="button" data-open-run-again>Run again with the same settings</button>' : '';
+      ? '<button type="button" data-open-run-again>Run again with the same settings</button>'+continueButton(snapshot) : '';
+  }
+  // Continue from an attempt (plan A): only daily Dev v2 runs that ended with at least one version.
+  function canContinue(snapshot) {
+    return Boolean(snapshot?.dev_v2 && isTerminal(snapshot) && launchOptions?.dev_v2?.continue_from_attempt && snapshot.dev_v2.versions?.length);
+  }
+  function continueButton(snapshot,version=null) {
+    if(!canContinue(snapshot))return '';
+    const label=version==null?'Continue from an attempt…':`Continue from Attempt ${version}`;
+    return `<button type="button" class="op-continue" data-open-fork ${version==null?'':`data-fork-version="${esc(version)}"`}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9a6 6 0 0 1-6 6H6"/></svg>${esc(label)}</button>`;
+  }
+  const FORK_CARRY=[
+    {id:'code',title:'Code only',body:n=>`Attempt ${n}'s code is the starting version. No history.`},
+    {id:'feedback',title:'Code and last feedback',body:()=>"Adds the execution feedback and the reviewer's reason, so the first rewrite knows what went wrong."}];
+  // Turns the opened launch dialog into "continue from an attempt": source strip, carry choice, checks; other settings fold away.
+  function forkPanel(form,start) {
+    const cell=currentSnapshot.dev_v2,eid=cell.experiment_id,key=cell.key,versions=(cell.versions||[]).map(v=>v.version);
+    const state={version:versions.includes(start.version)?start.version:versions.at(-1),carry:'feedback',preview:null,error:'',loading:false,seq:0};
+    const header=launchDialog.querySelector('.ab-launch-header');
+    header.querySelector('.kicker').textContent='NEW RUN / CONTINUE FROM AN ATTEMPT';
+    header.querySelector('p').textContent="A new, separate run starts from this attempt's code. The original run stays as it is.";
+    // Interactive only, same task and seed; a new goal so the source run's budget is never reused.
+    form.v2_mode.value='interactive';form.v2_mode.dispatchEvent(new Event('change'));
+    if([...form.seed.options].some(option=>Number(option.value)===cell.seed))form.seed.value=String(cell.seed);
+    for(const name of ['run_type','benchmark','task_id','v2_mode','seed','robot_model','execution_arm'])if(form[name])form[name].disabled=true;
+    if(!form.goal_id.readOnly)form.goal_id.value=`daily-v2-fork-${Date.now()}`;
+    const body=form.querySelector('.ab-launch-body'),panel=document.createElement('section'),settings=document.createElement('details');
+    panel.className='ab-launch-section ab-fork';panel.dataset.forkPanel='';
+    settings.className='ab-fork-settings';settings.innerHTML='<summary><b>Settings</b><span>Same as the source run. Open to change policy, model or limits.</span></summary>';
+    for(const section of [...body.querySelectorAll(':scope > .ab-launch-section, :scope > .ab-run-advanced')])settings.append(section);
+    body.querySelector('.ab-launch-note')?.after(panel);if(!panel.isConnected)body.prepend(panel);
+    panel.after(settings);
+    const startButtons=[...form.querySelectorAll('[data-start-no],[data-start-yes]')];
+    function attemptsRow() {
+      const rows=state.preview?.attempts||versions.map(version=>({version,outcome:'',reason:''}));
+      return rows.map(a=>`<button type="button" class="ab-fork-chip" data-fork-pick="${a.version}" aria-pressed="${a.version===state.version}" data-outcome="${esc(a.outcome)}" title="Attempt ${a.version}${a.outcome?' · '+esc(a.outcome.replace('_',' ')):''}">A${a.version}</button>`).join('');
+    }
+    function render() {
+      const p=state.preview,selected=p?.attempts?.find(a=>a.version===state.version);
+      header.querySelector('h3').textContent=`Continue from Attempt ${state.version}`;
+      const available=Object.fromEntries((p?.carry_options||[]).map(o=>[o.id,o.available]));
+      panel.innerHTML=`<div class="ab-run-section-head"><h4><span class="op-number">01</span>Starting point</h4><small>Pick the attempt the new run starts from.</small></div>
+        <div class="ab-fork-strip"><span class="ab-fork-node"><b>${esc(eid.slice(0,15))}</b><small>${esc(policyTitle(cell.policy_id))} · seed ${esc(cell.seed)}</small></span><span aria-hidden="true">→</span><span class="ab-fork-chips" role="group" aria-label="Start from attempt">${attemptsRow()}</span><span aria-hidden="true">→</span><span class="ab-fork-node new"><b>New run</b><small>starts at A${state.version}'s code</small></span></div>
+        ${selected?`<p class="ab-fork-result" data-outcome="${esc(selected.outcome)}"><b>${esc({unsuccessful:'Unsuccessful',succeeded:'Succeeded',invalid:'Code invalid',not_executed:'Not executed'}[selected.outcome]||selected.outcome)}</b>${esc(selected.reason||'No reviewer reason recorded.')}</p>`:''}
+        <div class="ab-run-section-head"><h4><span class="op-number">02</span>What the robot's AI starts with</h4><small>Nothing else from the source run is carried over.</small></div>
+        <div class="ab-fork-carry">${FORK_CARRY.map(o=>`<button type="button" data-fork-carry="${o.id}" aria-pressed="${state.carry===o.id}" ${p&&available[o.id]===false?'disabled':''}><strong>${esc(o.title)}</strong><small>${esc(o.body(state.version))}</small></button>`).join('')}</div>
+        ${p?`<div class="ab-fork-prompt"><span>First prompt of the new run will include</span>${p.prompt_includes.map(line=>`<span>+ ${esc(line)}</span>`).join('')}</div>`:''}
+        <div class="ab-run-section-head"><h4><span class="op-number">03</span>Checks</h4><small>Repeated on the new run's own settings when it is created.</small></div>
+        <ul class="ab-fork-checks" aria-live="polite">${state.loading&&!p?'<li data-level="wait"><span>…</span><span>Checking the source attempt…</span></li>':''}${state.error?`<li data-level="block"><span>✕</span><span><b>Could not check this attempt.</b> ${esc(state.error)}</span></li>`:''}${(p?.checks||[]).map(r=>`<li data-level="${esc(r.level)}"><span aria-hidden="true">${r.level==='ok'?'✓':r.level==='block'?'✕':'!'}</span><span><b>${esc(r.title)}</b> ${esc(r.body||'')}</span></li>`).join('')}</ul>`;
+      panel.querySelectorAll('[data-fork-pick]').forEach(b=>b.addEventListener('click',()=>{state.version=Number(b.dataset.forkPick);load();}));
+      panel.querySelectorAll('[data-fork-carry]').forEach(b=>b.addEventListener('click',()=>{state.carry=b.dataset.forkCarry;load();}));
+      const blocked=!p||state.loading||Boolean(state.error)||p.blocked;
+      for(const button of startButtons){button.disabled=blocked;button.title=blocked?(state.error||(p?.blocked?'A check failed: see Checks.':'Checking the source attempt…')):'';}
+    }
+    async function load() {
+      const seq=++state.seq;state.loading=true;state.error='';render();
+      try{
+        const response=await fetch(`/api/dev-v2/experiments/${encodeURIComponent(eid)}/fork-preview?cell=${encodeURIComponent(key)}&version=${state.version}&carry=${state.carry}`,{cache:'no-store'});
+        const value=await response.json().catch(()=>({error:`HTTP ${response.status}`}));
+        if(seq!==state.seq)return;
+        if(!response.ok)throw new Error(value.error||`HTTP ${response.status}`);
+        state.preview=value;
+        if(value.carry_options.find(o=>o.id===state.carry)?.available===false&&state.carry==='feedback'){state.carry='code';return load();}
+      }catch(error){if(seq===state.seq){state.error=error.message;state.preview=null;}}
+      finally{if(seq===state.seq){state.loading=false;render();}}
+    }
+    load();
+    return {request:()=>({experiment_id:eid,cell:key,version:state.version,carry:state.carry}),
+      ready:()=>Boolean(state.preview&&!state.preview.blocked&&!state.loading&&!state.error),
+      reason:()=>state.error||'A check failed for this attempt; see Checks.'};
   }
   function attemptLabel(status) {
     return {running:'Attempt running', succeeded:'Attempt succeeded', failed:'Attempt unsuccessful', timed_out:'Attempt timed out', cancelled:'Attempt cancelled'}[status] || 'Not executed yet';
@@ -1897,8 +1966,9 @@
     launchRequested=false;if(location.hash==='#new-run')history.replaceState(null,'',location.pathname+location.search);open.click();
   }
   function bindLaunch() {
-    view.querySelectorAll('[data-open-launch],[data-open-run-again]').forEach(button=>button.addEventListener('click', () => {
-      const repeat=button.hasAttribute('data-open-run-again')?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
+    view.querySelectorAll('[data-open-launch],[data-open-run-again],[data-open-fork]').forEach(button=>button.addEventListener('click', () => {
+      const forkStart=button.hasAttribute('data-open-fork')&&canContinue(currentSnapshot)?{version:Number(button.dataset.forkVersion)||null}:null;
+      const repeat=button.hasAttribute('data-open-run-again')||forkStart?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
       const options = launchOptions;
       const certifiedProfiles = (options?.profiles || []).filter(p => p.certified_bimanual_v2).map(p => ({...p,task_id:p.task,robot:p.robot.model,execution_arm:p.robot.execution_arm,enabled:true,channel:'certified_v2',wall_seconds:600,attempt_wall_seconds:600,sdk_call_limit:200,base_mode:'stationary'}));
       const fixedProfiles=(options?.profiles || []).filter(p=>!p.certified_bimanual_v2).map(p=>({...p,
@@ -2139,6 +2209,7 @@
         manualBudget=!!(repeat.cellBudget||repeat.experimentBudget);
         updatePreview();showQuota();
       }
+      const fork=forkStart&&sourceProfile?.channel==='dev_v2'?forkPanel(form,forkStart):null;
       form.benchmark.addEventListener('change',syncBenchmark);
       form.task_id.addEventListener('change',syncTask);
       form.robot_model.addEventListener('change',syncArm);
@@ -2182,6 +2253,10 @@
             if(form.model_source.value==='codex'&&options?.dev_v2?.budget_tier!=='dev')throw new Error('Codex model source requires dev tier');
             selection={eval_agent:{enabled:form.eval_agent_enabled.checked,model:form.model_source.value==='codex'?'gpt-6-astra':'parcc/Qwen'},request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:form.v2_policy.value==='all'?(options.dev_v2.policies):[form.v2_policy.value],mode:form.v2_mode.value,help_budget:help,human_wait_seconds:Number(form.human_wait_seconds.value),configuration:{goal_id:form.goal_id.value,experiment_budget:experiment,cell_budget:cell,max_iterations:n,wall_seconds:Number(form.wall_seconds.value)}};
             if(form.model_source.value==='codex'){selection.model_source='codex';selection.budget_tier='dev';}
+            if(fork){
+              if(!fork.ready())throw new Error(fork.reason());
+              selection.fork=fork.request();
+            }
           }
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
@@ -3301,7 +3376,7 @@
     else if (busy) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-state="loading"><div class="ab-camera-empty" data-camera-empty></div>${loadingOverlay('live')}</div>`;
     else live=`${strip}<div class="op-idle" data-camera-empty><b>Nothing is running right now</b><p>${last?'Pick an attempt above to watch what the robot did.':'Start a new run to see the robot live.'}</p>${last?`<button type="button" data-operator-attempt="${esc(last.attempt_id)}">Watch the last attempt</button>`:''}</div>`;
     const noVideo=neverStarted(snapshot)?'<div class="op-idle"><b>Nothing to replay</b><p>The robot never started, so there is no video and no steps.</p></div>':'<div class="op-idle"><b>No video was recorded for this attempt</b><p>The steps on the right still show what the robot did.</p></div>';
-    const revision=version?`<details class="op-revision" data-persist-detail="operator-revision:${esc(version.version)}"><summary>What changed in this attempt (version ${version.version})</summary><div class="op-clamp six" data-operator-copy>${esc(version.reason || 'No change description recorded.')}</div><button type="button" class="op-more" data-operator-expand>Show more</button></details>`:'';
+    const revision=version?`<details class="op-revision" data-persist-detail="operator-revision:${esc(version.version)}"><summary>What changed in this attempt (version ${version.version})</summary><div class="op-clamp six" data-operator-copy>${esc(version.reason || 'No change description recorded.')}</div><button type="button" class="op-more" data-operator-expand>Show more</button></details>${continueButton(snapshot,version.version)?`<p class="op-continue-row">${continueButton(snapshot,version.version)}</p>`:''}`:'';
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${run.status==='running' ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch Attempt ${attempt.index+1}'s recording</button>` : '';
@@ -3525,7 +3600,9 @@
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
     const newRun = isTerminal(snapshot) ? launchButton(snapshot, true) : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    const fork = snapshot.dev_v2_selection?.fork;
+    const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {

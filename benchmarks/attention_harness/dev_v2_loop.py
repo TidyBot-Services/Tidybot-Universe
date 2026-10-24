@@ -819,7 +819,12 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             version=count+1;directory=root/f'v{version}';directory.mkdir(exist_ok=True)
             feedback,previous,failures,prior=feedback_for(cell)
             if not last:previous=source
+            # A continued run's v1 sees the source attempt's feedback; its help decision stays that of a fresh v1,
+            # because the source attempt's recording belongs to the other run.
+            from .dev_fork import initial_feedback
+            carried=initial_feedback(m) if not last else None
             packet,decision_ref,help_ref=attention(store,key,version,feedback,previous,failures,prior,m,owner,directory,client)
+            if carried is not None:feedback=carried
             if packet['action']=='stop':store.update_cell(key,state='failed',reason=packet['reason']);return
             remaining={k:max(0,cell['budget'][k]-store.cell(key)['used'][k]) for k in cell['budget']}
             if 'goal_id' in m:

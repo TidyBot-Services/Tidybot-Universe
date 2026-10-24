@@ -135,7 +135,7 @@ class DailyDevV2:
         self.recover()
     def options(self):
         return {'enabled':True,'budget_tier':'dev','policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
-                'default_cell_budget':DEFAULT_CELL,'default_max_iterations':5,'registered_scene_seeds':registered_scene_seeds(),'formal_eligible':False,
+                'default_cell_budget':DEFAULT_CELL,'default_max_iterations':5,'registered_scene_seeds':registered_scene_seeds(),'formal_eligible':False,'continue_from_attempt':True,
                 'authorization':{'mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else self.authorization,'matrix':self.matrix(),
                 **({'memory':{k:self.memory[k] for k in ('store_id','namespace','url_sha256')}} if self.memory is not None else {}),
                 'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],control_step_limit=task_limits()['control_steps'],startup_cleanup_seconds=60*DEV_TIER_BUDGET_SCALE,wall_seconds=21600,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]}
@@ -180,6 +180,16 @@ class DailyDevV2:
         key=selection.get('request_key','')
         if not re.fullmatch(r'[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
         eid='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24];directory,path,budget=self.paths(eid)
+        if 'fork' in selection:
+            # Continue from an attempt: refuse in plain words here, then freeze the source attempt for creation.
+            from . import dev_fork
+            request=dev_fork.request_fields(selection['fork'])
+            if selection.get('mode')!='interactive':raise ValueError('A run that continues an attempt is interactive (excluded from comparison)')
+            if request['experiment_id']==eid:raise ValueError('A run cannot continue itself')
+            shown=dev_fork.preview(self.root,request['experiment_id'],request['cell'],request['version'],request['carry'])
+            if shown['blocked']:raise ValueError(' '.join(r['title'] for r in shown['checks'] if r['level']=='block'))
+            if selection.get('tasks')!=[shown['task_id']] or selection.get('seeds')!=[shown['seed']]:raise ValueError('A continued run keeps the source task and seed')
+            selection={**selection,'fork':dev_fork.materialize(self.root,directory,request)}
         selection=bind_daily_run_notes(selection,directory/'selection.json')
         selection=bind_daily_advisor(selection,directory/'selection.json')
         selection=bind_daily_memory(selection,self.memory,directory/'selection.json')
@@ -318,6 +328,17 @@ class DailyDevV2:
         if not match:raise FileNotFoundError('Unknown Dev v2 resource')
         eid,suffix=match.groups();s=self.store(eid)
         if not suffix:return experiments.snapshot(s,eid),'application/json'
+        if suffix=='fork-preview':
+            from .dev_fork import preview
+            q=parse_qs(parsed.query)
+            def one(name,default=None):
+                values=q.get(name)
+                if not values and default is not None:return default
+                if not values or len(values)!=1:raise ValueError(name+' required')
+                return values[0]
+            version=one('version')
+            if not re.fullmatch(r'[1-9][0-9]{0,3}',version):raise ValueError('version must be a positive integer')
+            return preview(self.root,eid,one('cell'),int(version),one('carry','feedback')),'application/json'
         if suffix in {'report','export.json','export.csv','ledger.json'}:
             from .dev_report import report,report_csv
             if suffix=='ledger.json':return s.export_ledger(),'application/json'
