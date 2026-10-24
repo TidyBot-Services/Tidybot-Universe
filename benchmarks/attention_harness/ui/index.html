@@ -2264,6 +2264,45 @@ html:has(#attentionbench-clear[data-operator-view="true"]),body:has(#attentionbe
 /* the sticky running-status bar (z 45) sat on top of the open Notices panel */
 #attentionbench-clear header.top:has(.ab-notices-panel:not([hidden])){z-index:60}
 
+/* Continue from an attempt (plan A): entry buttons, dialog panel, lineage in the title. */
+#attentionbench-clear[data-operator-view="true"] .op-controls button.op-continue,#attentionbench-clear .op-continue-row .op-continue{display:inline-flex;align-items:center;gap:7px;border:1px solid #242822;background:#ffffff;color:#242822}
+#attentionbench-clear .op-continue-row{margin:10px 0 0}
+#attentionbench-clear .op-continue-row .op-continue{min-height:40px;padding:0 14px;border-radius:999px;font:600 13px/1 var(--op-sans,inherit);cursor:pointer}
+#attentionbench-clear .op-continue-row .op-continue:hover{background:#ebe8df}
+#attentionbench-clear .op-page-title .op-lineage{display:inline-flex;align-items:center;margin-left:10px;padding:3px 10px;border-radius:999px;background:#dfe9f6;color:#24507e;text-decoration:none;letter-spacing:.06em}
+#attentionbench-clear .op-page-title .op-lineage:hover{text-decoration:underline}
+#attentionbench-clear .op-page-title .op-excluded{display:inline-flex;margin-left:8px;padding:3px 10px;border-radius:999px;background:#f5e6cf;color:#7d5210;letter-spacing:.06em}
+#attentionbench-clear .ab-fork{display:flex;flex-direction:column;gap:12px}
+#attentionbench-clear .ab-fork .ab-run-section-head{margin-top:4px}
+#attentionbench-clear .ab-fork-strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:#686e64}
+#attentionbench-clear .ab-fork-node{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:10px;background:#ebe8df;color:#242822;font-size:13px;line-height:1.3}
+#attentionbench-clear .ab-fork-node small{color:#686e64}
+#attentionbench-clear .ab-fork-node.new{background:transparent;border:1px dashed #242822}
+#attentionbench-clear .ab-fork-chips{display:flex;gap:6px;flex-wrap:wrap}
+#attentionbench-clear .ab-fork-chip{min-width:44px;min-height:44px;border-radius:10px;border:1px solid #d3d4c6;background:#ffffff;color:#242822;font:700 15px/1 'Barlow Condensed',sans-serif;cursor:pointer}
+#attentionbench-clear .ab-fork-chip[aria-pressed="true"]{background:#242822;border-color:#242822;color:#ffffff}
+#attentionbench-clear .ab-fork-chip[data-outcome="succeeded"]{border-color:#48683b}
+#attentionbench-clear .ab-fork-result{margin:0;padding:10px 12px;border:1px solid #d3d4c6;border-radius:10px;background:#ffffff;font-size:13.5px;line-height:1.5;color:#242822}
+#attentionbench-clear .ab-fork-result b{display:inline-block;margin-right:8px;padding:2px 8px;border-radius:999px;background:#f3d6d0;color:#a23f32;font-size:12px;font-weight:600}
+#attentionbench-clear .ab-fork-result[data-outcome="succeeded"] b{background:#48683b22;color:#48683b}
+#attentionbench-clear .ab-fork-carry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#attentionbench-clear .ab-fork-carry button{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;padding:12px 14px;min-height:84px;border:1px solid #d3d4c6;border-radius:10px;background:#ffffff;color:#242822;cursor:pointer;font:inherit}
+#attentionbench-clear .ab-fork-carry button[aria-pressed="true"]{border:2px solid #d94d27;padding:11px 13px}
+#attentionbench-clear .ab-fork-carry button:disabled{border-style:dashed;color:#686e64;cursor:not-allowed}
+#attentionbench-clear .ab-fork-carry strong{font-weight:600;font-size:14px}
+#attentionbench-clear .ab-fork-carry small{font-size:12.5px;line-height:1.45;color:#686e64}
+#attentionbench-clear .ab-fork-prompt{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:10px;background:#0d0f12;color:#f3f1ea;font:500 12.5px/1.6 'IBM Plex Mono',monospace}
+#attentionbench-clear .ab-fork-prompt span:first-child{color:#a3a199}
+#attentionbench-clear .ab-fork-checks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+#attentionbench-clear .ab-fork-checks li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.45;background:#ebe8df;color:#242822}
+#attentionbench-clear .ab-fork-checks li[data-level="ok"]{background:#48683b1f;color:#2f5e2c}
+#attentionbench-clear .ab-fork-checks li[data-level="warn"]{background:#b7791f24;color:#7a5212}
+#attentionbench-clear .ab-fork-checks li[data-level="block"]{background:#a23f3222;color:#a23f32}
+#attentionbench-clear .ab-fork-checks b{font-weight:600}
+#attentionbench-clear .ab-fork-settings{margin-top:14px;border:1px solid #d3d4c6;border-radius:10px;padding:0 14px}
+#attentionbench-clear .ab-fork-settings>summary{display:flex;gap:10px;align-items:baseline;padding:12px 0;cursor:pointer;color:#242822}
+#attentionbench-clear .ab-fork-settings>summary span{font-size:12.5px;color:#686e64}
+#attentionbench-clear .ab-fork-settings[open]{padding-bottom:14px}
 </style>
 <style id="ab-dark-theme">
 html[data-theme="dark"],html[data-theme="dark"] body{background:#15171a;color-scheme:dark}
@@ -2950,6 +2989,34 @@ html[data-theme="dark"] .ab-run-notice-banner button{border:0;background:none;co
 #attentionbench-clear[data-theme="dark"].ab-industrial .op-controls .ab-button-primary{box-shadow:0 1px 2px #00000053}
 #attentionbench-clear[data-theme="dark"].ab-industrial .ab-sidebar :is(.ab-run-actions button,.ab-record-restore){box-shadow:0 1px 2px #0000002e}
 #attentionbench-clear[data-theme="dark"].ab-industrial .ab-session-dialog :is(button.ab-button-quiet,button.ab-button-primary,button.ab-button-danger,:is(.ab-launch-header,.ab-dag-dialog-header,.ab-session-modal>.panel-title)>button){box-shadow:0 1px 2px #0000002e}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-controls button.op-continue,#attentionbench-clear[data-theme="dark"] .op-continue-row .op-continue{border:1px solid #ecebe6;background:#23272c;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .op-continue-row .op-continue:hover{background:#262a2f}
+#attentionbench-clear[data-theme="dark"] .op-page-title .op-lineage{background:#212427;color:#80acdb;text-decoration:none}
+#attentionbench-clear[data-theme="dark"] .op-page-title .op-lineage:hover{text-decoration:underline}
+#attentionbench-clear[data-theme="dark"] .op-page-title .op-excluded{background:#443722;color:#ecbb6e}
+#attentionbench-clear[data-theme="dark"] .ab-fork-strip{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-fork-node{background:#262a2f;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fork-node small{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-fork-node.new{background:transparent;border:1px dashed #ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fork-chip{border:1px solid #33383d;background:#23272c;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fork-chip[aria-pressed="true"]{background:#ecebe6;border-color:#ecebe6;color:#15171a}
+#attentionbench-clear[data-theme="dark"] .ab-fork-chip[data-outcome="succeeded"]{border-color:#58b583}
+#attentionbench-clear[data-theme="dark"] .ab-fork-result{border:1px solid #33383d;background:#23272c;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fork-result b{background:#422924;color:#e08670}
+#attentionbench-clear[data-theme="dark"] .ab-fork-result[data-outcome="succeeded"] b{background:#58b5833d;color:#58b583}
+#attentionbench-clear[data-theme="dark"] .ab-fork-carry button{border:1px solid #33383d;background:#23272c;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fork-carry button[aria-pressed="true"]{border:2px solid #ec6a43}
+#attentionbench-clear[data-theme="dark"] .ab-fork-carry button:disabled{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-fork-carry small{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-fork-prompt{background:#e7e9eb;color:#545b63}
+#attentionbench-clear[data-theme="dark"] .ab-fork-prompt span:first-child{color:#686d73}
+#attentionbench-clear[data-theme="dark"] .ab-fork-checks li{background:#262a2f;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fork-checks li[data-level="ok"]{background:#58b58338;color:#93cb90}
+#attentionbench-clear[data-theme="dark"] .ab-fork-checks li[data-level="warn"]{background:#e0a24a41;color:#d9a55a}
+#attentionbench-clear[data-theme="dark"] .ab-fork-checks li[data-level="block"]{background:#e086703d;color:#e08670}
+#attentionbench-clear[data-theme="dark"] .ab-fork-settings{border:1px solid #33383d}
+#attentionbench-clear[data-theme="dark"] .ab-fork-settings>summary{color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fork-settings>summary span{color:#a3a199}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>

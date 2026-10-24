@@ -15,7 +15,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
@@ -64,6 +64,11 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     if validation_origin is not None:
         from .memory_validation_provision import validate_creation
         validate_creation(selection,validation_origin)
+    fork_record=None
+    if 'fork' in selection:
+        if validation_origin is not None:raise ValueError('a validation run cannot continue an attempt')
+        from .dev_fork import load as load_fork
+        fork_record=load_fork(selection['fork'])
     from .eval_agent import OLD_PROMPT_VERSION
     from .dev_advisor_proxy import OLD_PROMPT_VERSION as OLD_ADVISOR_PROMPT_VERSION
     if selection.get('eval_agent',{}).get('prompt_version')==OLD_PROMPT_VERSION or selection.get('advisor_proxy',{}).get('prompt_version')==OLD_ADVISOR_PROMPT_VERSION:
@@ -126,6 +131,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
     if 'run_notes' in selection:normalized['run_notes']=selection['run_notes']
     if 'memory_family' in selection:normalized['memory_family']=selection['memory_family']
+    if fork_record is not None:normalized['fork']=dict(selection['fork'])
     if budget_tier=='dev':normalized['budget_tier']='dev'
     if source=='codex':normalized['model_source']='codex'
     if v3:
@@ -208,6 +214,10 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         for config in configs.values():config['advisor_proxy']=copy.deepcopy(normalized['advisor_proxy'])
     if source=='codex':
         for config in configs.values():config['model_source']='codex'
+    fork_checks=None
+    if fork_record is not None:
+        from .dev_fork import apply as apply_fork
+        fork_checks=apply_fork(fork_record,configs,sources,mode=mode,tasks=tasks,seeds=seeds)
     cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
     if validation_origin is not None:
         base=cells[0]
@@ -227,6 +237,9 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         cells=cells,schedule=schedule,formal_eligible=False,report_scope='engineering small sample, no statistical/formal claim')
     if 'run_notes' in selection:manifest['run_notes']=selection['run_notes']
     if 'memory_family' in selection:manifest['memory_family']=selection['memory_family']
+    if fork_record is not None:
+        # v1 starts from the source attempt; its carried feedback reaches v1's Dev prompt only.
+        manifest['fork']=dict(selection['fork'],feedback=fork_record['feedback'],source=fork_record['source'],checks=fork_checks)
     if budget_tier=='dev':
         manifest['budget_tier']='dev'
         if source=='parcc' and MODEL['model'] in FREE_MODELS:
