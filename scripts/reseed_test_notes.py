@@ -80,12 +80,13 @@ def service_settings() -> tuple[Path, str | None]:
 _BUILD_CONTEXT = r'''
 import json, sys, tempfile
 from pathlib import Path
-from openarm365_dev_v2.dev_config import make_lock, make_dev_config
+from openarm365_dev_v2.dev_config import make_lock, make_dev_config, new_execution_settings
 from openarm365_dev_v2.scene_contract import registered_contract_ref
 from benchmarks.attention_harness.dev_planner_memory import context
 
 with tempfile.TemporaryDirectory(prefix='attentionbench-reseed-') as directory:
-    ref = make_lock(Path(directory) / 'identity-lock.json')
+    settings = new_execution_settings(budget_tier='dev')
+    ref = make_lock(Path(directory) / 'identity-lock.json', execution_settings=settings)
     config = make_dev_config('pick_place_counter_to_sink', 102, ref, budget_tier='dev')
     config['scene_contract'] = registered_contract_ref()
     config['scene_reset_seed'] = 102

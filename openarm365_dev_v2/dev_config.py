@@ -81,8 +81,16 @@ def make_lock(path, *, execution_settings=None):
     with path.open('x') as f:json.dump(value,f,sort_keys=True,indent=2)
     path.chmod(0o444)
     return {'path':str(path.absolute()),'sha256':sha(path)}
+def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop'):
+    """Select matching settings for a new run's identity lock and config.
+
+    Frozen configs must retain their own settings, including legacy absence.
+    """
+    return from_config(R3_20261025.to_dict()) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
+
+
 def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev'):
-    settings=from_config(R3_20261025.to_dict()) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
+    settings=new_execution_settings(budget_tier=budget_tier,budget_boundary=budget_boundary)
     return _make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
         budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings)
 

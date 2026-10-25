@@ -8,7 +8,7 @@ from .dev_loop import immutable,sha,process_identity,owner_alive
 from .dev_tasks import get_task,validate_selection,options as task_options
 from .dev_help import POLICY_IDS,policy_parameters,DemoProvider,EMPTY_MEMORY,HELP_PRICING,public_screen
 from .free_models import FREE_MODELS
-from openarm365_dev_v2.dev_config import make_lock,make_dev_config,validate_dev_config,verify_lock,ROOT
+from openarm365_dev_v2.dev_config import make_lock,make_dev_config,validate_dev_config,verify_lock,ROOT,new_execution_settings
 from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
 # Frozen model contract: no replay of ambiguous calls. Dev-tier free PARCC
@@ -198,8 +198,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         original=json.loads(checked(validation_origin['manifest']).read_bytes())
         ref=original['identity_lock']
     else:
-        from curobo_v2.execution_settings import R3_20261025,from_config
-        settings=from_config(R3_20261025.to_dict()) if budget_tier=='dev' else None
+        settings=new_execution_settings(budget_tier=budget_tier)
         ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path,
             **({} if settings is None else dict(execution_settings=settings)))
     if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])

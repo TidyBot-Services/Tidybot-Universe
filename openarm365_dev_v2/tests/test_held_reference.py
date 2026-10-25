@@ -19,6 +19,10 @@ from openarm365_dev import executor as ex
 from openarm365_dev_v2 import dev_config
 
 
+# Keep the legacy control/event baseline independent of subsequent commits.
+LEGACY_EXECUTOR_REVISION = '3344c6f9fa29eabb42fde35e275f63f6fbdc5d6a'
+
+
 def pose(angle_deg=0, x=0):
     angle=math.radians(angle_deg)
     result=np.eye(4)
@@ -71,18 +75,19 @@ def drive(monkeypatch,angles,mode='fixed',method=None):
     return obj
 
 
-def head_gripper():
-    source=subprocess.check_output(['git','show','HEAD:openarm365_dev/executor.py'],text=True)
+def legacy_gripper():
+    source_path=f'{LEGACY_EXECUTOR_REVISION}:openarm365_dev/executor.py'
+    source=subprocess.check_output(['git','show',source_path],text=True)
     node=next(item for item in ast.parse(source).body if isinstance(item,ast.ClassDef) and item.name=='NativeExecutor')
     method=next(item for item in node.body if isinstance(item,ast.FunctionDef) and item.name=='gripper')
     module=ast.fix_missing_locations(ast.Module(body=[method],type_ignores=[]))
     namespace=dict(vars(ex))
-    exec(compile(module,'HEAD:openarm365_dev/executor.py','exec'),namespace)
+    exec(compile(module,source_path,'exec'),namespace)
     return namespace['gripper']
 
 
 def test_fixed_matches_head_control_and_event_sequence(monkeypatch):
-    baseline=drive(monkeypatch,[0],method=head_gripper())
+    baseline=drive(monkeypatch,[0],method=legacy_gripper())
     current=drive(monkeypatch,[0])
     assert baseline.sequence==current.sequence==20
     assert np.array_equal(baseline.held_transform,current.held_transform)
