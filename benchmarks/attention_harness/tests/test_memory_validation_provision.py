@@ -80,9 +80,9 @@ def test_idle_probe_owns_validation_but_blocks_user_run(tmp_path):
     with store.tx() as db:
         e=store.get(db,'experiments',batch['experiment_id']);e['state']='running';store.put(db,'experiments',e['experiment_id'],e)
     assert run_activity([ledger],own_experiment=e['experiment_id']) is None
-    assert run_activity([ledger])=='Another run is active'
+    assert run_activity([ledger]).startswith('Another run is active: '+e['experiment_id'])
     with store.tx() as db:store.put(db,'experiments','user',dict(experiment_id='user',selection=dict(budget_tier='dev'),state='running'))
-    assert run_activity([ledger],own_experiment=e['experiment_id'])=='Another run is active'
+    assert run_activity([ledger],own_experiment=e['experiment_id'])=='Another run is active: user'
 
 
 @pytest.mark.parametrize('fault',[None,'missing','unmeasured','tampered','binding'])

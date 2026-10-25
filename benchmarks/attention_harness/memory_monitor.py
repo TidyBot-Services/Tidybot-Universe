@@ -47,6 +47,8 @@ def automatic_checks(root=None,gateway=None):
                 value['weekly_quota_age_seconds']=max(0,time.time()-stamp)
             value['quota_refreshes']=[{k:r.get(k) for k in ('at','finished_at','before_percent','after_percent','status')}
                                       for r in state.get('quota_refreshes',[])[-20:]]
+            value['ignored_stale_runs']=[dict(id=safe_text(r['id']),reason=safe_text(r['reason']))
+                                         for r in state.get('ignored_stale_runs',[])]
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
             current=state.get('current')

@@ -6,8 +6,10 @@ use the existing goal ledger. A claimed or unknown job is never redispatched.
 import argparse,fcntl,hashlib,importlib,json,math,os,sqlite3,time
 from datetime import datetime
 from pathlib import Path
+from .codex_quota import current_window_readings,valid_reset,WEEKLY_READING_MAX_AGE
 
-QUOTA_MAX_AGE = 10 * 60
+QUOTA_MAX_AGE = WEEKLY_READING_MAX_AGE
+UNEXPLAINED_RUN_MAX_AGE = 6 * 60 * 60
 QUOTA_UNREADABLE = 'Automatic checks paused: Codex weekly use could not be read.'
 
 
@@ -50,14 +52,14 @@ def set_enabled(root,enabled):
 
 
 def weekly_quota_snapshot(home=None,*,now=None):
-    """Keep the conservative session maximum and the newest weekly receipt time.
+    """Keep the conservative session maximum within the current weekly window.
 
     File mtime only selects recent sessions; it cannot prove a reading is fresh.
     Ephemeral calls and unrelated events must not advance the observation time.
     """
     root=Path(home).expanduser() if home is not None else Path.home()
     now=time.time() if now is None else now
-    cutoff=now-86400;values=[];stamps=[]
+    cutoff=now-86400;readings=[]
     for path in root.joinpath('.codex','sessions').rglob('*.jsonl'):
         try:
             if path.stat().st_mtime<cutoff:continue
@@ -73,14 +75,21 @@ def weekly_quota_snapshot(home=None,*,now=None):
                 if not isinstance(window,dict) or window.get('window_minutes')!=10080:continue
                 used=window.get('used_percent')
                 if valid_percent(used):
-                    values.append(used)
+                    reading=dict(used_percent=used,observed_at=None,resets_at=window.get('resets_at'))
                     try:
                         observed=datetime.fromisoformat(stamp.replace('Z','+00:00'))
-                        if observed.tzinfo is not None and observed.timestamp()<=now:stamps.append(observed.timestamp())
+                        if observed.tzinfo is not None and observed.timestamp()<=now:reading['observed_at']=observed.timestamp()
                     except (ValueError,TypeError,AttributeError,OverflowError):pass
+                    readings.append(reading)
         except (OSError,UnicodeError):continue
-    if not values:raise ValueError('Codex weekly quota is unreadable')
-    return dict(used_percent=max(values),observed_at=max(stamps) if stamps else None)
+    if not readings:raise ValueError('Codex weekly quota is unreadable')
+    # Without a fresh reading, retain a stale snapshot so the existing refresh
+    # gate can explain the pause. Never let a stale window freshen another one.
+    readings=current_window_readings(readings,now=now)
+    stamps=[r['observed_at'] for r in readings if r['observed_at'] is not None]
+    return dict(used_percent=max(r['used_percent'] for r in readings),
+                observed_at=max(stamps) if stamps else None,
+                resets_at=readings[0]['resets_at'] if valid_reset(readings[0]['resets_at']) else None)
 
 
 def weekly_quota(home=None,*,now=None):
@@ -119,9 +128,12 @@ def quota_stop(state,deps,save,*,allow_refresh=True):
             value=deps.quota()
             if not isinstance(value,dict) or not valid_percent(value.get('used_percent')):return None
             quota=value['used_percent']
-            if state.get('day_start_quota') is None:state['day_start_quota']=quota
+            reset=value.get('resets_at')
+            if state.get('day_start_quota') is None or (valid_reset(reset) and reset!=state.get('day_start_quota_resets_at')):
+                state.update(day_start_quota=quota,day_start_quota_resets_at=reset)
             stamp=value.get('observed_at')
-            state.update(weekly_quota=quota,weekly_quota_at=stamp if type(stamp) in (int,float) and math.isfinite(stamp) else None)
+            state.update(weekly_quota=quota,weekly_quota_at=stamp if type(stamp) in (int,float) and math.isfinite(stamp) else None,
+                         weekly_quota_resets_at=reset)
             return value
         except Exception:return None
     value=read()
@@ -154,26 +166,87 @@ def check_dispatch_quota(state,deps,save):
         if reason:raise QuotaStop(reason)
 
 
-def run_activity(ledgers,*,own_experiment=None,own_pids=()):
-    """Read-only process/ledger probe. An unreadable ledger fails closed."""
+def scheduler_status(experiment,ledger):
+    """True/False for verified live/dead receipts, None for unexplained state."""
+    from .dev_loop import owner_alive
+    # Some older ledgers use a neutral directory name for their sole experiment.
+    directories={ledger.parent,ledger.parent/experiment['experiment_id']}
+    if experiment.get('artifact_dir'):directories.add(Path(experiment['artifact_dir']))
+    found=False;unreadable=False
+    for directory in sorted(directories):
+        try:
+            receipts=[p for p in directory.iterdir() if p.match('scheduler-process-*.json')]
+        except FileNotFoundError:continue
+        except OSError:unreadable=True;continue
+        for receipt in receipts:
+            try:
+                identity=json.loads(receipt.read_bytes())
+                if (not isinstance(identity,dict) or set(identity)!={'pid','start_ticks','boot_id'}
+                    or type(identity['pid']) is not int or identity['pid']<=0
+                    or not all(isinstance(identity[k],str) and identity[k] for k in ('start_ticks','boot_id'))):
+                    raise ValueError('invalid scheduler identity')
+                found=True
+                if owner_alive(identity):return True
+            except (OSError,ValueError,TypeError):unreadable=True
+    return None if unreadable or not found else False
+
+
+def run_activity(ledgers,*,own_experiment=None,own_pids=(),ignored_stale_runs=None,now=None):
+    """Read-only probe: dead schedulers do not make abandoned jobs active."""
+    now=time.time() if now is None else now
+    reason=None
     for p in Path('/proc').iterdir():
         if not p.name.isdigit() or int(p.name) in own_pids:continue
         try:args=(p/'cmdline').read_bytes().split(b'\0')
         except (FileNotFoundError,ProcessLookupError):continue
-        if any(b'daily_dev_v2' in a for a in args) and b'--worker' in args:return 'Another run is active'
+        if any(b'daily_dev_v2' in a for a in args) and b'--worker' in args:
+            index=args.index(b'--worker')+1
+            name=args[index].decode(errors='replace') if index<len(args) and args[index] else f'worker PID {p.name}'
+            reason=reason or 'Another run is active: '+name
     for path in ledgers:
-        with sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',uri=True,timeout=1) as db:
-            for raw, in db.execute('SELECT payload FROM v2_experiments'):
-                e=json.loads(raw)
-                if e.get('experiment_id')==own_experiment:continue
-                tier=e.get('selection',{}).get('budget_tier','legacy')
-                if tier!='dev' and e['state'] in {'running','planned','claimed'}:return 'The frozen main matrix is planned or running'
-                if e['state'] in {'running','claimed'}:return 'Another run is active'
-            for raw, in db.execute("SELECT payload FROM v2_jobs WHERE state IN ('claimed','needs_review')"):
-                job=json.loads(raw)
-                row=db.execute('SELECT payload FROM v2_cells WHERE id=?',(job['cell'],)).fetchone()
-                if not row or json.loads(row[0]).get('experiment_id')!=own_experiment:return 'Another run has active or unresolved work'
-    return None
+        path=Path(path)
+        try:
+            # WAL writes need not update the database file's mtime.
+            modified=path.stat().st_mtime
+            try:modified=max(modified,path.with_name(path.name+'-wal').stat().st_mtime)
+            except FileNotFoundError:pass
+            with sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=1) as db:
+                experiments={}
+                for raw, in db.execute('SELECT payload FROM v2_experiments'):
+                    e=json.loads(raw);experiments[e['experiment_id']]=e
+                unresolved=set()
+                for raw, in db.execute("SELECT payload FROM v2_jobs WHERE state IN ('claimed','needs_review')"):
+                    job=json.loads(raw)
+                    row=db.execute('SELECT payload FROM v2_cells WHERE id=?',(job['cell'],)).fetchone()
+                    eid=json.loads(row[0]).get('experiment_id') if row else None
+                    if eid not in experiments:raise ValueError('unresolved job has no experiment: '+str(eid or job['cell']))
+                    unresolved.add(eid)
+                for eid,e in experiments.items():
+                    if eid==own_experiment:continue
+                    selection=e.get('selection',{})
+                    tier=selection.get('budget_tier','legacy')
+                    # Use the same comparison mode as require_scene_gate; a
+                    # legacy tier alone does not identify the frozen matrix.
+                    if selection.get('mode')=='experiment' and tier!='dev' and e['state'] in {'running','planned','claimed'}:
+                        reason=reason or 'The frozen main matrix is planned or running: '+eid
+                        continue
+                    alive=scheduler_status(e,path)
+                    unexplained=alive is None and now-modified<UNEXPLAINED_RUN_MAX_AGE
+                    pending=eid in unresolved or e['state']=='needs_review'
+                    if alive or unexplained and (pending or e['state'] in {'running','claimed','planned'}):
+                        message=('Another run has unresolved work: ' if pending else 'Another run is active: ')+eid
+                        started=e.get('started_at') or e.get('created_at')
+                        if started:message+=f' (started {started})'
+                        reason=reason or message
+                    elif pending and ignored_stale_runs is not None:
+                        entry=dict(id=eid,reason='scheduler not running')
+                        if entry not in ignored_stale_runs:ignored_stale_runs.append(entry)
+                    elif e['state']=='planned' and not e.get('started_at') and alive is None and ignored_stale_runs is not None:
+                        entry=dict(id=eid,reason='planned, never started')
+                        if entry not in ignored_stale_runs:ignored_stale_runs.append(entry)
+        except (OSError,sqlite3.Error,ValueError,TypeError,KeyError) as exc:
+            raise ValueError(f'Run activity ledger unreadable: {path.parent.name}/{path.name}: {exc}') from exc
+    return reason
 
 
 def contract_catalog(context):
@@ -262,7 +335,13 @@ def tick(state,deps):
             return status('Off')
         now=deps.clock();day=datetime.fromtimestamp(now).astimezone().date().isoformat()
         if state.get('day')!=day:state.update(day=day,runs_today=0,day_start_quota=None)
-        reason=deps.activity(current)
+        try:reason=deps.activity(current)
+        except Exception as exc:
+            from .notices import safe_detail
+            reason='Automatic checks paused: '+safe_detail(str(exc) or type(exc).__name__)
+        for entry in getattr(deps.activity,'ignored_stale_runs',[]):
+            ignored=state.setdefault('ignored_stale_runs',[])
+            if entry not in ignored:ignored.append(entry)
         quota_reason=quota_stop(state,deps,save,allow_refresh=not reason)
         reason=reason or quota_reason
         if state.get('runs_today',0)>=20 and not (current and current.get('active')):reason=reason or 'Automatic checks done for today (20 runs).'

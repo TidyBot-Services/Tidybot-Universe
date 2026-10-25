@@ -115,7 +115,7 @@ def test_run_activity_ledger_and_frozen_main_matrix(tmp_path,monkeypatch):
         db.execute('INSERT INTO v2_experiments VALUES (?)',(json.dumps(dict(experiment_id='matrix',selection={'budget_tier':'formal'},state='planned')),))
     assert 'matrix' in run_activity([ledger])
     with sqlite3.connect(ledger) as db:db.execute('UPDATE v2_experiments SET payload=?',(json.dumps(dict(experiment_id='user',selection={'budget_tier':'dev'},state='running')),))
-    assert run_activity([ledger])=='Another run is active'
+    assert run_activity([ledger])=='Another run is active: user'
     assert run_activity([ledger],own_experiment='user') is None
 
 

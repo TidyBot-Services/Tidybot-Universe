@@ -1,13 +1,34 @@
 """Best-effort snapshot of the local Codex subscription window."""
 import json
 import math
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+WEEKLY_READING_MAX_AGE = 10 * 60
 
-def read_quota(home=None,*,newest_session=False):
+
+def valid_reset(value):
+    return type(value) in (int,float) and math.isfinite(value) and value>0
+
+
+def current_window_readings(readings,*,now=None):
+    """Select the latest known reset window; legacy receipts stay separate."""
+    known=[r for r in readings if valid_reset(r.get('resets_at'))]
+    if not known:return readings
+    if now is not None:
+        fresh=[r for r in known if type(r.get('observed_at')) in (int,float)
+               and math.isfinite(r['observed_at']) and 0<=now-r['observed_at']<=WEEKLY_READING_MAX_AGE]
+        known=fresh or known
+    reset=max(r['resets_at'] for r in known)
+    readings=known
+    return [r for r in readings if r.get('resets_at')==reset]
+
+
+def read_quota(home=None,*,newest_session=False,now=None):
     root = Path(home).expanduser() if home is not None else Path.home()
     newest = None
+    readings=[]
     result = {"used_percent": None, "window_minutes": None, "resets_at": None,
               "plan_type": None, "credits_balance": None}
     try:
@@ -24,23 +45,38 @@ def read_quota(home=None,*,newest_session=False):
                             if not isinstance(limits, dict):
                                 continue
                             stamp = row.get('timestamp') or ''
-                            if newest is not None and stamp < newest:
-                                continue
                             primary = next((limits.get(key) for key in ('primary','secondary')
                                             if isinstance(limits.get(key),dict) and limits[key].get('window_minutes')==10080),{})
                             credits = limits.get('credits') or {}
-                            newest = stamp
-                            result = {"used_percent": primary.get('used_percent'),
+                            reading = {"used_percent": primary.get('used_percent'),
                                       "window_minutes": primary.get('window_minutes'),
                                       "resets_at": primary.get('resets_at'),
                                       "plan_type": limits.get('plan_type'),
                                       "credits_balance": credits.get('balance')}
+                            if newest is None or stamp>=newest:newest=stamp;result=reading
+                            if (type(reading['used_percent']) in (int,float)
+                                    and math.isfinite(reading['used_percent']) and 0<=reading['used_percent']<=100):
+                                readings.append((stamp,reading))
                         except (ValueError, TypeError, AttributeError):
                             continue
             except (OSError, UnicodeError):
                 continue
     except (OSError, ValueError):
         pass
+    # Keep the legacy newest-event behavior when no reset identity is available.
+    known=[]
+    for stamp,r in readings:
+        if not valid_reset(r['resets_at']):continue
+        observed=None
+        try:
+            date=datetime.fromisoformat(stamp.replace('Z','+00:00'))
+            if date.tzinfo is not None:observed=date.timestamp()
+        except (ValueError,TypeError,AttributeError,OverflowError):pass
+        known.append(dict(r,observed_at=observed))
+    if known:
+        result=max(current_window_readings(known,now=time.time() if now is None else now),
+                   key=lambda r:(r['used_percent'],r['observed_at'] or 0))
+        result.pop('observed_at')
     return result
 
 

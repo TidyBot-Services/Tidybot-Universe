@@ -273,6 +273,7 @@ def from_config(root,*,quota_probe_command=None):
     runner=LedgerRunner(client,provision,experiments_root=config['experiments_root'],validator_root=config['validator_root'],state_root=root,
                         gpu_meter=getattr(provision,'gpu_seconds',None))
     def activity(current):
+        activity.ignored_stale_runs=[]
         own=current.get('experiment_id') if current else None
         if current and current.get('arm_id'):
             store,key,c=runner._cell(current);own=c['experiment_id']
@@ -282,7 +283,7 @@ def from_config(root,*,quota_probe_command=None):
         if any(not p.is_dir() for p in roots):raise ValueError('run activity root unavailable')
         ledgers=set(explicit)
         for folder in roots:ledgers.update(folder.rglob('ledger.sqlite3'));ledgers.update(folder.rglob('ledger.sqlite'))
-        return run_activity(sorted(ledgers),own_experiment=own,own_pids=(os.getpid(),))
+        return run_activity(sorted(ledgers),own_experiment=own,own_pids=(os.getpid(),),ignored_stale_runs=activity.ignored_stale_runs)
     return SimpleNamespace(client=client,runner=runner,activity=activity,
         quota=lambda:weekly_quota_snapshot(config.get('quota_home')),
         refresh_quota=lambda:refresh_quota(home=config.get('quota_home'),command=quota_probe_command))
