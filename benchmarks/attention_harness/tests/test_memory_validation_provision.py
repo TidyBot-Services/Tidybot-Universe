@@ -3,6 +3,8 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+pytestmark = pytest.mark.usefixtures("r3_deployment")
 from benchmarks.attention_harness.tests.autovalidate_fakes import ProvisionedFakeRunner,synthetic_creation
 from benchmarks.attention_harness.memory_validation_provision import Provisioner
 from benchmarks.attention_harness.dev_ledger import DevV2Store

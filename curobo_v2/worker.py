@@ -29,6 +29,10 @@ def main() -> None:
     parser.add_argument("--evidence", required=True)
     parser.add_argument('--test-response-fault',choices=['none','http500_after_success','hold_after_success'],default='none')
     parser.add_argument('--test-gpu-activity',choices=['disabled','enabled'],default='disabled')
+    parser.add_argument("--tier")
+    parser.add_argument("--boundary")
+    parser.add_argument("--trust-registry")
+    parser.add_argument("--trust-registry-sha256")
     args = parser.parse_args()
     owner_pid = int(os.environ.pop("CUROBO_V2_OWNER_PID", "0"))
     # The planner owns no physical state. Kill this private worker if its owner
@@ -36,7 +40,14 @@ def main() -> None:
     libc = ctypes.CDLL(None, use_errno=True)
     if not sys.platform.startswith("linux") or libc.prctl(1, 9, 0, 0, 0) != 0 or os.getppid() != owner_pid:
         raise IdentityError("Cannot bind cuRoboV2 worker lifetime to its owner process")
-    lock, lock_sha = load_lock(args.lock)
+    if args.trust_registry is not None or args.trust_registry_sha256 is not None:
+        from curobo_v2 import identity as trust
+        registry = Path(args.trust_registry or '')
+        if not registry.is_absolute() or digest(registry) != args.trust_registry_sha256:
+            raise IdentityError('Owner deployment registry digest mismatch')
+        trust.DEPLOYMENT_REGISTRY = registry
+        trust._registry_digest = args.trust_registry_sha256
+    lock, lock_sha = load_lock(args.lock, tier=args.tier, boundary=args.boundary)
     runtime = verify_runtime(lock)
     import curobo._src.runtime as gpu_runtime
     gpu_runtime.kernel_backend = "cuda_core"
@@ -169,7 +180,9 @@ def main() -> None:
                     stream.write(json.dumps({"time_ns": time.time_ns(), "elapsed_seconds": time.monotonic()-started, "path": scope["path"],
                         "method": scope["method"], "status": status, "nonce": nonce,
                         "lock_sha256": lock_sha, "request": b"".join(request_body).decode(errors="replace"),
-                        "response": b"".join(response_body).decode(errors="replace")}) + "\n")
+                        "response": b"".join(response_body).decode(errors="replace"),
+                        **({'execution_settings_sha256': json.loads(b''.join(response_body)).get('execution_settings_sha256', 'legacy')}
+                           if scope['path'].startswith('/plan') and response_body else {})}) + "\n")
 
     listener = socket.socket(fileno=args.socket_fd)
     config = uvicorn.Config(EvidenceApp(), host="127.0.0.1", log_level="info")

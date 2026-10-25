@@ -18,7 +18,7 @@ from typing import Optional, Literal
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator, model_serializer
 import math
 
 from .config import Config
@@ -99,7 +99,29 @@ class WorldRequest(StrictRequest):
         None, description="[x, y] of base in world frame; needed for arm-only mode")
 
 
-class JointOptions(StrictRequest):
+class ExecutionRequest(StrictRequest):
+    execution_settings: Optional[dict] = None
+
+    @model_serializer(mode='wrap')
+    def serialize_execution_request(self, handler):
+        result = handler(self)
+        if self.execution_settings is None:
+            result.pop('execution_settings', None)
+        return result
+
+    @field_validator('execution_settings')
+    @classmethod
+    def valid_execution_settings(cls, value):
+        from curobo_v2.execution_settings import from_config
+        from_config(value)
+        return value
+
+
+def execution_fields(req):
+    return {} if req.execution_settings is None else {'execution_settings': req.execution_settings}
+
+
+class JointOptions(ExecutionRequest):
     frame: Optional[str] = None
     length_unit: str = Field("m",pattern="^m$")
     angular_unit: str = Field("rad",pattern="^rad$")
@@ -221,7 +243,7 @@ class IKRequest(JointOptions):
         return self
 
 
-class ValidateBaseRequest(StrictRequest):
+class ValidateBaseRequest(ExecutionRequest):
     env_id: Optional[str] = None
     base_positions: list[list[float]]
     target_pos: list[float]
@@ -271,7 +293,7 @@ def create_app() -> FastAPI:
     def warmup(req: WarmupRequest):
         return planner.warmup(req.current_q, req.joint_names, req.active_joints,
                               req.locked_joints, req.tool_frames, req.env_id,
-                              None if req.attachment is None else req.attachment.model_dump())
+                              None if req.attachment is None else req.attachment.model_dump(), **execution_fields(req))
 
     # ------------------ world ----------------------------------------------
 
@@ -294,6 +316,7 @@ def create_app() -> FastAPI:
             if req.targets is not None and (req.target_pose is not None or req.target_quat is not None):
                 raise ValueError("Specify targets or target_pose/target_quat, not both")
             return planner.plan_pose(
+                **execution_fields(req),
                 env_id=_env(req.env_id),
                 current_q=req.current_q,
                 target_pos=req.target_pose,
@@ -311,6 +334,7 @@ def create_app() -> FastAPI:
     def plan_ik_path(req: IKPathRequest):
         try:
             return planner.plan_ik_path(
+                **execution_fields(req),
                 env_id=_env(req.env_id), current_q=req.current_q,
                 targets={k: v.model_dump() for k, v in req.targets.items()},
                 joint_names=req.joint_names, active_joints=req.active_joints,
@@ -327,6 +351,7 @@ def create_app() -> FastAPI:
     def plan_joints(req: JointPlanRequest):
         try:
             return planner.plan_joints(
+                **execution_fields(req),
                 env_id=_env(req.env_id),
                 current_q=req.current_q,
                 target_q=req.target_qpos,
@@ -342,7 +367,7 @@ def create_app() -> FastAPI:
         try:
             if req.active_joints is not None:
                 raise ValueError('Common object planning requires both complete arms')
-            return planner.plan_cooperative(_env(req.env_id),req.current_q,req.object_pose,req.attachment.model_dump(),req.joint_names,req.locked_joints)
+            return planner.plan_cooperative(_env(req.env_id),req.current_q,req.object_pose,req.attachment.model_dump(),req.joint_names,req.locked_joints,**execution_fields(req))
         except ValueError as e:
             raise HTTPException(status_code=422,detail=str(e))
 
@@ -350,6 +375,7 @@ def create_app() -> FastAPI:
     def plan_ik(req: IKRequest):
         try:
             return planner.solve_ik(
+                **execution_fields(req),
                 env_id=_env(req.env_id),
                 target_pos=req.target_pose,
                 target_quat=req.target_quat,
@@ -366,7 +392,7 @@ def create_app() -> FastAPI:
     @app.post("/fk")
     def fk(req: FKRequest):
         try:
-            return planner.fk(_env(req.env_id),req.current_q,req.joint_names,req.locked_joints,req.active_joints)
+            return planner.fk(_env(req.env_id),req.current_q,req.joint_names,req.locked_joints,req.active_joints,**execution_fields(req))
         except ValueError as e:
             raise HTTPException(status_code=422,detail=str(e))
 
@@ -374,6 +400,7 @@ def create_app() -> FastAPI:
     def validate_base_path(req: ValidateBaseRequest):
         try:
             return planner.validate_base_path(
+                **execution_fields(req),
                 env_id=_env(req.env_id),
                 base_positions=req.base_positions,
                 target_pos=req.target_pos,

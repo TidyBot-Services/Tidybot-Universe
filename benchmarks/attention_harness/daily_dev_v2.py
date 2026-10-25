@@ -2,6 +2,7 @@
 import argparse,hashlib,json,os,re,sqlite3,subprocess,sys,threading,time
 from pathlib import Path
 from urllib.parse import urlsplit,parse_qs
+from .execution_profile import config_metadata
 from .dev_ledger import DevV2Store,RESOURCES,encoded
 from .core.dev_store import DevConflict,DevBudgetExhausted
 from . import dev_experiment as experiments
@@ -162,7 +163,7 @@ class DailyDevV2:
     def sessions(self,e):
         if e.get('validation_experiment'):return []
         config=json.loads(Path(e['manifest']['uri']).read_bytes())
-        return [dict(c,channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],locked={'config':dict(config['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=config['model']['model'],experiment_state=e['state'],manifest=e['manifest'],name_suffix=e['selection'].get('name_suffix','')) for c in e['cells']]
+        return [dict(c,**config_metadata(config['configs'][f"{c['task_id']}:{c['seed']}"]),channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],locked={'config':dict(config['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=config['model']['model'],experiment_state=e['state'],manifest=e['manifest'],name_suffix=e['selection'].get('name_suffix','')) for c in e['cells']]
     def create(self,body):
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('explicit selection and start required')
         selection=body['selection']

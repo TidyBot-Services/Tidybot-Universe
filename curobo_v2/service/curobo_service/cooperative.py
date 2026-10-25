@@ -10,7 +10,7 @@ def rigid_pose(value):
 
 
 class CarriedCuboid:
-    def __init__(self,context,world,tool_frames):
+    def __init__(self,context,world,tool_frames,*,execution_settings=None):
         if set(context) != {'object_name','object_pose','tcp_object_transforms','tool_frames','support_names'}:
             raise ValueError('Complete measured two-hand attachment context required')
         self.name = context['object_name']
@@ -38,10 +38,11 @@ class CarriedCuboid:
         self.allowed_fingers={f'openarm_{s}_{finger}_finger' for s in ['left','right'] for finger in ['left','right']}
         if self.tools!={s:f'openarm_{s}_hand_tcp' for s in ['left','right']}:
             raise ValueError('Cooperative side names must match the configured left/right TCPs')
-        from curobo_v2.attachment import cover_cuboid, ATTACHED_SPHERES, ATTACH_TRANSLATION_M, ATTACH_ROTATION_RAD
+        from curobo_v2.attachment import cover_cuboid, ATTACHED_SPHERES, effective_held_envelope, attachment_inflation
         self.names={self.name};self.tool=self.tools['left'];self.link='curobo_attached_cooperative'
         spheres=cover_cuboid(self.cuboid,self.transforms['left']@np.linalg.inv(self.initial_pose))
-        margin=ATTACH_TRANSLATION_M+2*(np.linalg.norm(spheres[:,:3],axis=1)+spheres[:,3])*np.sin(ATTACH_ROTATION_RAD/2)
+        self.held_envelope=effective_held_envelope(execution_settings)
+        margin=attachment_inflation(spheres,self.held_envelope)
         self.spheres=np.zeros((ATTACHED_SPHERES,4));self.spheres[:,3]=-100.
         self.spheres[:len(spheres)]=spheres;self.spheres[:len(spheres),3]+=margin;self.sphere_count=len(spheres)
 

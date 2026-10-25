@@ -143,7 +143,7 @@
     list.innerHTML = status.recent.map(r => {
       const [kind, word] = outcome(r);
       const attempts = attemptsText(r);
-      return `<a class="ab-rec" href="${escape(href(r))}" title="${escape(r.why)}"${r.experiment_id === current ? ' aria-current="true"' : ''}><span>${escape(clock(r.at))} · ${escape(r.task)}<small>${escape(POLICIES[r.policy] || r.policy)} · ${attempts}</small></span><span class="ab-tag ${kind}">${escape(word)}</span></a>`;
+      return `<a class="ab-rec" href="${escape(href(r))}" title="${escape(r.why)}"${r.experiment_id === current ? ' aria-current="true"' : ''}><span>${escape(clock(r.at))} · ${escape(r.task)}<small>${escape(POLICIES[r.policy] || r.policy)} · ${attempts}</small>${r.execution_profile==='r3-20261025'?'<small>Execution settings r3 · not comparable with earlier runs</small>':''}</span><span class="ab-tag ${kind}">${escape(word)}</span></a>`;
     }).join('');
   }
 

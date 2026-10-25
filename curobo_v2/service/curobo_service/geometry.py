@@ -2,6 +2,12 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import numpy as np
+from curobo_v2.attachment import effective_held_envelope, held_envelope_receipt
+
+
+def departure_record(start_depth,deepest):
+    return {'mode':'monotone','start_separation_m':dict(sorted(start_depth.items())),
+            'deepest_separation_m':dict(sorted(deepest.items()))}
 
 
 class ExactGeometryValidator:
@@ -82,6 +88,7 @@ class ExactGeometryValidator:
     def validate(self, samples: np.ndarray, locks: dict, *, measured_start=True) -> dict:
         from curobo_v2.attachment import SingleArmAttachment
         if isinstance(self.attachment,SingleArmAttachment):return self.validate_single_attachment(samples,locks,measured_start=measured_start)
+        translation,rotation=effective_held_envelope(getattr(self,"execution_settings",None))
         q = np.zeros(len(self.joint_names))
         maximum={"translation_error_m":0.,"rotation_error_rad":0.}
         allowed_contact_samples=0
@@ -103,7 +110,7 @@ class ExactGeometryValidator:
                 if index==0 and measured_start:
                     for pose in poses.values():
                         error=self.attachment.error(pose,self.attachment.initial_pose)
-                        if error['translation_error_m']>.004 or error['rotation_error_rad']>.03:
+                        if error['translation_error_m']>translation or error['rotation_error_rad']>rotation:
                             return {'collision_free':False,'sample':index,'reason':'measured_attachment_inconsistent',**error}
                 self.carried_actor.pose=self.sapien.Pose(poses['left'])
                 body=self.carried_actor.find_component_by_type(self.sapien.physx.PhysxRigidDynamicComponent)
@@ -135,6 +142,13 @@ class ExactGeometryValidator:
 
     def validate_single_attachment(self,samples,locks,*,measured_start=True):
         context=self.attachment;q=np.zeros(len(self.joint_names));allowed=0
+        settings=getattr(self,"execution_settings",None)
+        translation,rotation=effective_held_envelope(settings)
+        receipt=held_envelope_receipt(settings)
+        from curobo_v2.execution_settings import departure_floor
+        # Explicit r3 profile: the conservative carried cuboids may overlap their resting
+        # support at the measured start; that overlap may persist but never deepen.
+        monotone=settings is not None and measured_start;start_depth={};deepest={}
         for name,value in locks.items():
             if name in self.indices:q[self.indices[name]]=value
         for index,sample in enumerate(samples):
@@ -147,9 +161,9 @@ class ExactGeometryValidator:
             pose=context.pose(self.robot)
             from scipy.spatial.transform import Rotation
             measured_rotation_error=float(Rotation.from_matrix(pose[:3,:3]@context.initial_pose[:3,:3].T).magnitude())
-            if index==0 and measured_start and (np.linalg.norm(pose[:3,3]-context.initial_pose[:3,3])>.004 or
-                    measured_rotation_error>.03):
-                return dict(collision_free=False,reason='measured_attachment_inconsistent',sample=index,
+            if index==0 and measured_start and (np.linalg.norm(pose[:3,3]-context.initial_pose[:3,3])>translation or
+                    measured_rotation_error>rotation):
+                return dict(**receipt,collision_free=False,reason='measured_attachment_inconsistent',sample=index,
                     translation_error_m=float(np.linalg.norm(pose[:3,3]-context.initial_pose[:3,3])),rotation_error_rad=measured_rotation_error)
             self.carried_actor.pose=self.sapien.Pose(pose)
             body=self.carried_actor.find_component_by_type(self.sapien.physx.PhysxRigidDynamicComponent)
@@ -164,11 +178,19 @@ class ExactGeometryValidator:
                     continue
                 if self.carried_actor.name in bodies:
                     other=next(n for n in bodies if n!=self.carried_actor.name)
-                    departing=(other in {'world:'+n for n in context.supports}and pose[2,3]>=context.initial_pose[2,3]-.0001
-                        and all(p['separation_m']>=-.0001 for p in points))
+                    support=other in {'world:'+n for n in context.supports}
+                    if monotone and support:
+                        depth=min(p['separation_m'] for p in points)
+                        if index==0:start_depth[other]=min(start_depth.get(other,0.),depth)
+                        deepest[other]=min(deepest.get(other,0.),depth)
+                    floor=departure_floor(start_depth.get(other)if monotone else None)
+                    departing=(support and pose[2,3]>=context.initial_pose[2,3]-.0001
+                        and all(p['separation_m']>=floor for p in points))
                     if other in context.allowed_fingers or departing:allowed+=1;continue
                 contacts.append(dict(bodies=bodies,points=points))
-            if contacts:return dict(collision_free=False,sample=index,contacts=contacts,samples=len(samples),carried_object_included=True)
-        return dict(collision_free=True,samples=len(samples),clearance_m=self.clearance,
+            if contacts:return dict(**receipt,collision_free=False,sample=index,contacts=contacts,samples=len(samples),carried_object_included=True,
+                                    **({'support_departure':departure_record(start_depth,deepest)}if monotone else {}))
+        return dict(**receipt,collision_free=True,samples=len(samples),clearance_m=self.clearance,
                     geometry='complete URDF and all conservative kitchen/attached shape bounds',
-                    attachment=context.artifact(),allowed_contact_samples=allowed)
+                    attachment=context.artifact(),allowed_contact_samples=allowed,
+                    **({'support_departure':departure_record(start_depth,deepest)}if monotone else {}))

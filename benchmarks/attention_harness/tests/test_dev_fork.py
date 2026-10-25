@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+pytestmark = pytest.mark.usefixtures("r3_deployment")
 
 from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment, dev_fork, dev_v2_loop as loop
 from benchmarks.attention_harness.dev_ledger import DevV2Store

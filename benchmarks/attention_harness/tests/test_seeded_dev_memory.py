@@ -18,18 +18,24 @@ from openarm365_dev_v2.scene_contract import registered_contract_ref
 from openarm365_dev_v2.tests.test_planner_features import setup, TestOnlyGateway, SOURCE
 
 
-def test_exact_seeded_context_and_missing_fields(tmp_path, monkeypatch):
+@pytest.mark.parametrize('budget_tier', ['dev', 'legacy'])
+def test_exact_seeded_context_and_missing_fields(tmp_path, monkeypatch, budget_tier):
     from openarm365_dev_v2 import dev_config
     monkeypatch.setattr(dev_config, 'model_sources', lambda *args, **kwargs: {})
-    _, _, _, cfg, _, _ = setup(tmp_path)
+    _, _, _, cfg, _, _ = setup(tmp_path, budget_tier=budget_tier)
     cfg['scene_contract'] = registered_contract_ref()
     result = memory.context(cfg, 'isolated-c0b')
     assert result['seed'] == cfg['seed'] and type(result['seed']) is int
     assert result['camera_names'] == list(cfg['camera_names'])
     assert result['task_prompt'] == cfg['task_prompt']
     assert result['scene_contract_ref'] == registered_contract_ref()
+    profile_keys = {'execution_profile'} if budget_tier == 'dev' else set()
     assert set(result) == set(memory.SCOPE) | {'seed', 'camera_names', 'task_prompt', 'scene_contract_ref',
-                                               'sdk_interface_sha256'}
+                                               'sdk_interface_sha256'} | profile_keys
+    if budget_tier == 'dev':
+        assert result['execution_profile'] == cfg['execution_settings']['profile'] == 'r3-20261025'
+    else:
+        assert 'execution_settings' not in cfg and 'execution_profile' not in result
     identity = memory.sdk_identity(cfg)
     assert result['sdk_interface_sha256'] == memory.sdk_interface_sha256(identity)
     assert result['sdk_interface_sha256'] != result['sdk_sha256']

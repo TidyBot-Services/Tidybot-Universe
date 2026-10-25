@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs, unquote
 
+from .execution_profile import config_metadata
 from . import dev_experiment as experiments
 from .core.dev_store import DevConflict, DevBudgetExhausted
 from .dev_capabilities import execution_environment
@@ -67,7 +68,7 @@ class DevMainBridge:
             e=self.experiment(e['experiment_id']);m=json.loads(Path(e['manifest']['uri']).read_bytes())
             for c in e['cells']:
                 rows.append(dict(c,channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],
-                    locked={'config':dict(m['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=m['model']['model'],experiment_state=e['state'],lifecycle=self.lifecycle(c,e)))
+                    **config_metadata(m['configs'][f"{c['task_id']}:{c['seed']}"]),locked={'config':dict(m['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=m['model']['model'],experiment_state=e['state'],lifecycle=self.lifecycle(c,e)))
         return rows
 
     def lifecycle(self,c,e=None):

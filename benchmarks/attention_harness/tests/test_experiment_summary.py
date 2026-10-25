@@ -3,6 +3,7 @@ import json
 import sqlite3
 
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
 
 from benchmarks.attention_harness.dev_configuration import require_eval_gate, normalize_configuration
 from benchmarks.attention_harness import dev_experiment
@@ -13,7 +14,7 @@ from benchmarks.attention_harness.summarize_experiment import read_experiment, s
 
 
 @pytest.mark.eval_gate
-def test_experiment_eval_gate_prevents_creation(tmp_path, monkeypatch):
+def test_experiment_eval_gate_prevents_creation(tmp_path, monkeypatch, r3_deployment):
     store = DevV2Store(tmp_path / 'store.sqlite')
     selection = {'request_key': 'eval-required', 'tasks': ['open_cabinet'], 'seeds': [102], 'policies': ['autonomous']}
     with pytest.raises(ValueError, match='requires eval_agent.enabled'):
@@ -35,7 +36,7 @@ def test_experiment_eval_gate_prevents_creation(tmp_path, monkeypatch):
         normalize_configuration({'eval_agent': {'enabled': True, 'model': 'text-only-model'}})
     class ReachedArtifactCreation(Exception):
         pass
-    def reached(_):
+    def reached(_,**kwargs):
         raise ReachedArtifactCreation
     monkeypatch.setattr(dev_experiment, 'make_lock', reached)
     monkeypatch.setattr(dev_experiment, 'require_scene_gate', lambda *args: None)

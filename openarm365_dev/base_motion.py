@@ -29,12 +29,33 @@ class BasePathRejected(PlanningRejected):
         self.collision_check = collision_check
 
 
-def guard_base_and_arms(base, held_base, arm, start_arm=None):
+def guard_base_and_arms(base, held_base, arm, start_arm=None, *, execution_settings=None):
     if start_arm is None:
-        if np.max(np.abs(np.asarray(base)-np.asarray(held_base))) > .001:
+        limits = base_drift_limits(execution_settings)
+        if limits is not None:
+            measured = base_drift(base, held_base)
+            for kind, value, limit in zip(('translation_m', 'yaw_rad'), measured, limits):
+                if value > limit:
+                    raise RuntimeError(f'Uncommanded base drift {kind}={value:.9g} exceeds limit={limit:.9g}')
+        elif np.max(np.abs(np.asarray(base)-np.asarray(held_base))) > .001:
             raise RuntimeError('Uncommanded base drift exceeded 1mm/1mrad')
     elif np.max(np.abs(np.asarray(arm)-np.asarray(start_arm))) > .004:
         raise RuntimeError('Arm joint drift during base motion exceeded 4mrad')
+
+
+def base_drift_limits(execution_settings=None):
+    if execution_settings is None:
+        return None
+    return execution_settings.base_hold_drift_m, execution_settings.base_hold_drift_rad
+
+
+def base_drift(base, held_base):
+    difference = np.abs(np.asarray(base)-np.asarray(held_base))
+    return float(np.max(difference[:2])), float(difference[2])
+
+
+def effective_base_clearance(execution_settings=None):
+    return BASE_CLEARANCE_M if execution_settings is None else execution_settings.base_path_clearance_m
 
 
 def base_is_stationary(previous, current, control_timestep):
@@ -62,9 +83,13 @@ def base_joint_delta(delta, before, base_initial):
     return np.array([c*delta[0]-s*delta[1], s*delta[0]+c*delta[1], delta[2]])
 
 
-def required_pair_distance(start_distance):
-    return max(BASE_MIN_DISTANCE_M,
-               min(BASE_CLEARANCE_M, float(start_distance)-BASE_NEAR_START_ALLOWANCE_M))
+def effective_base_min_distance(execution_settings=None):
+    return BASE_MIN_DISTANCE_M if execution_settings is None else execution_settings.base_start_clearance_m
+
+
+def required_pair_distance(start_distance, *, execution_settings=None):
+    return max(effective_base_min_distance(execution_settings),
+               min(effective_base_clearance(execution_settings), float(start_distance)-BASE_NEAR_START_ALLOWANCE_M))
 
 
 def aabb_distance_lower_bound(center, half, centers, halves):
@@ -91,11 +116,13 @@ def _copy_mjdata(model, source):
     return copy.copy(source)
 
 
-def check_exact_base_path(env, world, binding, delta, base_initial, *, source_data=None, held_body_id=None):
+def check_exact_base_path(env, world, binding, delta, base_initial, *, source_data=None, held_body_id=None, execution_settings=None):
     """Sweep native geoms with FK and exact MuJoCo distances on copied data."""
     import mujoco
     from .world import is_descendant, shape_box
 
+    absolute_min = effective_base_min_distance(execution_settings)
+    clearance = effective_base_clearance(execution_settings)
     started = time.monotonic()
     delta = validate_delta(*delta)
     sim = env.sim
@@ -191,7 +218,7 @@ def check_exact_base_path(env, world, binding, delta, base_initial, *, source_da
                                               world_centers[active], world_halves[active])
             for pos in np.argsort(lower):
                 lower_bound = float(lower[pos])
-                if lower_bound > max(BASE_CLEARANCE_M, minimum) + 1e-10:
+                if lower_bound > max(clearance, minimum) + 1e-10:
                     break
                 obstacle_gid = obstacles[int(active[pos])]
                 checked_obstacles.add(obstacle_gid)
@@ -207,14 +234,14 @@ def check_exact_base_path(env, world, binding, delta, base_initial, *, source_da
                     start_distances[key] = distance
                     if distance < start_minimum:
                         start_minimum, start_pair = distance, pair
-                if distance <= BASE_CLEARANCE_M + 1e-10:
+                if distance <= clearance + 1e-10:
                     if key not in start_distances:
                         start_distances[key] = float(mujoco.mj_geomDistance(
                             native_model, start_data, robot_gid, obstacle_gid, 1e6, None))
                         distance_calls += 1
                     d0 = start_distances[key]
-                    required = required_pair_distance(d0)
-                    if d0 < BASE_MIN_DISTANCE_M - 1e-10 or distance < required - 1e-10:
+                    required = required_pair_distance(d0, execution_settings=execution_settings)
+                    if d0 < absolute_min - 1e-10 or distance < required - 1e-10:
                         if violation is None or index == 0 and distance < violation[0]['clearance_m']:
                             violation = (pair, d0, required)
     audit = dict(status='rejected' if violation else 'clear', samples=samples+1,
@@ -230,8 +257,8 @@ def check_exact_base_path(env, world, binding, delta, base_initial, *, source_da
                  first_violation_pair=None if violation is None else violation[0],
                  first_violation_start_distance_m=None if violation is None else violation[1],
                  first_violation_required_distance_m=None if violation is None else violation[2],
-                 required_clearance_m=BASE_CLEARANCE_M,
-                 absolute_min_distance_m=BASE_MIN_DISTANCE_M,
+                 required_clearance_m=clearance,
+                 absolute_min_distance_m=absolute_min,
                  near_start_allowance_m=BASE_NEAR_START_ALLOWANCE_M,
                  world_sha256=world.get('world_sha256_unexempted', world['world_sha256']))
     if violation:

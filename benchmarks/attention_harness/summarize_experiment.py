@@ -8,6 +8,7 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
+from .execution_profile import config_metadata,manifest_metadata
 from .eval_quality import summarize_eval_quality
 
 
@@ -152,6 +153,38 @@ def _rate(successes, denominator):
 
 
 def summarize(experiment):
+    """Partition before computing any rates, including Eval quality and frontier."""
+    experiments=experiment if isinstance(experiment,list) else [experiment]
+    grouped=defaultdict(list)
+    for exp in experiments:
+        manifest=exp.get('manifest',{})
+        for cell in exp['cells']:
+            config=manifest.get('configs',{}).get(f"{cell['task_id']}:{cell['seed']}")
+            metadata=config_metadata(config) if config is not None else {
+                k:cell.get(k,manifest.get(k,v)) for k,v in config_metadata({}).items()}
+            # Pre-0g and 0g legacy conditions remain separate as well.
+            generation=('0g' if config is not None and all(k in config for k in
+                ('planner_mode','ik_candidates','ik_max_joint_jump')) else 'pre-0g')
+            grouped[(metadata['execution_profile'],generation)].append((exp,dict(cell,**metadata)))
+    if not grouped:
+        value=_summarize_one(experiments[0]);value.update(manifest_metadata(experiments[0].get('manifest',{})))
+        return value
+    values=[]
+    for (profile,generation),members in sorted(grouped.items()):
+        first=members[0][0]
+        value=_summarize_one(dict(first,cells=[c for _,c in members]))
+        shas=sorted({c['planner_lock_sha256'] for _,c in members})
+        value.update(execution_profile=profile,grasp_generation=generation,
+                     planner_lock_sha256=shas[0] if len(shas)==1 else shas)
+        value['experiment_ids']=sorted({exp['experiment_id'] for exp,_ in members})
+        values.append(value)
+    if len(values)==1:return values[0]
+    return dict(schema='attentionbench.experiment-summary.profiles.v1',
+        note='Different execution profiles or grasp generations are not comparable; tables and rates are reported separately.',
+        profiles=values)
+
+
+def _summarize_one(experiment):
     """Aggregate observations; unknown native outcomes never enter a failure denominator."""
     cells = experiment['cells']
     quality = summarize_eval_quality([c for c in cells if not c.get('memory_seeded_excluded')])
@@ -266,8 +299,11 @@ def summarize(experiment):
 
 
 def markdown(value):
+    if 'profiles' in value:
+        return value['note']+'\n\n'+'\n'.join(markdown(group) for group in value['profiles'])
     rate = lambda x: 'unknown' if x is None else f'{x:.3f}'
     lines = [f"# Experiment {value['experiment_id']}", '',
+             f"Execution profile: {value.get('execution_profile','legacy')}; grasp generation: {value.get('grasp_generation','pre-0g')}; planner lock SHA: {value.get('planner_lock_sha256')}.", '',
              f"Mode: {value.get('mode')}; budget tier: {value.get('budget_tier')}; formal eligible: {value.get('formal_eligible')}.",
              f"Memory-seeded (excluded): {value.get('memory_seeded_excluded', 0)}.", '',
              '| Policy | Native success | Final success | First success versions | Time to first success (s) | Requests | Logical human seconds | Unknown attention seconds | Invalid scene / vision / other | Request / execution timeout | Fallback |',
@@ -303,11 +339,12 @@ def markdown(value):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--store', type=Path, required=True, help='Dev v2 SQLite ledger')
+    parser.add_argument('--store', type=Path, action='append', required=True, help='Dev v2 SQLite ledger')
     parser.add_argument('--experiment-id')
     parser.add_argument('--output-prefix', type=Path, required=True)
     args = parser.parse_args(argv)
-    value = summarize(read_experiment(args.store, args.experiment_id))
+    value = summarize([read_experiment(path, args.experiment_id) for path in args.store])
+    if "note" in value:print(value["note"])
     args.output_prefix.parent.mkdir(parents=True, exist_ok=True)
     args.output_prefix.with_suffix('.json').write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + '\n')
     args.output_prefix.with_suffix('.md').write_text(markdown(value))

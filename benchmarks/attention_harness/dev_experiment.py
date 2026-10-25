@@ -197,7 +197,11 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         from .dev_v2_loop import checked
         original=json.loads(checked(validation_origin['manifest']).read_bytes())
         ref=original['identity_lock']
-    else:ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path)
+    else:
+        from curobo_v2.execution_settings import R3_20261025,from_config
+        settings=from_config(R3_20261025.to_dict()) if budget_tier=='dev' else None
+        ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path,
+            **({} if settings is None else dict(execution_settings=settings)))
     if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])
     else:verify_lock(ref)
     configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier) for t in tasks for s in seeds}
@@ -279,6 +283,10 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         sources.clear();sources[tasks[0]]=dict(source=origin_text,sha256=validation_origin['source']['sha256'])
         manifest.update(validation_origin=validation_origin,validation_experiment=True)
         manifest['schedule']=[dict(cell=c['key'],through_version=1) for c in cells]
+    from .execution_profile import manifest_metadata
+    metadata=manifest_metadata(manifest)
+    # Absence encodes legacy on disk; display helpers supply its label.
+    if metadata['execution_profile']!='legacy':manifest.update(metadata)
     public_screen(sources);public_screen(demos);validate_fairness(manifest)
     manifest_path=directory/'manifest.json'
     mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
@@ -360,6 +368,9 @@ def validate_fairness(m):
 def verify_manifest(exp):
     if sha(exp['manifest']['uri'])!=exp['manifest']['sha256']:raise DevConflict('manifest digest drift')
     m=json.loads(Path(exp['manifest']['uri']).read_bytes());validate_fairness(m)
+    from .execution_profile import manifest_metadata
+    metadata=manifest_metadata(m)
+    if any(k in m and m[k]!=v for k,v in metadata.items()):raise DevConflict('manifest execution identity differs from configs')
     tier=m.get('budget_tier','legacy')
     task_limits(tier)
     if m['selection'].get('budget_tier','legacy')!=tier:raise DevConflict('manifest budget tier differs from selection')

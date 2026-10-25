@@ -2,6 +2,8 @@
 from pathlib import Path
 
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+pytestmark = pytest.mark.usefixtures("r3_deployment")
 
 from benchmarks.attention_harness import dev_experiment as experiments
 from benchmarks.attention_harness.dev_ledger import DevV2Store
@@ -15,7 +17,9 @@ def test_validation_origin_preserves_planner_config(tmp_path, monkeypatch, legac
     # Missing copied native geometry is unrelated to this offline config test.
     monkeypatch.setattr(dev_config, 'model_sources', lambda *a, **kw: {})
     if legacy:
-        make_config = experiments.make_dev_config
+        make_config = dev_config._make_dev_config
+        make_lock = experiments.make_lock
+        monkeypatch.setattr(experiments,"make_lock",lambda path,**kw:make_lock(path))
         def legacy_config(*args, **kwargs):
             config = make_config(*args, **kwargs)
             for key in dev_config.PLANNER_CONFIG_KEYS:
@@ -31,6 +35,7 @@ def test_validation_origin_preserves_planner_config(tmp_path, monkeypatch, legac
                                   tmp_path/'original', selection)
     manifest = experiments.verify_manifest(original)
     config = manifest['configs']['open_cabinet:102']
+    assert ('execution_settings' not in config) if legacy else config['execution_settings']['profile']=='r3-20261025'
     assert config['contact_exempt_objects'] == ('none' if legacy else 'movable_objects')
     assert all((key not in config) if legacy else (key in config)
                for key in dev_config.PLANNER_CONFIG_KEYS)

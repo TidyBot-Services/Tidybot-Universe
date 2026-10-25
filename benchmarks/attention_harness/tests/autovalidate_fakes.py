@@ -158,6 +158,7 @@ class Fixture:
         camera = {k: config[k] for k in ('camera_names', 'camera_width', 'camera_height', 'randomize_cameras')}
         ctx = {k: config[k] for k in ('task_id', 'robot', 'controller', 'perception_mode', 'scene_id', 'object_set_id', 'camera_names', 'task_prompt')}
         ctx.update(benchmark='AttentionBench', suite='robocasa365', namespace='controlled_test_only', sdk_sha256=self.sdk_sha, camera_config_id='robocasa365:' + digest(json.dumps(camera, sort_keys=True, ensure_ascii=False).encode()), task_variant_id=f"PickPlaceCounterToSink:layout{11+variant}:style34:fixed")
+        if 'execution_settings' in config:ctx['execution_profile']=config['execution_settings']['profile']
         if self.interface:
             from attention_memory_service.applicability import interface_digest
             ctx['sdk_interface_sha256'] = interface_digest(self.sdk)
@@ -554,7 +555,7 @@ def synthetic_creation(f):
 
 class ProvisionedFakeRunner(FakeRunner):
     """Default adapter with synthetic origin/execution/replay and a real service."""
-    def __init__(self,root,state_root):
+    def __init__(self,root,state_root,*,execution_settings=None):
         require_m8('auto_validation','scene_contract','arms','failed')
         from benchmarks.attention_harness.memory_validation_provision import Provisioner
         root.mkdir(parents=True);self.root=root;self.f=SceneFixture(root)
@@ -572,6 +573,7 @@ class ProvisionedFakeRunner(FakeRunner):
         self.f.sdk_sha=digest(json.dumps(self.f.sdk,sort_keys=True,ensure_ascii=False,allow_nan=False).encode())
         self.f.lock=self.f.write(Path(self.f.lock['uri']),lock)
         self.f.config_overrides=dict(budget_tier='dev')
+        if execution_settings is not None:self.f.config_overrides['execution_settings']=execution_settings
         self.f.manifest_overrides=dict(demos={'pick':{}})
         self.failed=self.f.make('failed',failure=True);self.f.add_advice(self.failed,SIGNATURE)
         roots={'executor':[str(self.f.root)],'validator':[str(self.f.validator)],'contract':[str(root/'contracts')],'source':[str(source_root)]}

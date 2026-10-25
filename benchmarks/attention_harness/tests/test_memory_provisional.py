@@ -46,7 +46,9 @@ SAME = feedback(REJECTED['public_error'], [('sensors', 'find_objects', 'complete
 
 
 @pytest.fixture(autouse=True)
-def missing_model_copy_fixture(monkeypatch):
+def missing_model_copy_fixture(monkeypatch,tmp_path):
+    from benchmarks.attention_harness.tests.r3_fixtures import fake_deployment
+    fake_deployment(monkeypatch,tmp_path)
     from openarm365_dev_v2 import dev_config
     monkeypatch.setattr(dev_config, 'model_sources', lambda *args, **kwargs: {})
 

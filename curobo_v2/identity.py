@@ -22,12 +22,12 @@ class IdentityError(RuntimeError):
 _service_context = None
 OFFICIAL_COMMIT = '78fd485fa82d9b9a063fb4985e371814587e666a'
 TRUSTED_LOCKS = {'207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c': OFFICIAL_COMMIT}
-DEPLOYMENT_REGISTRY = Path('/home/truares/桌面/Tidybot-Universe-attention-native/curobo_v2/trusted_deployments.json')
+DEPLOYMENT_REGISTRY = Path(__file__).resolve().with_name('trusted_deployments.json')
 OFFICIAL_PARENT_LOCK = Path('/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/revisions/r12/runtime-lock.json')
 _registry_digest = None
 
 
-def approved_deployment(lock, lock_sha, path):
+def approved_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
     global _registry_digest
     if lock_sha in TRUSTED_LOCKS:
         return True
@@ -42,6 +42,15 @@ def approved_deployment(lock, lock_sha, path):
                 or entry.get('official_commit') != OFFICIAL_COMMIT
                 or entry.get('parent_sha256') not in TRUSTED_LOCKS):
             return False
+        if 'allowed_tiers' in entry:
+            allowed = entry['allowed_tiers']
+            boundary_tier = 'dev' if boundary == 'dev_loop' else boundary
+            if (not isinstance(allowed, list) or not allowed
+                    or any(type(item) is not str for item in allowed)
+                    or tier not in allowed or boundary_tier not in allowed
+                    or not isinstance(tier, str) or not isinstance(boundary, str)
+                    or 'formal' in tier.lower() or 'formal' in boundary.lower()):
+                return False
         parent_raw = OFFICIAL_PARENT_LOCK.read_bytes()
         if hashlib.sha256(parent_raw).hexdigest() != entry['parent_sha256']:
             raise IdentityError('Official parent evidence changed')
@@ -85,7 +94,7 @@ def canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
-def load_lock(path: str | Path | None = None) -> tuple[dict, str]:
+def load_lock(path: str | Path | None = None, *, tier=None, boundary=None) -> tuple[dict, str]:
     configured = path or os.environ.get("CUROBO_V2_LOCK")
     if not configured or not Path(configured).is_absolute():
         raise IdentityError("CUROBO_V2_LOCK must explicitly name an absolute locked manifest")
@@ -105,7 +114,7 @@ def load_lock(path: str | Path | None = None) -> tuple[dict, str]:
         if not Path(lock[key]).is_absolute():
             raise IdentityError("Lock paths must be absolute: " + key)
     lock_sha = hashlib.sha256(raw).hexdigest()
-    if (not approved_deployment(lock, lock_sha, configured)
+    if (not approved_deployment(lock, lock_sha, configured, tier=tier, boundary=boundary)
             or lock.get('official_only') is not True
             or lock['library_revision'] != OFFICIAL_COMMIT or lock['library_base'] != OFFICIAL_COMMIT):
         raise IdentityError('Unapproved V2 manifest; a version string or regenerated local hash cannot establish official identity')

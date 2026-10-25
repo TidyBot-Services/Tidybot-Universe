@@ -96,5 +96,18 @@
     "lock_path": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime-lock.json",
     "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
     "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c"
+  },
+  "2dd643368e8cd6810b7270689158252af7f7c5c3bba35612a9d0e60057dfb043": {
+    "adapter_changes": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-06/adapter-changes.json",
+    "adapter_changes_sha256": "1f322abbe9c5b073500868b8850db4b4c40205d8315c8df5a7f1f641857a6811",
+    "allowed_tiers": [
+      "dev"
+    ],
+    "derived_from_sha256": "0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0",
+    "lock_path": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-06/runtime-lock.json",
+    "official_commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+    "parent_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+    "profile": "r3-20261025"
   }
+
 }

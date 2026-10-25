@@ -2,6 +2,15 @@
 import argparse,ctypes,json,os,signal,sys,threading,time,traceback,uuid,hashlib
 from pathlib import Path
 
+def native_evaluation(env, config):
+    """Owner-only task evidence; never returned through the public SDK."""
+    value = {'evaluated': True, 'native_success': bool(env._check_success())}
+    if config.get('execution_settings') and config['task_id'] == 'pick_place_counter_to_sink':
+        from robocasa.utils import object_utils
+        value['object_in_sink'] = bool(object_utils.obj_inside_of(env, 'obj', env.sink, partial_check=True))
+        value['object_in_sink_source'] = 'robocasa.utils.object_utils.obj_inside_of(partial_check=True)'
+    return value
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True)
     parser.add_argument('--evidence',type=Path,required=True);parser.add_argument('--deadline',type=float,required=True)
@@ -23,11 +32,13 @@ def main():
         from .environment import create_env,tcp_pose,PHYSICAL_TO_NATIVE
         from openarm365_dev.planner import MujocoV2Planner
         from openarm365_dev.executor import NativeExecutor
+        from curobo_v2.execution_settings import from_config,receipt_fields
         from openarm365_dev.policy_validation import OPERATIONS
         from openarm365.environment import validate_physical_model,configure_display_camera
         from .diag_budget import diagnostic_budget,dev_tier_budget
         override=diagnostic_budget()
         c=validate_config(json.loads(args.config.read_bytes()));args.evidence.mkdir(parents=True,exist_ok=True)
+        execution_settings=from_config(c.get('execution_settings'))
         tier=dev_tier_budget() if c['runner_boundary']=='dev_loop' and c.get('budget_tier','legacy')=='dev' else None
         if override and c['runner_boundary']!='dev_loop':raise ValueError('diagnostic budget cannot enter formal worker')
         identity=OfficialEnvironmentIdentity({
@@ -40,7 +51,8 @@ def main():
         env.reset();validate_physical_model(env);configure_display_camera(env)
         planner=MujocoV2Planner(env,evidence=args.evidence/'planner',deadline=args.deadline,cancel_check=stop.is_set,
             contact_exempt_objects=c['contact_exempt_objects'],planner_mode=c.get('planner_mode','plan'),
-            ik_candidates=c.get('ik_candidates'),ik_max_joint_jump=c.get('ik_max_joint_jump'))
+            ik_candidates=c.get('ik_candidates'),ik_max_joint_jump=c.get('ik_max_joint_jump'),
+            **({} if 'execution_settings' not in c else dict(execution_settings=execution_settings)))
         send({'kind':'spawn','pid':planner.owner.process.pid})
         planner.prepare(planner.names)
         from benchmarks.attention_harness.robocasa365.recording import StepRecorder
@@ -70,7 +82,8 @@ def main():
                     try:extra.capture(sequence)
                     except Exception:pass
         executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,
-            frame_callback=capture,held_reference_configured=c['held_reference_mode'])
+            frame_callback=capture,held_reference_configured=c['held_reference_mode'],
+            **({} if execution_settings is None else dict(execution_settings=execution_settings)))
         capture(0)
         def observe():
             robot={}
@@ -110,6 +123,7 @@ def main():
             task_id=c['task_id'],seed=c['seed'],layout_id=c['layout_id'],style_id=c['style_id'],config_sha256=hashlib.sha256(args.config.read_bytes()).hexdigest(),
             physical_to_native=PHYSICAL_TO_NATIVE,identity=identity,rng_events=env.scene_rng_events,scene_reset_seed=c.get('scene_reset_seed'),initial_public_observation=observe(),
             execution_conditions=execution_conditions,scene_xml_sha256=hashlib.sha256(scene.encode()).hexdigest())
+        reset_receipt.update(receipt_fields(execution_settings))
         if override:reset_receipt['diagnostic_budget_override']=override
         if tier:reset_receipt['dev_tier_budget']=tier
         (args.evidence/'reset_receipt.json').write_text(json.dumps(reset_receipt,indent=2)+'\n')
@@ -141,7 +155,7 @@ def main():
                         value={'initial_observation':observe(),'scene_state':capture_state(env),'rng_events':list(env.scene_rng_events)}
                     elif operation=='evaluate':
                         # Separate owner-only evidence, never a public SDK return.
-                        value={'evaluated':True,'native_success':bool(env._check_success())}
+                        value=native_evaluation(env,c)
                     elif operation=='stop':break
                     else:raise ValueError('Unauthorized owner operation')
                 elif group=='sensors':
@@ -169,6 +183,7 @@ def main():
                 # Log full private exception separately, not in public feedback.
                 with (args.evidence/'native-errors.jsonl').open('a') as f:
                     f.write(json.dumps({'request_id':rid,'traceback':traceback.format_exc()})+'\n')
+            response.update(receipt_fields(execution_settings))
             if override:response['diagnostic_budget_override']=override
             if tier:response['dev_tier_budget']=tier
             receipt_cache[rid]=(canonical,response)

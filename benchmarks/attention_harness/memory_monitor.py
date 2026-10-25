@@ -452,6 +452,16 @@ def project(bridge, memory_view, experiment_id, *, now=None):
             versions[n-1]['ended_at'] = event['ts']
     timestamp = now if now is not None else time.time()
     warnings = []
+    execution={}
+    if experiment.get('manifest'):
+        try:
+            from .execution_profile import manifest_metadata
+            ref=experiment['manifest']
+            if sha(ref['uri'])!=ref['sha256']:raise ValueError('Run manifest digest mismatch')
+            execution=manifest_metadata(json.loads(Path(ref['uri']).read_bytes()))
+        except EXTRA_ERRORS as error:
+            _log_failure(error,'execution settings')
+            warnings.append('Run execution settings are unavailable.')
     usage_available = True
     try:
         usage = _usage_from_ledgers(bridge, store)
@@ -493,6 +503,8 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'summary': short(row.get('summary'), 180), 'group': short(row.get('group') or 'General', 40),
                       'status': status(row), 'effect': validation, 'lift_pt': lift, 'reads': reads,
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
+        profile=row.get('execution_profile',(row.get('applicability_summary') or {}).get('execution_profile'))
+        if profile:notes[-1]['execution_profile']=profile
         seed = _note_seed(row)
         layer = levels.get(row.get('memory_id'), _here_layer(row, cells))
         notes[-1].update(layer=layer, path=_path(row, layer, catalogue_by_id))
@@ -522,7 +534,7 @@ def project(bridge, memory_view, experiment_id, *, now=None):
     # A multi-cell run must still explain any cell restricted to references.
     scope = next((s for s in scopes if s and s['level'] == 'reference_only'), next((s for s in scopes if s), None))
     return {'generated_at': timestamp,
-            'run': {'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40),
+            'run': {**execution,'experiment_id': experiment_id, 'state': short(experiment.get('state'), 40),
                     'max_versions': max_versions, 'versions': versions, 'unvalidated_used': unvalidated_used,
                     'memory_scope': scope, 'can_operate_run_notes': local_enabled,
                     'family_reference': any(cell.get('memory_family') is True for cell in cells),

@@ -5,6 +5,7 @@ from benchmarks.attention_harness.dev_tasks import get_task,validate_selection
 from benchmarks.attention_harness.robocasa365.config import EXPECTED
 from openarm365_dev.config import LOCK,LOCK_SHA
 from .diag_budget import task_limits,formal_task_limits,case_wall_seconds,check_tier
+from curobo_v2.execution_settings import R3_20261025,from_config
 from curobo_v2.ik_path_jump import MAX_DIAGNOSTIC_JOINT_JUMP
 DEFAULT_CONTACT_EXEMPT_OBJECTS='movable_objects'
 DEFAULT_PLANNER_MODE='ik_path'
@@ -49,10 +50,17 @@ def verify_lock(ref,*,expected_source_root=None):
     if lock.get('model_sources')!=models or any(lock['files'].get(k)!=v for k,v in models.items()):raise ValueError('transitive robot model lock incomplete/drifted')
     for name,digest in lock['files'].items():
         if sha(name)!=digest:raise ValueError('resource source drift: '+name)
-    if lock['planner_lock']!={'path':str(LOCK),'sha256':LOCK_SHA} or sha(LOCK)!=LOCK_SHA:raise ValueError('official V2 lock drift')
+    planner=lock['planner_lock']
+    if planner!={'path':str(LOCK),'sha256':LOCK_SHA}:
+        pin=R3_20261025.to_dict()['planner_deployment']
+        if planner!={'path':pin['lock_path'],'sha256':pin['sha256']}:raise ValueError('official V2 lock drift')
+    if sha(planner['path'])!=planner['sha256']:raise ValueError('official V2 lock drift')
     return lock
-def make_lock(path):
+def make_lock(path, *, execution_settings=None):
     path=Path(path)
+    pin=None if execution_settings is None else from_config(execution_settings.to_dict()).planner_deployment
+    planner_path=LOCK if pin is None else Path(pin['lock_path'])
+    planner_sha=LOCK_SHA if pin is None else pin['sha256']
     # Explicit files; never hash runtime artifacts or the generated lock itself.
     files=[]
     for folder in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']:
@@ -64,21 +72,31 @@ def make_lock(path):
         files.append(ROOT/'benchmarks/attention_harness'/name)
     files.extend(p for p in (ROOT/'benchmarks/attention_harness/dev_ui').glob('*') if p.is_file())
     files.append(ROOT/'benchmarks/attention_harness/dev_failure_rules.json')
-    files.extend([LOCK,SIM_PYTHON,ASSETS,ASSETS.with_name('assets-installation-lock.json'),ASSETS.with_name('assets-installed-manifest.json'),ROOT/'openarm365/configs/robot_parameters_v1.json',ROOT/'openarm365/model/identity.json'])
+    files.extend([planner_path,SIM_PYTHON,ASSETS,ASSETS.with_name('assets-installation-lock.json'),ASSETS.with_name('assets-installed-manifest.json'),ROOT/'openarm365/configs/robot_parameters_v1.json',ROOT/'openarm365/model/identity.json'])
     for folder in [ROBocasa/'robocasa',ROBOSUITE/'robosuite']:
         files.extend(p for p in folder.rglob('*.py') if '__pycache__' not in p.parts)
     models=model_sources();files.extend(Path(p) for p in models)
-    value={'model_sources':models,'schema':'attentionbench.dev-identity-lock.v2','source_root':str(ROOT),'source_sets':{str(ROOT/f):sorted(str(p.absolute()) for p in (ROOT/f).rglob('*.py') if '__pycache__' not in p.parts) for f in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']},'files':{str(p.absolute()):sha(p) for p in sorted(set(files))},'planner_lock':{'path':str(LOCK),'sha256':LOCK_SHA},'sim_python':str(SIM_PYTHON),'sim_source_root':str(ROBocasa),'task_source_root':str(ROBOSUITE),'asset_manifest':str(ASSETS),'formal_eligible':False}
+    value={'model_sources':models,'schema':'attentionbench.dev-identity-lock.v2','source_root':str(ROOT),'source_sets':{str(ROOT/f):sorted(str(p.absolute()) for p in (ROOT/f).rglob('*.py') if '__pycache__' not in p.parts) for f in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']},'files':{str(p.absolute()):sha(p) for p in sorted(set(files))},'planner_lock':{'path':str(planner_path),'sha256':planner_sha},'sim_python':str(SIM_PYTHON),'sim_source_root':str(ROBocasa),'task_source_root':str(ROBOSUITE),'asset_manifest':str(ASSETS),'formal_eligible':False}
     path.parent.mkdir(parents=True,exist_ok=True)
     with path.open('x') as f:json.dump(value,f,sort_keys=True,indent=2)
     path.chmod(0o444)
     return {'path':str(path.absolute()),'sha256':sha(path)}
 def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev'):
+    settings=from_config(R3_20261025.to_dict()) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
+    return _make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
+        budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings)
+
+
+def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None):
     if budget_boundary not in ('dev_loop','formal'):raise ValueError('unknown budget boundary')
     check_tier(budget_tier)
     if budget_boundary=='formal' and budget_tier!='legacy':raise ValueError('formal boundary refuses dev budget tier')
     limits=formal_task_limits() if budget_boundary=='formal' else task_limits(budget_tier)
-    t=validate_selection(task_id,seed,layout_id,style_id);verify_lock(lock,expected_source_root=expected_source_root)
+    t=validate_selection(task_id,seed,layout_id,style_id)
+    identity=verify_lock(lock,expected_source_root=expected_source_root)
+    pin={'path':str(LOCK),'sha256':LOCK_SHA} if execution_settings is None else dict(
+        path=execution_settings.planner_deployment['lock_path'],sha256=execution_settings.planner_deployment['sha256'])
+    if identity is not None and identity['planner_lock']!=pin:raise ValueError('Dev identity planner lock differs from execution settings')
     c=copy.deepcopy(EXPECTED)
     c.update(schema_version=SCHEMA,task_id=t.task_id,official_env=t.official_env,task_prompt=t.task_prompt,
        seed=seed,robot=t.robot,execution_arm=t.execution_arm,controller='BASIC',
@@ -93,13 +111,19 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
     from .environment import initial_joints
     c['initial_joint_targets']=initial_joints(task_id)
     if budget_tier=='dev':c['budget_tier']='dev'
+    if execution_settings is not None:c['execution_settings']=execution_settings.to_dict()
     return c
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
     tier=c.get('budget_tier','legacy')
     source=c.get('model_source','parcc')
     if source not in ('parcc','codex') or (source=='codex' and (tier!='dev' or budget_boundary=='formal')):raise ValueError('Codex model source requires dev tier')
-    expected=make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier)
+    settings=None
+    if 'execution_settings' in c:
+        if budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop' or tier!='dev':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
+        if c['execution_settings'] is None:raise ValueError('execution_settings: complete r3 block required')
+        settings=from_config(c['execution_settings'])
+    expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings)
     if source=='codex':expected['model_source']='codex'
     if c.get('contact_exempt_objects') not in ('none','movable_objects'):
         raise ValueError('contact_exempt_objects must be none or movable_objects')

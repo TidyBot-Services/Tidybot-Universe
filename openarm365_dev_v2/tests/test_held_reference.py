@@ -12,6 +12,8 @@ from types import ModuleType, SimpleNamespace
 
 import numpy as np
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+pytestmark = pytest.mark.usefixtures("r3_deployment")
 
 from openarm365_dev import executor as ex
 from openarm365_dev_v2 import dev_config
@@ -114,8 +116,7 @@ def test_modes_and_original_bounds(monkeypatch):
     from curobo_v2 import attachment
     assert attachment.ATTACH_TRANSLATION_M==.004
     assert attachment.ATTACH_ROTATION_RAD==.03
-    assert '>.004' in Path(ex.__file__).read_text()
-    assert '>.03' in Path(ex.__file__).read_text()
+    assert attachment.effective_held_envelope()==(.004,.03)
     monkeypatch.delenv('ATTN_DIAG_HELD_REFERENCE_MODE',raising=False)
     assert ex.held_reference_mode('fixed')==dict(configured='fixed',source='config',mode='fixed')
     monkeypatch.setenv('ATTN_DIAG_HELD_REFERENCE_MODE','settled')

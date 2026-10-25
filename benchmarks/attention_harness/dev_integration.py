@@ -227,7 +227,10 @@ def rebind_prepared():
             revision.mkdir(parents=True,exist_ok=True)
             from openarm365_dev_v2.dev_config import make_lock,verify_lock,validate_dev_config
             lock_path=revision/'identity-lock.json'
-            new_ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path)
+            from curobo_v2.execution_settings import from_config
+            execution_settings=from_config(next(iter(old_manifest['configs'].values())).get('execution_settings'))
+            new_ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path,
+                **({} if execution_settings is None else dict(execution_settings=execution_settings)))
             new_lock=verify_lock(new_ref);old_lock=checked_json(old_manifest['identity_lock'])
             validate_source_revision(old_epoch,new_epoch,old_lock,new_lock)
             new_manifest=copy.deepcopy(old_manifest);new_manifest['identity_lock']=new_ref

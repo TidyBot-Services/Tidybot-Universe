@@ -8,6 +8,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+pytestmark = pytest.mark.usefixtures("r3_deployment")
 
 from openarm365_dev_v2 import dev_config, formal_config, worker
 from openarm365_dev.planner import MujocoV2Planner
@@ -99,12 +101,13 @@ def test_worker_passes_frozen_settings(config, legacy, tmp_path):
     cancel = lambda: False
     scope = dict(MujocoV2Planner=constructor, env=env, c=config,
                  args=SimpleNamespace(evidence=tmp_path, deadline=123),
-                 stop=SimpleNamespace(is_set=cancel))
+                 stop=SimpleNamespace(is_set=cancel),execution_settings=dev_config.from_config(config.get('execution_settings')))
     exec(compile(ast.Module(body=[statement], type_ignores=[]), worker.__file__, 'exec'), scope)
     constructor.assert_called_once_with(env, evidence=tmp_path/'planner', deadline=123,
         cancel_check=cancel, contact_exempt_objects='none' if legacy else 'movable_objects',
         planner_mode='plan' if legacy else 'ik_path', ik_candidates=None if legacy else 8,
-        ik_max_joint_jump=None if legacy else 1.0)
+        ik_max_joint_jump=None if legacy else 1.0,
+        **({} if "execution_settings" not in config else dict(execution_settings=dev_config.from_config(config["execution_settings"]))))
 
 
 def test_planner_constructor_defaults_and_storage(monkeypatch, tmp_path):

@@ -22,8 +22,8 @@ class PlanningRejected(RuntimeError):
 class V2Client:
     def __init__(self, *, lock_path, url: str, nonce: str, pid: int, token: str,
                  robot_config: str, deadline: float, evidence: Path, cancel_check=None,
-                 test_response_fault='none',test_gpu_activity=False):
-        self.lock, self.lock_sha = load_lock(lock_path)
+                 test_response_fault='none',test_gpu_activity=False,tier=None,boundary=None):
+        self.lock, self.lock_sha = load_lock(lock_path, **({} if tier is None and boundary is None else dict(tier=tier,boundary=boundary)))
         verify_files(self.lock)
         verify_client_imports(self.lock)
         parsed = urlsplit(url)
@@ -97,6 +97,11 @@ class V2Client:
             self.attest()
             result = self._request(path, body)
             row["response"] = result
+            if isinstance(body, dict) and body.get('execution_settings') is not None:
+                from .execution_settings import from_config
+                settings = from_config(body['execution_settings'])
+                if result.get('execution_settings_sha256') != settings.sha256:
+                    raise IdentityError('Planner response execution settings mismatch')
             if planning and result.get("status") != "success":
                 raise PlanningRejected("cuRoboV2 planning rejected: " + str(result.get("reason", result.get("status"))))
             if path == "/world/cuboids":

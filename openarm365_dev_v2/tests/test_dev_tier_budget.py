@@ -4,6 +4,8 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+pytestmark = pytest.mark.usefixtures("r3_deployment")
 
 from openarm365_dev_v2 import dev_config, formal_config
 from openarm365_dev_v2.runner import OpenArm365DevRunnerV2

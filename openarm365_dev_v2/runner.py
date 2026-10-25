@@ -53,6 +53,8 @@ class OpenArm365DevRunnerV2:
             raise ValueError('diagnostic budget cannot enter the formal boundary')
         if request.entry_lock is not None and not self.allow_entry_lock:raise ValueError('Dev-only runner cannot claim an approved formal entry')
         c=self.load_config(request)
+        from curobo_v2.execution_settings import from_config,receipt_fields
+        execution_labels=receipt_fields(from_config(c.get('execution_settings')))
         if c.get('budget_tier','legacy')!='dev':tier=None
         if request.task_id!=c['task_id'] or request.seed!=c['seed']:raise ValueError('Locked 365 task/seed mismatch')
         seconds,limit=self.budgets(request,c)
@@ -131,7 +133,7 @@ class OpenArm365DevRunnerV2:
             backend_steps=public_steps,robot='OpenArm365',execution_arm='both',controller=c['controller'],
             perception_mode='sim_gt',error=error,runner_boundary=self.runner_boundary)
         if validation_receipt and outcome is not None:trace['memory_validation']=validation_receipt
-        receipt=dict(**ids,elapsed_seconds=time.monotonic()-started,deadline_seconds=seconds,service_stop=cleanup,
+        receipt=dict(**ids,**execution_labels,elapsed_seconds=time.monotonic()-started,deadline_seconds=seconds,service_stop=cleanup,
             sandbox_probe=probe,policy_process=outcome.__dict__ if outcome else None,camera_recording=recording,control_steps=max((r.get('sequence',0) for r in owner.ledger),default=0),
             sdk_call_budget={'limit':limit,'requested':outcome.call_count if outcome else 0,
                 'dispatched':min(outcome.call_count,limit) if outcome else 0},outcome_unknown=unknown)

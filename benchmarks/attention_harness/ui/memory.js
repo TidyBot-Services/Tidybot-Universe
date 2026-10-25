@@ -37,6 +37,7 @@
         last_used_at:row.last_used_at||null,test_seeded:row.test_seeded===true,index:i,flash:0,
         unvalidated,uses,expires_in_days:Number.isFinite(row.expires_in_days)?Math.max(0,Math.round(row.expires_in_days)):null,
         reference:row.reference===true,scene_seed:Number.isInteger(row.scene_seed)?row.scene_seed:null};
+      if(row.execution_profile)note.execution_profile=row.execution_profile;
       byId.set(note.id,note);return note;
     });
     notes.forEach(note=>{note.versions=versions.filter(v=>v.note_ids.includes(note.id)).map(v=>v.n);note.version=note.versions.at(-1)||0});
@@ -59,6 +60,7 @@
     if(note.run_note){
       return `<button class="close" type="button" data-close aria-label="Close">×</button><h4>${escapeHtml(note.title)}</h4>${pathLine}<div class="chips">${layerChip}<span class="r">This run (v${note.help_version})</span><span>Unvalidated · not counted in results</span>${note.status==='off'?'<span>Off</span>':''}</div><div class="meta" data-uses>This run · used ${note.uses?.grants??0} · failure gone ${note.uses?.failure_gone??0}</div>${canOperate&&!demo&&note.status!=='off'?'<button type="button" data-run-note-off>Turn off for this run</button>':''}<details class="details"><summary>Details</summary><p>Note ID: ${escapeHtml(note.id)}</p></details>`;
     }
+    const execution=note.execution_profile==='r3-20261025'?'<p>Learned under execution settings r3 (2026-10-25): start clearance 2 mm, base path 10 mm, drift 3 mm / 3 mrad, joint margin 0.02 rad, held envelope 10 mm / 0.10 rad, attach after grasp, monotone support, movable-object exemption, ik_path 8 / 1.0, planner deployment-06.</p>':'';
     const effect=note.status==='active'?note.effect:'off';
     const label={helps:'Helps',not_helps:'Does not help',not_tested:'Not tested',unvalidated:'Unvalidated',off:'Off'}[effect];
     const seed=note.scene_seed==null?'':` ${note.scene_seed}`;
@@ -67,7 +69,7 @@
     const uses=note.unvalidated?`Used ${note.uses?.grants??0} · failure gone ${note.uses?.failure_gone??0}${note.expires_in_days==null?'':` · Expires in ${note.expires_in_days} day${note.expires_in_days===1?'':'s'}`}`:'';
     const where=note.version?`Used by Dev ${note.versions.map(v=>'v'+v).join(', ')}`:'Not used in this run';
     const statusText={off:'Off',expired:'Expired',withdrawn:'Withdrawn'}[note.status]||where;
-    return `<button class="close" type="button" data-close aria-label="Close">×</button><h4>${escapeHtml(note.title)}</h4><p>${escapeHtml(note.summary||'No summary yet.')}</p>${pathLine}<div class="chips">${layerChip}<span class="${effect==='helps'?'u':effect==='not_helps'?'x':effect==='unvalidated'?'v':'k'}">${label}${note.lift_pt!=null&&effect==='helps'?` (+${escapeHtml(note.lift_pt)} pt)`:''}</span><span>${escapeHtml(note.status==='active'?where:statusText)}</span><span>${escapeHtml(note.group)}</span>${note.test_seeded?'<span>Test note</span>':''}${scope?`<span class="ref">${escapeHtml(scope)}</span>`:''}${excluded}</div>${uses?`<div class="meta" data-uses>${escapeHtml(uses)}</div>`:''}<div class="meta">Read ${note.reads} times · last used ${ago(note.last_used_at)}</div>${demo?'':`<details class="manage"><summary>Manage…</summary><form data-manage><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><small>Setting an expiry and withdrawing a note cannot be undone. Both ask for confirmation.</small>${canOperate?'':'<small>Actions are unavailable because the operator key is not configured on this server.</small>'}<div class="actions">${[['disable','Turn off'],['enable','Turn back on'],['expiry','Set expiry…'],['rollback','Withdraw…']].map(([a,t])=>`<button type="button" data-action="${a}" ${canOperate?'':'disabled'}>${t}</button>`).join('')}</div></form></details><details class="details"><summary>Details</summary><p>Note ID: ${escapeHtml(note.id)}</p></details>`}`;
+    return `<button class="close" type="button" data-close aria-label="Close">×</button><h4>${escapeHtml(note.title)}</h4><p>${escapeHtml(note.summary||'No summary yet.')}</p>${execution}${pathLine}<div class="chips">${layerChip}<span class="${effect==='helps'?'u':effect==='not_helps'?'x':effect==='unvalidated'?'v':'k'}">${label}${note.lift_pt!=null&&effect==='helps'?` (+${escapeHtml(note.lift_pt)} pt)`:''}</span><span>${escapeHtml(note.status==='active'?where:statusText)}</span><span>${escapeHtml(note.group)}</span>${note.test_seeded?'<span>Test note</span>':''}${scope?`<span class="ref">${escapeHtml(scope)}</span>`:''}${excluded}</div>${uses?`<div class="meta" data-uses>${escapeHtml(uses)}</div>`:''}<div class="meta">Read ${note.reads} times · last used ${ago(note.last_used_at)}</div>${demo?'':`<details class="manage"><summary>Manage…</summary><form data-manage><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><small>Setting an expiry and withdrawing a note cannot be undone. Both ask for confirmation.</small>${canOperate?'':'<small>Actions are unavailable because the operator key is not configured on this server.</small>'}<div class="actions">${[['disable','Turn off'],['enable','Turn back on'],['expiry','Set expiry…'],['rollback','Withdraw…']].map(([a,t])=>`<button type="button" data-action="${a}" ${canOperate?'':'disabled'}>${t}</button>`).join('')}</div></form></details><details class="details"><summary>Details</summary><p>Note ID: ${escapeHtml(note.id)}</p></details>`}`;
   }
   function manageRequest(note,action,actor,reason,expiryRaw,confirmFn=global.confirm){
     if(!actor?.trim()||!reason?.trim())throw Error('Actor and reason are required');
@@ -84,8 +86,9 @@
   }
   function memoryScopeText(run) {
     const scope=run?.memory_scope;
-    if(scope?.level!=='reference_only')return '';
-    return scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract';
+    const execution=run?.execution_profile==='r3-20261025'?'Execution settings r3 · not comparable with earlier runs':'';
+    if(scope?.level!=='reference_only')return execution;
+    return [execution,scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract'].filter(Boolean).join(' · ');
   }
   const warningText=warnings=>Array.isArray(warnings)&&warnings.length?'Some note details are unavailable right now.':'';
   const api={automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};

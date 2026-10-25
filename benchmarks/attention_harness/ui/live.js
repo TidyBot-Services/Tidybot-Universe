@@ -3600,9 +3600,10 @@
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
     const newRun = isTerminal(snapshot) ? launchButton(snapshot, true) : '';
+    const execution = snapshot.dev_session?.locked?.config?.execution_settings?.profile === 'r3-20261025' ? '<span class="op-excluded">Execution settings r3 · not comparable with earlier runs</span>' : '';
     const fork = snapshot.dev_v2_selection?.fork;
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {

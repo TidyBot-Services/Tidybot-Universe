@@ -149,3 +149,10 @@ test('nested layers filter jointly with version and used-only, with public path 
  assert.match(css,/\.layer-badge\{[^}]*border:1px solid currentColor/);
  assert.match(css,/#monitor\s+\.lg\s+i\.layer-badge\s*\{[^}]*\bborder-radius:\s*4px\s*[;}]/);
 });
+
+test('r3 run banner and learned applicability are visible', () => {
+  const ui=require('../ui/memory.js');
+  assert.match(ui.memoryScopeText({execution_profile:'r3-20261025'}),/Execution settings r3 · not comparable with earlier runs/);
+  const data=ui.adapt({notes:[{id:'r3',title:'Note',execution_profile:'r3-20261025',status:'active'}]});
+  assert.match(ui.cardHtml(data.notes[0],false,true),/Learned under execution settings r3/);
+});

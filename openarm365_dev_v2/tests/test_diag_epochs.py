@@ -26,7 +26,8 @@ def original_epoch(tmp_path_factory):
   if source.is_relative_to(native):
    destination=main/source.relative_to(native);destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,destination)
 
- code='from openarm365_dev_v2.dev_config import make_lock,make_dev_config;import json,sys;from pathlib import Path;p=Path(sys.argv[1]);ref=make_lock(p/"lock.json");(p/"config.json").write_text(json.dumps(make_dev_config("open_cabinet",101,ref)))'
+ # The original diagnostic epoch predates r3 and retains its legacy lock.
+ code='from openarm365_dev_v2.dev_config import make_lock,make_dev_config;import json,sys;from pathlib import Path;p=Path(sys.argv[1]);ref=make_lock(p/"lock.json");(p/"config.json").write_text(json.dumps(make_dev_config("open_cabinet",101,ref,budget_tier="legacy")))'
  subprocess.run([str(SIM_PYTHON),'-B','-c',code,str(directory)],cwd=main,env=dict(os.environ,PYTHONPATH=str(main)),check=True,capture_output=True)
  return main,json.loads((directory/'config.json').read_text())
 

@@ -27,7 +27,8 @@ class AttachmentShifted(PlanningRejected):
 
 
 class KitchenWorldMonitor:
-    def __init__(self, scene, robot, *, attachment=None, attachment_provider=None):
+    def __init__(self, scene, robot, *, attachment=None, attachment_provider=None, execution_settings=None):
+        self.execution_settings=execution_settings
         import sapien
         self.attachment,self.attachment_provider=attachment,attachment_provider
         if attachment is not None and attachment_provider is None:raise PlanningRejected("Carried motion requires continuous bilateral contact checks")
@@ -62,12 +63,13 @@ class KitchenWorldMonitor:
         return np.linalg.inv(tool.entity_pose.to_transformation_matrix())@target.pose.to_transformation_matrix()
 
     def _check_attachment(self):
-        from .attachment import ATTACH_TRANSLATION_M,ATTACH_ROTATION_RAD
+        from .attachment import effective_held_envelope
+        translation,rotation=effective_held_envelope(getattr(self,"execution_settings",None))
         from scipy.spatial.transform import Rotation
         if self.attachment_provider()!=self.attachment:raise GraspLost('Bilateral grasp lost during physical carrying')
         pose=self._attachment_transform();reference=self.attachment_transform
-        if (np.linalg.norm(pose[:3,3]-reference[:3,3])>ATTACH_TRANSLATION_M or
-                np.linalg.norm(Rotation.from_matrix(pose[:3,:3]@reference[:3,:3].T).as_rotvec())>ATTACH_ROTATION_RAD):
+        if (np.linalg.norm(pose[:3,3]-reference[:3,3])>translation or
+                np.linalg.norm(Rotation.from_matrix(pose[:3,:3]@reference[:3,:3].T).as_rotvec())>rotation):
             raise AttachmentShifted('Carried geometry moved outside its collision envelope')
 
     def check(self):

@@ -213,7 +213,7 @@ def status(bridge, probe, quota, *, now=None):
             'running': [{'experiment_id': r['experiment_id'], 'key': r['key']} for r in running],
             'today': today_summary(rows, now), 'readiness': ready, 'planner_seconds': timing,
             'scenes': scenes(rows, bridge.root),
-            'recent': [{'experiment_id': r['experiment_id'], 'key': r['key'], 'at': r['created_at'], 'task': TASK_TITLES.get(r['task_id'], r['task_id']),
+            'recent': [{**{k:r[k] for k in ('execution_profile','planner_lock_sha256') if k in r},'experiment_id': r['experiment_id'], 'key': r['key'], 'at': r['created_at'], 'task': TASK_TITLES.get(r['task_id'], r['task_id']),
                         'policy': r['policy_id'], 'state': shown_state(r), 'attempts': attempts_used(r), 'attempts_limit': attempts_limit(r),
                         'why': plain_reason(r), 'solved': solved(r), 'all_failed': all_attempts_failed(r),
                         'system': bool(SYSTEM_PROBLEM.search(str(r.get('reason') or '')))} for r in rows[:12]]}

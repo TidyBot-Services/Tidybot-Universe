@@ -1,10 +1,31 @@
 """Serialize planning and world updates behind the same lock."""
 from __future__ import annotations
 from threading import RLock
+from functools import wraps
+from curobo_v2.execution_settings import from_config
 import numpy as np
 from .config import Config
 from .planner_core import CuroboPlanner
 from .world import WorldStore
+
+
+def execution_request(method):
+    @wraps(method)
+    def scoped(self, *args, execution_settings=None, **kwargs):
+        settings = from_config(execution_settings)
+        with self._lock:
+            self._planner.execution_settings = settings
+            try:
+                response = method(self, *args, **kwargs)
+                if settings is not None:
+                    response['execution_settings_sha256'] = settings.sha256
+                return response
+            finally:
+                self._planner.execution_settings = None
+                geometry = getattr(self._planner, 'geometry', None)
+                if geometry is not None:
+                    geometry.execution_settings = None
+    return scoped
 
 
 class PlannerAdapter:
@@ -15,6 +36,7 @@ class PlannerAdapter:
         self._lock = RLock()
         self._warmed_up = False
 
+    @execution_request
     def warmup(self, current_q=None, joint_names=None, active_joints=None,
                locked_joints=None, tool_frames=None, env_id=None, attachment=None) -> dict:
         with self._lock:
@@ -66,8 +88,11 @@ class PlannerAdapter:
                 key:None if value is None else self._planner.reorder(value,names).tolist()
                 for key,value in self._planner.last_derivatives.items()}
             response['trajectory_derivatives_source']='unmodified official public get_interpolated_plan JointState optional fields'
+        from curobo_v2.attachment import held_envelope_receipt
+        response.update(held_envelope_receipt(getattr(self._planner,"execution_settings",None)))
         return response
 
+    @execution_request
     def plan_pose(self, env_id, current_q, target_pos=None, target_quat=None,
                   lock_base=False, joint_names=None, targets=None, active_joints=None, locked_joints=None, attachment=None):
         with self._lock:
@@ -78,6 +103,7 @@ class PlannerAdapter:
                 targets=targets,active_joints=active_joints,locked_joints=locked_joints)
             return self._result(result,joint_names)
 
+    @execution_request
     def plan_ik_path(self, env_id, current_q, *, targets, joint_names=None,
                      active_joints=None, locked_joints=None, attachment=None,
                      max_joint_jump=.35, minimum_duration=.5, ik_candidates=1):
@@ -98,9 +124,13 @@ class PlannerAdapter:
                             ik_selection_seconds=self._planner.last_ik_path_metrics.get('selection_seconds'),
                             ik_seconds=self._planner.last_ik_path_metrics.get('ik_seconds'))
             response['source'] = 'ik_path'
+            if 'joint_margin_limit_rad' in self._planner.last_ik_path_metrics:
+                response.update({key: self._planner.last_ik_path_metrics[key] for key in
+                                 ('joint_margin_limit_rad', 'candidate_joint_margins')})
             response['trajectory_derivatives_source'] = 'analytic stationary-endpoint quintic joint path'
             return response
 
+    @execution_request
     def plan_joints(self, env_id, current_q, target_q, joint_names=None, active_joints=None, locked_joints=None, attachment=None):
         with self._lock:
             current = self._planner.named(current_q,joint_names)
@@ -110,12 +140,14 @@ class PlannerAdapter:
             result = self._planner.plan_joints(current,target,active_joints,locked_joints)
             return self._result(result,joint_names)
 
+    @execution_request
     def plan_cooperative(self,env_id,current_q,object_pose,attachment,joint_names=None,locked_joints=None):
         with self._lock:
             self._ensure_world(env_id)
             result=self._planner.plan_cooperative(self._planner.named(current_q,joint_names),object_pose,attachment,locked_joints)
             return self._result(result,joint_names)
 
+    @execution_request
     def solve_ik(self, env_id, target_pos=None, target_quat=None, lock_base=False,
                  seed_q=None, joint_names=None, targets=None, active_joints=None, locked_joints=None):
         with self._lock:
@@ -128,6 +160,7 @@ class PlannerAdapter:
                 targets=targets,active_joints=active_joints,locked_joints=locked_joints)
             return self._result(result,joint_names,ik=True)
 
+    @execution_request
     def fk(self, env_id, q, joint_names=None, locked_joints=None, active_joints=None):
         with self._lock:
             self._ensure_world(env_id)
@@ -135,6 +168,7 @@ class PlannerAdapter:
             return {"status":"success","poses":self._planner.fk(self._planner.named(q,joint_names),locked_joints,active_joints),
                     "robot":self._planner.identity}
 
+    @execution_request
     def validate_base_path(self, env_id, base_positions, target_pos, base_box):
         with self._lock:
             self._ensure_world(env_id)

@@ -7,7 +7,9 @@ from openarm365_dev_v2 import dev_config
 from benchmarks.attention_harness import dev_tasks
 
 @pytest.fixture(scope='module')
-def lock(tmp_path_factory):return dev_config.make_lock(tmp_path_factory.mktemp('lock')/'identity.json')
+def lock(tmp_path_factory):
+    settings=dev_config.from_config(dev_config.R3_20261025.to_dict())
+    return dev_config.make_lock(tmp_path_factory.mktemp('lock')/'identity.json',execution_settings=settings)
 @pytest.mark.parametrize('task',list(dev_tasks.TASKS))
 @pytest.mark.parametrize('seed',[101,102,125])
 def test_task_config(lock,task,seed):

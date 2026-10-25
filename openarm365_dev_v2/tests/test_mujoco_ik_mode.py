@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+pytestmark = pytest.mark.usefixtures("r3_deployment")
 from scipy.spatial.transform import Rotation
 
 from openarm365_dev import executor as executor_module

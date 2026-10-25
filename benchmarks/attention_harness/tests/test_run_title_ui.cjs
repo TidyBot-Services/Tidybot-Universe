@@ -27,3 +27,13 @@ test('an ended run puts New run in the page title, next to its status', () => {
 test('a running run keeps New run out of the title', () => {
   assert.doesNotMatch(title(false), /data-open-launch/);
 });
+
+test('r3 execution label is shown beside the run title', () => {
+  const html=vm.runInNewContext(block+'\noperatorTitle(snapshot)',{
+    esc,snapshot:{run:{seed:102},dev_session:{locked:{config:{execution_settings:{profile:'r3-20261025'}}}}},
+    selectedDev:null,selectedRun:null,navigationRecords:()=>[],taskDisplayName:()=>'Task',policyTitle:()=>'',
+    relativeTime:()=>'',recordStatus:()=>'',outcomeKind:()=>'',isTerminal:()=>false,
+  });
+  assert.match(html,/Execution settings r3 · not comparable with earlier runs/);
+  assert.doesNotMatch(title(false),/Execution settings r3/);
+});

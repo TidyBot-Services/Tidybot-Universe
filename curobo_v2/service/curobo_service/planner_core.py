@@ -26,6 +26,7 @@ class CuroboPlanner:
                 or not Path(robot_cfg).is_absolute()
                 or Path(assets_dir).resolve() != Path(_service_lock["assets_root"]).resolve()):
             raise IdentityError("Planner parameters differ from the authenticated service configuration")
+        self.execution_settings = None
         self._device = torch.device(device)
         self.robot_cfg = robot_cfg
         self.assets_dir = Path(assets_dir)
@@ -173,16 +174,17 @@ class CuroboPlanner:
                 raise ValueError('Measured attachment requires full exact-geometry validation')
             if 'holder'in context:
                 from curobo_v2.attachment import SingleArmAttachment
-                attachment=SingleArmAttachment(context,self._world_cuboids,self.tool_frames)
+                attachment=SingleArmAttachment(context,self._world_cuboids,self.tool_frames,execution_settings=getattr(self,"execution_settings",None))
             elif 'object_name'in context:
                 from .cooperative import CarriedCuboid
-                attachment=CarriedCuboid(context,self._world_cuboids,self.tool_frames)
+                attachment=CarriedCuboid(context,self._world_cuboids,self.tool_frames,execution_settings=getattr(self,"execution_settings",None))
             else:raise ValueError('Complete explicit measured attachment context required')
         self.attachment=attachment
         self._attachment_context=deepcopy(context)
         from .attachment_config import carried_model_topology
         self._attachment_key=carried_model_topology(attachment)
         if self.geometry is not None:
+            self.geometry.execution_settings=getattr(self,"execution_settings",None)
             self.geometry.attachment=attachment
             self.geometry.update_world(self._world_cuboids)
 
@@ -450,6 +452,13 @@ class CuroboPlanner:
         if np.max(abs(trajectory[0]-current)) > 1e-4 or not self.validate(trajectory, planner, checker):
             self.last_failure = "trajectory_validation_failed"
             return None
+        from curobo_v2.execution_settings import goal_margin
+        margin = goal_margin(trajectory[-1], self.joint_names, self.limits, planner.joint_names, execution_settings=getattr(self,"execution_settings",None))
+        if margin is not None:
+            self.last_validation['goal_joint_margin'] = margin
+            if margin['minimum_joint_margin_rad'] < margin['joint_margin_limit_rad']:
+                self.last_failure = 'goal_joint_margin_below_execution_limit'
+                return None
         dt = state.dt
         if dt is None:
             raise RuntimeError("Official interpolated trajectory is missing time data")
@@ -493,7 +502,8 @@ class CuroboPlanner:
         receipt,motion=certify_trajectory(candidate,urdf=self._config['kinematics']['urdf_path'],
             world=self._world_cuboids,locks=locks,attachment=self._attachment_context,
             position_limits=self.limits,maximum_speed=dict(zip(self.joint_names,bounds['velocity'])),
-            max_acceleration=float(bounds['acceleration'][0]),max_jerk=float(bounds['jerk'][0]))
+            max_acceleration=float(bounds['acceleration'][0]),max_jerk=float(bounds['jerk'][0]),
+            **({} if getattr(self,'execution_settings',None) is None else {'execution_settings':self.execution_settings}))
         self.last_validation['continuous_geometry']=receipt
         self.last_validation['continuous_motion']=motion
         if receipt['result']!='PASS' or motion['result']!='PASS':
@@ -523,6 +533,12 @@ class CuroboPlanner:
             logging.warning("V2 joint planning stage=%s elapsed=%.6f", name, time.monotonic()-started)
         self.last_timing = None; self.last_derivatives = None; self.last_failure = None; self.last_validation = None; self.last_solver_diagnostics = []
         current_q, target_q = self.named(current_q), self.named(target_q)
+        from curobo_v2.execution_settings import goal_margin
+        margin = goal_margin(target_q, self.joint_names, self.limits, active_joints, execution_settings=getattr(self,"execution_settings",None))
+        if margin is not None and margin['minimum_joint_margin_rad'] < margin['joint_margin_limit_rad']:
+            self.last_validation = {'goal_joint_margin': margin}
+            self.last_failure = 'goal_joint_margin_below_execution_limit'
+            return None
         planner, checker = self._select(current_q, active_joints, locked_joints=locked_joints)
         stage("model_selected")
         if not self.validate(current_q[None], planner, checker):
@@ -544,6 +560,8 @@ class CuroboPlanner:
             result = planner.plan_cspace(target_state,current_state,max_attempts=1,enable_graph_attempt=1 if self.settings.get('pose_search')=='measured_reference_high_penalty_v1' else 0)
         stage("cspace_solved")
         trajectory = self._extract(result,current_q,planner,checker)
+        if margin is not None and self.last_validation is not None:
+            self.last_validation['goal_joint_margin'] = margin
         if trajectory is not None and np.max(abs(trajectory[-1]-target_q)) > 1e-4:
             self.last_failure = "trajectory_endpoint_error"
             trajectory = None
@@ -601,9 +619,38 @@ class CuroboPlanner:
                     targets[name] = {"position":pose.position.flatten().cpu().tolist(),
                                      "quaternion_wxyz":pose.quaternion.flatten().cpu().tolist()}
         logging.warning("V2 public IK API call started")
-        result = planner.ik_solver.solve_pose(self._goal(targets),current_state=self._state(current[None],planner),return_seeds=1)
+        settings = getattr(self, 'execution_settings', None)
+        result = planner.ik_solver.solve_pose(self._goal(targets),current_state=self._state(current[None],planner),return_seeds=1 if settings is None else 8)
         from .solver_evidence import summarize
         self.last_solver_diagnostics.append(dict(stage='ik_public_api_result',**summarize(result)))
+        if settings is not None:
+            from curobo_v2.execution_settings import goal_margin
+            from curobo_v2.ik_path import ranked_ik_candidates
+            values = result.solution.reshape(-1, planner.action_dim).detach().cpu().numpy()
+            successes = result.success.detach().cpu().numpy().reshape(-1)
+            seed = np.array([current[self.joint_names.index(n)] for n in planner.joint_names])
+            order, _, _ = ranked_ik_candidates(seed, planner.joint_names, planner.joint_names, values, successes)
+            self.last_failure = 'official_ik_non_success'
+            for index in order:
+                solution = current.copy()
+                for name, value in zip(planner.joint_names, values[index]):
+                    solution[self.joint_names.index(name)] = value
+                margin = goal_margin(solution, self.joint_names, self.limits, planner.joint_names,
+                                     execution_settings=settings)
+                if margin['minimum_joint_margin_rad'] < margin['joint_margin_limit_rad']:
+                    self.last_validation = {'goal_joint_margin': margin}
+                    self.last_failure = 'goal_joint_margin_below_execution_limit'
+                    continue
+                if not self.validate(solution[None], planner, checker):
+                    self.last_failure = 'ik_geometry_validation_failed'
+                    continue
+                self.last_validation['goal_joint_margin'] = margin
+                if not self._validate_tool_endpoints(solution, targets, planner):
+                    self.last_failure = 'ik_tool_endpoint_error'
+                    continue
+                self.last_failure = None
+                return solution
+            return None
         if not bool(result.success.all()):
             self.last_failure = "official_ik_non_success"
             return None
@@ -629,6 +676,9 @@ class CuroboPlanner:
         self.last_timing = None; self.last_derivatives = None; self.last_failure = None
         self.last_validation = None; self.last_solver_diagnostics = []
         self.last_ik_path_metrics = {}
+        from curobo_v2.execution_settings import minimum_arm_margin
+        settings = getattr(self,"execution_settings",None)
+        margin_limit = None if settings is None else settings.goal_joint_margin_rad
         tool = CuroboPlanner.check_ik_path_request(self, targets, active_joints,
                                                    max_joint_jump, minimum_duration,
                                                    ik_candidates=ik_candidates)
@@ -672,6 +722,9 @@ class CuroboPlanner:
                              'ik_invalid_solution' if distance is None else None
                              for ok, distance in zip(successes, distances)]
         self.last_ik_path_metrics['candidate_reasons'] = candidate_reasons
+        if margin_limit is not None:
+            self.last_ik_path_metrics['joint_margin_limit_rad'] = margin_limit
+            self.last_ik_path_metrics['candidate_joint_margins'] = [None] * len(values)
         failures = []
         solution = None
         jump = None
@@ -679,6 +732,13 @@ class CuroboPlanner:
             candidate = current.copy()
             for name, value in zip(planner.joint_names, values[index]):
                 candidate[self.joint_names.index(name)] = value
+            if margin_limit is not None:
+                margin = minimum_arm_margin(candidate, self.joint_names, self.limits, active_joints)
+                self.last_ik_path_metrics['candidate_joint_margins'][index] = margin
+                if margin['minimum_joint_margin_rad'] < margin_limit:
+                    failures.append('ik_joint_margin_below_execution_limit')
+                    candidate_reasons[index] = failures[-1]
+                    continue
             if np.any(candidate < self.limits[:, 0]) or np.any(candidate > self.limits[:, 1]):
                 failures.append('ik_joint_limits')
                 candidate_reasons[index] = failures[-1]
@@ -758,7 +818,8 @@ class CuroboPlanner:
             candidate, urdf=self._config['kinematics']['urdf_path'], world=self._world_cuboids,
             locks=locks, attachment=self._attachment_context, position_limits=self.limits,
             maximum_speed=dict(zip(self.joint_names, bounds['velocity'])),
-            max_acceleration=float(bounds['acceleration'][0]), max_jerk=float(bounds['jerk'][0]))
+            max_acceleration=float(bounds['acceleration'][0]), max_jerk=float(bounds['jerk'][0]),
+            **({} if getattr(self,'execution_settings',None) is None else {'execution_settings':self.execution_settings}))
         self.last_ik_path_metrics.update(certification_seconds=time.monotonic() - certificate_started,
                                          total_seconds=time.monotonic() - started,
                                          certificate_checks=receipt.get('queries'))

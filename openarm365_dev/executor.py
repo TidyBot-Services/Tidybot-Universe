@@ -1,15 +1,55 @@
 """Native MuJoCo tracking of one-use authenticated V2 command curves."""
 import hashlib,json,math,os,re,time,uuid
+from functools import wraps
 from pathlib import Path
 import xml.etree.ElementTree as E
 import numpy as np
+from curobo_v2.execution_settings import receipt_fields
 from curobo_v2.command_curve import sample_for_original_drive
 from curobo_v2.client import PlanningRejected
+from curobo_v2.attachment import effective_held_envelope, held_envelope_receipt
 from .environment import PHYSICAL_TO_NATIVE,tcp_pose
 from .world import is_descendant,movable_object_roots
 from .base_motion import (BASE_SETTLE_CONSECUTIVE_STEPS, BASE_SETTLE_MAX_STEPS,
                           base_is_stationary, check_exact_base_path, base_joint_delta,
                           validate_delta, guard_base_and_arms)
+from .base_motion import base_drift_limits, base_drift
+
+
+def record_base_drift(method):
+    """Record per-request drift only for explicit execution settings.
+
+    Base moves measure drift before driving and coast after stopping. Commanded
+    travel is separately reported as displacement, never compared to a hold limit.
+    The separate journal row survives a rejected plan or a physics-step abort.
+    """
+    @wraps(method)
+    def request(self, *args, **kwargs):
+        limits = base_drift_limits(getattr(self, "execution_settings", None))
+        if limits is None:
+            return method(self, *args, **kwargs)
+        self._drift_max = [0., 0.]
+        self._drift_displacement_max = [0., 0.]
+        self._drift_settle_reference = None
+        self._drift_reference = self.base_hold.copy()
+        self._drift_limits, self._drift_operation = limits, method.__name__
+        status, error = 'failed', None
+        self.record_drift_sample()
+        try:
+            result = method(self, *args, **kwargs)
+            status = 'completed'
+            result['base_drift'] = self.drift_receipt(limits, method.__name__)
+            return result
+        except BaseException as exc:
+            error = f'{type(exc).__name__}: {exc}'
+            raise
+        finally:
+            self.record_drift_sample()
+            self.log(self.journal, dict(event='base_drift', request_id=kwargs['request_id'],
+                status=status, reason=error, base_drift=self.drift_receipt(limits, method.__name__)))
+            del self._drift_max, self._drift_reference, self._drift_limits, self._drift_operation
+            del self._drift_displacement_max, self._drift_settle_reference
+    return request
 
 CONTACT_EVENT_LIMIT=200
 GRIPPER_MIMIC_CONTACT_BOUND_M = 0.010
@@ -145,7 +185,8 @@ def tracking_error_event(request_id,settle_steps,bound,names,target,current,qvel
         qvel=None if qvel is None else np.asarray(qvel).tolist())
 
 class NativeExecutor:
-    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed'):
+    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',execution_settings=None):
+        self.execution_settings=execution_settings
         self.env,self.planner=env,planner;self.evidence=Path(evidence)
         self.deadline,self.cancel_check=deadline,cancel_check;self.frame_callback=frame_callback
         self.epoch=uuid.uuid4().hex;self.sequence=0;self.physics_steps=0;self.failed=False
@@ -180,6 +221,11 @@ class NativeExecutor:
         env.sim.step2=step2
 
     def log(self,path,value):
+        value = dict(value, **receipt_fields(getattr(self,"execution_settings",None)))
+        if hasattr(self, '_drift_max') and value.get('event') in ('receipt', 'base_failure', 'base_tracking'):
+            value = dict(value, base_drift=self.drift_receipt(self._drift_limits, self._drift_operation))
+        diagnostic = held_envelope_receipt(getattr(self, "execution_settings", None))
+        if diagnostic:value = dict(value, **diagnostic)
         with path.open('a') as f:
             f.write(json.dumps(value,sort_keys=True,allow_nan=False)+'\n');f.flush();os.fsync(f.fileno())
 
@@ -207,7 +253,10 @@ class NativeExecutor:
         if np.any(abs(v)>np.array([self.max_speed[n] for n in self.planner.names])):
             raise RuntimeError('Measured native joint velocity exceeded URDF limit')
         base=sim.data.qpos[r._ref_base_joint_pos_indexes]
-        guard_base_and_arms(base,self.base_hold,q,self.base_arm_start if self.base_moving else None)
+        if hasattr(self, '_drift_max'):
+            self.record_drift_sample()
+        guard_base_and_arms(base,self.base_hold,q,self.base_arm_start if self.base_moving else None,
+            execution_settings=getattr(self,"execution_settings",None))
         gripper_q={side:np.asarray(sim.data.qpos[r._ref_gripper_joint_pos_indexes[native]],float) for side,native in PHYSICAL_TO_NATIVE.items()}
         gripper_v={side:np.array([sim.data.qvel[sim.model.get_joint_qvel_addr(name)] for name in r.gripper[native].joints])
             for side,native in PHYSICAL_TO_NATIVE.items()}
@@ -238,9 +287,13 @@ class NativeExecutor:
             if bid not in bilateral[side]:raise RuntimeError('Measured bilateral grasp contact lost during transport')
             relative=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
             from scipy.spatial.transform import Rotation
-            if (np.linalg.norm(relative[:3,3]-self.held_transform[:3,3])>.004 or
-                    Rotation.from_matrix(relative[:3,:3]@self.held_transform[:3,:3].T).magnitude()>.03):
-                held_error='Measured object/hand transform exceeds original 4mm/0.03rad bound'
+            translation,rotation=effective_held_envelope(getattr(self, "execution_settings", None))
+            if (np.linalg.norm(relative[:3,3]-self.held_transform[:3,3])>translation or
+                    Rotation.from_matrix(relative[:3,:3]@self.held_transform[:3,:3].T).magnitude()>rotation):
+                held_error=('Measured object/hand transform exceeds '
+                            f'configured {translation*1000:g}mm/{rotation:g}rad bound'
+                            if held_envelope_receipt(getattr(self, "execution_settings", None)) else
+                            'Measured object/hand transform exceeds original 4mm/0.03rad bound')
                 if not trace_enabled:raise RuntimeError(held_error)
         objects=set(getattr(self.env,'obj_body_id',{}).values())
         exemption_enabled=exemption_mode=='movable_objects'
@@ -352,6 +405,8 @@ class NativeExecutor:
             receipt=dict(status='completed',request_id=request_id,epoch=self.epoch,start_sequence=start,
                 sequence=self.sequence,physics_steps=self.physics_steps,before_qpos=before.tolist(),
                 after_qpos=self.planner.state().tolist(),maximum_endpoint_joint_error_rad=error)
+            receipt.update(receipt_fields(getattr(self,"execution_settings",None)))
+            receipt.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**receipt));return receipt
         except BaseException:
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('native_failure');raise
@@ -360,6 +415,30 @@ class NativeExecutor:
                 request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))
             self.moving=False;self.active_request=None
 
+    def record_drift_sample(self):
+        if not hasattr(self, '_drift_max'):
+            return
+        base = self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes]
+        measured = base_drift(base, self._drift_reference)
+        self._drift_displacement_max = [max(a, b) for a, b in zip(self._drift_displacement_max, measured)]
+        if self._drift_operation == 'base_move':
+            if self._drift_settle_reference is not None:
+                measured = base_drift(base, self._drift_settle_reference)
+            elif getattr(self, 'base_moving', False):
+                return
+        self._drift_max = [max(a, b) for a, b in zip(self._drift_max, measured)]
+
+    def drift_receipt(self, limits, operation):
+        return dict(max_translation_m=self._drift_max[0], max_yaw_rad=self._drift_max[1],
+            translation_limit_m=limits[0], yaw_limit_rad=limits[1],
+            reference_base_qpos=self._drift_reference.tolist(),
+            settle_reference_base_qpos=None if self._drift_settle_reference is None else self._drift_settle_reference.tolist(),
+            measurement_scope='pre-drive hold and post-stop coast' if operation == 'base_move' else 'held base',
+            max_displacement_translation_m=self._drift_displacement_max[0],
+            max_displacement_yaw_rad=self._drift_displacement_max[1],
+            includes_commanded_motion=False)
+
+    @record_base_drift
     def move_joints(self,target,*,side,request_id):
         self.check_live()
         # Held-object transport needs its own measured attachment model. Until
@@ -368,17 +447,21 @@ class NativeExecutor:
         response=self.planner.plan_joints(target,side=side,epoch=self.epoch)
         return self.apply(response,request_id=request_id)
 
+    @record_base_drift
     def base_move(self,dx,dy,dyaw,*,request_id):
         self.check_live()
         delta=validate_delta(dx,dy,dyaw)
         from .world import snapshot
         before=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
-        if np.max(abs(before-self.base_hold))>.001:
+        if base_drift_limits(getattr(self,"execution_settings",None)) is not None:
+            guard_base_and_arms(before,self.base_hold,None,execution_settings=self.execution_settings)
+        elif np.max(abs(before-self.base_hold))>.001:
             raise RuntimeError('Uncommanded base drift exceeded 1mm/1mrad')
         world=snapshot(self.env,chassis_binding=self.planner.chassis_binding)
         held=getattr(self,'held',None)
         try: collision=check_exact_base_path(self.env,world,self.planner.chassis_binding,delta,self.base_initial,
-            **({'held_body_id':held['target_id']} if held else {}))
+            **({'held_body_id':held['target_id']} if held else {}),
+            **({} if getattr(self,'execution_settings',None) is None else dict(execution_settings=self.execution_settings)))
         except PlanningRejected as exc:
             self.log(self.journal,dict(event='base_collision_rejected',request_id=request_id,
                 before_base_qpos=before.tolist(),delta=delta.tolist(),world_sha256=world['world_sha256'],
@@ -412,6 +495,8 @@ class NativeExecutor:
                 self.control_step()
             self.base_command=np.zeros(3)
             settle_start=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
+            if hasattr(self, '_drift_max'):
+                self._drift_settle_reference=settle_start.copy()
             previous=settle_start
             stationary_steps=0
             for _ in range(BASE_SETTLE_MAX_STEPS):
@@ -439,6 +524,8 @@ class NativeExecutor:
             if np.max(abs(arm_change))>.004:
                 raise RuntimeError('Arm joint drift during base motion exceeded 4mrad')
             self.base_hold=after.copy();self.planner.prepared.clear();self.planner.ledger.invalidate('base_moved')
+            result.update(receipt_fields(getattr(self,"execution_settings",None)))
+            result.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**result));return result
         except BaseException as exc:
             after=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
@@ -464,6 +551,7 @@ class NativeExecutor:
             if any(is_descendant(sim.model,b,self.robot_root) for b in bodies) and any(any(is_descendant(sim.model,b,obj) for obj in objects) for b in bodies):return True
         return False
 
+    @record_base_drift
     def move_delta(self,side,dx,dy,dz,rotation_delta=None,*,request_id):
         self.check_live()
         from scipy.spatial.transform import Rotation
@@ -476,8 +564,11 @@ class NativeExecutor:
         response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch)
         return self.apply(response,request_id=request_id)
 
+    @record_base_drift
     def gripper(self,side,command,*,request_id):
         self.check_live()
+        settings=getattr(self,"execution_settings",None)
+        require_attachment = settings is not None and settings.attach_after_grasp
         if side not in PHYSICAL_TO_NATIVE or command not in (-1.,1.):raise ValueError('Explicit physical gripper/command required')
         self.active_request=request_id;self.gripping=True;self.moving=True;start=self.sequence
         self.contact_event_count=0;self.contact_event_overflow=0
@@ -495,6 +586,8 @@ class NativeExecutor:
             if command>0:
                 candidates=[bid for bid,count in self.grasp_counts[side].items() if count>=12]
                 if len(candidates)>1:raise RuntimeError('Ambiguous measured grasp target')
+                if require_attachment and not candidates:
+                    raise PlanningRejected('Close did not confirm bilateral grasp; attached transport forbidden')
                 if candidates:
                     if self.held and self.held['holder']!=side:raise RuntimeError('Dual-held transport is outside this dev profile')
                     from .attachment import object_pose
@@ -525,6 +618,10 @@ class NativeExecutor:
                     self.planner.ledger.invalidate('grasp_acquired')
             result=dict(status='completed',request_id=request_id,physical_side=side,start_sequence=start,sequence=self.sequence)
             result.update(held_reference_wait_steps=wait_steps,held_reference=self.held_reference)
+            if require_attachment:
+                result.update(attach_after_grasp=True, attached_object=self.held.copy() if self.held else None)
+            result.update(receipt_fields(getattr(self,"execution_settings",None)))
+            result.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**result));return result
         except BaseException:
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('gripper_failure');raise

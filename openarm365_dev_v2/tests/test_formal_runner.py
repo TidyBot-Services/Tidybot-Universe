@@ -25,7 +25,8 @@ BUDGET = dict(attempt_wall_seconds=120, whole_case_wall_seconds=300, sdk_call_li
 
 @pytest.fixture
 def env(tmp_path):
-    s, e, c, cfg, owner, root = setup(tmp_path)
+    # These boundary comparisons share the deployment-05 identity with formal.
+    s, e, c, cfg, owner, root = setup(tmp_path, budget_tier='legacy')
     formal = make_formal_config(cfg['task_id'], cfg['seed'], cfg['dev_lock'], **BUDGET)
     path = tmp_path / 'formal-config.json'
     path.write_text(json.dumps(formal, sort_keys=True))

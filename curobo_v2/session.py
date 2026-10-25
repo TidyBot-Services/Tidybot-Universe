@@ -12,20 +12,29 @@ import subprocess
 import threading
 import time
 
+from .execution_settings import receipt_fields
 from .client import V2Client
 from .identity import IdentityError, load_lock, verify_files
+from . import identity
 from .evidence import preserve_runtime
 
 
 class V2Service:
     def __init__(self, *, lock_path, robot_config, evidence, deadline, cancel_check=None,
-                 test_response_fault='none',test_gpu_activity=False):
+                 test_response_fault='none',test_gpu_activity=False,tier=None,boundary=None,execution_settings=None):
+        self.execution_settings=execution_settings
         if not Path(lock_path).is_absolute()or not Path(robot_config).is_absolute():
             raise IdentityError('V2 owner requires explicit absolute lock and robot configuration paths')
         if isinstance(deadline,bool)or not isinstance(deadline,(int,float))or not math.isfinite(deadline):
             raise IdentityError('V2 owner requires an explicit finite monotonic deadline')
         self.lock_path = str(Path(lock_path).resolve())
-        self.lock, self.lock_sha = load_lock(self.lock_path)
+        self.lock, self.lock_sha = load_lock(self.lock_path, **({} if tier is None and boundary is None else dict(tier=tier,boundary=boundary)))
+        if execution_settings is not None:
+            from .execution_settings import from_config
+            settings=from_config(execution_settings.to_dict())
+            if (tier,boundary)!=('dev','dev_loop') or settings.planner_deployment!={'lock_path':self.lock_path,'sha256':self.lock_sha}:
+                raise IdentityError('Execution settings differ from service deployment/boundary')
+        self.tier,self.boundary=tier,boundary
         self.robot_config = str(Path(robot_config).resolve())
         self.evidence, self.deadline = Path(evidence), deadline
         if cancel_check is not None and not callable(cancel_check):
@@ -59,6 +68,9 @@ class V2Service:
         environment["CUROBO_V2_OWNER_PID"] = str(os.getpid())
         environment.update(XDG_CACHE_HOME=str(self.evidence/'cache'),MPLCONFIGDIR=str(self.evidence/'mpl-cache'),
                            CUDA_CACHE_PATH=str(self.evidence/'cuda-cache'))
+        trust_fields = {} if self.tier is None else {
+            'trust_registry': str(identity.DEPLOYMENT_REGISTRY),
+            'trust_registry_sha256': identity.digest(identity.DEPLOYMENT_REGISTRY)}
         try:
             with socket.socket() as listener:
                 listener.bind(("127.0.0.1", 0))
@@ -69,12 +81,18 @@ class V2Service:
                     "--lock", self.lock_path, "--robot-config", self.robot_config,
                     "--test-response-fault",self.test_response_fault,
                     "--test-gpu-activity",'enabled'if self.test_gpu_activity else'disabled',
+                    *([] if self.tier is None else ["--tier",self.tier,
+                        "--trust-registry",trust_fields["trust_registry"],
+                        "--trust-registry-sha256",trust_fields["trust_registry_sha256"]]),
+                    *([] if self.boundary is None else ["--boundary",self.boundary]),
                     "--socket-fd", str(listener.fileno()), "--evidence", str(self.evidence)],
                     env=environment, cwd=self.lock["project_root"], stdout=self.log,
                     stderr=subprocess.STDOUT, start_new_session=True, pass_fds=(listener.fileno(),))
             (self.evidence/'service_spawn.json').write_text(json.dumps({
                 'pid':self.process.pid,'lock_sha256':self.lock_sha,
-                'robot_config':self.robot_config},indent=2)+'\n')
+                'robot_config':self.robot_config,**trust_fields,
+                **receipt_fields(getattr(self,"execution_settings",None)),
+                **({} if self.tier is None and self.boundary is None else dict(tier=self.tier,boundary=self.boundary))},indent=2)+'\n')
             while time.monotonic() < self.deadline:
                 if self.cancel_check():
                     raise InterruptedError("operator cancelled V2 startup")
@@ -85,7 +103,8 @@ class V2Service:
                     self.client = V2Client(lock_path=self.lock_path, url=url, nonce=nonce,
                         pid=self.process.pid, token=token, robot_config=self.robot_config,
                         deadline=self.deadline, evidence=self.evidence,cancel_check=self.cancel_check,
-                        test_response_fault=self.test_response_fault,test_gpu_activity=self.test_gpu_activity)
+                        test_response_fault=self.test_response_fault,test_gpu_activity=self.test_gpu_activity,
+                        **({} if self.tier is None and self.boundary is None else dict(tier=self.tier,boundary=self.boundary)))
                     threading.Thread(target=self._watch, daemon=True).start()
                     return self.client
                 except (ConnectionError, OSError):

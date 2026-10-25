@@ -2,6 +2,7 @@
 import csv,io,json,math,sqlite3
 from collections import defaultdict
 from pathlib import Path
+from .execution_profile import manifest_metadata
 from .dev_loop import sha
 from .core.dev_store import DevConflict
 from .dev_experiment import snapshot,validate_fairness
@@ -175,7 +176,7 @@ def report(store,exp_id):
             'first_success_versions':[v['version'] for v in first],
             'first_success_seconds':[v['seconds_since_cell_dispatch'] for v in first]})
     eval_matrix={k:sum(g['eval_confusion_matrix'][k] for g in groups) for k in ('true_positive','false_positive','true_negative','false_negative','unknown')}
-    return {'schema':'attentionbench.dev-report.v2','experiment_id':exp_id,'manifest':e['manifest'],'planned':len(m['cells']),
+    return {**manifest_metadata(m),'schema':'attentionbench.dev-report.v2','experiment_id':exp_id,'manifest':e['manifest'],'planned':len(m['cells']),
         'memory_seeded_excluded':sum(c.get('memory_seeded_excluded',False) for c in cells),
         'groups':groups,'cells':cells,'eval_confusion_matrix':eval_matrix,'eval_false_stops':sum(g['eval_false_stops'] for g in groups),'resource_ledger':store.export_ledger(m.get('goal_id',GOAL)),'formal_eligible':False,
         'scope':'Engineering small sample; not statistically validated and not formal acceptance. 不能判断策略优劣。',

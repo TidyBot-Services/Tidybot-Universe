@@ -23,3 +23,9 @@ test('attempts count runs out of the limit, like the main UI badge', () => {
   assert.equal(shell.attemptsText({state: 'running', attempts: 2, attempts_limit: 5}), 'Attempt 3/5');
   assert.equal(shell.attemptsText({state: 'completed', attempts: 1}), '1 attempt');
 });
+
+test('Memory recent run records label r3 only', () => {
+  const render=profile=>{const list={},meta={};shell.taskRail({list,meta,status:{today:{runs:1},running:[],recent:[{experiment_id:'e',at:1,task:'Task',policy:'autonomous',execution_profile:profile}]}});return list.innerHTML;};
+  assert.match(render('r3-20261025'),/Execution settings r3 · not comparable with earlier runs/);
+  assert.doesNotMatch(render(undefined),/Execution settings r3/);
+});

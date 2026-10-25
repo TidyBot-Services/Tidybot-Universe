@@ -101,6 +101,7 @@ def context(config, namespace, *, contract_catalog=None):
                  scene_contract_ref=contract)
     # Matching identity; sdk_sha256 (implementation) stays for audit.
     value['sdk_interface_sha256'] = sdk_interface_sha256(identity)
+    if 'execution_settings' in config:value['execution_profile']=config['execution_settings']['profile']
     public_screen(value)
     return value
 
@@ -169,6 +170,7 @@ class DevMemory:
         return sorted([m for m in self.gateway.retrieve(self.context, now=time.time())
                 if getattr(m.status, 'value', m.status) == 'trusted'
                 and type(m.version) is int and m.version > 0
+                and m.applicability.get('execution_profile') == self.context.get('execution_profile')
                 and all(m.applicability.get(k) == v for k, v in self.context.items() if k in SCOPE)],
                 key=lambda m: (m.memory_id, m.version))
 
@@ -218,6 +220,7 @@ class DevMemory:
                     or n.match_level not in levels or type(n.trusted_here) is not bool
                     or n.trusted_here and (n.status != 'trusted' or n.match_level not in {'same_scene','same_task'})
                     or n.match_level == 'same_scene' and n.trusted_here is not (n.status == 'trusted')
+                    or n.applicability.get('execution_profile') != self.context.get('execution_profile')
                     or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (family_scope and k == 'task_id'))
                     or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):
                 continue

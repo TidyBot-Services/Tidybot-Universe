@@ -121,6 +121,11 @@ def checks(source_config,source_prompt,new_config,*,carry,executed,valid,has_run
         else:check(rows,'warn','sdk','The SDK text the AI sees changed after the source run.','The AI is told the current SDK; calls in the old code may need updating.')
     grasp=[k for k in GRASP_FIELDS if source_config.get(k)!=new_config.get(k)]
     if grasp:check(rows,'warn','grasp_settings','Grasp settings differ from the source run: '+', '.join(f'{k} {_setting(source_config.get(k))} → {_setting(new_config.get(k))}' for k in grasp)+'.','The code will run with the new settings and may behave differently.')
+    if source_config.get('execution_settings')!=new_config.get('execution_settings'):
+        check(rows,'warn','execution_settings','Execution settings differ from the source run: execution_settings '
+            +str((source_config.get('execution_settings') or {}).get('profile','legacy'))+' → '
+            +str((new_config.get('execution_settings') or {}).get('profile','legacy'))+'.',
+            'The code will run with the new settings and may behave differently.')
     if has_run_notes:check(rows,'warn','run_notes','The source run\'s notes are not carried over.','Only code and feedback can be carried in this version.')
     check(rows,'warn','excluded','Excluded from comparison.','A run that continues earlier work reuses its attention and time, so it never enters result tables.')
     return rows
@@ -129,6 +134,9 @@ def preview_config(source_config):
     """The source config with today's frozen defaults: what a new run's config differs in without building a lock."""
     from openarm365_dev_v2 import dev_config as d
     value=copy.deepcopy(source_config)
+    # A fork is a new dev run with today's defaults, even for a legacy origin.
+    value['budget_tier']='dev'
+    value['execution_settings']=d.R3_20261025.to_dict()
     value.update(contact_exempt_objects=d.DEFAULT_CONTACT_EXEMPT_OBJECTS,planner_mode=d.DEFAULT_PLANNER_MODE,ik_candidates=d.DEFAULT_IK_CANDIDATES,ik_max_joint_jump=d.DEFAULT_IK_MAX_JOINT_JUMP)
     if source_config.get('scene_contract'):
         from openarm365_dev_v2.scene_contract import registered_contract_ref

@@ -11,8 +11,8 @@ from benchmarks.attention_harness.memory_cross_seed import admit
 
 
 class CrossFakeRunner(ProvisionedFakeRunner):
-    def __init__(self,root,state_root,*,roles=None):
-        super().__init__(root,state_root)
+    def __init__(self,root,state_root,*,roles=None,execution_settings=None):
+        super().__init__(root,state_root,execution_settings=execution_settings)
         self.roles=roles or {114:'transfer',104:'neutral'}
         self.paths={}
         for seed in self.roles:

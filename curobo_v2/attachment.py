@@ -10,6 +10,24 @@ ATTACH_TRANSLATION_M=.004
 ATTACH_ROTATION_RAD=.03
 
 
+def effective_held_envelope(execution_settings=None):
+    if execution_settings is None:
+        return ATTACH_TRANSLATION_M, ATTACH_ROTATION_RAD
+    return execution_settings.held_envelope_m, execution_settings.held_envelope_rad
+
+
+def held_envelope_receipt(execution_settings=None):
+    if execution_settings is None:
+        return {}
+    translation, rotation = effective_held_envelope(execution_settings)
+    return {'held_envelope': {'translation_m': translation, 'rotation_rad': rotation}}
+
+
+def attachment_inflation(spheres, envelope=None):
+    translation, rotation = effective_held_envelope() if envelope is None else envelope
+    return translation+2*(np.linalg.norm(spheres[:,:3],axis=1)+spheres[:,3])*np.sin(rotation/2)
+
+
 def rigid_pose(value):
     raw=np.asarray(value,dtype=object)
     if raw.shape!=(4,4)or any(type(v)not in (int,float,np.float64,np.float32) for v in raw.flat):
@@ -39,7 +57,7 @@ def cover_cuboid(c,link_from_planner,*,cell=ATTACHED_CELL_M):
 
 
 class SingleArmAttachment:
-    def __init__(self,context,world,tool_frames):
+    def __init__(self,context,world,tool_frames,*,execution_settings=None):
         fields={'holder','target_id','object_pose','tcp_object_transform','shape_names','support_names','tool_frame'}
         if (not isinstance(context,dict)or set(context)!=fields or not isinstance(context['holder'],str)
                 or context['holder']not in {'left','right'} or type(context['target_id'])is not int):
@@ -65,7 +83,8 @@ class SingleArmAttachment:
         self.spheres=np.zeros((ATTACHED_SPHERES,4));self.spheres[:,3]=-100.;self.spheres[:len(spheres)]=spheres
         self.sphere_count=len(spheres)
         # Bound every point under the admitted physical grasp compliance envelope.
-        margin=ATTACH_TRANSLATION_M+2*(np.linalg.norm(spheres[:,:3],axis=1)+spheres[:,3])*np.sin(ATTACH_ROTATION_RAD/2)
+        self.held_envelope=effective_held_envelope(execution_settings)
+        margin=attachment_inflation(spheres,self.held_envelope)
         self.spheres[:len(spheres),3]+=margin
 
     def pose(self,robot):
@@ -76,4 +95,4 @@ class SingleArmAttachment:
                     sphere_count=self.sphere_count,sphere_capacity=ATTACHED_SPHERES,cell_edge_m=ATTACHED_CELL_M,
                     geometry='conservative complete cuboid cell cover from all actual PhysX shapes',
                     allowed_fingers=sorted(self.allowed_fingers),departure_support_names=sorted(self.supports),
-                    grasp_translation_envelope_m=ATTACH_TRANSLATION_M,grasp_rotation_envelope_rad=ATTACH_ROTATION_RAD)
+                    grasp_translation_envelope_m=self.held_envelope[0],grasp_rotation_envelope_rad=self.held_envelope[1])

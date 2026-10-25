@@ -76,9 +76,11 @@ def radius_of(shape):
     return r+float(np.linalg.norm(shape.local_pose.p))+1e-7
 
 class SweepValidator:
-    def __init__(self,urdf,names,world,locks,attachment=None):
+    def __init__(self,urdf,names,world,locks,attachment=None,*,execution_settings=None,measured_start=True):
         import sapien
         self.sapien=sapien;self.names=list(names);self.world=world;self.locks=locks;self.context=attachment
+        self.departure_start_gaps={}
+        self.execution_settings=execution_settings;self.measured_start=measured_start
         self.xml=ET.parse(urdf).getroot();self.joints={j.get('name'):j for j in self.xml.findall('joint')};self.incoming={j.find('child').get('link'):j for j in self.joints.values()}
         self.scene=sapien.Scene([sapien.physx.PhysxCpuSystem()]);self.scene.set_timestep(1/240);self.scene.physx_system.config.gravity=[0,0,0]
         loader=self.scene.create_urdf_loader();loader.fix_root_link=True;builder=loader.load_file_as_articulation_builder(str(urdf))
@@ -119,6 +121,9 @@ class SweepValidator:
                     b.add_box_collision(half_size=c['half_size'],pose=sapien.Pose(local))
                     at_tcp=self.transforms[self.primary]@local;outer=max(outer,float(np.linalg.norm(at_tcp[:3,3])+np.linalg.norm(c['half_size'])))
             self.carried=b.build(self.carried_name);body=self.carried.find_component_by_type(sapien.physx.PhysxRigidDynamicComponent);body.disable_gravity=True
+            # Monotone mode starts from a measured support overlap; PhysX would depenetrate
+            # the query body. Lock it in place (still dynamic, so contacts are still generated).
+            if execution_settings is not None and measured_start:body.set_locked_motion_axes([True]*6)
             self.carried_body=body;self.shapes.extend(body.collision_shapes);self.carried_weights=self.reach(self.tools[self.primary],outer+1e-7);self.weights.append(self.carried_weights)
             self.center_weights={s:self.reach(self.tools[s],float(np.linalg.norm(self.transforms[s][:3,3])))for s in self.tools}
             self.angle_weights={s:self.angle_reach(self.tools[s])for s in self.tools}
@@ -258,7 +263,7 @@ class SweepValidator:
                                 normal=np.array(point.normal,float);normal/=np.linalg.norm(normal)
                                 if normal@(pose[:3,3]-support_points.mean(axis=0))<0:normal=-normal
                                 gap=float(np.min(object_points@normal)-np.max(support_points@normal));motion=self.directional_bound(self.carried_weights,full_delta,normal,axes)
-                                if gap-motion-PADDING>=-.0001:proved=True;break
+                                if gap-motion-PADDING>=self.departure_floor(other,normal):proved=True;break
                             if proved:continue
                 collisions.append(dict(bodies=bodies,separations=[float(p.separation)for p in near]))
             if not collisions and closure_ok:
@@ -274,17 +279,30 @@ class SweepValidator:
             closure=None if len(self.tools)!=2 else dict(max_translation_bound_m=closure_max[0],max_rotation_bound_rad=closure_max[1],position_limit_m=.004,rotation_limit_rad=.03),
             loader_ignored_pairs=self.ignored_pairs,collision_groups_sha256=hashlib.sha256(json.dumps(self.groups,sort_keys=True).encode()).hexdigest(),
             original_times_preserved=True,failure=failure,elapsed_seconds=time.monotonic()-started,
+            **({'support_departure':{'mode':'monotone','start_gap_m':{k:min(v)for k,v in sorted(self.departure_start_gaps.items())}}}if self.departure_start_gaps else {}),
             method='Bernstein joint hulls; complete-URDF ancestral reach; PhysX inflated contact distance; nominal measured rigid attachments')
 
-def certify_trajectory(response,*,urdf,world,locks,attachment,position_limits,maximum_speed,max_acceleration,max_jerk):
+    def departure_floor(self,support,normal):
+        """Historical 0.1 mm; explicit monotone mode keeps, never deepens, the measured start overlap."""
+        from curobo_v2.execution_settings import departure_floor
+        if (getattr(self,'execution_settings',None) is None or not self.measured_start
+                or support not in {'world:'+s for s in self.supports}):return departure_floor()
+        start=np.concatenate([corners(half)@(self.initial@local)[:3,:3].T+(self.initial@local)[:3,3]for local,half in self.local_shapes])
+        gap0=float(np.min(start@normal)-np.max(self.static_corners[support]@normal))
+        self.departure_start_gaps.setdefault(support,[]).append(gap0)
+        return departure_floor(gap0)
+
+
+def certify_trajectory(response,*,urdf,world,locks,attachment,position_limits,maximum_speed,max_acceleration,max_jerk,execution_settings=None,measured_start=True):
     started=time.monotonic();motion=dict(result='未验证');receipt=dict(schema=SCHEMA,result='未验证',input_sha256=input_sha256(response))
     try:
         curve=CommandCurve(response)
         motion=curve.certify_motion(position_limits=position_limits,maximum_speed=maximum_speed,max_acceleration=max_acceleration,max_jerk=max_jerk)
-        receipt=SweepValidator(urdf,response['joint_names'],world,locks,attachment).certify(response)
+        receipt=SweepValidator(urdf,response['joint_names'],world,locks,attachment,
+            **({} if execution_settings is None and measured_start else dict(execution_settings=execution_settings,measured_start=measured_start))).certify(response)
     except Exception as exc:
         receipt['failure']=dict(reason='service_continuous_validator_exception',error=f'{type(exc).__name__}: {exc}')
     if _evidence is not None:
-        row=dict(response=response,world=world,locked_joints=locks,attachment=attachment,certificate=receipt,motion=motion,urdf=str(urdf))
+        row=dict(**({} if execution_settings is None else {'execution_settings':execution_settings.to_dict()}),response=response,world=world,locked_joints=locks,attachment=attachment,certificate=receipt,motion=motion,urdf=str(urdf))
         path=_evidence/f'continuous-{time.time_ns()}-{receipt["input_sha256"][:12]}.json';path.write_text(json.dumps(row,allow_nan=False,indent=2)+'\n')
     return receipt,motion

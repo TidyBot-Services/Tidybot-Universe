@@ -8,10 +8,12 @@ from scipy.spatial.transform import Rotation
 from curobo_v2.identity import IdentityError,load_lock,verify_files,verify_client_imports
 from curobo_v2.client import PlanningRejected
 from curobo_v2.session import V2Service
+from curobo_v2.execution_settings import from_config,request_fields,receipt_fields,goal_margin
 from curobo_v2.trajectory import TrajectoryLedger
 from curobo_v2.ik_path_jump import DEFAULT_MAX_JOINT_JUMP,diagnostic_max_joint_jump
 from .environment import joint_address, mount_pose, tcp_pose
 from .world import snapshot
+from .planning_rejection import call_with_rejection_facts
 
 def contact_exemption_mode(configured):
     if configured not in ('none','movable_objects'):
@@ -23,14 +25,21 @@ def contact_exemption_mode(configured):
 
 class MujocoV2Planner:
     def __init__(self, env, *, evidence, deadline, cancel_check, contact_exempt_objects='none',
-                 planner_mode='plan',ik_candidates=None,ik_max_joint_jump=None):
+                 planner_mode='plan',ik_candidates=None,ik_max_joint_jump=None,execution_settings=None):
+        self.execution_settings=None if execution_settings is None else from_config(execution_settings.to_dict())
         self.env=env;self.evidence=Path(evidence);self.evidence.mkdir(parents=True,exist_ok=True)
         self.planner_mode=planner_mode;self.ik_candidates=ik_candidates;self.ik_max_joint_jump=ik_max_joint_jump
         self.contact_exemption_configured=contact_exempt_objects
         self.contact_exemption_mode=contact_exemption_mode(contact_exempt_objects)
         lock_path=Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime-lock.json')
-        lock,sha=load_lock(lock_path)
-        if sha!='0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0':
+        trust={} if self.execution_settings is None else dict(tier='dev',boundary='dev_loop')
+        expected_sha='0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0'
+        if self.execution_settings is not None:
+            lock_path=Path(self.execution_settings.planner_deployment['lock_path'])
+            expected_sha=self.execution_settings.planner_deployment['sha256']
+        lock,sha=load_lock(lock_path,**trust)
+        self.planner_lock_sha256=sha
+        if sha!=expected_sha:
             raise IdentityError('OpenArm365 dual-arm deployment lock changed')
         verify_files(lock);verify_client_imports(lock)
         config=Path(lock['project_root'])/'config/openarm_fixed.yml'
@@ -43,13 +52,14 @@ class MujocoV2Planner:
         self.ledger=TrajectoryLedger();self.sequence=0;self.failed=False;self.prepared=set()
         self.attachment_provider=lambda:None
         self.owner=V2Service(lock_path=lock_path,robot_config=config,evidence=self.evidence,
-            deadline=deadline,cancel_check=cancel_check)
+            deadline=deadline,cancel_check=cancel_check,**trust,
+            **({} if self.execution_settings is None else dict(execution_settings=self.execution_settings)))
         self.client=self.owner.__enter__()
 
     def state(self):return np.asarray(self.env.sim.data.qpos[self.addresses],float)
     def body(self, active):
         return dict(env_id='robocasa365',current_q=self.state().tolist(),joint_names=self.names,
-            locked_joints={n:float(self.env.sim.data.qpos[a]) for n,a in self.lock_addresses.items()},active_joints=list(active))
+            locked_joints={n:float(self.env.sim.data.qpos[a]) for n,a in self.lock_addresses.items()},active_joints=list(active),**request_fields(getattr(self,"execution_settings",None)))
     def guard(self, operation):
         if self.failed:raise PlanningRejected('Authenticated 365 planner latched; reset required')
         try:return operation()
@@ -101,6 +111,9 @@ class MujocoV2Planner:
         return self.guard(op)
     def plan(self,path,extra,active,epoch,*,planner_settings=None):
         def op():
+            settings=getattr(self,'execution_settings',None)
+            if settings is not None and 'target_qpos' in extra:
+                self.check_goal_margin(extra['target_qpos'],active)
             if tuple(active) not in self.prepared:self.prepare(active)
             world,receipt=self.upload();body=self.body(active);body.update(extra)
             from .attachment import planner_context
@@ -109,7 +122,12 @@ class MujocoV2Planner:
             warm={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates','max_joint_jump'}}
             if 'targets' in body:warm['tool_frames']=list(body['targets'])
             self.client.call('/warmup',warm)
-            response=self.client.call(path,body)
+            # Legacy calls retain their exact path and evidence behavior.
+            response=(self.client.call(path,body) if settings is None else
+                call_with_rejection_facts(self.client,path,body,settings))
+            if settings is not None:
+                response['goal_margin']=self.check_goal_margin(response['trajectory'][-1],active)
+                response.update(receipt_fields(settings))
             if path in {'/plan','/plan/ik_path'}:
                 response['planner_mode']='ik_path' if path=='/plan/ik_path' else 'plan'
                 response['planner_mode_source']='config'
@@ -126,6 +144,14 @@ class MujocoV2Planner:
             (self.evidence/f'trajectory-{self.sequence:04d}.json').write_text(json.dumps(response,indent=2)+'\n')
             return response
         return self.guard(op)
+    def check_goal_margin(self,target,active):
+        import xml.etree.ElementTree as ET
+        joints={j.get('name'):j for j in ET.parse(self.spec['robot_cfg']['kinematics']['urdf_path']).getroot().findall('joint')}
+        limits=np.array([[float(joints[n].find('limit').get(b)) for b in ('lower','upper')] for n in self.names])
+        margin=goal_margin(target,self.names,limits,active,execution_settings=self.execution_settings)
+        if margin['minimum_joint_margin_rad']<margin['joint_margin_limit_rad']:
+            raise PlanningRejected(f"Goal joint margin {margin['minimum_joint_margin_rad']:.9g} rad below {margin['joint_margin_limit_rad']:.9g} rad")
+        return margin
     def plan_joints(self,target,*,side,epoch):
         active=self.names if side=='both' else [n for n in self.names if n.startswith(f'openarm_{side}_joint')]
         return self.plan('/plan/joint',dict(target_qpos=np.asarray(target,float).tolist()),active,epoch)

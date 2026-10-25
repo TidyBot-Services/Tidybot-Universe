@@ -208,7 +208,7 @@ def test_interactive_eval_choice_daily_and_existing_goal_paths(tmp_path,monkeypa
         store=DevV2Store(Path(argv[argv.index('--store')+1]),configuration={'goal_id':config['goal_id'],'limits':config['experiment_budget'],'wall_seconds':config['wall_seconds']})
         dev_experiment.create(store,Path(argv[argv.index('--artifacts')+1]),selection)
     monkeypatch.setattr(daily.subprocess,'run',stop_at_materialization)
-    monkeypatch.setattr(dev_experiment,'make_lock',lambda path: (_ for _ in ()).throw(MaterializationReached()))
+    monkeypatch.setattr(dev_experiment,'make_lock',lambda path, *, execution_settings=None: (_ for _ in ()).throw(MaterializationReached()))
     for enabled in (True,False):
         budget=dict(daily.DEFAULT_CELL)
         body=dict(start=False,selection=dict(request_key=f'daily-interactive-{enabled}',tasks=['open_cabinet'],seeds=[101],policies=['autonomous'],mode='interactive',help_budget=1,
