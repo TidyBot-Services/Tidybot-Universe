@@ -520,7 +520,8 @@ class FakeRunner:
 
     def deps(self,root):
         root.mkdir(exist_ok=True)
-        return SimpleNamespace(root=root,save=lambda state:atomic(root/'state.json',state),clock=time.time,quota=lambda:10,
+        return SimpleNamespace(root=root,save=lambda state:atomic(root/'state.json',state),clock=time.time,quota=lambda:dict(used_percent=10,observed_at=time.time()),
+                               refresh_quota=lambda:(_ for _ in ()).throw(RuntimeError('fake refresh unavailable')),
                                activity=lambda current:None,client=self.service,runner=self)
 
     def demote(self):
@@ -605,3 +606,74 @@ class ProvisionedFakeRunner(FakeRunner):
                 name=pair[arm+'_cell']
                 if name not in self.f.records:self.f.make(name,failure=arm=='control',completed_calls=1,exposure='none' if arm=='control' else 'candidate_validation',memory_id=None if arm=='control' else self.candidate_id,code=f'def policy(sdk):\n    # {name}\n    pass\n')
         return batch
+
+
+class AutomaticOriginFakeRunner(ProvisionedFakeRunner):
+    """Real origin exporter/validator, with explicit synthetic history and replay."""
+    def __init__(self,root,state_root,*,origin_fault=None,execution_settings=None):
+        super().__init__(root,state_root,execution_settings=execution_settings)
+        self.provision.config.pop('evidence_catalogs');self.origin_fault=origin_fault;self.replays=0
+        self.meter_active=False;self.meter_events=[]
+        self.meter_results=[dict(gpu_seconds=seconds,wall_seconds=3.0,samples=3,coverage='controlled_test') for seconds in (1.25,2.5)]
+        if origin_fault=='meter':self.meter_results[0].update(gpu_seconds=None,samples=0)
+        r=self.failed;directory=self.f.root/'failed';ledger=Path(r['descriptor']['ledger']['uri'])
+        # Construct the historical fixture before freezing its provenance/evidence.
+        for version,name in ((1,'version.json'),(2,'version2.json')):
+            (directory/f'v{version}').mkdir();(directory/f'v{version}'/'version.json').write_bytes((directory/name).read_bytes())
+        r['bundle']['artifact_dir']=str(directory)
+        if origin_fault=='safety':
+            ref=r['bundle']['artifacts']['safety'];raw=json.loads(Path(ref['uri']).read_bytes());raw.update(unsafe_attempts=1,violations=[dict(kind='controlled_test')])
+            r['bundle']['artifacts']['safety']=self.f.write(Path(ref['uri']),raw)
+        bref=self.f.write(directory/'bundle.json',r['bundle'])
+        with sqlite3.connect(ledger) as db:
+            c=json.loads(db.execute('SELECT payload FROM v2_cells').fetchone()[0]);c.update(key='failed',artifact_dir=str(directory),task_id='pick',seed=101)
+            db.execute('UPDATE v2_cells SET payload=?',(encoded(c),))
+            job=json.loads(db.execute("SELECT payload FROM v2_jobs WHERE kind='execute'").fetchone()[0]);job['receipt']['bundle']=bref
+            job['receipt'].pop('gpu_measurement',None)
+            db.execute("UPDATE v2_jobs SET payload=? WHERE kind='execute'",(encoded(job),))
+        from benchmarks.attention_harness.memory_validation_runtime import LedgerRunner
+        from benchmarks.attention_harness.memory_validation_provision import Provisioner
+        self.origin_runner=LedgerRunner(self.service,self.provision,experiments_root=self.f.root,validator_root=self.f.validator,state_root=state_root,replay=self.origin_replay,gpu_meter=Provisioner.gpu_seconds)
+        self.origin_runner.pool.shutdown()
+        # Deterministic synchronous scheduler, same future interface as production.
+        from concurrent.futures import Future
+        def submit(fn,*args):
+            f=Future()
+            try:f.set_result(fn(*args))
+            except BaseException as exc:f.set_exception(exc)
+            return f
+        self.origin_runner.pool=SimpleNamespace(submit=submit)
+
+    def origin_replay(self,*args):
+        assert self.meter_active
+        self.meter_events.append('replay')
+        self.replays+=1
+        return OBS,{} if self.origin_fault=='scene' else STATE
+
+    def origin_meter(self):
+        def start():
+            assert not self.meter_active
+            self.meter_active=True;self.meter_events.append('start')
+        def stop():
+            assert self.meter_active
+            self.meter_active=False;self.meter_events.append('stop')
+            return self.meter_results[len(self.meter_events)//3-1]
+        return SimpleNamespace(start=start,stop=stop)
+
+    def origin_needed(self,note):return self.origin_runner.origin_needed(note)
+
+    def start(self,current,arm_id):
+        if current.get('kind')!='origin':return super().start(current,arm_id)
+        from benchmarks.attention_harness import dev_planner_memory as memory, memory_independent_validator as validator
+        with ExitStack() as stack:
+            stack.enter_context(synthetic_creation(self.f))
+            stack.enter_context(patch.object(memory,'context',lambda *a,**kw:self.failed['context']))
+            stack.enter_context(patch.object(memory,'sdk_identity',lambda *a:self.f.sdk))
+            stack.enter_context(patch.object(validator,'GpuMeter',self.origin_meter))
+            if self.origin_fault=='refused':stack.enter_context(patch.object(validator,'validate_arm',lambda **kw:dict(status='refused',reason='Controlled validator refusal')))
+            return self.origin_runner.start(current,arm_id)
+
+    def poll(self,current):return self.origin_runner.poll(current) if current.get('kind')=='origin' else super().poll(current)
+    def finish(self,current):return self.origin_runner.finish(current) if current.get('kind')=='origin' else super().finish(current)
+    def pause(self,current):return self.origin_runner.pause(current) if current.get('kind')=='origin' else super().pause(current)
+    def resume(self,current):return self.origin_runner.resume(current) if current.get('kind')=='origin' else super().resume(current)

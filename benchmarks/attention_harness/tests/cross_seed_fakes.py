@@ -126,3 +126,10 @@ def lifecycle(root):
     assert label(packet['entries'][0])=='Trusted for this task: '
     fake.demote_task(note['memory_id'])
     return fake,state
+
+
+from .autovalidate_fakes import AutomaticOriginFakeRunner
+
+
+class AutomaticCrossFakeRunner(CrossFakeRunner,AutomaticOriginFakeRunner):
+    """Both queues share the automatically sealed provisional origin receipt."""

@@ -42,17 +42,24 @@ def automatic_checks(root=None,gateway=None):
             value['runs_today']=state.get('runs_today',0)
             quota=state.get('weekly_quota')
             if type(quota) in (int,float) and 0<=quota<=100:value['weekly_quota']=quota
+            stamp=state.get('weekly_quota_at')
+            if type(stamp) in (int,float) and math.isfinite(stamp) and stamp<=time.time():
+                value['weekly_quota_age_seconds']=max(0,time.time()-stamp)
+            value['quota_refreshes']=[{k:r.get(k) for k in ('at','finished_at','before_percent','after_percent','status')}
+                                      for r in state.get('quota_refreshes',[])[-20:]]
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
             current=state.get('current')
             if current:
-                value['current']=dict(title=safe_text(current['title']),pair=current['pair_index']+1,arm=current['arm'],paused=bool(current.get('pause_requested')))
+                value['current']=dict(title=safe_text(current['title']),paused=bool(current.get('pause_requested')))
+                if current.get('kind')=='origin':value['current']['stage']='origin'
+                else:value['current'].update(pair=current['pair_index']+1,arm=current['arm'])
                 if current.get('kind')=='cross_seed':value['current'].update(seed=current['target_seed'],stage=current['stage'],pairs_needed=len(current.get('plan',{}).get('pairs',[])))
             cross_notes=state.get('cross_notes',{})
             value['skipped_seeds']=[dict(seed=r['seed'],reason=safe_detail(r['reason'])) for r in state.get('skipped_seeds',[])][-100:]
             for row in state.get('results',[])[-20:]:
                 report=row.get('decision',{}).get('report',{})
-                value['results'].append(dict(title=safe_text(row['title']),status=row['status'],reason=safe_text(row.get('decision',{}).get('reason')),pairs=report.get('paired_runs'),control=report.get('control_signature_count'),treatment=report.get('treatment_signature_count')))
+                value['results'].append(dict(title=safe_text(row['title']),status=row['status'],note_remains=row.get('note_remains'),reason=safe_text(row.get('decision',{}).get('reason')),pairs=report.get('paired_runs'),control=report.get('control_signature_count'),treatment=report.get('treatment_signature_count')))
         except Exception as exc:value['errors'].append('Automatic checks state unavailable: '+safe_detail(str(exc)))
     if gateway:
         try:

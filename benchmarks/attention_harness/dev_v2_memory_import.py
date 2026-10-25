@@ -39,9 +39,13 @@ def queue(store, cell, version, directory, kind, refs):
     return ref
 
 
-def prepare(store, cell, version, namespace, output, catalog_root, *, source=None, source_catalogs=None, contract_catalog=None):
+def prepare(store, cell, version, namespace, output, catalog_root, *, source=None, source_catalogs=None, contract_catalog=None, failure_signature=None):
     from .dev_planner_memory import context, sdk_identity
     from .dev_planner import binding
+    def planner_snapshot():
+        if hasattr(store,'planner_snapshot'):return store.planner_snapshot(cell)
+        from .dev_planner import PlannerControl
+        return PlannerControl(store).snapshot(cell)
     c=store.cell(cell);v=next(v for v in c['versions'] if v['version']==version)
     if source is None:
         packet_path=Path(c['artifact_dir'])/f'v{version}'/'memory-input.json'
@@ -68,6 +72,7 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         # These names refer to separately provisioned independent validator
         # output and an already imported failed execution; no boolean verdicts.
         if set(source)!={'failed_execution_import_id','validator_id','validation_descriptor','request_id'}:raise ValueError('exact independent source prerequisites required')
+        if failure_signature is not None:descriptor['failure_signature']=failure_signature
         descriptor.update(source,advisor_job_id=jobs['advisor']['job_id'],model_job_id=jobs['model']['job_id'])
     else:
         j=jobs['execute']
@@ -76,8 +81,7 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         if 'model' in jobs:descriptor['model_job_id']=jobs['model']['job_id']
         scope=binding(cell,version,checked(v['source']).read_text(),config)
         if scope:
-            from .dev_planner import PlannerControl
-            approvals=PlannerControl(store).snapshot(cell)['requests']
+            approvals=planner_snapshot()['requests']
             a=next(a for a in approvals if a['state']=='consumed' and a['consumed_by']==j['job_id'])
             descriptor.update(permission_scope=scope,approval_id=a['request_id'])
         else:
@@ -151,8 +155,7 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     # reachable from version.json, and source imports need the prior failed job.
     for j in c['jobs']:
         if j['version']<=version:walk(j.get('receipt',{}))
-    from .dev_planner import PlannerControl
-    walk(PlannerControl(store).snapshot(cell))
+    walk(planner_snapshot())
     return immutable(out/'catalog.json',dict(root=str(root),role='executor',ledger_origin=str(store.path.resolve()),
         context=descriptor['context'],files=files,symlinks=symlinks))
 

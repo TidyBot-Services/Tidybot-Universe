@@ -24,6 +24,12 @@ class LedgerRunner:
         if self.experiments_root.is_relative_to(self.validator_root) or self.validator_root.is_relative_to(self.experiments_root):raise ValueError('independent validator root required')
         self.replay,self.provider,self.runner_factory,self.gpu_meter=replay,provider,runner_factory,gpu_meter
         self.pool=ThreadPoolExecutor(max_workers=1);self.futures={}
+        from .memory_origin_evidence import OriginPreparation
+        self.origins=OriginPreparation(self)
+
+    def origin_needed(self,note):
+        from .memory_validation_provision import Provisioner
+        return self.origins.needed(note) if isinstance(self.provision,Provisioner) else None
 
     def admit_seed(self,note,seed,path):
         from .memory_cross_seed import admit
@@ -108,6 +114,7 @@ class LedgerRunner:
         key=current['arm_id'];store=DevV2Store(current['cells'][key]['ledger']);return store,key,store.cell(key)
 
     def start(self,current,arm_id):
+        if current.get('kind')=='origin':return self.origins.start(current)
         future=self.futures.get(arm_id)
         if future is not None and not future.done():return
         store,key,c=self._cell(current);job=job_for(c,1,'execute')
@@ -180,6 +187,7 @@ class LedgerRunner:
                 store.put(db,'experiments',c['experiment_id'],row)
 
     def poll(self,current):
+        if current.get('kind')=='origin':return self.origins.poll(current)
         store,key,c=self._cell(current);future=self.futures.get(key)
         if future is not None and future.done():future.result()
         job=job_for(c,1,'execute')
@@ -191,16 +199,19 @@ class LedgerRunner:
         return 'running'
 
     def pause(self,current):
+        if current.get('kind')=='origin':return self.origins.pause(current)
         from .dev_experiment import request_pause
         store,key,c=self._cell(current)
         if job_for(c,1,'execute') and job_for(c,1,'execute')['state']=='settled':return
         request_pause(store,c['experiment_id'])
 
     def resume(self,current):
+        if current.get('kind')=='origin':return self.origins.resume(current)
         from .dev_experiment import resume_paused
         store,key,c=self._cell(current);resume_paused(store,c['experiment_id']);self.start(current,key)
 
     def finish(self,current):
+        if current.get('kind')=='origin':return self.origins.finish(current)
         from .dev_v2_memory_import import prepare
         store,key,c=self._cell(current);record=next(v for v in c['versions'] if v['version']==1)
         with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
@@ -242,7 +253,7 @@ class LedgerRunner:
         return dict(trial_import_id='trial-'+key,status=result['status'],descriptor=result['descriptor'])
 
 
-def from_config(root):
+def from_config(root,*,quota_probe_command=None):
     """Factory for --adapter ...memory_validation_runtime:from_config.
 
     Runtime JSON may override the default sealed-origin provisioning factory.
@@ -251,7 +262,7 @@ def from_config(root):
     import importlib,os
     from types import SimpleNamespace
     from .memory_service_client import MemoryServiceClient
-    from .memory_validation_worker import run_activity,weekly_quota
+    from .memory_validation_worker import run_activity,weekly_quota_snapshot,refresh_quota
     config=json.loads((Path(root)/'runtime.json').read_bytes())
     client=MemoryServiceClient.offline(config['base_url'],key_file=config['key_file'])
     config['state_root']=str(Path(root).resolve())
@@ -272,7 +283,9 @@ def from_config(root):
         ledgers=set(explicit)
         for folder in roots:ledgers.update(folder.rglob('ledger.sqlite3'));ledgers.update(folder.rglob('ledger.sqlite'))
         return run_activity(sorted(ledgers),own_experiment=own,own_pids=(os.getpid(),))
-    return SimpleNamespace(client=client,runner=runner,activity=activity,quota=lambda:weekly_quota(config.get('quota_home')))
+    return SimpleNamespace(client=client,runner=runner,activity=activity,
+        quota=lambda:weekly_quota_snapshot(config.get('quota_home')),
+        refresh_quota=lambda:refresh_quota(home=config.get('quota_home'),command=quota_probe_command))
 
 
 # Public default factory; from_config remains compatible with existing units.

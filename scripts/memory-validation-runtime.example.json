@@ -8,9 +8,5 @@
   "provision_factory": "benchmarks.attention_harness.memory_validation_provision:provision_factory",
   "activity_ledger_roots": ["/absolute/path/to/experiments", "/absolute/path/to/main-matrix"],
   "activity_ledgers": [],
-  "quota_home": "/home/example",
-  "evidence_catalogs": {
-    "original-executor": {"uri": "/absolute/path/to/prepared/catalog.json", "sha256": "REPLACE_WITH_SEALED_CATALOG_SHA256"},
-    "original-validator": {"uri": "/absolute/path/to/validator/catalog.json", "sha256": "REPLACE_WITH_SEALED_CATALOG_SHA256"}
-  }
+  "quota_home": "/home/example"
 }

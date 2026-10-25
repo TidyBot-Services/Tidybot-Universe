@@ -2,6 +2,7 @@
 import hashlib,json,sqlite3,tempfile
 from pathlib import Path
 from .dev_v2_loop import immutable
+from .gpu_meter import GpuMeter
 from openarm365_dev_v2 import scene_contract
 
 
@@ -19,12 +20,14 @@ def sealed(ref,root,files):
 
 def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import_id,bundle_ref,config_ref,
                  source_ref,grant,permission_scope,executor_catalog,contract,validator_root,replay,
-                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None):
+                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None,origin=False,before_replay=None):
     """Refusal writes nothing. Failed checks retain an honest independent descriptor.
 
     ``grant`` includes the runner's sealed permission_scope (validation grants bind
     source/config; the consumed motion approval separately binds permissions).
-    GPU seconds is an injected independent measurement, never inferred from success.
+    Arms use injected execution GPU seconds; origins meter their two fresh replays.
+    Origin mode binds the settled historical ledger instead of a validation grant;
+    it cannot emit a trial or relax any native, permission, safety or scene check.
     """
     from attention_memory_service.core.store import StateConflictError
     from attention_memory_service.dev_v2 import scene_matches,public_trace_projection,signature_present,stop_position
@@ -42,7 +45,10 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         artifacts={k:read(bundle['artifacts'][k]) for k in ('native_result','trace','safety','sandbox_receipt')}
         feedback=public_trace_projection(artifacts['trace']);present=signature_present(feedback,failure_signature);position=stop_position(artifacts['trace'])
         bindings={k:bundle[k] for k in ('run_id','attempt_id','policy_sha256','config_sha256','task_id','seed')}
-        if probe_input is not None:
+        if origin:
+            if grant is not None or probe_input is not None or not ledger_ref:raise Refused('origin requires the original ledger and no validation grant')
+            binding=dict(cell=cell,version=version,seed=config['seed'],policy_sha256=source_ref['sha256'],config_sha256=config_ref['sha256'])
+        elif probe_input is not None:
             if grant is not None or source_ref['sha256']!=origin_source_sha256 or not ledger_ref:raise Refused('probe requires sealed origin, no grant and execution ledger')
             clean=read(probe_input)
             if clean!=dict(memory_ids=[],exposure='none',context=executor_catalog['context'],policy_sha256=source_ref['sha256'],config_sha256=config_ref['sha256']):raise Refused('probe must read no notes')
@@ -53,7 +59,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         expected=dict(cell=cell,version=version,policy_sha256=source_ref['sha256'],config_sha256=config_ref['sha256'],seed=config['seed'])
         if any(binding[k]!=v for k,v in expected.items()) or bundle['run_id']!='run:'+cell or bundle['attempt_id']!=f'attempt:{cell}:{version-1}':raise Refused('grant execution binding mismatch')
         if bundle['policy_sha256']!=source_ref['sha256'] or bundle['config_sha256']!=config_ref['sha256'] or bundle['task_id']!=config['task_id'] or bundle['seed']!=config['seed']:raise Refused('source/config identity mismatch')
-        if not permission_scope or probe_input is None and permission_scope!=grant['permission_scope']:raise Refused('permission scope mismatch')
+        if not permission_scope or not origin and probe_input is None and permission_scope!=grant['permission_scope']:raise Refused('permission scope mismatch')
         from .dev_planner import binding as motion_binding,digest as config_digest
         permission=motion_binding(cell,version,source,config)
         if permission is None:
@@ -64,11 +70,17 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         registered=scene_contract.load_contract(contract)
         for value in artifacts.values():
             if any(value.get(k)!=bundle[k] for k in ('run_id','attempt_id')):raise Refused('artifact binding mismatch')
-        costs=dict(credits=0,tokens=0,seconds=artifacts['sandbox_receipt']['elapsed_seconds'],gpu_seconds=gpu_seconds)
+        costs=dict(credits=0,tokens=0,seconds=artifacts['sandbox_receipt']['elapsed_seconds'])
+        if not origin:costs['gpu_seconds']=gpu_seconds
         if ledger_ref:
             sealed(ledger_ref,root,files)
             with sqlite3.connect(Path(ledger_ref['uri']).as_uri()+'?mode=ro',uri=True) as db:
                 jobs=[json.loads(p) for p, in db.execute("SELECT payload FROM v2_jobs WHERE cell=? AND version<=? AND state='settled'",(cell,version))]
+                if origin:
+                    executions=[j for j in jobs if j['kind']=='execute' and j['version']==version]
+                    if len(executions)!=1 or executions[0].get('receipt',{}).get('bundle')!=bundle_ref:raise Refused('origin execution differs from sealed ledger')
+                    versions=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_versions WHERE cell=? AND version=?',(cell,version))]
+                    if len(versions)!=1 or versions[0].get('source')!=source_ref or versions[0].get('config_sha256')!=config_ref['sha256']:raise Refused('origin version differs from sealed ledger')
                 if probe_input is not None:
                     all_jobs=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_jobs WHERE cell=? AND version<=?',(cell,version))]
                     if not all_jobs or any(j['kind']!='execute' for j in all_jobs):raise Refused('probe cannot call models or advisors')
@@ -99,18 +111,42 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
     if not monitor_ok:violations.append(dict(kind='monitor_unavailable_or_inconsistent'))
     events.append(dict(kind='monitor_attestation',available=monitor_ok,source_sha256=bundle['artifacts']['safety']['sha256']))
     safety=dict(schema_version='attentionbench.safety-monitor.v1',source='independent_safety_monitor',attempt_id=bundle['attempt_id'],events=events,violations=violations,unsafe_attempts=int(bool(violations)))
-    vr.mkdir(parents=True,exist_ok=True);out=Path(tempfile.mkdtemp(prefix='arm-',dir=vr))
-    observations=[];states=[];obs_values=[];state_values=[];scene_ok=True;errors=[]
+    observations=[];states=[];obs_values=[];state_values=[];scene_ok=True;errors=[];replayed=[];measurements=[]
+    meter_refusal=dict(status='refused',reason='Independent GPU time measurement is unavailable for the origin replays.')
     for i in range(2):
+        if before_replay is not None:before_replay()
+        meter=None
+        if origin:
+            try:
+                meter=GpuMeter();meter.start()
+            except Exception:
+                if meter is not None:
+                    try:meter.stop()
+                    except Exception:pass
+                return meter_refusal
         try:
-            obs,state=replay(config['task_id'],config['seed'],config)
+            try:obs,state=replay(config['task_id'],config['seed'],config)
+            finally:
+                if meter is not None:
+                    try:measurements.append(meter.stop())
+                    except Exception:measurements.append(None)
             validation=scene_contract.validate(contract,config['task_id'],state,config['seed'])
             scene_ok=scene_ok and validation['matched']
             obs_values.append(scene_contract.observation_state(obs));state_values.append(state)
         except Exception as exc:
             obs={'robot':{},'perception':{'values':{}}};state={};validation={'matched':False,'error':type(exc).__name__};scene_ok=False;errors.append(type(exc).__name__)
+        if origin:
+            measured=measurements[-1]
+            if (not isinstance(measured,dict) or type(measured.get('samples')) is not int or measured['samples']<=0
+                or any(type(measured.get(k)) not in (int,float) or not math.isfinite(measured[k]) or measured[k]<0 for k in ('gpu_seconds','wall_seconds'))):return meter_refusal
+        replayed.append((obs,{'state':state,'validation':validation} if registered['schema']==scene_contract.SCHEMA_V2 else state))
+    if origin:
+        costs['gpu_seconds']=sum(m['gpu_seconds'] for m in measurements)
+        if not math.isfinite(costs['gpu_seconds']):return meter_refusal
+    vr.mkdir(parents=True,exist_ok=True);out=Path(tempfile.mkdtemp(prefix='arm-',dir=vr))
+    for i,(obs,state) in enumerate(replayed):
         observations.append(immutable(out/f'observation-{i}.json',obs))
-        states.append(immutable(out/f'state-{i}.json',{'state':state,'validation':validation} if registered['schema']==scene_contract.SCHEMA_V2 else state))
+        states.append(immutable(out/f'state-{i}.json',state))
     scene_ok=bool(scene_ok and len(obs_values)==2 and scene_matches(*obs_values) and scene_matches(*state_values))
     native_ok=(native.get('evaluated') is True and type(native.get('native_success')) is bool and native['native_success'] is bundle['native_success']
                and not bundle.get('infrastructure_failure') and not bundle.get('outcome_unknown') and bundle['status'] in {'completed','failed'}
@@ -123,14 +159,21 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         scene_replay_observations=observations,scene_replay_states=states,scene_replay_bindings={k:bundle[k] for k in ('task_id','seed','config_sha256')},
         safety=immutable(out/'safety.json',safety),permission_scope=permission_scope,failure_signature=failure_signature,
         signature_present=present,stop_position=position,costs=costs,validation_config=comparison)
+    gpu={}
+    if origin:
+        gpu['gpu_measurement']=immutable(out/'gpu-measurement.json',dict(source='harness_gpu_meter',scope='origin_scene_replays',
+            cell=cell,version=version,bundle_sha256=bundle_ref['sha256'],attempt_id=bundle['attempt_id'],
+            gpu_seconds=costs['gpu_seconds'],samples=sum(m['samples'] for m in measurements),replays=measurements,
+            scene_replay_observations=observations,scene_replay_states=states))
+        descriptor.update(gpu)
     ref=immutable(out/'verdict.json',descriptor)
-    if probe_input is None:
+    if probe_input is None and not origin:
         trial=dict(schema_version='attentionbench.dev-v2-trial.v1',execution_import_id=execution_import_id,validation_descriptor='verdict.json',
             exposure=binding['exposure'],memory_id=binding['memory_id'] if binding['exposure']=='candidate_validation' else None,
             validation_grant_id=grant['grant_id'],costs=costs,developer_model=developer_model,budget=budget,validation_config=immutable(out/'comparison.json',comparison))
         immutable(out/'trial.json',trial)
     catalog=dict(role='validator',root=str(out),context=executor_catalog['context'],files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir()})
-    return dict(status='passed' if all(checks.values()) else 'failed',descriptor=ref,catalog=catalog,checks=checks,errors=errors)
+    return dict(status='passed' if all(checks.values()) else 'failed',descriptor=ref,catalog=catalog,checks=checks,errors=errors,**gpu)
 
 
 def replay_fresh(task_id,seed,config):

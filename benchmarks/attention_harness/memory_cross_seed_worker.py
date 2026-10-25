@@ -1,6 +1,6 @@
 """Cross-seed transitions called only through the M-8 gating/lock/budget loop."""
 import hashlib
-from .memory_validation_worker import settings
+from .memory_validation_worker import settings,prepare_origin,check_dispatch_quota
 
 
 def progress(current):
@@ -21,11 +21,18 @@ def choose(state,deps,save,status):
         batch.update(pair_index=0,arm='control',active=False,title=waiting['title'])
         state['current']=batch;state.pop('cross_waiting');save()
         return advance(state,deps,None,save,status)
-    state['cross_queue']=deps.client.cross_seed_queue();state['skipped_seeds']=[];save()
+    queued=deps.client.cross_seed_queue()
+    closed={r['memory_id'] for r in state.get('results',[]) if r.get('origin_failure')}
+    state['cross_queue']=[n for n in queued if n['memory_id'] not in closed];state['skipped_seeds']=[];save()
+    if queued and not state['cross_queue']:
+        return status(next(r['origin_failure']['reason'] for r in reversed(state['results']) if r.get('origin_failure')))
     pending=state.get('cross_pending')
     if not pending:
         if not state['cross_queue']:return status('Cross-seed checks waiting for scene-trusted notes')
-        note=state['cross_queue'][0];tested={r['target_seed'] for r in note['seeds']}
+        note=state['cross_queue'][0]
+        preparing=prepare_origin(state,deps,note,save,status,cross_seed=True)
+        if preparing is not None:return preparing
+        tested={r['target_seed'] for r in note['seeds']}
         for seed in config.get('candidate_seeds',[]):
             if seed in tested or seed==note['source_seed']:continue
             try:target=deps.runner.admit_seed(note,seed,config.get('contracts',{}).get(str(seed)))
@@ -49,10 +56,12 @@ def advance(state,deps,reason,save,status):
     if current.get('active'):
         if current.get('dispatch_pending'):
             if reason:return status(reason)
+            check_dispatch_quota(state,deps,save)
             deps.runner.start(current,current['arm_id']);current['dispatch_pending']=False;save();return status(progress(current))
         phase=deps.runner.poll(current)
         if phase=='pending':
             if reason:return status(reason)
+            check_dispatch_quota(state,deps,save)
             deps.runner.start(current,current['arm_id']);return status(progress(current))
         if phase=='completed':
             result=deps.runner.finish(current)
@@ -78,7 +87,9 @@ def advance(state,deps,reason,save,status):
             if reason:
                 if not current.get('pause_requested'):deps.runner.pause(current);current['pause_requested']=True
                 return status(reason)
-            if phase=='paused':deps.runner.resume(current);current['pause_requested']=False
+            if phase=='paused':
+                check_dispatch_quota(state,deps,save)
+                deps.runner.resume(current);current['pause_requested']=False
             return status('Automatic checks resuming' if phase=='paused' else 'Automatic checks waiting for pause')
         else:return status(progress(current))
     if current['stage']=='pairs' and current['pair_index']==len(current['plan']['pairs']):
@@ -90,5 +101,6 @@ def advance(state,deps,reason,save,status):
         if state['runs_today']>=20:return status('Automatic checks done for today (20 runs).')
         counted[arm_id]=state['day'];state['runs_today']+=1
     current.update(arm_id=arm_id,active=True,dispatch_pending=True);save()
+    check_dispatch_quota(state,deps,save)
     deps.runner.start(current,arm_id);current['dispatch_pending']=False;save()
     return status(progress(current))

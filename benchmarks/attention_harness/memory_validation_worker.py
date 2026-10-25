@@ -7,6 +7,9 @@ import argparse,fcntl,hashlib,importlib,json,math,os,sqlite3,time
 from datetime import datetime
 from pathlib import Path
 
+QUOTA_MAX_AGE = 10 * 60
+QUOTA_UNREADABLE = 'Automatic checks paused: Codex weekly use could not be read.'
+
 
 def atomic(path,value):
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
@@ -46,28 +49,109 @@ def set_enabled(root,enabled):
     atomic(Path(root)/'autovalidate.json',value)
 
 
-def weekly_quota(home=None,*,now=None):
-    """Maximum weekly use from each recent session's latest rate-limit receipt."""
+def weekly_quota_snapshot(home=None,*,now=None):
+    """Keep the conservative session maximum and the newest weekly receipt time.
+
+    File mtime only selects recent sessions; it cannot prove a reading is fresh.
+    Ephemeral calls and unrelated events must not advance the observation time.
+    """
     root=Path(home).expanduser() if home is not None else Path.home()
-    cutoff=(time.time() if now is None else now)-86400;values=[]
+    now=time.time() if now is None else now
+    cutoff=now-86400;values=[];stamps=[]
     for path in root.joinpath('.codex','sessions').rglob('*.jsonl'):
         try:
             if path.stat().st_mtime<cutoff:continue
-            latest=None
+            latest=None;stamp=None
             with path.open() as stream:
                 for line in stream:
                     try:
                         row=json.loads(line);limits=row.get('payload',{}).get('rate_limits') or row.get('rate_limits')
-                        if isinstance(limits,dict):latest=limits
+                        if isinstance(limits,dict):latest=limits;stamp=row.get('timestamp')
                     except (ValueError,TypeError,AttributeError):continue
             for key in ('primary','secondary'):
                 window=(latest or {}).get(key)
                 if not isinstance(window,dict) or window.get('window_minutes')!=10080:continue
                 used=window.get('used_percent')
-                if type(used) in (int,float) and math.isfinite(used) and 0<=used<=100:values.append(used)
+                if valid_percent(used):
+                    values.append(used)
+                    try:
+                        observed=datetime.fromisoformat(stamp.replace('Z','+00:00'))
+                        if observed.tzinfo is not None and observed.timestamp()<=now:stamps.append(observed.timestamp())
+                    except (ValueError,TypeError,AttributeError,OverflowError):pass
         except (OSError,UnicodeError):continue
     if not values:raise ValueError('Codex weekly quota is unreadable')
-    return max(values)
+    return dict(used_percent=max(values),observed_at=max(stamps) if stamps else None)
+
+
+def weekly_quota(home=None,*,now=None):
+    """Compatibility percentage projection; worker gates require the snapshot."""
+    return weekly_quota_snapshot(home,now=now)['used_percent']
+
+
+def refresh_quota(*,home=None,command=None,timeout=60):
+    """One bounded, non-ephemeral call. Inject argv (or deps.refresh_quota) in tests."""
+    import subprocess,tempfile
+    command=command if command is not None else [
+        'codex','exec','-m','gpt-6-astra','-s','read-only','--skip-git-repo-check',
+        'Reply with the single word OK.']
+    env=os.environ.copy()
+    # Match the session directory read by weekly_quota_snapshot, even when the
+    # worker inherited a different CODEX_HOME from its launcher.
+    root=Path(home).expanduser() if home is not None else Path.home()
+    env['CODEX_HOME']=str(root/'.codex')
+    with tempfile.TemporaryDirectory(prefix='codex-quota-') as scratch:
+        subprocess.run(command,cwd=scratch,env=env,stdin=subprocess.DEVNULL,
+                       stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=timeout,check=True)
+
+
+def valid_percent(value):
+    return type(value) in (int,float) and math.isfinite(value) and 0<=value<=100
+
+
+def quota_fresh(stamp,now):
+    return type(stamp) in (int,float) and math.isfinite(stamp) and 0<=now-stamp<=QUOTA_MAX_AGE
+
+
+def quota_stop(state,deps,save,*,allow_refresh=True):
+    """Refresh stale observations once, then apply the unchanged quota stops."""
+    def read():
+        try:
+            value=deps.quota()
+            if not isinstance(value,dict) or not valid_percent(value.get('used_percent')):return None
+            quota=value['used_percent']
+            if state.get('day_start_quota') is None:state['day_start_quota']=quota
+            stamp=value.get('observed_at')
+            state.update(weekly_quota=quota,weekly_quota_at=stamp if type(stamp) in (int,float) and math.isfinite(stamp) else None)
+            return value
+        except Exception:return None
+    value=read()
+    if value is None or not quota_fresh(value.get('observed_at'),deps.clock()):
+        if not allow_refresh:return QUOTA_UNREADABLE
+        attempt=dict(at=deps.clock(),before_percent=value['used_percent'] if value else None,after_percent=None,status='refreshing')
+        state.setdefault('quota_refreshes',[]).append(attempt);save()
+        failed=False
+        try:deps.refresh_quota()
+        except Exception:failed=True
+        value=read()
+        attempt['after_percent']=value['used_percent'] if value else None
+        if failed or value is None or not quota_fresh(value.get('observed_at'),deps.clock()):
+            attempt.update(status='failed',finished_at=deps.clock());save();return QUOTA_UNREADABLE
+        attempt.update(status='refreshed',finished_at=deps.clock());save()
+    quota=value['used_percent']
+    if quota>=70:return f'Automatic checks paused: Codex weekly use is at {quota:g}%.'
+    if quota-state['day_start_quota']>5:return 'Automatic checks paused: Codex weekly use rose by more than 5 points today.'
+    return None
+
+
+class QuotaStop(Exception):
+    pass
+
+
+def check_dispatch_quota(state,deps,save):
+    # Provisioning or importing can take time after tick's initial gate.
+    if not quota_fresh(state.get('weekly_quota_at'),deps.clock()):
+        reason=quota_stop(state,deps,save)
+        if reason:raise QuotaStop(reason)
 
 
 def run_activity(ledgers,*,own_experiment=None,own_pids=()):
@@ -109,8 +193,54 @@ def freeze_plan(memory_id,origin,config,context,signature,pairs,*,policy_id,budg
         origin_source_sha256=origin['sha256'],validation_config_sha256=config['sha256'],dev_model=dev_model)
 
 
+def prepare_origin(state,deps,note,save,status,*,cross_seed=False):
+    """Reserve one replay run before dispatch, through the ordinary worker gates."""
+    needed=getattr(deps.runner,'origin_needed',lambda note:None)(note)
+    if needed is None:return None
+    key=needed['origin_key']
+    if key in state.get('origin_failures',{}):return status(state['origin_failures'][key]['reason'])
+    if needed.get('receipt_ready'):
+        needed['cross_seed']=cross_seed;state['current']=needed;save()
+        return advance_origin(state,deps,None,save,status)
+    if state['runs_today']>=20:return status('Automatic checks done for today (20 runs).')
+    counted=state.setdefault('counted',{})
+    if key not in counted:counted[key]=state['day'];state['runs_today']+=1
+    needed.update(dispatch_pending=True,cross_seed=cross_seed);state['current']=needed;save()
+    check_dispatch_quota(state,deps,save)
+    deps.runner.start(needed,key);needed['dispatch_pending']=False;save()
+    return status('Preparing origin evidence: '+needed['title'])
+
+
+def advance_origin(state,deps,reason,save,status):
+    current=state['current']
+    if current.get('cross_seed') and not settings(deps.root).get('cross_seed',{}).get('enabled',False):reason=reason or 'Cross-seed checks are Off'
+    if current.get('dispatch_pending'):
+        if reason:return status(reason)
+        check_dispatch_quota(state,deps,save)
+        deps.runner.start(current,current['origin_key']);current['dispatch_pending']=False;save()
+        return status('Preparing origin evidence: '+current['title'])
+    phase=deps.runner.poll(current)
+    if phase=='completed':
+        result=deps.runner.finish(current)
+        if result['status']!='passed':
+            state.setdefault('origin_failures',{})[current['origin_key']]=result
+            state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status='inconclusive',note_remains='trusted' if current.get('cross_seed') else 'provisional',decision=dict(decision='inconclusive',reason=result['reason']),origin_failure=result))
+            state.pop('pending',None);state.pop('cross_pending',None)
+        state['current']=None;save();return status(result['reason'])
+    if reason:
+        if not current.get('pause_requested'):deps.runner.pause(current);current['pause_requested']=True;save()
+        return status(reason)
+    if current.get('pause_requested'):
+        check_dispatch_quota(state,deps,save)
+        deps.runner.resume(current);current['pause_requested']=False;save()
+    if phase=='pending':
+        check_dispatch_quota(state,deps,save)
+        deps.runner.start(current,current['origin_key'])
+    return status('Preparing origin evidence: '+current['title'])
+
+
 def tick(state,deps):
-    """One durable transition. deps: root, save, client, runner, clock, quota, activity.
+    """One durable transition. deps includes quota snapshots and refresh_quota.
 
     runner.begin(note, id) returns a frozen current record with candidate/plan.
     runner.start(current, arm_id) launches/reconciles exactly one ledger arm;
@@ -133,26 +263,24 @@ def tick(state,deps):
         now=deps.clock();day=datetime.fromtimestamp(now).astimezone().date().isoformat()
         if state.get('day')!=day:state.update(day=day,runs_today=0,day_start_quota=None)
         reason=deps.activity(current)
-        try:
-            quota=deps.quota()
-            if type(quota) not in (int,float) or not math.isfinite(quota) or not 0<=quota<=100:raise ValueError()
-            if state.get('day_start_quota') is None:state['day_start_quota']=quota
-            state['weekly_quota']=quota
-            if quota>=70:reason=reason or f'Automatic checks paused: Codex weekly use is at {quota:g}%.'
-            elif quota-state['day_start_quota']>5:reason=reason or 'Automatic checks paused: Codex weekly use rose by more than 5 points today.'
-        except Exception:reason=reason or 'Automatic checks paused: Codex weekly quota is unreadable.'
+        quota_reason=quota_stop(state,deps,save,allow_refresh=not reason)
+        reason=reason or quota_reason
         if state.get('runs_today',0)>=20 and not (current and current.get('active')):reason=reason or 'Automatic checks done for today (20 runs).'
+        if current and current.get('kind')=='origin':
+            return advance_origin(state,deps,reason,save,status)
         if current and current.get('kind')=='cross_seed':
             from .memory_cross_seed_worker import advance
             return advance(state,deps,reason,save,status)
         if current and current.get('active'):
             if current.get('dispatch_pending'):
                 if reason:return status(reason)
+                check_dispatch_quota(state,deps,save)
                 deps.runner.start(current,current['arm_id']);current['dispatch_pending']=False;save()
                 return status(f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
             phase=deps.runner.poll(current)
             if phase=='pending':
                 if reason:return status(reason)
+                check_dispatch_quota(state,deps,save)
                 deps.runner.start(current,current['arm_id'])
                 return status('Automatic checks resuming')
             if phase=='completed':
@@ -183,7 +311,9 @@ def tick(state,deps):
                 if reason:
                     if not current.get('pause_requested'):deps.runner.pause(current);current['pause_requested']=True
                     return status(reason)
-                if phase=='paused':deps.runner.resume(current);current['pause_requested']=False
+                if phase=='paused':
+                    check_dispatch_quota(state,deps,save)
+                    deps.runner.resume(current);current['pause_requested']=False
                 return status('Automatic checks resuming' if phase=='paused' else 'Automatic checks waiting for pause')
             else:return status(f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
         if reason:return status(reason)
@@ -194,7 +324,11 @@ def tick(state,deps):
             state['current']=None;save()
             return status(('Note checked and trusted: ' if outcome=='trusted' else 'Note rejected after check: ')+current['title'])
         if current is None:
-            state['queue']=deps.client.validation_queue();save()
+            queued=deps.client.validation_queue()
+            closed={r['memory_id'] for r in state.get('results',[]) if r.get('origin_failure')}
+            state['queue']=[n for n in queued if n['memory_id'] not in closed];save()
+            if queued and not state['queue'] and not settings(deps.root).get('cross_seed',{}).get('enabled',False):
+                return status(next(r['origin_failure']['reason'] for r in reversed(state['results']) if r.get('origin_failure')))
             if not state.get('pending') and not state['queue']:
                 from .memory_cross_seed_worker import choose
                 return choose(state,deps,save,status)
@@ -203,7 +337,10 @@ def tick(state,deps):
             operation=hashlib.sha256(f"{note['memory_id']}:{note['version']}:{note['uses']}".encode()).hexdigest()[:24]
             # Persist the chosen head before candidate creation removes it from the queue.
             state['pending']=state.get('pending') or dict(note=note,operation=operation);save()
-            pending=state['pending'];current=deps.runner.begin(pending['note'],pending['operation'])
+            pending=state['pending']
+            preparing=prepare_origin(state,deps,pending['note'],save,status)
+            if preparing is not None:return preparing
+            current=deps.runner.begin(pending['note'],pending['operation'])
             current.update(pair_index=0,arm='control',active=False,title=pending['note'].get('title') or 'Untitled note')
             state['current']=current;state.pop('pending');save()
         pair=current['plan']['pairs'][current['pair_index']];arm_id=pair[current['arm']+'_cell']
@@ -214,9 +351,12 @@ def tick(state,deps):
             if state['runs_today']>=20:return status('Automatic checks done for today (20 runs).')
             counted[arm_id]=day;state['runs_today']+=1
         current.update(arm_id=arm_id,active=True,dispatch_pending=True);save()
+        check_dispatch_quota(state,deps,save)
         deps.runner.start(current,arm_id)
         current['dispatch_pending']=False;save()
         return status(f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
+    except QuotaStop as exc:
+        return status(str(exc))
     except Exception as exc:
         from .notices import safe_detail
         return status('Automatic checks paused: '+safe_detail(str(exc) or type(exc).__name__))
@@ -251,7 +391,7 @@ def main(argv=None):
                 else:
                     class Missing:
                         def __getattr__(self,name):raise RuntimeError('authorized ledger adapter is not configured')
-                    deps=SimpleNamespace(client=Missing(),runner=Missing(),activity=lambda current:None,quota=weekly_quota)
+                    deps=SimpleNamespace(client=Missing(),runner=Missing(),activity=lambda current:None,quota=weekly_quota_snapshot,refresh_quota=refresh_quota)
                 deps.root=root;deps.clock=time.time;deps.save=lambda value:atomic(path,value)
             tick(state,deps)
             print(state['status'],flush=True)

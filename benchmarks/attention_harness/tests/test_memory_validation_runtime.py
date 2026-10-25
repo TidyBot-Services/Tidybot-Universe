@@ -106,8 +106,14 @@ def test_default_factory_and_own_experiment_before_first_arm(tmp_path,monkeypatc
     assert worker.settings(root)=={'enabled':False}
     client=object();monkeypatch.setattr(MemoryServiceClient,'offline',lambda *a,**kw:client)
     observed=[];monkeypatch.setattr(worker,'run_activity',lambda ledgers,**kw:observed.append(kw['own_experiment']))
-    deps=runtime.build_runtime(root)
+    quota_calls=[];snapshot=dict(used_percent=12,observed_at=1700000000)
+    monkeypatch.setattr(worker,'weekly_quota_snapshot',lambda home:quota_calls.append(('read',home)) or snapshot)
+    monkeypatch.setattr(worker,'refresh_quota',lambda **kw:quota_calls.append(('refresh',kw)))
+    deps=runtime.build_runtime(root,quota_probe_command=['fake-quota-probe'])
     assert isinstance(deps.runner.provision,Provisioner) and deps.runner.provision.client is client
     deps.activity(dict(experiment_id='validation-owned'))
     assert observed==['validation-owned']
+    assert deps.quota()==snapshot
+    deps.refresh_quota()
+    assert quota_calls==[('read',None),('refresh',dict(home=None,command=['fake-quota-probe']))]
     deps.runner.pool.shutdown()

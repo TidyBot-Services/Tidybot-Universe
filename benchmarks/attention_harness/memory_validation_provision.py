@@ -1,7 +1,8 @@
 """Default offline provisioning: sealed originals in, ten bounded Dev arms out.
 
-Catalog references are the output of dev_v2_memory_import.prepare, pinned in the
-runtime inventory by the importer. Originals and their ledgers are read-only.
+Catalog references are the output of dev_v2_memory_import.prepare, sealed by the
+worker origin phase or supplied as an explicit runtime override. Originals and
+their ledgers are read-only.
 """
 import hashlib,json,math,re,sqlite3,time
 from datetime import datetime
@@ -81,8 +82,11 @@ class Provisioner:
         self.root=Path(config['experiments_root']).resolve()
         self.state_root=Path(config['state_root']).resolve()
 
-    def catalogs(self):
+    def catalogs(self,note=None):
         refs=self.config.get('evidence_catalogs')
+        if not refs and note is not None:
+            from .memory_origin_evidence import receipt_catalogs
+            refs=receipt_catalogs(self,note)
         if not refs:raise DevConflict('Origin import catalogs are not configured')
         catalogs={cid:read(ref) for cid,ref in refs.items()}
         from .memory_source_catalogs import verify_source_link,registration_order
@@ -99,7 +103,7 @@ class Provisioner:
     def resolve(self,note):
         if self.client is None:raise DevConflict('Memory provenance reader is unavailable')
         provenance=self.client.provenance(note['memory_id']);origin=provenance.get('origin',{})
-        summary=note['source_summary'];catalogs=self.catalogs()
+        summary=note['source_summary'];catalogs=self.catalogs(note)
         if any(origin.get(k)!=summary[k] for k in ('experiment_id','cell')) or origin.get('origin_version')!=summary['version']:raise DevConflict('Note source summary differs from its sealed provenance')
         candidates=[]
         for cid,catalog in catalogs.items():
@@ -169,14 +173,14 @@ class Provisioner:
         return dict(experiment_id=exp_id,memory_id='validation-'+operation,origin=origin['source'],origin_feedback=resolved['feedback'],config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model='gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
 
     @staticmethod
-    def gpu_seconds(store,cell):
+    def gpu_seconds(store,cell,version=1):
         """Only accept independently measured, sealed, per-execution evidence."""
-        job=job_for(store.cell(cell),1,'execute')
+        job=job_for(store.cell(cell),version,'execute')
         if not job or job.get('state')!='settled':raise DevConflict('GPU measurement requires a settled execution')
         ref=job['receipt'].get('gpu_measurement')
         if not ref:raise DevConflict('Independent GPU time measurement is unavailable for this arm')
         measured=read(ref);bundle=read(job['receipt']['bundle'])
-        if measured.get('source')!='harness_gpu_meter' or measured.get('cell')!=cell or measured.get('version')!=1 or measured.get('bundle_sha256')!=job['receipt']['bundle']['sha256'] or measured.get('attempt_id')!=bundle['attempt_id']:raise DevConflict('GPU measurement is not bound to this execution')
+        if measured.get('source')!='harness_gpu_meter' or measured.get('cell')!=cell or measured.get('version')!=version or measured.get('bundle_sha256')!=job['receipt']['bundle']['sha256'] or measured.get('attempt_id')!=bundle['attempt_id']:raise DevConflict('GPU measurement is not bound to this execution')
         value=measured.get('gpu_seconds')
         if type(value) not in (int,float) or not math.isfinite(value) or value<0 or type(measured.get('samples')) is not int or measured['samples']<=0:raise DevConflict('Independent GPU time measurement is unavailable for this arm')
         return value

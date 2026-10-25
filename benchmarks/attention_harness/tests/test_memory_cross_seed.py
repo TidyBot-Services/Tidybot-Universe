@@ -115,13 +115,13 @@ def test_same_scene_first_and_cross_missing_skipped(tmp_path):
 def test_cross_shared_pause_resume_and_quota(tmp_path,reason):
     d=worker_deps(tmp_path);state={};tick(state,d)
     if reason=='activity':d.activity=lambda c:'The frozen main matrix is planned or running'
-    if reason=='weekly':d.quota=lambda:70
-    if reason=='daily':d.quota=lambda:16
+    if reason=='weekly':d.quota=lambda:dict(used_percent=70,observed_at=d.clock())
+    if reason=='daily':d.quota=lambda:dict(used_percent=16,observed_at=d.clock())
     if reason=='unknown':d.quota=lambda:None
     if reason=='disabled':
         value=settings(tmp_path);value['cross_seed']['enabled']=False;atomic(tmp_path/'autovalidate.json',value)
     tick(state,d);assert d.runner.pauses==1 and state['runs_today']==1
-    d.activity=lambda c:None;d.quota=lambda:10
+    d.activity=lambda c:None;d.quota=lambda:dict(used_percent=10,observed_at=d.clock())
     value=settings(tmp_path);value['cross_seed']['enabled']=True;atomic(tmp_path/'autovalidate.json',value)
     tick(state,d);assert d.runner.resumes==1 and state['runs_today']==1
 

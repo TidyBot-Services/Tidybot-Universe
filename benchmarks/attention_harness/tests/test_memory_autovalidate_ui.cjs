@@ -65,3 +65,34 @@ test('cross-seed scenes, requirements, promotion and one-level demotion',()=>{
  const probe=automaticHtml({enabled:true,current:{title:'Cup',stage:'probe',seed:114,arm:'probe'}});assert.ok(probe.includes('probe without notes'));assert.ok(!probe.includes('pair undefined'));
  const pair=automaticHtml({enabled:true,current:{title:'Cup',seed:104,pair:2,pairs_needed:3,arm:'control'}});assert.ok(pair.includes('pair 2 of 3'));
 });
+
+test('origin preparation shows a phase without fictional pairs or Memory exposure',()=>{
+ const html=automaticHtml({enabled:true,runs_today:1,current:{title:'Cup <source>',stage:'origin',paused:true}});
+ assert.ok(html.includes('Preparing origin evidence · paused'));
+ assert.ok(html.includes('Cup &lt;source&gt;'));
+ assert.ok(!html.includes('pair undefined')&&!html.includes('undefined run'));
+ assert.ok(!html.includes('ac-dots'));
+});
+
+test('failed cross-seed origin preparation preserves the displayed existing trust',()=>{
+ const html=automaticHtml({results:[{title:'Cup',status:'inconclusive',note_remains:'trusted',reason:'Origin scene did not reproduce'}]});
+ assert.ok(html.includes('note keeps its existing trust'));
+ assert.ok(!html.includes('note stays Unvalidated'));
+});
+
+test('weekly quota shows fresh, stale and unknown receipt ages beside the percentage',()=>{
+ for(const [age,label] of [[0,'reading less than a minute ago'],[125,'reading 2 min ago'],[600,'reading 10 min ago'],[601,'reading 10 min ago · stale'],[3600,'reading 60 min ago · stale'],[null,'reading age unknown'],[NaN,'reading age unknown']]){
+  const html=automaticHtml({weekly_quota:8,weekly_quota_age_seconds:age});
+  assert.ok(html.includes(`Codex weekly use: 8% (${label})`),html);
+ }
+ assert.ok(!automaticHtml({weekly_quota_age_seconds:30}).includes('reading less'));
+});
+
+test('quota refresh history shows time, before and after, and plain failure',()=>{
+ const html=automaticHtml({quota_refreshes:[{at:1792713600,before_percent:7,after_percent:8,status:'refreshed'}]});
+ assert.ok(html.includes('Last Codex refresh at '));assert.ok(html.includes('7% → 8% · reading refreshed'));
+ const failed=automaticHtml({quota_refreshes:[{before_percent:8,after_percent:null,status:'failed'}]});
+ assert.ok(failed.includes('8% → unavailable · could not read weekly use'));
+ const unsafe=automaticHtml({quota_refreshes:[{at:'<script>',before_percent:'<script>',after_percent:NaN,status:'<script>'}]});
+ assert.ok(!unsafe.includes('<script>'));assert.ok(unsafe.includes('status unavailable'));
+});
