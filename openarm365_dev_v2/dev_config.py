@@ -51,13 +51,34 @@ def verify_lock(ref,*,expected_source_root=None):
     for name,digest in lock['files'].items():
         if sha(name)!=digest:raise ValueError('resource source drift: '+name)
     planner=lock['planner_lock']
-    if planner!={'path':str(LOCK),'sha256':LOCK_SHA}:
+    if lock.get('planner_deployment_kind')=='dev-local':
+        from curobo_v2.identity import load_lock
+        from curobo_v2.dev_local import is_dev_local
+        runtime,actual=load_lock(planner['path'],tier='dev',boundary='dev_loop')
+        if not is_dev_local(runtime) or actual!=planner['sha256']:raise ValueError('dev-local planner lock drift')
+    elif planner!={'path':str(LOCK),'sha256':LOCK_SHA}:
         pin=R3_20261025.to_dict()['planner_deployment']
         if planner!={'path':pin['lock_path'],'sha256':pin['sha256']}:raise ValueError('official V2 lock drift')
     if sha(planner['path'])!=planner['sha256']:raise ValueError('official V2 lock drift')
     return lock
-def make_lock(path, *, execution_settings=None):
+def _planner_source(value, tier='dev', boundary='dev_loop'):
+    if boundary!='dev_loop' or tier!='dev':raise ValueError('planner_source dev-local requires dev_loop boundary and dev tier')
+    if not isinstance(value,dict) or set(value)!={'kind','source_root'} or value['kind']!='dev-local':raise ValueError('invalid planner_source')
+    root=value['source_root']
+    if not isinstance(root,str) or not Path(root).is_absolute() or not Path(root).is_dir():raise ValueError('planner_source source_root must be an absolute directory')
+    return value
+
+
+def _source_settings(source):
+    from dataclasses import replace
+    from curobo_v2.dev_local import materialize
+    snapshot=materialize(_planner_source(source)['source_root'])
+    return from_config(replace(R3_20261025,planner_deployment={k:snapshot[k] for k in ('lock_path','sha256')}).to_dict())
+
+
+def make_lock(path, *, execution_settings=None, planner_source=None):
     path=Path(path)
+    if planner_source is not None:execution_settings=_source_settings(planner_source)
     pin=None if execution_settings is None else from_config(execution_settings.to_dict()).planner_deployment
     planner_path=LOCK if pin is None else Path(pin['lock_path'])
     planner_sha=LOCK_SHA if pin is None else pin['sha256']
@@ -77,6 +98,9 @@ def make_lock(path, *, execution_settings=None):
         files.extend(p for p in folder.rglob('*.py') if '__pycache__' not in p.parts)
     models=model_sources();files.extend(Path(p) for p in models)
     value={'model_sources':models,'schema':'attentionbench.dev-identity-lock.v2','source_root':str(ROOT),'source_sets':{str(ROOT/f):sorted(str(p.absolute()) for p in (ROOT/f).rglob('*.py') if '__pycache__' not in p.parts) for f in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']},'files':{str(p.absolute()):sha(p) for p in sorted(set(files))},'planner_lock':{'path':str(planner_path),'sha256':planner_sha},'sim_python':str(SIM_PYTHON),'sim_source_root':str(ROBocasa),'task_source_root':str(ROBOSUITE),'asset_manifest':str(ASSETS),'formal_eligible':False}
+    if execution_settings is not None:
+        from curobo_v2.execution_settings import receipt_fields
+        if receipt_fields(execution_settings).get('deployment_kind')=='dev-local':value['planner_deployment_kind']='dev-local'
     path.parent.mkdir(parents=True,exist_ok=True)
     with path.open('x') as f:json.dump(value,f,sort_keys=True,indent=2)
     path.chmod(0o444)
@@ -89,19 +113,30 @@ def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop'):
     return from_config(R3_20261025.to_dict()) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
 
 
-def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev'):
-    settings=new_execution_settings(budget_tier=budget_tier,budget_boundary=budget_boundary)
+def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None):
+    if planner_source is not None:_planner_source(planner_source,budget_tier,budget_boundary)
+    settings=_source_settings(planner_source) if planner_source is not None else new_execution_settings(budget_tier=budget_tier,budget_boundary=budget_boundary)
     return _make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
-        budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings)
+        budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source)
 
 
-def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None):
+def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None):
+    if planner_source is not None:
+        _planner_source(planner_source,budget_tier,budget_boundary)
+        from curobo_v2.identity import load_lock
+        from curobo_v2.dev_local import is_dev_local
+        if execution_settings is None:raise ValueError('planner_source requires dev-local execution_settings')
+        runtime,actual=load_lock(execution_settings.planner_deployment['lock_path'],tier='dev',boundary='dev_loop')
+        if not is_dev_local(runtime) or actual!=execution_settings.planner_deployment['sha256']:raise ValueError('planner_source requires dev-local planner pin')
     if budget_boundary not in ('dev_loop','formal'):raise ValueError('unknown budget boundary')
     check_tier(budget_tier)
     if budget_boundary=='formal' and budget_tier!='legacy':raise ValueError('formal boundary refuses dev budget tier')
     limits=formal_task_limits() if budget_boundary=='formal' else task_limits(budget_tier)
     t=validate_selection(task_id,seed,layout_id,style_id)
     identity=verify_lock(lock,expected_source_root=expected_source_root)
+    if identity is not None and identity.get('planner_deployment_kind')=='dev-local':
+        if planner_source is None:raise ValueError('dev-local lock requires planner_source')
+        if execution_settings is None:raise ValueError('dev-local lock requires execution_settings')
     pin={'path':str(LOCK),'sha256':LOCK_SHA} if execution_settings is None else dict(
         path=execution_settings.planner_deployment['lock_path'],sha256=execution_settings.planner_deployment['sha256'])
     if identity is not None and identity['planner_lock']!=pin:raise ValueError('Dev identity planner lock differs from execution settings')
@@ -120,10 +155,13 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
     c['initial_joint_targets']=initial_joints(task_id)
     if budget_tier=='dev':c['budget_tier']='dev'
     if execution_settings is not None:c['execution_settings']=execution_settings.to_dict()
+    if planner_source is not None:c['planner_source']=dict(planner_source)
     return c
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
     tier=c.get('budget_tier','legacy')
+    if 'planner_source' in c:_planner_source(c['planner_source'],tier,budget_boundary)
+    if c.get('planner_source') is not None and c.get('runner_boundary')!='dev_loop':raise ValueError('planner_source dev-local requires dev_loop boundary and dev tier')
     source=c.get('model_source','parcc')
     if source not in ('parcc','codex') or (source=='codex' and (tier!='dev' or budget_boundary=='formal')):raise ValueError('Codex model source requires dev tier')
     settings=None
@@ -131,7 +169,7 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         if budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop' or tier!='dev':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
         if c['execution_settings'] is None:raise ValueError('execution_settings: complete r3 block required')
         settings=from_config(c['execution_settings'])
-    expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings)
+    expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'))
     if source=='codex':expected['model_source']='codex'
     if c.get('contact_exempt_objects') not in ('none','movable_objects'):
         raise ValueError('contact_exempt_objects must be none or movable_objects')

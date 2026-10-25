@@ -15,7 +15,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
@@ -74,6 +74,11 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     if selection.get('eval_agent',{}).get('prompt_version')==OLD_PROMPT_VERSION or selection.get('advisor_proxy',{}).get('prompt_version')==OLD_ADVISOR_PROMPT_VERSION:
         raise ValueError('new experiments require current Eval and Advisor prompts')
     budget_tier=selection.get('budget_tier','dev')
+    planner_source=selection.get('planner_source')
+    if 'planner_source' in selection:
+        from openarm365_dev_v2.dev_config import _planner_source
+        _planner_source(planner_source,budget_tier)
+    planner_args={} if planner_source is None else dict(planner_source=planner_source)
     task_limits(budget_tier)
     # Run notes are local metadata, also supported by the daily legacy budget
     # envelope without changing its runtime, budget or accounting rules.
@@ -129,6 +134,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         if any(legacy_configuration['cell_budget'].get(k,0)>legacy_configuration['experiment_budget'].get(k,0) for k in RESOURCES):raise ValueError('cell exceeds experiment resource budget')
     exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
+    if planner_source is not None:normalized['planner_source']=dict(planner_source)
     if 'run_notes' in selection:normalized['run_notes']=selection['run_notes']
     if 'memory_family' in selection:normalized['memory_family']=selection['memory_family']
     if fork_record is not None:normalized['fork']=dict(selection['fork'])
@@ -200,10 +206,10 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     else:
         settings=new_execution_settings(budget_tier=budget_tier)
         ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path,
-            **({} if settings is None else dict(execution_settings=settings)))
+            **({} if settings is None else dict(execution_settings=settings)),**planner_args)
     if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])
     else:verify_lock(ref)
-    configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier) for t in tasks for s in seeds}
+    configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier,**planner_args) for t in tasks for s in seeds}
     sources={t:{'source':Path(get_task(t).initial_policy).read_text(),'sha256':sha(get_task(t).initial_policy)} for t in tasks}
     demos={t:original['demos'][t] for t in tasks} if validation_origin is not None else {t:DemoProvider().freeze(t) for t in tasks}
     # All base conditions live once, outside the policy specifications.

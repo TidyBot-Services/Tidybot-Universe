@@ -126,7 +126,7 @@ def export_context(provision,found):
     from .dev_planner_memory import context
     p=found['provenance'];config=found['config']
     ctx=context(config,p['artifact']['applicability']['namespace'])
-    if ctx.get('execution_profile')!=p['artifact']['applicability'].get('execution_profile'):
+    if any(ctx.get(k)!=p['artifact']['applicability'].get(k) for k in ('execution_profile','planner_dev_local_sha256')):
         raise DevConflict('Origin execution profile differs from the note')
     sources=manifest_sources(found['experiment']['manifest'],ctx,provision.root,contract=config.get('scene_contract'))
     return ctx,sources

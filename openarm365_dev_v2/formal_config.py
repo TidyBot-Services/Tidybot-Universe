@@ -45,9 +45,26 @@ def make_formal_config(task_id, seed, lock, *, attempt_wall_seconds, whole_case_
     return c
 
 
+def reject_dev_local(c):
+    if ('planner_source' in c or c.get('deployment_kind')=='dev-local'
+            or c.get('planner_deployment_kind')=='dev-local'
+            or c.get('provenance',{}).get('deployment_kind')=='dev-local'):
+        raise ValueError('formal boundary rejects planner_source and dev-local deployments')
+    pin=c.get('execution_settings',{}).get('planner_deployment',{})
+    ref=c.get('dev_lock',{})
+    from pathlib import Path
+    import json
+    for path in (pin.get('lock_path'),ref.get('path'),c.get('planner_lock',{}).get('path')):
+        if path is not None and Path(path).is_file():
+            value=json.loads(Path(path).read_bytes())
+            if value.get('planner_deployment_kind')=='dev-local' or value.get('provenance',{}).get('deployment_kind')=='dev-local':
+                raise ValueError('formal boundary rejects dev-local lock')
+
+
 def validate_formal_config(c, *, expected_source_root=None):
     if not isinstance(c, dict) or c.get('schema_version') != SCHEMA:
         raise ValueError('OpenArm365 formal configuration required')
+    reject_dev_local(c)
     if c.get('runner_boundary') != 'formal':
         raise ValueError('formal configuration must declare the formal boundary')
     if 'eval_agent' in c or 'human_proxy' in c:

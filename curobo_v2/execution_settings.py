@@ -23,6 +23,11 @@ def _deployment_pin():
     if identity._service_context is not None:
         lock, _ = identity.require_service_context()
         path = Path(lock['project_root']).parent.parent / 'runtime-lock.json'
+        from .dev_local import is_dev_local
+        if is_dev_local(lock):
+            actual, lock_sha = identity.load_lock(path, tier='dev', boundary='dev_loop')
+            if actual != lock:raise ValueError('planner_deployment: service lock changed')
+            return dict(lock_path=str(path), sha256=lock_sha)
         if (str(path) != D06_LOCK or lock.get('provenance', {}).get('adapter_revision') != 'deployment-06'
                 or lock['provenance'].get('parent_adapter_lock_sha256') != D05_SHA):
             raise ValueError('planner_deployment: service is not deployment-06')
@@ -114,9 +119,22 @@ def from_config(block):
     if not isinstance(pin, Mapping) or set(pin) != {'lock_path', 'sha256'}:
         raise ValueError('planner_deployment: exact lock_path and sha256 required')
     expected = _deployment_pin()
-    for name in expected:
-        if type(pin[name]) is not str or pin[name] != expected[name]:
-            raise ValueError(f'planner_deployment.{name}: not the registered deployment-06')
+    if pin['lock_path'] != expected['lock_path']:
+        from . import identity
+        from .dev_local import is_dev_local
+        try:
+            if type(pin['lock_path']) is not str:raise ValueError('planner_deployment.lock_path: expected string')
+            lock, actual = identity.load_lock(pin['lock_path'], tier='dev', boundary='dev_loop')
+            if not is_dev_local(lock):raise ValueError('planner_deployment.lock_path: not a dev-local snapshot')
+            if type(pin['sha256']) is not str or pin['sha256'] != actual:
+                raise ValueError('planner_deployment.sha256: dev-local lock mismatch')
+        except (identity.IdentityError, OSError, TypeError) as exc:
+            name = 'lock_path' if pin['lock_path'] != expected['lock_path'] else 'sha256'
+            raise ValueError(f'planner_deployment.{name}: not an approved deployment') from exc
+    else:
+        for name in expected:
+            if type(pin[name]) is not str or pin[name] != expected[name]:
+                raise ValueError(f'planner_deployment.{name}: not the registered deployment-06')
     return replace(R3_20261025, planner_deployment=pin)
 
 
@@ -161,5 +179,14 @@ def receipt_fields(settings=LEGACY, *, include_legacy=False):
     if settings is LEGACY:
         return dict(execution_profile='legacy', execution_settings_source='legacy',
                     planner_lock_sha256=D05_SHA) if include_legacy else {}
-    return dict(execution_profile=settings.profile, execution_settings_source='config',
-                planner_lock_sha256=settings.planner_deployment['sha256'])
+    value = dict(execution_profile=settings.profile, execution_settings_source='config',
+                 planner_lock_sha256=settings.planner_deployment['sha256'])
+    if settings.planner_deployment['lock_path'] != D06_LOCK:
+        from .identity import load_lock
+        from .dev_local import is_dev_local
+        path = settings.planner_deployment['lock_path']
+        if is_dev_local(json.loads(Path(path).read_bytes())):
+            lock, actual = load_lock(path, tier='dev', boundary='dev_loop')
+            if actual != settings.planner_deployment['sha256']:raise ValueError('planner_deployment.sha256: mismatch')
+            value.update(deployment_kind='dev-local', formal_eligible=False)
+    return value

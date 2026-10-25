@@ -29,6 +29,14 @@ class V2Service:
             raise IdentityError('V2 owner requires an explicit finite monotonic deadline')
         self.lock_path = str(Path(lock_path).resolve())
         self.lock, self.lock_sha = load_lock(self.lock_path, **({} if tier is None and boundary is None else dict(tier=tier,boundary=boundary)))
+        from .dev_local import is_dev_local, verify_snapshot
+        if is_dev_local(self.lock):
+            if not verify_snapshot(lock_path,self.lock,self.lock_sha):raise IdentityError('Invalid dev-local lock path')
+            if execution_settings is None:
+                from dataclasses import replace
+                from .execution_settings import R3_20261025
+                execution_settings=replace(R3_20261025,planner_deployment=dict(lock_path=self.lock_path,sha256=self.lock_sha))
+                self.execution_settings=execution_settings
         if execution_settings is not None:
             from .execution_settings import from_config
             settings=from_config(execution_settings.to_dict())
@@ -58,6 +66,12 @@ class V2Service:
             raise InterruptedError("V2 startup cancelled or deadline expired")
         self.evidence.mkdir(parents=True, exist_ok=True)
         preserve_runtime(self.lock_path,self.lock,self.evidence)
+        from .dev_local import is_dev_local
+        if is_dev_local(self.lock):
+            receipt=json.loads(Path(self.lock_path).with_name('dev-local.json').read_bytes())
+            if receipt!=self.lock['provenance']:raise IdentityError('Dev-local receipt changed')
+            receipt.update(lock_sha256=self.lock_sha, file_count=len(self.lock['files']), dependency_count=len(self.lock['dependencies']))
+            (self.evidence/'planner_deployment.json').write_text(json.dumps(receipt,indent=2)+'\n')
         self.log = (self.evidence / "service.log").open("wb")
         nonce, token = secrets.token_hex(16), secrets.token_hex(32)
         environment = {k: v for k, v in os.environ.items()

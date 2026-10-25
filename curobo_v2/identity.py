@@ -27,7 +27,7 @@ OFFICIAL_PARENT_LOCK = Path('/home/truares/Documents/Codex/2026-10-11/goal-curob
 _registry_digest = None
 
 
-def approved_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
+def _registered_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
     global _registry_digest
     if lock_sha in TRUSTED_LOCKS:
         return True
@@ -68,6 +68,16 @@ def approved_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
         return True
     except (OSError, ValueError, KeyError, TypeError):
         return False
+
+
+def approved_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
+    if _registered_deployment(lock, lock_sha, path, tier=tier, boundary=boundary):
+        return True
+    if tier == 'dev' and boundary == 'dev_loop':
+        from .dev_local import is_dev_local, verify_snapshot
+        if is_dev_local(lock):
+            return verify_snapshot(path, lock, lock_sha)
+    return False
 
 
 def authorize_service_import(lock: dict, robot_config: str) -> None:

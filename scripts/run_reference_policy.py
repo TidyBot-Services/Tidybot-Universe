@@ -137,6 +137,13 @@ def build_verdict(out, experiment_id):
     if len(configs) != 1:
         errors.append('one frozen config required')
     config = next(iter(configs.values()), {})
+    if config.get('planner_source',{}).get('kind')=='dev-local':
+        from curobo_v2.execution_settings import from_config
+        try:
+            settings=from_config(config.get('execution_settings'))
+            if settings is None:raise ValueError('dev-local execution_settings required')
+            expected=settings.to_dict()
+        except (ValueError, OSError) as exc:errors.append('dev-local settings: '+str(exc))
     if expected is None or config.get('execution_settings') != expected:
         errors.append('cell execution_settings differs from registered r3')
     limits = task_limits('dev')
@@ -157,6 +164,7 @@ def build_verdict(out, experiment_id):
     episode = episodes[0].parent if len(episodes) == 1 else None
     labels = dict(execution_profile='r3-20261025', execution_settings_source='config',
                   planner_lock_sha256=expected['planner_deployment']['sha256'] if expected else None)
+    if config.get('planner_source',{}).get('kind')=='dev-local':labels.update(deployment_kind='dev-local',formal_eligible=False)
     receipt_count = 0
 
     def check_labels(row, label):
@@ -279,6 +287,7 @@ def build_verdict(out, experiment_id):
                   monitor_abort_reason=monitor_reason, reached_close=reached_close(all_rpc, actions),
                   simulator_wall_seconds=wall, execution_profile=labels['execution_profile'],
                   planner_lock_sha256=labels['planner_lock_sha256'], audited_receipts=receipt_count)
+    if labels.get('deployment_kind')=='dev-local':result.update(deployment_kind='dev-local',formal_eligible=False)
     return result
 
 
@@ -291,7 +300,7 @@ def write_verdict(out, verdict):
     (out / 'verdict.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 
-def run(seed, source, out, scene_contract=None):
+def run(seed, source, out, scene_contract=None, planner_source=None):
     out = Path(out).absolute()
     preflight(out)
     if seed not in SEEDS:
@@ -312,7 +321,9 @@ def run(seed, source, out, scene_contract=None):
     experiment_id = None
     try:
         store = DevV2Store(out / 'store.sqlite')
-        experiment = dev_experiment.create(store, out / 'artifacts', selection(seed, source_text, ref))
+        selected=selection(seed, source_text, ref)
+        if planner_source is not None:selected['planner_source']=dict(kind='dev-local',source_root=str(Path(planner_source).resolve()))
+        experiment = dev_experiment.create(store, out / 'artifacts', selected)
         experiment_id = experiment['experiment_id']
         manifest = dev_experiment.verify_manifest(experiment)
         budget = out / 'budget.json'
@@ -334,9 +345,10 @@ def main(argv=None):
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--scene-contract', type=Path)
+    parser.add_argument('--planner-source', type=Path)
     args = parser.parse_args(argv)
     try:
-        verdict = run(args.seed, args.source, args.out, args.scene_contract)
+        verdict = run(args.seed, args.source, args.out, args.scene_contract, args.planner_source)
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
     print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))

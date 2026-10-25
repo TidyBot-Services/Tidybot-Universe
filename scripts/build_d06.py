@@ -10,6 +10,10 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from curobo_v2.dev_local import source_names, source_manifest, checked_source
 
 REPO = Path(__file__).resolve().parents[1]
 ROOT = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration')
@@ -35,46 +39,6 @@ def real_files(root):
     if root.is_symlink() or any(p.is_symlink() for p in paths):
         raise ValueError('Symlinks prohibited in frozen runtime')
     return [p for p in paths if p.is_file()]
-
-
-def source_names(repo):
-    """Tracked project files plus new runtime Python and focused regression files.
-
-    Untracked output/evidence/secrets are never swept into a deployment.
-    """
-    tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=repo).decode().split('\0')
-    new = subprocess.check_output(['git', 'ls-files', '--others', '--exclude-standard', '-z'], cwd=repo).decode().split('\0')
-    names = set(filter(None, tracked))
-    names.update(n for n in new if n.endswith('.py') and
-                 (n.startswith('curobo_v2/') or n.startswith('benchmarks/attention_harness/tests/')))
-    return names - {CONTROL, *RELOCATED_YAMLS, 'memory-m3/keys.env'}
-
-
-def checked_source(repo, name):
-    path = repo / name
-    if Path(name).is_absolute() or '..' in Path(name).parts or path.is_symlink() or not path.resolve().is_relative_to(repo.resolve()):
-        raise ValueError('Unsafe source manifest path: ' + name)
-    if not path.is_file():
-        raise ValueError('Missing source manifest file: ' + name)
-    return path
-
-
-def source_manifest(repo, old_project):
-    names = source_names(repo)
-    # Match every repository counterpart in the parent's snapshot, as d05 did.
-    # Admit new runtime Python modules and regression tests explicitly; never
-    # collect unrelated new protocol evidence, output trees or symlinks.
-    selected = []
-    for name in sorted(names):
-        parent = old_project / name
-        new_runtime_source = name.endswith('.py') and (
-            name.startswith('curobo_v2/') or name.startswith('benchmarks/attention_harness/tests/'))
-        if not parent.is_file() and not new_runtime_source:
-            continue
-        source = checked_source(repo, name)
-        if not parent.exists() or sha(source) != sha(parent):
-            selected.append(name)
-    return {name: sha(checked_source(repo, name)) for name in selected}
 
 
 def verify_manifest(repo, manifest):

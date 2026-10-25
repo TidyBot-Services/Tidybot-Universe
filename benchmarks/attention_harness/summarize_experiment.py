@@ -162,20 +162,22 @@ def summarize(experiment):
             config=manifest.get('configs',{}).get(f"{cell['task_id']}:{cell['seed']}")
             metadata=config_metadata(config) if config is not None else {
                 k:cell.get(k,manifest.get(k,v)) for k,v in config_metadata({}).items()}
+            if config is None and cell.get('deployment_kind',manifest.get('deployment_kind'))=='dev-local':metadata.update(deployment_kind='dev-local',formal_eligible=False)
             # Pre-0g and 0g legacy conditions remain separate as well.
             generation=('0g' if config is not None and all(k in config for k in
                 ('planner_mode','ik_candidates','ik_max_joint_jump')) else 'pre-0g')
-            grouped[(metadata['execution_profile'],generation)].append((exp,dict(cell,**metadata)))
+            grouped[(metadata['execution_profile'],generation,metadata.get('deployment_kind','registered'))].append((exp,dict(cell,**metadata)))
     if not grouped:
         value=_summarize_one(experiments[0]);value.update(manifest_metadata(experiments[0].get('manifest',{})))
         return value
     values=[]
-    for (profile,generation),members in sorted(grouped.items()):
+    for (profile,generation,kind),members in sorted(grouped.items()):
         first=members[0][0]
         value=_summarize_one(dict(first,cells=[c for _,c in members]))
         shas=sorted({c['planner_lock_sha256'] for _,c in members})
         value.update(execution_profile=profile,grasp_generation=generation,
                      planner_lock_sha256=shas[0] if len(shas)==1 else shas)
+        if kind=='dev-local':value.update(deployment_kind=kind,formal_eligible=False)
         value['experiment_ids']=sorted({exp['experiment_id'] for exp,_ in members})
         values.append(value)
     if len(values)==1:return values[0]

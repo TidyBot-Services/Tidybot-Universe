@@ -102,6 +102,7 @@ def context(config, namespace, *, contract_catalog=None):
     # Matching identity; sdk_sha256 (implementation) stays for audit.
     value['sdk_interface_sha256'] = sdk_interface_sha256(identity)
     if 'execution_settings' in config:value['execution_profile']=config['execution_settings']['profile']
+    if config.get('planner_source',{}).get('kind')=='dev-local':value['planner_dev_local_sha256']=config['execution_settings']['planner_deployment']['sha256']
     public_screen(value)
     return value
 
@@ -171,6 +172,7 @@ class DevMemory:
                 if getattr(m.status, 'value', m.status) == 'trusted'
                 and type(m.version) is int and m.version > 0
                 and m.applicability.get('execution_profile') == self.context.get('execution_profile')
+                and m.applicability.get('planner_dev_local_sha256') == self.context.get('planner_dev_local_sha256')
                 and all(m.applicability.get(k) == v for k, v in self.context.items() if k in SCOPE)],
                 key=lambda m: (m.memory_id, m.version))
 
@@ -221,6 +223,7 @@ class DevMemory:
                     or n.trusted_here and (n.status != 'trusted' or n.match_level not in {'same_scene','same_task'})
                     or n.match_level == 'same_scene' and n.trusted_here is not (n.status == 'trusted')
                     or n.applicability.get('execution_profile') != self.context.get('execution_profile')
+                    or n.applicability.get('planner_dev_local_sha256') != self.context.get('planner_dev_local_sha256')
                     or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (family_scope and k == 'task_id'))
                     or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):
                 continue

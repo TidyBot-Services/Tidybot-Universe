@@ -156,6 +156,7 @@ class OpenArm365DevRunnerV2:
             outcome_unknown=unknown,sandbox={'process_isolated':probe is not None,'sdk_rpc_only':probe is not None,
                 'deadline_enforced':True,'action_cancellation_verified':cleanup['leader_reaped'] and cleanup['process_group_gone'] and cleanup['planner_process_groups_gone']},
             artifact_dir=str(episode.resolve()),artifacts=artifacts,recording=recording,scene_condition=ready.get('scene_condition') if attested else None)
+        if execution_labels.get('deployment_kind')=='dev-local':result.update(deployment_kind='dev-local',planner_lock_sha256=execution_labels['planner_lock_sha256'])
         if override:result['diagnostic_budget_override']=override
         if tier:result['dev_tier_budget']=tier
         write(episode/'result.json',result);return result

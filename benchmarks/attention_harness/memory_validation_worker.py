@@ -322,7 +322,7 @@ def freeze_plan(memory_id,origin,config,context,signature,pairs,*,policy_id,budg
     if len(pairs)!=5 or dev_model['provider']!='codex':raise ValueError('five Codex pairs required')
     return dict(schema_version='attentionbench.memory-validation-plan.v2',profile='single_scene_v1',memory_id=memory_id,
         **{k:context[k] for k in SCOPE if k not in ('scene_id','object_set_id','camera_config_id','task_variant_id')},
-        **({k:context[k] for k in ('execution_profile',) if k in context}),
+        **({k:context[k] for k in ('execution_profile','planner_dev_local_sha256',) if k in context}),
         policy_id=policy_id,seeds=[config['seed']],cases=[dict(seed=config['seed'],**{k:context[k] for k in ('scene_id','object_set_id','camera_config_id','task_variant_id','camera_names','task_prompt')})],
         pairs=pairs,failure_signature=signature,assistance_credits=budget['assistance_credits'],arm_generation='dev_from_origin',
         origin_source_sha256=origin['sha256'],validation_config_sha256=config['sha256'],dev_model=dev_model)

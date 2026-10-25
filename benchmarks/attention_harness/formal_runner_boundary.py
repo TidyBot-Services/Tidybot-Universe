@@ -100,6 +100,8 @@ class FormalRunRequest:
                 raise ValueError("formal config source differs from approved digest")
             if self.entry_lock is not None and self.suite == 'robocasa365':
                 config=json.loads(self.config_path.read_bytes())
+                from openarm365_dev_v2.formal_config import reject_dev_local
+                reject_dev_local(config)
                 if config.get('schema_version') == 'attentionbench.openarm365-dual-dev-config.v2':
                     raise ValueError('development budget cannot enter formal request')
 
@@ -118,6 +120,7 @@ def run_with_formal_boundary(
     if runner is None or runner.suite != request.suite:
         raise RuntimeError("no suite-matched formal runner registered")
     result = runner.execute(request)
+    if request.entry_lock is not None and result.get('deployment_kind')=='dev-local':raise RuntimeError('dev-local execution cannot enter formal comparison')
     if request.entry_lock is not None and (result.get('dev_tier_budget') or result.get('diagnostic_budget_override')):
         raise RuntimeError('scaled development execution cannot enter formal comparison')
     if not isinstance(result, dict) or result.get("schema_version") != "attentionbench.formal-runner-result.v1":
