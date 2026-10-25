@@ -257,14 +257,26 @@
     const head=`<div class="ac-head">${pill}<span class="ac-what">Each used note gets 5 paired runs on the same scene, once without it and once with it.</span><span class="ac-runs"><span class="ac-meter"><i style="width:${Math.min(100,runs/20*100)}%"></i></span><span>Runs today: ${esc(value.runs_today??0)} of 20${quota}</span></span></div>`;
     const errors=(value.errors||[]).map(e=>`<p class="ac-err" role="alert">${esc(e)}</p>`).join('');
     const queue=value.queue||[],results=value.results||[],demoted=(value.events||[]).filter(n=>n.event==='demoted');
-    if(!on&&!value.current&&!queue.length&&!results.length&&!demoted.length)return head+errors;
-    const c=value.current,pair=Number(c?.pair)||0;
-    const now=c?`<li><b>${esc(c.title)}</b><div class="ac-dots" aria-hidden="true">${Array.from({length:5},(_,i)=>`<i class="${i+1<pair?'done':i+1===pair?(c.paused?'hold':'now'):''}"></i>`).join('')}</div><small>pair ${esc(c.pair)} of 5 · ${esc(c.arm)} run, ${c.arm==='control'?'without':'with'} the note${c.paused?' · paused':''}</small></li>`:'<li class="ac-empty">Nothing is being checked</li>';
+    const cross=crossSeedHtml(value);
+    if(!on&&!value.current&&!queue.length&&!results.length&&!demoted.length)return head+errors+cross;
+    const c=value.current,pair=Number(c?.pair)||0,total=c?.pairs_needed||5;
+    const now=c?.stage==='probe'?`<li><b>${esc(c.title)}</b><small>Seed ${esc(c.seed)} · probe without notes${c.paused?' · paused':''}</small></li>`:c?`<li><b>${esc(c.title)}</b><div class="ac-dots" aria-hidden="true">${Array.from({length:total},(_,i)=>`<i class="${i+1<pair?'done':i+1===pair?(c.paused?'hold':'now'):''}"></i>`).join('')}</div><small>${c.seed!==undefined?`Seed ${esc(c.seed)} · `:''}pair ${esc(c.pair)} of ${total} · ${esc(c.arm)} run, ${c.arm==='control'?'without':'with'} the note${c.paused?' · paused':''}</small></li>`:'<li class="ac-empty">Nothing is being checked</li>';
     const waiting=queue.map(n=>`<li><b>${esc(n.title)}</b><small>used ${n.uses||0} times · failure gone ${n.failure_gone||0} times</small></li>`).join('')||'<li class="ac-empty">No used notes waiting</li>';
     const done=[...results.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b><span class="ac-tag ${tone(n.status)}">${esc(statusText(n.status))}</span></div>${detail(n)}</li>`),
-      ...demoted.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b><span class="ac-tag warn">Back to Unvalidated</span></div><small>${esc(n.title)} moved back to Unvalidated — the failure came back in 3 of its last 5 uses.</small></li>`)].join('')||'<li class="ac-empty">No results yet</li>';
+      ...demoted.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b><span class="ac-tag warn">${n.trust_scope==='scene_scoped'?'Back to trusted on origin scene':'Back to Unvalidated'}</span></div><small>${esc(n.title)} moved back to ${n.trust_scope==='scene_scoped'?'trusted on its origin scene':'Unvalidated'} — the failure came back in 3 of its last 5 uses.</small></li>`)].join('')||'<li class="ac-empty">No results yet</li>';
     const col=(title,count,body)=>`<div class="ac-col"><h3>${title}${count?`<b>${count}</b>`:''}</h3><ul>${body}</ul></div>`;
-    return `${head}${errors}<div class="ac-grid">${col('Checking now',0,now)}${col('Waiting notes',queue.length,waiting)}${col('Results',results.length+demoted.length,done)}</div>`;
+    return `${head}${errors}<div class="ac-grid">${col('Checking now',0,now)}${col('Waiting notes',queue.length,waiting)}${col('Results',results.length+demoted.length,done)}</div>${cross}`;
+  }
+  function crossSeedHtml(value){
+    const esc=escapeHtml,notes=value.cross_seed_notes||[],skipped=value.skipped_seeds||[];
+    if(!value.cross_seed_enabled&&!notes.length&&!skipped.length)return '';
+    const roles={transfer:'Transfer',neutral:'Neutral',could_not_finish:'Could not finish'};
+    const verdicts={transfer_passed:'Worked here',transfer_failed:'Did not help here',neutral_no_harm:'No harm',neutral_harm:'Harm detected',could_not_finish:'Could not finish'};
+    const rows=notes.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b>${n.task_trust?.trust_scope==='task_scoped'?'<span class="ac-tag ok">Trusted for this task</span>':''}</div>
+      <table><caption>Scenes tested</caption><thead><tr><th>Seed</th><th>Scene</th><th>Pairs</th><th>Result</th></tr></thead><tbody>${(n.seeds||[]).map(s=>`<tr><td>${esc(s.target_seed)}</td><td>${esc(roles[s.role]||s.role)}</td><td>${esc(s.pairs_done??0)} of ${esc(s.pairs_needed??0)}</td><td>${esc(verdicts[s.verdict]||'Waiting for checks')}<small>${esc(s.reason||'')}</small></td></tr>`).join('')}</tbody></table>
+      ${(n.task_trust?.missing||[]).length?`<small>Still needed for task trust: ${n.task_trust.missing.map(esc).join('; ')}.</small>`:''}</li>`).join('');
+    const promotions=(value.events||[]).filter(e=>e.event==='promoted'&&e.trust_scope==='task_scoped').map(e=>`<p>Trusted for this task: ${esc(e.title)} — checks on other seeds passed.</p>`).join('');
+    return `<div class="ac-cross"><h3>Other seeds · ${value.cross_seed_enabled?'On':'Off'}</h3><ul>${rows||'<li class="ac-empty">Waiting for usable registered candidate seeds</li>'}</ul>${skipped.map(s=>`<p class="ac-skip">${esc(s.reason)}</p>`).join('')}${promotions}</div>`;
   }
   async function pollAutomatic(){
     const target=$('automatic-checks-body');if(!target)return;

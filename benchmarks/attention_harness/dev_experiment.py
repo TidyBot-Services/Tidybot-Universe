@@ -62,7 +62,7 @@ def slot_wall_seconds(manifest):
 def create(store,artifact_root,selection,*,validation_origin=None):
     validate_selection_fields(selection)
     if validation_origin is not None:
-        from .memory_validation_provision import validate_creation
+        from .memory_validation_provision import validate_creation,arm_count,target_config,target_config_text
         validate_creation(selection,validation_origin)
     fork_record=None
     if 'fork' in selection:
@@ -136,7 +136,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     if source=='codex':normalized['model_source']='codex'
     if v3:
         budget=configured_budget(configuration)
-        n=10 if validation_origin is not None else len(tasks)*len(seeds)*len(policies)
+        n=arm_count(validation_origin) if validation_origin is not None else len(tasks)*len(seeds)*len(policies)
         goal_limits=configuration.get('goal_limits',{k:n*v for k,v in budget.items()})
         if complete_resources(goal_limits):goal_limits=fill_optional(goal_limits)
         __import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
@@ -221,7 +221,8 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     cells=[dict(key=cell_key(exp_id,t,s,p),task_id=t,seed=s,policy_id=p) for p in policies for t in tasks for s in seeds]
     if validation_origin is not None:
         base=cells[0]
-        cells=[dict(base,key=hashlib.sha256(f"{base['key']}|{i}|{arm}".encode()).hexdigest(),validation_pair=i,validation_arm=arm) for i in range(5) for arm in ('control','treatment')]
+        arms=[(0,'probe')] if n==1 else [(i,arm) for i in range(n//2) for arm in ('control','treatment')]
+        cells=[dict(base,key=hashlib.sha256(f"{base['key']}|{i}|{arm}".encode()).hexdigest(),validation_pair=i,validation_arm=arm) for i,arm in arms]
     # Fixed schedule: first cell verifies v1→v2, then all remaining cells v1,
     # then their v2. Coverage is preserved before remaining iteration slots.
     schedule=[{'cell':cells[0]['key'],'through_version':2}]+[{'cell':c['key'],'through_version':1} for c in cells[1:]]+[{'cell':c['key'],'through_version':2} for c in cells[1:]]
@@ -272,7 +273,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
                 c['scene_reset_seed']=c['seed']
                 c['scene_contract']=legacy_scene_ref
     if validation_origin is not None:
-        frozen=json.loads(checked(validation_origin['config']).read_bytes())
+        frozen=target_config(validation_origin)
         configs.clear();configs[f"{tasks[0]}:{seeds[0]}"]=frozen
         origin_text=checked(validation_origin['source']).read_text()
         sources.clear();sources[tasks[0]]=dict(source=origin_text,sha256=validation_origin['source']['sha256'])
@@ -318,7 +319,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
                     budget=budget,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False)
                 if validation_origin is not None:
                     payload.update(validation_experiment=True,experiment_eligible=False,artifact_dir=str(directory/row['key']))
-                    config_path=Path(payload['artifact_dir'])/'config.json';config_text=checked(validation_origin['config']).read_text()
+                    config_path=Path(payload['artifact_dir'])/'config.json';config_text=target_config_text(validation_origin)
                     if config_path.exists():
                         if config_path.read_text()!=config_text:raise DevConflict('validation config artifact drift')
                     else:immutable(config_path,config_text)
@@ -340,10 +341,12 @@ def validate_fairness(m):
     if expected!={(c['task_id'],c['seed'],c['policy_id']) for c in m['cells']}:raise ValueError('planned denominator incomplete')
     validation=m.get('validation_experiment') is True
     if validation:
-        from .memory_validation_provision import validate_creation
+        from .memory_validation_provision import validate_creation,arm_count
         validate_creation(m['selection'],m['validation_origin'])
-        if len(m['cells'])!=10 or {(c['validation_pair'],c['validation_arm']) for c in m['cells']}!={(i,a) for i in range(5) for a in ('control','treatment')}:raise ValueError('ten validation arms required')
-        if m['goal_limits']!={k:10*v for k,v in m['cell_budget'].items()} or m['cell_budget']!=m['selection']['cell_budget'] or m['goal_limits']!=m['selection']['goal_limits']:raise ValueError('validation budget differs')
+        count=arm_count(m['validation_origin'])
+        arms={(0,'probe')} if count==1 else {(i,a) for i in range(count//2) for a in ('control','treatment')}
+        if len(m['cells'])!=count or {(c['validation_pair'],c['validation_arm']) for c in m['cells']}!=arms:raise ValueError('exact validation arms required')
+        if m['goal_limits']!={k:count*v for k,v in m['cell_budget'].items()} or m['cell_budget']!=m['selection']['cell_budget'] or m['goal_limits']!=m['selection']['goal_limits']:raise ValueError('validation budget differs')
         if any(m.get(k) is not False for k in ('run_notes','memory_family')) or m.get('memory_authority') or m.get('planner_features'):raise ValueError('validation Memory binding differs')
         if any(v['sha256']!=m['validation_origin']['source']['sha256'] for v in m['initial_sources'].values()):raise ValueError('validation source differs')
     for c in m['cells']:
@@ -368,8 +371,8 @@ def verify_manifest(exp):
     for c in m['configs'].values():
         if c.get('budget_tier','legacy')!=tier:raise DevConflict('config budget tier differs from manifest')
         if m.get('validation_experiment'):
-            from .dev_v2_loop import checked
-            if c!=json.loads(checked(m['validation_origin']['config']).read_bytes()):raise DevConflict('validation frozen config drift')
+            from .memory_validation_provision import target_config
+            if c!=target_config(m['validation_origin']):raise DevConflict('validation frozen config drift')
         elif c.get('model_source','parcc')!=m.get('model_source','parcc'):raise DevConflict('config model source differs from manifest')
         validate_dev_config(c,expected_source_root=epoch_root)
     for t,r in m['initial_sources'].items():

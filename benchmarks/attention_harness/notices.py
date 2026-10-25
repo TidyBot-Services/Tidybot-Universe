@@ -238,6 +238,8 @@ class NoticeReader:
                      'rejected':f'Note rejected after check: {title}.',
                      'inconclusive':safe_text(event.get('reason'),'Could not finish the check')+' — '+title,
                      'demoted':f'Note moved back to Unvalidated: {title} — the failure came back in 3 of its last 5 uses.'}
+            if kind=='promoted' and event.get('trust_scope')=='task_scoped':wording[kind]=f'Trusted for this task: {title} — checks on other seeds passed.'
+            if kind=='demoted' and event.get('trust_scope')=='scene_scoped':wording[kind]=f'Note moved back to trusted on its origin scene: {title} — the failure came back in 3 of its last 5 uses.'
             if kind in wording:add('memory-event-'+str(event['seq']),'info','memory',wording[kind],'','',event.get('time') or stamp)
         priority = {'error': 0, 'warning': 1, 'info': 2}
         rows.sort(key=lambda n: (priority[n['level']], n['since']), reverse=False)

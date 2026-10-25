@@ -32,10 +32,11 @@ def automatic_checks(root=None,gateway=None):
     from .memory_validation_worker import settings
     from .notices import safe_text,safe_detail
     root=root or os.environ.get('ATTENTION_MEMORY_VALIDATION_STATE')
-    value=dict(enabled=False,status='Off',runs_today=0,queue=[],current=None,results=[],events=[],errors=[],notices=[])
+    value=dict(enabled=False,status='Off',runs_today=0,queue=[],current=None,results=[],events=[],errors=[],notices=[],cross_seed_enabled=False,cross_seed_notes=[],skipped_seeds=[])
+    cross_notes={}
     if root:
         try:
-            value['enabled']=settings(root)['enabled'];path=Path(root)/'state.json'
+            config=settings(root);value['enabled']=config['enabled'];value['cross_seed_enabled']=config.get('cross_seed',{}).get('enabled',False);path=Path(root)/'state.json'
             state=json.loads(path.read_bytes()) if path.exists() else {}
             value['status']=safe_text(state.get('status'),'Waiting for worker' if value['enabled'] else 'Off') if value['enabled'] else 'Off'
             value['runs_today']=state.get('runs_today',0)
@@ -44,7 +45,11 @@ def automatic_checks(root=None,gateway=None):
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
             current=state.get('current')
-            if current:value['current']=dict(title=safe_text(current['title']),pair=current['pair_index']+1,arm=current['arm'],paused=bool(current.get('pause_requested')))
+            if current:
+                value['current']=dict(title=safe_text(current['title']),pair=current['pair_index']+1,arm=current['arm'],paused=bool(current.get('pause_requested')))
+                if current.get('kind')=='cross_seed':value['current'].update(seed=current['target_seed'],stage=current['stage'],pairs_needed=len(current.get('plan',{}).get('pairs',[])))
+            cross_notes=state.get('cross_notes',{})
+            value['skipped_seeds']=[dict(seed=r['seed'],reason=safe_detail(r['reason'])) for r in state.get('skipped_seeds',[])][-100:]
             for row in state.get('results',[])[-20:]:
                 report=row.get('decision',{}).get('report',{})
                 value['results'].append(dict(title=safe_text(row['title']),status=row['status'],reason=safe_text(row.get('decision',{}).get('reason')),pairs=report.get('paired_runs'),control=report.get('control_signature_count'),treatment=report.get('treatment_signature_count')))
@@ -52,8 +57,23 @@ def automatic_checks(root=None,gateway=None):
     if gateway:
         try:
             value['queue']=[{k:r.get(k) for k in ('memory_id','title','uses','failure_gone')} for r in gateway.validation_queue()]
-            value['events']=[{k:r.get(k) for k in ('seq','memory_id','title','event','reason','time')} for r in gateway.memory_events(after=0)[-100:]]
+            scopes={};events=[]
+            for r in gateway.memory_events(after=0):
+                event={k:r.get(k) for k in ('seq','memory_id','title','event','reason','time')};mid=r['memory_id']
+                if r['event']=='promoted':scopes[mid]='task_scoped' if (r.get('reason') or '').startswith('Trusted for this task:') else 'scene_scoped'
+                elif r['event']=='demoted':scopes[mid]='scene_scoped' if scopes.get(mid)=='task_scoped' else 'provisional'
+                event['trust_scope']=scopes.get(mid);events.append(event)
+            value['events']=events[-100:]
+            if callable(getattr(gateway,'cross_seed_queue',None)):
+                for row in gateway.cross_seed_queue():cross_notes[row['memory_id']]=row
+                for mid,row in list(cross_notes.items()):
+                    cross_notes[mid]=dict(title=row.get('title'),**gateway.cross_seed_status(memory_id=mid))
         except Exception as exc:value['errors'].append('Automatic checks service feed unavailable: '+safe_detail(str(exc)))
+    for mid,row in cross_notes.items():
+        trust=row.get('task_trust',{})
+        value['cross_seed_notes'].append(dict(memory_id=mid,title=safe_text(row.get('title'),'Untitled note'),
+            task_trust=dict(trust_scope=trust.get('trust_scope'),scenes=trust.get('scenes',0),missing=[safe_text(s) for s in trust.get('missing',[])]),
+            seeds=[{k:s.get(k) for k in ('target_seed','role','pairs_done','pairs_needed','verdict','reason')} for s in row.get('seeds',[])]))
     return value
 EXTRA_ERRORS = (PermissionError, OSError, ValueError, RuntimeError, KeyError, TypeError, AttributeError)
 

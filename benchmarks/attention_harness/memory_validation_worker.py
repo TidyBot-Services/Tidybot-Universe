@@ -30,13 +30,20 @@ def settings(root):
         if type(enabled) is not bool:raise ValueError('invalid automatic checks switch')
         return {'enabled':enabled}
     value=json.loads(p.read_bytes())
-    if set(value)!={'enabled'} or type(value['enabled']) is not bool:raise ValueError('invalid automatic checks settings')
+    if not isinstance(value,dict) or set(value)-{'enabled','cross_seed'} or type(value.get('enabled')) is not bool:raise ValueError('invalid automatic checks settings')
+    if 'cross_seed' in value:
+        cross=value['cross_seed']
+        if not isinstance(cross,dict) or set(cross)-{'enabled','candidate_seeds','contracts'} or type(cross.get('enabled',False)) is not bool:raise ValueError('invalid cross-seed settings')
+        seeds=cross.get('candidate_seeds',[]);contracts=cross.get('contracts',{})
+        if not isinstance(seeds,list) or any(type(s) is not int for s in seeds) or len(set(seeds))!=len(seeds):raise ValueError('unique integer candidate seeds required')
+        if not isinstance(contracts,dict) or any(not isinstance(k,str) or not k.isdecimal() or not isinstance(p,str) or not Path(p).is_absolute() for k,p in contracts.items()):raise ValueError('absolute per-seed contract paths required')
     return value
 
 
 def set_enabled(root,enabled):
     if type(enabled) is not bool:raise ValueError('enabled must be boolean')
-    atomic(Path(root)/'autovalidate.json',{'enabled':enabled})
+    value=settings(root);value['enabled']=enabled
+    atomic(Path(root)/'autovalidate.json',value)
 
 
 def weekly_quota(home=None,*,now=None):
@@ -134,6 +141,9 @@ def tick(state,deps):
             elif quota-state['day_start_quota']>5:reason=reason or 'Automatic checks paused: Codex weekly use rose by more than 5 points today.'
         except Exception:reason=reason or 'Automatic checks paused: Codex weekly quota is unreadable.'
         if state.get('runs_today',0)>=20 and not (current and current.get('active')):reason=reason or 'Automatic checks done for today (20 runs).'
+        if current and current.get('kind')=='cross_seed':
+            from .memory_cross_seed_worker import advance
+            return advance(state,deps,reason,save,status)
         if current and current.get('active'):
             if current.get('dispatch_pending'):
                 if reason:return status(reason)
@@ -183,9 +193,11 @@ def tick(state,deps):
             state['current']=None;save()
             return status(('Note checked and trusted: ' if outcome=='trusted' else 'Note rejected after check: ')+current['title'])
         if current is None:
-            if state['runs_today']>10:return status('Automatic checks waiting until tomorrow: fewer than 10 runs remain.')
             state['queue']=deps.client.validation_queue();save()
-            if not state.get('pending') and not state['queue']:return status('Automatic checks waiting for used notes')
+            if not state.get('pending') and not state['queue']:
+                from .memory_cross_seed_worker import choose
+                return choose(state,deps,save,status)
+            if state['runs_today']>10:return status('Automatic checks waiting until tomorrow: fewer than 10 runs remain.')
             note=state['pending']['note'] if state.get('pending') else state['queue'][0]
             operation=hashlib.sha256(f"{note['memory_id']}:{note['version']}:{note['uses']}".encode()).hexdigest()[:24]
             # Persist the chosen head before candidate creation removes it from the queue.

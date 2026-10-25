@@ -19,7 +19,7 @@ def sealed(ref,root,files):
 
 def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import_id,bundle_ref,config_ref,
                  source_ref,grant,permission_scope,executor_catalog,contract,validator_root,replay,
-                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None):
+                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None):
     """Refusal writes nothing. Failed checks retain an honest independent descriptor.
 
     ``grant`` includes the runner's sealed permission_scope (validation grants bind
@@ -41,12 +41,19 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         bundle=read(bundle_ref);config=read(config_ref);source=sealed(source_ref,root,files).decode()
         artifacts={k:read(bundle['artifacts'][k]) for k in ('native_result','trace','safety','sandbox_receipt')}
         feedback=public_trace_projection(artifacts['trace']);present=signature_present(feedback,failure_signature);position=stop_position(artifacts['trace'])
-        binding=grant['binding'];bindings={k:bundle[k] for k in ('run_id','attempt_id','policy_sha256','config_sha256','task_id','seed')}
+        bindings={k:bundle[k] for k in ('run_id','attempt_id','policy_sha256','config_sha256','task_id','seed')}
+        if probe_input is not None:
+            if grant is not None or source_ref['sha256']!=origin_source_sha256 or not ledger_ref:raise Refused('probe requires sealed origin, no grant and execution ledger')
+            clean=read(probe_input)
+            if clean!=dict(memory_ids=[],exposure='none',context=executor_catalog['context'],policy_sha256=source_ref['sha256'],config_sha256=config_ref['sha256']):raise Refused('probe must read no notes')
+            if artifacts['trace'].get('memory_validation') or artifacts['trace'].get('memory_uses'):raise Refused('probe contains Memory')
+            binding=dict(cell=cell,version=version,seed=config['seed'],policy_sha256=source_ref['sha256'],config_sha256=config_ref['sha256'])
+        else:binding=grant['binding']
         if type(config['seed']) is not int or type(binding['version']) is not int or type(binding['seed']) is not int:raise Refused('integer grant version/seed required')
         expected=dict(cell=cell,version=version,policy_sha256=source_ref['sha256'],config_sha256=config_ref['sha256'],seed=config['seed'])
         if any(binding[k]!=v for k,v in expected.items()) or bundle['run_id']!='run:'+cell or bundle['attempt_id']!=f'attempt:{cell}:{version-1}':raise Refused('grant execution binding mismatch')
         if bundle['policy_sha256']!=source_ref['sha256'] or bundle['config_sha256']!=config_ref['sha256'] or bundle['task_id']!=config['task_id'] or bundle['seed']!=config['seed']:raise Refused('source/config identity mismatch')
-        if not permission_scope or permission_scope!=grant['permission_scope']:raise Refused('permission scope mismatch')
+        if not permission_scope or probe_input is None and permission_scope!=grant['permission_scope']:raise Refused('permission scope mismatch')
         from .dev_planner import binding as motion_binding,digest as config_digest
         permission=motion_binding(cell,version,source,config)
         if permission is None:
@@ -62,6 +69,9 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
             sealed(ledger_ref,root,files)
             with sqlite3.connect(Path(ledger_ref['uri']).as_uri()+'?mode=ro',uri=True) as db:
                 jobs=[json.loads(p) for p, in db.execute("SELECT payload FROM v2_jobs WHERE cell=? AND version<=? AND state='settled'",(cell,version))]
+                if probe_input is not None:
+                    all_jobs=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_jobs WHERE cell=? AND version<=?',(cell,version))]
+                    if not all_jobs or any(j['kind']!='execute' for j in all_jobs):raise Refused('probe cannot call models or advisors')
                 if permission['action']!='sensor_only':
                     approvals=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_planner_requests WHERE cell=?',(cell,))]
                     execute=next(j for j in jobs if j['kind']=='execute' and j['version']==version)
@@ -114,10 +124,11 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         safety=immutable(out/'safety.json',safety),permission_scope=permission_scope,failure_signature=failure_signature,
         signature_present=present,stop_position=position,costs=costs,validation_config=comparison)
     ref=immutable(out/'verdict.json',descriptor)
-    trial=dict(schema_version='attentionbench.dev-v2-trial.v1',execution_import_id=execution_import_id,validation_descriptor='verdict.json',
-        exposure=binding['exposure'],memory_id=binding['memory_id'] if binding['exposure']=='candidate_validation' else None,
-        validation_grant_id=grant['grant_id'],costs=costs,developer_model=developer_model,budget=budget,validation_config=immutable(out/'comparison.json',comparison))
-    immutable(out/'trial.json',trial)
+    if probe_input is None:
+        trial=dict(schema_version='attentionbench.dev-v2-trial.v1',execution_import_id=execution_import_id,validation_descriptor='verdict.json',
+            exposure=binding['exposure'],memory_id=binding['memory_id'] if binding['exposure']=='candidate_validation' else None,
+            validation_grant_id=grant['grant_id'],costs=costs,developer_model=developer_model,budget=budget,validation_config=immutable(out/'comparison.json',comparison))
+        immutable(out/'trial.json',trial)
     catalog=dict(role='validator',root=str(out),context=executor_catalog['context'],files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir()})
     return dict(status='passed' if all(checks.values()) else 'failed',descriptor=ref,catalog=catalog,checks=checks,errors=errors)
 

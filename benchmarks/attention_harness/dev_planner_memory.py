@@ -62,7 +62,7 @@ def sdk_interface_sha256(identity):
     return hashlib.sha256(encoded({'contract': identity['contract'], 'prompt': identity['prompt']}).encode()).hexdigest()
 
 
-def context(config, namespace):
+def context(config, namespace, *, contract_catalog=None):
     required=('task_id','robot','controller','perception_mode','scene_id','object_set_id',
               'camera_names','camera_width','camera_height','randomize_cameras',
               'official_env','layout_id','style_id','base_mode','task_prompt','seed',
@@ -87,6 +87,14 @@ def context(config, namespace):
         raise ValueError('Memory context requires task_prompt')
     from openarm365_dev_v2.scene_contract import registered_contract_ref
     contract=registered_contract_ref()
+    if contract_catalog is not None:
+        # Offline importer only: an explicit, exact per-seed catalog. Ordinary
+        # retrieval keeps the global registration rule unchanged.
+        from .memory_source_catalogs import covers
+        from openarm365_dev_v2.scene_contract import load_contract,seed_entry
+        if contract_catalog.get('role')!='contract' or not covers(contract_catalog,config['scene_contract']):raise ValueError('exact target contract catalog required')
+        seed_entry(load_contract(config['scene_contract']),config['task_id'],config['seed'])
+        contract=config['scene_contract']
     if config.get('scene_contract')!=contract:
         raise ValueError('Memory context requires the current registered scene_contract in cell config')
     value.update(seed=config['seed'], camera_names=list(cameras), task_prompt=config['task_prompt'],
@@ -188,6 +196,7 @@ class DevMemory:
                 return []  # Old gateways cannot explicitly attest same-task reference trust.
             rows = [Note(m.memory_id, m.version, m.guidance, getattr(m.status, 'value', m.status), m.applicability,
                          created_at=getattr(m, 'created_at', 0.0), match_level=getattr(m, 'match_level', 'same_scene'),
+                         trusted_here=getattr(m, 'trusted_here', None),
                          source_seed=(m.applicability or {}).get('seed'))
                     for m in self.gateway.retrieve(self.context, now=now)]
         result = []
@@ -206,7 +215,9 @@ class DevMemory:
                 except ImportError:
                     continue
             if (n.status not in {'trusted', 'provisional'} or type(n.version) is not int or n.version < 1
-                    or n.match_level not in levels or n.trusted_here is not (n.status == 'trusted' and n.match_level == 'same_scene')
+                    or n.match_level not in levels or type(n.trusted_here) is not bool
+                    or n.trusted_here and (n.status != 'trusted' or n.match_level not in {'same_scene','same_task'})
+                    or n.match_level == 'same_scene' and n.trusted_here is not (n.status == 'trusted')
                     or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (family_scope and k == 'task_id'))
                     or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):
                 continue

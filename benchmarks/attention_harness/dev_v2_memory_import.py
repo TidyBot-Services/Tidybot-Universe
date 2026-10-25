@@ -39,7 +39,7 @@ def queue(store, cell, version, directory, kind, refs):
     return ref
 
 
-def prepare(store, cell, version, namespace, output, catalog_root, *, source=None, source_catalogs=None):
+def prepare(store, cell, version, namespace, output, catalog_root, *, source=None, source_catalogs=None, contract_catalog=None):
     from .dev_planner_memory import context, sdk_identity
     from .dev_planner import binding
     c=store.cell(cell);v=next(v for v in c['versions'] if v['version']==version)
@@ -61,7 +61,7 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     backup=out/'ledger.sqlite'
     with sqlite3.connect('file:'+str(store.path.resolve())+'?mode=ro',uri=True) as original, sqlite3.connect(backup) as dest:original.backup(dest)
     descriptor=dict(schema_version='attentionbench.dev-v2-import.v1',cell=cell,version=version,
-        context=context(config,namespace),sdk_identity=sdk_identity(config),ledger={'uri':str(backup),'sha256':sha(backup)},
+        context=context(config,namespace,**({'contract_catalog':contract_catalog} if contract_catalog is not None else {})),sdk_identity=sdk_identity(config),ledger={'uri':str(backup),'sha256':sha(backup)},
         manifest=e['manifest'],config=config_ref,version_record=record_ref)
     jobs={j['kind']:j for j in c['jobs'] if j['version']==version}
     if source:
@@ -99,9 +99,23 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         if not p.is_absolute():raise ValueError('only original absolute evidence paths are pinned')
         # This registered contract is sealed in a source or separate contract
         # catalog. Only exact locked source files may use source catalogs.
+        if contract_catalog is not None:
+            # The target manifest also pins its frozen origin manifest/config.
+            # Keep that original registered contract independently; it must
+            # never stand in for the target seed's explicit contract above.
+            from openarm365_dev_v2.scene_contract import registered_contract_ref
+            origin=json.loads(checked(e['manifest']).read_bytes()).get('validation_origin',{})
+            if origin:
+                origin_contract=json.loads(checked(origin['config']).read_bytes()).get('scene_contract')
+                if origin_contract=={'uri':str(p),'sha256':expected} and origin_contract==registered_contract_ref():
+                    checked(origin_contract);return
         if config.get('scene_contract')=={'uri':str(p),'sha256':expected}:
             from openarm365_dev_v2.scene_contract import registered_contract_ref
             if config['scene_contract']==registered_contract_ref():return
+            if contract_catalog is not None:
+                from .memory_source_catalogs import covers
+                if contract_catalog.get('role')=='contract' and covers(contract_catalog,config['scene_contract']):
+                    checked(config['scene_contract']);return
         if not p.is_relative_to(root):
             for cid,catalog in (source_catalogs or {}).items():
                 base=Path(catalog['root'])

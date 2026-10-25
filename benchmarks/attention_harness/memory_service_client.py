@@ -19,6 +19,17 @@ class MemoryServiceClient(_Client):
 
     def validation_queue(self):return self._call('GET','/dev-v2/validation-queue')['items']
 
+    def cross_seed_queue(self):return self._call('GET','/dev-v2/cross-seed/queue')['queue']
+
+    def cross_seed_status(self,*,memory_id):
+        from urllib.parse import urlencode
+        return self._call('GET','/dev-v2/cross-seed/status?'+urlencode({'memory_id':memory_id}))
+
+    def cross_seed_write(self,route,**payload):
+        if route not in {'probes','plans','pairs','failed-checks'}:raise ValueError('unknown cross-seed route')
+        if not getattr(self,'_importer_file',False):raise PermissionError('cross-seed writes require importer key file')
+        return self._call('POST','/dev-v2/cross-seed/'+route,payload,importer=True)
+
     def record_dev_v2_failed_check(self,**payload):
         if not getattr(self,'_importer_file',False):raise PermissionError('failed checks require importer key file')
         return self._call('POST','/dev-v2/failed-checks',payload,importer=True)

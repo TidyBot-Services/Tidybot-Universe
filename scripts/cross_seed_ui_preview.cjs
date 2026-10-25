@@ -1,0 +1,12 @@
+// Static fake-data preview. No service, provider, or simulator is contacted.
+const fs=require('node:fs'),path=require('node:path');
+const {automaticHtml}=require('../benchmarks/attention_harness/ui/memory.js');
+const out=path.resolve(process.argv[2]||'outputs/memory-crossseed/screenshots');fs.mkdirSync(out,{recursive:true});
+const value={enabled:true,status:'Waiting for an idle moment',runs_today:18,weekly_quota:32,cross_seed_enabled:true,current:null,
+ queue:[],results:[],events:[{title:'Use the exact object name',event:'promoted',trust_scope:'task_scoped'},{title:'Keep the approach level',event:'demoted',trust_scope:'scene_scoped'}],
+ cross_seed_notes:[{title:'Use the exact object name',task_trust:{trust_scope:'task_scoped',scenes:3,missing:[]},seeds:[{target_seed:114,role:'transfer',pairs_done:5,pairs_needed:5,verdict:'transfer_passed',reason:'The note prevented the target failure'},{target_seed:104,role:'neutral',pairs_done:3,pairs_needed:3,verdict:'neutral_no_harm',reason:'No safety regression or earlier stop'}]},
+ {title:'Keep the approach level',task_trust:{trust_scope:'scene_scoped',missing:['Worked on at least one other transfer seed','At least three scenes have verdicts, including the origin']},seeds:[{target_seed:114,role:'transfer',pairs_done:2,pairs_needed:5,verdict:null,reason:'Waiting for paired checks'},{target_seed:107,role:'could_not_finish',pairs_done:0,pairs_needed:0,verdict:'could_not_finish',reason:'The scene could not be reproduced'}]}],
+ skipped_seeds:[{seed:120,reason:'Seed 120: no scene contract registered'}]};
+const css=['shell.css','memory.css'].map(n=>fs.readFileSync(path.join(__dirname,'../benchmarks/attention_harness/ui',n),'utf8')).join('\n');
+for(const theme of ['light','dark'])fs.writeFileSync(path.join(out,`cross-seed-${theme}.html`),`<!doctype html><html data-theme="${theme}"><meta charset="utf-8"><title>Automatic checks — offline fake data</title><style>${css}\nbody{margin:28px;background:var(--sh-bg);color:var(--sh-ink);font-family:Arial,sans-serif}main{max-width:1160px;margin:auto}h1{font-size:24px}.preview{color:var(--sh-mut);font-size:13px}#automatic-checks{display:block}#automatic-checks h2{margin-bottom:12px}</style><main><h1>Memory</h1><p class="preview">Static preview · fake data · no live services</p><section id="automatic-checks"><h2>Automatic checks</h2><div id="automatic-checks-body">${automaticHtml(value)}</div></section></main></html>`);
+console.log(out);

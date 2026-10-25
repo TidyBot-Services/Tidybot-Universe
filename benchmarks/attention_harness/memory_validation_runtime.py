@@ -25,6 +25,33 @@ class LedgerRunner:
         self.replay,self.provider,self.runner_factory,self.gpu_meter=replay,provider,runner_factory,gpu_meter
         self.pool=ThreadPoolExecutor(max_workers=1);self.futures={}
 
+    def admit_seed(self,note,seed,path):
+        from .memory_cross_seed import admit
+        return admit(self.provision,note,seed,path)
+
+    def begin_cross(self,note,operation,target,*,pairs=None):
+        from .memory_cross_seed import provision_cross
+        receipt=self.state_root/operation/'batch.json'
+        if receipt.exists():return json.loads(receipt.read_bytes())
+        batch=provision_cross(self.provision,note,operation,target,pairs=pairs)
+        config=json.loads(checked(batch['config']).read_bytes())
+        for key,location in batch['cells'].items():
+            store=DevV2Store(location['ledger']);cell=store.cell(key)
+            if cell.get('run_notes') or cell.get('memory_family') or cell.get('memory_authority') or cell.get('planner_features'):raise DevConflict('cross-seed cells must have clean Memory')
+            with store.tx() as db:e=store.get(db,'experiments',cell['experiment_id'])
+            from .dev_experiment import verify_manifest
+            manifest=verify_manifest(e)
+            if manifest['configs'][f"{cell['task_id']}:{cell['seed']}"]!=config:raise DevConflict('target frozen configuration differs')
+            store.goal_for_cell(key)
+            for cid,catalog in registration_order(manifest_sources(e['manifest'],batch['context'],e['artifact_dir'],contract=config['scene_contract'])).items():
+                self.client.register_dev_v2_catalog(catalog_id=cid,catalog=catalog)
+        if pairs is not None:
+            plan=self.client.cross_seed_write('plans',memory_id=note['memory_id'],target_seed=target['seed'],pairs=batch['pairs'],dev_model=batch['dev_model'])
+            if plan['validation_config_sha256']!=batch['config']['sha256'] or plan['origin_source_sha256']!=batch['origin']['sha256'] or plan['context']!=batch['context']:raise DevConflict('service cross-seed plan differs from frozen batch')
+            batch['plan']=plan
+        receipt.parent.mkdir(parents=True,exist_ok=True);immutable(receipt,batch)
+        return batch
+
     def begin(self,note,operation):
         receipt=self.state_root/operation/'batch.json'
         if receipt.exists():return json.loads(receipt.read_bytes())
@@ -105,22 +132,37 @@ class LedgerRunner:
             if paused:store.update_cell(key,state='planned',reason='operator_paused');return
             store.start_cell_clock(key)
             record=next((v for v in c['versions'] if v['version']==1),None)
+            cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
+            if cross:checked(current['target']['contract'])
+            note=self.client.get_memory(current['memory_id']) if cross else None
+            if cross and (getattr(note.status,'value',note.status)!='trusted' or note.version!=current['memory_version']):raise DevConflict('cross-seed note changed')
             if record is None:
-                note=self.client.get_memory(current['memory_id'])
-                if getattr(note.status,'value',note.status)!='candidate' or self.client.get_plan(current['memory_id'])!=current['plan']:raise DevConflict('validation candidate or plan changed before generation')
-                memory=dict(memory_id=note.memory_id,version=note.version,guidance=note.guidance) if current['arm']=='treatment' else None
-                record=generate(store,key,config,current['origin'],json.loads(checked(current['origin_feedback']).read_bytes()),owner,memory=memory,client=self.provider)
+                if probe:
+                    directory.mkdir(exist_ok=True)
+                    if c.get('run_notes') or c.get('memory_family') or c.get('memory_authority') or c.get('planner_features') or c['jobs']:raise DevConflict('probe must execute origin directly with clean Memory')
+                    record=dict(version=1,source=immutable(directory/'policy.py',checked(current['origin']).read_text()),config_sha256=current['config']['sha256'],valid=True,formal_eligible=False)
+                    with store.tx() as db:record['manifest']=store.get(db,'experiments',c['experiment_id'])['manifest']
+                    immutable(directory/'version.json',record);store.version(key,record)
+                else:
+                    note=self.client.get_memory(current['memory_id'])
+                    if not cross and (getattr(note.status,'value',note.status)!='candidate' or self.client.get_plan(current['memory_id'])!=current['plan']):raise DevConflict('validation candidate or plan changed before generation')
+                    memory=dict(memory_id=note.memory_id,version=note.version,guidance=note.guidance) if current['arm']=='treatment' else None
+                    record=generate(store,key,config,current['origin'],json.loads(checked(current['origin_feedback']).read_bytes()),owner,memory=memory,client=self.provider)
             with store.tx() as db:paused=bool(store.get(db,'experiments',c['experiment_id']).get('pause_requested_at'))
             if paused:
                 store.update_cell(key,state='planned',reason='operator_paused');return
             envelope_ref=directory/'memory-validation-envelope.json'
+            if probe:
+                immutable(directory/'memory-validation-input.json',dict(memory_ids=[],exposure='none',context=current['context'],policy_sha256=record['source']['sha256'],config_sha256=current['config']['sha256']))
+                execute(store,key,1,record,config,owner,directory,self.runner_factory,self.provider)
+                store.update_cell(key,state='completed');return
             if envelope_ref.exists():envelope=json.loads(envelope_ref.read_bytes())
             else:
-                envelope=prepare_validation(store,key,1,config,current['context'],self.client,current['memory_id'],'none' if current['arm']=='control' else 'candidate_validation',directory,origin_source_sha256=current['origin']['sha256'])
+                envelope=prepare_validation(store,key,1,config,current['context'],self.client,current['memory_id'],'none' if current['arm']=='control' else 'candidate_validation',directory,origin_source_sha256=current['origin']['sha256'],**({'target_seed':current['target_seed']} if cross else {}))
                 immutable(envelope_ref,envelope)
             # Recheck the service's immutable grant and candidate immediately before dispatch.
             grant=json.loads(checked(envelope['grant']).read_bytes());note=self.client.get_memory(current['memory_id'])
-            if getattr(note.status,'value',note.status)!='candidate' or note.version!=grant['binding']['memory_version']:raise DevConflict('validation candidate changed')
+            if getattr(note.status,'value',note.status)!=('trusted' if cross else 'candidate') or note.version!=grant['binding']['memory_version']:raise DevConflict('validation candidate changed')
             execute(store,key,1,record,config,owner,directory,self.runner_factory,self.provider,memory_validation=envelope)
             store.update_cell(key,state='completed')
         except BaseException:
@@ -167,7 +209,8 @@ class LedgerRunner:
         for cid,sealed in registration_order(sources).items():self.client.register_dev_v2_catalog(catalog_id=cid,catalog=sealed)
         output=Path(e['artifact_dir'])/'validation-import'/key
         ref=output/'catalog.json'
-        if not ref.exists():prepare(store,key,1,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources)
+        cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
+        if not ref.exists():prepare(store,key,1,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources,**({'contract_catalog':current['target']['catalog']} if cross else {}))
         catalog=json.loads(ref.read_bytes());descriptor=json.loads((output/'descriptor.json').read_bytes())
         # Service import includes exact original refs without relocating them.
         # Independent replay keeps its stricter, arm-experiment-only root/seal.
@@ -177,15 +220,21 @@ class LedgerRunner:
         if receipt.exists():result=json.loads(receipt.read_bytes())
         else:
             if self.gpu_meter is None:raise DevConflict('independent GPU time measurement unavailable')
-            envelope=json.loads((Path(c['artifact_dir'])/'v1/memory-validation-envelope.json').read_bytes());grant=json.loads(checked(envelope['grant']).read_bytes())
+            grant=None
+            if not probe:
+                envelope=json.loads((Path(c['artifact_dir'])/'v1/memory-validation-envelope.json').read_bytes());grant=json.loads(checked(envelope['grant']).read_bytes())
             result=validate_arm(experiment_dir=e['artifact_dir'],experiments_root=self.experiments_root,cell=key,version=1,execution_import_id=key,
-                bundle_ref=job_for(c,1,'execute')['receipt']['bundle'],config_ref=descriptor['config'],source_ref=record['source'],grant={**grant,'permission_scope':descriptor['permission_scope']},permission_scope=descriptor['permission_scope'],executor_catalog=local_catalog,
-                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key),ledger_ref=descriptor['ledger'])
+                bundle_ref=job_for(c,1,'execute')['receipt']['bundle'],config_ref=descriptor['config'],source_ref=record['source'],grant=None if probe else {**grant,'permission_scope':descriptor['permission_scope']},permission_scope=descriptor['permission_scope'],executor_catalog=local_catalog,
+                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key),ledger_ref=descriptor['ledger'],
+                **({'probe_input':descriptor['validation_input'],'origin_source_sha256':current['origin']['sha256']} if probe else {}))
             immutable(receipt,result)
         if result['status']=='refused':raise DevConflict('independent validation refused: '+str(result.get('reason')))
         self.client.register_dev_v2_catalog(catalog_id=key,catalog=catalog)
         self.client.register_dev_v2_catalog(catalog_id='validator-'+key,catalog=result['catalog'])
         self.client.import_dev_v2_execution(import_id=key,catalog_id=key,descriptor=str((output/'descriptor.json').relative_to(catalog['root'])))
+        if probe:
+            value=self.client.cross_seed_write('probes',memory_id=current['memory_id'],target_seed=current['target_seed'],execution_import_id=key,catalog_id='validator-'+key,descriptor=str(Path(result['descriptor']['uri']).relative_to(result['catalog']['root'])),scene_contract_ref=current['target']['contract'])
+            return dict(status='probe',probe=value)
         if result['status']=='failed':
             trial=json.loads((Path(result['catalog']['root'])/'trial.json').read_bytes())
             return dict(status='failed',descriptor=result['descriptor'],checks=result['checks'],failed_check=dict(memory_id=current['memory_id'],validation_grant_id=trial['validation_grant_id'],execution_import_id=key,catalog_id='validator-'+key,descriptor=str(Path(result['descriptor']['uri']).relative_to(result['catalog']['root']))))

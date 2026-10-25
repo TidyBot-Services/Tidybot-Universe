@@ -348,3 +348,39 @@ deferral is a persisted event that does not extend it. The UI exposes request,
 deferral, timeout, proxy fallback, cancellation, response and actual response
 use from the SQLite store after restart. A cancelled human request stops the
 current run. All these runs keep `formal_eligible=false`.
+
+### Cross-seed automatic checks (M-10)
+
+The offline worker still starts with same-scene checks. Cross-seed checks require
+both `enabled: true` and `cross_seed.enabled: true` in the state directory's
+`autovalidate.json`; `scripts/memory-autovalidate.example.json` leaves both off
+and the candidate list empty. The web page cannot enable either switch.
+
+`cross_seed.candidate_seeds` is an ordered list of development seeds.
+`cross_seed.contracts` maps each seed string to its own absolute contract file.
+The runtime's `contract_registration_roots` must cover those files, and the
+service's M-8 contract registration roots must also allow them. The importer
+checks the seed entry and registers the exact file digest before any run.
+Missing/refused contracts are skipped with a reason; the global contract is
+never substituted for an unregistered target. This configuration does not
+register the screening candidates or change the frozen matrix.
+
+One direct origin-code probe uses no Dev call or notes. The service decides
+whether to create five transfer pairs or three neutral pairs; the whole batch
+must fit the remaining daily budget. These checks share M-8's idle gate,
+Pause/Resume, 20-run cap, quota stops and independent validator. Only seed,
+its reset/random-seed aliases and its contract change in the frozen origin
+config; all other configuration bytes are preserved. Probe manifests retain
+one unused Dev allocation from the existing one-cell budget; probes never
+reserve a model job, and both the validator and service reject model/advice jobs.
+
+Offline verification with the new service checkout:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD:/path/to/wt-crossseed-svc" \
+  /path/to/service_env/bin/python -B scripts/cross_seed_fake_e2e.py
+node scripts/cross_seed_ui_preview.cjs
+```
+
+The second command writes static light/dark HTML with fake data. Neither
+command contacts live services, models or simulators.

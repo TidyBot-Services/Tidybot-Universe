@@ -14,18 +14,59 @@ from .memory_provisional import derive_signature
 
 def read(ref):return json.loads(checked(ref).read_bytes())
 
+def target_config(origin):
+    config=read(origin['config'])
+    target=origin.get('cross_seed')
+    if target:
+        config=dict(config,seed=target['seed'],scene_contract=target['contract'])
+        # Seed aliases checked by validate_dev_config, not new settings.
+        for field in ('scene_reset_seed','global_random_seed'):
+            if field in config:config[field]=target['seed']
+    return config
+
+
+def arm_count(origin):
+    return origin.get('cross_seed',{}).get('runs',10)
+
+
+def target_config_text(origin):
+    """Replace only top-level seed/contract values, preserving all other bytes."""
+    raw=checked(origin['config']).read_text()
+    if 'cross_seed' not in origin:return raw
+    value=target_config(origin);decoder=json.JSONDecoder();pos=raw.index('{')+1;changes=[]
+    while True:
+        while raw[pos].isspace() or raw[pos]==',':pos+=1
+        if raw[pos]=='}':break
+        key,pos=decoder.raw_decode(raw,pos)
+        while raw[pos].isspace() or raw[pos]==':':pos+=1
+        start=pos;old,pos=decoder.raw_decode(raw,pos)
+        if key in {'seed','scene_reset_seed','global_random_seed','scene_contract'} and old!=value[key]:
+            changes.append((start,pos,json.dumps(value[key],sort_keys=True,ensure_ascii=False,allow_nan=False)))
+    for start,end,text in reversed(changes):raw=raw[:start]+text+raw[end:]
+    return raw
+
+
 def validate_creation(selection,origin):
     """Additional checks for the private validation branch of experiment.create."""
-    if set(origin)!={'manifest','config','source','cell','version'}:raise DevConflict('complete sealed validation origin required')
+    if set(origin)-{'manifest','config','source','cell','version','cross_seed'} or not {'manifest','config','source','cell','version'}<=set(origin):raise DevConflict('complete sealed validation origin required')
     manifest=read(origin['manifest']);config=read(origin['config']);checked(origin['source'])
     cell=next((c for c in manifest['cells'] if c['key']==origin['cell']),None)
     if not cell or manifest['configs'].get(f"{cell['task_id']}:{cell['seed']}")!=config:raise DevConflict('origin frozen configuration differs')
+    count=arm_count(origin)
+    if 'cross_seed' in origin:
+        target=origin['cross_seed']
+        if set(target)!={'seed','contract','runs'} or type(target['seed']) is not int or target['seed']==config['seed'] or type(count) is not int or count not in (1,6,10):raise DevConflict('exact cross-seed probe or paired batch required')
+        from openarm365_dev_v2.scene_contract import load_contract,seed_entry,SCHEMA_V2
+        contract=load_contract(target['contract'])
+        if contract['schema']!=SCHEMA_V2:raise DevConflict('seed-keyed target contract required')
+        seed_entry(contract,config['task_id'],target['seed'])
+        config=target_config(origin);cell=dict(cell,seed=target['seed'])
     expected=dict(tasks=[cell['task_id']],seeds=[cell['seed']],policies=[cell['policy_id']],budget_tier='dev',model_source='codex',run_notes=False,memory_family=False,help_budget=0,mode='diagnostic',target_depth=1,target_valid_executions=1,max_versions=1,reproducible_reset=True,scene_contract=config.get('scene_contract'),attempt_wall_seconds=config['attempt_wall_seconds'])
     if any(selection.get(k)!=v for k,v in expected.items()) or not config.get('scene_contract') or config.get('budget_tier')!='dev':raise DevConflict('validation requires ten clean dev arms on the frozen scene')
     if any(selection.get(k) for k in ('memory_authority','planner_features','human_proxy')) or any(selection.get(k,{}).get('enabled') for k in ('advisor_proxy','eval_agent')):raise DevConflict('validation cannot acquire Memory or extra assistance')
     from .dev_configuration import normalize_configuration,derive_cell_budget
     budget=derive_cell_budget(normalize_configuration(selection))
-    if selection.get('cell_budget',budget)!=budget or selection.get('goal_limits',{k:10*v for k,v in budget.items()})!={k:10*v for k,v in budget.items()}:raise DevConflict('exact ten-arm resource allocation required')
+    if selection.get('cell_budget',budget)!=budget or selection.get('goal_limits',{k:count*v for k,v in budget.items()})!={k:count*v for k,v in budget.items()}:raise DevConflict('exact validation resource allocation required')
     # The original native config is retained even if its original Dev provider was
     # PARCC. The new experiment's generation provider is independently Codex.
     from openarm365_dev_v2.dev_config import validate_dev_config,verify_lock

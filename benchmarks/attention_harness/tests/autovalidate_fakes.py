@@ -325,9 +325,10 @@ class Fixture:
         self.write(self.validator / name / 'trial.json', record['trial'])
 
 def grant_args(r, plan):
-    return dict(memory_id=plan['memory_id'], cell=r['name'], version=1, seed=101, context=r['context'],
+    return dict(memory_id=plan['memory_id'], cell=r['name'], version=1, seed=r['config']['seed'], context=r['context'],
                 policy_sha256=r['record']['source']['sha256'], config_sha256=r['descriptor']['config']['sha256'],
-                exposure=r['trial']['exposure'], origin_source_sha256=plan['origin_source_sha256'])
+                exposure=r['trial']['exposure'], origin_source_sha256=plan['origin_source_sha256'],
+                **({'target_seed':plan['target_seed']} if 'target_seed' in plan else {}))
 
 def generated_prepare(f, service, plan, name, *, fault=None, unsafe=False, checks=None):
     r = f.records[name]
@@ -418,7 +419,7 @@ class SceneFixture(Fixture):
         self.contract=self.write(root/'contracts/scene.json',dict(schema='attentionbench.public-scene-contract.v2',tolerance=1e-6,tasks={'pick':{'seeds':{'101':{'normalized_sha256':fingerprint(STATE,True)}}}}))
 
     def make(self,*args,**kwargs):
-        condition=validate(self.contract,'pick',STATE,101)
+        condition=validate(self.contract,'pick',STATE,kwargs.get('seed',101))
         r=super().make(*args,**kwargs,scene=dict(contract=self.contract,state=STATE,validation=condition,replays=[dict(state=STATE,validation=condition)]*2))
         # Synthetic native monitor, with explicit monitor attestation and a raw step.
         safety=dict(run_id=r['bundle']['run_id'],attempt_id=r['bundle']['attempt_id'],source='native_per_physics_step_monitor',monitor_available=True,unsafe_attempts=0,events=[],violations=[])

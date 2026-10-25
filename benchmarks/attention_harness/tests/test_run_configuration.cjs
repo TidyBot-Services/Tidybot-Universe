@@ -65,7 +65,7 @@ test('Run again reads saved Dev v2 selection and falls back for absent values',(
   assert.match(source,/manualBudget=!!\(repeat\.cellBudget\|\|repeat\.experimentBudget\)/);
 });
 test('Run again applies saved fields to the existing dialog before Start',()=>{
-  const fragment=source.match(/      if\(repeat && sourceProfile\?\.channel==='dev_v2'\) \{[\s\S]*?\n      \}\n      form\.benchmark/)[0].replace(/\n      form\.benchmark$/,'');
+  const fragment=source.match(/      if\(repeat && sourceProfile\?\.channel==='dev_v2'\) \{[\s\S]*?\n      \}(?=\n      const fork=)/)[0];
   const field=()=>({value:'default'}),form={seed:{value:'102',options:[{value:'114'}]},v2_policy:{value:'autonomous',options:[{value:'reactive_help'}]},
     model_source:{value:'parcc',querySelector:()=>({disabled:false})},max_attempts:field(),help_count:field(),human_wait_seconds:field(),
     wall_seconds:field(),model_seconds_minutes:field(),goal_id:field(),name_suffix:field(),v2_mode:field(),eval_agent_enabled:{checked:true}};

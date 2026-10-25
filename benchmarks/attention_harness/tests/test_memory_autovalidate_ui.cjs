@@ -56,3 +56,12 @@ test('budget defaults and capitalised result labels remain readable without quot
  for(const weekly_quota of [null,'45',NaN,Infinity,-1,101])assert.ok(!automaticHtml({weekly_quota}).includes('Codex weekly use:'));
  assert.ok(automaticHtml({weekly_quota:0,runs_today:20}).includes('Runs today: 20 of 20 · Codex weekly use: 0%'));
 });
+
+test('cross-seed scenes, requirements, promotion and one-level demotion',()=>{
+ const value={cross_seed_enabled:true,cross_seed_notes:[{title:'Exact cup',task_trust:{trust_scope:'task_scoped',missing:[]},seeds:[{target_seed:114,role:'transfer',pairs_done:5,pairs_needed:5,verdict:'transfer_passed'},{target_seed:104,role:'neutral',pairs_done:3,pairs_needed:3,verdict:'neutral_no_harm'},{target_seed:107,role:'could_not_finish',pairs_done:0,pairs_needed:0,verdict:'could_not_finish'}]},{title:'Waiting',task_trust:{missing:['Worked on at least one other transfer seed']},seeds:[]}],skipped_seeds:[{seed:120,reason:'Seed 120: no scene contract registered <script>'}],events:[{title:'Exact cup',event:'promoted',trust_scope:'task_scoped'},{title:'Old note',event:'demoted',trust_scope:'scene_scoped'}]};
+ const html=automaticHtml(value);
+ for(const text of ['Trusted for this task','114','104','107','Transfer','Neutral','5 of 5','3 of 3','No harm','Could not finish','Still needed for task trust','Seed 120: no scene contract registered','Back to trusted on origin scene'])assert.ok(html.includes(text),text);
+ assert.ok(!html.includes('<script>'));assert.ok(!html.includes('Back to Unvalidated'));
+ const probe=automaticHtml({enabled:true,current:{title:'Cup',stage:'probe',seed:114,arm:'probe'}});assert.ok(probe.includes('probe without notes'));assert.ok(!probe.includes('pair undefined'));
+ const pair=automaticHtml({enabled:true,current:{title:'Cup',seed:104,pair:2,pairs_needed:3,arm:'control'}});assert.ok(pair.includes('pair 2 of 3'));
+});

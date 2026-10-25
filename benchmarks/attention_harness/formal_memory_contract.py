@@ -135,6 +135,18 @@ class FrozenMemoryGateway:
                 permitted.append(item)
         return permitted
 
+    def retrieve_entries(self, context: dict[str, Any], *, now: float, **kwargs) -> list[Any]:
+        """Task promotion never adds a note to the signed frozen allowlist."""
+        if self.contract['visibility']=='none':return []
+        if context!=self.contract['context']:raise ValueError('Memory retrieval outside frozen per-run scope')
+        result=[]
+        for item in self.service.retrieve_entries(context,now=now,**kwargs):
+            if item['memory_id'] not in self.versions:continue
+            if item['version']!=self.versions[item['memory_id']]:raise ValueError('frozen Memory version drift')
+            if item.get('trusted_here') is not True:continue
+            result.append(item)
+        return result
+
     def authorize_use(self, context: dict[str, Any], *, memory_id: str,
                       attempt_id: str, now: float) -> dict[str, Any]:
         if (context != self.contract["context"] or memory_id not in self.versions

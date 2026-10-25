@@ -75,3 +75,11 @@ html[data-theme="dark"] #automatic-checks{--ac-fail:#e08670}
 #automatic-checks .ac-five span{display:flex;gap:3px}#automatic-checks .ac-five i{width:10px;height:10px;box-sizing:border-box;border-radius:2px;border:1px solid var(--sh-line)}#automatic-checks .ac-five i.f{border-color:var(--ac-fail);background:var(--ac-fail)}
 @keyframes ac-pulse{0%,100%{opacity:1}50%{opacity:.35}}
 @media(max-width:900px){#automatic-checks{flex-direction:column;gap:10px}#automatic-checks .ac-grid{grid-template-columns:1fr}#automatic-checks .ac-runs{margin-left:0}}
+
+#automatic-checks .ac-cross{margin-top:14px;padding:14px;border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card)}
+#automatic-checks .ac-cross h3{margin:0 0 12px;font-size:14px}
+#automatic-checks .ac-cross table{width:100%;border-collapse:collapse;margin:8px 0;text-align:left}
+#automatic-checks .ac-cross caption{text-align:left;color:var(--sh-mut);font-size:12px;margin:6px 0}
+#automatic-checks .ac-cross th,#automatic-checks .ac-cross td{padding:8px;border-bottom:1px solid var(--sh-line2);vertical-align:top}
+#automatic-checks .ac-cross td small{display:block}
+#automatic-checks .ac-skip{color:var(--sh-mut);font-size:12px}

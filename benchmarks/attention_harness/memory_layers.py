@@ -26,9 +26,10 @@ def order(service_entries, run_notes=(), *, family=False):
     entries = list(service_entries) + list(run_notes)
     runs = [e for e in entries if layer_of(e) == 'run']
     runs.sort(key=lambda e: _get(e, 'help_version', 0), reverse=True)
-    trusted = [e for e in entries if layer_of(e) == 'scene' and _get(e, 'trusted_here') is not False]
+    trusted = [e for e in entries if (layer_of(e) == 'scene' and _get(e, 'trusted_here') is not False)
+               or (layer_of(e) == 'task' and _get(e, 'trusted_here') is True)]
     others = _newest([e for e in entries if layer_of(e) == 'scene' and _get(e, 'trusted_here') is False])
-    others += _newest([e for e in entries if layer_of(e) == 'task'])
+    others += _newest([e for e in entries if layer_of(e) == 'task' and _get(e, 'trusted_here') is not True])
     families = _newest([e for e in entries if layer_of(e) == 'family']) if family else []
     return trusted + runs[:RUN_NOTE_CAP] + others[:OTHER_UNVALIDATED_CAP] + families[:FAMILY_CAP]
 
@@ -41,6 +42,7 @@ def label(entry):
         return '' if _get(entry, 'trusted_here') is not False else 'Unvalidated: '
     prefix = 'Unvalidated reference' if _get(entry, 'unvalidated') else 'Reference'
     if layer == 'task':
+        if _get(entry, 'trusted_here') is True:return 'Trusted for this task: '
         seed = _get(entry, 'source_seed')
         return prefix + (f' (scene {seed}): ' if seed is not None else ': ')
     return f"Reference (task {_get(entry, 'source_task_id')}): "
