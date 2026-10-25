@@ -8,6 +8,7 @@ from .core.dev_store import DevConflict,DevBudgetExhausted
 from .parcc_client import ParccClient,ParccResponse,ParccError
 from .free_models import FREE_MODELS
 from .dev_planner import PlannerActionBlocked
+from .dev_feedback_evidence import public_failure
 from .dev_feedback_projection import input_bound as dev_input_bound, project_messages
 from .formal_runner_boundary import FormalRunRequest,run_with_formal_boundary
 from openarm365_dev_v2.dev_config import ROOT,SIM_PYTHON,ROBocasa,ROBOSUITE,ASSETS
@@ -231,8 +232,8 @@ def _public_feedback_for(cell):
             else:f={'execution_status':'failed' if not v['valid'] else 'not_dispatched','public_error':v['validation_error'] or '', 'source_unexecuted':v['valid'],'action_trace':[]}
             public_screen(f)
             # No completion signal is registered in this public SDK trace.
-            failed=not v['valid'] or f.get('execution_status') in {'failed','timeout','timed_out'} or bool(f.get('public_error')) or any(e.get('error') or e.get('status')=='failed' for e in f.get('action_trace',[])) or cell['runtime']['public_failure_rule']['no_declared_completion_is_failure']
-            f={**f,'public_failure':failed,'public_failure_rule':'attentionbench.public-failure.v1'}
+            f={**f,**public_failure(v,f,cell['runtime']['public_failure_rule'])}
+            failed=f['public_failure']
             prior.append(f);failures=failures+1 if failed else 0
         return prior[-1],checked(cell['versions'][-1]['source']).read_text(),failures,prior[:-1]
     last=cell['versions'][-1];prior=[];failures=0

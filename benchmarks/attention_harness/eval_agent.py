@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import v2_evaluator as vision
 from .dev_help import public_screen
+from .dev_feedback_evidence import visible_review
 
 MODEL = 'parcc/Qwen'
 # User decision, 2026-10-18: this fixed Qwen Eval is free. If the model
@@ -68,14 +69,6 @@ def _failed_answer(response, usage):
     if isinstance(details,dict) and type(details.get('reasoning_tokens')) is int and details['reasoning_tokens']>=0:
         diagnostic_usage['reasoning_tokens']=details['reasoning_tokens']
     return response.content[:4000],getattr(response,'finish_reason',None),diagnostic_usage
-
-
-def visible_review(record, *, dev=False):
-    """Project persisted v2 and v3 reviews without rewriting old artifacts."""
-    reason=record.get('reason',record.get('feedback',''))
-    result={'passed':record.get('passed'),'reason':reason}
-    if not dev:result['reference_suggestion']=record.get('reference_suggestion','')
-    return result
 
 
 class EvalUnavailable(Exception):

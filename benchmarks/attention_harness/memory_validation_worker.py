@@ -35,7 +35,10 @@ def settings(root):
         if type(enabled) is not bool:raise ValueError('invalid automatic checks switch')
         return {'enabled':enabled}
     value=json.loads(p.read_bytes())
-    if not isinstance(value,dict) or set(value)-{'enabled','cross_seed'} or type(value.get('enabled')) is not bool:raise ValueError('invalid automatic checks settings')
+    if not isinstance(value,dict) or set(value)-{'enabled','cross_seed','daily_run_limit','weekly_quota_stop_percent','daily_quota_rise_stop_points'} or type(value.get('enabled')) is not bool:raise ValueError('invalid automatic checks settings')
+    validate_daily_run_limit(value.get('daily_run_limit',20))
+    validate_quota_setting('weekly_quota_stop_percent',value.get('weekly_quota_stop_percent',70))
+    validate_quota_setting('daily_quota_rise_stop_points',value.get('daily_quota_rise_stop_points',5))
     if 'cross_seed' in value:
         cross=value['cross_seed']
         if not isinstance(cross,dict) or set(cross)-{'enabled','candidate_seeds','contracts'} or type(cross.get('enabled',False)) is not bool:raise ValueError('invalid cross-seed settings')
@@ -49,6 +52,59 @@ def set_enabled(root,enabled):
     if type(enabled) is not bool:raise ValueError('enabled must be boolean')
     value=settings(root);value['enabled']=enabled
     atomic(Path(root)/'autovalidate.json',value)
+
+
+def validate_daily_run_limit(limit):
+    if limit is not None and (type(limit) is not int or limit<=0):
+        raise ValueError('daily_run_limit must be a positive integer or null')
+
+
+def set_daily_run_limit(root,limit):
+    validate_daily_run_limit(limit)
+    value=settings(root);value['daily_run_limit']=limit
+    atomic(Path(root)/'autovalidate.json',value)
+
+
+def daily_run_stop(state,root,needed=1):
+    """One admission rule for origins, individual arms and complete batches."""
+    limit=settings(root).get('daily_run_limit',20)
+    if limit is None or state.get('runs_today',0)+needed<=limit:return None
+    if needed==1:return f'Automatic checks done for today ({limit} runs).'
+    return f'Automatic checks waiting until tomorrow: fewer than {needed} runs remain for the whole batch.'
+
+
+def parse_daily_run_limit(value):
+    if value=='none':return None
+    try:
+        limit=int(value);validate_daily_run_limit(limit)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('expected none or a positive integer') from exc
+    return limit
+
+
+def validate_quota_setting(key,limit):
+    weekly=key=='weekly_quota_stop_percent'
+    if key not in {'weekly_quota_stop_percent','daily_quota_rise_stop_points'}:raise ValueError('unknown quota setting')
+    if not weekly and limit is None:return
+    if (type(limit) not in (int,float) or limit<=0 or
+        (type(limit) is float and not math.isfinite(limit)) or (weekly and limit>100)):
+        rule='a number in (0, 100]' if weekly else 'a positive number or null'
+        raise ValueError(f'{key} must be {rule}')
+
+
+def set_quota_setting(root,key,limit):
+    validate_quota_setting(key,limit)
+    value=settings(root);value[key]=limit
+    atomic(Path(root)/'autovalidate.json',value)
+
+
+def parse_quota_setting(value,*,key):
+    try:
+        limit=None if value=='none' else float(value)
+        validate_quota_setting(key,limit)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+    return limit
 
 
 def weekly_quota_snapshot(home=None,*,now=None):
@@ -122,7 +178,8 @@ def quota_fresh(stamp,now):
 
 
 def quota_stop(state,deps,save,*,allow_refresh=True):
-    """Refresh stale observations once, then apply the unchanged quota stops."""
+    """Refresh stale observations once, then apply the configured quota stops."""
+    config=settings(deps.root)
     def read():
         try:
             value=deps.quota()
@@ -150,8 +207,10 @@ def quota_stop(state,deps,save,*,allow_refresh=True):
             attempt.update(status='failed',finished_at=deps.clock());save();return QUOTA_UNREADABLE
         attempt.update(status='refreshed',finished_at=deps.clock());save()
     quota=value['used_percent']
-    if quota>=70:return f'Automatic checks paused: Codex weekly use is at {quota:g}%.'
-    if quota-state['day_start_quota']>5:return 'Automatic checks paused: Codex weekly use rose by more than 5 points today.'
+    weekly=config.get('weekly_quota_stop_percent',70)
+    daily=config.get('daily_quota_rise_stop_points',5)
+    if quota>=weekly:return f'Automatic checks paused: Codex weekly use is at {quota:g}% (stop at {weekly:g}%).'
+    if daily is not None and quota-state['day_start_quota']>daily:return f'Automatic checks paused: Codex weekly use rose by more than {daily:g} points today.'
     return None
 
 
@@ -271,11 +330,13 @@ def prepare_origin(state,deps,note,save,status,*,cross_seed=False):
     needed=getattr(deps.runner,'origin_needed',lambda note:None)(note)
     if needed is None:return None
     key=needed['origin_key']
+    if key in state.get('origin_errors',{}):return status(state['origin_errors'][key]['reason'])
     if key in state.get('origin_failures',{}):return status(state['origin_failures'][key]['reason'])
     if needed.get('receipt_ready'):
         needed['cross_seed']=cross_seed;state['current']=needed;save()
         return advance_origin(state,deps,None,save,status)
-    if state['runs_today']>=20:return status('Automatic checks done for today (20 runs).')
+    stop=daily_run_stop(state,deps.root)
+    if stop:return status(stop)
     counted=state.setdefault('counted',{})
     if key not in counted:counted[key]=state['day'];state['runs_today']+=1
     needed.update(dispatch_pending=True,cross_seed=cross_seed);state['current']=needed;save()
@@ -295,7 +356,9 @@ def advance_origin(state,deps,reason,save,status):
     phase=deps.runner.poll(current)
     if phase=='completed':
         result=deps.runner.finish(current)
-        if result['status']!='passed':
+        if result['status']=='error':
+            state.setdefault('origin_errors',{})[current['origin_key']]=dict(result,memory_id=current['memory_id'],title=current['title'])
+        elif result['status']!='passed':
             state.setdefault('origin_failures',{})[current['origin_key']]=result
             state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status='inconclusive',note_remains='trusted' if current.get('cross_seed') else 'provisional',decision=dict(decision='inconclusive',reason=result['reason']),origin_failure=result))
             state.pop('pending',None);state.pop('cross_pending',None)
@@ -344,7 +407,7 @@ def tick(state,deps):
             if entry not in ignored:ignored.append(entry)
         quota_reason=quota_stop(state,deps,save,allow_refresh=not reason)
         reason=reason or quota_reason
-        if state.get('runs_today',0)>=20 and not (current and current.get('active')):reason=reason or 'Automatic checks done for today (20 runs).'
+        if not (current and current.get('active')):reason=reason or daily_run_stop(state,deps.root)
         if current and current.get('kind')=='origin':
             return advance_origin(state,deps,reason,save,status)
         if current and current.get('kind')=='cross_seed':
@@ -411,7 +474,8 @@ def tick(state,deps):
             if not state.get('pending') and not state['queue']:
                 from .memory_cross_seed_worker import choose
                 return choose(state,deps,save,status)
-            if state['runs_today']>10:return status('Automatic checks waiting until tomorrow: fewer than 10 runs remain.')
+            stop=daily_run_stop(state,deps.root,needed=10)
+            if stop:return status(stop)
             note=state['pending']['note'] if state.get('pending') else state['queue'][0]
             operation=hashlib.sha256(f"{note['memory_id']}:{note['version']}:{note['uses']}".encode()).hexdigest()[:24]
             # Persist the chosen head before candidate creation removes it from the queue.
@@ -427,7 +491,8 @@ def tick(state,deps):
         # consume a slot, but cannot run the same arm twice or exceed the daily cap.
         counted=state.setdefault('counted',{})
         if arm_id not in counted:
-            if state['runs_today']>=20:return status('Automatic checks done for today (20 runs).')
+            stop=daily_run_stop(state,deps.root)
+            if stop:return status(stop)
             counted[arm_id]=day;state['runs_today']+=1
         current.update(arm_id=arm_id,active=True,dispatch_pending=True);save()
         check_dispatch_quota(state,deps,save)
@@ -441,11 +506,109 @@ def tick(state,deps):
         return status('Automatic checks paused: '+safe_detail(str(exc) or type(exc).__name__))
 
 
-def main(argv=None):
+def origin_command_config(root,client=None):
+    """Read-only setup; never construct a runner, pool or provisioning factory."""
+    from .memory_validation_provision import Provisioner
+    from .memory_service_client import MemoryServiceClient
+    config=json.loads((Path(root)/'runtime.json').read_bytes())
+    config['state_root']=str(Path(root).resolve())
+    if client is None:client=MemoryServiceClient.offline(config['base_url'],key_file=config['key_file'])
+    return Provisioner(config,client),config
+
+
+def reopen_origin(root,memory_id,reason,*,client=None,clock=time.time):
+    """Archive a pre-verdict failure while holding the same exclusive worker lock."""
+    import getpass
+    from .core.dev_store import DevConflict
+    from .memory_origin_evidence import identity
+    root=Path(root).resolve()
+    if not reason or not reason.strip():raise DevConflict('A reason is required to reopen an origin.')
+    # The existing worker owns this lock even while Off. Fail closed if it runs.
+    with (root/'worker.lock').open('a') as lock:
+        try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError as exc:raise DevConflict('The validation worker still holds its lock; exit that worker before reopening an origin.') from exc
+        provision,config=origin_command_config(root,client);client=provision.client
+        path=root/'state.json';state=json.loads(path.read_bytes()) if path.exists() else {}
+        if state.get('current'):raise DevConflict('The worker still has current work; resolve it before reopening an origin.')
+        # The public inventory includes immutable candidate links, even after a
+        # candidate was rejected/demoted. Do not infer absence from the queue.
+        memories=client.list_dev_v2_memories()
+        if any((r['memory_id']==memory_id and r['status']=='candidate') or r.get('from_provisional')==memory_id for r in memories):
+            raise DevConflict('This note already has a service candidate; its origin cannot be reopened.')
+        queue=client.validation_queue();note=next((n for n in queue if n['memory_id']==memory_id),None)
+        if note is None:raise DevConflict('This note is not eligible under the normal validation queue rules.')
+        key,original,_=identity(provision,note);directory=root/'origins'/key
+        intent=next((e for e in reversed(state.get('origin_reopens',[])) if e.get('origin_key')==key and e.get('memory_id')==memory_id and e.get('status')=='archiving'),None)
+        archived=Path(intent['archive']) if intent else None
+        if archived and (archived.parent!=root/'origins-archive' or not archived.name.startswith(key+'-')):
+            raise DevConflict('The pending origin archive path is invalid.')
+        evidence=archived if archived and archived.exists() and not directory.exists() else directory
+        if evidence.resolve()!=evidence or not evidence.is_dir():raise DevConflict('The original origin directory is missing or not canonical.')
+        receipt=json.loads((evidence/'receipt.json').read_bytes())
+        if receipt.get('origin_key')!=key or receipt.get('note')!=original:raise DevConflict('The origin receipt does not match this note.')
+        if receipt.get('status') not in {'refused','error'}:raise DevConflict('Only a refused or error origin can be reopened.')
+        if any(k in receipt for k in ('validation','validator_result','validation_result','verdict','result','candidate','candidate_id','service_candidate')) or any((evidence/name).exists() for name in ('validation.json','verdict.json','trial.json')) or receipt.get('catalogs'):
+            raise DevConflict('This origin has a validator result or service candidate and cannot be reopened.')
+        now=clock();stamp=datetime.fromtimestamp(now).astimezone().strftime('%Y%m%dT%H%M%S%f%z')
+        archive=archived or root/'origins-archive'/(key+'-'+stamp)
+        if archive.exists() and evidence!=archive:raise DevConflict('The origin archive destination already exists.')
+        event=intent or dict(event='origin_reopened',memory_id=memory_id,origin_key=key,actor=getpass.getuser(),uid=os.getuid(),at=now,reason=reason.strip(),archive=str(archive),run_reservation='Previous reservation remains counted; the next attempt reserves a new run.')
+        # Journal before the move: a crash leaves an explicit, recoverable intent,
+        # never an unrecorded retry or a deleted receipt.
+        if intent is None:
+            event['status']='archiving';state.setdefault('origin_reopens',[]).append(event);atomic(path,state)
+        if evidence!=archive:
+            archive.parent.mkdir(parents=True,exist_ok=True)
+            if archive.parent.resolve()!=archive.parent:raise DevConflict('The origin archive directory is not canonical.')
+            directory.rename(archive)
+            for parent in (directory.parent,archive.parent):
+                fd=os.open(parent,os.O_DIRECTORY)
+                try:os.fsync(fd)
+                finally:os.close(fd)
+        state['results']=[r for r in state.get('results',[]) if not (r['memory_id']==memory_id and r.get('status')=='inconclusive' and r.get('origin_failure'))]
+        for field in ('origin_failures','origin_errors'):state.get(field,{}).pop(key,None)
+        counted=state.setdefault('counted',{})
+        if key in counted:counted[archive.name]=counted.pop(key)
+        for field in ('pending','cross_pending'):
+            if state.get(field,{}).get('note',{}).get('memory_id')==memory_id:state.pop(field)
+        closed={r['memory_id'] for r in state['results'] if r.get('origin_failure')}
+        state['queue']=[n for n in queue if n['memory_id'] not in closed]
+        event['status']='reopened';state['status']='Origin reopened; note queued. Previous run reservation remains counted.'
+        atomic(path,state)
+        return state['status']
+
+
+def main(argv=None,*,client=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state-dir',required=True);p.add_argument('--adapter',help='module:factory; injected authorized ledger runner and service client');p.add_argument('--once',action='store_true');p.add_argument('--interval',type=float,default=5)
-    p.add_argument('--set-enabled',choices=['true','false'])
-    a=p.parse_args(argv);root=Path(a.state_dir);root.mkdir(parents=True,exist_ok=True)
+    actions=p.add_mutually_exclusive_group()
+    actions.add_argument('--set-enabled',choices=['true','false'])
+    actions.add_argument('--set-daily-run-limit',type=parse_daily_run_limit,metavar='{none|N}',default=argparse.SUPPRESS)
+    actions.add_argument('--set-weekly-quota-stop',type=lambda value:parse_quota_setting(value,key='weekly_quota_stop_percent'),metavar='N',default=argparse.SUPPRESS)
+    actions.add_argument('--set-daily-quota-rise-stop',type=lambda value:parse_quota_setting(value,key='daily_quota_rise_stop_points'),metavar='{none|N}',default=argparse.SUPPRESS)
+    actions.add_argument('--check-origin',metavar='MEMORY_ID')
+    actions.add_argument('--reopen-origin',metavar='MEMORY_ID')
+    p.add_argument('--reason')
+    a=p.parse_args(argv);root=Path(a.state_dir)
+    if a.reopen_origin and not (a.reason and a.reason.strip()):p.error('--reopen-origin requires --reason')
+    if a.reason and not a.reopen_origin:p.error('--reason requires --reopen-origin')
+    if a.check_origin or a.reopen_origin:
+        try:
+            provision,config=origin_command_config(root,client);client=provision.client
+            if a.check_origin:
+                from .memory_origin_evidence import check_origin
+                message=check_origin(provision,a.check_origin,validator_root=config['validator_root'])
+            else:message=reopen_origin(root,a.reopen_origin,a.reason,client=client)
+            print(message);return 0
+        except Exception as exc:
+            from .notices import safe_detail
+            from .memory_auto_import import Redactor
+            redact=Redactor([getattr(client,name,None) for name in ('api_key','importer_key','operator_key')])
+            print('FAIL: '+safe_detail(redact(str(exc) or type(exc).__name__)));return 1
+    root.mkdir(parents=True,exist_ok=True)
     if a.set_enabled is not None:set_enabled(root,a.set_enabled=='true');return
+    if hasattr(a,'set_daily_run_limit'):set_daily_run_limit(root,a.set_daily_run_limit);return
+    if hasattr(a,'set_weekly_quota_stop'):set_quota_setting(root,'weekly_quota_stop_percent',a.set_weekly_quota_stop);return
+    if hasattr(a,'set_daily_quota_rise_stop'):set_quota_setting(root,'daily_quota_rise_stop_points',a.set_daily_quota_rise_stop);return
     from types import SimpleNamespace
     with (root/'worker.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -478,4 +641,4 @@ def main(argv=None):
             time.sleep(min(60,max(.1,a.interval)))
 
 
-if __name__=='__main__':main()
+if __name__=='__main__':raise SystemExit(main())

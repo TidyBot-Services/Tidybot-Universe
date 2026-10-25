@@ -257,12 +257,15 @@
     const age=value.weekly_quota_age_seconds;
     const readingAge=typeof age==='number'&&Number.isFinite(age)&&age>=0?`reading ${age<60?'less than a minute':`${Math.floor(age/60)} min`} ago${age>600?' · stale':''}`:'reading age unknown';
     const percent=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=100?`${n}%`:'unavailable';
-    const quota=percent(value.weekly_quota)!=='unavailable'?` · Codex weekly use: ${percent(value.weekly_quota)} (${readingAge})`:'';
+    const weeklyStop=value.weekly_quota_stop_percent===undefined?70:value.weekly_quota_stop_percent;
+    const quota=percent(value.weekly_quota)!=='unavailable'?` · Codex weekly use: ${percent(value.weekly_quota)} (${readingAge}) · stop at ${esc(weeklyStop)}%`:'';
     const latestRefresh=(value.quota_refreshes||[]).at(-1);
     const refresh=latestRefresh?`<p class="ac-skip">Last Codex refresh${typeof latestRefresh.at==='number'&&Number.isFinite(latestRefresh.at)?` at ${esc(new Date(latestRefresh.at*1000).toLocaleString())}`:''}: ${percent(latestRefresh.before_percent)} → ${percent(latestRefresh.after_percent)} · ${{refreshed:'reading refreshed',failed:'could not read weekly use',refreshing:'refreshing'}[latestRefresh.status]||'status unavailable'}.</p>`:'';
     const runs=Number(value.runs_today)||0,state=statusText(value.status||''),on=!!value.enabled;
     const pill=`<span class="ac-pill ${on?(value.current&&!value.current.paused?'run':'ok'):''}"><i></i>${on?'On':'Off'}${state&&!['On','Off'].includes(state)?` · ${esc(state)}`:''}</span>`;
-    const head=`<div class="ac-head">${pill}<span class="ac-what">Each used note gets 5 paired runs on the same scene, once without it and once with it.</span><span class="ac-runs"><span class="ac-meter"><i style="width:${Math.min(100,runs/20*100)}%"></i></span><span>Runs today: ${esc(value.runs_today??0)} of 20${quota}</span></span></div>`;
+    const limit=value.daily_run_limit===undefined?20:value.daily_run_limit;
+    const meter=limit===null?'':`<span class="ac-meter"><i style="width:${Math.min(100,runs/limit*100)}%"></i></span>`;
+    const head=`<div class="ac-head">${pill}<span class="ac-what">Each used note gets 5 paired runs on the same scene, once without it and once with it.</span><span class="ac-runs">${meter}<span>Runs today: ${esc(value.runs_today??0)}${limit===null?'':` of ${esc(limit)}`}${quota}</span></span></div>`;
     const errors=(value.errors||[]).map(e=>`<p class="ac-err" role="alert">${esc(e)}</p>`).join('');
     const queue=value.queue||[],results=value.results||[],demoted=(value.events||[]).filter(n=>n.event==='demoted');
     const ignored=(value.ignored_stale_runs||[]).map(r=>`<p class="ac-skip">Skipped stale run: ${esc(r.id)} · ${esc(r.reason)}</p>`).join('');

@@ -1,6 +1,6 @@
 """Cross-seed transitions called only through the M-8 gating/lock/budget loop."""
 import hashlib
-from .memory_validation_worker import settings,prepare_origin,check_dispatch_quota
+from .memory_validation_worker import settings,prepare_origin,check_dispatch_quota,daily_run_stop
 
 
 def progress(current):
@@ -16,7 +16,8 @@ def choose(state,deps,save,status):
     waiting=state.get('cross_waiting')
     if waiting:
         needed=10 if waiting['probe']['role']=='transfer' else 6
-        if 20-state['runs_today']<needed:return status(f'Cross-seed checks waiting until tomorrow: {needed} runs needed for the whole batch.')
+        stop=daily_run_stop(state,deps.root,needed=needed)
+        if stop:return status(stop)
         batch=deps.runner.begin_cross(waiting['note'],waiting['operation']+'-pairs',waiting['target'],pairs=needed//2)
         batch.update(pair_index=0,arm='control',active=False,title=waiting['title'])
         state['current']=batch;state.pop('cross_waiting');save()
@@ -43,7 +44,8 @@ def choose(state,deps,save,status):
             pending=dict(note=note,operation=operation,target=target)
             state['cross_pending']=pending;save();break
     if not pending:return status('Cross-seed checks waiting for usable registered candidate seeds')
-    if state['runs_today']>=20:return status('Automatic checks done for today (20 runs).')
+    stop=daily_run_stop(state,deps.root)
+    if stop:return status(stop)
     current=deps.runner.begin_cross(pending['note'],pending['operation'],pending['target'])
     current.update(pair_index=0,arm='probe',active=False,title=pending['note'].get('title') or 'Untitled note')
     state['current']=current;state.pop('cross_pending');save()
@@ -98,7 +100,8 @@ def advance(state,deps,reason,save,status):
     arm_id=current['probe_cell'] if current['stage']=='probe' else current['plan']['pairs'][current['pair_index']][current['arm']+'_cell']
     counted=state.setdefault('counted',{})
     if arm_id not in counted:
-        if state['runs_today']>=20:return status('Automatic checks done for today (20 runs).')
+        stop=daily_run_stop(state,deps.root)
+        if stop:return status(stop)
         counted[arm_id]=state['day'];state['runs_today']+=1
     current.update(arm_id=arm_id,active=True,dispatch_pending=True);save()
     check_dispatch_quota(state,deps,save)

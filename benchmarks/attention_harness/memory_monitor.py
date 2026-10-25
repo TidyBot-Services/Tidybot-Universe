@@ -32,11 +32,14 @@ def automatic_checks(root=None,gateway=None):
     from .memory_validation_worker import settings
     from .notices import safe_text,safe_detail
     root=root or os.environ.get('ATTENTION_MEMORY_VALIDATION_STATE')
-    value=dict(enabled=False,status='Off',runs_today=0,queue=[],current=None,results=[],events=[],errors=[],notices=[],cross_seed_enabled=False,cross_seed_notes=[],skipped_seeds=[])
+    value=dict(enabled=False,status='Off',runs_today=0,daily_run_limit=20,weekly_quota_stop_percent=70,daily_quota_rise_stop_points=5,queue=[],current=None,results=[],events=[],errors=[],notices=[],cross_seed_enabled=False,cross_seed_notes=[],skipped_seeds=[])
     cross_notes={}
     if root:
         try:
             config=settings(root);value['enabled']=config['enabled'];value['cross_seed_enabled']=config.get('cross_seed',{}).get('enabled',False);path=Path(root)/'state.json'
+            value['daily_run_limit']=config.get('daily_run_limit',20)
+            value['weekly_quota_stop_percent']=config.get('weekly_quota_stop_percent',70)
+            value['daily_quota_rise_stop_points']=config.get('daily_quota_rise_stop_points',5)
             state=json.loads(path.read_bytes()) if path.exists() else {}
             value['status']=safe_text(state.get('status'),'Waiting for worker' if value['enabled'] else 'Off') if value['enabled'] else 'Off'
             value['runs_today']=state.get('runs_today',0)
@@ -51,6 +54,7 @@ def automatic_checks(root=None,gateway=None):
                                          for r in state.get('ignored_stale_runs',[])]
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
+            value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('origin_errors',{}).values()]
             current=state.get('current')
             if current:
                 value['current']=dict(title=safe_text(current['title']),paused=bool(current.get('pause_requested')))

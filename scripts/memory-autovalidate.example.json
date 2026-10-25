@@ -1,5 +1,8 @@
 {
   "enabled": false,
+  "daily_run_limit": null,
+  "weekly_quota_stop_percent": 60,
+  "daily_quota_rise_stop_points": null,
   "cross_seed": {
     "enabled": false,
     "candidate_seeds": [],

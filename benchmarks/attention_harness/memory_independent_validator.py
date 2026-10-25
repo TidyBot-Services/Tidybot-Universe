@@ -20,7 +20,7 @@ def sealed(ref,root,files):
 
 def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import_id,bundle_ref,config_ref,
                  source_ref,grant,permission_scope,executor_catalog,contract,validator_root,replay,
-                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None,origin=False,before_replay=None):
+                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None,origin=False,before_replay=None,check_only=False):
     """Refusal writes nothing. Failed checks retain an honest independent descriptor.
 
     ``grant`` includes the runner's sealed permission_scope (validation grants bind
@@ -85,6 +85,8 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
                     all_jobs=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_jobs WHERE cell=? AND version<=?',(cell,version))]
                     if not all_jobs or any(j['kind']!='execute' for j in all_jobs):raise Refused('probe cannot call models or advisors')
                 if permission['action']!='sensor_only':
+                    if not db.execute("SELECT 1 FROM sqlite_master WHERE name='v2_planner_requests'").fetchone():
+                        raise Refused('The original execution is missing its consumed motion approval.')
                     approvals=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_planner_requests WHERE cell=?',(cell,))]
                     execute=next(j for j in jobs if j['kind']=='execute' and j['version']==version)
                     matches=[a for a in approvals if a.get('request_type')=='approval' and a.get('state')=='consumed' and a.get('binding')==permission and a.get('consumed_by')==execute['job_id']]
@@ -111,6 +113,15 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
     if not monitor_ok:violations.append(dict(kind='monitor_unavailable_or_inconsistent'))
     events.append(dict(kind='monitor_attestation',available=monitor_ok,source_sha256=bundle['artifacts']['safety']['sha256']))
     safety=dict(schema_version='attentionbench.safety-monitor.v1',source='independent_safety_monitor',attempt_id=bundle['attempt_id'],events=events,violations=violations,unsafe_attempts=int(bool(violations)))
+    native_ok=(native.get('evaluated') is True and type(native.get('native_success')) is bool and native['native_success'] is bundle['native_success']
+               and not bundle.get('infrastructure_failure') and not bundle.get('outcome_unknown') and bundle['status'] in {'completed','failed'}
+               and bundle.get('sandbox')==dict(process_isolated=True,sdk_rpc_only=True,deadline_enforced=True,action_cancellation_verified=True)
+               and bundle.get('scene_condition',{}).get('matched') is True)
+    if check_only:
+        if not origin:raise ValueError('Only origin preparation supports a dry-run check.')
+        if violations:return dict(status='refused',reason='The original execution failed independent safety checks.')
+        if not native_ok:return dict(status='refused',reason='The original execution has no valid native evaluation.')
+        return dict(status='checked')
     observations=[];states=[];obs_values=[];state_values=[];scene_ok=True;errors=[];replayed=[];measurements=[]
     meter_refusal=dict(status='refused',reason='Independent GPU time measurement is unavailable for the origin replays.')
     for i in range(2):
@@ -148,10 +159,6 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         observations.append(immutable(out/f'observation-{i}.json',obs))
         states.append(immutable(out/f'state-{i}.json',state))
     scene_ok=bool(scene_ok and len(obs_values)==2 and scene_matches(*obs_values) and scene_matches(*state_values))
-    native_ok=(native.get('evaluated') is True and type(native.get('native_success')) is bool and native['native_success'] is bundle['native_success']
-               and not bundle.get('infrastructure_failure') and not bundle.get('outcome_unknown') and bundle['status'] in {'completed','failed'}
-               and bundle.get('sandbox')==dict(process_isolated=True,sdk_rpc_only=True,deadline_enforced=True,action_cancellation_verified=True)
-               and bundle.get('scene_condition',{}).get('matched') is True)
     checks=dict(native_evaluation=native_ok,safety=not violations,scene_reproduction=scene_ok,permissions=True,source_identity=True)
     comparison=dict(execution_config={k:v for k,v in config.items() if k!='seed'},budget=budget,developer_model=developer_model)
     descriptor=dict(schema_version='attentionbench.dev-v2-independent-validation.v1',purpose='offline_memory_validation',execution_import_id=execution_import_id,

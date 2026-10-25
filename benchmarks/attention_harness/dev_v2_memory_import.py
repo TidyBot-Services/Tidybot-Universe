@@ -44,8 +44,8 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     from .dev_planner import binding
     def planner_snapshot():
         if hasattr(store,'planner_snapshot'):return store.planner_snapshot(cell)
-        from .dev_planner import PlannerControl
-        return PlannerControl(store).snapshot(cell)
+        from .memory_origin_evidence import OriginalStore
+        return OriginalStore(store.path).planner_snapshot(cell)
     c=store.cell(cell);v=next(v for v in c['versions'] if v['version']==version)
     if source is None:
         packet_path=Path(c['artifact_dir'])/f'v{version}'/'memory-input.json'
@@ -61,6 +61,13 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     record_ref={'uri':str(Path(c['artifact_dir'])/f'v{version}'/'version.json')}
     record_ref['sha256']=sha(record_ref['uri'])
     if json.loads(checked(record_ref).read_bytes())!=v:raise DevConflict('original version artifact differs from ledger')
+    source_evidence={}
+    if source and source.get('request_id') is None and json.loads(checked(v['help']).read_bytes()).get('provider')=='advisor':
+        from .memory_advisor_evidence import verify_advisor_job
+        source_evidence=verify_advisor_job(store,c,v,json.loads(checked(e['manifest']).read_bytes()),config)
+    elif source:
+        from .memory_advisor_evidence import verify_source_providers
+        source_evidence=verify_source_providers(c,v,json.loads(checked(e['manifest']).read_bytes()),config)
     root=Path(catalog_root).resolve();out=Path(output).resolve();out.mkdir(parents=True,exist_ok=False)
     backup=out/'ledger.sqlite'
     with sqlite3.connect('file:'+str(store.path.resolve())+'?mode=ro',uri=True) as original, sqlite3.connect(backup) as dest:original.backup(dest)
@@ -69,11 +76,15 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         manifest=e['manifest'],config=config_ref,version_record=record_ref)
     jobs={j['kind']:j for j in c['jobs'] if j['version']==version}
     if source:
+        descriptor['feedback_projection']=source_evidence['feedback_projection']
         # These names refer to separately provisioned independent validator
         # output and an already imported failed execution; no boolean verdicts.
         if set(source)!={'failed_execution_import_id','validator_id','validation_descriptor','request_id'}:raise ValueError('exact independent source prerequisites required')
         if failure_signature is not None:descriptor['failure_signature']=failure_signature
         descriptor.update(source,advisor_job_id=jobs['advisor']['job_id'],model_job_id=jobs['model']['job_id'])
+        # Visual and verified non-planner Advisor help have no request row.
+        # Omit the field so readers do not query a lazily-created table with a null ID.
+        if descriptor.get('request_id') is None:descriptor.pop('request_id',None)
     else:
         j=jobs['execute']
         if j['state']!='settled':raise DevConflict('execution must settle; preserve unknown holds')
@@ -82,7 +93,9 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         scope=binding(cell,version,checked(v['source']).read_text(),config)
         if scope:
             approvals=planner_snapshot()['requests']
-            a=next(a for a in approvals if a['state']=='consumed' and a['consumed_by']==j['job_id'])
+            matches=[a for a in approvals if a.get('state')=='consumed' and a.get('consumed_by')==j['job_id']]
+            if len(matches)!=1:raise DevConflict('The original execution needs exactly one consumed motion approval.')
+            a=matches[0]
             descriptor.update(permission_scope=scope,approval_id=a['request_id'])
         else:
             descriptor['permission_scope']=dict(run_id='run:'+cell,cell=cell,code_version=version,
