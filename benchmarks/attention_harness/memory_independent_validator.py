@@ -20,11 +20,12 @@ def sealed(ref,root,files):
 
 def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import_id,bundle_ref,config_ref,
                  source_ref,grant,permission_scope,executor_catalog,contract,validator_root,replay,
-                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None,origin=False,before_replay=None,check_only=False):
+                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None,origin=False,before_replay=None,check_only=False,import_purpose=None):
     """Refusal writes nothing. Failed checks retain an honest independent descriptor.
 
     ``grant`` includes the runner's sealed permission_scope (validation grants bind
-    source/config; the consumed motion approval separately binds permissions).
+    source/config; permission is either consumed human approval or the explicit
+    frozen simulated Dev validation scope).
     Arms use injected execution GPU seconds; origins meter their two fresh replays.
     Origin mode binds the settled historical ledger instead of a validation grant;
     it cannot emit a trial or relax any native, permission, safety or scene check.
@@ -62,6 +63,9 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         if not permission_scope or not origin and probe_input is None and permission_scope!=grant['permission_scope']:raise Refused('permission scope mismatch')
         from .dev_planner import binding as motion_binding,digest as config_digest
         permission=motion_binding(cell,version,source,config)
+        from .memory_motion_permission import ACTION, validation_scope
+        if permission_scope.get('action') == ACTION:
+            permission=validation_scope(cell,version,source,config,bundle,import_purpose)
         if permission is None:
             permission=dict(run_id='run:'+cell,cell=cell,code_version=version,code_sha256=source_ref['sha256'],config_sha256=config_digest(config),action='sensor_only',action_version=1,
                 scope=dict(operations=['sensors'],task_id=config['task_id'],robot=config['robot'],seed=config['seed'],sdk_calls=config['sdk_call_limit'],control_steps=config['horizon'],wall_seconds=config['attempt_wall_seconds']))
@@ -84,7 +88,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
                 if probe_input is not None:
                     all_jobs=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_jobs WHERE cell=? AND version<=?',(cell,version))]
                     if not all_jobs or any(j['kind']!='execute' for j in all_jobs):raise Refused('probe cannot call models or advisors')
-                if permission['action']!='sensor_only':
+                if permission['action']=='execute_bounded_motion_policy':
                     if not db.execute("SELECT 1 FROM sqlite_master WHERE name='v2_planner_requests'").fetchone():
                         raise Refused('The original execution is missing its consumed motion approval.')
                     approvals=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_planner_requests WHERE cell=?',(cell,))]

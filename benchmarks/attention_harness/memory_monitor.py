@@ -518,6 +518,8 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
         profile=row.get('execution_profile',(row.get('applicability_summary') or {}).get('execution_profile'))
         if profile:notes[-1]['execution_profile']=profile
+        if row.get('motion_permission') == dict(action='dev_tier_sim_motion',actor='dev_tier_sim_motion'):
+            notes[-1]['motion_permission']=row['motion_permission']
         seed = _note_seed(row)
         layer = levels.get(row.get('memory_id'), _here_layer(row, cells))
         notes[-1].update(layer=layer, path=_path(row, layer, catalogue_by_id))

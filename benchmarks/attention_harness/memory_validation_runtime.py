@@ -221,7 +221,7 @@ class LedgerRunner:
         output=Path(e['artifact_dir'])/'validation-import'/key
         ref=output/'catalog.json'
         cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
-        if not ref.exists():prepare(store,key,1,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources,**({'contract_catalog':current['target']['catalog']} if cross else {}))
+        if not ref.exists():prepare(store,key,1,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_validation',**({'contract_catalog':current['target']['catalog']} if cross else {}))
         catalog=json.loads(ref.read_bytes());descriptor=json.loads((output/'descriptor.json').read_bytes())
         # Service import includes exact original refs without relocating them.
         # Independent replay keeps its stricter, arm-experiment-only root/seal.
@@ -236,7 +236,7 @@ class LedgerRunner:
                 envelope=json.loads((Path(c['artifact_dir'])/'v1/memory-validation-envelope.json').read_bytes());grant=json.loads(checked(envelope['grant']).read_bytes())
             result=validate_arm(experiment_dir=e['artifact_dir'],experiments_root=self.experiments_root,cell=key,version=1,execution_import_id=key,
                 bundle_ref=job_for(c,1,'execute')['receipt']['bundle'],config_ref=descriptor['config'],source_ref=record['source'],grant=None if probe else {**grant,'permission_scope':descriptor['permission_scope']},permission_scope=descriptor['permission_scope'],executor_catalog=local_catalog,
-                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key),ledger_ref=descriptor['ledger'],
+                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key),ledger_ref=descriptor['ledger'],import_purpose=descriptor.get('import_purpose'),
                 **({'probe_input':descriptor['validation_input'],'origin_source_sha256':current['origin']['sha256']} if probe else {}))
             immutable(receipt,result)
         if result['status']=='refused':raise DevConflict('independent validation refused: '+str(result.get('reason')))

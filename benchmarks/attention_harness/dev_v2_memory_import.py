@@ -39,9 +39,14 @@ def queue(store, cell, version, directory, kind, refs):
     return ref
 
 
-def prepare(store, cell, version, namespace, output, catalog_root, *, source=None, source_catalogs=None, contract_catalog=None, failure_signature=None):
+def prepare(store, cell, version, namespace, output, catalog_root, *, source=None, source_catalogs=None, contract_catalog=None, failure_signature=None, motion_permission=None, import_purpose=None):
     from .dev_planner_memory import context, sdk_identity
     from .dev_planner import binding
+    from .memory_motion_permission import ACTION, PURPOSE, validation_scope
+    if motion_permission not in (None, ACTION) or import_purpose not in (None, PURPOSE):
+        raise DevConflict('unsupported import permission or purpose')
+    if motion_permission and (source is not None or import_purpose != PURPOSE):
+        raise DevConflict('simulated Dev motion is only for Memory validation execution imports')
     def planner_snapshot():
         if hasattr(store,'planner_snapshot'):return store.planner_snapshot(cell)
         from .memory_origin_evidence import OriginalStore
@@ -90,17 +95,23 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         if j['state']!='settled':raise DevConflict('execution must settle; preserve unknown holds')
         descriptor.update(execute_job_id=j['job_id'])
         if 'model' in jobs:descriptor['model_job_id']=jobs['model']['job_id']
+        bundle=json.loads(checked(j['receipt']['bundle']).read_bytes());episode=Path(bundle['artifact_dir'])
+        if import_purpose is not None:descriptor['import_purpose']=import_purpose
         scope=binding(cell,version,checked(v['source']).read_text(),config)
         if scope:
             approvals=planner_snapshot()['requests']
             matches=[a for a in approvals if a.get('state')=='consumed' and a.get('consumed_by')==j['job_id']]
-            if len(matches)!=1:raise DevConflict('The original execution needs exactly one consumed motion approval.')
-            a=matches[0]
-            descriptor.update(permission_scope=scope,approval_id=a['request_id'])
+            if not matches and motion_permission == ACTION:
+                try:
+                    descriptor['permission_scope']=validation_scope(cell,version,checked(v['source']).read_text(),config,bundle,import_purpose)
+                except ValueError as exc:raise DevConflict(str(exc)) from exc
+            else:
+                if len(matches)!=1:raise DevConflict('The original execution needs exactly one consumed motion approval.')
+                a=matches[0]
+                descriptor.update(permission_scope=scope,approval_id=a['request_id'])
         else:
             descriptor['permission_scope']=dict(run_id='run:'+cell,cell=cell,code_version=version,
                 code_sha256=v['source']['sha256'],config_sha256=__import__('benchmarks.attention_harness.dev_planner',fromlist=['digest']).digest(config),action='sensor_only',action_version=1,scope=dict(operations=['sensors'],task_id=config['task_id'],robot=config['robot'],seed=config['seed'],sdk_calls=config['sdk_call_limit'],control_steps=config['horizon'],wall_seconds=config['attempt_wall_seconds']))
-        bundle=json.loads(checked(j['receipt']['bundle']).read_bytes());episode=Path(bundle['artifact_dir'])
         descriptor['public_observations']={}
         for label in ('initial','final'):
             p=episode/(label+'_public_observation.json')

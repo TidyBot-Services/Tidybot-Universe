@@ -135,7 +135,7 @@ def validate_origin(provision,found,catalog,descriptor,*,validator_root,replay=N
     c=found['cell'];v=found['version'];config=found['config']
     return validate_arm(experiment_dir=provision.root,experiments_root=provision.root,cell=c['key'],version=v['version'],execution_import_id=found['key'],
         bundle_ref=found['job']['receipt']['bundle'],config_ref=descriptor['config'],source_ref=v['source'],grant=None,origin=True,
-        permission_scope=descriptor['permission_scope'],executor_catalog=catalog,contract=config['scene_contract'],validator_root=validator_root,replay=replay,before_replay=before_replay,
+        permission_scope=descriptor['permission_scope'],executor_catalog=catalog,contract=config['scene_contract'],validator_root=validator_root,replay=replay,before_replay=before_replay,import_purpose=descriptor.get('import_purpose'),
         failure_signature=found['provenance']['failure_signature'],budget=c.get('budget',{}),developer_model=config.get('model','origin'),gpu_seconds=None,ledger_ref=descriptor['ledger'],check_only=check_only)
 
 
@@ -151,7 +151,7 @@ def check_origin(provision,memory_id,*,validator_root):
         raise DevConflict('The experiments root must be outside worker state for a read-only check.')
     with tempfile.TemporaryDirectory(prefix='.origin-check-',dir=provision.root) as scratch:
         out=Path(scratch);c=found['cell'];p=found['provenance']
-        prepare(found['store'],c['key'],found['version']['version'],ctx['namespace'],out/'execution',provision.root,source_catalogs=sources)
+        prepare(found['store'],c['key'],found['version']['version'],ctx['namespace'],out/'execution',provision.root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_validation')
         catalog=json.loads((out/'execution/catalog.json').read_bytes());descriptor=json.loads((out/'execution/descriptor.json').read_bytes())
         result=validate_origin(provision,found,catalog,descriptor,validator_root=validator_root,check_only=True)
         if result['status']!='checked':raise DevConflict(result['reason'])
@@ -225,7 +225,7 @@ class OriginPreparation:
                     if out.exists():raise DevConflict('Origin export was interrupted; review the incomplete export directory')
                     prepare(store,c['key'],version,ctx['namespace'],out,self.provision.root,source_catalogs=sources,**kwargs)
                 return json.loads(ref.read_bytes()),json.loads((out/'descriptor.json').read_bytes())
-            catalog,d=export('execution',v['version'])
+            catalog,d=export('execution',v['version'],motion_permission='dev_tier_sim_motion',import_purpose='memory_validation')
             def before_replay():
                 # Pause at native scene boundaries, like ledger arms finishing a
                 # dispatched execution. Never modify the historical experiment.
