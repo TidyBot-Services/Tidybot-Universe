@@ -113,7 +113,9 @@ def provision_cross(provision,note,operation,target,*,pairs=None):
         if type(used) is not int or not 0<=used<=20-runs:raise DevConflict(f'Fewer than {runs} automatic checks remain today')
     from .dev_experiment import create
     from .dev_ledger import DevV2Store
+    from .memory_validation_ownership import record_experiment
     store=DevV2Store(ledger);experiment=create(store,provision.root,selection,validation_origin=origin)
+    record_experiment(provision.state_root,operation,exp_id)
     cells=experiment['cells'];config_ref=dict(uri=str(Path(cells[0]['artifact_dir'])/'config.json'))
     config_ref['sha256']=hashlib.sha256(Path(config_ref['uri']).read_bytes()).hexdigest()
     context=dict(resolved['context'],seed=target['seed'],scene_contract_ref=ref)

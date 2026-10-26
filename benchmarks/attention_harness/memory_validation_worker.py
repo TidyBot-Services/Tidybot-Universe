@@ -250,7 +250,7 @@ def scheduler_status(experiment,ledger):
     return None if unreadable or not found else False
 
 
-def run_activity(ledgers,*,own_experiment=None,own_pids=(),ignored_stale_runs=None,now=None):
+def run_activity(ledgers,*,own_experiment=None,owned_experiments=None,own_pids=(),ignored_stale_runs=None,now=None):
     """Read-only probe: dead schedulers do not make abandoned jobs active."""
     now=time.time() if now is None else now
     reason=None
@@ -283,6 +283,9 @@ def run_activity(ledgers,*,own_experiment=None,own_pids=(),ignored_stale_runs=No
                 for eid,e in experiments.items():
                     if eid==own_experiment:continue
                     selection=e.get('selection',{})
+                    if e.get('validation_experiment') is True and selection.get('budget_tier')=='dev' and any(
+                        eid==owned and selection.get('request_key') in ('validation-'+operation,'cross-'+operation)
+                        for operation,owned in (owned_experiments or {}).items()):continue
                     tier=selection.get('budget_tier','legacy')
                     # Use the same comparison mode as require_scene_gate; a
                     # legacy tier alone does not identify the frozen matrix.
@@ -375,6 +378,33 @@ def advance_origin(state,deps,reason,save,status):
     return status('Preparing origin evidence: '+current['title'])
 
 
+def begin_item(pending):
+    return dict(kind='begin',note=pending['note'],operation=pending['operation'],
+                memory_id=pending['note']['memory_id'],title=pending['note'].get('title') or 'Untitled note')
+
+
+def begin_current(state,deps,save):
+    current=state['current']
+    # Persist the attempt before external effects. A process restart or an
+    # explicit request grants one new attempt; ordinary polling grants none.
+    current['begin_cycle']=deps.begin_cycle;save()
+    batch=deps.runner.begin(current['note'],current['operation'])
+    batch.update(pair_index=0,arm='control',active=False,title=current['title'],operation=current['operation'])
+    state['current']=batch;state.pop('pending',None);save()
+    return batch
+
+
+def request_current_retry(root):
+    """Mailbox only: works with a running/Off worker, never enables dispatch."""
+    import uuid
+    root=Path(root);state=json.loads((root/'state.json').read_bytes())
+    current=state.get('current')
+    item=current if current and current.get('kind')=='begin' else state.get('pending') if not current else None
+    if not item:raise ValueError('No interrupted begin is available to retry')
+    atomic(root/'retry-current.json',dict(operation=item['operation'],request_id=uuid.uuid4().hex))
+    return 'Current batch retry requested; automatic checks must be On to resume.'
+
+
 def tick(state,deps):
     """One durable transition. deps includes quota snapshots and refresh_quota.
 
@@ -391,6 +421,20 @@ def tick(state,deps):
         state['status']=text;save();return state
     current=state.get('current')
     try:
+        if not getattr(deps,'begin_cycle',None):
+            import uuid
+            deps.begin_cycle=uuid.uuid4().hex
+        request_path=Path(deps.root)/'retry-current.json'
+        request=json.loads(request_path.read_bytes()) if request_path.exists() else None
+        if request and request['request_id']!=state.get('retry_request_id'):
+            pending=state.get('pending')
+            if current is None and pending and pending['operation']==request['operation']:
+                from .memory_validation_ownership import recover_pending
+                if recover_pending(deps.root,pending):
+                    current=state['current']=begin_item(pending)
+            if current and current.get('kind')=='begin' and current['operation']==request['operation']:
+                deps.begin_cycle=request['request_id']
+            state['retry_request_id']=request['request_id'];save()
         enabled=settings(deps.root)['enabled'];state['enabled']=enabled
         if not enabled:
             if current and current.get('active') and not current.get('dispatch_pending') and not current.get('pause_requested'):
@@ -459,6 +503,12 @@ def tick(state,deps):
                 return status('Automatic checks resuming' if phase=='paused' else 'Automatic checks waiting for pause')
             else:return status(f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
         if reason:return status(reason)
+        if current and current.get('kind')=='begin':
+            if current.get('begin_cycle')==deps.begin_cycle:
+                return status(current.get('begin_error') or 'Automatic checks paused: interrupted begin; restart or use --retry-current.')
+            stop=daily_run_stop(state,deps.root,needed=10)
+            if stop:return status(stop)
+            current=begin_current(state,deps,save)
         if current and current['pair_index']==5:
             result=deps.client.evaluate(current['memory_id']);decision=deps.client.decision(current['memory_id'])
             outcome=getattr(result.status,'value',result.status) if hasattr(result,'status') else result['status']
@@ -483,9 +533,8 @@ def tick(state,deps):
             pending=state['pending']
             preparing=prepare_origin(state,deps,pending['note'],save,status)
             if preparing is not None:return preparing
-            current=deps.runner.begin(pending['note'],pending['operation'])
-            current.update(pair_index=0,arm='control',active=False,title=pending['note'].get('title') or 'Untitled note')
-            state['current']=current;state.pop('pending');save()
+            state['current']=begin_item(pending);save()
+            current=begin_current(state,deps,save)
         pair=current['plan']['pairs'][current['pair_index']];arm_id=pair[current['arm']+'_cell']
         # Reserve the daily slot durably before dispatch. A crash may conservatively
         # consume a slot, but cannot run the same arm twice or exceed the daily cap.
@@ -503,7 +552,10 @@ def tick(state,deps):
         return status(str(exc))
     except Exception as exc:
         from .notices import safe_detail
-        return status('Automatic checks paused: '+safe_detail(str(exc) or type(exc).__name__))
+        message='Automatic checks paused: '+safe_detail(str(exc) or type(exc).__name__)
+        if state.get('current') and state['current'].get('kind')=='begin':
+            state['current']['begin_error']=message
+        return status(message)
 
 
 def origin_command_config(root,client=None):
@@ -587,6 +639,7 @@ def main(argv=None,*,client=None):
     actions.add_argument('--set-daily-quota-rise-stop',type=lambda value:parse_quota_setting(value,key='daily_quota_rise_stop_points'),metavar='{none|N}',default=argparse.SUPPRESS)
     actions.add_argument('--check-origin',metavar='MEMORY_ID')
     actions.add_argument('--reopen-origin',metavar='MEMORY_ID')
+    actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin; does not turn checks On')
     p.add_argument('--reason')
     a=p.parse_args(argv);root=Path(a.state_dir)
     if a.reopen_origin and not (a.reason and a.reason.strip()):p.error('--reopen-origin requires --reason')
@@ -605,6 +658,11 @@ def main(argv=None,*,client=None):
             redact=Redactor([getattr(client,name,None) for name in ('api_key','importer_key','operator_key')])
             print('FAIL: '+safe_detail(redact(str(exc) or type(exc).__name__)));return 1
     root.mkdir(parents=True,exist_ok=True)
+    if a.retry_current:
+        try:print(request_current_retry(root));return 0
+        except Exception as exc:
+            from .notices import safe_detail
+            print('FAIL: '+safe_detail(str(exc) or type(exc).__name__));return 1
     if a.set_enabled is not None:set_enabled(root,a.set_enabled=='true');return
     if hasattr(a,'set_daily_run_limit'):set_daily_run_limit(root,a.set_daily_run_limit);return
     if hasattr(a,'set_weekly_quota_stop'):set_quota_setting(root,'weekly_quota_stop_percent',a.set_weekly_quota_stop);return

@@ -101,6 +101,8 @@ def test_pending_note_survives_queue_removal(tmp_path):
     d.runner.begin=lambda *a:(_ for _ in ()).throw(RuntimeError('source created; reply lost'))
     tick(state,d);assert state['pending']['note']['memory_id']=='head'
     d.client.validation_queue=lambda:[];d.runner.begin=original
+    from benchmarks.attention_harness.memory_validation_worker import request_current_retry
+    request_current_retry(tmp_path)  # C13: retries need a new check cycle.
     tick(state,d);assert state['current'] and d.runner.begun==['head']
 
 

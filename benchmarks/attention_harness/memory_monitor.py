@@ -58,7 +58,10 @@ def automatic_checks(root=None,gateway=None):
             current=state.get('current')
             if current:
                 value['current']=dict(title=safe_text(current['title']),paused=bool(current.get('pause_requested')))
-                if current.get('kind')=='origin':value['current']['stage']='origin'
+                if current.get('kind')=='begin':
+                    value['current'].update(stage='begin',paused=True)
+                    if current.get('begin_error'):value['errors'].append(safe_detail(current['begin_error']))
+                elif current.get('kind')=='origin':value['current']['stage']='origin'
                 else:value['current'].update(pair=current['pair_index']+1,arm=current['arm'])
                 if current.get('kind')=='cross_seed':value['current'].update(seed=current['target_seed'],stage=current['stage'],pairs_needed=len(current.get('plan',{}).get('pairs',[])))
             cross_notes=state.get('cross_notes',{})

@@ -168,7 +168,9 @@ class Provisioner:
             used=state.get('runs_today',0) if state.get('day')==today else 0
             if type(used) is not int or not 0<=used<=10:raise DevConflict('Fewer than 10 automatic checks remain today')
         from .dev_experiment import create
+        from .memory_validation_ownership import record_experiment
         store=DevV2Store(ledger);experiment=create(store,self.root,selection,validation_origin=origin)
+        record_experiment(self.state_root,operation,exp_id)
         pairs=[dict(pair_id=str(i),**{a+'_cell':next(c['key'] for c in experiment['cells'] if c['validation_pair']==i and c['validation_arm']==a) for a in ('control','treatment')}) for i in range(5)]
         return dict(experiment_id=exp_id,memory_id='validation-'+operation,origin=origin['source'],origin_feedback=resolved['feedback'],config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model='gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
 
