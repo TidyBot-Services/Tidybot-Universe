@@ -1,7 +1,8 @@
 """Ledger adapter for automatically budgeted validation checks.
 
 The injected provision(note, operation_id) resolves the sealed source and creates
-10 cells in the existing authorized ledger. It returns the fields consumed by
+10 logical arm cells in the existing authorized ledger. C17 replacements use
+fresh versions in both paired cells and a bounded supplemental authorization. It returns the fields consumed by
 begin below, plus source_catalogs/failed_execution/source_import. It must be
 idempotent and must never copy or modify settled historical evidence.
 """
@@ -15,6 +16,7 @@ from .dev_loop import process_identity,owner_alive
 from .memory_validation_worker import freeze_plan,contract_catalog
 from .memory_independent_validator import validate_arm,replay_fresh
 from .memory_source_catalogs import manifest_sources,covers,registration_order
+from .memory_validation_replacements import attempt_version,attempt_id,authorize_replacement
 
 
 class LedgerRunner:
@@ -115,9 +117,11 @@ class LedgerRunner:
 
     def start(self,current,arm_id):
         if current.get('kind')=='origin':return self.origins.start(current)
-        future=self.futures.get(arm_id)
+        future=self.futures.get(attempt_id(current))
         if future is not None and not future.done():return
-        store,key,c=self._cell(current);job=job_for(c,1,'execute')
+        store,key,c=self._cell(current);version=attempt_version(current)
+        if version>1:authorize_replacement(store,current)
+        job=job_for(c,version,'execute')
         if job and job['state']=='settled':return
         if any(j['state'] in {'claimed','needs_review'} for j in c['jobs']):raise DevConflict('unresolved validation job; no redispatch')
         if c.get('owner') and owner_alive(c['owner']):raise DevConflict('validation cell already has a live owner')
@@ -125,20 +129,20 @@ class LedgerRunner:
         owner=process_identity();e=acquire(store,c['experiment_id'],owner)
         if e['state']=='needs_review':raise DevConflict('validation recovery needs review')
         store.update_cell(key,state='running',owner=owner)
-        self.futures[arm_id]=self.pool.submit(self._run,dict(current),owner)
+        self.futures[attempt_id(current)]=self.pool.submit(self._run,dict(current),owner)
 
     def _run(self,current,owner):
         from . import dev_experiment as experiments
         from .memory_validation_generation import generate
         from .dev_memory_validation import prepare_validation
         from .dev_v2_loop import execute
-        store,key,c=self._cell(current)
+        store,key,c=self._cell(current);version=attempt_version(current)
         try:
-            config=json.loads(checked(current['config']).read_bytes());directory=Path(c['artifact_dir'])/'v1'
+            config=json.loads(checked(current['config']).read_bytes());directory=Path(c['artifact_dir'])/f'v{version}'
             with store.tx() as db:paused=bool(store.get(db,'experiments',c['experiment_id']).get('pause_requested_at'))
             if paused:store.update_cell(key,state='planned',reason='operator_paused');return
             store.start_cell_clock(key)
-            record=next((v for v in c['versions'] if v['version']==1),None)
+            record=next((v for v in c['versions'] if v['version']==version),None)
             cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
             if cross:checked(current['target']['contract'])
             note=self.client.get_memory(current['memory_id']) if cross else None
@@ -147,30 +151,32 @@ class LedgerRunner:
                 if probe:
                     directory.mkdir(exist_ok=True)
                     if c.get('run_notes') or c.get('memory_family') or c.get('memory_authority') or c.get('planner_features') or c['jobs']:raise DevConflict('probe must execute origin directly with clean Memory')
-                    record=dict(version=1,source=immutable(directory/'policy.py',checked(current['origin']).read_text()),config_sha256=current['config']['sha256'],valid=True,formal_eligible=False)
+                    record=dict(version=version,source=immutable(directory/'policy.py',checked(current['origin']).read_text()),config_sha256=current['config']['sha256'],valid=True,formal_eligible=False)
                     with store.tx() as db:record['manifest']=store.get(db,'experiments',c['experiment_id'])['manifest']
                     immutable(directory/'version.json',record);store.version(key,record)
                 else:
                     note=self.client.get_memory(current['memory_id'])
                     if not cross and (getattr(note.status,'value',note.status)!='candidate' or self.client.get_plan(current['memory_id'])!=current['plan']):raise DevConflict('validation candidate or plan changed before generation')
                     memory=dict(memory_id=note.memory_id,version=note.version,guidance=note.guidance) if current['arm']=='treatment' else None
-                    record=generate(store,key,config,current['origin'],json.loads(checked(current['origin_feedback']).read_bytes()),owner,memory=memory,client=self.provider)
+                    record=generate(store,key,config,current['origin'],json.loads(checked(current['origin_feedback']).read_bytes()),owner,memory=memory,client=self.provider,version=version)
+            if record.get('status')=='invalid_generation':
+                store.update_cell(key,state='invalid_generation',reason=record['validation_error']);return
             with store.tx() as db:paused=bool(store.get(db,'experiments',c['experiment_id']).get('pause_requested_at'))
             if paused:
                 store.update_cell(key,state='planned',reason='operator_paused');return
             envelope_ref=directory/'memory-validation-envelope.json'
             if probe:
                 immutable(directory/'memory-validation-input.json',dict(memory_ids=[],exposure='none',context=current['context'],policy_sha256=record['source']['sha256'],config_sha256=current['config']['sha256']))
-                execute(store,key,1,record,config,owner,directory,self.runner_factory,self.provider)
+                execute(store,key,version,record,config,owner,directory,self.runner_factory,self.provider)
                 store.update_cell(key,state='completed');return
             if envelope_ref.exists():envelope=json.loads(envelope_ref.read_bytes())
             else:
-                envelope=prepare_validation(store,key,1,config,current['context'],self.client,current['memory_id'],'none' if current['arm']=='control' else 'candidate_validation',directory,origin_source_sha256=current['origin']['sha256'],**({'target_seed':current['target_seed']} if cross else {}))
+                envelope=prepare_validation(store,key,version,config,current['context'],self.client,current['memory_id'],'none' if current['arm']=='control' else 'candidate_validation',directory,origin_source_sha256=current['origin']['sha256'],**({'target_seed':current['target_seed']} if cross else {}))
                 immutable(envelope_ref,envelope)
             # Recheck the service's immutable grant and candidate immediately before dispatch.
             grant=json.loads(checked(envelope['grant']).read_bytes());note=self.client.get_memory(current['memory_id'])
             if getattr(note.status,'value',note.status)!=('trusted' if cross else 'candidate') or note.version!=grant['binding']['memory_version']:raise DevConflict('validation candidate changed')
-            execute(store,key,1,record,config,owner,directory,self.runner_factory,self.provider,memory_validation=envelope)
+            execute(store,key,version,record,config,owner,directory,self.runner_factory,self.provider,memory_validation=envelope)
             store.update_cell(key,state='completed')
         except BaseException:
             store.update_cell(key,state='needs_review');raise
@@ -183,14 +189,56 @@ class LedgerRunner:
                     now=time.time();row.update(state='paused',paused_at=now)
                     goal=store.get(db,'goals',experiment_goal(row));goal['paused_at']=now;store.put(db,'goals',experiment_goal(row),goal)
                     store.event(db,'experiment_paused',dict(experiment_id=row['experiment_id'],paused_at=now))
-                elif state=='completed':row.pop('pause_requested_at',None)
+                elif state in {'completed','invalid_generation'}:row.pop('pause_requested_at',None)
                 store.put(db,'experiments',c['experiment_id'],row)
+
+    def recover_invalid(self,current):
+        from .memory_validation_generation import generate,parse_generation
+        store,key,c=self._cell(current);version=attempt_version(current)
+        if c.get('state')!='needs_review':return False
+        with store.tx() as db:
+            if db.execute("SELECT 1 FROM v2_jobs WHERE state IN ('reserved','claimed','needs_review') LIMIT 1").fetchone():return False
+        if any(j['state'] in {'reserved','claimed','needs_review'} for j in c['jobs']):return False
+        if c.get('owner') and owner_alive(c['owner']):return False
+        model=job_for(c,version,'model')
+        if not model or model['state']!='settled' or job_for(c,version,'execute'):return False
+        output=json.loads(checked(model['receipt']['response']).read_bytes())
+        error=parse_generation(output['content'])[2]
+        if error is None:return False
+        record=next((v for v in c['versions'] if v['version']==version),None)
+        if record and (record.get('status')!='invalid_generation' or record.get('validation_error')!=error):raise DevConflict('generation record differs from settled invalid output')
+        if record is None:
+            note=self.client.get_memory(current['memory_id'])
+            memory=dict(memory_id=note.memory_id,version=note.version,guidance=note.guidance) if current['arm']=='treatment' else None
+            generate(store,key,json.loads(checked(current['config']).read_bytes()),current['origin'],
+                     json.loads(checked(current['origin_feedback']).read_bytes()),None,memory=memory,version=version)
+        with store.tx() as db:
+            e=store.get(db,'experiments',c['experiment_id'])
+            if e.get('owner') and owner_alive(e['owner']):raise DevConflict('validation experiment still owned')
+            # The old worker parked after this settled generation. Account its
+            # downtime once, just as an ordinary paused interval, without refunds.
+            g=store.get(db,'goals',experiment_goal(e))
+            paused_since=g.get('paused_at') or model['settled_at']
+            g['paused_seconds']=g.get('paused_seconds',0)+max(0,time.time()-paused_since)
+            g['paused_at']=None
+            store.put(db,'goals',experiment_goal(e),g)
+            e.update(state='planned',owner=None);e.pop('pause_requested_at',None)
+            store.put(db,'experiments',e['experiment_id'],e)
+            raw=store.get(db,'cells',key);raw.update(state='invalid_generation',owner=None)
+            store.put(db,'cells',key,raw)
+            store.event(db,'invalid_generation_recovered',dict(cell=key,version=version))
+        return True
 
     def poll(self,current):
         if current.get('kind')=='origin':return self.origins.poll(current)
-        store,key,c=self._cell(current);future=self.futures.get(key)
-        if future is not None and future.done():future.result()
-        job=job_for(c,1,'execute')
+        store,key,c=self._cell(current);version=attempt_version(current);future=self.futures.get(attempt_id(current))
+        if future is not None:
+            if not future.done():return 'running'
+            future.result()
+        if self.recover_invalid(current):return 'completed'
+        c=store.cell(key)
+        if any(v['version']==version and v.get('status')=='invalid_generation' for v in c['versions']):return 'completed'
+        job=job_for(c,version,'execute')
         if job and job['state']=='settled':return 'completed'
         with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
         if e['state']=='paused':return 'paused'
@@ -202,7 +250,8 @@ class LedgerRunner:
         if current.get('kind')=='origin':return self.origins.pause(current)
         from .dev_experiment import request_pause
         store,key,c=self._cell(current)
-        if job_for(c,1,'execute') and job_for(c,1,'execute')['state']=='settled':return
+        if c.get('state') in {'invalid_generation','needs_review','completed'}:return
+        if job_for(c,attempt_version(current),'execute') and job_for(c,attempt_version(current),'execute')['state']=='settled':return
         request_pause(store,c['experiment_id'])
 
     def resume(self,current):
@@ -213,44 +262,51 @@ class LedgerRunner:
     def finish(self,current):
         if current.get('kind')=='origin':return self.origins.finish(current)
         from .dev_v2_memory_import import prepare
-        store,key,c=self._cell(current);record=next(v for v in c['versions'] if v['version']==1)
+        store,key,c=self._cell(current)
+        # Other finish paths retain the resolved cell key and original v1 imports.
+        pair_arm=(current.get('kind') not in {'begin','origin','cross_seed'}
+                  and current.get('arm') in {'control','treatment'} and current.get('arm_id')==key)
+        version=attempt_version(current) if pair_arm else 1
+        identity=attempt_id(current) if pair_arm else key
+        record=next(v for v in c['versions'] if v['version']==version)
+        if pair_arm and record.get('status')=='invalid_generation':return dict(status='invalid_generation',reason=record['validation_error'],cell=key,version=version,model_output=record['model_output'])
         with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
         config=json.loads(checked(current['config']).read_bytes())
         sources=manifest_sources(e['manifest'],current['context'],e['artifact_dir'],contract=config.get('scene_contract'))
         for cid,sealed in registration_order(sources).items():self.client.register_dev_v2_catalog(catalog_id=cid,catalog=sealed)
-        output=Path(e['artifact_dir'])/'validation-import'/key
+        output=Path(e['artifact_dir'])/'validation-import'/identity
         ref=output/'catalog.json'
         cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
-        if not ref.exists():prepare(store,key,1,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_validation',**({'contract_catalog':current['target']['catalog']} if cross else {}))
+        if not ref.exists():prepare(store,key,version,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_validation',**({'contract_catalog':current['target']['catalog']} if cross else {}))
         catalog=json.loads(ref.read_bytes());descriptor=json.loads((output/'descriptor.json').read_bytes())
         # Service import includes exact original refs without relocating them.
         # Independent replay keeps its stricter, arm-experiment-only root/seal.
         local_root=Path(e['artifact_dir']).resolve()
         local_catalog={**catalog,'root':str(local_root),'files':{str((Path(catalog['root'])/name).relative_to(local_root)):digest for name,digest in catalog['files'].items() if (Path(catalog['root'])/name).is_relative_to(local_root)}}
-        receipt=self.state_root/'verdicts'/f'{key}.json';receipt.parent.mkdir(parents=True,exist_ok=True)
+        receipt=self.state_root/'verdicts'/f'{identity}.json';receipt.parent.mkdir(parents=True,exist_ok=True)
         if receipt.exists():result=json.loads(receipt.read_bytes())
         else:
             if self.gpu_meter is None:raise DevConflict('independent GPU time measurement unavailable')
             grant=None
             if not probe:
-                envelope=json.loads((Path(c['artifact_dir'])/'v1/memory-validation-envelope.json').read_bytes());grant=json.loads(checked(envelope['grant']).read_bytes())
-            result=validate_arm(experiment_dir=e['artifact_dir'],experiments_root=self.experiments_root,cell=key,version=1,execution_import_id=key,
-                bundle_ref=job_for(c,1,'execute')['receipt']['bundle'],config_ref=descriptor['config'],source_ref=record['source'],grant=None if probe else {**grant,'permission_scope':descriptor['permission_scope']},permission_scope=descriptor['permission_scope'],executor_catalog=local_catalog,
-                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key),ledger_ref=descriptor['ledger'],import_purpose=descriptor.get('import_purpose'),
+                envelope=json.loads((Path(c['artifact_dir'])/f'v{version}/memory-validation-envelope.json').read_bytes());grant=json.loads(checked(envelope['grant']).read_bytes())
+            result=validate_arm(experiment_dir=e['artifact_dir'],experiments_root=self.experiments_root,cell=key,version=version,execution_import_id=identity,
+                bundle_ref=job_for(c,version,'execute')['receipt']['bundle'],config_ref=descriptor['config'],source_ref=record['source'],grant=None if probe else {**grant,'permission_scope':descriptor['permission_scope']},permission_scope=descriptor['permission_scope'],executor_catalog=local_catalog,
+                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key,version) if version>1 else self.gpu_meter(store,key),ledger_ref=descriptor['ledger'],import_purpose=descriptor.get('import_purpose'),
                 **({'probe_input':descriptor['validation_input'],'origin_source_sha256':current['origin']['sha256']} if probe else {}))
             immutable(receipt,result)
         if result['status']=='refused':raise DevConflict('independent validation refused: '+str(result.get('reason')))
-        self.client.register_dev_v2_catalog(catalog_id=key,catalog=catalog)
-        self.client.register_dev_v2_catalog(catalog_id='validator-'+key,catalog=result['catalog'])
-        self.client.import_dev_v2_execution(import_id=key,catalog_id=key,descriptor=str((output/'descriptor.json').relative_to(catalog['root'])))
+        self.client.register_dev_v2_catalog(catalog_id=identity,catalog=catalog)
+        self.client.register_dev_v2_catalog(catalog_id='validator-'+identity,catalog=result['catalog'])
+        self.client.import_dev_v2_execution(import_id=identity,catalog_id=identity,descriptor=str((output/'descriptor.json').relative_to(catalog['root'])))
         if probe:
-            value=self.client.cross_seed_write('probes',memory_id=current['memory_id'],target_seed=current['target_seed'],execution_import_id=key,catalog_id='validator-'+key,descriptor=str(Path(result['descriptor']['uri']).relative_to(result['catalog']['root'])),scene_contract_ref=current['target']['contract'])
+            value=self.client.cross_seed_write('probes',memory_id=current['memory_id'],target_seed=current['target_seed'],execution_import_id=identity,catalog_id='validator-'+identity,descriptor=str(Path(result['descriptor']['uri']).relative_to(result['catalog']['root'])),scene_contract_ref=current['target']['contract'])
             return dict(status='probe',probe=value)
         if result['status']=='failed':
             trial=json.loads((Path(result['catalog']['root'])/'trial.json').read_bytes())
-            return dict(status='failed',descriptor=result['descriptor'],checks=result['checks'],failed_check=dict(memory_id=current['memory_id'],validation_grant_id=trial['validation_grant_id'],execution_import_id=key,catalog_id='validator-'+key,descriptor=str(Path(result['descriptor']['uri']).relative_to(result['catalog']['root']))))
-        self.client.import_dev_v2_trial(import_id='trial-'+key,catalog_id='validator-'+key,descriptor='trial.json')
-        return dict(trial_import_id='trial-'+key,status=result['status'],descriptor=result['descriptor'])
+            return dict(status='failed',descriptor=result['descriptor'],checks=result['checks'],failed_check=dict(memory_id=current['memory_id'],validation_grant_id=trial['validation_grant_id'],execution_import_id=identity,catalog_id='validator-'+identity,descriptor=str(Path(result['descriptor']['uri']).relative_to(result['catalog']['root']))))
+        self.client.import_dev_v2_trial(import_id='trial-'+identity,catalog_id='validator-'+identity,descriptor='trial.json')
+        return dict(trial_import_id='trial-'+identity,status=result['status'],descriptor=result['descriptor'])
 
 
 def from_config(root,*,quota_probe_command=None):

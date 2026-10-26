@@ -31,6 +31,11 @@ def automatic_checks(root=None,gateway=None):
     import os
     from .memory_validation_worker import settings
     from .notices import safe_text,safe_detail
+    def validation_text(value):
+        text=safe_text(value)
+        for code in ('source_size_limit_exceeded','unparsable_output','public_source_validation_failed','source_validation_failed'):
+            text=text.replace(code.replace('_',' '),code)
+        return text
     root=root or os.environ.get('ATTENTION_MEMORY_VALIDATION_STATE')
     value=dict(enabled=False,status='Off',runs_today=0,daily_run_limit=20,weekly_quota_stop_percent=70,daily_quota_rise_stop_points=5,queue=[],current=None,results=[],events=[],errors=[],notices=[],cross_seed_enabled=False,cross_seed_notes=[],skipped_seeds=[])
     cross_notes={}
@@ -58,6 +63,9 @@ def automatic_checks(root=None,gateway=None):
             current=state.get('current')
             if current:
                 value['current']=dict(title=safe_text(current['title']),paused=bool(current.get('pause_requested')))
+                if current.get('discarded_pairs'):
+                    value['current']['discarded_pairs']=[dict(pair=r['pair'],version=r['version'],arm=safe_text(r['arm']),reason=validation_text(r['reason'])) for r in current['discarded_pairs']]
+                if current.get('replacement_notice'):value['current']['replacement_notice']=validation_text(current['replacement_notice'])
                 if current.get('kind')=='begin':
                     value['current'].update(stage='begin',paused=True)
                     if current.get('begin_error'):value['errors'].append(safe_detail(current['begin_error']))
@@ -71,7 +79,10 @@ def automatic_checks(root=None,gateway=None):
             value['skipped_seeds']=[dict(seed=r['seed'],reason=safe_detail(r['reason'])) for r in state.get('skipped_seeds',[])][-100:]
             for row in state.get('results',[])[-20:]:
                 report=row.get('decision',{}).get('report',{})
-                value['results'].append(dict(title=safe_text(row['title']),status=row['status'],note_remains=row.get('note_remains'),reason=safe_text(row.get('decision',{}).get('reason')),pairs=report.get('paired_runs'),control=report.get('control_signature_count'),treatment=report.get('treatment_signature_count')))
+                result=dict(title=safe_text(row['title']),status=row['status'],note_remains=row.get('note_remains'),reason=safe_text(row.get('decision',{}).get('reason')),pairs=report.get('paired_runs'),control=report.get('control_signature_count'),treatment=report.get('treatment_signature_count'))
+                if row.get('discarded_pairs'):
+                    result['discarded_pairs']=[dict(pair=r['pair'],version=r['version'],arm=safe_text(r['arm']),reason=validation_text(r['reason'])) for r in row['discarded_pairs']]
+                value['results'].append(result)
         except Exception as exc:value['errors'].append('Automatic checks state unavailable: '+safe_detail(str(exc)))
     if gateway:
         try:

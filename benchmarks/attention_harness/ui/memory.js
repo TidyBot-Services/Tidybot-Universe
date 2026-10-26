@@ -253,6 +253,7 @@
     const statusText=s=>({trusted:'Trusted on this scene',rejected:'Rejected',inconclusive:'Could not finish'}[s]||s);
     const tone=s=>({trusted:'ok',rejected:'bad',inconclusive:'warn'}[s]||'');
     const five=n=>Number.isInteger(n)&&n>=0&&n<=5?Array.from({length:5},(_,i)=>`<i${i<n?' class="f"':''}></i>`).join(''):'';
+    const discards=n=>(n?.discarded_pairs||[]).map(r=>`<small>Pair ${esc(r.pair)} discarded (attempt ${esc(r.version)}): ${esc(r.arm)} produced invalid source (${esc(r.reason)})</small>`).join('');
     const detail=n=>n.status==='inconclusive'?`<small>${esc(n.reason||'The check could not be completed')} · ${n.note_remains==='trusted'?'note keeps its existing trust':'note stays Unvalidated'}</small>`
       :n.status==='rejected'&&n.pairs!==undefined&&n.pairs<5?`<small>${esc(n.reason||'The check failed')}</small>`
       :`${five(n.control)&&five(n.treatment)?`<div class="ac-five" aria-hidden="true"><span>without</span><span>${five(n.control)}</span><span>with</span><span>${five(n.treatment)}</span></div>`:''}<small>failure seen without note ${n.control??'?'} of 5 times, with note ${n.treatment??'?'} of 5 times</small>`;
@@ -276,10 +277,10 @@
     const c=value.current,pair=Number(c?.pair)||0,total=c?.pairs_needed||5;
     const now=c?.stage==='evaluate'?`<li><b>${esc(c.title)}</b><small>Evaluating 5 pairs (this can take several minutes)${c.paused?' · paused':''}</small></li>`:c?.stage==='begin'?`<li><b>${esc(c.title)}</b><small>Preparing validation batch · waiting to retry</small></li>`:c?.stage==='origin'?`<li><b>${esc(c.title)}</b><small>Preparing origin evidence${c.paused?' · paused':''}</small></li>`:c?.stage==='probe'?`<li><b>${esc(c.title)}</b><small>Seed ${esc(c.seed)} · probe without notes${c.paused?' · paused':''}</small></li>`:c?`<li><b>${esc(c.title)}</b><div class="ac-dots" aria-hidden="true">${Array.from({length:total},(_,i)=>`<i class="${i+1<pair?'done':i+1===pair?(c.paused?'hold':'now'):''}"></i>`).join('')}</div><small>${c.seed!==undefined?`Seed ${esc(c.seed)} · `:''}pair ${esc(c.pair)} of ${total} · ${esc(c.arm)} run, ${c.arm==='control'?'without':'with'} the note${c.paused?' · paused':''}</small></li>`:'<li class="ac-empty">Nothing is being checked</li>';
     const waiting=queue.map(n=>`<li><b>${esc(n.title)}</b><small>used ${n.uses||0} times · failure gone ${n.failure_gone||0} times</small></li>`).join('')||'<li class="ac-empty">No used notes waiting</li>';
-    const done=[...results.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b><span class="ac-tag ${tone(n.status)}">${esc(statusText(n.status))}</span></div>${detail(n)}</li>`),
+    const done=[...results.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b><span class="ac-tag ${tone(n.status)}">${esc(statusText(n.status))}</span></div>${detail(n)}${discards(n)}</li>`),
       ...demoted.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b><span class="ac-tag warn">${n.trust_scope==='scene_scoped'?'Back to trusted on origin scene':'Back to Unvalidated'}</span></div><small>${esc(n.title)} moved back to ${n.trust_scope==='scene_scoped'?'trusted on its origin scene':'Unvalidated'} — the failure came back in 3 of its last 5 uses.</small></li>`)].join('')||'<li class="ac-empty">No results yet</li>';
     const col=(title,count,body)=>`<div class="ac-col"><h3>${title}${count?`<b>${count}</b>`:''}</h3><ul>${body}</ul></div>`;
-    return `${head}${refresh}${errors}${ignored}<div class="ac-grid">${col('Checking now',0,now)}${col('Waiting notes',queue.length,waiting)}${col('Results',results.length+demoted.length,done)}</div>${cross}`;
+    return `${head}${refresh}${errors}${ignored}<div class="ac-grid">${col('Checking now',0,now+(c?`<li>${c.replacement_notice?`<small>${esc(c.replacement_notice)}</small>`:''}${discards(c)}</li>`:''))}${col('Waiting notes',queue.length,waiting)}${col('Results',results.length+demoted.length,done)}</div>${cross}`;
   }
   function crossSeedHtml(value){
     const esc=escapeHtml,notes=value.cross_seed_notes||[],skipped=value.skipped_seeds||[];

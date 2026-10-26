@@ -1,5 +1,9 @@
 """Default offline provisioning: sealed originals in, ten bounded Dev arms out.
 
+The ten cells are immutable logical arm slots in the service plan. After a
+proven invalid generation, memory_validation_replacements authorizes at most
+two additional paired attempts in those slots; initial manifests stay frozen.
+
 Catalog references are the output of dev_v2_memory_import.prepare, sealed by the
 worker origin phase or supplied as an explicit runtime override. Originals and
 their ledgers are read-only.

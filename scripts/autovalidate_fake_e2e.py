@@ -39,6 +39,15 @@ def main():
         assert runner.service.get_memory('m1').status.value=='rejected'
         print('second scenario: treatment independent safety failed → rejected (2 arms; 0 accepted pairs)')
         print('Notice: '+state['status'])
+        from benchmarks.attention_harness.tests.invalid_arm_fakes import scenario,complete
+        with scenario(root/'invalid-arm') as case:
+            result=complete(case)
+            assert result['status']=='trusted' and len(result['discarded_pairs'])==1
+            assert case.state['runs_today']==12
+            pairs=case.fake.service.list_pairs(result['memory_id'])
+            assert len(pairs)==5 and any(p['control_attempt_id'].endswith(':1') and p['treatment_attempt_id'].endswith(':1') for p in pairs)
+            assert len(case.generated)==12 and len(case.executed)==11
+            print('invalid treatment → whole pair discarded → fresh control+treatment → 5 valid service pairs')
         print('PASS: fake runner, fake replay, real in-process service; no external calls')
 
 

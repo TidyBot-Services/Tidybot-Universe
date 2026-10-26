@@ -394,6 +394,31 @@ def begin_current(state,deps,save):
     return batch
 
 
+def discard_pair(state,current,result):
+    """Persist both arms' exclusion before any replacement can be dispatched."""
+    from .memory_validation_replacements import attempt_version,MAX_REPLACEMENTS
+    pair=current['plan']['pairs'][current['pair_index']]
+    entry=dict(pair_id=pair['pair_id'],pair=current['pair_index']+1,version=attempt_version(current),
+               arm=current['arm'],arm_id=current['arm_id'],status='invalid_generation',reason=result['reason'],
+               cells={a:pair[a+'_cell'] for a in ('control','treatment')},
+               arms={a:current.get('trials',{}).get(pair[a+'_cell']) for a in ('control','treatment')})
+    entry['arms'][current['arm']]=result
+    current.setdefault('discarded_pairs',[]).append(entry)
+    for arm in ('control','treatment'):current.setdefault('trials',{}).pop(pair[arm+'_cell'],None)
+    current.update(active=False,pause_requested=False,dispatch_pending=False)
+    count=len(current['discarded_pairs'])
+    message=f"Pair {entry['pair']} discarded: {entry['arm']} produced invalid source ({entry['reason']})"
+    if count>MAX_REPLACEMENTS:
+        reason='Could not finish: 5 valid pairs could not be obtained after 2 replacement pairs.'
+        state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],
+            status='inconclusive',note_remains='provisional',decision=dict(decision='inconclusive',reason=reason),
+            discarded_pairs=current['discarded_pairs']))
+        state['current']=None
+        return message+'; '+reason
+    current.update(pair_version=entry['version']+1,arm='control',replacement_notice=message+f'; running replacement {count} of 2')
+    return current['replacement_notice']
+
+
 def evaluation_ready(current):
     return bool(current and current.get('kind') not in {'begin','origin','cross_seed'}
                 and not current.get('active') and current.get('pair_index')==5)
@@ -409,6 +434,10 @@ def request_current_retry(root):
     import uuid
     root=Path(root);state=json.loads((root/'state.json').read_bytes())
     current=state.get('current')
+    from .memory_validation_replacements import legacy_invalid_available,attempt_version
+    if legacy_invalid_available(current):
+        atomic(root/'retry-current.json',dict(arm_id=current['arm_id'],version=attempt_version(current),evaluation_key=evaluation_key(current),request_id=uuid.uuid4().hex))
+        return 'Current invalid-generation recovery requested; automatic checks must be On to resume.'
     if evaluation_ready(current):
         atomic(root/'retry-current.json',dict(evaluation_key=evaluation_key(current),request_id=uuid.uuid4().hex))
         return 'Current batch retry requested; automatic checks must be On to resume.'
@@ -423,8 +452,9 @@ def tick(state,deps):
 
     runner.begin(note, id) returns a frozen current record with candidate/plan.
     runner.start(current, arm_id) launches/reconciles exactly one ledger arm;
-    poll returns running/paused/completed, finish seals/imports that arm. Neither
-    callback may grant fresh budgets. Unknown outcomes raise and remain visible.
+    poll returns running/paused/completed, finish seals/imports that arm. Only a
+    proven invalid pair permits the bounded C17 supplemental authorization.
+    Unknown outcomes raise and remain visible.
     """
     def save():deps.save(state)
     def status(text):
@@ -441,7 +471,9 @@ def tick(state,deps):
         request=json.loads(request_path.read_bytes()) if request_path.exists() else None
         if request and request['request_id']!=state.get('retry_request_id'):
             pending=state.get('pending')
-            if request.get('evaluation_key'):
+            if request.get('arm_id') and current and current.get('arm_id')==request['arm_id'] and current.get('pair_version',1)==request.get('version') and evaluation_key(current)==request.get('evaluation_key'):
+                current['recover_invalid_requested']=True
+            elif request.get('evaluation_key'):
                 if evaluation_ready(current) and evaluation_key(current)==request['evaluation_key']:
                     current['evaluate_cycle']=request['request_id']
             elif current is None and pending and pending['operation']==request['operation']:
@@ -478,7 +510,12 @@ def tick(state,deps):
                 if reason:return status(reason)
                 check_dispatch_quota(state,deps,save)
                 deps.runner.start(current,current['arm_id']);current['dispatch_pending']=False;save()
-                return status(f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
+                return status(current.get('replacement_notice') or f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
+            if current.get('recover_invalid_requested'):
+                if deps.runner.recover_invalid(current):
+                    from .memory_validation_replacements import attempt_id
+                    deps.runner.futures.pop(attempt_id(current),None)
+                current.pop('recover_invalid_requested',None);save()
             phase=deps.runner.poll(current)
             if phase=='pending':
                 if reason:return status(reason)
@@ -488,6 +525,8 @@ def tick(state,deps):
             if phase=='completed':
                 # Finish/import before moving the cursor. Retrying uses immutable IDs.
                 result=deps.runner.finish(current)
+                if result.get('status')=='invalid_generation':
+                    message=discard_pair(state,current,result);save();return status(message)
                 if result.get('status')=='refused':raise ValueError('execution evidence refused; review required')
                 if result.get('status')=='failed':
                     # Close using the original sealed verdict; failed arms are never trials.
@@ -498,7 +537,7 @@ def tick(state,deps):
                         state.setdefault('service_gaps',[]).append(gap);state['current']=None;save()
                         return status('Automatic check failed: '+current['title']+'; service decision unavailable: '+gap['reason'])
                     outcome=decision['decision']
-                    state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status=outcome,decision=decision,validation_failure=result))
+                    state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status=outcome,decision=decision,validation_failure=result,**({'discarded_pairs':current['discarded_pairs']} if current.get('discarded_pairs') else {})))
                     message=('Note rejected after check: '+current['title'] if outcome=='rejected' else decision['reason']+' — '+current['title'])
                     state['current']=None;save();return status(message)
                 current.setdefault('trials',{})[current['arm_id']]=result
@@ -506,7 +545,7 @@ def tick(state,deps):
                 if current['arm']=='treatment':
                     pair=current['plan']['pairs'][current['pair_index']]
                     deps.client.record_dev_v2_pair(memory_id=current['memory_id'],control_import_id=current['trials'][pair['control_cell']]['trial_import_id'],treatment_import_id=result['trial_import_id'])
-                    current['pair_index']+=1;current['arm']='control'
+                    current['pair_index']+=1;current['arm']='control';current['pair_version']=1;current.pop('replacement_notice',None)
                 else:current['arm']='treatment'
                 save()
             elif reason or current.get('pause_requested'):
@@ -517,7 +556,7 @@ def tick(state,deps):
                     check_dispatch_quota(state,deps,save)
                     deps.runner.resume(current);current['pause_requested']=False
                 return status('Automatic checks resuming' if phase=='paused' else 'Automatic checks waiting for pause')
-            else:return status(f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
+            else:return status(current.get('replacement_notice') or f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
         if reason:return status(reason)
         if current and current.get('kind')=='begin':
             if current.get('begin_cycle')==deps.begin_cycle:
@@ -543,7 +582,7 @@ def tick(state,deps):
             else:
                 # Preserve the evaluate result contract for legacy detail-only decisions.
                 outcome=getattr(result.status,'value',result.status) if hasattr(result,'status') else result['status']
-            state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status=outcome,decision=decision))
+            state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status=outcome,decision=decision,**({'discarded_pairs':current['discarded_pairs']} if current.get('discarded_pairs') else {})))
             state['current']=None;save()
             return status(('Note checked and trusted: ' if outcome=='trusted' else 'Note rejected after check: ')+current['title'])
         if current is None:
@@ -569,16 +608,18 @@ def tick(state,deps):
         pair=current['plan']['pairs'][current['pair_index']];arm_id=pair[current['arm']+'_cell']
         # Reserve the daily slot durably before dispatch. A crash may conservatively
         # consume a slot, but cannot run the same arm twice or exceed the daily cap.
+        from .memory_validation_replacements import attempt_version
+        count_id=arm_id if attempt_version(current)==1 else f'{arm_id}-v{attempt_version(current)}'
         counted=state.setdefault('counted',{})
-        if arm_id not in counted:
+        if count_id not in counted:
             stop=daily_run_stop(state,deps.root)
             if stop:return status(stop)
-            counted[arm_id]=day;state['runs_today']+=1
+            counted[count_id]=day;state['runs_today']+=1
         current.update(arm_id=arm_id,active=True,dispatch_pending=True);save()
         check_dispatch_quota(state,deps,save)
         deps.runner.start(current,arm_id)
         current['dispatch_pending']=False;save()
-        return status(f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
+        return status(current.get('replacement_notice') or f"Checking pair {current['pair_index']+1} of 5 · {current['arm']}")
     except QuotaStop as exc:
         return status(str(exc))
     except Exception as exc:
@@ -672,7 +713,7 @@ def main(argv=None,*,client=None):
     actions.add_argument('--set-daily-quota-rise-stop',type=lambda value:parse_quota_setting(value,key='daily_quota_rise_stop_points'),metavar='{none|N}',default=argparse.SUPPRESS)
     actions.add_argument('--check-origin',metavar='MEMORY_ID')
     actions.add_argument('--reopen-origin',metavar='MEMORY_ID')
-    actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin or completed batch evaluation; does not turn checks On')
+    actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin, invalid generation recovery or completed batch evaluation; does not turn checks On')
     p.add_argument('--reason')
     a=p.parse_args(argv);root=Path(a.state_dir)
     if a.reopen_origin and not (a.reason and a.reason.strip()):p.error('--reopen-origin requires --reason')
