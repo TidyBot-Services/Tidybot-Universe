@@ -394,13 +394,26 @@ def begin_current(state,deps,save):
     return batch
 
 
+def evaluation_ready(current):
+    return bool(current and current.get('kind') not in {'begin','origin','cross_seed'}
+                and not current.get('active') and current.get('pair_index')==5)
+
+
+def evaluation_key(current):
+    # Bind retries to the frozen batch, including legacy records without operation.
+    return hashlib.sha256(json.dumps([current['memory_id'],current['plan']],sort_keys=True).encode()).hexdigest()
+
+
 def request_current_retry(root):
     """Mailbox only: works with a running/Off worker, never enables dispatch."""
     import uuid
     root=Path(root);state=json.loads((root/'state.json').read_bytes())
     current=state.get('current')
+    if evaluation_ready(current):
+        atomic(root/'retry-current.json',dict(evaluation_key=evaluation_key(current),request_id=uuid.uuid4().hex))
+        return 'Current batch retry requested; automatic checks must be On to resume.'
     item=current if current and current.get('kind')=='begin' else state.get('pending') if not current else None
-    if not item:raise ValueError('No interrupted begin is available to retry')
+    if not item:raise ValueError('No interrupted begin or completed batch evaluation is available to retry')
     atomic(root/'retry-current.json',dict(operation=item['operation'],request_id=uuid.uuid4().hex))
     return 'Current batch retry requested; automatic checks must be On to resume.'
 
@@ -428,11 +441,14 @@ def tick(state,deps):
         request=json.loads(request_path.read_bytes()) if request_path.exists() else None
         if request and request['request_id']!=state.get('retry_request_id'):
             pending=state.get('pending')
-            if current is None and pending and pending['operation']==request['operation']:
+            if request.get('evaluation_key'):
+                if evaluation_ready(current) and evaluation_key(current)==request['evaluation_key']:
+                    current['evaluate_cycle']=request['request_id']
+            elif current is None and pending and pending['operation']==request['operation']:
                 from .memory_validation_ownership import recover_pending
                 if recover_pending(deps.root,pending):
                     current=state['current']=begin_item(pending)
-            if current and current.get('kind')=='begin' and current['operation']==request['operation']:
+            if current and current.get('kind')=='begin' and current['operation']==request.get('operation'):
                 deps.begin_cycle=request['request_id']
             state['retry_request_id']=request['request_id'];save()
         enabled=settings(deps.root)['enabled'];state['enabled']=enabled
@@ -510,8 +526,23 @@ def tick(state,deps):
             if stop:return status(stop)
             current=begin_current(state,deps,save)
         if current and current['pair_index']==5:
-            result=deps.client.evaluate(current['memory_id']);decision=deps.client.decision(current['memory_id'])
-            outcome=getattr(result.status,'value',result.status) if hasattr(result,'status') else result['status']
+            if current.get('evaluate_cycle')==deps.begin_cycle:
+                return status(current.get('evaluate_error') or 'Automatic checks paused: interrupted evaluation; restart or use --retry-current.')
+            current['evaluate_cycle']=deps.begin_cycle
+            current.pop('evaluate_error',None)
+            status('Evaluating 5 pairs (this can take several minutes)')
+            decision=deps.client.decision(current['memory_id'])
+            result=None
+            # Detail-only responses do not prove evaluation already committed.
+            if decision is None or not decision.get('decision'):
+                result=deps.client.evaluate(current['memory_id'])
+                decision=deps.client.decision(current['memory_id'])
+            if decision is None:raise ValueError('evaluation returned without a recorded decision; use --retry-current')
+            if decision.get('decision'):
+                outcome='trusted' if decision['decision']=='promoted' else decision['decision']
+            else:
+                # Preserve the evaluate result contract for legacy detail-only decisions.
+                outcome=getattr(result.status,'value',result.status) if hasattr(result,'status') else result['status']
             state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status=outcome,decision=decision))
             state['current']=None;save()
             return status(('Note checked and trusted: ' if outcome=='trusted' else 'Note rejected after check: ')+current['title'])
@@ -555,6 +586,8 @@ def tick(state,deps):
         message='Automatic checks paused: '+safe_detail(str(exc) or type(exc).__name__)
         if state.get('current') and state['current'].get('kind')=='begin':
             state['current']['begin_error']=message
+        elif evaluation_ready(state.get('current')):
+            state['current']['evaluate_error']=message
         return status(message)
 
 
@@ -639,7 +672,7 @@ def main(argv=None,*,client=None):
     actions.add_argument('--set-daily-quota-rise-stop',type=lambda value:parse_quota_setting(value,key='daily_quota_rise_stop_points'),metavar='{none|N}',default=argparse.SUPPRESS)
     actions.add_argument('--check-origin',metavar='MEMORY_ID')
     actions.add_argument('--reopen-origin',metavar='MEMORY_ID')
-    actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin; does not turn checks On')
+    actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin or completed batch evaluation; does not turn checks On')
     p.add_argument('--reason')
     a=p.parse_args(argv);root=Path(a.state_dir)
     if a.reopen_origin and not (a.reason and a.reason.strip()):p.error('--reopen-origin requires --reason')

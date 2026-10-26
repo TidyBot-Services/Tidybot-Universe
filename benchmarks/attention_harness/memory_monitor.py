@@ -62,6 +62,9 @@ def automatic_checks(root=None,gateway=None):
                     value['current'].update(stage='begin',paused=True)
                     if current.get('begin_error'):value['errors'].append(safe_detail(current['begin_error']))
                 elif current.get('kind')=='origin':value['current']['stage']='origin'
+                elif current.get('evaluate_cycle'):
+                    value['current'].update(stage='evaluate',paused=bool(current.get('evaluate_error')))
+                    if current.get('evaluate_error'):value['errors'].append(safe_detail(current['evaluate_error']))
                 else:value['current'].update(pair=current['pair_index']+1,arm=current['arm'])
                 if current.get('kind')=='cross_seed':value['current'].update(seed=current['target_seed'],stage=current['stage'],pairs_needed=len(current.get('plan',{}).get('pairs',[])))
             cross_notes=state.get('cross_notes',{})

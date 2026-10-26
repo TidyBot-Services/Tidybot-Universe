@@ -261,10 +261,11 @@ def from_config(root,*,quota_probe_command=None):
     """
     import importlib,os
     from types import SimpleNamespace
-    from .memory_service_client import MemoryServiceClient
+    from .memory_service_client import MemoryServiceClient,validate_evaluate_timeout
     from .memory_validation_worker import run_activity,weekly_quota_snapshot,refresh_quota
     config=json.loads((Path(root)/'runtime.json').read_bytes())
-    client=MemoryServiceClient.offline(config['base_url'],key_file=config['key_file'])
+    evaluate_timeout=validate_evaluate_timeout(config.get('evaluate_timeout_seconds',1800))
+    client=MemoryServiceClient.offline(config['base_url'],key_file=config['key_file'],evaluate_timeout_seconds=evaluate_timeout)
     config['state_root']=str(Path(root).resolve())
     module,name=config.get('provision_factory','benchmarks.attention_harness.memory_validation_provision:provision_factory').split(':')
     provision=getattr(importlib.import_module(module),name)(config)

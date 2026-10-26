@@ -1,5 +1,6 @@
 {
   "enabled": false,
+  "evaluate_timeout_seconds": 1800,
   "base_url": "http://127.0.0.1:18000",
   "key_file": "/absolute/path/to/offline-importer.env",
   "experiments_root": "/absolute/path/to/experiments",

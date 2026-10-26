@@ -1,9 +1,29 @@
 """Compatibility import for the independent Memory Service HTTP client."""
 
 from attention_memory_service.memory_service_client import MemoryServiceClient as _Client
+from copy import copy
+
+
+def validate_evaluate_timeout(value=1800):
+    if type(value) not in (int,float) or not 0<value<float('inf'):
+        raise ValueError('evaluate_timeout_seconds must be a finite positive number')
+    return value
 
 
 class MemoryServiceClient(_Client):
+    def __init__(self,*args,evaluate_timeout_seconds=1800,**kwargs):
+        self.evaluate_timeout_seconds=validate_evaluate_timeout(evaluate_timeout_seconds)
+        super().__init__(*args,**kwargs)
+
+    def _call(self,method,path,payload=None,**kwargs):
+        client=self
+        if path.startswith('/memories/') and (method,path.rsplit('/',1)[-1]) in {('POST','evaluate'),('GET','decision')}:
+            # The runner and monitor can share this client. Never temporarily
+            # mutate its ordinary timeout while evidence verification blocks.
+            client=copy(self)
+            client.timeout=self.evaluate_timeout_seconds
+        return _Client._call(client,method,path,payload,**kwargs)
+
     @classmethod
     def offline(cls,base_url,*,key_file,**kwargs):
         from .memory_auto_import import read_keys
