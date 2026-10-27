@@ -118,7 +118,7 @@ def test_scripted_reference_origin_store_sqlite_without_advisor(tmp_path,monkeyp
     from benchmarks.attention_harness.memory_positive_control import local_origin
     from benchmarks.attention_harness.memory_validation_generation import parse_generation
     # The synthetic fixture uses a stub SDK source; native validation is tested separately.
-    monkeypatch.setattr('openarm365_dev.policy_validation.validate_generated_policy',lambda source:None)
+    monkeypatch.setattr('openarm365_dev.policy_validation.validate_generated_policy',lambda source,**kwargs:None)
     fake=PositiveFake(tmp_path/'fake',tmp_path/'worker');r=fake.failed;d=r['descriptor']
     old=Path(d['ledger']['uri']);ledger=old.with_name('store.sqlite');old.rename(ledger)
     manifest=json.loads(Path(d['manifest']['uri']).read_bytes());manifest['ledger_path']=str(ledger)

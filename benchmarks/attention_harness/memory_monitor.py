@@ -559,6 +559,12 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
         profile=row.get('execution_profile',(row.get('applicability_summary') or {}).get('execution_profile'))
         if profile:notes[-1]['execution_profile']=profile
+        try:
+            drift=(row.get('validation_summary') or {}).get('source_drift')
+            if drift:notes[-1]['source_drift']=drift
+        except EXTRA_ERRORS as error:
+            _log_failure(error,'source drift details')
+            if not warnings:warnings.append('Some note details are unavailable.')
         if row.get('motion_permission') == dict(action='dev_tier_sim_motion',actor='dev_tier_sim_motion'):
             notes[-1]['motion_permission']=row['motion_permission']
         digest=row.get('planner_dev_local_sha256',(row.get('applicability_summary') or {}).get('planner_dev_local_sha256'))

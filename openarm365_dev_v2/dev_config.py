@@ -219,5 +219,12 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
     if 'eval_agent' in expected and 'advisor_proxy' in expected:
         from benchmarks.attention_harness.dev_configuration import independent_eval_advisor
         independent_eval_advisor(expected['eval_agent'],expected['advisor_proxy'])
+    if 'origin_dev_lock' in c:
+        from openarm365_dev_v2.source_policy import drift_record,dev_tier
+        if not dev_tier(c) or budget_boundary!='dev_loop':raise ValueError('origin lock requires dev tier')
+        original=c['origin_dev_lock']
+        if sha(original['path'])!=original['sha256']:raise ValueError('origin identity lock changed')
+        drift_record(c,json.loads(Path(original['path']).read_bytes()),json.loads(Path(c['dev_lock']['path']).read_bytes()),original['sha256'],c['dev_lock']['sha256'])
+        expected['origin_dev_lock']=original
     if c!=expected or any(type(c[k]) is not type(v) for k,v in expected.items()):raise ValueError('Dev configuration mismatch')
     return c

@@ -109,14 +109,15 @@ def context(config, namespace, *, contract_catalog=None):
 
 def sdk_identity(config):
     from .dev_tasks import dev_sdk, dev_sdk_prompt
-    ref=config['dev_lock']
+    ref=config.get('origin_dev_lock',config['dev_lock'])
     if sha(ref['path'])!=ref['sha256']:raise DevConflict('Memory SDK lock drift')
     lock=json.loads(Path(ref['path']).read_bytes());root=Path(lock['source_root'])
     sdk_files={str(Path(name).relative_to(root)):expected for name,expected in lock['files'].items()
                if Path(name).is_relative_to(root) and any(part in Path(name).parts for part in ('openarm365','openarm365_dev','openarm365_dev_v2','curobo_v2'))
                and '/tests/' not in name}
     if not sdk_files:raise ValueError('Memory requires frozen SDK implementation identity')
-    if any(sha(root/name)!=expected for name,expected in sdk_files.items()):raise DevConflict('Memory runtime SDK differs from frozen identity')
+    from openarm365_dev_v2.source_policy import dev_tier,source_file
+    if any(not (dev_tier(config) and source_file(lock,str(root/name))) and sha(root/name)!=expected for name,expected in sdk_files.items()):raise DevConflict('Memory runtime SDK differs from frozen identity')
     return dict(contract=dev_sdk(config),prompt=dev_sdk_prompt(config),implementation=sdk_files,planner_lock=lock['planner_lock']['sha256'],robot_model_identity=lock['model_sources'])
 
 

@@ -86,11 +86,12 @@ class MemoryView:
                                  for item in provenance.get("raw_evidence_refs", [])],
             },
             "validation": {
+                "source_drift": (decision or {}).get("source_drift",impact.get("source_drift",[])),
                 "planned_seeds": None if plan is None else list(plan["seeds"]),
                 "completed_pairs": [pair["seed"] for pair in pairs],
                 "decision": None if decision is None else {
                     "decision": decision["decision"], "failed_gates": decision["failed_gates"],
-                    "messages": decision["failed_gate_messages"], "decided_at": decision["decided_at"]},
+                    "messages": decision["failed_gate_messages"], "decided_at": decision["decided_at"], "source_drift": decision.get("source_drift",[])},
                 "empirical_confidence": impact["empirical_confidence"],
                 "confidence_95ci": impact["treatment_success_rate_95ci"],
                 "control_successes": impact["control_successes"],

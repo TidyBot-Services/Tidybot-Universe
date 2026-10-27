@@ -54,10 +54,37 @@ def identity(provision,note):
     if getattr(provision.client,'spec',None) is not None:
         from .memory_positive_control import local_origin
         found=local_origin(provision,provision.client.spec)
-        return found['key'],found['note'],found['provenance']
+        return current_origin_key(provision,found['key']),found['note'],found['provenance']
     original,p=origin_note(provision,note)
     key='origin-'+hashlib.sha256(json.dumps(dict(note=original,origin=p['origin'],signature=p['failure_signature']),sort_keys=True).encode()).hexdigest()[:32]
-    return key,original,p
+    return current_origin_key(provision,key),original,p
+
+
+
+def current_origin_key(provision,key):
+    """A new code epoch gets new replay evidence; prior receipts stay immutable."""
+    path=provision.state_root/'origins'/key/'receipt.json'
+    if not path.exists():return key
+    receipt=json.loads(path.read_bytes())
+    if receipt.get('status')!='passed':return key
+    from openarm365_dev_v2.source_policy import dev_tier
+    from .memory_source_drift import current_source_lock
+    epochs=[]
+    for ref in receipt['catalogs'].values():
+        catalog=read(ref)
+        if catalog['role']!='executor':continue
+        for name,digest in catalog['files'].items():
+            if not name.endswith('/descriptor.json'):continue
+            descriptor=read(dict(uri=str(Path(catalog['root'])/name),sha256=digest))
+            if descriptor.get('schema_version')!='attentionbench.dev-v2-import.v1':continue
+            config=read(descriptor['config'])
+            if not dev_tier(config):continue
+            original=descriptor.get('current_lock',read(descriptor['manifest'])['identity_lock'])
+            lock=read(dict(uri=original['path'],sha256=original['sha256']))
+            current=current_source_lock(lock)
+            if current!=lock:epochs.append(current)
+    if not epochs:return key
+    return 'origin-'+hashlib.sha256(json.dumps(dict(origin=key,epochs=epochs),sort_keys=True).encode()).hexdigest()[:32]
 
 
 def receipt_catalogs(provision,note):
@@ -142,7 +169,7 @@ def validate_origin(provision,found,catalog,descriptor,*,validator_root,replay=N
     c=found['cell'];v=found['version'];config=found['config']
     return validate_arm(experiment_dir=provision.root,experiments_root=provision.root,cell=c['key'],version=v['version'],execution_import_id=found.get('execution_import_id',found['key']),
         bundle_ref=found['job']['receipt']['bundle'],config_ref=descriptor['config'],source_ref=v['source'],grant=None,origin=True,
-        permission_scope=descriptor['permission_scope'],executor_catalog=catalog,contract=config['scene_contract'],validator_root=validator_root,replay=replay,before_replay=before_replay,import_purpose=descriptor.get('import_purpose'),
+        permission_scope=descriptor['permission_scope'],executor_catalog=catalog,contract=config['scene_contract'],validator_root=validator_root,replay=replay,before_replay=before_replay,import_purpose=descriptor.get('import_purpose'),source_drift=descriptor.get('source_drift'),current_lock=descriptor.get('current_lock'),
         failure_signature=found['provenance']['failure_signature'],budget=c.get('budget',{}),developer_model=config.get('model','origin'),gpu_seconds=None,ledger_ref=descriptor['ledger'],check_only=check_only)
 
 

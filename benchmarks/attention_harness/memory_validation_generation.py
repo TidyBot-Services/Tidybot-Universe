@@ -4,6 +4,7 @@ from pathlib import Path
 from .core.dev_store import DevConflict
 from .dev_v2_loop import checked,immutable,model_messages,provider_call
 from .dev_loop import sha
+from openarm365_dev_v2.source_policy import source_limit
 
 
 def exposure_receipt(directory,cell,version,request,origin,*,memory=None):
@@ -23,7 +24,7 @@ def exposure_receipt(directory,cell,version,request,origin,*,memory=None):
     return immutable(Path(directory)/'dev-memory-exposure.json',dict(schema_version='attentionbench.dev-memory-exposure.v1',cell=cell,version=version,model_input=request,entries=entries))
 
 
-def parse_generation(text):
+def parse_generation(text, config=None, manifest=None):
     """Classify only model-authored output; provider/evidence errors stay outside."""
     from openarm365_dev.policy_validation import validate_generated_policy
     from .dev_help import public_screen
@@ -35,10 +36,10 @@ def parse_generation(text):
     except (ValueError,TypeError,KeyError):return None,None,'unparsable_output'
     try:size=len(source.encode())
     except UnicodeError:return None,None,'unparsable_output'
-    if size>16384:return None,None,'source_size_limit_exceeded'
+    if size>source_limit(config or {},manifest):return None,None,'source_size_limit_exceeded'
     try:public_screen(source);public_screen(reason)
     except ValueError:return None,None,'public_source_validation_failed'
-    try:validate_generated_policy(source)
+    try:validate_generated_policy(source,config=config or {},manifest=manifest)
     except Exception:return source,reason,'source_validation_failed'
     return source,reason,None
 
@@ -56,9 +57,10 @@ def generate(store,cell,config,origin,feedback,owner,*,memory=None,client=None,v
     # Every attempt receives the same per-arm allowance, never accumulated headroom.
     base=c['budget'] if version==1 else json.loads(checked(experiment['manifest']).read_bytes())['cell_budget']
     remaining=dict(base)
-    messages=model_messages(config,checked(parent).read_text(),feedback,{'memory':[{'content':memory['guidance']}] if memory else []},remaining,source_size_limit_bytes=16384,validation_memory=True)
+    manifest=json.loads(checked(experiment['manifest']).read_bytes())
+    messages=model_messages(config,checked(parent).read_text(),feedback,{'memory':[{'content':memory['guidance']}] if memory else []},remaining,source_size_limit_bytes=source_limit(config,manifest),validation_memory=True)
     text,request,response,usage=provider_call(store,cell,version,'model',messages,owner,directory,client)
-    source,reason,error=parse_generation(text)
+    source,reason,error=parse_generation(text,config,manifest)
     exposure=exposure_receipt(directory,cell,version,request,parent,memory=memory)
     record=dict(version=version,source=immutable(directory/'policy.py',source if source is not None else checked(parent).read_text()),parent_source=parent,dev_memory_exposure=exposure,
         model_input=request,model_output=response,usage=usage,reason=reason or 'Invalid Dev output; no execution',valid=error is None,validation_error=error,

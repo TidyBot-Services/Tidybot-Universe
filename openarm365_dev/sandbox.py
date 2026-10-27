@@ -157,13 +157,14 @@ def execute_formal_policy(
     cancel_check: Callable[[], bool] | None = None,
     max_sdk_calls: int = 200,
     memory_limit_mb: int = 512,
+    source_config: dict | None = None,
 ) -> FormalPolicyOutcome:
     if type(memory_limit_mb) is not int or memory_limit_mb not in (512, 2048):
         raise ValueError("formal policy memory limit must be 512 or 2048 MiB")
     call_ceiling = 3200 if context.get("capabilities", {}).get("robot") == "OpenArm365" else 200
     if type(max_sdk_calls) is not int or not 1 <= max_sdk_calls <= call_ceiling:
         raise ValueError("formal SDK call limit exceeds the robot-specific ceiling")
-    validate_generated_policy(code)
+    validate_generated_policy(code,config=source_config)
     worker = Path(__file__).with_name("policy_worker.py").resolve()
     stderr_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()

@@ -120,6 +120,19 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
             p=episode/'scene-condition.json';descriptor['scene_state']={'uri':str(p),'sha256':sha(p)}
         validation=Path(c['artifact_dir'])/f'v{version}'/'memory-validation-input.json'
         if validation.is_file():descriptor['validation_input']={'uri':str(validation),'sha256':sha(validation)}
+    from .memory_source_drift import current_identity
+    manifest=json.loads(checked(e['manifest']).read_bytes())
+    if manifest.get('validation_experiment') or config.get('origin_dev_lock'):
+        from openarm365_dev_v2.dev_config import verify_lock
+        current_lock=manifest['identity_lock']
+        epoch=json.loads(checked(dict(uri=current_lock['path'],sha256=current_lock['sha256'])).read_bytes())['source_root']
+        verify_lock(current_lock,expected_source_root=epoch)
+        drift=None
+    else:current_lock,drift=current_identity(config,manifest['identity_lock'],out)
+    if drift:
+        descriptor.update(current_lock=current_lock,source_drift=drift)
+    elif manifest.get('source_drift'):
+        descriptor['source_drift']=manifest['source_drift']
     descriptor_ref=immutable(out/'descriptor.json',descriptor)
     files={};symlinks={};visited=set()
     def pin(path,expected=None):
@@ -168,6 +181,15 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     def walk(value):
         if isinstance(value,dict):
             if 'sha256' in value and ('uri' in value or 'path' in value):pin(value.get('uri',value.get('path')),value['sha256'])
+            # Historical locks remain sealed; their code pins resolve via the sealed current lock.
+            if value.get('schema')=='attentionbench.dev-identity-lock.v2':
+                from openarm365_dev_v2.source_policy import dev_tier
+                if dev_tier(config):
+                    current=json.loads(checked(dict(uri=current_lock['path'],sha256=current_lock['sha256'])).read_bytes())
+                    for name,digest in current['files'].items():pin(name,digest)
+                    for key,item in value.items():
+                        if key not in ('files','source_sets'):walk(item)
+                    return
             # Identity locks pin transitive SDK, planner and model bytes.
             for k,vv in value.items():
                 if isinstance(k,str) and k.startswith('/') and isinstance(vv,str) and len(vv)==64:pin(k,vv)

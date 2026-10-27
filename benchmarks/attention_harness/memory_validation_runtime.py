@@ -89,7 +89,7 @@ class LedgerRunner:
         failed=self.client.import_dev_v2_execution(**batch['failed_execution'])
         origin_summary=note['source_summary']
         if (failed['cell']!=origin_summary['cell'] or failed['version']!=origin_summary['version']
-                or failed['config']['sha256']!=batch['config']['sha256']
+                or failed['config']['sha256']!=batch.get('origin_config',batch['config'])['sha256']
                 or json.loads(checked(failed['manifest']).read_bytes())['experiment_id']!=origin_summary['experiment_id']):raise DevConflict('source execution differs from the note origin')
         if batch.get('positive_control'):
             self.client.create_positive_control(**batch['positive_control'])
@@ -301,7 +301,7 @@ class LedgerRunner:
                 envelope=json.loads((Path(c['artifact_dir'])/f'v{version}/memory-validation-envelope.json').read_bytes());grant=json.loads(checked(envelope['grant']).read_bytes())
             result=validate_arm(experiment_dir=e['artifact_dir'],experiments_root=self.experiments_root,cell=key,version=version,execution_import_id=identity,
                 bundle_ref=job_for(c,version,'execute')['receipt']['bundle'],config_ref=descriptor['config'],source_ref=record['source'],grant=None if probe else {**grant,'permission_scope':descriptor['permission_scope']},permission_scope=descriptor['permission_scope'],executor_catalog=local_catalog,
-                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key,version) if version>1 else self.gpu_meter(store,key),ledger_ref=descriptor['ledger'],import_purpose=descriptor.get('import_purpose'),
+                contract=json.loads(checked(descriptor['config']).read_bytes())['scene_contract'],validator_root=self.validator_root,replay=self.replay,failure_signature=current['failure_signature'],budget=current['budget'],developer_model=current['dev_model']['model'],gpu_seconds=self.gpu_meter(store,key,version) if version>1 else self.gpu_meter(store,key),ledger_ref=descriptor['ledger'],import_purpose=descriptor.get('import_purpose'),source_drift=descriptor.get('source_drift'),current_lock=descriptor.get('current_lock'),
                 **({'probe_input':descriptor['validation_input'],'origin_source_sha256':current['origin']['sha256']} if probe else {}))
             immutable(receipt,result)
         if result['status']=='refused':raise DevConflict('independent validation refused: '+str(result.get('reason')))

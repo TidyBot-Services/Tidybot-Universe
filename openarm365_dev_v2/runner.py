@@ -87,6 +87,7 @@ class OpenArm365DevRunnerV2:
                 status='condition_invalid';error='scene_contract_mismatch';native={'evaluated':False,'native_success':False,'reason':error}
             else:
                 outcome=execute_formal_policy(code=request.policy_code_path.read_text(),sdk=build_sdk(owner,event),
+                    **({'source_config':c} if self.runner_boundary=='dev_loop' and c.get('budget_tier')=='dev' else {}),
                     context=self.policy_context(request,c,ready,validation_public,episode),
                     deadline=deadline,stderr_path=episode/'policy-stderr.txt',cancel_check=self.cancel_event.is_set,max_sdk_calls=limit)
                 status,error=outcome.status,outcome.error

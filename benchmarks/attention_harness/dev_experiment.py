@@ -8,6 +8,7 @@ from .dev_loop import immutable,sha,process_identity,owner_alive
 from .dev_tasks import get_task,validate_selection,options as task_options
 from .dev_help import POLICY_IDS,policy_parameters,DemoProvider,EMPTY_MEMORY,HELP_PRICING,public_screen
 from .free_models import FREE_MODELS
+from openarm365_dev_v2.source_policy import source_limit
 from openarm365_dev_v2.dev_config import make_lock,make_dev_config,validate_dev_config,verify_lock,ROOT,new_execution_settings
 from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 
@@ -202,7 +203,8 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     if validation_origin is not None:
         from .dev_v2_loop import checked
         original=json.loads(checked(validation_origin['manifest']).read_bytes())
-        ref=original['identity_lock']
+        from .memory_source_drift import current_identity,execution_config
+        ref,source_drift=current_identity(json.loads(checked(validation_origin['config']).read_bytes()),original['identity_lock'],directory)
     else:
         settings=new_execution_settings(budget_tier=budget_tier)
         ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path,
@@ -262,7 +264,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         goal_id=hashlib.sha256(('goal|'+configuration.get('goal_key',key)).encode()).hexdigest()[:32]
         manifest.update(schema='attentionbench.dev-experiment.v3',goal_id=goal_id,goal_limits=goal_limits,wall_limit=wall_limit,cell_budget=budget,
                         **{k:configuration[k] for k in FIELDS if k in configuration and k not in {'cell_budget','goal_limits','wall_limit'}})
-        manifest.update(ledger_path=str(store.path.resolve()),source_size_limit_bytes=16384,k_trigger_reachable=configuration['target_depth']>=parameters.get('retry_k_then_ask',{'k':2})['k']+1,schedule_depth=depth+1)
+        manifest.update(ledger_path=str(store.path.resolve()),source_size_limit_bytes=source_limit(next(iter(configs.values()))),k_trigger_reachable=configuration['target_depth']>=parameters.get('retry_k_then_ask',{'k':2})['k']+1,schedule_depth=depth+1)
         for c in configs.values():
             c['attempt_wall_seconds']=configuration['attempt_wall_seconds']
             if configuration.get('reproducible_reset'):c['scene_reset_seed']=c['seed']
@@ -282,7 +284,8 @@ def create(store,artifact_root,selection,*,validation_origin=None):
                 c['scene_reset_seed']=c['seed']
                 c['scene_contract']=legacy_scene_ref
     if validation_origin is not None:
-        frozen=target_config(validation_origin)
+        frozen=execution_config(target_config(validation_origin),ref,source_drift)
+        if source_drift:manifest['source_drift']=source_drift
         configs.clear();configs[f"{tasks[0]}:{seeds[0]}"]=frozen
         origin_text=checked(validation_origin['source']).read_text()
         sources.clear();sources[tasks[0]]=dict(source=origin_text,sha256=validation_origin['source']['sha256'])
@@ -332,7 +335,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
                     budget=budget,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False)
                 if validation_origin is not None:
                     payload.update(validation_experiment=True,experiment_eligible=False,artifact_dir=str(directory/row['key']))
-                    config_path=Path(payload['artifact_dir'])/'config.json';config_text=target_config_text(validation_origin)
+                    config_path=Path(payload['artifact_dir'])/'config.json';config_text=json.dumps(frozen,sort_keys=True,indent=2,ensure_ascii=False) if source_drift else target_config_text(validation_origin)
                     if config_path.exists():
                         if config_path.read_text()!=config_text:raise DevConflict('validation config artifact drift')
                     else:immutable(config_path,config_text)
@@ -388,7 +391,15 @@ def verify_manifest(exp):
         if c.get('budget_tier','legacy')!=tier:raise DevConflict('config budget tier differs from manifest')
         if m.get('validation_experiment'):
             from .memory_validation_provision import target_config
-            if c!=target_config(m['validation_origin']):raise DevConflict('validation frozen config drift')
+            expected=target_config(m['validation_origin'])
+            if m.get('source_drift'):
+                from .memory_source_drift import execution_config
+                from openarm365_dev_v2.source_policy import drift_record
+                origin_lock=json.loads(Path(expected['dev_lock']['path']).read_bytes())
+                current_lock=json.loads(Path(m['identity_lock']['path']).read_bytes())
+                if m['source_drift']!=drift_record(expected,origin_lock,current_lock,expected['dev_lock']['sha256'],m['identity_lock']['sha256']):raise DevConflict('source drift record differs')
+                expected=execution_config(expected,m['identity_lock'],m['source_drift'])
+            if c!=expected:raise DevConflict('validation frozen config drift')
         elif c.get('model_source','parcc')!=m.get('model_source','parcc'):raise DevConflict('config model source differs from manifest')
         validate_dev_config(c,expected_source_root=epoch_root)
     for t,r in m['initial_sources'].items():

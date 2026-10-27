@@ -853,7 +853,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 if m.get('source_size_limit_bytes') and len(new_source.encode())>m['source_size_limit_bytes']:raise ValueError('source_size_limit_exceeded')
             except Exception as exc:new_source=previous;reason='Provider output invalid; complete previous source retained without execution';error=f'JSON/source format invalid: {type(exc).__name__}'
             else:
-                try:validate_generated_policy(new_source);error=None
+                try:validate_generated_policy(new_source,config=config,manifest=m);error=None
                 except Exception as exc:error=validation_diagnostic(new_source,exc,config={'schema_version':'attentionbench.openarm365-dual-dev-config.v1','robot':'OpenArm365','execution_arm':'both'})
             # Diagnostics are authored-code errors only; reject contaminated text.
             if error:

@@ -66,9 +66,13 @@ def registration_order(catalogs):
     return ordered
 
 
-def source_catalogs(lock_ref,context,executor_root,*,contract=None):
+def source_catalogs(lock_ref,context,executor_root,*,contract=None,config=None):
     lock=json.loads(checked(dict(uri=lock_ref.get('uri',lock_ref.get('path')),sha256=lock_ref['sha256'])).read_bytes())
     if lock.get('schema')!='attentionbench.dev-identity-lock.v2' or lock.get('formal_eligible') is not False or not lock.get('source_sets'):raise DevConflict('complete original identity lock required')
+    from openarm365_dev_v2.source_policy import dev_tier
+    if dev_tier(config or {}):
+        from .memory_source_drift import current_source_lock
+        lock=current_source_lock(lock)
     executor=Path(executor_root);files=dict(lock['files']);roots=[];link_roots=set();links={}
     for folder,expected in lock['source_sets'].items():
         p=Path(folder)
@@ -121,4 +125,7 @@ def covers(catalog,ref):
 
 def manifest_sources(manifest_ref,context,executor_root,*,contract=None):
     manifest=json.loads(checked(manifest_ref).read_bytes())
-    return source_catalogs(manifest['identity_lock'],context,executor_root,contract=contract)
+    from openarm365_dev_v2.source_policy import dev_tier
+    configs=list(manifest['configs'].values())
+    config=configs[0] if configs and not manifest.get('validation_experiment') and not any(c.get('origin_dev_lock') for c in configs) and all(dev_tier(c) for c in configs) else {}
+    return source_catalogs(manifest['identity_lock'],context,executor_root,contract=contract,config=config)

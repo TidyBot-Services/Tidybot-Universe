@@ -39,7 +39,7 @@ def test_actual_dev_generation_clean_and_untruncated(tmp_path,monkeypatch,treatm
     config=immutable(tmp_path/'config.json',CONFIG);origin=immutable(tmp_path/'origin.py','def policy(sdk):\n    pass\n')
     note=dict(memory_id='candidate',version=3,guidance='Lift before moving. '*300)
     c=dict(artifact_dir=str(tmp_path),experiment_id='exp',run_notes=False,memory_family=False,budget={'dev_calls':1},used={'dev_calls':0})
-    written=[];store=SimpleNamespace(cell=lambda key:c,tx=lambda:nullcontext(None),get=lambda *a:dict(selection={'model_source':'codex'},manifest={'uri':'manifest','sha256':'a'*64}),version=lambda key,v:written.append(v))
+    written=[];store=SimpleNamespace(cell=lambda key:c,tx=lambda:nullcontext(None),get=lambda *a:dict(selection={'model_source':'codex'},manifest=immutable(tmp_path/'manifest.json',{'source_size_limit_bytes':16384})),version=lambda key,v:written.append(v))
     def fake_provider(store,key,version,kind,messages,owner,directory,client):
         packet=json.loads(messages[1]['content']);assert packet['previous_complete_source']==Path(origin['uri']).read_text()
         assert packet['attention_control']=={'memory':[{'content':note['guidance']}] if treatment else []}

@@ -20,7 +20,7 @@ def sealed(ref,root,files):
 
 def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import_id,bundle_ref,config_ref,
                  source_ref,grant,permission_scope,executor_catalog,contract,validator_root,replay,
-                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None,origin=False,before_replay=None,check_only=False,import_purpose=None):
+                 failure_signature,budget,developer_model,gpu_seconds,ledger_ref=None,probe_input=None,origin_source_sha256=None,origin=False,before_replay=None,check_only=False,import_purpose=None,source_drift=None,current_lock=None):
     """Refusal writes nothing. Failed checks retain an honest independent descriptor.
 
     ``grant`` includes the runner's sealed permission_scope (validation grants bind
@@ -43,6 +43,20 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         # Recheck the whole seal before replay or creating a directory.
         for name,digest in files.items():sealed({'uri':str(root/name),'sha256':digest},root,files)
         bundle=read(bundle_ref);config=read(config_ref);source=sealed(source_ref,root,files).decode()
+        replay_config=config
+        if source_drift is not None:
+            from openarm365_dev_v2.source_policy import drift_record
+            from .memory_source_drift import execution_config
+            from openarm365_dev_v2.dev_config import verify_lock
+            original_ref=config.get('origin_dev_lock',config['dev_lock'])
+            actual_ref=current_lock or config['dev_lock']
+            def lock_read(ref):
+                from .dev_v2_loop import checked
+                return json.loads(checked(dict(uri=ref['path'],sha256=ref['sha256'])).read_bytes())
+            original_lock=lock_read(original_ref);current=lock_read(actual_ref)
+            if source_drift!=drift_record(config,original_lock,current,original_ref['sha256'],actual_ref['sha256']):raise Refused('source drift record differs')
+            verify_lock(actual_ref,expected_source_root=current['source_root'])
+            replay_config=execution_config(config,actual_ref,source_drift) if origin else config
         artifacts={k:read(bundle['artifacts'][k]) for k in ('native_result','trace','safety','sandbox_receipt')}
         feedback=public_trace_projection(artifacts['trace']);present=signature_present(feedback,failure_signature);position=stop_position(artifacts['trace'])
         bindings={k:bundle[k] for k in ('run_id','attempt_id','policy_sha256','config_sha256','task_id','seed')}
@@ -140,7 +154,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
                     except Exception:pass
                 return meter_refusal
         try:
-            try:obs,state=replay(config['task_id'],config['seed'],config)
+            try:obs,state=replay(config['task_id'],config['seed'],replay_config)
             finally:
                 if meter is not None:
                     try:measurements.append(meter.stop())
@@ -170,6 +184,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         scene_replay_observations=observations,scene_replay_states=states,scene_replay_bindings={k:bundle[k] for k in ('task_id','seed','config_sha256')},
         safety=immutable(out/'safety.json',safety),permission_scope=permission_scope,failure_signature=failure_signature,
         signature_present=present,stop_position=position,costs=costs,validation_config=comparison)
+    if source_drift is not None:descriptor['source_drift']=source_drift
     gpu={}
     if origin:
         gpu['gpu_measurement']=immutable(out/'gpu-measurement.json',dict(source='harness_gpu_meter',scope='origin_scene_replays',

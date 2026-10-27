@@ -76,8 +76,12 @@ def validate_creation(selection,origin):
     # PARCC. The new experiment's generation provider is independently Codex.
     from openarm365_dev_v2.dev_config import validate_dev_config,verify_lock
     epoch=json.loads(Path(manifest['identity_lock']['path']).read_bytes())['source_root']
-    verify_lock(manifest['identity_lock'],expected_source_root=epoch)
-    validate_dev_config(config,expected_source_root=epoch)
+    from .memory_source_drift import current_identity,execution_config
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='validation-source-') as scratch:
+        ref,drift=current_identity(config,manifest['identity_lock'],scratch)
+        verify_lock(ref,expected_source_root=epoch)
+        validate_dev_config(execution_config(config,ref,drift),expected_source_root=epoch)
 
 
 class Provisioner:
@@ -179,8 +183,12 @@ class Provisioner:
         from .memory_validation_ownership import record_experiment
         store=DevV2Store(ledger);experiment=create(store,self.root,selection,validation_origin=origin)
         record_experiment(self.state_root,operation,exp_id)
+        config_ref=origin['config']
+        if read(experiment['manifest']).get('source_drift'):
+            path=Path(experiment['cells'][0]['artifact_dir'])/'config.json'
+            config_ref=dict(uri=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest())
         pairs=[dict(pair_id=str(i),**{a+'_cell':next(c['key'] for c in experiment['cells'] if c['validation_pair']==i and c['validation_arm']==a) for a in ('control','treatment')}) for i in range(5)]
-        return dict(experiment_id=exp_id,memory_id=note['memory_id'] if resolved.get('positive_control') else 'validation-'+operation,origin=origin['source'],origin_feedback=resolved['feedback'],config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model='gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],**({'positive_control':resolved['positive_control']} if resolved.get('positive_control') else {}),pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
+        return dict(experiment_id=exp_id,memory_id=note['memory_id'] if resolved.get('positive_control') else 'validation-'+operation,origin=origin['source'],origin_feedback=resolved['feedback'],config=config_ref,origin_config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model='gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],**({'positive_control':resolved['positive_control']} if resolved.get('positive_control') else {}),pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
 
     @staticmethod
     def gpu_seconds(store,cell,version=1):

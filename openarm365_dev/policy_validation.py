@@ -46,9 +46,11 @@ class Validator(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def validate_generated_policy(code):
-    if len(code.encode()) > 20000:
-        raise GeneratedPolicyError("policy exceeds 20KB")
+def validate_generated_policy(code, *, config=None, manifest=None):
+    from openarm365_dev_v2.source_policy import source_limit
+    limit=20000 if config is None else source_limit(config,manifest)
+    if len(code.encode()) > limit:
+        raise GeneratedPolicyError("policy exceeds 20KB" if config is None else "policy exceeds source size limit")
     tree = ast.parse(code)
     Validator().visit(tree)
     if not any(isinstance(n, ast.ImportFrom) for n in tree.body):
