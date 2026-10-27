@@ -34,9 +34,10 @@ def choose(state,deps,save,status):
         preparing=prepare_origin(state,deps,note,save,status,cross_seed=True)
         if preparing is not None:return preparing
         tested={r['target_seed'] for r in note['seeds']}
-        for seed in config.get('candidate_seeds',[]):
+        targets={t['seed']:t['contract'] for t in note.get('cross_seed_targets',[])}
+        for seed in (targets if note.get('record_kind')=='positive_control' else config.get('candidate_seeds',[])):
             if seed in tested or seed==note['source_seed']:continue
-            try:target=deps.runner.admit_seed(note,seed,config.get('contracts',{}).get(str(seed)))
+            try:target=deps.runner.admit_seed(note,seed,targets.get(seed) if note.get('record_kind')=='positive_control' else config.get('contracts',{}).get(str(seed)))
             except Exception as exc:
                 from .notices import safe_detail
                 state['skipped_seeds'].append(dict(memory_id=note['memory_id'],seed=seed,reason=safe_detail(str(exc))));save();continue

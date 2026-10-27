@@ -23,12 +23,13 @@ class ImmediatePool:
 
 
 @contextmanager
-def scenario(root,invalid=(('treatment',1),),*,infra=False):
-    fake=ProvisionedFakeRunner(root/'evidence',root/'worker')
+def scenario(root,invalid=(('treatment',1),),*,infra=False,fake_factory=ProvisionedFakeRunner):
+    fake=fake_factory(root/'evidence',root/'worker')
     class Client:
         def __getattr__(self,name):return getattr(fake.service,name)
         def register_dev_v2_catalog(self,**kw):fake.register(kw['catalog_id'],kw['catalog'])
-    runner=LedgerRunner(Client(),fake.provision,experiments_root=fake.f.root,
+    runtime_client=fake.proxy if hasattr(fake,'spec') else Client()
+    runner=LedgerRunner(runtime_client,fake.provision,experiments_root=fake.f.root,
         validator_root=fake.f.validator,state_root=root/'worker',replay=lambda *a:(OBS,STATE),gpu_meter=lambda *a:0)
     runner.pool.shutdown();runner.pool=ImmediatePool()
     generated=[];executed=[];invalid=set(invalid)
@@ -89,6 +90,10 @@ def scenario(root,invalid=(('treatment',1),),*,infra=False):
         stack.enter_context(patch.object(exporter,'sdk_identity',lambda config:fake.f.sdk))
         stack.enter_context(patch.object(exporter,'context',lambda *a,**kw:fake.failed['context']))
         deps=fake.deps(root/'worker');deps.runner=runner;set_enabled(deps.root,True)
+        if hasattr(fake,'spec'):
+            from .. import memory_independent_validator as validator
+            stack.enter_context(patch.object(validator,'GpuMeter',fake.origin_meter))
+            deps.positive_adapters={fake.spec['control_id']:(fake.proxy,runner)}
         yield SimpleNamespace(fake=fake,runner=runner,deps=deps,state={},generated=generated,executed=executed)
     runner.pool.shutdown()
 

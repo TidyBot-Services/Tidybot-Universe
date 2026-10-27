@@ -25,27 +25,11 @@ class NotStaged(Exception):
 
 
 def derive_signature(feedback):
-    """``{'public_error_class', 'operation'}`` in the Service's trusted-path format.
-
-    The class is the longest prefix of ``': '``-separated identifier tokens of
-    ``public_error``; the operation is the last failed trace event.
-    """
-    error = feedback.get('public_error') or ''
-    if not isinstance(error, str) or not error.strip():
-        raise NotStaged('no_public_error')
-    tokens = []
-    for part in error.split(': '):
-        if not _IDENT.fullmatch(part):
-            break
-        tokens.append(part)
-    failed = [e for e in feedback.get('action_trace', []) if isinstance(e, dict) and e.get('status') == 'failed']
-    if not failed:
-        raise NotStaged('no_failed_event')
-    operation = '.'.join(x for x in (failed[-1].get('source'), failed[-1].get('operation')) if x)
-    error_class = ': '.join(tokens)
-    if not tokens or len(error_class) > 120 or not _OPERATION.fullmatch(operation):
-        raise NotStaged('signature_not_derivable')
-    return {'public_error_class': error_class, 'operation': operation}
+    from attention_memory_service.failure_signature import derive_signature as derive
+    try:
+        return derive(feedback)
+    except ValueError as exc:
+        raise NotStaged(str(exc)) from exc
 
 
 def signature_present(feedback, signature):

@@ -272,7 +272,7 @@
     const errors=(value.errors||[]).map(e=>`<p class="ac-err" role="alert">${esc(e)}</p>`).join('');
     const queue=value.queue||[],results=value.results||[],demoted=(value.events||[]).filter(n=>n.event==='demoted');
     const ignored=(value.ignored_stale_runs||[]).map(r=>`<p class="ac-skip">Skipped stale run: ${esc(r.id)} · ${esc(r.reason)}</p>`).join('');
-    const cross=crossSeedHtml(value);
+    const cross=crossSeedHtml(value)+positiveControlHtml(value);
     if(!on&&!value.current&&!queue.length&&!results.length&&!demoted.length)return head+refresh+errors+ignored+cross;
     const c=value.current,pair=Number(c?.pair)||0,total=c?.pairs_needed||5;
     const now=c?.stage==='evaluate'?`<li><b>${esc(c.title)}</b><small>Evaluating 5 pairs (this can take several minutes)${c.paused?' · paused':''}</small></li>`:c?.stage==='begin'?`<li><b>${esc(c.title)}</b><small>Preparing validation batch · waiting to retry</small></li>`:c?.stage==='origin'?`<li><b>${esc(c.title)}</b><small>Preparing origin evidence${c.paused?' · paused':''}</small></li>`:c?.stage==='probe'?`<li><b>${esc(c.title)}</b><small>Seed ${esc(c.seed)} · probe without notes${c.paused?' · paused':''}</small></li>`:c?`<li><b>${esc(c.title)}</b><div class="ac-dots" aria-hidden="true">${Array.from({length:total},(_,i)=>`<i class="${i+1<pair?'done':i+1===pair?(c.paused?'hold':'now'):''}"></i>`).join('')}</div><small>${c.seed!==undefined?`Seed ${esc(c.seed)} · `:''}pair ${esc(c.pair)} of ${total} · ${esc(c.arm)} run, ${c.arm==='control'?'without':'with'} the note${c.paused?' · paused':''}</small></li>`:'<li class="ac-empty">Nothing is being checked</li>';
@@ -281,6 +281,18 @@
       ...demoted.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b><span class="ac-tag warn">${n.trust_scope==='scene_scoped'?'Back to trusted on origin scene':'Back to Unvalidated'}</span></div><small>${esc(n.title)} moved back to ${n.trust_scope==='scene_scoped'?'trusted on its origin scene':'Unvalidated'} — the failure came back in 3 of its last 5 uses.</small></li>`)].join('')||'<li class="ac-empty">No results yet</li>';
     const col=(title,count,body)=>`<div class="ac-col"><h3>${title}${count?`<b>${count}</b>`:''}</h3><ul>${body}</ul></div>`;
     return `${head}${refresh}${errors}${ignored}<div class="ac-grid">${col('Checking now',0,now+(c?`<li>${c.replacement_notice?`<small>${esc(c.replacement_notice)}</small>`:''}${discards(c)}</li>`:''))}${col('Waiting notes',queue.length,waiting)}${col('Results',results.length+demoted.length,done)}</div>${cross}`;
+  }
+  function positiveControlHtml(value){
+    const esc=escapeHtml,controls=value.positive_controls||[];
+    if(!controls.length)return '';
+    return `<section class="ac-cross ac-positive"><h3>Positive controls · Test · not counted in results</h3><ul>${controls.map(c=>`<li><b>${esc(c.title)}</b><small>${esc(c.status||'Queued')}</small><strong>${esc((c.decision||'Waiting for verdict').replaceAll('_',' '))}</strong>
+      ${Object.keys(c.gates||{}).length?`<small>Gates: ${Object.entries(c.gates).map(([k,v])=>`${esc(k.replaceAll('_',' '))}: ${v?'pass':'fail'}`).join('; ')}</small>`:''}
+      ${(c.failed_gates||[]).length?`<small>Failed gates: ${c.failed_gates.map(esc).join('; ')}</small>`:''}
+      <table><caption>Target failure in each pair</caption><thead><tr><th>Seed / pair</th><th>Control</th><th>Treatment</th></tr></thead><tbody>${(c.pairs||[]).map(p=>`<tr><td>${esc(p.seed)} / ${esc(p.pair_id)}</td><td>${p.control?'Present':'Absent'}</td><td>${p.treatment?'Present':'Absent'}</td></tr>`).join('')}</tbody></table>
+      <small>${esc(c.cross_seed?.task_trust?.verdict||'')}${(c.cross_seed?.task_trust?.missing||[]).length?`: ${c.cross_seed.task_trust.missing.map(esc).join('; ')}`:''}</small>
+      <ul>${(c.cross_seed?.seeds||[]).map(s=>`<li>Seed ${esc(s.target_seed)} · ${esc(s.role)} · ${esc((s.verdict||'Waiting').replaceAll('_',' '))}</li>`).join('')}</ul>
+      ${(c.discarded_pairs||[]).map(p=>`<small>Pair ${esc(p.pair)} discarded: ${esc(p.arm)} · ${esc(p.reason)}</small>`).join('')}
+      ${(c.errors||[]).map(e=>`<p role="alert">${esc(e)}</p>`).join('')}</li>`).join('')}</ul></section>`;
   }
   function crossSeedHtml(value){
     const esc=escapeHtml,notes=value.cross_seed_notes||[],skipped=value.skipped_seeds||[];

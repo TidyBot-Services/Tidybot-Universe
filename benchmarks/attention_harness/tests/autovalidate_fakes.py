@@ -305,7 +305,7 @@ class Fixture:
         trace = json.loads(Path(trace_ref['uri']).read_bytes())
         binding = grant['binding']
         if consume:
-            trace['memory_validation'] = {'validation_grant_id': grant['grant_id'], 'input_sha256': d['validation_input']['sha256'], 'memory_ids': value['memory_ids'], 'exposure': value['exposure'], 'memory_version': binding['memory_version'] if value['memory_ids'] else None, 'guidance_sha256': digest(b'Align the gripper before closing it. controlled_test') if value['memory_ids'] else None, 'consumed_before_policy': True}
+            trace['memory_validation'] = {'validation_grant_id': grant['grant_id'], 'input_sha256': d['validation_input']['sha256'], 'memory_ids': value['memory_ids'], 'exposure': value['exposure'], 'memory_version': binding['memory_version'] if value['memory_ids'] else None, 'guidance_sha256': binding.get('guidance_sha256', digest(b'Align the gripper before closing it. controlled_test')) if value['memory_ids'] else None, 'consumed_before_policy': True}
         record['bundle']['artifacts']['trace'] = self.write(Path(trace_ref['uri']), trace)
         bundle_ref = self.write(self.root / name / 'bundle.json', record['bundle'])
         record['verdict']['bundle'] = bundle_ref

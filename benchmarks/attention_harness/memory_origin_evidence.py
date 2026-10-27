@@ -51,6 +51,10 @@ def origin_note(provision,note):
 
 
 def identity(provision,note):
+    if getattr(provision.client,'spec',None) is not None:
+        from .memory_positive_control import local_origin
+        found=local_origin(provision,provision.client.spec)
+        return found['key'],found['note'],found['provenance']
     original,p=origin_note(provision,note)
     key='origin-'+hashlib.sha256(json.dumps(dict(note=original,origin=p['origin'],signature=p['failure_signature']),sort_keys=True).encode()).hexdigest()[:32]
     return key,original,p
@@ -65,6 +69,9 @@ def receipt_catalogs(provision,note):
 
 
 def locate(provision,note):
+    if getattr(provision.client,'spec',None) is not None:
+        from .memory_positive_control import local_origin
+        return local_origin(provision,provision.client.spec)
     key,original,p=identity(provision,note);o=p['origin'];matches=[]
     paths=set(provision.root.rglob('ledger.sqlite3'))|set(provision.root.rglob('ledger.sqlite'))
     for path in sorted(paths):
@@ -235,8 +242,11 @@ class OriginPreparation:
             immutable(directory/'validation.json',result)
             refs={}
             if result['status']!='refused':
-                source,sd=export('source',p['origin']['help_version'],source=source_prerequisites(found),failure_signature=p['failure_signature'])
-                catalogs=registration_order({**sources,key+'-executor':catalog,key+'-source':source,key+'-validator':result['catalog']})
+                catalogs={**sources,key+'-executor':catalog,key+'-validator':result['catalog']}
+                if p.get('channel')!='positive_control':
+                    source,sd=export('source',p['origin']['help_version'],source=source_prerequisites(found),failure_signature=p['failure_signature'])
+                    catalogs[key+'-source']=source
+                catalogs=registration_order(catalogs)
                 for cid,value in catalogs.items():refs[cid]=immutable(directory/(cid+'.json'),value)
             reason='Origin evidence prepared' if result['status']=='passed' else 'Could not finish the check: origin '+('validation refused: '+result.get('reason','unknown reason') if result['status']=='refused' else 'independent checks failed: '+', '.join(k for k,v in result['checks'].items() if not v))
             receipt=dict(status=result['status'],reason=reason,catalogs=refs,validation=immutable(directory/'validation.json',result),origin_key=key,note=current['note'])

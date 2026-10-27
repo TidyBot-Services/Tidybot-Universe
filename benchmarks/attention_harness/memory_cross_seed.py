@@ -34,6 +34,7 @@ def register_contract(client, roots, path, seed, context):
 
 def resolve_origin(provision,note):
     """Use the linked M-8 origin; verify it against the trusted note's source."""
+    if getattr(provision.client,'spec',None) is not None:return provision.resolve(note)
     p=provision.client.provenance(note['memory_id'])
     linked=p.get('from_provisional')
     seen={note['memory_id']}
@@ -110,7 +111,8 @@ def provision_cross(provision,note,operation,target,*,pairs=None):
         state_path=provision.state_root/'state.json';state=json.loads(state_path.read_bytes()) if state_path.exists() else {}
         today=datetime.fromtimestamp(provision.clock()).astimezone().date().isoformat()
         used=state.get('runs_today',0) if state.get('day')==today else 0
-        if type(used) is not int or not 0<=used<=20-runs:raise DevConflict(f'Fewer than {runs} automatic checks remain today')
+        from .memory_validation_worker import daily_run_stop
+        if type(used) is not int or used<0 or daily_run_stop({'runs_today':used},provision.state_root,needed=runs):raise DevConflict(f'Fewer than {runs} automatic checks remain today')
     from .dev_experiment import create
     from .dev_ledger import DevV2Store
     from .memory_validation_ownership import record_experiment

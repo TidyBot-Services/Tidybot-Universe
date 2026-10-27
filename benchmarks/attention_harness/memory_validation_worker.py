@@ -433,6 +433,8 @@ def request_current_retry(root):
     """Mailbox only: works with a running/Off worker, never enables dispatch."""
     import uuid
     root=Path(root);state=json.loads((root/'state.json').read_bytes())
+    active=state.get('positive_control_active')
+    if active:state=state.get('positive_controls',{}).get(active,{}).get('worker',{})
     current=state.get('current')
     from .memory_validation_replacements import legacy_invalid_available,attempt_version
     if legacy_invalid_available(current):
@@ -448,6 +450,17 @@ def request_current_retry(root):
 
 
 def tick(state,deps):
+    from .memory_positive_control import tick_channel
+    try:
+        if tick_channel(state,deps,_tick):return state
+    except Exception as exc:
+        from .notices import safe_detail
+        state['status']='Positive-control check paused: '+safe_detail(str(exc) or type(exc).__name__)
+        deps.save(state);return state
+    return _tick(state,deps)
+
+
+def _tick(state,deps):
     """One durable transition. deps includes quota snapshots and refresh_quota.
 
     runner.begin(note, id) returns a frozen current record with candidate/plan.
@@ -584,7 +597,7 @@ def tick(state,deps):
                 outcome=getattr(result.status,'value',result.status) if hasattr(result,'status') else result['status']
             state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status=outcome,decision=decision,**({'discarded_pairs':current['discarded_pairs']} if current.get('discarded_pairs') else {})))
             state['current']=None;save()
-            return status(('Note checked and trusted: ' if outcome=='trusted' else 'Note rejected after check: ')+current['title'])
+            return status((('Positive control '+outcome.replace('_',' ')+': ') if outcome in {'would_pass','would_fail'} else 'Note checked and trusted: ' if outcome=='trusted' else 'Note rejected after check: ')+current['title'])
         if current is None:
             queued=deps.client.validation_queue()
             closed={r['memory_id'] for r in state.get('results',[]) if r.get('origin_failure')}
@@ -711,11 +724,15 @@ def main(argv=None,*,client=None):
     actions.add_argument('--set-daily-run-limit',type=parse_daily_run_limit,metavar='{none|N}',default=argparse.SUPPRESS)
     actions.add_argument('--set-weekly-quota-stop',type=lambda value:parse_quota_setting(value,key='weekly_quota_stop_percent'),metavar='N',default=argparse.SUPPRESS)
     actions.add_argument('--set-daily-quota-rise-stop',type=lambda value:parse_quota_setting(value,key='daily_quota_rise_stop_points'),metavar='{none|N}',default=argparse.SUPPRESS)
+    actions.add_argument('--positive-control-check',metavar='SPEC')
     actions.add_argument('--check-origin',metavar='MEMORY_ID')
     actions.add_argument('--reopen-origin',metavar='MEMORY_ID')
     actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin, invalid generation recovery or completed batch evaluation; does not turn checks On')
     p.add_argument('--reason')
     a=p.parse_args(argv);root=Path(a.state_dir)
+    if a.positive_control_check:
+        from .memory_positive_control import queue
+        print(queue(root,a.positive_control_check));return 0
     if a.reopen_origin and not (a.reason and a.reason.strip()):p.error('--reopen-origin requires --reason')
     if a.reason and not a.reopen_origin:p.error('--reason requires --reopen-origin')
     if a.check_origin or a.reopen_origin:

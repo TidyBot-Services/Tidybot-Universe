@@ -37,7 +37,7 @@ def automatic_checks(root=None,gateway=None):
             text=text.replace(code.replace('_',' '),code)
         return text
     root=root or os.environ.get('ATTENTION_MEMORY_VALIDATION_STATE')
-    value=dict(enabled=False,status='Off',runs_today=0,daily_run_limit=20,weekly_quota_stop_percent=70,daily_quota_rise_stop_points=5,queue=[],current=None,results=[],events=[],errors=[],notices=[],cross_seed_enabled=False,cross_seed_notes=[],skipped_seeds=[])
+    value=dict(enabled=False,status='Off',runs_today=0,daily_run_limit=20,weekly_quota_stop_percent=70,daily_quota_rise_stop_points=5,queue=[],current=None,results=[],events=[],errors=[],notices=[],cross_seed_enabled=False,cross_seed_notes=[],skipped_seeds=[],positive_controls=[])
     cross_notes={}
     if root:
         try:
@@ -60,6 +60,21 @@ def automatic_checks(root=None,gateway=None):
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('origin_errors',{}).values()]
+            for mid,control in state.get('positive_controls',{}).items():
+                worker=control.get('worker',{});decision=control.get('verdict') or {}
+                row=dict(control_id=mid,title=safe_text(control.get('title')),label='Test · not counted in results',
+                    status=safe_text(worker.get('status'),'Queued'),decision=decision.get('decision'),
+                    failed_gates=[safe_text(g) for g in decision.get('failed_gates',[])],gates=decision.get('gates',{}),report=decision.get('report',{}),
+                    pairs=[dict(seed=p['seed'],pair_id=p['pair_id'],control=p['control'].get('signature_present'),
+                        treatment=p['treatment'].get('signature_present'),control_import_id=p['control_import_id'],
+                        treatment_import_id=p['treatment_import_id']) for p in control.get('pairs',[])],
+                    cross_seed=control.get('cross_seed',{}),errors=[])
+                if control.get('error'):row['errors'].append(safe_detail(control['error']))
+                row['errors'] += [safe_detail(e['reason']) for field in ('origin_errors','origin_failures') for e in worker.get(field,{}).values()]
+                if 'paused:' in worker.get('status',''):row['errors'].append(safe_detail(worker['status']))
+                row['errors'] += [safe_detail(e['reason']) for e in worker.get('skipped_seeds',[])]
+                row['discarded_pairs']=[dict(pair=e['pair'],arm=e['arm'],reason=validation_text(e['reason'])) for e in (worker.get('current') or {}).get('discarded_pairs',[])]
+                value['positive_controls'].append(row)
             current=state.get('current')
             if current:
                 value['current']=dict(title=safe_text(current['title']),paused=bool(current.get('pause_requested')))
@@ -84,6 +99,15 @@ def automatic_checks(root=None,gateway=None):
                     result['discarded_pairs']=[dict(pair=r['pair'],version=r['version'],arm=safe_text(r['arm']),reason=validation_text(r['reason'])) for r in row['discarded_pairs']]
                 value['results'].append(result)
         except Exception as exc:value['errors'].append('Automatic checks state unavailable: '+safe_detail(str(exc)))
+    if root:
+        known={r['control_id'] for r in value['positive_controls']}
+        for path in sorted((Path(root)/'positive-control-queue').glob('*.json')):
+            try:
+                spec=json.loads(path.read_bytes())['spec']
+                if spec['control_id'] not in known:
+                    value['positive_controls'].append(dict(control_id=spec['control_id'],title=safe_text(spec['title']),
+                        label='Test · not counted in results',status='Queued',pairs=[],failed_gates=[],errors=[]))
+            except Exception as exc:value['errors'].append('Positive-control queue unavailable: '+safe_detail(str(exc)))
     if gateway:
         try:
             value['queue']=[{k:r.get(k) for k in ('memory_id','title','uses','failure_gone')} for r in gateway.validation_queue()]

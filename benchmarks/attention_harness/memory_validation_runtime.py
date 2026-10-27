@@ -72,7 +72,7 @@ class LedgerRunner:
         from openarm365_dev_v2.scene_contract import registered_contract_ref
         if config.get('scene_contract')!=registered_contract_ref():raise DevConflict('registered scene contract required')
         catalogs=dict(batch['source_catalogs'])
-        for payload in (batch['failed_execution'],batch['source_import']):
+        for payload in filter(None,(batch['failed_execution'],batch['source_import'])):
             catalog=batch['source_catalogs'][payload['catalog_id']]
             descriptor=json.loads(checked(dict(uri=str(Path(catalog['root'])/payload['descriptor']),sha256=catalog['files'][payload['descriptor']])).read_bytes())
             catalogs.update(manifest_sources(descriptor['manifest'],batch['context'],catalog['root'],contract=config['scene_contract']))
@@ -91,9 +91,12 @@ class LedgerRunner:
         if (failed['cell']!=origin_summary['cell'] or failed['version']!=origin_summary['version']
                 or failed['config']['sha256']!=batch['config']['sha256']
                 or json.loads(checked(failed['manifest']).read_bytes())['experiment_id']!=origin_summary['experiment_id']):raise DevConflict('source execution differs from the note origin')
-        imported=self.client.import_dev_v2_source(**batch['source_import'])
-        if imported['source_policy_sha256']!=origin_sha or imported['guidance']!=self.client.get_memory(note['memory_id']).guidance:raise DevConflict('imported source differs from the note origin/guidance')
-        self.client.create_dev_v2_candidate(memory_id=batch['memory_id'],source_import_id=batch['source_import']['import_id'],created_at=note['created_at'],from_provisional=note['memory_id'])
+        if batch.get('positive_control'):
+            self.client.create_positive_control(**batch['positive_control'])
+        else:
+            imported=self.client.import_dev_v2_source(**batch['source_import'])
+            if imported['source_policy_sha256']!=origin_sha or imported['guidance']!=self.client.get_memory(note['memory_id']).guidance:raise DevConflict('imported source differs from the note origin/guidance')
+            self.client.create_dev_v2_candidate(memory_id=batch['memory_id'],source_import_id=batch['source_import']['import_id'],created_at=note['created_at'],from_provisional=note['memory_id'])
         if len(batch['pairs'])!=5:raise DevConflict('five frozen pairs required')
         ids=[p[k] for p in batch['pairs'] for k in ('control_cell','treatment_cell')]
         if len(set(ids))!=10 or set(ids)!=set(batch['cells']):raise DevConflict('ten distinct validation cells required')
@@ -111,6 +114,12 @@ class LedgerRunner:
         self.client.record_plan(batch['memory_id'],plan);batch['plan']=plan
         receipt.parent.mkdir(parents=True,exist_ok=True);immutable(receipt,batch)
         return batch
+
+    def validation_ready(self,note,current,*,cross=False):
+        if getattr(note,'record_kind',None)=='positive_control':
+            decision=self.client.decision(current['memory_id'])
+            return bool(decision and decision['decision']=='would_pass') if cross else decision is None
+        return getattr(note.status,'value',note.status)==('trusted' if cross else 'candidate')
 
     def _cell(self,current):
         key=current['arm_id'];store=DevV2Store(current['cells'][key]['ledger']);return store,key,store.cell(key)
@@ -146,7 +155,7 @@ class LedgerRunner:
             cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
             if cross:checked(current['target']['contract'])
             note=self.client.get_memory(current['memory_id']) if cross else None
-            if cross and (getattr(note.status,'value',note.status)!='trusted' or note.version!=current['memory_version']):raise DevConflict('cross-seed note changed')
+            if cross and (not self.validation_ready(note,current,cross=True) or note.version!=current['memory_version']):raise DevConflict('cross-seed note changed')
             if record is None:
                 if probe:
                     directory.mkdir(exist_ok=True)
@@ -156,7 +165,7 @@ class LedgerRunner:
                     immutable(directory/'version.json',record);store.version(key,record)
                 else:
                     note=self.client.get_memory(current['memory_id'])
-                    if not cross and (getattr(note.status,'value',note.status)!='candidate' or self.client.get_plan(current['memory_id'])!=current['plan']):raise DevConflict('validation candidate or plan changed before generation')
+                    if not cross and (not self.validation_ready(note,current) or self.client.get_plan(current['memory_id'])!=current['plan']):raise DevConflict('validation candidate or plan changed before generation')
                     memory=dict(memory_id=note.memory_id,version=note.version,guidance=note.guidance) if current['arm']=='treatment' else None
                     record=generate(store,key,config,current['origin'],json.loads(checked(current['origin_feedback']).read_bytes()),owner,memory=memory,client=self.provider,version=version)
             if record.get('status')=='invalid_generation':
@@ -175,7 +184,7 @@ class LedgerRunner:
                 immutable(envelope_ref,envelope)
             # Recheck the service's immutable grant and candidate immediately before dispatch.
             grant=json.loads(checked(envelope['grant']).read_bytes());note=self.client.get_memory(current['memory_id'])
-            if getattr(note.status,'value',note.status)!=('trusted' if cross else 'candidate') or note.version!=grant['binding']['memory_version']:raise DevConflict('validation candidate changed')
+            if not self.validation_ready(note,current,cross=cross) or note.version!=grant['binding']['memory_version']:raise DevConflict('validation candidate changed')
             execute(store,key,version,record,config,owner,directory,self.runner_factory,self.provider,memory_validation=envelope)
             store.update_cell(key,state='completed')
         except BaseException:
