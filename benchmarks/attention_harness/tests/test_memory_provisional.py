@@ -96,7 +96,8 @@ def events(store, kind):
 
 def test_signature_derivation_for_real_error_formats():
     assert provisional.derive_signature(REJECTED) == {'public_error_class': 'RuntimeError: PlanningRejected',
-                                                      'operation': 'left_arm.move_delta'}
+                                                      'operation': 'left_arm.move_delta',
+                                                      'reason_code': 'official_motion_planner_non_success'}
     assert provisional.derive_signature(TIMEOUT) == {'public_error_class': 'RuntimeError: TimeoutError',
                                                      'operation': 'right_arm.move_delta'}
     from attention_memory_service.dev_v2 import validate_signature

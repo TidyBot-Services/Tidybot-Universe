@@ -19,6 +19,49 @@ def queue(root, path):
     return 'Positive control queued: '+spec['title']+' · Test · not counted in results'
 
 
+def queue_rerun(root, path, control_id):
+    """Clone an immutable spec under a new ID; preparation/replay is sealed anew."""
+    root=Path(root).resolve();path=Path(path).resolve()
+    if not path.is_relative_to(root):raise DevConflict('Positive-control spec must be inside worker state directory')
+    spec=json.loads(path.read_bytes())
+    if isinstance(spec,dict) and set(spec)=={'spec','spec_sha256'}:
+        if validate_spec(spec['spec'])!=spec['spec_sha256']:raise DevConflict('Queued positive-control spec changed')
+        spec=spec['spec']
+    validate_spec(spec)
+    if control_id==spec['control_id']:raise DevConflict('A rerun requires a new control_id')
+    spec=dict(spec,control_id=control_id);validate_spec(spec)
+    target=root/'positive-controls'/(control_id+'.json')
+    target.parent.mkdir(parents=True,exist_ok=True)
+    immutable(target,spec)
+    return queue(root,target)
+
+
+def reusable_execution(provision,spec):
+    """An attempt has one import ID; reuse its sealed export across control IDs."""
+    from .memory_validation_provision import read
+    for path in sorted((provision.state_root/'positive-control-queue').glob('*.json')):
+        entry=json.loads(path.read_bytes());prior=entry['spec']
+        if validate_spec(prior)!=entry['spec_sha256']:raise DevConflict('Queued positive-control spec changed')
+        if prior['control_id']==spec['control_id'] or prior['origin']!=spec['origin'] or prior['context']!=spec['context']:continue
+        record=provision.client.read_control(prior['control_id'],'record')
+        if not record:continue
+        if record['spec']!=prior:raise DevConflict('Prior positive-control spec differs from its sealed record')
+        import_id=record['execution_import_id'];cid=import_id+'-executor'
+        receipt=json.loads((provision.state_root/'origins'/import_id/'receipt.json').read_bytes())
+        if receipt['status']!='passed':raise DevConflict('Prior origin preparation did not pass')
+        catalog=read(receipt['catalogs'][cid])
+        descriptors=[]
+        for name,digest in catalog['files'].items():
+            if not name.endswith('descriptor.json'):continue
+            value=read(dict(uri=str(Path(catalog['root'])/name),sha256=digest))
+            if value.get('cell')==spec['origin']['cell'] and value.get('version')==spec['origin']['version'] and 'execute_job_id' in value:
+                descriptors.append(value)
+        if len(descriptors)!=1:raise DevConflict('Prior origin execution descriptor missing or ambiguous')
+        descriptor=descriptors[0]
+        return dict(import_id=import_id,catalog_id=cid,catalog=catalog,descriptor=descriptor)
+    return None
+
+
 def local_origin(provision,spec):
     """Locate only canonical, original experiment ledgers (including reference runner)."""
     from .memory_origin_evidence import OriginalStore
@@ -58,19 +101,27 @@ def local_origin(provision,spec):
         if error or code.encode()!=source.read_bytes() or v.get('model_input')!=receipt['request'] or v.get('model_output')!=receipt['response']:raise DevConflict('Origin source differs from sealed Dev output')
         checked(receipt['request']);checked(receipt['provider_response'])
     signature=derive_signature(feedback)
+    if getattr(provision.client,'spec',None)==spec:
+        frozen=provision.client.read('record')
+        if frozen:
+            from attention_memory_service.failure_signature import matches_frozen_derivation
+            signature=frozen['failure_signature']
+            if not matches_frozen_derivation(feedback,signature):raise DevConflict('Positive-control frozen signature differs from origin')
     p=dict(channel='positive_control',record_kind='positive_control',artifact=dict(applicability=ctx),failure_signature=signature,
         source_policy_sha256=v['source']['sha256'],origin=dict(experiment_id=o['experiment_id'],cell=o['cell'],origin_version=o['version'],
         policy_id=c['policy_id'],digests=dict(origin_source=v['source']['sha256'],origin_public_feedback=job['receipt']['public_feedback']['sha256'])))
     key='positive-origin-'+hashlib.sha256(json.dumps([spec,p],sort_keys=True).encode()).hexdigest()[:32]
     note=dict(memory_id=spec['control_id'],source_summary=dict(o))
-    return dict(key=key,note=note,provenance=p,store=store,cell=c,version=v,job=job,experiment=e,config=config,request_id=None)
+    reused=reusable_execution(provision,spec)
+    return dict(key=key,note=note,provenance=p,store=store,cell=c,version=v,job=job,experiment=e,config=config,request_id=None,
+                reused_execution=reused,execution_import_id=reused['import_id'] if reused else key)
 
 
 def resolve(provision,note):
     """Recheck original and replay seals before allocating ordinary Dev arms."""
     from .memory_validation_provision import read
     found=local_origin(provision,provision.client.spec);catalogs=provision.catalogs(note)
-    key=found['key'];cid=key+'-executor';catalog=catalogs[cid]
+    key=found['key'];execution_id=found['execution_import_id'];cid=execution_id+'-executor';catalog=catalogs[cid]
     candidates=[]
     for name in catalog['files']:
         if not name.endswith('descriptor.json'):continue
@@ -87,17 +138,19 @@ def resolve(provision,note):
     return dict(sealed=dict(manifest=d['manifest'],config=d['config'],source=v['source'],cell=d['cell'],version=d['version']),
         config=found['config'],feedback=job['receipt']['public_feedback'],signature=found['provenance']['failure_signature'],
         context=d['context'],policy_id=found['cell']['policy_id'],catalogs=catalogs,
-        failed_execution=dict(import_id=key,catalog_id=cid,descriptor=name),source_import=None,
+        failed_execution=dict(import_id=execution_id,catalog_id=cid,descriptor=name),source_import=None,
         positive_control=dict(spec=provision.client.spec,spec_sha256=validate_spec(provision.client.spec),
-                              execution_import_id=key,catalog_id=key+'-validator',descriptor='verdict.json'))
+                              execution_import_id=execution_id,catalog_id=key+'-validator',descriptor='verdict.json'))
 
 
 class ControlClient:
     """Importer transport adapter; no source import, trust or online use methods."""
     def __init__(self,client,spec,provision):self.client,self.spec,self.provision=client,spec,provision
     def read(self,action):
-        if hasattr(self.client,'positive_control_read'):return self.client.positive_control_read(self.spec['control_id'],action)
-        return self.client.positive_controls.read(self.spec['control_id'],action)
+        return self.read_control(self.spec['control_id'],action)
+    def read_control(self,control_id,action):
+        if hasattr(self.client,'positive_control_read'):return self.client.positive_control_read(control_id,action)
+        return self.client.positive_controls.read(control_id,action)
     def write(self,action,**payload):
         if hasattr(self.client,'positive_control_write'):return self.client.positive_control_write(action,**payload)
         return self.client.positive_controls.write(action,payload)
@@ -202,3 +255,17 @@ def tick_channel(state,deps,ordinary_tick):
         record['error']=safe_detail(str(exc))
     save(sub)
     return True
+
+
+def main(argv=None):
+    import argparse
+    parser=argparse.ArgumentParser(description='Queue a positive-control rerun with the same origin and guidance under a new ID.')
+    parser.add_argument('--state-dir',required=True)
+    parser.add_argument('--rerun-spec',required=True)
+    parser.add_argument('--control-id',required=True)
+    args=parser.parse_args(argv)
+    print(queue_rerun(args.state_dir,args.rerun_spec,args.control_id))
+    return 0
+
+
+if __name__=='__main__':raise SystemExit(main())

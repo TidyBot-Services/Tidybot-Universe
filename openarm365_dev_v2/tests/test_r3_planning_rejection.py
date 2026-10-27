@@ -192,6 +192,6 @@ def test_sandbox_trace_dev_eval_advisor_and_memory(planner, monkeypatch, r3_depl
         assert packet['public_feedback']['action_trace'][-1]['error']['message'].endswith(suffix)
     before = dict(feedback,public_error=original)
     assert derive_signature(before) == derive_signature(feedback) == {
-        'public_error_class':'RuntimeError: PlanningRejected','operation':'left_arm.move_delta'}
+        'public_error_class':'RuntimeError: PlanningRejected','operation':'left_arm.move_delta','reason_code':reason}
     assert signature_present(feedback, derive_signature(before))
     assert eval_reason_class({'feedback':original}) == eval_reason_class({'feedback':outcome.error}) == 'planner_rejected'

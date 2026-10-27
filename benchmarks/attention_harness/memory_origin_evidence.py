@@ -97,12 +97,12 @@ def locate(provision,note):
     jobs=[j for j in c['jobs'] if j['version']==o['origin_version'] and j['kind']=='execute' and j['state']=='settled']
     if len(jobs)!=1:raise DevConflict('Original settled execution is missing or ambiguous')
     job=jobs[0];digests=o['digests']
-    from .memory_provisional import derive_signature
+    from attention_memory_service.failure_signature import matches_frozen_derivation
     for ref,name in ((v['source'],'origin_source'),(job['receipt']['public_feedback'],'origin_public_feedback'),
                      (help_version['help'],'help'),(help_version['model_input'],'help_model_input'),(help_version['source'],'help_source')):
         checked(ref)
         if ref['sha256']!=digests[name]:raise DevConflict('Original evidence differs from note provenance: '+name)
-    if derive_signature(read(job['receipt']['public_feedback']))!=p['failure_signature'] or c['policy_id']!=o['policy_id']:
+    if not matches_frozen_derivation(read(job['receipt']['public_feedback']),p['failure_signature']) or c['policy_id']!=o['policy_id']:
         raise DevConflict('Origin policy or failure signature differs from the note')
     requests=[r for r in store.planner_snapshot(o['cell'])['requests'] if r.get('version')==o['help_version'] and r.get('request_type')=='advisor' and r.get('adopted') is True]
     provider=read(help_version['help']).get('provider')
@@ -140,7 +140,7 @@ def source_prerequisites(found):
 def validate_origin(provision,found,catalog,descriptor,*,validator_root,replay=None,before_replay=None,check_only=False):
     from .memory_independent_validator import validate_arm
     c=found['cell'];v=found['version'];config=found['config']
-    return validate_arm(experiment_dir=provision.root,experiments_root=provision.root,cell=c['key'],version=v['version'],execution_import_id=found['key'],
+    return validate_arm(experiment_dir=provision.root,experiments_root=provision.root,cell=c['key'],version=v['version'],execution_import_id=found.get('execution_import_id',found['key']),
         bundle_ref=found['job']['receipt']['bundle'],config_ref=descriptor['config'],source_ref=v['source'],grant=None,origin=True,
         permission_scope=descriptor['permission_scope'],executor_catalog=catalog,contract=config['scene_contract'],validator_root=validator_root,replay=replay,before_replay=before_replay,import_purpose=descriptor.get('import_purpose'),
         failure_signature=found['provenance']['failure_signature'],budget=c.get('budget',{}),developer_model=config.get('model','origin'),gpu_seconds=None,ledger_ref=descriptor['ledger'],check_only=check_only)
@@ -232,7 +232,8 @@ class OriginPreparation:
                     if out.exists():raise DevConflict('Origin export was interrupted; review the incomplete export directory')
                     prepare(store,c['key'],version,ctx['namespace'],out,self.provision.root,source_catalogs=sources,**kwargs)
                 return json.loads(ref.read_bytes()),json.loads((out/'descriptor.json').read_bytes())
-            catalog,d=export('execution',v['version'],motion_permission='dev_tier_sim_motion',import_purpose='memory_validation')
+            reused=found.get('reused_execution')
+            catalog,d=(reused['catalog'],reused['descriptor']) if reused else export('execution',v['version'],motion_permission='dev_tier_sim_motion',import_purpose='memory_validation')
             def before_replay():
                 # Pause at native scene boundaries, like ledger arms finishing a
                 # dispatched execution. Never modify the historical experiment.
@@ -242,7 +243,7 @@ class OriginPreparation:
             immutable(directory/'validation.json',result)
             refs={}
             if result['status']!='refused':
-                catalogs={**sources,key+'-executor':catalog,key+'-validator':result['catalog']}
+                catalogs={**sources,(reused['catalog_id'] if reused else key+'-executor'):catalog,key+'-validator':result['catalog']}
                 if p.get('channel')!='positive_control':
                     source,sd=export('source',p['origin']['help_version'],source=source_prerequisites(found),failure_signature=p['failure_signature'])
                     catalogs[key+'-source']=source

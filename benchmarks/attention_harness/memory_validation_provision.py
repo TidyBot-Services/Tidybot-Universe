@@ -14,7 +14,7 @@ from pathlib import Path
 from .core.dev_store import DevConflict
 from .dev_v2_loop import checked,job_for
 from .dev_ledger import DevV2Store
-from .memory_provisional import derive_signature
+from attention_memory_service.failure_signature import matches_frozen_derivation
 
 
 def read(ref):return json.loads(checked(ref).read_bytes())
@@ -144,7 +144,7 @@ class Provisioner:
             if row(db,'v2_jobs','id=?',(job['job_id'],))!=job:raise DevConflict('Original settled execution differs from import snapshot')
         feedback=job['receipt']['public_feedback'];bundle=read(job['receipt']['bundle']);source=version['source']
         checked(source);public=read(feedback);signature=provenance['failure_signature'];digests=origin['digests']
-        if source['sha256']!=digests['origin_source'] or feedback['sha256']!=digests['origin_public_feedback'] or derive_signature(public)!=signature:raise DevConflict('Origin source, feedback or failure signature differs from the note')
+        if source['sha256']!=digests['origin_source'] or feedback['sha256']!=digests['origin_public_feedback'] or not matches_frozen_derivation(public,signature):raise DevConflict('Origin source, feedback or failure signature differs from the note')
         if origin['policy_id']!=cell['policy_id']:raise DevConflict('Origin policy differs from the note')
         for name,field in (('help','help'),('help_model_input','model_input'),('help_source','source')):
             checked(source_version[field])
