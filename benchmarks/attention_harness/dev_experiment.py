@@ -294,12 +294,14 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     from .execution_profile import manifest_metadata
     metadata=manifest_metadata(manifest)
     # Absence encodes legacy on disk; display helpers supply its label.
-    if metadata['execution_profile']!='legacy':manifest.update(metadata)
+    if metadata['execution_profile']!='legacy' or 'dev_sdk_sha256' in metadata:manifest.update(metadata)
     public_screen(sources);public_screen(demos);validate_fairness(manifest)
     manifest_path=directory/'manifest.json'
     mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
     if json.loads(manifest_path.read_bytes())!=manifest:raise DevConflict('immutable manifest conflict')
     exp=dict(experiment_id=exp_id,selection=normalized,manifest=mref,artifact_dir=str(directory),state='planned',cancelled=False,owner=None,created_at=time.time(),formal_eligible=False)
+    from .dev_tasks import SDK_SEAL_KEYS
+    exp.update({k:metadata[k] for k in SDK_SEAL_KEYS if k in metadata})
     if validation_origin is not None:exp['validation_experiment']=True
     if v3 or legacy_configuration is not None:exp['goal_id']=goal_id
     with store.tx() as db:
@@ -379,6 +381,9 @@ def verify_manifest(exp):
     from .execution_profile import manifest_metadata
     metadata=manifest_metadata(m)
     if any(k in m and m[k]!=v for k,v in metadata.items()):raise DevConflict('manifest execution identity differs from configs')
+    from .dev_tasks import SDK_SEAL_KEYS
+    if any(k in metadata and m.get(k)!=metadata[k] for k in SDK_SEAL_KEYS):
+        raise DevConflict('manifest SDK description differs from configs')
     tier=m.get('budget_tier','legacy')
     task_limits(tier)
     if m['selection'].get('budget_tier','legacy')!=tier:raise DevConflict('manifest budget tier differs from selection')

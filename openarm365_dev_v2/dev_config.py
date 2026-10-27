@@ -126,6 +126,7 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
     else:
         settings=from_config(settings.to_dict())
         if budget_tier!='dev' or budget_boundary!='dev_loop':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
+    # The frozen constructor seals r4 only; legacy/r3 retain their exact bytes.
     return _make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
         budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source)
 
@@ -166,6 +167,8 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
     if budget_tier=='dev':c['budget_tier']='dev'
     if execution_settings is not None:c['execution_settings']=execution_settings.to_dict()
     if planner_source is not None:c['planner_source']=dict(planner_source)
+    from benchmarks.attention_harness.dev_tasks import base_description_enabled,dev_sdk_seal
+    if base_description_enabled(c):c.update(dev_sdk_seal(c))
     return c
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
@@ -236,5 +239,8 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         if sha(original['path'])!=original['sha256']:raise ValueError('origin identity lock changed')
         drift_record(c,json.loads(Path(original['path']).read_bytes()),json.loads(Path(c['dev_lock']['path']).read_bytes()),original['sha256'],c['dev_lock']['sha256'])
         expected['origin_dev_lock']=original
+    from benchmarks.attention_harness.dev_tasks import SDK_SEAL_KEYS,verify_dev_sdk_seal,dev_sdk_seal
+    verify_dev_sdk_seal(c)
+    if any(k in c for k in SDK_SEAL_KEYS):expected.update(dev_sdk_seal(c))
     if c!=expected or any(type(c[k]) is not type(v) for k,v in expected.items()):raise ValueError('Dev configuration mismatch')
     return c

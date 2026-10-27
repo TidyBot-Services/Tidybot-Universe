@@ -396,7 +396,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
         help_record=immutable(directory/'help.json',{**hint,'advisor_proxy':{'uri':str(directory/'advisor-hint.json'),'sha256':sha(directory/'advisor-hint.json')},'selected_moments':record['selected_moments'],'localization':record['localization']})
     elif action=='request':
         if decision['request_type']!='hint':raise DevConflict('only hint requests are supported')
-        provider=AdvisorProvider();msgs=provider.messages(cell['task_id'],previous,feedback,m['trace_visible'])
+        provider=AdvisorProvider();msgs=provider.messages(cell['task_id'],previous,feedback,m['trace_visible'],config=config)
         if cell.get('planner_features') and not shared:
             advisor_packet=json.loads(msgs[-1]['content'])
             advisor_packet['memory'],truncated=compact_memory(memory['entries'])

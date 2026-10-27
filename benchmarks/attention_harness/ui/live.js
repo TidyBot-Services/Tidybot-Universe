@@ -328,6 +328,7 @@
   function devNavigationRecord(session){
     const cfg=session.locked?.config||{};
     return {run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
+      dev_sdk_description:cfg.dev_sdk_description||'base stationary',dev_sdk_sha256:cfg.dev_sdk_sha256,
       created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
       status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
@@ -492,6 +493,7 @@
       const full=live?`Attempt ${n} of ${limit} in progress`:`${used} of ${limit} allowed attempts used`;
       badges.push(`<span class="ab-run-badge" data-run-badge="attempts" data-live="${live}" title="${esc(full)}" aria-label="${esc(full)}">${icon('M20 11A8 8 0 0 0 4.6 8M4 4v4h4M4 13a8 8 0 0 0 15.4 3M20 20v-4h-4')}${esc(text)}</span>`);
     }
+    if(r.development)badges.push(`<span class="ab-run-badge" data-run-badge="sdk-description" title="${esc(r.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(r.dev_sdk_description||'base stationary')}</span>`);
     return badges.length?`<div class="ab-run-badges">${badges.join('')}</div>`:'';
   }
   function sidebarRunCard(r){
@@ -3601,9 +3603,10 @@
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
     const newRun = isTerminal(snapshot) ? launchButton(snapshot, true) : '';
     const execution = snapshot.dev_session?.locked?.config?.execution_settings?.profile === 'r3-20261025' ? '<span class="op-excluded">Execution settings r3 · not comparable with earlier runs</span>' : '';
+    const sdk = snapshot.dev_session ? `<span class="op-excluded" data-sdk-description title="${esc(snapshot.dev_session.locked?.config?.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(snapshot.dev_session.locked?.config?.dev_sdk_description||'base stationary')}</span>` : '';
     const fork = snapshot.dev_v2_selection?.fork;
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}${sdk}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {

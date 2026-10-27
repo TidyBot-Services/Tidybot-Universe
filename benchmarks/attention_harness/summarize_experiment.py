@@ -162,27 +162,34 @@ def summarize(experiment):
             config=manifest.get('configs',{}).get(f"{cell['task_id']}:{cell['seed']}")
             metadata=config_metadata(config) if config is not None else {
                 k:cell.get(k,manifest.get(k,v)) for k,v in config_metadata({}).items()}
+            if config is None:
+                for key in ('dev_sdk_sha256','dev_sdk_description'):
+                    if key in cell or key in manifest:metadata[key]=cell.get(key,manifest.get(key))
             if config is None and cell.get('deployment_kind',manifest.get('deployment_kind'))=='dev-local':metadata.update(deployment_kind='dev-local',formal_eligible=False)
             # Pre-0g and 0g legacy conditions remain separate as well.
             generation=('0g' if config is not None and all(k in config for k in
                 ('planner_mode','ik_candidates','ik_max_joint_jump')) else 'pre-0g')
-            grouped[(metadata['execution_profile'],generation,metadata.get('deployment_kind','registered'))].append((exp,dict(cell,**metadata)))
+            grouped[(metadata['execution_profile'],generation,metadata.get('deployment_kind','registered'),metadata.get('dev_sdk_sha256','unsealed'),metadata.get('dev_sdk_description','base stationary'))].append((exp,dict(cell,**metadata)))
     if not grouped:
         value=_summarize_one(experiments[0]);value.update(manifest_metadata(experiments[0].get('manifest',{})))
         return value
     values=[]
-    for (profile,generation,kind),members in sorted(grouped.items()):
+    for (profile,generation,kind,sdk_sha,sdk_description),members in sorted(grouped.items()):
         first=members[0][0]
         value=_summarize_one(dict(first,cells=[c for _,c in members]))
         shas=sorted({c['planner_lock_sha256'] for _,c in members})
         value.update(execution_profile=profile,grasp_generation=generation,
                      planner_lock_sha256=shas[0] if len(shas)==1 else shas)
+        if sdk_sha!='unsealed':
+            value.update(dev_sdk_sha256=sdk_sha,dev_sdk_description=sdk_description)
         if kind=='dev-local':value.update(deployment_kind=kind,formal_eligible=False)
         value['experiment_ids']=sorted({exp['experiment_id'] for exp,_ in members})
         values.append(value)
     if len(values)==1:return values[0]
     return dict(schema='attentionbench.experiment-summary.profiles.v1',
-        note='Different execution profiles or grasp generations are not comparable; tables and rates are reported separately.',
+        note=('Different execution profiles, SDK descriptions or grasp generations are not comparable; tables and rates are reported separately.'
+              if any('dev_sdk_sha256' in value for value in values) else
+              'Different execution profiles or grasp generations are not comparable; tables and rates are reported separately.'),
         profiles=values)
 
 
@@ -305,6 +312,7 @@ def markdown(value):
         return value['note']+'\n\n'+'\n'.join(markdown(group) for group in value['profiles'])
     rate = lambda x: 'unknown' if x is None else f'{x:.3f}'
     lines = [f"# Experiment {value['experiment_id']}", '',
+             *([f"SDK description: {value['dev_sdk_description']}; SHA-256: {value['dev_sdk_sha256']}."] if 'dev_sdk_sha256' in value else []),
              f"Execution profile: {value.get('execution_profile','legacy')}; grasp generation: {value.get('grasp_generation','pre-0g')}; planner lock SHA: {value.get('planner_lock_sha256')}.", '',
              f"Mode: {value.get('mode')}; budget tier: {value.get('budget_tier')}; formal eligible: {value.get('formal_eligible')}.",
              f"Memory-seeded (excluded): {value.get('memory_seeded_excluded', 0)}.", '',

@@ -101,6 +101,8 @@ def context(config, namespace, *, contract_catalog=None):
                  scene_contract_ref=contract)
     # Matching identity; sdk_sha256 (implementation) stays for audit.
     value['sdk_interface_sha256'] = sdk_interface_sha256(identity)
+    if 'dev_sdk_sha256' in config and value['sdk_interface_sha256'] != config['dev_sdk_sha256']:
+        raise DevConflict('Memory SDK description differs from sealed config')
     if 'execution_settings' in config:value['execution_profile']=config['execution_settings']['profile']
     if config.get('planner_source',{}).get('kind')=='dev-local':value['planner_dev_local_sha256']=config['execution_settings']['planner_deployment']['sha256']
     public_screen(value)
@@ -108,7 +110,8 @@ def context(config, namespace, *, contract_catalog=None):
 
 
 def sdk_identity(config):
-    from .dev_tasks import dev_sdk, dev_sdk_prompt
+    from .dev_tasks import dev_sdk, dev_sdk_prompt, verify_dev_sdk_seal
+    verify_dev_sdk_seal(config)
     ref=config.get('origin_dev_lock',config['dev_lock'])
     if sha(ref['path'])!=ref['sha256']:raise DevConflict('Memory SDK lock drift')
     lock=json.loads(Path(ref['path']).read_bytes());root=Path(lock['source_root'])
@@ -151,6 +154,7 @@ class DevMemory:
     def __init__(self, gateway, settings, config, *, layered=False, mode='experiment', family=False):
         self.gateway, self.settings, self.layered = gateway, settings, layered
         self.family = layered and family is True
+        self.sdk_description_sealed = 'dev_sdk_sha256' in config
         self.scope = memory_scope(config, mode if layered else 'experiment')
         # An absent/unregistered contract cannot form an authorized context.
         # Keep an explicit empty packet; never substitute a different contract.
@@ -158,7 +162,7 @@ class DevMemory:
         if self.scope.get('reason') in {'scene_contract_missing', 'scene_contract_not_registered'}:
             return
         self.context = context(config, settings['namespace'])
-        if not layered:
+        if not layered and not self.sdk_description_sealed:
             # Frozen planner-Memory manifests keep the exact pre-split context.
             self.context.pop('sdk_interface_sha256', None)
         if gateway.store_id() != settings['store_id']:
@@ -173,6 +177,7 @@ class DevMemory:
                 if getattr(m.status, 'value', m.status) == 'trusted'
                 and type(m.version) is int and m.version > 0
                 and m.applicability.get('execution_profile') == self.context.get('execution_profile')
+                and (not self.sdk_description_sealed or m.applicability.get('sdk_interface_sha256') == self.context.get('sdk_interface_sha256'))
                 and m.applicability.get('planner_dev_local_sha256') == self.context.get('planner_dev_local_sha256')
                 and all(m.applicability.get(k) == v for k, v in self.context.items() if k in SCOPE)],
                 key=lambda m: (m.memory_id, m.version))
@@ -224,6 +229,7 @@ class DevMemory:
                     or n.trusted_here and (n.status != 'trusted' or n.match_level not in {'same_scene','same_task'})
                     or n.match_level == 'same_scene' and n.trusted_here is not (n.status == 'trusted')
                     or n.applicability.get('execution_profile') != self.context.get('execution_profile')
+                    or self.sdk_description_sealed and n.applicability.get('sdk_interface_sha256') != self.context.get('sdk_interface_sha256')
                     or n.applicability.get('planner_dev_local_sha256') != self.context.get('planner_dev_local_sha256')
                     or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (family_scope and k == 'task_id'))
                     or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):

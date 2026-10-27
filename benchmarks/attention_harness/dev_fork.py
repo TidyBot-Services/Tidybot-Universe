@@ -138,6 +138,8 @@ def preview_config(source_config):
     value['budget_tier']='dev'
     value['execution_settings']=d.new_execution_settings().to_dict()
     value['planner_source']=dict(kind='dev-local',source_root=str(d.ROOT))
+    from .dev_tasks import dev_sdk_seal
+    value.update(dev_sdk_seal(value))
     value.update(contact_exempt_objects=d.DEFAULT_CONTACT_EXEMPT_OBJECTS,planner_mode=d.DEFAULT_PLANNER_MODE,ik_candidates=d.DEFAULT_IK_CANDIDATES,ik_max_joint_jump=d.DEFAULT_IK_MAX_JOINT_JUMP)
     if source_config.get('scene_contract'):
         from openarm365_dev_v2.scene_contract import registered_contract_ref

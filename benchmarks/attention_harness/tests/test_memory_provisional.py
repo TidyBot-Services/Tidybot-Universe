@@ -21,6 +21,7 @@ from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.dev_loop import immutable, process_identity, sha
 from benchmarks.attention_harness.dev_memory_view import projection
 from openarm365_dev_v2.scene_contract import registered_contract_ref
+from benchmarks.attention_harness.tests.c22_fixtures import frozen_r3_experiment, r3_deployment, source_only_lock
 
 SOURCE = 'from robot_sdk import left_arm\nleft_arm.move_delta(0,0,0.01)\n'
 URL = 'http://127.0.0.1:1'
@@ -371,8 +372,9 @@ def test_journal_queues_provisional_outcome_never_a_result(tmp_path, monkeypatch
     assert row['status'] == 'provisional'
 
 
-def test_sdk_implementation_change_keeps_notes_interface_change_drops_them(tmp_path, monkeypatch):
+def test_sdk_implementation_change_keeps_notes_interface_change_drops_them(tmp_path, monkeypatch, frozen_r3_experiment):
     store, cell, config, manifest, root = make(tmp_path, 'autonomous', memory_authority=SETTINGS)
+    assert config['execution_settings']['profile'] == 'r3-20261025' and 'dev_sdk_sha256' not in config
     gateway, here = populated(tmp_path, config)
     original = memory.sdk_identity
     monkeypatch.setattr(memory, 'sdk_identity', lambda cfg: {**original(cfg), 'implementation': {'sdk.py': '0' * 64}})
@@ -384,10 +386,11 @@ def test_sdk_implementation_change_keeps_notes_interface_change_drops_them(tmp_p
     assert memory.DevMemory(gateway, SETTINGS, config, layered=True).selected() == []
 
 
-def test_frozen_planner_memory_manifest_keeps_exact_trusted_only_behaviour(tmp_path, monkeypatch):
+def test_frozen_planner_memory_manifest_keeps_exact_trusted_only_behaviour(tmp_path, monkeypatch, frozen_r3_experiment):
     store, cell, config, manifest, root = make(
         tmp_path, 'full_trace_aware_attention_planner', key='provisional-legacy-planner',
         planner_features={'memory': SETTINGS, 'human_wait_seconds': 0, 'background_seconds': 0, 'approval_rule': 'none'})
+    assert config['execution_settings']['profile'] == 'r3-20261025' and 'dev_sdk_sha256' not in config
     assert 'memory_authority' not in cell and cell['planner_features']['memory'] == SETTINGS
     gateway = ServiceGateway(tmp_path / 'memory.sqlite')
     legacy = memory.context(config, SETTINGS['namespace']); legacy.pop('sdk_interface_sha256')

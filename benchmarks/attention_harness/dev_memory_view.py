@@ -83,7 +83,7 @@ def projection(store, cell):
                                     seeded_for_tests=seeded,excluded_from_results=excluded,
                                     explicit_flags=type(entry.get('seeded_for_tests')) is bool or type(entry.get('excluded_from_results')) is bool,
                                     authority=entry.get('authority'),
-                                    applicability={k:context.get(k) for k in ('execution_profile','planner_dev_local_sha256','seed','scene_id','object_set_id','camera_config_id','task_variant_id','camera_names','task_prompt','scene_contract_ref') if k in context}))
+                                    applicability={k:context.get(k) for k in ('execution_profile','planner_dev_local_sha256','sdk_interface_sha256','seed','scene_id','object_set_id','camera_config_id','task_variant_id','camera_names','task_prompt','scene_contract_ref') if k in context}))
             retrievals.append(dict(version=value['version'],authority=value['authority'],namespace=value['namespace'],
                                    packet_sha256=value['packet']['sha256'],entries=entries))
         elif kind=='planner_memory_generation':

@@ -6,6 +6,7 @@ from openarm365_dev_v2.tests.fakes import Client,Runner
 from benchmarks.attention_harness.dev_experiment import *
 from benchmarks.attention_harness.dev_v2_loop import *
 from benchmarks.attention_harness.dev_probe import run_probe
+from benchmarks.attention_harness.tests.c22_fixtures import source_only_lock
 
 def test_probe_and_goal_allocation(tmp_path):
  sel={**selection(),'tasks':['pick_place_counter_to_sink','open_cabinet']}
@@ -66,7 +67,7 @@ def test_help_crash_reuse_and_execute_crash(tmp_path,monkeypatch):
  f=run(s,e['experiment_id'],max_cells=1,budget_file=b,client=cl,runner_factory=Runner)
  assert len(cl.inputs)==3 and f['cells'][0]['used']['help_count']==1 and f['cells'][0]['used']['executions']==3
 
-def test_old_manifest_exact_bytes(tmp_path,monkeypatch):
+def test_old_manifest_exact_bytes(tmp_path,monkeypatch,source_only_lock):
  import importlib.util
  from openarm365_dev_v2 import dev_config
  # Both generations use one real source tree; the missing worktree model copy is
@@ -97,7 +98,7 @@ def test_old_manifest_exact_bytes(tmp_path,monkeypatch):
               execution_seconds=config['attempt_wall_seconds']+25)
  assert encoded(first_reservation(old_manifest['configs'][key]))==encoded(first_reservation(new_manifest['configs'][key]))
 
-def test_old_experiment_manifest_exact_bytes_with_eval(tmp_path,monkeypatch):
+def test_old_experiment_manifest_exact_bytes_with_eval(tmp_path,monkeypatch,source_only_lock):
  import subprocess,types
  from openarm365_dev_v2 import dev_config
  from openarm365_dev_v2.scene_contract import registered_contract_ref

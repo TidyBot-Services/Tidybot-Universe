@@ -7,6 +7,8 @@ def config_metadata(config):
     value=dict(execution_profile=block['profile'] if block else 'legacy',
                 planner_lock_sha256=block['planner_deployment']['sha256'] if block else D05_SHA)
     if config.get('planner_source',{}).get('kind')=='dev-local':value.update(deployment_kind='dev-local',formal_eligible=False)
+    from .dev_tasks import SDK_SEAL_KEYS
+    value.update({k:config[k] for k in SDK_SEAL_KEYS if k in config})
     return value
 
 
