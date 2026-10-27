@@ -15,6 +15,7 @@ def execution_request(method):
         settings = from_config(execution_settings)
         with self._lock:
             self._planner.execution_settings = settings
+            self._planner.last_heading_search = None
             try:
                 response = method(self, *args, **kwargs)
                 if settings is not None:
@@ -90,31 +91,44 @@ class PlannerAdapter:
             response['trajectory_derivatives_source']='unmodified official public get_interpolated_plan JointState optional fields'
         from curobo_v2.attachment import held_envelope_receipt
         response.update(held_envelope_receipt(getattr(self._planner,"execution_settings",None)))
+        if getattr(self._planner, 'last_heading_search', None) is not None:
+            response.update(self._planner.last_heading_search)
         return response
 
     @execution_request
     def plan_pose(self, env_id, current_q, target_pos=None, target_quat=None,
-                  lock_base=False, joint_names=None, targets=None, active_joints=None, locked_joints=None, attachment=None):
+                  lock_base=False, joint_names=None, targets=None, active_joints=None, locked_joints=None, attachment=None, grasp_search=None):
         with self._lock:
             current = self._planner.named(current_q,joint_names)
             self._ensure_world(env_id)
             self._planner.set_attachment(attachment)
-            result = self._planner.plan_pose(current,target_pos,target_quat,lock_base,
-                targets=targets,active_joints=active_joints,locked_joints=locked_joints)
+            if grasp_search is not None:
+                from curobo_v2.grasp_heading import search
+                result = search(self._planner, current, targets, grasp_search,
+                    active_joints=active_joints, locked_joints=locked_joints, mode='plan', options={})
+            else:
+                result = self._planner.plan_pose(current,target_pos,target_quat,lock_base,
+                    targets=targets,active_joints=active_joints,locked_joints=locked_joints)
             return self._result(result,joint_names)
 
     @execution_request
     def plan_ik_path(self, env_id, current_q, *, targets, joint_names=None,
                      active_joints=None, locked_joints=None, attachment=None,
-                     max_joint_jump=.35, minimum_duration=.5, ik_candidates=1):
+                     max_joint_jump=.35, minimum_duration=.5, ik_candidates=1, grasp_search=None):
         with self._lock:
             current = self._planner.named(current_q, joint_names)
             self._ensure_world(env_id)
             self._planner.set_attachment(attachment)
-            result = self._planner.plan_ik_path(
-                current, targets=targets, active_joints=active_joints,
-                locked_joints=locked_joints, max_joint_jump=max_joint_jump,
-                minimum_duration=minimum_duration, ik_candidates=ik_candidates)
+            if grasp_search is not None:
+                from curobo_v2.grasp_heading import search
+                result = search(self._planner, current, targets, grasp_search,
+                    active_joints=active_joints, locked_joints=locked_joints, mode='ik_path',
+                    options=dict(max_joint_jump=max_joint_jump, minimum_duration=minimum_duration, ik_candidates=ik_candidates))
+            else:
+                result = self._planner.plan_ik_path(
+                    current, targets=targets, active_joints=active_joints,
+                    locked_joints=locked_joints, max_joint_jump=max_joint_jump,
+                    minimum_duration=minimum_duration, ik_candidates=ik_candidates)
             response = self._result(result, joint_names)
             response.update(ik_candidates=ik_candidates,
                             ik_candidate_distances=self._planner.last_ik_path_metrics.get('candidate_distances', []),

@@ -164,7 +164,10 @@ def main():
                     else:value=[{'name':n[:-4],'position':p,'frame':'world'} for n,p in obs['perception']['values'].items() if n.endswith('_pos')]
                 elif group in {'left_arm','right_arm'}:
                     side=group.split('_')[0]
-                    executor.move_delta(side,*request['args'],**request['kwargs'],request_id=rid)
+                    receipt=executor.move_delta(side,*request['args'],**request['kwargs'],request_id=rid)
+                    from curobo_v2.grasp_heading import feedback
+                    public_heading=feedback(receipt)
+                    if public_heading:value=public_heading
                 elif group=='base':
                     executor.base_move(*request['args'],**request['kwargs'],request_id=rid)
                 elif group in {'left_gripper','right_gripper'}:

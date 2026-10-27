@@ -13,6 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 
 from benchmarks.attention_harness import daily_dev_v2 as daily, dev_advisor_proxy, dev_experiment, eval_agent, ui_server
 from benchmarks.attention_harness.core.dev_store import DevBudgetExhausted, DevConflict
@@ -591,3 +592,8 @@ def test_dispatch_deadline_is_capped_by_original_clock_and_never_renewed(tmp_pat
     with pytest.raises(DevBudgetExhausted, match='time budget exhausted'):
         bridge.dispatch_budget(store, e, directory, budget)
     assert dispatch.read_bytes() == declaration and path.read_bytes() == before
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

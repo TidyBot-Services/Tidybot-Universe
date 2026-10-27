@@ -24,8 +24,19 @@ def dev_sdk(config=None):
 
 def dev_sdk_prompt(config=None):
     limits=dev_sdk(config)
-    return SDK_PROMPT.replace('At most 80 TOTAL SDK calls, 2400 control steps, 480s.',
+    prompt = SDK_PROMPT.replace('At most 80 TOTAL SDK calls, 2400 control steps, 480s.',
         f"At most {limits['sdk_calls']} TOTAL SDK calls, {limits['control_steps']} control steps, {limits['attempt_seconds']}s.")
+    if (config or {}).get('execution_settings', {}).get('profile') == 'r4-20261027':
+        prompt += (' On the final descend-to-grasp move_delta, with gripper open and no held object, '
+            'you may pass grasp_search={"object_name": public_name, "lift_position": [x,y,z], '
+            '"place_position": [x,y,z]}. Positions are absolute WORLD metres for subsequent TCP '
+            'lift and pre-release place feasibility; both retain the requested grasp orientation. '
+            'The planner tries requested heading then +0.1,-0.1,+0.2,-0.2,+0.3,-0.3,+0.5,-0.5 rad '
+            'about WORLD vertical and returns heading_used_rad (offset), headings_tried_rad, '
+            'heading_candidates. Only the descent executes. Close must still confirm stable bilateral '
+            'grasp; subsequent lift/place calls replan from measured state. This does not release the '
+            'object or authorize contact before stable grasp. Calls without grasp_search keep their exact heading.')
+    return prompt
 @dataclass(frozen=True)
 class DevTask:
     task_id:str

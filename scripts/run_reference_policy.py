@@ -145,7 +145,7 @@ def build_verdict(out, experiment_id):
             expected=settings.to_dict()
         except (ValueError, OSError) as exc:errors.append('dev-local settings: '+str(exc))
     if expected is None or config.get('execution_settings') != expected:
-        errors.append('cell execution_settings differs from registered r3')
+        errors.append('cell execution_settings differs from authenticated profile')
     limits = task_limits('dev')
     for key, value in {'budget_tier': 'dev', 'runner_boundary': 'dev_loop',
                        'attempt_wall_seconds': limits['attempt_seconds'],
@@ -162,7 +162,7 @@ def build_verdict(out, experiment_id):
     if len(episodes) != 1:
         errors.append('expected exactly one simulator execution')
     episode = episodes[0].parent if len(episodes) == 1 else None
-    labels = dict(execution_profile='r3-20261025', execution_settings_source='config',
+    labels = dict(execution_profile=(expected or {}).get('profile', 'r3-20261025'), execution_settings_source='config',
                   planner_lock_sha256=expected['planner_deployment']['sha256'] if expected else None)
     if config.get('planner_source',{}).get('kind')=='dev-local':labels.update(deployment_kind='dev-local',formal_eligible=False)
     receipt_count = 0

@@ -2,6 +2,7 @@
 from pathlib import Path
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
 pytestmark = pytest.mark.usefixtures("r3_deployment")
 
@@ -21,6 +22,7 @@ def test_validation_origin_preserves_planner_config(tmp_path, monkeypatch, legac
         make_lock = experiments.make_lock
         monkeypatch.setattr(experiments,"make_lock",lambda path,**kw:make_lock(path))
         def legacy_config(*args, **kwargs):
+            kwargs.pop('execution_settings', None)
             config = make_config(*args, **kwargs)
             for key in dev_config.PLANNER_CONFIG_KEYS:
                 del config[key]
@@ -35,7 +37,7 @@ def test_validation_origin_preserves_planner_config(tmp_path, monkeypatch, legac
                                   tmp_path/'original', selection)
     manifest = experiments.verify_manifest(original)
     config = manifest['configs']['open_cabinet:102']
-    assert ('execution_settings' not in config) if legacy else config['execution_settings']['profile']=='r3-20261025'
+    assert ('execution_settings' not in config) if legacy else config['execution_settings']['profile']=='r4-20261027'
     assert config['contact_exempt_objects'] == ('none' if legacy else 'movable_objects')
     assert all((key not in config) if legacy else (key in config)
                for key in dev_config.PLANNER_CONFIG_KEYS)
@@ -52,3 +54,8 @@ def test_validation_origin_preserves_planner_config(tmp_path, monkeypatch, legac
     for cell in result['cells']:
         assert Path(cell['artifact_dir'], 'config.json').read_bytes() == original_bytes
     assert Path(origin['config']['uri']).read_bytes() == original_bytes
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

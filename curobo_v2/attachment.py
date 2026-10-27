@@ -59,6 +59,10 @@ def cover_cuboid(c,link_from_planner,*,cell=ATTACHED_CELL_M):
 class SingleArmAttachment:
     def __init__(self,context,world,tool_frames,*,execution_settings=None):
         fields={'holder','target_id','object_pose','tcp_object_transform','shape_names','support_names','tool_frame'}
+        retained_fields={'support_retention','recomputed_support_names'}
+        has_retention=isinstance(context,dict) and bool(retained_fields & context.keys())
+        if has_retention and getattr(execution_settings,'carried_proxy_support_departure',None)=='monotone':
+            fields=fields|retained_fields
         if (not isinstance(context,dict)or set(context)!=fields or not isinstance(context['holder'],str)
                 or context['holder']not in {'left','right'} or type(context['target_id'])is not int):
             raise ValueError('Complete explicit measured attachment context required')
@@ -73,6 +77,27 @@ class SingleArmAttachment:
         if not actual or self.names!=actual or len(self.names)!=len(context['shape_names']):raise ValueError('Attachment omitted or substituted actual target shapes')
         self.supports=set(context['support_names'])
         if not self.supports<=world_names-self.names or len(self.supports)!=len(context['support_names']):raise ValueError('Departure supports must exist in the complete measured world')
+        self.support_retention=None
+        if has_retention:
+            retention=context['support_retention'];recomputed=context['recomputed_support_names']
+            if (not isinstance(retention,dict) or set(retention)!={'attach_request_id','supports'}
+                    or not isinstance(retention['attach_request_id'],str) or not retention['attach_request_id']
+                    or not isinstance(retention['supports'],list)
+                    or not isinstance(recomputed,list) or any(not isinstance(n,str) or not n for n in recomputed)):
+                raise ValueError('Invalid retained support provenance')
+            names=[]
+            for row in retention['supports']:
+                if (not isinstance(row,dict) or set(row)!={'name','body_id','body_name'}
+                        or not isinstance(row['name'],str) or not row['name']
+                        or type(row['body_id'])is not int or row['body_id']<0
+                        or (row['body_name'] is not None and not isinstance(row['body_name'],str))):
+                    raise ValueError('Invalid retained support identity')
+                names.append(row['name'])
+            if (len(names)!=len(set(names)) or len(recomputed)!=len(set(recomputed))
+                    or set(names)|set(recomputed)!=self.supports):
+                raise ValueError('Retained/recomputed supports must exactly account for departure supports')
+            self.support_retention=deepcopy(retention)
+            self.recomputed_support_names=list(recomputed)
         self.cuboids=[deepcopy(c)for c in world if c['name']in self.names]
         self.local_shapes={c['name']:np.linalg.inv(self.initial_pose)@cuboid_pose(c)for c in self.cuboids}
         self.allowed_fingers={f'openarm_{self.holder}_{s}_finger'for s in ['left','right']}
@@ -91,8 +116,12 @@ class SingleArmAttachment:
         return robot.find_link_by_name(self.tool).entity_pose.to_transformation_matrix()@self.transform
 
     def artifact(self):
-        return dict(holder=self.holder,target_id=self.target_id,shape_names=sorted(self.names),shape_count=len(self.names),
+        result=dict(holder=self.holder,target_id=self.target_id,shape_names=sorted(self.names),shape_count=len(self.names),
                     sphere_count=self.sphere_count,sphere_capacity=ATTACHED_SPHERES,cell_edge_m=ATTACHED_CELL_M,
                     geometry='conservative complete cuboid cell cover from all actual PhysX shapes',
                     allowed_fingers=sorted(self.allowed_fingers),departure_support_names=sorted(self.supports),
                     grasp_translation_envelope_m=self.held_envelope[0],grasp_rotation_envelope_rad=self.held_envelope[1])
+        if self.support_retention is not None:
+            result.update(support_retention=deepcopy(self.support_retention),
+                          recomputed_support_names=list(self.recomputed_support_names))
+        return result

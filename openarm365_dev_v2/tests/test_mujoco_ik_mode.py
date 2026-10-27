@@ -184,7 +184,8 @@ def test_bad_mode(monkeypatch, planner):
 def test_frozen_config_routes_and_records(monkeypatch, planner, legacy):
     from openarm365_dev_v2 import dev_config
     monkeypatch.setattr(dev_config, 'verify_lock', lambda *a, **kw: None)
-    config = dev_config.make_dev_config('open_cabinet', 102, {})
+    config = dev_config._make_dev_config('open_cabinet', 102, {},
+        execution_settings=dev_config.from_config(dev_config.R3_20261025.to_dict()))
     if legacy:
         for key in dev_config.PLANNER_CONFIG_KEYS:
             del config[key]

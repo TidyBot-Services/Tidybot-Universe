@@ -280,7 +280,7 @@ def test_registered_serialization_unchanged(base,monkeypatch,tmp_path,profile):
     ref={'path':'fixture','sha256':'fixture'}
     prior.verify_lock=lambda *a,**kw:None;monkeypatch.setattr(d,'verify_lock',prior.verify_lock)
     kw={} if profile else {'budget_tier':'legacy'}
-    assert wire(prior.make_dev_config('open_cabinet',102,ref,**kw))==wire(d.make_dev_config('open_cabinet',102,ref,**kw))
+    assert wire(prior.make_dev_config('open_cabinet',102,ref,**kw))==wire(d._make_dev_config('open_cabinet',102,ref,execution_settings=new,**kw))
 
 
 def test_real_d06_read_only_unchanged():
@@ -327,7 +327,8 @@ def test_memory_context_and_metadata(base,monkeypatch,tmp_path):
     result,_,sha=snapshot(base)
     d=config_environment(base,monkeypatch)
     monkeypatch.setattr(d,'verify_lock',lambda *a,**kw:None)
-    config=d.make_dev_config('open_cabinet',102,dict(path='test',sha256='test'))
+    config=d._make_dev_config('open_cabinet',102,dict(path='test',sha256='test'),
+        execution_settings=es.from_config(es.R3_20261025.to_dict()))
     ref=dict(uri=str(tmp_path/'contract.json'),sha256='c'*64)
     config['scene_contract']=ref
     monkeypatch.setattr(scene_contract,'registered_contract_ref',lambda:ref)

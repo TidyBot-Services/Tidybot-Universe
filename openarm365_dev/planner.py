@@ -71,7 +71,7 @@ class MujocoV2Planner:
         from .world import movable_object_roots
         roots=movable_object_roots(self.env)
         held=self.attachment_provider()
-        attached=held['target_id'] if held else None
+        attached=held['target_id'] if held else getattr(self, '_heading_world_target', None)
         return snapshot(self.env,chassis_binding=self.chassis_binding,
             exempt_body_ids=set(roots.values()),attached_body_id=attached)
     def upload(self):
@@ -114,12 +114,29 @@ class MujocoV2Planner:
             settings=getattr(self,'execution_settings',None)
             if settings is not None and 'target_qpos' in extra:
                 self.check_goal_margin(extra['target_qpos'],active)
+            search_request=extra.get('grasp_search')
+            self._heading_world_target=(self.env.obj_body_id[search_request['object_name']]
+                                        if search_request is not None else None)
             if tuple(active) not in self.prepared:self.prepare(active)
             world,receipt=self.upload();body=self.body(active);body.update(extra)
             from .attachment import planner_context
             attachment=self.attachment_provider()
-            body['attachment']=planner_context(self.env,attachment,world,self.tools,self.evidence)
-            warm={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates','max_joint_jump'}}
+            retention=(attachment.get('support_retention') if attachment is not None
+                       and getattr(settings, 'carried_proxy_support_departure', None)=='monotone' else None)
+            signature=({k:attachment[k] for k in ('holder','target_id')} if retention is not None else attachment)
+            body['attachment']=planner_context(self.env,signature,world,self.tools,self.evidence)
+            if retention is not None:
+                from .attachment import retain_declared_supports
+                body['attachment']=retain_declared_supports(body['attachment'],retention,world['inventory'])
+            if 'grasp_search' in body:
+                request=body['grasp_search']
+                public_name=request.pop('object_name')
+                if attachment is not None:raise ValueError('grasp_search requires unattached object')
+                # This is lookahead geometry, never an executor grasp signature.
+                signature=dict(holder=request.pop('holder'),target_id=self.env.obj_body_id[public_name])
+                request['attachment']=planner_context(self.env,signature,world,self.tools,self.evidence)
+
+            warm={k:v for k,v in body.items() if k not in {'targets','target_qpos','ik_candidates','max_joint_jump','grasp_search'}}
             if 'targets' in body:warm['tool_frames']=list(body['targets'])
             self.client.call('/warmup',warm)
             # Legacy calls retain their exact path and evidence behavior.
@@ -137,6 +154,9 @@ class MujocoV2Planner:
                 response['max_joint_jump']=body.get('max_joint_jump',DEFAULT_MAX_JOINT_JUMP)
                 response['max_joint_jump_source']='config' if 'max_joint_jump' in body else 'default'
             if planner_settings:response.update(planner_settings)
+            if retention is not None:
+                from copy import deepcopy
+                response['support_retention']=deepcopy(body['attachment']['support_retention'])
             pid=self.ledger.issue(response,epoch=epoch,state=body['current_q'],world=world['cuboids'],
                 identity=self.client.identity,attachment=attachment)
             response.update(plan_id=pid,epoch=epoch,world_receipt=receipt)
@@ -155,7 +175,7 @@ class MujocoV2Planner:
     def plan_joints(self,target,*,side,epoch):
         active=self.names if side=='both' else [n for n in self.names if n.startswith(f'openarm_{side}_joint')]
         return self.plan('/plan/joint',dict(target_qpos=np.asarray(target,float).tolist()),active,epoch)
-    def plan_pose(self,position,orientation,*,side,epoch):
+    def plan_pose(self,position,orientation,*,side,epoch,grasp_search=None):
         if side not in {'left','right'}:raise ValueError('Physical side required')
         local=np.linalg.inv(mount_pose(self.env));pos=(local@np.r_[position,1])[:3]
         rot=local[:3,:3]@orientation;quat=Rotation.from_matrix(rot).as_quat()[[3,0,1,2]].tolist()
@@ -167,6 +187,17 @@ class MujocoV2Planner:
         settings=dict(planner_mode=mode,
             planner_mode_source='ATTN_PLANNER_MODE' if 'ATTN_PLANNER_MODE' in os.environ else 'config')
         extra=dict(targets={f'openarm_{side}_hand_tcp':dict(position=pos.tolist(),quaternion_wxyz=quat)})
+        if grasp_search is not None:
+            from curobo_v2.grasp_heading import check_sdk_request
+            check_sdk_request(grasp_search, self.env.obj_body_id)
+            if not getattr(getattr(self, 'execution_settings', None), 'grasp_heading_search', ()):
+                raise ValueError('grasp_search requires r4-20261027')
+            tool=f'openarm_{side}_hand_tcp'
+            carry={stage+'_targets':{tool:dict(
+                position=(local@np.r_[grasp_search[stage+'_position'],1])[:3].tolist(),
+                quaternion_wxyz=quat)} for stage in ('lift','place')}
+            extra['grasp_search']=dict(**carry, object_name=grasp_search['object_name'], holder=side,
+                                       world_vertical=(local[:3,:3]@np.array([0.,0.,1.])).tolist())
         if mode=='ik_path':
             raw=os.environ.get('ATTN_IK_CANDIDATES')
             if raw is not None:

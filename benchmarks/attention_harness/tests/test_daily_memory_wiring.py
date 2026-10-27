@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 
 from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment
 from benchmarks.attention_harness.dev_ledger import DevV2Store
@@ -259,3 +260,8 @@ def test_visual_advisor_creates_only_an_offline_proposal(tmp_path):
     invalid_help=immutable(tmp_path/'invalid-help.json',dict(provider='human_proxy',mode='vision',content='invented',
                                                               advisor_proxy=invalid,rejected=False))
     assert stage_candidate(store,'cell-102',3,invalid_help,source,feedback,tmp_path/'rejected') is None
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

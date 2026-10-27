@@ -131,12 +131,13 @@ def checks(source_config,source_prompt,new_config,*,carry,executed,valid,has_run
     return rows
 
 def preview_config(source_config):
-    """The source config with today's frozen defaults: what a new run's config differs in without building a lock."""
+    """The source config with today's frozen defaults: what a new run's config differs in without building a Dev identity lock."""
     from openarm365_dev_v2 import dev_config as d
     value=copy.deepcopy(source_config)
     # A fork is a new dev run with today's defaults, even for a legacy origin.
     value['budget_tier']='dev'
-    value['execution_settings']=d.R3_20261025.to_dict()
+    value['execution_settings']=d.new_execution_settings().to_dict()
+    value['planner_source']=dict(kind='dev-local',source_root=str(d.ROOT))
     value.update(contact_exempt_objects=d.DEFAULT_CONTACT_EXEMPT_OBJECTS,planner_mode=d.DEFAULT_PLANNER_MODE,ik_candidates=d.DEFAULT_IK_CANDIDATES,ik_max_joint_jump=d.DEFAULT_IK_MAX_JOINT_JUMP)
     if source_config.get('scene_contract'):
         from openarm365_dev_v2.scene_contract import registered_contract_ref

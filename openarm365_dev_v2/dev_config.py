@@ -5,7 +5,7 @@ from benchmarks.attention_harness.dev_tasks import get_task,validate_selection
 from benchmarks.attention_harness.robocasa365.config import EXPECTED
 from openarm365_dev.config import LOCK,LOCK_SHA
 from .diag_budget import task_limits,formal_task_limits,case_wall_seconds,check_tier
-from curobo_v2.execution_settings import R3_20261025,from_config
+from curobo_v2.execution_settings import R3_20261025,R4_20261027,from_config
 from curobo_v2.ik_path_jump import MAX_DIAGNOSTIC_JOINT_JUMP
 DEFAULT_CONTACT_EXEMPT_OBJECTS='movable_objects'
 DEFAULT_PLANNER_MODE='ik_path'
@@ -73,12 +73,14 @@ def _source_settings(source):
     from dataclasses import replace
     from curobo_v2.dev_local import materialize
     snapshot=materialize(_planner_source(source)['source_root'])
-    return from_config(replace(R3_20261025,planner_deployment={k:snapshot[k] for k in ('lock_path','sha256')}).to_dict())
+    return from_config(replace(R4_20261027,planner_deployment={k:snapshot[k] for k in ('lock_path','sha256')}).to_dict())
 
 
 def make_lock(path, *, execution_settings=None, planner_source=None):
     path=Path(path)
-    if planner_source is not None:execution_settings=_source_settings(planner_source)
+    if planner_source is not None:
+        _planner_source(planner_source)
+        if execution_settings is None:execution_settings=_source_settings(planner_source)
     pin=None if execution_settings is None else from_config(execution_settings.to_dict()).planner_deployment
     planner_path=LOCK if pin is None else Path(pin['lock_path'])
     planner_sha=LOCK_SHA if pin is None else pin['sha256']
@@ -105,17 +107,25 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
     with path.open('x') as f:json.dump(value,f,sort_keys=True,indent=2)
     path.chmod(0o444)
     return {'path':str(path.absolute()),'sha256':sha(path)}
-def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop'):
+def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planner_source=None):
     """Select matching settings for a new run's identity lock and config.
 
     Frozen configs must retain their own settings, including legacy absence.
     """
-    return from_config(R3_20261025.to_dict()) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
-
-
-def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None):
     if planner_source is not None:_planner_source(planner_source,budget_tier,budget_boundary)
-    settings=_source_settings(planner_source) if planner_source is not None else new_execution_settings(budget_tier=budget_tier,budget_boundary=budget_boundary)
+    return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT))) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
+
+
+def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None):
+    if planner_source is None and budget_tier=='dev' and budget_boundary=='dev_loop':
+        planner_source=dict(kind='dev-local',source_root=str(ROOT))
+    if planner_source is not None:_planner_source(planner_source,budget_tier,budget_boundary)
+    settings=execution_settings
+    if settings is None:
+        settings=new_execution_settings(budget_tier=budget_tier,budget_boundary=budget_boundary,planner_source=planner_source)
+    else:
+        settings=from_config(settings.to_dict())
+        if budget_tier!='dev' or budget_boundary!='dev_loop':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
     return _make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
         budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source)
 
@@ -160,14 +170,14 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
     tier=c.get('budget_tier','legacy')
-    if 'planner_source' in c:_planner_source(c['planner_source'],tier,budget_boundary)
-    if c.get('planner_source') is not None and c.get('runner_boundary')!='dev_loop':raise ValueError('planner_source dev-local requires dev_loop boundary and dev tier')
     source=c.get('model_source','parcc')
     if source not in ('parcc','codex') or (source=='codex' and (tier!='dev' or budget_boundary=='formal')):raise ValueError('Codex model source requires dev tier')
+    if 'planner_source' in c:_planner_source(c['planner_source'],tier,budget_boundary)
+    if c.get('planner_source') is not None and c.get('runner_boundary')!='dev_loop':raise ValueError('planner_source dev-local requires dev_loop boundary and dev tier')
     settings=None
     if 'execution_settings' in c:
         if budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop' or tier!='dev':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
-        if c['execution_settings'] is None:raise ValueError('execution_settings: complete r3 block required')
+        if c['execution_settings'] is None:raise ValueError('execution_settings: complete execution profile block required')
         settings=from_config(c['execution_settings'])
     expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'))
     if source=='codex':expected['model_source']='codex'

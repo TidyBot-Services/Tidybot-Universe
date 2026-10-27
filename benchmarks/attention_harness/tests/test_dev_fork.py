@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
 pytestmark = pytest.mark.usefixtures("r3_deployment")
 
@@ -222,3 +223,8 @@ def test_preview_endpoint(tmp_path, bridge):
         daily_bridge.get(f'/api/dev-v2/experiments/{s.eid}/fork-preview?cell={s.cell}&version=0')
     assert daily_bridge.options()['continue_from_attempt'] is True
     assert created['experiment_id'] != s.eid
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

@@ -103,7 +103,10 @@ class V2Client:
                 if result.get('execution_settings_sha256') != settings.sha256:
                     raise IdentityError('Planner response execution settings mismatch')
             if planning and result.get("status") != "success":
-                raise PlanningRejected("cuRoboV2 planning rejected: " + str(result.get("reason", result.get("status"))))
+                detail = "cuRoboV2 planning rejected: " + str(result.get("reason", result.get("status")))
+                if 'headings_tried_rad' in result:
+                    detail += '; headings tried (rad): ' + str(result['headings_tried_rad'])
+                raise PlanningRejected(detail)
             if path == "/world/cuboids":
                 if result.get("cuboid_count") != len(body["cuboids"]) or result.get("env_id") != env_id:
                     raise IdentityError("V2 world receipt omitted geometry or changed environment")

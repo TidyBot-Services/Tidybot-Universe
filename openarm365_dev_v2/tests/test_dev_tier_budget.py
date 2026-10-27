@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
 pytestmark = pytest.mark.usefixtures("r3_deployment")
 
@@ -184,3 +185,8 @@ def test_formal_request_rejects_dev_budget_even_with_matching_hashes(monkeypatch
         artifact_root=tmp_path,overall_deadline_seconds=300,config_path=cp,
         entry_sha256=lock['sha256'],entry_lock=lock,sdk_call_limit=40)
     formal_request.validate()
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

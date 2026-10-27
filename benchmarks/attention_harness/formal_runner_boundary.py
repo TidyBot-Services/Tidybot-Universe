@@ -101,9 +101,9 @@ class FormalRunRequest:
             if self.entry_lock is not None and self.suite == 'robocasa365':
                 config=json.loads(self.config_path.read_bytes())
                 from openarm365_dev_v2.formal_config import reject_dev_local
-                reject_dev_local(config)
                 if config.get('schema_version') == 'attentionbench.openarm365-dual-dev-config.v2':
                     raise ValueError('development budget cannot enter formal request')
+                reject_dev_local(config)
 
 
 class FormalSuiteRunner(Protocol):

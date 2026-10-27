@@ -1,4 +1,4 @@
-"""The single opt-in execution profile. No environment overrides.
+"""Immutable execution profiles. No environment overrides.
 
 R3_20261025 is immutable; its deployment binding is resolved from the pinned
 trust registry (or the already authenticated service lock). This avoids putting
@@ -101,23 +101,67 @@ R3_20261025 = ExecutionSettings(PROFILE, .002, .010, .003, .003, .02, .010, .10,
                                True, 'monotone', _DeploymentBinding())
 
 
+@dataclass(frozen=True)
+class R4ExecutionSettings(ExecutionSettings):
+    carried_proxy_support_departure: str = 'monotone'
+    grasp_heading_search: tuple = (.1, -.1, .2, -.2, .3, -.3, .5, -.5)
+
+    def to_dict(self):
+        value = super().to_dict()
+        value['grasp_heading_search'] = list(self.grasp_heading_search)
+        return value
+
+
+@dataclass(frozen=True)
+class _DevLocalBinding(_DeploymentBinding):
+    def __getitem__(self, key):
+        pin = _deployment_pin()
+        _require_dev_local(pin)
+        return pin[key]
+
+
+def _require_dev_local(pin):
+    from .identity import load_lock
+    from .dev_local import is_dev_local
+    lock, actual = load_lock(pin['lock_path'], tier='dev', boundary='dev_loop')
+    if not is_dev_local(lock) or actual != pin['sha256']:
+        raise ValueError('planner_deployment: r4 requires an authenticated dev-local snapshot')
+    from . import identity
+    if identity._service_context is not None:
+        service, _ = identity.require_service_context()
+        if service != lock:
+            raise ValueError('planner_deployment: r4 differs from authenticated service snapshot')
+
+
+R4_20261027 = R4ExecutionSettings('r4-20261027', .002, .010, .003, .003, .02, .010, .10,
+                                True, 'monotone', _DevLocalBinding())
+
+
 def from_config(block):
     if block is None:
         return LEGACY
     if not isinstance(block, Mapping):
         raise ValueError('execution_settings: expected a complete mapping')
-    names = {f.name for f in fields(ExecutionSettings)}
+    profile = R4_20261027 if block.get('profile') == R4_20261027.profile else R3_20261025
+    names = {f.name for f in fields(profile)}
     for name in sorted(names - block.keys()):
         raise ValueError(f'{name}: missing field')
     for name in sorted(block.keys() - names):
         raise ValueError(f'{name}: extra field')
     for name in sorted(names - {'planner_deployment'}):
-        expected = getattr(R3_20261025, name)
+        expected = getattr(profile, name)
+        if name == 'grasp_heading_search': expected = list(expected)
         if type(block[name]) is not type(expected) or block[name] != expected:
             raise ValueError(f'{name}: only {expected!r} is accepted')
     pin = block['planner_deployment']
     if not isinstance(pin, Mapping) or set(pin) != {'lock_path', 'sha256'}:
         raise ValueError('planner_deployment: exact lock_path and sha256 required')
+    if profile is R4_20261027:
+        for name in ('lock_path', 'sha256'):
+            if type(pin[name]) is not str:
+                raise ValueError(f'planner_deployment.{name}: expected string')
+        _require_dev_local(pin)
+        return replace(profile, planner_deployment=pin)
     expected = _deployment_pin()
     if pin['lock_path'] != expected['lock_path']:
         from . import identity

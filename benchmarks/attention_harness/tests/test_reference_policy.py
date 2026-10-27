@@ -8,6 +8,7 @@ import sys
 from types import ModuleType, SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 
 from scripts import run_reference_policy as ref
 from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
@@ -199,7 +200,7 @@ def test_failure_before_any_completed_action_needs_no_executor_receipt(tree):
 
 
 @pytest.mark.parametrize('seed', ref.SEEDS)
-def test_contract_and_ordinary_creation(tmp_path, monkeypatch, r3_deployment, seed):
+def test_contract_and_ordinary_creation(tmp_path, monkeypatch, r4_deployment, seed):
     from benchmarks.attention_harness import dev_experiment as exp
     from benchmarks.attention_harness.dev_ledger import DevV2Store
     from openarm365_dev_v2 import dev_config
@@ -219,8 +220,8 @@ def test_contract_and_ordinary_creation(tmp_path, monkeypatch, r3_deployment, se
     experiment = exp.create(DevV2Store(tmp_path / 'ledger.sqlite'), tmp_path / 'artifacts', ref.selection(seed, 'pass\n', contract))
     manifest = exp.verify_manifest(experiment)
     config = manifest['configs'][f'{ref.TASK}:{seed}']
-    assert config['execution_settings'] == r3_deployment.to_dict()
-    assert config['runner_boundary'] == 'dev_loop' and made == [dict(budget_tier='dev')]
+    assert config['execution_settings'] == r4_deployment.to_dict()
+    assert config['runner_boundary'] == 'dev_loop' and made == [dict(budget_tier='dev', execution_settings=r4_deployment)]
     assert config['scene_contract'] == contract and config['scene_reset_seed'] == seed
     assert config['attempt_wall_seconds'] == 1920 and config['sdk_call_limit'] == 320
     assert manifest['cell_budget']['executions'] == 1
@@ -254,7 +255,7 @@ def test_private_native_placement_uses_task_predicate(monkeypatch, r3):
 
 
 @pytest.mark.parametrize('seed', ref.SEEDS)
-def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r3_deployment, seed):
+def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r4_deployment, seed):
     """Real create/verify/run + real runner; only native and policy sandbox faked."""
     from benchmarks.attention_harness import dev_experiment as exp
     from openarm365_dev_v2 import dev_config, runner as native
@@ -266,7 +267,7 @@ def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r3_deploym
     source = tmp_path / 'input.py'
     code = 'from robot_sdk import sensors\nsensors.get_observation()\n'
     source.write_text(code)
-    labels = receipt_fields(r3_deployment)
+    labels = receipt_fields(r4_deployment)
     calls = []
     class Owner:
         def __init__(self, **kw):
@@ -309,3 +310,8 @@ def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r3_deploym
     assert calls == ['dispatch', 'native_start', 'policy']
     assert verdict['reached_close'] is False
     assert source.read_text() == code
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

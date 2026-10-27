@@ -145,6 +145,30 @@ def dump_attachment(env,signature,world,context,attachment,evidence,proximity_di
     return path
 
 
+def retain_declared_supports(context, retention, inventory):
+    """Freeze only the first attached declaration; never grow it on later calls.
+
+    ``retention`` belongs to the executor's grasp, shared by its shallow signature
+    copies. Returned request evidence is detached from that mutable owner state.
+    """
+    from copy import deepcopy
+    by_name={row['name']:row for row in inventory}
+    recomputed=list(context['support_names'])
+    if retention['supports'] is None:
+        retention['supports']=[dict(name=name, body_id=int(by_name[name]['body_id']),
+                                   body_name=by_name[name]['body_name']) for name in recomputed]
+    for support in retention['supports']:
+        current=by_name.get(support['name'])
+        if (current is None or current['body_id']!=support['body_id']
+                or current['body_name']!=support['body_name']):
+            raise ValueError('Retained support identity changed during attachment')
+    result=deepcopy(context)
+    result['support_names']=list(dict.fromkeys(recomputed+[row['name'] for row in retention['supports']]))
+    result['recomputed_support_names']=recomputed
+    result['support_retention']=deepcopy(retention)
+    return result
+
+
 def planner_context(env,signature,world,tools,evidence=None):
     dump=attachment_dump_enabled()
     if signature is None:return None

@@ -206,12 +206,12 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         from .memory_source_drift import current_identity,execution_config
         ref,source_drift=current_identity(json.loads(checked(validation_origin['config']).read_bytes()),original['identity_lock'],directory)
     else:
-        settings=new_execution_settings(budget_tier=budget_tier)
+        settings=new_execution_settings(budget_tier=budget_tier,**planner_args)
         ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path,
             **({} if settings is None else dict(execution_settings=settings)),**planner_args)
     if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])
     else:verify_lock(ref)
-    configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier,**planner_args) for t in tasks for s in seeds}
+    configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier,execution_settings=settings,**planner_args) for t in tasks for s in seeds}
     sources={t:{'source':Path(get_task(t).initial_policy).read_text(),'sha256':sha(get_task(t).initial_policy)} for t in tasks}
     demos={t:original['demos'][t] for t in tasks} if validation_origin is not None else {t:DemoProvider().freeze(t) for t in tasks}
     # All base conditions live once, outside the policy specifications.

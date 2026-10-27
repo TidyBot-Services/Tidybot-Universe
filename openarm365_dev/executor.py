@@ -16,6 +16,14 @@ from .base_motion import (BASE_SETTLE_CONSECUTIVE_STEPS, BASE_SETTLE_MAX_STEPS,
 from .base_motion import base_drift_limits, base_drift
 
 
+def refresh_execution_receipt(executor):
+    try:
+        executor._execution_receipt = receipt_fields(getattr(executor, "execution_settings", None))
+    except BaseException:
+        executor.failed = True
+        raise
+
+
 def record_base_drift(method):
     """Record per-request drift only for explicit execution settings.
 
@@ -25,6 +33,9 @@ def record_base_drift(method):
     """
     @wraps(method)
     def request(self, *args, **kwargs):
+        # Authenticate at both action boundaries; physics journal rows reuse
+        # these immutable labels instead of traversing a snapshot at 500 Hz.
+        refresh_execution_receipt(self)
         limits = base_drift_limits(getattr(self, "execution_settings", None))
         if limits is None:
             return method(self, *args, **kwargs)
@@ -44,11 +55,14 @@ def record_base_drift(method):
             error = f'{type(exc).__name__}: {exc}'
             raise
         finally:
-            self.record_drift_sample()
-            self.log(self.journal, dict(event='base_drift', request_id=kwargs['request_id'],
-                status=status, reason=error, base_drift=self.drift_receipt(limits, method.__name__)))
-            del self._drift_max, self._drift_reference, self._drift_limits, self._drift_operation
-            del self._drift_displacement_max, self._drift_settle_reference
+            try:
+                refresh_execution_receipt(self)
+                self.record_drift_sample()
+                self.log(self.journal, dict(event='base_drift', request_id=kwargs['request_id'],
+                    status=status, reason=error, base_drift=self.drift_receipt(limits, method.__name__)))
+            finally:
+                del self._drift_max, self._drift_reference, self._drift_limits, self._drift_operation
+                del self._drift_displacement_max, self._drift_settle_reference
     return request
 
 CONTACT_EVENT_LIMIT=200
@@ -221,7 +235,9 @@ class NativeExecutor:
         env.sim.step2=step2
 
     def log(self,path,value):
-        value = dict(value, **receipt_fields(getattr(self,"execution_settings",None)))
+        if not hasattr(self, '_execution_receipt'):
+            refresh_execution_receipt(self)
+        value = dict(value, **self._execution_receipt)
         if hasattr(self, '_drift_max') and value.get('event') in ('receipt', 'base_failure', 'base_tracking'):
             value = dict(value, base_drift=self.drift_receipt(self._drift_limits, self._drift_operation))
         diagnostic = held_envelope_receipt(getattr(self, "execution_settings", None))
@@ -405,6 +421,12 @@ class NativeExecutor:
             receipt=dict(status='completed',request_id=request_id,epoch=self.epoch,start_sequence=start,
                 sequence=self.sequence,physics_steps=self.physics_steps,before_qpos=before.tolist(),
                 after_qpos=self.planner.state().tolist(),maximum_endpoint_joint_error_rad=error)
+            from curobo_v2.grasp_heading import feedback
+            receipt.update(feedback(response))
+            if (getattr(getattr(self, 'execution_settings', None), 'carried_proxy_support_departure', None) == 'monotone'
+                    and 'support_retention' in response):
+                from copy import deepcopy
+                receipt['support_retention']=deepcopy(response['support_retention'])
             receipt.update(receipt_fields(getattr(self,"execution_settings",None)))
             receipt.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**receipt));return receipt
@@ -552,7 +574,7 @@ class NativeExecutor:
         return False
 
     @record_base_drift
-    def move_delta(self,side,dx,dy,dz,rotation_delta=None,*,request_id):
+    def move_delta(self,side,dx,dy,dz,rotation_delta=None,*,request_id,grasp_search=None):
         self.check_live()
         from scipy.spatial.transform import Rotation
         delta=np.array([dx,dy,dz],float);rotation=np.array(rotation_delta if rotation_delta is not None else [0,0,0],float)
@@ -560,8 +582,15 @@ class NativeExecutor:
                 or np.any(abs(delta)>.05) or np.any(abs(rotation)>.5)):
             raise ValueError('World-frame deltas limited to .05m/.5rad per coordinate')
         if self.any_object_contact() and not self.held:raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')
+        if grasp_search is not None:
+            if not getattr(getattr(self, 'execution_settings', None), 'grasp_heading_search', ()):
+                raise ValueError('grasp_search requires r4-20261027')
+            if self.held or dz >= 0 or self.grips[side] >= 0:
+                raise ValueError('grasp_search requires open gripper, descending motion, and no held object')
+            from curobo_v2.grasp_heading import check_sdk_request
+            check_sdk_request(grasp_search, getattr(self.env, 'obj_body_id', {}))
         current=tcp_pose(self.env,side)
-        response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch)
+        response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch,**({} if grasp_search is None else dict(grasp_search=grasp_search)))
         return self.apply(response,request_id=request_id)
 
     @record_base_drift
@@ -592,6 +621,10 @@ class NativeExecutor:
                     if self.held and self.held['holder']!=side:raise RuntimeError('Dual-held transport is outside this dev profile')
                     from .attachment import object_pose
                     self.held=dict(holder=side,target_id=candidates[0])
+                    if getattr(settings, 'carried_proxy_support_departure', None) == 'monotone':
+                        # A new grasp owns a fresh record, even for the same body.
+                        # The first attached request freezes its declared supports.
+                        self.held['support_retention']=dict(attach_request_id=request_id, supports=None)
                     reference=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,candidates[0])
                     if self.held_reference['mode']=='settled':
                         initial_reference=reference
@@ -620,6 +653,9 @@ class NativeExecutor:
             result.update(held_reference_wait_steps=wait_steps,held_reference=self.held_reference)
             if require_attachment:
                 result.update(attach_after_grasp=True, attached_object=self.held.copy() if self.held else None)
+                if getattr(settings, 'carried_proxy_support_departure', None) == 'monotone':
+                    from copy import deepcopy
+                    result['attached_object']=deepcopy(self.held)
             result.update(receipt_fields(getattr(self,"execution_settings",None)))
             result.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**result));return result

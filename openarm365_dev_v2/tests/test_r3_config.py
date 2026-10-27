@@ -19,7 +19,9 @@ def baseline(path):
 
 def config(monkeypatch,**kw):
     monkeypatch.setattr(d,'verify_lock',lambda *a,**k:None)
-    return d.make_dev_config('open_cabinet',102,{'path':'fixture','sha256':'fixture'},**kw)
+    # Exercise a frozen R3 run, independent of today's new-run default.
+    settings=es.from_config(es.R3_20261025.to_dict()) if kw.get('budget_tier','dev')=='dev' and kw.get('budget_boundary','dev_loop')=='dev_loop' else None
+    return d._make_dev_config('open_cabinet',102,{'path':'fixture','sha256':'fixture'},execution_settings=settings,**kw)
 
 
 def test_defaults_exact_and_boundary(monkeypatch,r3_deployment):
@@ -83,6 +85,7 @@ def test_profile_context_sdk_interface_and_fork(monkeypatch,r3_deployment):
     before=memory.context(old,'test');after=memory.context(c,'test')
     assert after==dict(before,execution_profile=es.PROFILE)
     assert memory.sdk_interface_sha256(identity(old))==memory.sdk_interface_sha256(identity(c))
+    monkeypatch.setattr(d,'new_execution_settings',lambda: r3_deployment)
     preview=dev_fork.preview_config(old)
     assert preview['execution_settings']==c['execution_settings']
     rows=dev_fork.checks(old,None,preview,carry='code',executed=True,valid=True)
@@ -96,9 +99,9 @@ def test_identity_lock_selection(monkeypatch,tmp_path,r3_deployment):
         lock=d.verify_lock(ref)
         expected={'path':str(d.LOCK),'sha256':d.LOCK_SHA} if settings is None else dict(path=settings.planner_deployment['lock_path'],sha256=settings.planner_deployment['sha256'])
         assert lock['planner_lock']==expected and lock['files'][expected['path']]==expected['sha256']
-        if settings is not None:assert d.make_dev_config('open_cabinet',102,ref)['execution_settings']==settings.to_dict()
+        if settings is not None:assert d._make_dev_config('open_cabinet',102,ref,execution_settings=settings)['execution_settings']==settings.to_dict()
         else:
-            with pytest.raises(ValueError,match='planner lock differs'):d.make_dev_config('open_cabinet',102,ref)
+            with pytest.raises(ValueError,match='planner lock differs'):d._make_dev_config('open_cabinet',102,ref,execution_settings=r3_deployment)
 
 
 @pytest.mark.parametrize('r3',[False,True])

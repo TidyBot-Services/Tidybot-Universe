@@ -3,12 +3,13 @@ import hashlib
 from pathlib import Path
 from unittest.mock import patch,MagicMock
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 from openarm365_dev_v2 import dev_config
 from benchmarks.attention_harness import dev_tasks
 
-@pytest.fixture(scope='module')
-def lock(tmp_path_factory):
-    settings=dev_config.from_config(dev_config.R3_20261025.to_dict())
+@pytest.fixture
+def lock(tmp_path_factory, r4_deployment):
+    settings=r4_deployment
     return dev_config.make_lock(tmp_path_factory.mktemp('lock')/'identity.json',execution_settings=settings)
 @pytest.mark.parametrize('task',list(dev_tasks.TASKS))
 @pytest.mark.parametrize('seed',[101,102,125])
@@ -92,3 +93,8 @@ def test_native_model_copy_tampering_rejected(tmp_path):
     assert len(model_sources(identity,original_root,copy_root))==2
     copied.write_text('tampered geometry')
     with pytest.raises(ValueError,match='native robot model identity drift'):model_sources(identity,original_root,copy_root)
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

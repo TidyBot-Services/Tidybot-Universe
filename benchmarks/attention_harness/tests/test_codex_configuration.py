@@ -2,6 +2,7 @@ import json
 import sys
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 
 from benchmarks.attention_harness import dev_provider_worker
 from benchmarks.attention_harness.codex_client import CodexClient
@@ -395,3 +396,8 @@ def test_worker_selects_client_without_real_provider(tmp_path,monkeypatch,source
     output=json.loads((tmp_path/'model-output.json').read_text())
     assert output['model']==('gpt-6-astra' if source=='codex' else 'parcc/GLM')
     assert ('quota_before' in output)==(source=='codex')
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

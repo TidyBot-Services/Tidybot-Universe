@@ -3,6 +3,7 @@ import copy
 import json
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 
 from benchmarks.attention_harness import dev_planner_memory as memory
 from benchmarks.attention_harness import dev_v2_loop
@@ -29,11 +30,11 @@ def test_exact_seeded_context_and_missing_fields(tmp_path, monkeypatch, budget_t
     assert result['camera_names'] == list(cfg['camera_names'])
     assert result['task_prompt'] == cfg['task_prompt']
     assert result['scene_contract_ref'] == registered_contract_ref()
-    profile_keys = {'execution_profile'} if budget_tier == 'dev' else set()
+    profile_keys = {'execution_profile', 'planner_dev_local_sha256'} if budget_tier == 'dev' else set()
     assert set(result) == set(memory.SCOPE) | {'seed', 'camera_names', 'task_prompt', 'scene_contract_ref',
                                                'sdk_interface_sha256'} | profile_keys
     if budget_tier == 'dev':
-        assert result['execution_profile'] == cfg['execution_settings']['profile'] == 'r3-20261025'
+        assert result['execution_profile'] == cfg['execution_settings']['profile'] == 'r4-20261027'
     else:
         assert 'execution_settings' not in cfg and 'execution_profile' not in result
     identity = memory.sdk_identity(cfg)
@@ -121,3 +122,8 @@ def test_dev_report_cell_excludes_seeded_version(monkeypatch):
     result = dev_report.analyze_cell(cell, dict(task_id='open_cabinet',seed=102,policy_id='p'), {})
     assert result['memory_seeded_excluded'] is True
     assert result['eligible'] is False
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

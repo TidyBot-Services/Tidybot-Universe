@@ -189,7 +189,8 @@ class CuroboPlanner:
             self.geometry.update_world(self._world_cuboids)
 
     def _select(self, q: np.ndarray, active_joints: list[str] | None = None,
-                tool_frames: list[str] | None = None, locked_joints: dict | None = None):
+                tool_frames: list[str] | None = None, locked_joints: dict | None = None,
+                *, heading_batch: bool = False):
         active, tools, locks = self.check_selection(q, active_joints, tool_frames, locked_joints)
         from curobo.motion_planner import MotionPlanner, MotionPlannerCfg
         from curobo.collision_checking import RobotCollisionChecker, RobotCollisionCheckerCfg
@@ -199,8 +200,11 @@ class CuroboPlanner:
         # Official Kinematics.update_kinematics_config explicitly supports
         # measured locked-joint updates when tensor dimensions stay unchanged.
         # Keep topology changes separate; never round measured lock values.
+        # Batch capacity belongs to the explicit heading query, not the profile.
+        # Ordinary R4 IK must use exactly the same singleton model as R3.
+        heading_search = heading_batch
         key = (tuple(sorted(locks)) if search is not None else tuple(sorted(locks.items())),
-               tools, capacity, self._attachment_key)
+               tools, capacity, self._attachment_key, heading_search)
         carried_supports = self.attachment is not None and bool(self.attachment.supports)
         if carried_supports:
             declared_names = {c['name'] for c in self._world_cuboids}
@@ -242,7 +246,7 @@ class CuroboPlanner:
                 collision_cache={"cuboid": capacity, "mesh": 32}, use_cuda_graph=self.use_cuda_graph,
                 self_collision_check=True, position_tolerance=.004, orientation_tolerance=.03,
                 num_ik_seeds=64 if search is not None else 16, num_trajopt_seeds=1,
-                interpolation_dt=self.interpolation_dt, **optimizer_options, optimizer_collision_activation_distance=float(self.settings.get("search_activation_distance_m",.02)))
+                interpolation_dt=self.interpolation_dt, **({'max_batch_size': 8} if heading_search else {}), **optimizer_options, optimizer_collision_activation_distance=float(self.settings.get("search_activation_distance_m",.02)))
             if search is not None:cfg.ik_solver_config.use_lm_seed=False
             if carried_supports:
                 from .contact_scene import CarriedMotionPlanner
@@ -358,6 +362,32 @@ class CuroboPlanner:
                                quaternion=torch.as_tensor(quat[None], device=self._device))
         return GoalToolPose.from_poses(poses, num_goalset=1)
 
+    def heading_ik_batch(self, current, goals, active_joints, locked_joints):
+        """One batch problem per heading; singleton goalsets prevent starvation.
+
+        A single N-goalset optimization may return only its cheapest heading,
+        so it cannot establish feasibility for every candidate in user order.
+        """
+        from types import SimpleNamespace
+        from curobo.types import Pose, GoalToolPose
+        planner, _ = self._select(current, active_joints, tool_frames=list(goals[0]),
+                                  locked_joints=locked_joints, heading_batch=True)
+        if list(planner.joint_names) != list(active_joints):
+            raise ValueError('Heading batch requires the declared active joint order')
+        checked = [self.check_targets(goal) for goal in goals]
+        poses = {name: Pose(
+            position=torch.as_tensor(np.array([g[name][0] for g in checked]), device=self._device),
+            quaternion=torch.as_tensor(np.array([g[name][1] for g in checked]), device=self._device))
+            for name in goals[0]}
+        goal = GoalToolPose.from_poses(poses, num_goalset=1)
+        result = planner.ik_solver.solve_pose(goal,
+            current_state=self._state(np.repeat(current[None], len(goals), axis=0), planner), return_seeds=8)
+        if result.solution.shape[0] != len(goals) or result.success.shape[0] != len(goals):
+            raise ValueError('Heading batch result does not cover every heading')
+        # Clone: subsequent public calls reuse solver output buffers.
+        return [SimpleNamespace(solution=result.solution[i:i+1].clone(),
+                                success=result.success[i:i+1].clone()) for i in range(len(goals))]
+
     def check_targets(self, targets: dict):
         """Validate _goal inputs without creating cuRobo tensors."""
         if not targets or not set(targets) <= set(self.tool_frames):
@@ -404,6 +434,26 @@ class CuroboPlanner:
                 'enabled': True, 'support_names': sorted(scene._support_names),
                 'carried_sphere_count': self.attachment.sphere_count,
                 'object_names': sorted(scene._object_names)}
+        settings = getattr(self, 'execution_settings', None)
+        if (getattr(settings, 'carried_proxy_support_departure', None) == 'monotone'
+                and self.attachment is not None and self.attachment.supports):
+            from curobo_v2.proxy_departure import support_departure
+            # The checker retains robot/support and carried/fixture queries.
+            # Inflated cell-cover spheres cannot veto a support departure that
+            # complete shapes certify. Exact geometry and the final continuous
+            # sweep own that decision, including goal-only prechecks.
+            state = planner.compute_kinematics(self._state(dense, planner))
+            spheres = state.robot_spheres.detach().cpu().numpy()
+            spheres = spheres.reshape(len(dense), -1, 4)[:, scene._attached_indices, :]
+            departure = support_departure(spheres, self._world_cuboids,
+                                          self.attachment.supports, measured_start=measured_start)
+            self.last_validation['support_departure'] = departure
+            # Fail closed if the authoritative support validator is unavailable.
+            # Never fall back to treating a proxy report as physical evidence.
+            if self.geometry is None:
+                valid.append(False)
+                self.last_validation['reason'] = 'carried_support_exact_geometry_required'
+            self.last_validation['collision_free'] = all(valid)
         if self.attachment is not None and hasattr(self.attachment,'artifact'):
             self.last_validation['attachment']=self.attachment.artifact()
         declared={c['name']for c in self._world_cuboids}
@@ -667,7 +717,7 @@ class CuroboPlanner:
         return solution
 
     def plan_ik_path(self, current_q, *, targets, active_joints, locked_joints=None,
-                     max_joint_jump=.35, minimum_duration=.5, ik_candidates=1):
+                     max_joint_jump=.35, minimum_duration=.5, ik_candidates=1, _ik_result=None):
         """One public IK solve followed by a locally generated certified path."""
         from curobo_v2.ik_path import quintic_path, ranked_ik_candidates
         from curobo_v2.sweep import certify_trajectory
@@ -689,8 +739,10 @@ class CuroboPlanner:
             self.last_failure = 'start_state_collision_or_constraint_violation'
             return None
         solve_started = time.monotonic()
-        result = planner.ik_solver.solve_pose(
+        result = _ik_result if _ik_result is not None else planner.ik_solver.solve_pose(
             self._goal(targets), current_state=self._state(current[None], planner), return_seeds=ik_candidates)
+        if _ik_result is not None:
+            ik_candidates = int(result.solution.shape[1])
         self.last_ik_path_metrics['ik_seconds'] = time.monotonic() - solve_started
         self.last_solver_diagnostics.append(dict(stage='ik_public_api_result', **summarize(result)))
         selection_started = time.monotonic()

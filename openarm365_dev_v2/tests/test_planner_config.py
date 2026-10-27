@@ -22,7 +22,8 @@ def config(request, monkeypatch):
     if request.param == 'formal':
         return formal_config.make_formal_config(*args, attempt_wall_seconds=480,
             whole_case_wall_seconds=600, sdk_call_limit=80)
-    return dev_config.make_dev_config(*args, budget_tier=request.param)
+    return dev_config._make_dev_config(*args, budget_tier=request.param,
+        execution_settings=dev_config.from_config(dev_config.R3_20261025.to_dict()) if request.param=='dev' else None)
 
 
 def test_defaults_and_legacy_round_trip(config):
@@ -50,8 +51,9 @@ def test_constructor_uses_named_constants(config, monkeypatch):
         c = formal_config.make_formal_config('open_cabinet', 102, config['dev_lock'],
             attempt_wall_seconds=480, whole_case_wall_seconds=600, sdk_call_limit=80)
     else:
-        c = dev_config.make_dev_config('open_cabinet', 102, config['dev_lock'],
-            budget_tier=config.get('budget_tier', 'legacy'))
+        c = dev_config._make_dev_config('open_cabinet', 102, config['dev_lock'],
+            budget_tier=config.get('budget_tier', 'legacy'),
+            execution_settings=dev_config.from_config(config.get('execution_settings')))
     for name, value in values.items():
         assert c[name.removeprefix('DEFAULT_').lower()] == value
 

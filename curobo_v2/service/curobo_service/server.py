@@ -32,6 +32,17 @@ class StrictRequest(BaseModel):
     model_config = ConfigDict(extra="forbid",strict=True,allow_inf_nan=False)
 
 
+class RetainedSupportIdentity(StrictRequest):
+    name: str = Field(min_length=1)
+    body_id: int = Field(ge=0)
+    body_name: Optional[str]
+
+
+class SupportRetention(StrictRequest):
+    attach_request_id: str = Field(min_length=1)
+    supports: list[RetainedSupportIdentity]
+
+
 class SingleAttachmentRequest(StrictRequest):
     holder: Literal['left','right']
     target_id: int = Field(ge=0)
@@ -40,6 +51,23 @@ class SingleAttachmentRequest(StrictRequest):
     shape_names: list[str] = Field(min_length=1)
     support_names: list[str]
     tool_frame: Literal['openarm_left_hand_tcp','openarm_right_hand_tcp']
+    support_retention: Optional[SupportRetention] = None
+    recomputed_support_names: Optional[list[str]] = None
+
+    @model_validator(mode='after')
+    def complete_retention(self):
+        if {'support_retention','recomputed_support_names'} & self.model_fields_set:
+            if self.support_retention is None or self.recomputed_support_names is None:
+                raise ValueError('Retained supports require complete provenance and recomputed names')
+        return self
+
+    @model_serializer(mode='wrap')
+    def serialize_retention(self, handler):
+        result=handler(self)
+        if self.support_retention is None:
+            result.pop('support_retention',None)
+            result.pop('recomputed_support_names',None)
+        return result
 
     @field_validator('object_pose','tcp_object_transform')
     @classmethod
@@ -102,11 +130,22 @@ class WorldRequest(StrictRequest):
 class ExecutionRequest(StrictRequest):
     execution_settings: Optional[dict] = None
 
+    @model_validator(mode='after')
+    def retained_supports_require_r4(self):
+        attachment=getattr(self,'attachment',None)
+        if getattr(attachment,'support_retention',None) is not None:
+            if (self.execution_settings is None
+                    or self.execution_settings.get('carried_proxy_support_departure')!='monotone'):
+                raise ValueError('Retained supports require r4-20261027')
+        return self
+
     @model_serializer(mode='wrap')
     def serialize_execution_request(self, handler):
         result = handler(self)
         if self.execution_settings is None:
             result.pop('execution_settings', None)
+        if result.get('grasp_search') is None:
+            result.pop('grasp_search', None)
         return result
 
     @field_validator('execution_settings')
@@ -140,6 +179,7 @@ class JointOptions(ExecutionRequest):
 
 
 class PlanRequest(JointOptions):
+    grasp_search: Optional[dict] = None
     attachment: Optional[SingleAttachmentRequest | CooperativeAttachmentRequest] = None
     env_id: Optional[str] = None
     current_q: list[float]
@@ -317,6 +357,7 @@ def create_app() -> FastAPI:
                 raise ValueError("Specify targets or target_pose/target_quat, not both")
             return planner.plan_pose(
                 **execution_fields(req),
+                **({} if req.grasp_search is None else {'grasp_search': req.grasp_search}),
                 env_id=_env(req.env_id),
                 current_q=req.current_q,
                 target_pos=req.target_pose,
@@ -335,6 +376,7 @@ def create_app() -> FastAPI:
         try:
             return planner.plan_ik_path(
                 **execution_fields(req),
+                **({} if req.grasp_search is None else {'grasp_search': req.grasp_search}),
                 env_id=_env(req.env_id), current_q=req.current_q,
                 targets={k: v.model_dump() for k, v in req.targets.items()},
                 joint_names=req.joint_names, active_joints=req.active_joints,

@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 
 from benchmarks.attention_harness import dev_planner_memory as memory, dev_v2_loop as loop
 from benchmarks.attention_harness.dev_capabilities import execution_environment, provider_environment
@@ -375,3 +376,8 @@ def test_native_runner_records_only_actual_validation_input_supply(tmp_path,monk
     if startup_ok:
         assert observed[0]['memory_validation']['guidance']=='controlled public guidance'
         assert trace['memory_validation']['input_sha256']==inp['sha256']
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""

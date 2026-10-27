@@ -88,7 +88,7 @@ def rejection_fact(response):
 
 
 def call_with_rejection_facts(client, path, body, settings):
-    if (getattr(settings, 'profile', None) != 'r3-20261025'
+    if (getattr(settings, 'profile', None) not in ('r3-20261025', 'r4-20261027')
             or getattr(client, 'evidence', None) is None):
         return client.call(path, body)
     # V2Client writes its response in finally before raising. Capture the offset

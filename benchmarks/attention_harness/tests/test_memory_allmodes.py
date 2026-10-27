@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
 
 from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment as experiments
 from benchmarks.attention_harness import dev_planner_memory as memory, dev_v2_loop as loop
@@ -24,7 +25,7 @@ SOURCE = 'from robot_sdk import sensors\nobservation = sensors.get_observation()
 
 
 @pytest.fixture(autouse=True)
-def offline(monkeypatch):
+def offline(monkeypatch, r4_deployment):
     from openarm365_dev_v2 import dev_config
     monkeypatch.setattr(dev_config, 'model_sources', lambda *a, **k: {})
     def materialize(argv, **kwargs):
@@ -421,3 +422,8 @@ def test_family_opt_out_and_nondev_selections_have_no_family_level(tmp_path, sel
     assert service.family is False
     assert gateway.levels == [expected_levels]
     assert all('same_family' not in levels for levels in gateway.levels)
+
+
+@pytest.fixture(autouse=True)
+def offline_r4_snapshot(r4_deployment):
+    """New dev defaults bind an isolated authenticated snapshot."""
