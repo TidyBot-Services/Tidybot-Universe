@@ -200,15 +200,23 @@ Exact accepted payloads (the CLI builds these; extra keys are rejected):
              with args [dx,dy,dyaw] | group "bimanual", operation "move_joints",
              args [[14 joint radians]]; optional "start_joints", "base_offset"
   start_joints: {"openarm_left_joint1": rad, ...}; base_offset: {"dx": m, "dy": m, "dyaw": rad}
-A base_offset (or plan_dry_run base action) beyond the per-call base limit
-(0.20 m translation / 0.3 rad yaw, same as base.move_delta) is rejected with that
-message; probe a larger move as several steps.
+Two different base limits:
+  - Probe base_offset (hypothetical, ik_check/plan_dry_run): up to 0.6 m translation and
+    0.9 rad yaw. It is split into N equal steps that each fit the per-call limit; every
+    step runs the unchanged exact execution clearance check, and base_clearance reports
+    steps, step_delta, checked_steps, worst_step and the worst clearance.
+  - Real base motion (base.move_delta in executed code, and a plan_dry_run base action):
+    0.20 m translation / 0.3 rad yaw per call. A larger move needs several calls,
+    e.g. N calls of step_delta as reported by the probe.
+Anything beyond these limits is rejected with that message before dispatch.
 A malformed payload is rejected before dispatch (error invalid_request,
 validation_error names the check) and costs nothing. A planner rejection returns
 planning_accepted false with its reason. If a probe itself fails (exception or timeout),
 the response is completed with probe_error {error_class, message} and owner_restarted;
 it costs one probe and the run continues with a fresh simulator owner.
 ask_help --question TEXT: available once per eligible formal interval while help remains.
+Questions must not quote Eval or evaluation text; such a question is refused
+(status unavailable, with that reason) and costs no attention.
 reactive_help: eligible after formal Eval fail OR unavailable, until the next submit.
 retry_k_then_ask: eligible after k consecutive formal Eval failures (default k=2);
 passed/unavailable resets that streak. Neither probes nor no-eval runs create eligibility.

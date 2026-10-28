@@ -198,7 +198,9 @@ class Helper:
             # No provider was dispatched, so no attention is charged. Keep a
             # concrete receipt instead of turning an unusable Advisor view into
             # a failed formal execution.
-            row.update(status='unavailable',eligible=False,not_used=True,error='public_view_unavailable')
+            row.update(status='unavailable',eligible=False,not_used=True,error='public_view_unavailable',
+                       reason=('questions must not quote Eval or evaluation text' if 'evaluation-derived' in str(exc)
+                               else 'the public Advisor view could not be built for this version'))
             atomic_write(self.workspace.private,'help/'+vid+'/error.json',encode(dict(error=str(exc))))
             return self._publish(vid)
         from .dev_request_view import human_seconds,shown_words,READ_WPS,WRITE_WPS

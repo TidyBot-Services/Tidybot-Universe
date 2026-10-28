@@ -29,6 +29,23 @@ def base_limit(dx, dy, dyaw, what):
         raise ValueError('invalid_'+what.replace(' ','_')) from exc
 
 
+# User decision 2026-10-29: a HYPOTHETICAL probe base_offset may exceed the
+# per-call execution step. Real base motion keeps 0.20 m / 0.3 rad per call.
+PROBE_OFFSET_TRANSLATION_M = 0.6
+PROBE_OFFSET_YAW_RAD = 0.9
+
+
+def probe_offset(dx, dy, dyaw):
+    """Probe-only bound; the offset is checked as equal steps within the per-call limit."""
+    from openarm365_dev.base_motion import BASE_TRANSLATION_LIMIT_M, BASE_YAW_LIMIT_RAD
+    values=[dx,dy,dyaw]
+    if any(type(v) not in (int,float) or not math.isfinite(v) for v in values):raise ValueError('invalid_base_offset')
+    if math.hypot(dx,dy) > PROBE_OFFSET_TRANSLATION_M + 1e-12 or abs(dyaw) > PROBE_OFFSET_YAW_RAD + 1e-12:
+        raise ValueError('base_offset exceeds the probe limit 0.6 m / 0.9 rad')
+    steps=max(1,math.ceil(max(math.hypot(dx,dy)/BASE_TRANSLATION_LIMIT_M, abs(dyaw)/BASE_YAW_LIMIT_RAD)-1e-9))
+    return steps,[v/steps for v in values]
+
+
 def validate(op, payload):
     def vector(value, n):
         if not isinstance(value, list) or len(value) != n or any(type(v) not in (int,float) or not math.isfinite(v) for v in value):
@@ -39,7 +56,7 @@ def validate(op, payload):
         if op not in ('ik_check','plan_dry_run') or not isinstance(offset,dict) or set(offset)!={'dx','dy','dyaw'}:
             raise ValueError('invalid_base_offset')
         vector([offset[k] for k in ('dx','dy','dyaw')],3)
-        base_limit(offset['dx'],offset['dy'],offset['dyaw'],'base_offset')
+        probe_offset(offset['dx'],offset['dy'],offset['dyaw'])
     if 'start_joints' in payload:
         joints = payload['start_joints']
         if not isinstance(joints, dict) or not joints: raise ValueError('invalid_start_joints')
@@ -111,20 +128,30 @@ def probe(env, executor, planner, observe, request):
         if 'base_offset' in payload:
             from openarm365_dev.base_motion import check_exact_base_path,validate_delta,base_joint_delta
             from openarm365_dev.world import snapshot
-            delta=validate_delta(**payload['base_offset'])
-            try:
-                audit=check_exact_base_path(env,snapshot(env,chassis_binding=planner.chassis_binding),
-                    planner.chassis_binding,delta,executor.base_initial,
-                    execution_settings=executor.execution_settings)
-                accepted=True
-            except BasePathRejected as exc:
-                audit=exc.collision_check;accepted=False
-            base['base_clearance']=dict(accepted=accepted,**project_planner_result(audit))
+            # The exact execution check, unchanged, on each per-call-sized step in turn.
+            steps,step=probe_offset(**payload['base_offset'])
+            delta=validate_delta(*step);indexes=env.robots[0]._ref_base_joint_pos_indexes
+            accepted=True;worst=None;checked=0
+            for index in range(steps):
+                if accepted:
+                    try:
+                        audit=check_exact_base_path(env,snapshot(env,chassis_binding=planner.chassis_binding),
+                            planner.chassis_binding,delta,executor.base_initial,
+                            execution_settings=executor.execution_settings)
+                    except BasePathRejected as exc:
+                        audit=exc.collision_check;accepted=False
+                    checked+=1;clearance=(audit or {}).get('minimum_clearance_m')
+                    if worst is None or not accepted or (clearance is not None and (worst[1] is None or clearance<worst[1])):
+                        worst=(audit,clearance,index)
+                # As before, the arm result is evaluated at the full offset pose
+                # even when a step's base clearance is rejected.
+                current=data.qpos[indexes].copy()
+                data.qpos[indexes]=current+base_joint_delta(delta,current,executor.base_initial)
+                env.sim.forward()
+            base['base_clearance']=dict(accepted=accepted,**project_planner_result(worst[0]))
+            base['base_clearance'].update(steps=steps,step_delta=dict(zip(('dx','dy','dyaw'),step)),
+                                          worst_step=worst[2]+1,checked_steps=checked)
             base['base_offset']=payload['base_offset']
-            indexes=env.robots[0]._ref_base_joint_pos_indexes
-            current=data.qpos[indexes].copy()
-            data.qpos[indexes]=current+base_joint_delta(delta,current,executor.base_initial)
-            env.sim.forward()
         planner.agent_probe_only=True
         if op=='ik_check':
             target=payload['target'];side=target['side'];active=[f'openarm_{side}_joint{i}' for i in range(1,8)]

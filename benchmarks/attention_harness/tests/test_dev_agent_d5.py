@@ -111,7 +111,7 @@ def test_plan_offset_rejection_diagnostics_restores(monkeypatch):
     assert len(result['diagnostics']['joint_margins_rad'])==14
     assert state_fingerprint(env,ex)==before
 
-@pytest.mark.parametrize('offset',[{},dict(dx=0,dy=0),dict(dx=0,dy=float('nan'),dyaw=0),dict(dx=True,dy=0,dyaw=0),dict(dx=0,dy=.201,dyaw=0)])
+@pytest.mark.parametrize('offset',[{},dict(dx=0,dy=0),dict(dx=0,dy=float('nan'),dyaw=0),dict(dx=True,dy=0,dyaw=0),dict(dx=0,dy=.61,dyaw=0),dict(dx=0,dy=0,dyaw=.91)])
 def test_bad_offsets(offset):
     with pytest.raises(Exception):validate('ik_check',dict(target=TARGET,base_offset=offset))
 
