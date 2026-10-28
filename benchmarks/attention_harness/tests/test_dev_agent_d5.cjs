@@ -6,9 +6,9 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/d5-agent-run.json'),'utf8'));
 const functions=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
-const render=source.slice(source.indexOf('  function agentRunPage('),source.indexOf('  async function agentWorkspaceSnapshot('));
+const render=source.slice(source.indexOf('  function agentLinks('),source.indexOf('  async function agentWorkspaceSnapshot('));
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api=vm.runInNewContext(functions+render+'\n({agentLaunchSelection,agentOptionGate,runConfigDefaultsFromSelection,agentRunPage})',{esc});
+const api=vm.runInNewContext(functions+render+'\n({agentLaunchSelection,agentOptionGate,runConfigDefaultsFromSelection,agentSettingsLine,agentSecondaryRows,agentErrorDetails})',{esc});
 const old={eval_agent:{enabled:true,model:'parcc/Qwen'},request_key:'unchanged-123',tasks:['open_cabinet'],seeds:[102],policies:['reactive_help'],mode:'experiment',help_budget:5,human_wait_seconds:300,configuration:{goal_id:'old-goal-123',experiment_budget:{executions:5},cell_budget:{executions:5},max_iterations:5,wall_seconds:21600}};
 
 test('absent mode and explicit one-call keep original body bytes and identity',()=>{
@@ -40,35 +40,22 @@ test('Run again restores agent models, old selection gains no agent defaults',()
   assert.equal(values.devMode,'agent');assert.equal(values.devModel,'gpt-6-sol');assert.equal(values.evalModel,'gpt-6-astra');
   assert.equal(api.runConfigDefaultsFromSelection(old).devMode,undefined);
 });
-test('fixture renders counts, every timeline row, public evidence and agreement',()=>{
-  const html=api.agentRunPage(fixture);
-  for(const text of ['正式版本 3/10','执行 4/40','只读探查 2/300','墙钟 00:00/6:00','额度 72.5%',
-    'native_success','gpt-6-sol','gpt-6-astra','no_eval_execution','formal_version','probe','Eval verdict + advice',
-    'stdout','stderr','diagnostics','code','help','success','failure','agree','disagree','unavailable','Scan a smaller base offset.'])assert.ok(html.includes(text),text);
-  assert.equal((html.match(/<details data-persist-detail=/g)||[]).length,fixture.agent.timeline.length);
-  assert.ok(!html.includes('/private/'));assert.ok(!html.includes('/home/'));
-});
-test('all states, raw errors, held resources and stop reasons remain visible and escaped',()=>{
-  for(const phase of ['turn running','waiting on execution','Eval','help','stopped']){
-    const value=structuredClone(fixture);value.agent.phase=phase;value.agent.wall_seconds=3661;
-    value.agent.held.moving_executions=1;
-    for(const reason of ['native_success','quota_stop','agent_idle','budget_exhausted','wall_stop','fatal_error']){
-      value.agent.reason=reason;value.agent.errors=[{source:'Eval',error:'Exact timeout: <script>alert(1)</script>'}];
-      const html=api.agentRunPage(value);
-      assert.ok(html.includes(phase)&&html.includes(reason));assert.ok(html.includes('01:01/6:00'));
-      assert.ok(html.includes('executions 1'));assert.ok(html.includes('Exact timeout: &lt;script&gt;'));
-      assert.ok(!html.includes('<script>'));
-    }
-  }
-  const fatal=structuredClone(fixture);fatal.agent.phase='stopped';fatal.agent.reason='fatal_error';fatal.agent.fatal_cause='broker_invariant';
-  assert.ok(api.agentRunPage(fatal).includes('fatal_error · cause broker_invariant'));
+test('agent facts fit the original workspace without raw sections',()=>{
+  const html=api.agentSettingsLine(fixture.agent)+api.agentSecondaryRows(fixture.agent)+api.agentErrorDetails(fixture.agent);
+  for(const text of ['versions 3/10','executions 4/40','probes 2/300','wall 0:00/6:00','gpt-6-sol','gpt-6-astra','no-eval executions','ik_check','stdout'])assert.ok(html.includes(text),text);
+  assert.doesNotMatch(html,/<pre|\{&quot;/);
+  const fatal={...fixture.agent,fatal_cause:'broker_invariant',details:[{source:'Eval',error:'Exact timeout: <script>alert(1)</script>'}]};
+  assert.match(api.agentSettingsLine(fatal),/fatal_cause: broker_invariant/);
+  assert.match(api.agentErrorDetails(fatal),/<summary>Details \(1\)/);
+  assert.match(api.agentErrorDetails(fatal),/<details[^>]*><summary>Eval · Exact timeout: &lt;script&gt;/);
 });
 test('new controls are connected to actual launcher serialization and separate agent rendering',()=>{
   for(const name of ['dev_mode','dev_model','eval_model','quota_stop_percent'])assert.ok(source.includes(`name="${name}"`));
   assert.match(source,/selection=agentLaunchSelection\(selection,/);
   assert.match(source,/function updatePreview\(\) \{\s+syncAgentOptions\(\)/);
   assert.match(source,/if\(cell.dev_mode==='agent'\)/);
-  assert.match(source,/view.innerHTML=agentRunPage\(snapshot.dev_v2\)/);
+  assert.match(source,/await devV2WorkspaceSnapshot\(session,compat,experiment\)/);
+  assert.doesNotMatch(source,/view.innerHTML=agentRunPage/);
 });
 
 test('actual dialog gates disable unsupported mode and retain independent model choices',()=>{

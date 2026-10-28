@@ -327,12 +327,16 @@
   function displayRun(item){return customRunName(item)||`${resolvedTask(item)||'Unlinked record'} · ${recordTime(item)}`;}
   function devNavigationRecord(session){
     const cfg=session.locked?.config||{};
-    return {run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
+    const agent=session.dev_mode==='agent'||!!session.agent;
+    const versions=session.versions||[];
+    const counts=session.agent?.counts||session.agent_resources?.used;
+    return {agent,run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
       dev_sdk_description:cfg.dev_sdk_description||'base stationary',dev_sdk_sha256:cfg.dev_sdk_sha256,
       created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
       status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
-      attempts_used:session.used?.executions,attempts_limit:session.budget?.executions,
+      attempts_used:agent?(counts?.formal_versions??versions.length):session.used?.executions,attempts_limit:agent?(session.agent?.limits?.formal_versions??10):session.budget?.executions,
+      agent_solved:agent&&(versions.some(v=>v.native_success===true)||session.reason==='native_success'),
       // Ran to the boundary with every execution failed: "completed" alone says nothing about the task outcome.
       all_attempts_failed:session.state==='completed'&&(()=>{const e=(session.jobs||[]).filter(j=>j.kind==='execute');return e.length>0&&e.every(j=>j.receipt?.execution_status==='failed');})()};
   }
@@ -344,6 +348,7 @@
   function deletedNavigationRecords(){return allNavigationRecords().filter(r=>r.history_deleted_at&&!recordIsActive(r));}
   function recordIsActive(item){if(['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','timed_out','not_started'].includes(item.status))return false;if(item.lifecycle)return ['model','advisor','approval','sdk','preparing'].includes(item.lifecycle.phase);return item.development?['ready','running','stopping'].includes(item.status):item.status==='running';}
   function recordStatus(item){
+    if(item.agent&&!recordIsActive(item))return item.agent_solved?'Solved':'Not solved';
     if(!DEBUG_VIEW&&item.all_attempts_failed)return 'Failed';
     if(!DEBUG_VIEW&&item.development&&/infrastructure|dispatch unknown|outcome_unknown/i.test(String(item.reason||'')))return 'System problem';
     if(item.development&&['condition_invalid','needs_review','cancelled','failed','not_started'].includes(item.status))
@@ -489,8 +494,8 @@
     const used=Number(r.attempts_used),limit=Number(r.attempts_limit);
     if(r.attempts_limit!=null&&Number.isFinite(used)&&limit>0){
       const live=recordIsActive(r)&&used<limit,n=live?used+1:used;
-      const text=live?`Attempt ${n}/${limit}`:`${used}/${limit} attempt${limit===1?'':'s'}`;
-      const full=live?`Attempt ${n} of ${limit} in progress`:`${used} of ${limit} allowed attempts used`;
+      const text=r.agent?`${used}/${limit} versions`:live?`Attempt ${n}/${limit}`:`${used}/${limit} attempt${limit===1?'':'s'}`;
+      const full=r.agent?`${used} of ${limit} formal versions used`:live?`Attempt ${n} of ${limit} in progress`:`${used} of ${limit} allowed attempts used`;
       badges.push(`<span class="ab-run-badge" data-run-badge="attempts" data-live="${live}" title="${esc(full)}" aria-label="${esc(full)}">${icon('M20 11A8 8 0 0 0 4.6 8M4 4v4h4M4 13a8 8 0 0 0 15.4 3M20 20v-4h-4')}${esc(text)}</span>`);
     }
     if(r.development)badges.push(`<span class="ab-run-badge" data-run-badge="sdk-description" title="${esc(r.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(r.dev_sdk_description||'base stationary')}</span>`);
@@ -3037,6 +3042,10 @@
   }
   function resourceRows(snapshot) {
     const resources=snapshot.resources,s=snapshot.dev_session;
+    if(snapshot.agent){
+      const a=snapshot.agent,resource=key=>({used:a.counts[key]??0,limit:a.limits[key]});
+      return [['formal_versions','Versions',resource('formal_versions')],['executions','Executions',resource('moving_executions')],['probes','Probes',resource('read_only_probes')],['help_count','Help',resource('help')],['eval_calls','Eval',{used:a.counts.eval_runs??0,limit:a.limits.formal_versions}],['wall_seconds','Total time',resources.wall_seconds,true]];
+    }
     const attempts=s?resources.executions:{used:snapshot.attempts.length,limit:snapshot.task_plan?.max_attempts ?? launches.find(l=>l.run_id===snapshot.run.run_id)?.locked?.max_attempts};
     return [['executions','Attempts',attempts],['eval_calls','Reviews requested',snapshot.dev_eval_enabled?resources.eval_calls:null],['help_count','Help requests',resources.help_count || resources.assistance || (snapshot.attention_control?.hint_limit != null?{used:snapshot.attention_control.hint_count,limit:snapshot.attention_control.hint_limit}:null)],['help_wait_seconds','Waiting for replies',s?resources.help_wait_seconds:null,true],['model_calls','AI plan rewrites',s?(resources.model_calls || resources.dev_calls):null],['execution_seconds','Robot run time',resources.execution_seconds,true],['wall_seconds','Total time',resources.wall_seconds || (!s?{used:null,limit:null}:null),true]];
   }
@@ -3055,6 +3064,7 @@
     if(recordIsActive(r))return Number(r.pending_hints||0)>0?'waiting':'running';
     if(status==='needs_review')return /infrastructure|dispatch unknown|outcome_unknown/i.test(String(r.reason||''))?'failed':'waiting';
     if(['failed','condition_invalid','timed_out','budget_exhausted'].includes(status)||r.all_attempts_failed)return 'failed';
+    if(r.agent&&!recordIsActive(r))return r.agent_solved?'success':'failed';
     if(status==='succeeded')return 'success';
     return 'idle';
   }
@@ -3322,7 +3332,7 @@
     if(copyState && !['sdk','terminal'].includes(lifecycle.phase))return `<div class="op-outcome" data-operator-outcome="${esc(lifecycle.phase)}" role="status"><strong>${copyState.title}</strong><div>${permissionStopped?`<p>Action permission closed · ${esc(end.explanation)}. This action was not executed.</p>`:''}<p>${esc(copyState.text)}</p></div></div>`;
     const last = operatorLast(snapshot), trace = Object.values(snapshot.traces || {}).find(t=>t.attempt_id === last?.attempt_id);
     const k = last ? last.index + 1 : 0;
-    const maximum = snapshot.dev_session?.budget?.executions ?? snapshot.task_plan?.max_attempts ?? launches.find(l=>l.run_id === snapshot.run.run_id)?.locked?.max_attempts ?? snapshot.attempts.length;
+    const maximum = snapshot.agent?.limits?.formal_versions ?? snapshot.dev_session?.budget?.executions ?? snapshot.task_plan?.max_attempts ?? launches.find(l=>l.run_id === snapshot.run.run_id)?.locked?.max_attempts ?? snapshot.attempts.length;
     const outcome = snapshot.eval?.native_outcomes?.[last?.attempt_id];
     const success = (outcome?.evaluated === true && outcome.native_success === true) || snapshot.eval?.native_success === true;
     const waiting = operatorWaiting(snapshot), terminal = isTerminal(snapshot);
@@ -3563,7 +3573,7 @@
       const k=attempt?attempt.index+1:null;
       const seconds=response?.created_at!=null && request.created_at!=null ? Math.max(0,Math.round(response.created_at-request.created_at)) : null;
       const author=response?.responder==='advisor_proxy'?'Advisor (simulated human)':response?.responder==='human'?'You':'Operator';
-      return {version:Number(request.request_id.match(/:v(\d+):help$/)?.[1]??Infinity),html:`<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${operatorRequestView(request.request_view,request.request_id)}${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`};
+      return {version:Number(request.request_id.match(/:v(\d+):help$/)?.[1]??Infinity),html:`<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${snapshot.agent?(response?' · answered':request.state==='rejected'?` · refused (${esc(request.reason)})`:' · waiting for a reply'):response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${operatorRequestView(request.request_view,request.request_id)}${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':snapshot.agent&&request.state==='rejected'?`<p class="op-quiet" data-agent-help-refusal>Not answered · refused · not delivered. ${esc(request.reason)}</p>`:'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`};
     });
     const hint=snapshot.dev_session && !snapshot.dev_v2 && snapshot.attention_control?.hint;
     const devReply=hint?.content?`<li><div><b>After attempt ${Math.max(1,hint.version-1)}</b><small>${hint.answered_at != null && hint.created_at != null ? `Answered in ${humanDuration(hint.answered_at-hint.created_at)}`:'Answered'}</small></div><div><p class="op-asked">Asked: "Attempt ${Math.max(1,hint.version-1)} failed. How should I fix it?"</p><span class="op-who">You</span><div class="op-clamp" data-operator-copy>${esc(hint.content)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button></div></li>`:'';
@@ -3724,7 +3734,12 @@
     const succeeded=a=>{const n=snapshot.eval?.native_outcomes?.[a.attempt_id];return n?.evaluated===true?n.native_success===true:a.status==='succeeded';};
     const solved=attempts.find(succeeded)||null;
     const rows=[], control=snapshot.attention_control, dev=snapshot.dev_session;
-    if (dev && !snapshot.dev_v2) {
+    if (snapshot.agent) {
+      for(const request of snapshot.requests){
+        const response=snapshot.responses[request.response_id],help=request.agent_help;
+        rows.push({id:request.request_id,kind:'advisor',reason:request.reason,requestedAt:request.created_at,answeredAt:response?.created_at,state:request.state,responder:'advisor',nextIndex:help.after_version,help});
+      }
+    } else if (dev && !snapshot.dev_v2) {
       const events=control?.events||[];
       for (const e of events.filter(x=>x.kind==='hint_requested')) {
         const closed=events.find(x=>x.request_id===e.request_id && /^hint_(answered|skipped)$/.test(x.kind));
@@ -3744,6 +3759,7 @@
     const now=Date.now()/1000;
     for (const row of rows) {
       row.seconds=row.responder==='human'&&row.requestedAt!=null?(row.answeredAt!=null?Math.max(0,row.answeredAt-row.requestedAt):row.state==='pending'?Math.max(0,now-row.requestedAt):0):0;
+      if(snapshot.agent)row.seconds=row.help.delivered?Number(row.help.hint_human_seconds)||0:0;
       const next=attempts.find(a=>a.index===row.nextIndex);
       row.effect=row.state!=='answered'?(row.state==='pending'?'awaiting_reply':'no_reply'):!next?'waiting':succeeded(next)?'fixed':next.status==='running'?'running':'still_failed';
     }
@@ -3751,7 +3767,7 @@
     const humanRows=rows.filter(r=>r.responder==='human'&&r.state==='answered').length;
     const credits=snapshot.resources?.help_count||snapshot.resources?.assistance||null;
     const judged=rows.filter(r=>r.effect==='fixed'||r.effect==='still_failed');
-    const maximum=snapshot.dev_session?.budget?.executions??snapshot.task_plan?.max_attempts??attempts.length;
+    const maximum=snapshot.agent?.limits?.formal_versions??snapshot.dev_session?.budget?.executions??snapshot.task_plan?.max_attempts??attempts.length;
     return {rows,attempts,solved,attemptsRun:attempts.length,maximum,humanSeconds,humanRows,requests:rows.length,
       credits:credits&&credits.used!=null?credits:{used:rows.length,limit:null},hits:rows.filter(r=>r.effect==='fixed').length,judged:judged.length,
       anyHuman:rows.some(r=>r.responder==='human'),terminal:isTerminal(snapshot)||(dev&&['stopped','budget_exhausted','failed','needs_review','completed','cancelled'].includes(dev.state))};
@@ -3795,7 +3811,7 @@
     return {attempts,requests,width,natural,left,step,baseline,height:baseline+98,before:grouped.has(-1),after:endsWithHelp&&!ended,ended,endX};
   }
   function attentionFilterMatches(row,filter) {
-    return filter==='all'||filter==='human'&&row.responder==='human'||(filter==='paid'||filter==='rate')&&row.effect==='fixed';
+    return filter==='all'||filter==='human'&&(row.responder==='human'||row.help?.delivered&&row.seconds>0)||(filter==='paid'||filter==='rate')&&row.effect==='fixed';
   }
   function attentionFrontier(snapshot) {
     const policies=snapshot.comparison?.policies||[];
@@ -3817,16 +3833,19 @@
     const state=g.solved?'solved':g.terminal?'unsolved':'running';
     const filter=['all','human','paid','rate'].includes(stored(`attention.efficiency.filter:${runId}`))?stored(`attention.efficiency.filter:${runId}`):'all';
     const selected=g.rows.find(r=>String(r.id)===stored(`attention.efficiency.help:${runId}`));
-    const time=attentionTime(g.humanSeconds).replace(/s$/,' s');
+    const time=snapshot.agent?`${g.humanSeconds.toFixed(1)} s`:attentionTime(g.humanSeconds).replace(/s$/,' s');
+    const delivered=g.rows.filter(r=>r.state==='answered').length;
+    const agentNote=snapshot.agent?`${delivered} delivered and charged, ${g.requests-delivered} refused and not charged` : '';
+    const corrections=snapshot.agent?g.rows.filter(r=>r.help.cost_corrected).map(r=>`corrected; recorded ${Number(r.help.recorded_hint_human_seconds).toFixed(2)} s`).join(' · '):'';
     const requestSummary=g.requests?`${g.requests} help request${g.requests===1?'':'s'}`:'no help requested';
     const creditSummary=`${g.credits.used} credit${g.credits.used===1?'':'s'}`;
-    const humanSummary=g.requests&&!g.anyHuman?`answered by the automatic advisor, 0 s of human time`:`${time} of human time`;
+    const humanSummary=!snapshot.agent&&g.requests&&!g.anyHuman?`answered by the automatic advisor, 0 s of human time`:`${time} of human time`;
     let rate,rateNote;
     if(g.solved&&!g.requests){rate='No help needed';rateNote='solved with zero human attention';}
     else if(g.solved&&g.humanSeconds>0){rate=`${(60/g.humanSeconds).toFixed(g.humanSeconds<6?0:1)}`;rateNote='tasks solved per human-minute';}
     else if(g.solved){rate=`1 per ${g.requests}`;rateNote=`task solved per help request${g.requests===1?'':'s'}`;}
     else {rate='0';rateNote=g.requests?`tasks solved · ${g.anyHuman?attentionTime(g.humanSeconds)+' of human time':g.requests+' help request'+(g.requests===1?'':'s')} spent`:'tasks solved so far';}
-    const hit=g.judged?`${g.hits} / ${g.judged}`:'—';
+    const hit=snapshot.agent?`${g.hits} of ${delivered} delivered`:g.judged?`${g.hits} / ${g.judged}`:'—';
     const effect={fixed:['✓ Next attempt succeeded','good'],still_failed:['✕ Next attempt still failed','bad'],running:['● Next attempt running','mid'],waiting:['… Waiting for the next attempt','mid'],awaiting_reply:['● Waiting for a reply','mid'],no_reply:['— No reply given','mid']};
     const kind={hint:'Hint',approval:'Approval',interrupt:'Interrupt',advisor:'Automatic advisor',demo:'Example'};
     const {baseline,height,step}=model,R=24;
@@ -3837,14 +3856,14 @@
     const endX=model.endX;
     const endMark=model.ended?`<line x1="${x(model.attempts.length-1)+R}" x2="${endX-58}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/><g class="op-attn-end ${g.solved?'solved':'unsolved'}"><rect x="${endX-58}" y="${baseline-21}" width="116" height="42" rx="21"/><text class="op-attn-end-small" x="${endX}" y="${baseline-4}" text-anchor="middle">Ended</text><text x="${endX}" y="${baseline+12}" text-anchor="middle">${outcome}</text></g>`:'';
     const extra=model.after?`<line x1="${x(model.attempts.length-1)+R}" x2="${x(model.attempts.length)-14}" y1="${baseline}" y2="${baseline}" class="op-attn-connector op-attn-unreached"/><g class="op-attn-endpoint next"><circle cx="${x(model.attempts.length)}" cy="${baseline}" r="14"/><text x="${x(model.attempts.length)}" y="${baseline+44}" text-anchor="middle">Next</text></g>`:'';
-    const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human').map(r=>r.seconds));
+    const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human'||snapshot.agent&&r.help.delivered).map(r=>r.seconds));
     const marks=model.requests.map(r=>{
       const x0=r.after<0?x(-1)+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
       const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
-      const bar=r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
-      const cost=r.responder==='human'?attentionTime(r.seconds).replace(/s$/,' s'):'1 credit';
-      const who=r.responder==='human'?'Person replied':'Automatic advisor';
+      const bar=snapshot.agent?(r.help.delivered?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
+      const cost=snapshot.agent?(r.help.delivered?`${r.seconds.toFixed(1)} s`:'not delivered'):r.responder==='human'?attentionTime(r.seconds).replace(/s$/,' s'):'1 credit';
+      const who=snapshot.agent&&r.state==='rejected'?'Refused · not delivered':r.responder==='human'?'Person replied':'Automatic advisor';
       const tip=`${tag} · ${kind[r.kind]||label(r.kind)} · ${who} · ${cost} · ${effect[r.effect][0].replace(/^[^A-Za-z]+/,'')}`;
       return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${tag}</text><rect class="op-attn-cost" x="${r.x-13}" y="${baseline+74-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+90}" text-anchor="middle">${esc(cost)}</text></g>`;
     }).join('');
@@ -3852,18 +3871,18 @@
     const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="width:100%;min-width:${model.natural}px;max-width:${model.width}px" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
     const next=selected&&g.attempts.find(a=>a.index===selected.nextIndex);
     const number=selected?g.rows.indexOf(selected)+1:0;
-    const whoTitle=selected?(selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':'Automatic advisor'):'';
+    const whoTitle=selected?(snapshot.agent&&selected.state==='rejected'?'Refused · not delivered':selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':'Automatic advisor'):'';
     const position=selected?g.rows.indexOf(selected):-1;
     const effectCls=selected?effect[selected.effect][1]:'';
-    const costMain=selected?(selected.responder==='human'?attentionTime(selected.seconds).replace(/s$/,' s'):'1 credit'):'';
-    const costNote=selected?(selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
+    const costMain=selected?(snapshot.agent?(selected.help.delivered?`${selected.seconds.toFixed(1)} s`:'Not charged'):selected.responder==='human'?attentionTime(selected.seconds).replace(/s$/,' s'):'1 credit'):'';
+    const costNote=selected?(snapshot.agent?(selected.help.cost_corrected?`corrected; recorded ${Number(selected.help.recorded_hint_human_seconds).toFixed(2)} s`:selected.help.delivered?'Recorded human attention':'Refused · not delivered'):selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
     const detail=selected?`<div class="op-attn-detail-head"><h5><span class="op-attn-detail-num">${selected.kind==='demo'?'Example #'+number:'Help #'+number}</span><span class="op-attn-detail-who">${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</span></h5><div class="op-attn-detail-nav"><button type="button" class="op-attn-round" data-attn-step="-1" aria-label="Previous help request"${position<=0?' disabled':''}>‹</button><span class="op-attn-count">${position+1} / ${g.rows.length}</span><button type="button" class="op-attn-round" data-attn-step="1" aria-label="Next help request"${position>=g.rows.length-1?' disabled':''}>›</button><button type="button" class="op-attn-round" data-attn-close aria-label="Close details">×</button></div></div><div class="op-attn-tiles"><div class="op-attn-tile"><span>Why it was asked</span><b>${esc(selected.reason?label(selected.reason):'No reason recorded')}</b></div><div class="op-attn-tile"><span>Cost</span><b>${esc(costMain)}</b><small>${esc(costNote)}</small></div><div class="op-attn-tile effect ${effectCls}"><span>Effect</span><b>${effect[selected.effect][0]}</b></div><div class="op-attn-tile"><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<b class="op-attn-detail-note">Not started yet</b>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
-    const kpis=[['all','progress',String(g.requests),'Help requests',''],['human','spent',time,'Human attention','Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Progress per attention',`${rateNote}. Tasks solved ÷ human attention; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
+    const kpis=[['all','progress',String(g.requests),'Help requests',''],['human','spent',time,'Human attention',snapshot.agent?'Persisted Advisor human-attention cost. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Progress per attention',`${rateNote}. Tasks solved ÷ human attention; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
     const frontier=attentionFrontier(snapshot);
     const head=g.attemptsRun?`${g.solved?'1':'0'} of ${g.maximum||g.attemptsRun} attempts solved`:'No attempts yet';
     const sub=[state==='unsolved'?'not solved':state==='running'?'in progress':'',requestSummary,humanSummary,creditSummary].filter(Boolean).join(' · ');
     const progressLine=!g.attemptsRun?'No attempts yet':g.solved?`on attempt ${g.solved.index+1} of ${g.maximum||g.attemptsRun}`:`${g.attemptsRun} of ${g.maximum||g.attemptsRun} attempt${(g.maximum||g.attemptsRun)===1?'':'s'} used${state==='running'?' so far':''}`;
-    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}<div class="op-attn-legend"><span><i class="failed"></i>Failed attempt</span><span><i class="solved"></i>Solved</span><span><i class="automatic"></i>Automatic advisor</span><span><i class="person"></i>Person replied</span><span>Bar under each help = attention it cost</span></div><div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
+    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${snapshot.agent?`<p data-agent-attention-detail>${esc(agentNote)}${corrections?` · ${esc(corrections)}`:''}</p>`:''}${strip}<div class="op-attn-legend"><span><i class="failed"></i>Failed attempt</span><span><i class="solved"></i>Solved</span><span><i class="automatic"></i>Automatic advisor</span><span><i class="person"></i>Person replied</span><span>Bar under each help = attention it cost</span></div><div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
   }
   function bindAttentionEfficiency(snapshot) {
     const runId=snapshot.run.run_id;
@@ -3919,15 +3938,19 @@
     const agentRecords = snapshot ? `<section class="panel" data-agent-debug><h3>Agent records</h3><dl class="ab-settings-list"><dt>Developer record</dt><dd><code>${esc(snapshot.run.developer_model || 'Not recorded')}</code></dd><dt>Evaluator record</dt><dd><code>${esc(snapshot.run.evaluator_model || 'Not recorded')}</code></dd><dt>Diagnostic model</dt><dd><code>${esc(snapshot.eval?.model || 'Not recorded')}</code></dd></dl></section>` : '';
     return `<aside class="ab-secondary" aria-label="Developer tools"><details data-secondary="debug" data-persist-detail="debug"><summary>Developer debug</summary>${agentRecords}${snapshot ? `<section class="panel"><h3>Agent work & scheduling</h3><div class="work-list">${(orchestrator?.agents || []).map(agent=>`<button class="work-card" type="button" data-dag-skill="${esc(agent.skill)}"><strong>${esc(agent.skill)}</strong><p>${esc(agent.agent_id)} · ${esc(agent.model)} · ${esc(agent.status)}</p></button>`).join('')}${(snapshot.work_items || []).map(item=>`<div class="work-card"><strong>${esc(label(item.resource))} · ${esc(item.state)}</strong><p>Requires ${esc(number(item.required))}, remaining ${esc(number(item.remaining))} · ${esc(item.reason)}</p></div>`).join('') || '<p>No active work records.</p>'}</div></section>` : ''}${dagPanel()}${sessionPanel()}<p class="minor">The live projection reads the persisted SQLite AttentionStore. Requests, budgets, executions and traces survive restarts.</p></details></aside>`;
   }
-  function render(snapshot) {
+  function workspaceHTML(snapshot,chosen) {
+    const append=(html,extra)=>{const end=html.lastIndexOf('</section>');return html.slice(0,end)+extra+html.slice(end);};
+    const regions=[runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)];
     if(snapshot.agent){
-      const expanded=[...view.querySelectorAll('[data-persist-detail][open]')].map(e=>e.dataset.persistDetail);
-      currentSnapshot=snapshot;renderSidebar();devTag.hidden=DEBUG_VIEW;
-      view.innerHTML=agentRunPage(snapshot.dev_v2);
-      view.querySelectorAll('[data-persist-detail]').forEach(e=>{e.open=expanded.includes(e.dataset.persistDetail);});
-      view.querySelector('[data-agent-stop]')?.addEventListener('click',()=>sidebarWrite(`/api/dev-v2/experiments/${snapshot.dev_v2.experiment_id}/cancel`,{}));
-      bindLaunch();openRequestedLaunch();return;
+      regions[0]=append(regions[0],agentSettingsLine(snapshot.agent));
+      regions[1]=append(regions[1],agentErrorDetails(snapshot.agent));
+      regions[2]=append(regions[2],agentSecondaryRows(snapshot.agent)+agentVersionDetails(snapshot)+agentInstrumentPanel(snapshot));
+      regions[1]=regions[1].replace('Codex subscription (gpt-6-astra, high effort)','Codex subscription');
+      regions[4]=regions[4].replace('/export.csv"','/report"').replace('Download data (CSV)','Download agent report (JSON)');
     }
+    return regions.join('')+'<p class="minor" id="ab-live-message" aria-live="polite"></p>';
+  }
+  function render(snapshot) {
     stopGuidancePreview(); activeGuidancePreview = null;
     const devDraft=view.querySelector('[data-dev-guidance] textarea');
     const devDraftFocus=devDraft&&document.activeElement===devDraft?[devDraft.selectionStart,devDraft.selectionEnd,devDraft.selectionDirection]:null;
@@ -3973,7 +3996,8 @@
     }
     const active = actionableRequests(snapshot);
     const chosen = active.find(item => item.request_id === selectedRequest) || active[0];
-    view.innerHTML = `${runSettings(snapshot)}${runOverview(snapshot)}${executionViewer(snapshot)}${requestPanel(snapshot,chosen)}${resourceDetails(snapshot)}<p class="minor" id="ab-live-message" aria-live="polite"></p>`;
+    view.innerHTML = workspaceHTML(snapshot,chosen);
+    if(snapshot.agent)bindAgentInstrument(snapshot);
     bindAttentionEfficiency(snapshot);
     const requestRegion=view.querySelector('[data-core-region="request"]');
     if(requestRegion){requestRegion.id='request';requestRegion.tabIndex=-1;}
@@ -4373,6 +4397,11 @@
   // Dev workspace projection: read-only, version-bound display data.
   const devEvidenceCache = new Map();
   function devFile(session, uri) {
+    if(session.agent && typeof uri==='string' && uri.startsWith('agent-view/')) {
+      const name=uri.slice('agent-view/'.length);
+      if(name.split('/').some(p=>!p||p.startsWith('.')||p.includes('\\')))return null;
+      return `/api/dev-v2/experiments/${encodeURIComponent(session.experiment_id)}/cells/${encodeURIComponent(session.key)}/agent/files/${name.split('/').map(encodeURIComponent).join('/')}`;
+    }
     const prefix = session.artifact_dir + '/';
     if (typeof uri !== 'string' || !uri.startsWith(prefix)) return null;
     const parts = uri.slice(prefix.length).split('/');
@@ -4500,25 +4529,110 @@
     render(snapshot);
   }
   // Adapt persisted Dev v2 records to the original five-region workspace.
-  // Agent operator view: public evidence links plus trusted controller outcomes.
-  function agentRunPage(cell) {
-    const a=cell.agent,c=a.counts,h=a.held||{},cap=a.limits;
-    const hours=Math.floor(a.wall_seconds/3600),minutes=Math.floor(a.wall_seconds%3600/60);
-    const wall=`${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
-    const link=rows=>(rows||[]).map(r=>r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.label)}</a>`:`<span>${esc(r.label)}</span>`).join(' · ');
-    const json=value=>esc(JSON.stringify(value,null,2));
-    return `<section class="panel ab-run-settings" data-agent-run><div class="ab-status-head"><div><span class="label">DEV · AGENT</span><h2>${esc(cell.task_id)} · seed ${esc(cell.seed)}</h2></div><div class="ab-status-controls"><button type="button" data-open-launch>New run</button><button type="button" data-open-run-again>Run again with the same settings</button>${['turn running','waiting on execution','Eval','help'].includes(a.phase)?'<button type="button" class="danger" data-agent-stop>■ Stop</button>':''}</div></div><p>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)} · quota stop ${esc(a.quota_stop_percent)}%</p><p role="status" data-agent-state>${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}${a.fatal_cause?' · cause '+esc(a.fatal_cause):''}</p></section>
-    <section class="panel ab-resource-details" data-agent-counts><h3>Resources</h3><p>正式版本 ${c.formal_versions}/${cap.formal_versions} · 执行 ${c.moving_executions}/${cap.moving_executions} · 只读探查 ${c.read_only_probes}/${cap.read_only_probes} · 墙钟 ${wall}/6:00 · 额度 ${a.quota?.used_percent??'—'}%</p><p>Reserved: versions ${h.formal_versions||0} · executions ${h.moving_executions||0} · probes ${h.read_only_probes||0} · state basis: ${esc(a.state_basis)}</p>${link(a.history)}</section>
-    <section class="panel" data-agent-errors><h3>Errors</h3>${a.errors.length?a.errors.map(e=>`<article><strong>${esc(e.source)}</strong><pre>${typeof e.error==='string'?esc(e.error):json(e.error)}</pre></article>`).join(''):'<p>No recorded errors.</p>'}</section>
-    <section class="panel ab-execution-viewer" data-execution-viewer data-agent-timeline><h3>Timeline</h3>${a.timeline.map(r=>`<details data-persist-detail="agent:${esc(r.id)}"><summary>${esc(r.version_id||r.execution_id||r.probe_id||r.id)} · ${esc(r.kind)} · ${esc(r.op)} · ${esc(r.status)}${r.error?' · '+esc(r.error):''}</summary><p>${link(r.links)}</p><pre>${json(r.result)}</pre></details>`).join('')||'<p>No requests yet.</p>'}</section>
-    <section class="panel" data-agent-versions><h3>Formal versions · operator results</h3><div class="ab-agent-table"><table><thead><tr><th>Version</th><th>Eval verdict</th><th>Native result</th><th>Agreement</th><th>Eval advice</th></tr></thead><tbody>${a.versions.map(v=>`<tr><td>${esc(v.version_id)}</td><td>${esc(v.eval_verdict)}</td><td>${v.native_success===true?'success':v.native_success===false?'failure':'unavailable'}</td><td>${v.agree===true?'agree':v.agree===false?'disagree':'unavailable'}</td><td>${esc(v.eval?.advice||v.eval?.reason||'')}</td></tr>`).join('')}</tbody></table></div></section><p id="ab-live-message" role="status"></p>`;
+  // Agent additions live inside the original five regions.
+  function agentLinks(rows) {
+    return (rows||[]).map(r=>r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.label)}</a>`:`<span>${esc(r.label)}</span>`).join(' · ');
+  }
+  function agentSettingsLine(a) {
+    const c=a.counts,cap=a.limits;
+    const wall=seconds=>`${Math.floor(seconds/3600)}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}`;
+    return `<p class="minor" data-agent-settings data-agent-counts>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)} · quota stop ${esc(a.quota_stop_percent)}% · versions ${c.formal_versions}/${cap.formal_versions} · executions ${c.moving_executions}/${cap.moving_executions} · probes ${c.read_only_probes}/${cap.read_only_probes} · wall ${wall(a.wall_seconds)}/${wall(a.wall_limit)} · ${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}${a.fatal_cause?' · fatal_cause: '+esc(a.fatal_cause):''}</p>`;
+  }
+  function agentSecondaryRows(a) {
+    const rows=a.timeline.filter(r=>['probe','no_eval_execution'].includes(r.kind));
+    const counts=new Map();
+    for(const row of rows){const label=row.kind==='no_eval_execution'?'no-eval executions':row.op;counts.set(label,(counts.get(label)||0)+1);}
+    return `<details data-agent-secondary data-persist-detail="agent-secondary"><summary>${[...counts].map(([label,n])=>`${n} ${esc(label)}`).join(' · ')||'No secondary activity'}</summary>${rows.map(r=>`<p data-agent-secondary-row>${esc(r.execution_id||r.probe_id||r.id)} · ${esc(r.op)} · ${esc(r.status)} · ${agentLinks(r.links)}</p>${agentAttemptDiagnostics(a,r)}`).join('')}</details>`;
+  }
+  function agentDiagnosticItems(rows,key) {
+    const words=value=>value==null?'':typeof value==='object'?Object.entries(value).map(([k,v])=>`${k}: ${words(v)}`).join(' · '):String(value);
+    return rows.map((e,i)=>{const detail=words(e.error),summary=(typeof e.error==='object'?(e.error?.error||e.error?.error_text||e.error?.reason):e.error)||detail;return `<details data-persist-detail="${esc(key)}:${i}"><summary>${esc(e.source)} · ${esc(words(summary).split('\n')[0].slice(0,180))}</summary><p>${esc(detail)}</p>${(e.reports||[]).filter(r=>r.source!==e.source).map(r=>`<p>${esc(r.source)} · ${esc(words(r.error))}</p>`).join('')}</details>`;}).join('');
+  }
+  function agentErrorDetails(a) {
+    const failures=a.failure_errors||[],details=a.details||[];
+    return `<div data-agent-errors>${agentDiagnosticItems(failures,'agent-error')}${details.length?`<details data-agent-error-details data-persist-detail="agent-error-details"><summary>Details (${details.length})</summary>${agentDiagnosticItems(details,'agent-detail')}</details>`:''}</div>`;
+  }
+  function agentAttemptDiagnostics(a,v) {
+    const matches=e=>(v.execution_id&&e.execution_id===v.execution_id)||(v.version_id&&(e.version_id===v.version_id||e.source.includes('/'+v.version_id+'/')));
+    const rows=[...(a.failure_errors||[]),...(a.details||[])].filter(matches);
+    return rows.length?`<details data-agent-attempt-details><summary>Details (${rows.length})</summary>${agentDiagnosticItems(rows,`attempt-${v.version||v.execution_id||v.id}`)}</details>`:'';
+  }
+  function enterAgentWorkspace(snapshot) {
+    const index=devSessions.findIndex(s=>s.session_id===snapshot.dev_session.session_id);
+    if(index>=0)devSessions[index]={...devSessions[index],...snapshot.dev_session};
+    if(currentSnapshot?.run?.run_id!==snapshot.run.run_id&&!matchMedia('(max-width:900px)').matches){sidebarOpen=true;sidebarLayout();}
+  }
+  function agentVersionDetails(snapshot) {
+    const s=snapshot.dev_session;
+    return `<div data-agent-versions>${s.versions.map(v=>`<details data-agent-version="${v.version}" data-persist-detail="agent-version:${v.version}"><summary>Attempt ${v.version} · ${v.native_success===true?'Solved':'Not solved'} · Eval: ${esc(v.eval_verdict||'unavailable')}</summary><details data-agent-code class="ab-eval-source"><summary>Code · bundled policy.py and sources</summary><pre>${esc(v.source_text||'Source unavailable')}</pre>${agentLinks((v.sources||[]).map(r=>({label:r.name,url:devFile(s,r.uri)})))}</details>${operatorEvalReview(v.evaluator_review,`agent:v${v.version}`)}<ul data-agent-citations>${(v.citations||v.evaluator_review?.evidence||[]).map(e=>`<li>${esc(e.claim)} · ${e.uri?`<a href="${esc(devFile(s,e.uri))}" target="_blank" rel="noopener">${esc(e.source)}</a>`:esc(e.source)}</li>`).join('')}</ul>${v.after_help?`<p data-agent-help>After attempt ${v.version} · ${v.after_help.delivered?'answered':'refused'} · ${esc(v.after_help.content||v.after_help.reason||'No hint recorded')}</p>`:''}${agentAttemptDiagnostics(snapshot.agent,v)}</details>`).join('')}</div>`;
+  }
+  function agentInstrumentPanel(snapshot) {
+    const selected=stored(`attention.history:${snapshot.run.run_id}`);
+    const attempt=snapshot.attempts.find(a=>a.attempt_id===selected)||snapshot.attempts.at(-1);
+    const version=snapshot.dev_session.versions.find(v=>v.version===attempt?.dev_version);
+    if(!version?.instrument)return '';
+    return `<details data-agent-instrument data-instrument-version="${version.version}" data-persist-detail="agent-instrument"><summary>v${version.version} · Execution instruments</summary><p data-instrument-status>Joint positions · radians by physics step</p><canvas width="800" height="220" style="width:100%;max-width:800px" data-instrument-canvas aria-label="Recorded joint positions by physics step"></canvas></details>`;
+  }
+  function drawAgentInstrument(canvas,rows) {
+    const samples=rows.filter(r=>Array.isArray(r.qpos)&&r.qpos.length&&r.qpos.every(Number.isFinite)&&Number.isFinite(r.physics_step));
+    if(!samples.length)return 0;
+    const ctx=canvas.getContext('2d');if(!ctx)return 0;
+    const width=canvas.width,height=canvas.height,pad=28;
+    let low=Infinity,high=-Infinity;for(const row of samples)for(const q of row.qpos){low=Math.min(low,q);high=Math.max(high,q);}
+    const first=samples[0].physics_step,last=samples.at(-1).physics_step;
+    ctx.clearRect(0,0,width,height);ctx.fillStyle='#17212b';ctx.fillRect(0,0,width,height);
+    ctx.strokeStyle='#8b9aa8';ctx.beginPath();ctx.moveTo(pad,pad);ctx.lineTo(pad,height-pad);ctx.lineTo(width-pad,height-pad);ctx.stroke();
+    ctx.fillStyle='#dce5ed';ctx.font='11px sans-serif';ctx.fillText(high.toFixed(2),0,15);ctx.fillText(low.toFixed(2),0,height-pad);ctx.fillText(String(first),pad,height-8);ctx.fillText(String(last),width-60,height-8);
+    for(let joint=0;joint<samples[0].qpos.length;joint++){
+      ctx.strokeStyle=`hsl(${joint*360/samples[0].qpos.length},70%,65%)`;ctx.beginPath();
+      samples.forEach((r,i)=>{const x=pad+(r.physics_step-first)/Math.max(1,last-first)*(width-2*pad),y=height-pad-(r.qpos[joint]-low)/Math.max(.001,high-low)*(height-2*pad);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();
+    }
+    return samples.length;
+  }
+  function bindAgentInstrument(snapshot) {
+    const panel=view.querySelector('[data-agent-instrument]');if(!panel)return;
+    const version=snapshot.dev_session.versions.find(v=>v.version===Number(panel.dataset.instrumentVersion));
+    let loaded=false;
+    const load=async()=>{if(!panel.open||loaded)return;loaded=true;try{
+      const rows=await readDevEvidence(snapshot.dev_session,version.instrument);
+      const count=drawAgentInstrument(panel.querySelector('canvas'),rows);
+      panel.querySelector('[data-instrument-status]').textContent=count?`${count} recorded physics states · joint positions (radians) by physics step`:'No joint-position samples recorded.';
+    }catch(error){panel.querySelector('[data-instrument-status]').textContent=`Instruments unavailable: ${error.message}`;}};
+    panel.addEventListener('toggle',load);load();
   }
   async function agentWorkspaceSnapshot(s,cell,experiment) {
-    const empty={...s,versions:[],jobs:[],budget:cell.budget||{},used:cell.used||{},reserved:{},remaining:{},state:cell.state,reason:cell.reason,
-      attention_control:{binding:{allowed_policies:[]},active_policy:cell.policy_id,read_only:true}};
-    const snapshot=await devWorkspaceSnapshot(empty);
-    snapshot.dev_v2=cell;snapshot.agent=cell.agent;snapshot.dev_v2_selection=experiment.selection;
-    snapshot.run.status=cell.state;
+    const compat=cell.dev_v2_compat;
+    const session={...s,agent:cell.agent,locked:{...s.locked,config:{...s.locked.config,eval_agent:{enabled:true}}}};
+    const snapshot=await devV2WorkspaceSnapshot(session,compat,experiment);
+    snapshot.agent=cell.agent;
+    snapshot.task_plan.max_attempts=cell.agent.limits.formal_versions;
+    snapshot.requests=[];snapshot.responses={};snapshot.response_evidence={};
+    for(const interval of compat.help_intervals||[]){
+      const help=interval.help_content,before=snapshot.attempts.find(a=>a.dev_version===interval.after_version);
+      const id=`${cell.key}:v${interval.version}:help`,responseId=help.delivered?id+':response':null;
+      snapshot.requests.push({request_id:id,response_id:responseId,run_id:s.session_id,attempt_id:before?.attempt_id,
+        request_type:'hint',state:help.delivered?'answered':'rejected',mode:'automatic',created_at:interval.reserved_at,
+        reason:(help.delivered?help.decision?.reason:help.reason)||'Recorded assistance',request_view:interval.request_view,agent_help:help});
+      if(help.delivered)snapshot.responses[responseId]={response_id:responseId,request_id:id,responder:'advisor_proxy',response_type:'hint',content:help.content||'',created_at:interval.settled_at};
+    }
+    snapshot.attention_control.read_only=true;
+    // Agent captures are saved evidence; no one-call live-camera endpoint exists.
+    Object.assign(snapshot.station,{camera_url:null,camera_preview_url:null,camera_state_url:null,camera_views:null,camera_monitor_v2:false});
+    for(const version of snapshot.dev_session.versions){
+      const trace=Object.values(snapshot.traces).find(t=>t.attempt_id===`attempt:${cell.key}:${version.version-1}`);
+      if(!trace||!version.frames)continue;
+      for(const media of trace.evidence){
+        const name=media.kind==='advisor_replay'?'advisor_replay.mp4':`${media.kind}.mp4`;
+        if(version.replays?.[name])media.media_url=devFile(snapshot.dev_session,version.replays[name].uri);
+      }
+      try {
+        const key=JSON.stringify(['agent-frames',cell.key,version.frames.sha256]);
+        let frames=devEvidenceCache.get(key);
+        if(!frames){frames=await readDevEvidence(snapshot.dev_session,version.frames);devEvidenceCache.set(key,frames);}
+        const first=new Map();for(const frame of frames)if(!first.has(frame.view))first.set(frame.view,frame);
+        for(const [view,frame] of first)trace.evidence.push({kind:view==='overview'?'recording_frame':`recording_frame_${view}`,mime_type:'image/png',media_url:devFile(snapshot.dev_session,`agent-view/executions/${version.execution_id}/${frame.filename}`),sha256:frame.sha256});
+      } catch(error){snapshot.dev_evidence_gaps.push(`v${version.version} frames: ${error.message}`);}
+    }
     return snapshot;
   }
   function devV2State(cellState, experimentState) {
@@ -4622,8 +4736,16 @@
     if(!experimentResponse.ok)throw new Error(`Dev v2 experiment HTTP ${experimentResponse.status}`);
     const experiment=await experimentResponse.json();if(selectedDev!==s.session_id)return;
     if(cell.dev_mode==='agent'){
+      const fingerprint=JSON.stringify([experiment.state,experiment.reason,{...cell.agent,wall_seconds:0},cell.dev_v2_compat.versions,cell.dev_v2_compat.jobs]);
+      if(lastRendered===fingerprint && currentSnapshot?.agent){
+        currentSnapshot.agent=cell.agent;
+        const line=view.querySelector('[data-agent-settings]');
+        if(line)line.outerHTML=agentSettingsLine(cell.agent);
+        return;
+      }
       const snapshot=await agentWorkspaceSnapshot(s,cell,experiment);if(selectedDev!==s.session_id)return;
-      selectedRun=s.session_id;render(snapshot);lastRendered=null;
+      enterAgentWorkspace(snapshot);
+      selectedRun=s.session_id;render(snapshot);lastRendered=fingerprint;
       if(experimentFromHash(location.hash)!==s.experiment_id){const url=new URL(location.href);url.hash=`exp=${s.experiment_id}`;history.replaceState(null,'',url);}
       return;
     }

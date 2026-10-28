@@ -1,0 +1,1773 @@
+{
+  "view": {
+    "key": "55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec",
+    "experiment_id": "devexp-72d85b88570eaf8ed93170bf",
+    "state": "needs_review",
+    "reason": "fatal_error",
+    "error": "broker_invariant: Solver exploded: fixture error verbatim",
+    "task_id": "open_cabinet",
+    "seed": 102,
+    "policy_id": "reactive_help",
+    "mode": "interactive",
+    "budget": {
+      "advisor_calls": 1,
+      "control_steps": 96000,
+      "dev_calls": 10,
+      "eval_calls": 0,
+      "execution_seconds": 19800,
+      "executions": 10,
+      "help_count": 1,
+      "help_credits": 1,
+      "help_wait_seconds": 120,
+      "hint_human_seconds": 0,
+      "input_tokens": 1650000,
+      "model_seconds": 3720,
+      "output_tokens": 82944,
+      "provider_tokens": 1732944,
+      "sdk_calls": 3200
+    },
+    "used": {
+      "advisor_calls": 0,
+      "control_steps": 0,
+      "dev_calls": 0,
+      "eval_calls": 0,
+      "execution_seconds": 0,
+      "executions": 0,
+      "help_count": 0,
+      "help_credits": 0,
+      "help_wait_seconds": 0,
+      "hint_human_seconds": 0,
+      "input_tokens": 0,
+      "model_seconds": 0,
+      "output_tokens": 0,
+      "provider_tokens": 0,
+      "sdk_calls": 0
+    },
+    "versions": [
+      {
+        "version": 1,
+        "version_id": "v0001",
+        "execution_id": "e000002",
+        "valid": true,
+        "eval": {
+          "advice": "Scan a smaller base offset.",
+          "evidence": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt"
+            }
+          ],
+          "passed": false,
+          "reason": "Blocked approach",
+          "status": "completed"
+        },
+        "eval_verdict": "fail",
+        "native_success": false,
+        "agree": true
+      },
+      {
+        "version": 2,
+        "version_id": "v0002",
+        "execution_id": "e000003",
+        "valid": true,
+        "eval": {
+          "advice": "Scan a smaller base offset.",
+          "evidence": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt"
+            }
+          ],
+          "passed": true,
+          "reason": "Visible success",
+          "status": "completed"
+        },
+        "eval_verdict": "pass",
+        "native_success": false,
+        "agree": false
+      },
+      {
+        "version": 3,
+        "version_id": "v0003",
+        "execution_id": "e000004",
+        "valid": true,
+        "eval": {
+          "advice": "Scan a smaller base offset.",
+          "evidence": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt"
+            }
+          ],
+          "passed": null,
+          "reason": "Eval unavailable: timeout",
+          "status": "unavailable"
+        },
+        "eval_verdict": "unavailable",
+        "native_success": true,
+        "agree": null
+      }
+    ],
+    "jobs": [],
+    "dev_mode": "agent",
+    "agent": {
+      "phase": "stopped",
+      "reason": "fatal_error",
+      "fatal_cause": "broker_invariant",
+      "errors": [
+        {
+          "source": "controller",
+          "error": "broker_invariant: Solver exploded: fixture error verbatim"
+        },
+        {
+          "source": "help",
+          "error": "help_integration_unavailable"
+        },
+        {
+          "source": "e000001 stderr",
+          "error": "Rejected approach; retrying\n"
+        },
+        {
+          "source": "e000002 stderr",
+          "error": "Rejected approach; retrying\n"
+        },
+        {
+          "source": "e000003 stderr",
+          "error": "Rejected approach; retrying\n"
+        },
+        {
+          "source": "e000004 stderr",
+          "error": "Rejected approach; retrying\n"
+        },
+        {
+          "source": "errors/failure.json",
+          "error": {
+            "error": "Failure opening [host path]",
+            "error_class": "RuntimeError"
+          }
+        },
+        {
+          "source": "eval/v0003/error.json",
+          "error": {
+            "error_class": "timeout",
+            "error_text": "Eval exceeded its hard deadline"
+          }
+        },
+        {
+          "source": "help/v0002/error.json",
+          "error": {
+            "error": "invalid_usage"
+          }
+        },
+        {
+          "source": "help/v0001/error.json",
+          "error": {
+            "error": "evaluation-derived text rejected at Dev boundary"
+          }
+        },
+        {
+          "source": "turns/t000001/stderr",
+          "error": "Codex failed: synthetic failure\n"
+        }
+      ],
+      "counts": {
+        "eval_runs": 3,
+        "formal_versions": 3,
+        "help": 1,
+        "moving_executions": 4,
+        "read_only_probes": 2
+      },
+      "held": {
+        "eval_runs": 0,
+        "formal_versions": 0,
+        "help": 0,
+        "moving_executions": 0,
+        "read_only_probes": 0
+      },
+      "limits": {
+        "eval_runs": 10,
+        "formal_versions": 10,
+        "help": 1,
+        "moving_executions": 40,
+        "read_only_probes": 300
+      },
+      "remaining": {
+        "eval_runs": 7,
+        "formal_versions": 7,
+        "help": 0,
+        "moving_executions": 36,
+        "read_only_probes": 298
+      },
+      "wall_seconds": 3600.5461502075195,
+      "wall_limit": 21600,
+      "quota": {
+        "at": 1793224446.569869,
+        "stop_percent": 90,
+        "used_percent": 72.5
+      },
+      "dev_model": "gpt-6-sol",
+      "eval_model": "gpt-6-astra",
+      "quota_stop_percent": 90,
+      "timeline": [
+        {
+          "id": "probe",
+          "kind": "probe",
+          "op": "ik_check",
+          "status": "completed",
+          "at": 1793220866.0662827,
+          "version_id": null,
+          "execution_id": null,
+          "probe_id": "p000001",
+          "result": {
+            "diagnostics": {
+              "diagnostics_complete": false,
+              "missing": [
+                "candidate_qpos",
+                "ik_candidates",
+                "candidate_joint_margins",
+                "selected_candidate",
+                "solver_diagnostics",
+                "validation",
+                "contacts",
+                "world_revision",
+                "timing"
+              ],
+              "reason": "official_ik_non_success"
+            },
+            "physics_steps": 0,
+            "planning_accepted": false,
+            "rejected": true,
+            "state_basis": "reset_scene"
+          },
+          "error": null,
+          "links": [
+            {
+              "label": "receipt",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/rpc/responses/probe.json"
+            },
+            {
+              "label": "diagnostics",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/probes/p000001.json"
+            }
+          ]
+        },
+        {
+          "id": "dry",
+          "kind": "probe",
+          "op": "plan_dry_run",
+          "status": "completed",
+          "at": 1793220866.1021023,
+          "version_id": null,
+          "execution_id": null,
+          "probe_id": "p000002",
+          "result": {
+            "diagnostics": {
+              "diagnostics_complete": false,
+              "missing": [
+                "candidate_qpos",
+                "ik_candidates",
+                "candidate_joint_margins",
+                "selected_candidate",
+                "solver_diagnostics",
+                "validation",
+                "contacts",
+                "world_revision",
+                "timing"
+              ]
+            },
+            "physics_steps": 0,
+            "planning_accepted": true,
+            "rejected": false,
+            "state_basis": "reset_scene"
+          },
+          "error": null,
+          "links": [
+            {
+              "label": "receipt",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/rpc/responses/dry.json"
+            },
+            {
+              "label": "diagnostics",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/probes/p000002.json"
+            }
+          ]
+        },
+        {
+          "id": "noeval",
+          "kind": "no_eval_execution",
+          "op": "run",
+          "status": "completed",
+          "at": 1793220866.1339397,
+          "version_id": null,
+          "execution_id": "e000001",
+          "probe_id": null,
+          "result": {
+            "artifacts": {
+              "diagnostics/planner.json": {
+                "path": "executions/e000001/diagnostics/planner.json",
+                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
+              },
+              "final_observation.json": {
+                "path": "executions/e000001/final_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "frames.json": {
+                "path": "executions/e000001/frames.json",
+                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
+              },
+              "initial_observation.json": {
+                "path": "executions/e000001/initial_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "policy.py": {
+                "path": "executions/e000001/policy.py",
+                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+              },
+              "result.json": {
+                "path": "executions/e000001/result.json",
+                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
+              },
+              "state_log.json": {
+                "path": "executions/e000001/state_log.json",
+                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
+              },
+              "stderr.txt": {
+                "path": "executions/e000001/stderr.txt",
+                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
+              },
+              "stdout.txt": {
+                "path": "executions/e000001/stdout.txt",
+                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
+              },
+              "trace.json": {
+                "path": "executions/e000001/trace.json",
+                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+              }
+            },
+            "outcome": {
+              "completed": true,
+              "error": null,
+              "rejected_calls": 0,
+              "schema": "attentionbench.agent-public-outcome.v1",
+              "sdk_calls": 0,
+              "status": "completed"
+            }
+          },
+          "error": null,
+          "links": [
+            {
+              "label": "receipt",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/rpc/responses/noeval.json"
+            },
+            {
+              "label": "stdout",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000001/stdout.txt"
+            },
+            {
+              "label": "stderr",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000001/stderr.txt"
+            },
+            {
+              "label": "diagnostics",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000001/diagnostics/planner.json"
+            },
+            {
+              "label": "code",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000001/policy.py"
+            },
+            {
+              "label": "trace",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000001/trace.json"
+            },
+            {
+              "label": "state log",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000001/state_log.json"
+            }
+          ]
+        },
+        {
+          "id": "v1",
+          "kind": "formal_version",
+          "op": "submit",
+          "status": "completed",
+          "at": 1793220866.194832,
+          "version_id": "v0001",
+          "execution_id": "e000002",
+          "probe_id": null,
+          "result": {
+            "artifacts": {
+              "diagnostics/planner.json": {
+                "path": "executions/e000002/diagnostics/planner.json",
+                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
+              },
+              "final_observation.json": {
+                "path": "executions/e000002/final_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "frames.json": {
+                "path": "executions/e000002/frames.json",
+                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
+              },
+              "initial_observation.json": {
+                "path": "executions/e000002/initial_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "policy.py": {
+                "path": "executions/e000002/policy.py",
+                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+              },
+              "result.json": {
+                "path": "executions/e000002/result.json",
+                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
+              },
+              "state_log.json": {
+                "path": "executions/e000002/state_log.json",
+                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
+              },
+              "stderr.txt": {
+                "path": "executions/e000002/stderr.txt",
+                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
+              },
+              "stdout.txt": {
+                "path": "executions/e000002/stdout.txt",
+                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
+              },
+              "trace.json": {
+                "path": "executions/e000002/trace.json",
+                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+              }
+            },
+            "eval": {
+              "advice": "Scan a smaller base offset.",
+              "evidence": [
+                {
+                  "claim": "Approach was rejected",
+                  "source": "stdout.txt"
+                }
+              ],
+              "passed": false,
+              "reason": "Blocked approach",
+              "status": "completed"
+            },
+            "execution_id": "e000002",
+            "help": {
+              "delivered": false,
+              "error": "public_view_unavailable",
+              "requested": false,
+              "status": "unavailable"
+            },
+            "outcome": {
+              "completed": true,
+              "error": null,
+              "rejected_calls": 0,
+              "schema": "attentionbench.agent-public-outcome.v1",
+              "sdk_calls": 0,
+              "status": "completed"
+            },
+            "version_id": "v0001"
+          },
+          "error": null,
+          "links": [
+            {
+              "label": "receipt",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/rpc/responses/v1.json"
+            },
+            {
+              "label": "stdout",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000002/stdout.txt"
+            },
+            {
+              "label": "stderr",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000002/stderr.txt"
+            },
+            {
+              "label": "diagnostics",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000002/diagnostics/planner.json"
+            },
+            {
+              "label": "code",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000002/policy.py"
+            },
+            {
+              "label": "trace",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000002/trace.json"
+            },
+            {
+              "label": "state log",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000002/state_log.json"
+            },
+            {
+              "label": "code bundle",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0001/bundle.py"
+            },
+            {
+              "label": "Eval verdict + advice",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0001/eval.json"
+            },
+            {
+              "label": "help",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0001/help.json"
+            }
+          ]
+        },
+        {
+          "id": "help",
+          "kind": "help",
+          "op": "ask_help",
+          "status": "completed",
+          "at": 1793220866.3129816,
+          "version_id": null,
+          "execution_id": null,
+          "probe_id": null,
+          "result": {
+            "reason": "help_integration_unavailable",
+            "status": "policy_denied"
+          },
+          "error": null,
+          "links": [
+            {
+              "label": "receipt",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/rpc/responses/help.json"
+            }
+          ]
+        },
+        {
+          "id": "v2",
+          "kind": "formal_version",
+          "op": "submit",
+          "status": "completed",
+          "at": 1793220866.3415937,
+          "version_id": "v0002",
+          "execution_id": "e000003",
+          "probe_id": null,
+          "result": {
+            "artifacts": {
+              "diagnostics/planner.json": {
+                "path": "executions/e000003/diagnostics/planner.json",
+                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
+              },
+              "final_observation.json": {
+                "path": "executions/e000003/final_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "frames.json": {
+                "path": "executions/e000003/frames.json",
+                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
+              },
+              "initial_observation.json": {
+                "path": "executions/e000003/initial_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "policy.py": {
+                "path": "executions/e000003/policy.py",
+                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+              },
+              "result.json": {
+                "path": "executions/e000003/result.json",
+                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
+              },
+              "state_log.json": {
+                "path": "executions/e000003/state_log.json",
+                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
+              },
+              "stderr.txt": {
+                "path": "executions/e000003/stderr.txt",
+                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
+              },
+              "stdout.txt": {
+                "path": "executions/e000003/stdout.txt",
+                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
+              },
+              "trace.json": {
+                "path": "executions/e000003/trace.json",
+                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+              }
+            },
+            "eval": {
+              "advice": "Scan a smaller base offset.",
+              "evidence": [
+                {
+                  "claim": "Approach was rejected",
+                  "source": "stdout.txt"
+                }
+              ],
+              "passed": true,
+              "reason": "Visible success",
+              "status": "completed"
+            },
+            "execution_id": "e000003",
+            "help": {
+              "content": "Try a smaller offset.",
+              "delivered": true,
+              "error": "ValueError",
+              "hint_human_seconds": 1231.960857142857,
+              "status": "unavailable"
+            },
+            "outcome": {
+              "completed": true,
+              "error": null,
+              "rejected_calls": 0,
+              "schema": "attentionbench.agent-public-outcome.v1",
+              "sdk_calls": 0,
+              "status": "completed"
+            },
+            "version_id": "v0002"
+          },
+          "error": null,
+          "links": [
+            {
+              "label": "receipt",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/rpc/responses/v2.json"
+            },
+            {
+              "label": "stdout",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000003/stdout.txt"
+            },
+            {
+              "label": "stderr",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000003/stderr.txt"
+            },
+            {
+              "label": "diagnostics",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000003/diagnostics/planner.json"
+            },
+            {
+              "label": "code",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000003/policy.py"
+            },
+            {
+              "label": "trace",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000003/trace.json"
+            },
+            {
+              "label": "state log",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000003/state_log.json"
+            },
+            {
+              "label": "code bundle",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0002/bundle.py"
+            },
+            {
+              "label": "Eval verdict + advice",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0002/eval.json"
+            },
+            {
+              "label": "help",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0002/help.json"
+            }
+          ]
+        },
+        {
+          "id": "v3",
+          "kind": "formal_version",
+          "op": "submit",
+          "status": "completed",
+          "at": 1793220866.4493155,
+          "version_id": "v0003",
+          "execution_id": "e000004",
+          "probe_id": null,
+          "result": {
+            "artifacts": {
+              "diagnostics/planner.json": {
+                "path": "executions/e000004/diagnostics/planner.json",
+                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
+              },
+              "final_observation.json": {
+                "path": "executions/e000004/final_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "frames.json": {
+                "path": "executions/e000004/frames.json",
+                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
+              },
+              "initial_observation.json": {
+                "path": "executions/e000004/initial_observation.json",
+                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+              },
+              "policy.py": {
+                "path": "executions/e000004/policy.py",
+                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+              },
+              "result.json": {
+                "path": "executions/e000004/result.json",
+                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
+              },
+              "state_log.json": {
+                "path": "executions/e000004/state_log.json",
+                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
+              },
+              "stderr.txt": {
+                "path": "executions/e000004/stderr.txt",
+                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
+              },
+              "stdout.txt": {
+                "path": "executions/e000004/stdout.txt",
+                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
+              },
+              "trace.json": {
+                "path": "executions/e000004/trace.json",
+                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+              }
+            },
+            "eval": {
+              "advice": "Scan a smaller base offset.",
+              "evidence": [
+                {
+                  "claim": "Approach was rejected",
+                  "source": "stdout.txt"
+                }
+              ],
+              "passed": null,
+              "reason": "Eval unavailable: timeout",
+              "status": "unavailable"
+            },
+            "execution_id": "e000004",
+            "help": {
+              "status": "not_requested"
+            },
+            "outcome": {
+              "completed": true,
+              "error": null,
+              "rejected_calls": 0,
+              "schema": "attentionbench.agent-public-outcome.v1",
+              "sdk_calls": 0,
+              "status": "completed"
+            },
+            "version_id": "v0003"
+          },
+          "error": null,
+          "links": [
+            {
+              "label": "receipt",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/rpc/responses/v3.json"
+            },
+            {
+              "label": "stdout",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000004/stdout.txt"
+            },
+            {
+              "label": "stderr",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000004/stderr.txt"
+            },
+            {
+              "label": "diagnostics",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000004/diagnostics/planner.json"
+            },
+            {
+              "label": "code",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000004/policy.py"
+            },
+            {
+              "label": "trace",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000004/trace.json"
+            },
+            {
+              "label": "state log",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/executions/e000004/state_log.json"
+            },
+            {
+              "label": "code bundle",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0003/bundle.py"
+            },
+            {
+              "label": "Eval verdict + advice",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0003/eval.json"
+            },
+            {
+              "label": "help",
+              "available": true,
+              "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/versions/v0003/help.json"
+            }
+          ]
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "version_id": "v0001",
+          "execution_id": "e000002",
+          "valid": true,
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": false,
+            "reason": "Blocked approach",
+            "status": "completed"
+          },
+          "eval_verdict": "fail",
+          "native_success": false,
+          "agree": true
+        },
+        {
+          "version": 2,
+          "version_id": "v0002",
+          "execution_id": "e000003",
+          "valid": true,
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": true,
+            "reason": "Visible success",
+            "status": "completed"
+          },
+          "eval_verdict": "pass",
+          "native_success": false,
+          "agree": false
+        },
+        {
+          "version": 3,
+          "version_id": "v0003",
+          "execution_id": "e000004",
+          "valid": true,
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": null,
+            "reason": "Eval unavailable: timeout",
+            "status": "unavailable"
+          },
+          "eval_verdict": "unavailable",
+          "native_success": true,
+          "agree": null
+        }
+      ],
+      "history": [
+        {
+          "label": "version history",
+          "available": true,
+          "url": "/api/dev-v2/experiments/devexp-72d85b88570eaf8ed93170bf/cells/55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec/agent/files/history/version_history.json"
+        }
+      ],
+      "state_basis": "reset_scene",
+      "failure_errors": [
+        {
+          "source": "controller",
+          "error": "broker_invariant: Solver exploded: fixture error verbatim",
+          "execution_id": null,
+          "version_id": null,
+          "reports": [
+            {
+              "source": "controller",
+              "error": "broker_invariant: Solver exploded: fixture error verbatim",
+              "execution_id": null,
+              "version_id": null
+            }
+          ]
+        }
+      ],
+      "details": [
+        {
+          "source": "help",
+          "error": "help_integration_unavailable",
+          "execution_id": null,
+          "version_id": null
+        },
+        {
+          "source": "e000001 stderr",
+          "error": "Rejected approach; retrying\n",
+          "execution_id": "e000001",
+          "version_id": null
+        },
+        {
+          "source": "e000002 stderr",
+          "error": "Rejected approach; retrying\n",
+          "execution_id": "e000002",
+          "version_id": null
+        },
+        {
+          "source": "e000003 stderr",
+          "error": "Rejected approach; retrying\n",
+          "execution_id": "e000003",
+          "version_id": null
+        },
+        {
+          "source": "e000004 stderr",
+          "error": "Rejected approach; retrying\n",
+          "execution_id": "e000004",
+          "version_id": null
+        },
+        {
+          "source": "errors/failure.json",
+          "error": {
+            "error": "Failure opening [host path]",
+            "error_class": "RuntimeError"
+          },
+          "execution_id": null,
+          "version_id": null
+        },
+        {
+          "source": "eval/v0003/error.json",
+          "error": {
+            "error_class": "timeout",
+            "error_text": "Eval exceeded its hard deadline"
+          },
+          "execution_id": null,
+          "version_id": null
+        },
+        {
+          "source": "help/v0002/error.json",
+          "error": {
+            "error": "invalid_usage"
+          },
+          "execution_id": null,
+          "version_id": null
+        },
+        {
+          "source": "help/v0001/error.json",
+          "error": {
+            "error": "evaluation-derived text rejected at Dev boundary"
+          },
+          "execution_id": null,
+          "version_id": null
+        },
+        {
+          "source": "turns/t000001/stderr",
+          "error": "Codex failed: synthetic failure\n",
+          "execution_id": null,
+          "version_id": null
+        }
+      ]
+    },
+    "dev_v2_compat": {
+      "key": "55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec",
+      "experiment_id": "devexp-72d85b88570eaf8ed93170bf",
+      "state": "needs_review",
+      "reason": "fatal_error",
+      "task_id": "open_cabinet",
+      "seed": 102,
+      "policy_id": "reactive_help",
+      "mode": "interactive",
+      "dev_mode": "agent",
+      "artifact_dir": "agent-view",
+      "versions": [
+        {
+          "agree": true,
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": false,
+            "reason": "Blocked approach",
+            "status": "completed"
+          },
+          "eval_verdict": "fail",
+          "execution_id": "e000002",
+          "formal_eligible": false,
+          "native_success": false,
+          "valid": true,
+          "version": 1,
+          "version_id": "v0001",
+          "source": {
+            "uri": "agent-view/compat/v0001/policy.py",
+            "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+          },
+          "sources": [
+            {
+              "name": "main.py",
+              "uri": "agent-view/compat/v0001/sources/main.py",
+              "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+            }
+          ],
+          "source_text": "from robot_sdk import left_arm\nr = left_arm.move_delta(0.01,0,0)\nprint(\"first\",r.get(\"rejected\"))\nleft_arm.move_delta(0,0.01,0)\nprint(\"authored stdout\")\nprint(\"authored stderr\",file=stderr)\n",
+          "config_sha256": "5b2cfa9d1e8fd5e17d997c7338f3109b353483cefc363e0d4719f6bb772546d2",
+          "diff_text": "",
+          "decision_content": null,
+          "help_content": null,
+          "help": null,
+          "request_view": null,
+          "evaluator_review": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": false,
+            "reason": "Blocked approach",
+            "status": "completed",
+            "reference_suggestion": "Scan a smaller base offset."
+          },
+          "eval_review": {
+            "uri": "agent-view/compat/v0001/eval.json",
+            "sha256": "41784dafe52e7483f78ada73d7492856c4979ac6799e360e4eee0df49654165c"
+          },
+          "model_input": null,
+          "reason": "Blocked approach",
+          "execution_state": "settled",
+          "citations": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt",
+              "uri": "agent-view/executions/e000002/stdout.txt"
+            }
+          ],
+          "recording": {
+            "frame_manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "replay_timing": {
+              "frame_trace_seconds": [
+                1
+              ],
+              "frame_video_seconds": [
+                0
+              ]
+            },
+            "video_saved": true,
+            "run_id": "run:55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec",
+            "attempt_id": "attempt:55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec:0",
+            "video": "agent-view/replays/e000002/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay.mp4"
+          },
+          "execution_status": "completed",
+          "frames": {
+            "uri": "agent-view/compat/v0001/frames.json",
+            "sha256": "5b9d2ba2730e616e5cf85f34c1ff81a8fd1b9208fb77a596a94ebfcdda46865a"
+          },
+          "instrument": {
+            "uri": "agent-view/compat/v0001/state-log.json",
+            "sha256": "444748675b73e1a78a0bb04d617f6d5b26e96d5233fb749e524ff2e08e8b6b3a"
+          },
+          "replays": {
+            "advisor_replay.mp4": {
+              "uri": "agent-view/replays/e000002/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay.mp4",
+              "sha256": "811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd"
+            },
+            "advisor_replay_side.mp4": {
+              "uri": "agent-view/replays/e000002/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay_side.mp4",
+              "sha256": "811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd"
+            }
+          },
+          "public_feedback": {
+            "completed": true,
+            "error": null,
+            "rejected_calls": 0,
+            "schema": "attentionbench.agent-public-outcome.v1",
+            "sdk_calls": 0,
+            "status": "completed"
+          },
+          "bundle": {
+            "uri": "agent-view/compat/v0001/bundle.json",
+            "sha256": "56a13f7ca81b690cc78d6340ca7b89bd8269e688fa1b92296716bf7a94ba841b"
+          },
+          "trace": {
+            "uri": "agent-view/compat/v0001/trace.json",
+            "sha256": "1da512b07d50724b38aa44a43a1fb7096e68c86cf68d56a41500550653231750"
+          },
+          "after_help": {
+            "delivered": false,
+            "error": "public_view_unavailable",
+            "requested": false,
+            "status": "unavailable",
+            "provider": "advisor",
+            "rejected": true,
+            "after_version": 1,
+            "reason": "evaluation-derived text rejected at Dev boundary"
+          }
+        },
+        {
+          "agree": false,
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": true,
+            "reason": "Visible success",
+            "status": "completed"
+          },
+          "eval_verdict": "pass",
+          "execution_id": "e000003",
+          "formal_eligible": false,
+          "native_success": false,
+          "valid": true,
+          "version": 2,
+          "version_id": "v0002",
+          "source": {
+            "uri": "agent-view/compat/v0002/policy.py",
+            "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+          },
+          "sources": [
+            {
+              "name": "main.py",
+              "uri": "agent-view/compat/v0002/sources/main.py",
+              "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+            }
+          ],
+          "source_text": "from robot_sdk import left_arm\nr = left_arm.move_delta(0.01,0,0)\nprint(\"first\",r.get(\"rejected\"))\nleft_arm.move_delta(0,0.01,0)\nprint(\"authored stdout\")\nprint(\"authored stderr\",file=stderr)\n",
+          "config_sha256": "5b2cfa9d1e8fd5e17d997c7338f3109b353483cefc363e0d4719f6bb772546d2",
+          "diff_text": "",
+          "decision_content": null,
+          "help_content": {
+            "delivered": false,
+            "error": "public_view_unavailable",
+            "requested": false,
+            "status": "unavailable",
+            "provider": "advisor",
+            "rejected": true,
+            "after_version": 1,
+            "reason": "evaluation-derived text rejected at Dev boundary"
+          },
+          "help": {
+            "uri": "agent-view/compat/v0001/help.json",
+            "sha256": "df4978005f5de141480a3551459b1ea66847c19ca43711ecf9f013da29186167"
+          },
+          "request_view": null,
+          "evaluator_review": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": true,
+            "reason": "Visible success",
+            "status": "completed",
+            "reference_suggestion": "Scan a smaller base offset."
+          },
+          "eval_review": {
+            "uri": "agent-view/compat/v0002/eval.json",
+            "sha256": "45fdcdf80a837356f1875c79b48db664eff717452c589b2834fff71d05db464f"
+          },
+          "model_input": null,
+          "reason": "Visible success",
+          "execution_state": "settled",
+          "citations": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt",
+              "uri": "agent-view/executions/e000003/stdout.txt"
+            }
+          ],
+          "recording": {
+            "frame_manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "replay_timing": {
+              "frame_trace_seconds": [
+                1
+              ],
+              "frame_video_seconds": [
+                0
+              ]
+            },
+            "video_saved": true,
+            "run_id": "run:55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec",
+            "attempt_id": "attempt:55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec:1",
+            "video": "agent-view/replays/e000003/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay.mp4"
+          },
+          "execution_status": "completed",
+          "frames": {
+            "uri": "agent-view/compat/v0002/frames.json",
+            "sha256": "5b9d2ba2730e616e5cf85f34c1ff81a8fd1b9208fb77a596a94ebfcdda46865a"
+          },
+          "instrument": {
+            "uri": "agent-view/compat/v0002/state-log.json",
+            "sha256": "444748675b73e1a78a0bb04d617f6d5b26e96d5233fb749e524ff2e08e8b6b3a"
+          },
+          "replays": {
+            "advisor_replay.mp4": {
+              "uri": "agent-view/replays/e000003/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay.mp4",
+              "sha256": "811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd"
+            },
+            "advisor_replay_side.mp4": {
+              "uri": "agent-view/replays/e000003/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay_side.mp4",
+              "sha256": "811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd"
+            }
+          },
+          "public_feedback": {
+            "completed": true,
+            "error": null,
+            "rejected_calls": 0,
+            "schema": "attentionbench.agent-public-outcome.v1",
+            "sdk_calls": 0,
+            "status": "completed"
+          },
+          "bundle": {
+            "uri": "agent-view/compat/v0002/bundle.json",
+            "sha256": "f8db14ac98dd1be293828decb4ed241d61690d7db72e1b58c45d9a3927fcb02d"
+          },
+          "trace": {
+            "uri": "agent-view/compat/v0002/trace.json",
+            "sha256": "356f4d7a7e3bf161c1059eec7ca76ec202302f2c6da1dc2b398e56bb28d5679b"
+          },
+          "after_help": {
+            "content": "Try a smaller offset.",
+            "delivered": true,
+            "error": "ValueError",
+            "hint_human_seconds": 274.818,
+            "status": "unavailable",
+            "provider": "advisor",
+            "rejected": false,
+            "after_version": 2,
+            "reason": "invalid_usage",
+            "recorded_hint_human_seconds": 1231.960857142857,
+            "cost_corrected": true
+          }
+        },
+        {
+          "agree": null,
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": null,
+            "reason": "Eval unavailable: timeout",
+            "status": "unavailable"
+          },
+          "eval_verdict": "unavailable",
+          "execution_id": "e000004",
+          "formal_eligible": false,
+          "native_success": true,
+          "valid": true,
+          "version": 3,
+          "version_id": "v0003",
+          "source": {
+            "uri": "agent-view/compat/v0003/policy.py",
+            "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+          },
+          "sources": [
+            {
+              "name": "main.py",
+              "uri": "agent-view/compat/v0003/sources/main.py",
+              "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
+            }
+          ],
+          "source_text": "from robot_sdk import left_arm\nr = left_arm.move_delta(0.01,0,0)\nprint(\"first\",r.get(\"rejected\"))\nleft_arm.move_delta(0,0.01,0)\nprint(\"authored stdout\")\nprint(\"authored stderr\",file=stderr)\n",
+          "config_sha256": "5b2cfa9d1e8fd5e17d997c7338f3109b353483cefc363e0d4719f6bb772546d2",
+          "diff_text": "",
+          "decision_content": null,
+          "help_content": {
+            "content": "Try a smaller offset.",
+            "delivered": true,
+            "error": "ValueError",
+            "hint_human_seconds": 274.818,
+            "status": "unavailable",
+            "provider": "advisor",
+            "rejected": false,
+            "after_version": 2,
+            "reason": "invalid_usage",
+            "recorded_hint_human_seconds": 1231.960857142857,
+            "cost_corrected": true
+          },
+          "help": {
+            "uri": "agent-view/compat/v0002/help.json",
+            "sha256": "fe3e16603911084790267e58e5748a196a1410f2ac18914cf702b5b2f32f4f58"
+          },
+          "request_view": null,
+          "evaluator_review": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": null,
+            "reason": "Eval unavailable: timeout",
+            "status": "unavailable",
+            "reference_suggestion": "Scan a smaller base offset."
+          },
+          "eval_review": {
+            "uri": "agent-view/compat/v0003/eval.json",
+            "sha256": "dd4b42b24c76989d21856e7b6b096f6ba87c2390d19d7b7621fca8719d47d0ab"
+          },
+          "model_input": null,
+          "reason": "Eval unavailable: timeout",
+          "execution_state": "settled",
+          "citations": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt",
+              "uri": "agent-view/executions/e000004/stdout.txt"
+            }
+          ],
+          "recording": {
+            "frame_manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "replay_timing": {
+              "frame_trace_seconds": [
+                1
+              ],
+              "frame_video_seconds": [
+                0
+              ]
+            },
+            "video_saved": true,
+            "run_id": "run:55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec",
+            "attempt_id": "attempt:55d545228d5f2e2c7c7c8568a280ea94e7dac8031c2f5e736d38c9e63cabddec:2",
+            "video": "agent-view/replays/e000004/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay.mp4"
+          },
+          "execution_status": "completed",
+          "frames": {
+            "uri": "agent-view/compat/v0003/frames.json",
+            "sha256": "5b9d2ba2730e616e5cf85f34c1ff81a8fd1b9208fb77a596a94ebfcdda46865a"
+          },
+          "instrument": {
+            "uri": "agent-view/compat/v0003/state-log.json",
+            "sha256": "444748675b73e1a78a0bb04d617f6d5b26e96d5233fb749e524ff2e08e8b6b3a"
+          },
+          "replays": {
+            "advisor_replay.mp4": {
+              "uri": "agent-view/replays/e000004/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay.mp4",
+              "sha256": "811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd"
+            },
+            "advisor_replay_side.mp4": {
+              "uri": "agent-view/replays/e000004/811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd/advisor_replay_side.mp4",
+              "sha256": "811f858318ea7fd559ec82a5bd4d8a62684da4b1e2d39949470c707527e7defd"
+            }
+          },
+          "public_feedback": {
+            "completed": true,
+            "error": null,
+            "rejected_calls": 0,
+            "schema": "attentionbench.agent-public-outcome.v1",
+            "sdk_calls": 0,
+            "status": "completed"
+          },
+          "bundle": {
+            "uri": "agent-view/compat/v0003/bundle.json",
+            "sha256": "33669919e18b023fc5cec3149999781e4accdaa001b060cc2ec293ea6e8beb28"
+          },
+          "trace": {
+            "uri": "agent-view/compat/v0003/trace.json",
+            "sha256": "2cdbaa8e080fba133802238e064ae83e8bbeb6fa4ae54bf40909ba21d59886f8"
+          },
+          "after_help": null
+        }
+      ],
+      "help_intervals": [
+        {
+          "help_content": {
+            "delivered": false,
+            "error": "public_view_unavailable",
+            "requested": false,
+            "status": "unavailable",
+            "provider": "advisor",
+            "rejected": true,
+            "after_version": 1,
+            "reason": "evaluation-derived text rejected at Dev boundary"
+          },
+          "help": {
+            "uri": "agent-view/compat/v0001/help.json",
+            "sha256": "df4978005f5de141480a3551459b1ea66847c19ca43711ecf9f013da29186167"
+          },
+          "request_view": null,
+          "decision_content": null,
+          "after_version": 1,
+          "version": 2,
+          "reserved_at": 1793220866.3129816,
+          "settled_at": 1793220866.3313696
+        },
+        {
+          "help_content": {
+            "content": "Try a smaller offset.",
+            "delivered": true,
+            "error": "ValueError",
+            "hint_human_seconds": 274.818,
+            "status": "unavailable",
+            "provider": "advisor",
+            "rejected": false,
+            "after_version": 2,
+            "reason": "invalid_usage",
+            "recorded_hint_human_seconds": 1231.960857142857,
+            "cost_corrected": true
+          },
+          "help": {
+            "uri": "agent-view/compat/v0002/help.json",
+            "sha256": "fe3e16603911084790267e58e5748a196a1410f2ac18914cf702b5b2f32f4f58"
+          },
+          "request_view": null,
+          "decision_content": null,
+          "after_version": 2,
+          "version": 3,
+          "reserved_at": 1793224466.6153083,
+          "settled_at": 1793224466.619536
+        }
+      ],
+      "jobs": [
+        {
+          "id": "request:v1",
+          "kind": "execute",
+          "version": 1,
+          "state": "settled",
+          "reserved_at": 1793220866.194832,
+          "settled_at": 1793220866.2927673,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "execution_status": "completed",
+            "bundle": {
+              "uri": "agent-view/compat/v0001/bundle.json",
+              "sha256": "56a13f7ca81b690cc78d6340ca7b89bd8269e688fa1b92296716bf7a94ba841b"
+            },
+            "trace": {
+              "uri": "agent-view/compat/v0001/trace.json",
+              "sha256": "1da512b07d50724b38aa44a43a1fb7096e68c86cf68d56a41500550653231750"
+            }
+          }
+        },
+        {
+          "id": "eval:v1",
+          "kind": "eval",
+          "version": 1,
+          "state": "settled",
+          "reserved_at": 1793220866.2641037,
+          "settled_at": 1793220866.2683132,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "eval_review": {
+              "uri": "agent-view/compat/v0001/eval.json",
+              "sha256": "41784dafe52e7483f78ada73d7492856c4979ac6799e360e4eee0df49654165c"
+            }
+          }
+        },
+        {
+          "id": "request:help",
+          "kind": "advisor",
+          "version": 2,
+          "state": "settled",
+          "reserved_at": 1793220866.3129816,
+          "settled_at": 1793220866.3313696,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "help": {
+              "uri": "agent-view/compat/v0001/help.json",
+              "sha256": "df4978005f5de141480a3551459b1ea66847c19ca43711ecf9f013da29186167"
+            }
+          }
+        },
+        {
+          "id": "request:v2",
+          "kind": "execute",
+          "version": 2,
+          "state": "settled",
+          "reserved_at": 1793220866.3415937,
+          "settled_at": 1793220866.4336934,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "execution_status": "completed",
+            "bundle": {
+              "uri": "agent-view/compat/v0002/bundle.json",
+              "sha256": "f8db14ac98dd1be293828decb4ed241d61690d7db72e1b58c45d9a3927fcb02d"
+            },
+            "trace": {
+              "uri": "agent-view/compat/v0002/trace.json",
+              "sha256": "356f4d7a7e3bf161c1059eec7ca76ec202302f2c6da1dc2b398e56bb28d5679b"
+            }
+          }
+        },
+        {
+          "id": "eval:v2",
+          "kind": "eval",
+          "version": 2,
+          "state": "settled",
+          "reserved_at": 1793220866.4105072,
+          "settled_at": 1793220866.4150953,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "eval_review": {
+              "uri": "agent-view/compat/v0002/eval.json",
+              "sha256": "45fdcdf80a837356f1875c79b48db664eff717452c589b2834fff71d05db464f"
+            }
+          }
+        },
+        {
+          "id": "request:v3",
+          "kind": "execute",
+          "version": 3,
+          "state": "settled",
+          "reserved_at": 1793220866.4493155,
+          "settled_at": 1793220866.5472033,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "execution_status": "completed",
+            "bundle": {
+              "uri": "agent-view/compat/v0003/bundle.json",
+              "sha256": "33669919e18b023fc5cec3149999781e4accdaa001b060cc2ec293ea6e8beb28"
+            },
+            "trace": {
+              "uri": "agent-view/compat/v0003/trace.json",
+              "sha256": "2cdbaa8e080fba133802238e064ae83e8bbeb6fa4ae54bf40909ba21d59886f8"
+            }
+          }
+        },
+        {
+          "id": "eval:v3",
+          "kind": "eval",
+          "version": 3,
+          "state": "settled",
+          "reserved_at": 1793220866.520699,
+          "settled_at": 1793220866.525367,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "eval_review": {
+              "uri": "agent-view/compat/v0003/eval.json",
+              "sha256": "dd4b42b24c76989d21856e7b6b096f6ba87c2390d19d7b7621fca8719d47d0ab"
+            }
+          }
+        },
+        {
+          "id": "help:v0002",
+          "kind": "advisor",
+          "version": 3,
+          "state": "settled",
+          "reserved_at": 1793224466.6153083,
+          "settled_at": 1793224466.619536,
+          "reservation": {},
+          "actual": {},
+          "receipt": {
+            "help": {
+              "uri": "agent-view/compat/v0002/help.json",
+              "sha256": "fe3e16603911084790267e58e5748a196a1410f2ac18914cf702b5b2f32f4f58"
+            }
+          }
+        }
+      ],
+      "budget": {
+        "executions": 40,
+        "dev_calls": null,
+        "eval_calls": 10,
+        "help_count": 1,
+        "provider_tokens": null
+      },
+      "used": {
+        "executions": 4,
+        "dev_calls": 0,
+        "eval_calls": 3,
+        "help_count": 1,
+        "provider_tokens": null
+      },
+      "ledger": {
+        "goal": {
+          "wall_used": 3600.5461502075195,
+          "wall_limit": 21600,
+          "wall_remaining": 17999.45384979248,
+          "limits": {
+            "executions": 40,
+            "dev_calls": null,
+            "eval_calls": 10,
+            "help_count": 1,
+            "provider_tokens": null
+          },
+          "used": {
+            "executions": 4,
+            "dev_calls": 0,
+            "eval_calls": 3,
+            "help_count": 1,
+            "provider_tokens": null
+          },
+          "reserved": {
+            "executions": 0,
+            "dev_calls": 0,
+            "eval_calls": 0,
+            "help_count": 0
+          }
+        }
+      },
+      "lifecycle": {
+        "phase": "terminal",
+        "can_stop": false
+      }
+    }
+  },
+  "files": {
+    "agent-view/compat/v0001/policy.py": {
+      "base64": "ZnJvbSByb2JvdF9zZGsgaW1wb3J0IGxlZnRfYXJtCnIgPSBsZWZ0X2FybS5tb3ZlX2RlbHRhKDAuMDEsMCwwKQpwcmludCgiZmlyc3QiLHIuZ2V0KCJyZWplY3RlZCIpKQpsZWZ0X2FybS5tb3ZlX2RlbHRhKDAsMC4wMSwwKQpwcmludCgiYXV0aG9yZWQgc3Rkb3V0IikKcHJpbnQoImF1dGhvcmVkIHN0ZGVyciIsZmlsZT1zdGRlcnIpCg==",
+      "mime": "text/plain; charset=utf-8"
+    },
+    "agent-view/compat/v0001/eval.json": {
+      "base64": "eyJhZHZpY2UiOiAiU2NhbiBhIHNtYWxsZXIgYmFzZSBvZmZzZXQuIiwgImV2aWRlbmNlIjogW3siY2xhaW0iOiAiQXBwcm9hY2ggd2FzIHJlamVjdGVkIiwgInNvdXJjZSI6ICJzdGRvdXQudHh0In1dLCAicGFzc2VkIjogZmFsc2UsICJyZWFzb24iOiAiQmxvY2tlZCBhcHByb2FjaCIsICJyZWZlcmVuY2Vfc3VnZ2VzdGlvbiI6ICJTY2FuIGEgc21hbGxlciBiYXNlIG9mZnNldC4iLCAic3RhdHVzIjogImNvbXBsZXRlZCJ9",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0001/sources/main.py": {
+      "base64": "ZnJvbSByb2JvdF9zZGsgaW1wb3J0IGxlZnRfYXJtCnIgPSBsZWZ0X2FybS5tb3ZlX2RlbHRhKDAuMDEsMCwwKQpwcmludCgiZmlyc3QiLHIuZ2V0KCJyZWplY3RlZCIpKQpsZWZ0X2FybS5tb3ZlX2RlbHRhKDAsMC4wMSwwKQpwcmludCgiYXV0aG9yZWQgc3Rkb3V0IikKcHJpbnQoImF1dGhvcmVkIHN0ZGVyciIsZmlsZT1zdGRlcnIpCg==",
+      "mime": "text/plain; charset=utf-8"
+    },
+    "agent-view/compat/v0001/help.json": {
+      "base64": "eyJhZnRlcl92ZXJzaW9uIjogMSwgImRlbGl2ZXJlZCI6IGZhbHNlLCAiZXJyb3IiOiAicHVibGljX3ZpZXdfdW5hdmFpbGFibGUiLCAicHJvdmlkZXIiOiAiYWR2aXNvciIsICJyZWFzb24iOiAiZXZhbHVhdGlvbi1kZXJpdmVkIHRleHQgcmVqZWN0ZWQgYXQgRGV2IGJvdW5kYXJ5IiwgInJlamVjdGVkIjogdHJ1ZSwgInJlcXVlc3RlZCI6IGZhbHNlLCAic3RhdHVzIjogInVuYXZhaWxhYmxlIn0=",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0001/trace.json": {
+      "base64": "eyJhdHRlbXB0X2lkIjogImF0dGVtcHQ6NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYzowIiwgImNvbmZpZ19zaGEyNTYiOiAiNWIyY2ZhOWQxZThmZDVlMTdkOTk3YzczMzhmMzEwOWIzNTM0ODNjZWZjMzYzZTBkNDcxOWY2YmI3NzI1NDZkMiIsICJlcnJvciI6IG51bGwsICJwb2xpY3lfc2hhMjU2IjogImE0MTJkNmFiODMyYzFiMDFiN2UzZTIyYzk3ZGM2NDcxYTRmN2FmMzI3NWFkMWU5NWZmMzVlMTgyYjQ3OTRhNmIiLCAicnVuX2lkIjogInJ1bjo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjIiwgInNka19ldmVudHMiOiBbXX0=",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0001/frames.json": {
+      "base64": "W3siZmlsZW5hbWUiOiAiZnJhbWVzL292ZXJ2aWV3LTAwMDAwMC1zaW0tMC4wMDAwMDBzLnBuZyIsICJpbmRleCI6IDAsICJwaHlzaWNhbF9zZXF1ZW5jZSI6IDAsICJzaGEyNTYiOiAiZTVmNjc0NzE5ZDc4YTBhZTNhZDMyZGIwODk3ZDMwMzY1MmYyMDAyNjg0NWQ3NDVlNDdmODUzNmNiZjMzMzBjZSIsICJzaW1fc2Vjb25kcyI6IDAsICJ2aWV3IjogIm92ZXJ2aWV3In1d",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0001/state-log.json": {
+      "base64": "W3sicGh5c2ljc19zdGVwIjogMSwgInFwb3MiOiBbMC4wLCAwLjFdfSwgeyJwaHlzaWNzX3N0ZXAiOiAyLCAicXBvcyI6IFswLjEsIDAuMl19XQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0001/camera_views.json": {
+      "base64": "eyJ2aWV3cyI6IHsiZXh0ZXJuYWwiOiB7ImxhYmVsIjogIk92ZXJ2aWV3IiwgInN0YXR1cyI6ICJzYXZlZCIsICJ2aWRlbyI6ICJhZHZpc29yX3JlcGxheS5tcDQifSwgInNpZGUiOiB7ImxhYmVsIjogIlNpZGUiLCAic3RhdHVzIjogInNhdmVkIiwgInZpZGVvIjogImFkdmlzb3JfcmVwbGF5X3NpZGUubXA0In19fQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0001/advisor_replay.mp4": {
+      "base64": "b2ZmbGluZSBmYWtlIHJlY29yZGluZyBieXRlcw==",
+      "mime": "video/mp4"
+    },
+    "agent-view/compat/v0001/advisor_replay_side.mp4": {
+      "base64": "b2ZmbGluZSBmYWtlIHJlY29yZGluZyBieXRlcw==",
+      "mime": "video/mp4"
+    },
+    "agent-view/compat/v0001/bundle.json": {
+      "base64": "eyJhcnRpZmFjdF9kaXIiOiAiYWdlbnQtdmlldy9jb21wYXQvdjAwMDEiLCAiYXJ0aWZhY3RzIjogeyJ0cmFjZSI6IHsic2hhMjU2IjogIjFkYTUxMmIwN2Q1MDcyNGIzOGFhNDRhNDNhMWZiNzA5NmU2OGM4NmNmNjhkNTZhNDE1MDA1NTA2NTMyMzE3NTAiLCAidXJpIjogImFnZW50LXZpZXcvY29tcGF0L3YwMDAxL3RyYWNlLmpzb24ifX0sICJhdHRlbXB0X2lkIjogImF0dGVtcHQ6NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYzowIiwgImNvbmZpZ19zaGEyNTYiOiAiNWIyY2ZhOWQxZThmZDVlMTdkOTk3YzczMzhmMzEwOWIzNTM0ODNjZWZjMzYzZTBkNDcxOWY2YmI3NzI1NDZkMiIsICJkZXZfdmVyc2lvbiI6IDEsICJmb3JtYWxfZWxpZ2libGUiOiBmYWxzZSwgIm5hdGl2ZV9ldmFsdWF0b3IiOiB7ImF0dGVtcHRfaWQiOiAiYXR0ZW1wdDo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjOjAiLCAiZXZhbHVhdGVkIjogdHJ1ZSwgInJ1bl9pZCI6ICJydW46NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYyJ9LCAibmF0aXZlX3N1Y2Nlc3MiOiBmYWxzZSwgInBvbGljeV9pZCI6ICJyZWFjdGl2ZV9oZWxwIiwgInBvbGljeV9zaGEyNTYiOiAiYTQxMmQ2YWI4MzJjMWIwMWI3ZTNlMjJjOTdkYzY0NzFhNGY3YWYzMjc1YWQxZTk1ZmYzNWUxODJiNDc5NGE2YiIsICJyZWNvcmRpbmciOiB7ImF0dGVtcHRfaWQiOiAiYXR0ZW1wdDo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjOjAiLCAiZnJhbWVfbWFuaWZlc3Rfc2hhMjU2IjogImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEiLCAicmVwbGF5X3RpbWluZyI6IHsiZnJhbWVfdHJhY2Vfc2Vjb25kcyI6IFsxXSwgImZyYW1lX3ZpZGVvX3NlY29uZHMiOiBbMF19LCAicnVuX2lkIjogInJ1bjo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjIiwgInZpZGVvIjogImFnZW50LXZpZXcvcmVwbGF5cy9lMDAwMDAyLzgxMWY4NTgzMThlYTdmZDU1OWVjODJhNWJkNGQ4YTYyNjg0ZGE0YjFlMmQzOTk0OTQ3MGM3MDc1MjdlN2RlZmQvYWR2aXNvcl9yZXBsYXkubXA0IiwgInZpZGVvX3NhdmVkIjogdHJ1ZX0sICJydW5faWQiOiAicnVuOjU1ZDU0NTIyOGQ1ZjJlMmM3YzdjODU2OGEyODBlYTk0ZTdkYWM4MDMxYzJmNWU3MzZkMzhjOWU2M2NhYmRkZWMifQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0002/policy.py": {
+      "base64": "ZnJvbSByb2JvdF9zZGsgaW1wb3J0IGxlZnRfYXJtCnIgPSBsZWZ0X2FybS5tb3ZlX2RlbHRhKDAuMDEsMCwwKQpwcmludCgiZmlyc3QiLHIuZ2V0KCJyZWplY3RlZCIpKQpsZWZ0X2FybS5tb3ZlX2RlbHRhKDAsMC4wMSwwKQpwcmludCgiYXV0aG9yZWQgc3Rkb3V0IikKcHJpbnQoImF1dGhvcmVkIHN0ZGVyciIsZmlsZT1zdGRlcnIpCg==",
+      "mime": "text/plain; charset=utf-8"
+    },
+    "agent-view/compat/v0002/eval.json": {
+      "base64": "eyJhZHZpY2UiOiAiU2NhbiBhIHNtYWxsZXIgYmFzZSBvZmZzZXQuIiwgImV2aWRlbmNlIjogW3siY2xhaW0iOiAiQXBwcm9hY2ggd2FzIHJlamVjdGVkIiwgInNvdXJjZSI6ICJzdGRvdXQudHh0In1dLCAicGFzc2VkIjogdHJ1ZSwgInJlYXNvbiI6ICJWaXNpYmxlIHN1Y2Nlc3MiLCAicmVmZXJlbmNlX3N1Z2dlc3Rpb24iOiAiU2NhbiBhIHNtYWxsZXIgYmFzZSBvZmZzZXQuIiwgInN0YXR1cyI6ICJjb21wbGV0ZWQifQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0002/sources/main.py": {
+      "base64": "ZnJvbSByb2JvdF9zZGsgaW1wb3J0IGxlZnRfYXJtCnIgPSBsZWZ0X2FybS5tb3ZlX2RlbHRhKDAuMDEsMCwwKQpwcmludCgiZmlyc3QiLHIuZ2V0KCJyZWplY3RlZCIpKQpsZWZ0X2FybS5tb3ZlX2RlbHRhKDAsMC4wMSwwKQpwcmludCgiYXV0aG9yZWQgc3Rkb3V0IikKcHJpbnQoImF1dGhvcmVkIHN0ZGVyciIsZmlsZT1zdGRlcnIpCg==",
+      "mime": "text/plain; charset=utf-8"
+    },
+    "agent-view/compat/v0002/help.json": {
+      "base64": "eyJhZnRlcl92ZXJzaW9uIjogMiwgImNvbnRlbnQiOiAiVHJ5IGEgc21hbGxlciBvZmZzZXQuIiwgImNvc3RfY29ycmVjdGVkIjogdHJ1ZSwgImRlbGl2ZXJlZCI6IHRydWUsICJlcnJvciI6ICJWYWx1ZUVycm9yIiwgImhpbnRfaHVtYW5fc2Vjb25kcyI6IDI3NC44MTgsICJwcm92aWRlciI6ICJhZHZpc29yIiwgInJlYXNvbiI6ICJpbnZhbGlkX3VzYWdlIiwgInJlY29yZGVkX2hpbnRfaHVtYW5fc2Vjb25kcyI6IDEyMzEuOTYwODU3MTQyODU3LCAicmVqZWN0ZWQiOiBmYWxzZSwgInN0YXR1cyI6ICJ1bmF2YWlsYWJsZSJ9",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0002/trace.json": {
+      "base64": "eyJhdHRlbXB0X2lkIjogImF0dGVtcHQ6NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYzoxIiwgImNvbmZpZ19zaGEyNTYiOiAiNWIyY2ZhOWQxZThmZDVlMTdkOTk3YzczMzhmMzEwOWIzNTM0ODNjZWZjMzYzZTBkNDcxOWY2YmI3NzI1NDZkMiIsICJlcnJvciI6IG51bGwsICJwb2xpY3lfc2hhMjU2IjogImE0MTJkNmFiODMyYzFiMDFiN2UzZTIyYzk3ZGM2NDcxYTRmN2FmMzI3NWFkMWU5NWZmMzVlMTgyYjQ3OTRhNmIiLCAicnVuX2lkIjogInJ1bjo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjIiwgInNka19ldmVudHMiOiBbXX0=",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0002/frames.json": {
+      "base64": "W3siZmlsZW5hbWUiOiAiZnJhbWVzL292ZXJ2aWV3LTAwMDAwMC1zaW0tMC4wMDAwMDBzLnBuZyIsICJpbmRleCI6IDAsICJwaHlzaWNhbF9zZXF1ZW5jZSI6IDAsICJzaGEyNTYiOiAiZTVmNjc0NzE5ZDc4YTBhZTNhZDMyZGIwODk3ZDMwMzY1MmYyMDAyNjg0NWQ3NDVlNDdmODUzNmNiZjMzMzBjZSIsICJzaW1fc2Vjb25kcyI6IDAsICJ2aWV3IjogIm92ZXJ2aWV3In1d",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0002/state-log.json": {
+      "base64": "W3sicGh5c2ljc19zdGVwIjogMSwgInFwb3MiOiBbMC4wLCAwLjFdfSwgeyJwaHlzaWNzX3N0ZXAiOiAyLCAicXBvcyI6IFswLjEsIDAuMl19XQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0002/camera_views.json": {
+      "base64": "eyJ2aWV3cyI6IHsiZXh0ZXJuYWwiOiB7ImxhYmVsIjogIk92ZXJ2aWV3IiwgInN0YXR1cyI6ICJzYXZlZCIsICJ2aWRlbyI6ICJhZHZpc29yX3JlcGxheS5tcDQifSwgInNpZGUiOiB7ImxhYmVsIjogIlNpZGUiLCAic3RhdHVzIjogInNhdmVkIiwgInZpZGVvIjogImFkdmlzb3JfcmVwbGF5X3NpZGUubXA0In19fQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0002/advisor_replay.mp4": {
+      "base64": "b2ZmbGluZSBmYWtlIHJlY29yZGluZyBieXRlcw==",
+      "mime": "video/mp4"
+    },
+    "agent-view/compat/v0002/advisor_replay_side.mp4": {
+      "base64": "b2ZmbGluZSBmYWtlIHJlY29yZGluZyBieXRlcw==",
+      "mime": "video/mp4"
+    },
+    "agent-view/compat/v0002/bundle.json": {
+      "base64": "eyJhcnRpZmFjdF9kaXIiOiAiYWdlbnQtdmlldy9jb21wYXQvdjAwMDIiLCAiYXJ0aWZhY3RzIjogeyJ0cmFjZSI6IHsic2hhMjU2IjogIjM1NmY0ZDdhN2UzYmYxNjFjMTA1OWVlYzdjYTc2ZWMyMDIzMDJmMmM2ZGExZGMyYjM5OGU1NmJiMjhkNTY3OWIiLCAidXJpIjogImFnZW50LXZpZXcvY29tcGF0L3YwMDAyL3RyYWNlLmpzb24ifX0sICJhdHRlbXB0X2lkIjogImF0dGVtcHQ6NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYzoxIiwgImNvbmZpZ19zaGEyNTYiOiAiNWIyY2ZhOWQxZThmZDVlMTdkOTk3YzczMzhmMzEwOWIzNTM0ODNjZWZjMzYzZTBkNDcxOWY2YmI3NzI1NDZkMiIsICJkZXZfdmVyc2lvbiI6IDIsICJmb3JtYWxfZWxpZ2libGUiOiBmYWxzZSwgIm5hdGl2ZV9ldmFsdWF0b3IiOiB7ImF0dGVtcHRfaWQiOiAiYXR0ZW1wdDo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjOjEiLCAiZXZhbHVhdGVkIjogdHJ1ZSwgInJ1bl9pZCI6ICJydW46NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYyJ9LCAibmF0aXZlX3N1Y2Nlc3MiOiBmYWxzZSwgInBvbGljeV9pZCI6ICJyZWFjdGl2ZV9oZWxwIiwgInBvbGljeV9zaGEyNTYiOiAiYTQxMmQ2YWI4MzJjMWIwMWI3ZTNlMjJjOTdkYzY0NzFhNGY3YWYzMjc1YWQxZTk1ZmYzNWUxODJiNDc5NGE2YiIsICJyZWNvcmRpbmciOiB7ImF0dGVtcHRfaWQiOiAiYXR0ZW1wdDo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjOjEiLCAiZnJhbWVfbWFuaWZlc3Rfc2hhMjU2IjogImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEiLCAicmVwbGF5X3RpbWluZyI6IHsiZnJhbWVfdHJhY2Vfc2Vjb25kcyI6IFsxXSwgImZyYW1lX3ZpZGVvX3NlY29uZHMiOiBbMF19LCAicnVuX2lkIjogInJ1bjo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjIiwgInZpZGVvIjogImFnZW50LXZpZXcvcmVwbGF5cy9lMDAwMDAzLzgxMWY4NTgzMThlYTdmZDU1OWVjODJhNWJkNGQ4YTYyNjg0ZGE0YjFlMmQzOTk0OTQ3MGM3MDc1MjdlN2RlZmQvYWR2aXNvcl9yZXBsYXkubXA0IiwgInZpZGVvX3NhdmVkIjogdHJ1ZX0sICJydW5faWQiOiAicnVuOjU1ZDU0NTIyOGQ1ZjJlMmM3YzdjODU2OGEyODBlYTk0ZTdkYWM4MDMxYzJmNWU3MzZkMzhjOWU2M2NhYmRkZWMifQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0003/policy.py": {
+      "base64": "ZnJvbSByb2JvdF9zZGsgaW1wb3J0IGxlZnRfYXJtCnIgPSBsZWZ0X2FybS5tb3ZlX2RlbHRhKDAuMDEsMCwwKQpwcmludCgiZmlyc3QiLHIuZ2V0KCJyZWplY3RlZCIpKQpsZWZ0X2FybS5tb3ZlX2RlbHRhKDAsMC4wMSwwKQpwcmludCgiYXV0aG9yZWQgc3Rkb3V0IikKcHJpbnQoImF1dGhvcmVkIHN0ZGVyciIsZmlsZT1zdGRlcnIpCg==",
+      "mime": "text/plain; charset=utf-8"
+    },
+    "agent-view/compat/v0003/eval.json": {
+      "base64": "eyJhZHZpY2UiOiAiU2NhbiBhIHNtYWxsZXIgYmFzZSBvZmZzZXQuIiwgImV2aWRlbmNlIjogW3siY2xhaW0iOiAiQXBwcm9hY2ggd2FzIHJlamVjdGVkIiwgInNvdXJjZSI6ICJzdGRvdXQudHh0In1dLCAicGFzc2VkIjogbnVsbCwgInJlYXNvbiI6ICJFdmFsIHVuYXZhaWxhYmxlOiB0aW1lb3V0IiwgInJlZmVyZW5jZV9zdWdnZXN0aW9uIjogIlNjYW4gYSBzbWFsbGVyIGJhc2Ugb2Zmc2V0LiIsICJzdGF0dXMiOiAidW5hdmFpbGFibGUifQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0003/sources/main.py": {
+      "base64": "ZnJvbSByb2JvdF9zZGsgaW1wb3J0IGxlZnRfYXJtCnIgPSBsZWZ0X2FybS5tb3ZlX2RlbHRhKDAuMDEsMCwwKQpwcmludCgiZmlyc3QiLHIuZ2V0KCJyZWplY3RlZCIpKQpsZWZ0X2FybS5tb3ZlX2RlbHRhKDAsMC4wMSwwKQpwcmludCgiYXV0aG9yZWQgc3Rkb3V0IikKcHJpbnQoImF1dGhvcmVkIHN0ZGVyciIsZmlsZT1zdGRlcnIpCg==",
+      "mime": "text/plain; charset=utf-8"
+    },
+    "agent-view/compat/v0003/trace.json": {
+      "base64": "eyJhdHRlbXB0X2lkIjogImF0dGVtcHQ6NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYzoyIiwgImNvbmZpZ19zaGEyNTYiOiAiNWIyY2ZhOWQxZThmZDVlMTdkOTk3YzczMzhmMzEwOWIzNTM0ODNjZWZjMzYzZTBkNDcxOWY2YmI3NzI1NDZkMiIsICJlcnJvciI6IG51bGwsICJwb2xpY3lfc2hhMjU2IjogImE0MTJkNmFiODMyYzFiMDFiN2UzZTIyYzk3ZGM2NDcxYTRmN2FmMzI3NWFkMWU5NWZmMzVlMTgyYjQ3OTRhNmIiLCAicnVuX2lkIjogInJ1bjo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjIiwgInNka19ldmVudHMiOiBbXX0=",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0003/frames.json": {
+      "base64": "W3siZmlsZW5hbWUiOiAiZnJhbWVzL292ZXJ2aWV3LTAwMDAwMC1zaW0tMC4wMDAwMDBzLnBuZyIsICJpbmRleCI6IDAsICJwaHlzaWNhbF9zZXF1ZW5jZSI6IDAsICJzaGEyNTYiOiAiZTVmNjc0NzE5ZDc4YTBhZTNhZDMyZGIwODk3ZDMwMzY1MmYyMDAyNjg0NWQ3NDVlNDdmODUzNmNiZjMzMzBjZSIsICJzaW1fc2Vjb25kcyI6IDAsICJ2aWV3IjogIm92ZXJ2aWV3In1d",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0003/state-log.json": {
+      "base64": "W3sicGh5c2ljc19zdGVwIjogMSwgInFwb3MiOiBbMC4wLCAwLjFdfSwgeyJwaHlzaWNzX3N0ZXAiOiAyLCAicXBvcyI6IFswLjEsIDAuMl19XQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0003/camera_views.json": {
+      "base64": "eyJ2aWV3cyI6IHsiZXh0ZXJuYWwiOiB7ImxhYmVsIjogIk92ZXJ2aWV3IiwgInN0YXR1cyI6ICJzYXZlZCIsICJ2aWRlbyI6ICJhZHZpc29yX3JlcGxheS5tcDQifSwgInNpZGUiOiB7ImxhYmVsIjogIlNpZGUiLCAic3RhdHVzIjogInNhdmVkIiwgInZpZGVvIjogImFkdmlzb3JfcmVwbGF5X3NpZGUubXA0In19fQ==",
+      "mime": "application/json"
+    },
+    "agent-view/compat/v0003/advisor_replay.mp4": {
+      "base64": "b2ZmbGluZSBmYWtlIHJlY29yZGluZyBieXRlcw==",
+      "mime": "video/mp4"
+    },
+    "agent-view/compat/v0003/advisor_replay_side.mp4": {
+      "base64": "b2ZmbGluZSBmYWtlIHJlY29yZGluZyBieXRlcw==",
+      "mime": "video/mp4"
+    },
+    "agent-view/compat/v0003/bundle.json": {
+      "base64": "eyJhcnRpZmFjdF9kaXIiOiAiYWdlbnQtdmlldy9jb21wYXQvdjAwMDMiLCAiYXJ0aWZhY3RzIjogeyJ0cmFjZSI6IHsic2hhMjU2IjogIjJjZGJhYThlMDgwZmJhMTMzODAyMjM4ZTA2NGFlODNlOGJiZWI2ZmE0YWU1NGJmNDA5MDliYTIxZDU5ODg2ZjgiLCAidXJpIjogImFnZW50LXZpZXcvY29tcGF0L3YwMDAzL3RyYWNlLmpzb24ifX0sICJhdHRlbXB0X2lkIjogImF0dGVtcHQ6NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYzoyIiwgImNvbmZpZ19zaGEyNTYiOiAiNWIyY2ZhOWQxZThmZDVlMTdkOTk3YzczMzhmMzEwOWIzNTM0ODNjZWZjMzYzZTBkNDcxOWY2YmI3NzI1NDZkMiIsICJkZXZfdmVyc2lvbiI6IDMsICJmb3JtYWxfZWxpZ2libGUiOiBmYWxzZSwgIm5hdGl2ZV9ldmFsdWF0b3IiOiB7ImF0dGVtcHRfaWQiOiAiYXR0ZW1wdDo1NWQ1NDUyMjhkNWYyZTJjN2M3Yzg1NjhhMjgwZWE5NGU3ZGFjODAzMWMyZjVlNzM2ZDM4YzllNjNjYWJkZGVjOjIiLCAiZXZhbHVhdGVkIjogdHJ1ZSwgInJ1bl9pZCI6ICJydW46NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYyJ9LCAibmF0aXZlX3N1Y2Nlc3MiOiB0cnVlLCAicG9saWN5X2lkIjogInJlYWN0aXZlX2hlbHAiLCAicG9saWN5X3NoYTI1NiI6ICJhNDEyZDZhYjgzMmMxYjAxYjdlM2UyMmM5N2RjNjQ3MWE0ZjdhZjMyNzVhZDFlOTVmZjM1ZTE4MmI0Nzk0YTZiIiwgInJlY29yZGluZyI6IHsiYXR0ZW1wdF9pZCI6ICJhdHRlbXB0OjU1ZDU0NTIyOGQ1ZjJlMmM3YzdjODU2OGEyODBlYTk0ZTdkYWM4MDMxYzJmNWU3MzZkMzhjOWU2M2NhYmRkZWM6MiIsICJmcmFtZV9tYW5pZmVzdF9zaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsICJyZXBsYXlfdGltaW5nIjogeyJmcmFtZV90cmFjZV9zZWNvbmRzIjogWzFdLCAiZnJhbWVfdmlkZW9fc2Vjb25kcyI6IFswXX0sICJydW5faWQiOiAicnVuOjU1ZDU0NTIyOGQ1ZjJlMmM3YzdjODU2OGEyODBlYTk0ZTdkYWM4MDMxYzJmNWU3MzZkMzhjOWU2M2NhYmRkZWMiLCAidmlkZW8iOiAiYWdlbnQtdmlldy9yZXBsYXlzL2UwMDAwMDQvODExZjg1ODMxOGVhN2ZkNTU5ZWM4MmE1YmQ0ZDhhNjI2ODRkYTRiMWUyZDM5OTQ5NDcwYzcwNzUyN2U3ZGVmZC9hZHZpc29yX3JlcGxheS5tcDQiLCAidmlkZW9fc2F2ZWQiOiB0cnVlfSwgInJ1bl9pZCI6ICJydW46NTVkNTQ1MjI4ZDVmMmUyYzdjN2M4NTY4YTI4MGVhOTRlN2RhYzgwMzFjMmY1ZTczNmQzOGM5ZTYzY2FiZGRlYyJ9",
+      "mime": "application/json"
+    }
+  }
+}

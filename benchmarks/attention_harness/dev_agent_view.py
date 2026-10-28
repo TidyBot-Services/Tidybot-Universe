@@ -36,18 +36,31 @@ def _read(root,name,default=None):
 
 
 def _public_name(name):
+    if re.fullmatch(r'executions/e\d+/(?:frames\.json|frames/(?:overview|side|top|left_wrist|right_wrist)-\d+-sim-\d+\.\d+s\.png)',name):return True
     return bool(re.fullmatch(r'(?:events/demo\.json|probes/p\d+\.json|rpc/responses/[A-Za-z0-9_-]{1,64}\.json|history/(?:versions|executions|probes)\.jsonl|history/version_history\.json|versions/v\d+/(?:policy\.py|bundle\.py|bundle-map\.json|submission\.json|eval\.json|help\.json|continue\.json|sources/[A-Za-z0-9_-]+\.py)|executions/e\d+/(?:policy\.py|stdout\.txt|stderr\.txt|trace\.json|state_log\.json|result\.json|initial_observation\.json|final_observation\.json|diagnostics/planner\.json))',name))
 
 
 def artifact(cell,name):
-    """Only enumerated, digest-verified public workspace copies, never private files."""
-    if not is_agent(cell) or not _public_name(name):raise FileNotFoundError('Not an agent public artifact')
+    """Verified public copies and enumerated operator display evidence only."""
+    if not is_agent(cell):raise FileNotFoundError('Not an agent public artifact')
+    if name.startswith(('compat/','replays/')):
+        from .dev_agent_ui_projection import evidence
+        return evidence(cell,name)
+    if not _public_name(name):raise FileNotFoundError('Not an agent public artifact')
     root=Path(cell['artifact_dir'])/'agent'
     try:
         raw=read_beneath(root/'ws',name,32*1024*1024)
         canonical=read_beneath(root/'private/public',name,32*1024*1024)
     except (OSError,ValueError):raise FileNotFoundError('Agent public evidence unavailable') from None
     if raw!=canonical:raise FileNotFoundError('Agent public evidence digest mismatch')
+    if name.endswith('.png'):
+        import hashlib
+        folder,filename=name.split('/frames/',1)
+        manifest=_read(root/'private/public',folder+'/frames.json',[])
+        entry=next((r for r in manifest if r.get('filename')=='frames/'+filename),None)
+        if not entry or hashlib.sha256(raw).hexdigest()!=entry.get('sha256'):
+            raise FileNotFoundError('Agent frame digest mismatch')
+        return raw,'image/png'
     text=raw.decode('utf-8')
     # Scrub any paths from text too. This endpoint cannot download private/raw logs.
     return (clean(json.loads(text)),'application/json') if name.endswith('.json') else (clean(text),'text/plain; charset=utf-8')
@@ -108,8 +121,8 @@ def projection(store,cell,*,api='/api/dev-v2',now=None):
                 if stderr.strip():error(eid+' stderr',stderr)
             except FileNotFoundError:pass
             for event in _read(public,'executions/'+eid+'/trace.json',[]) or []:
-                if isinstance(event,dict) and (event.get('error') or event.get('status') in ('failed','rejected','timeout')):
-                    error(eid+' action',{k:event[k] for k in ('status','error','reason','diagnostics') if k in event})
+                if isinstance(event,dict) and (event.get('error') or event.get('rejected') or event.get('status') in ('failed','rejected','timeout')):
+                    error(eid+' action',{k:event[k] for k in ('status','rejected','error','reason','diagnostics') if k in event})
         if vid:
             names += [(label,'versions/'+vid+'/'+name) for label,name in [('code bundle','bundle.py'),('Eval verdict + advice','eval.json'),('help','help.json')]]
             current_help=_read(public,'versions/'+vid+'/help.json')
@@ -120,7 +133,7 @@ def projection(store,cell,*,api='/api/dev-v2',now=None):
         error(rid,result.get('eval',{}).get('error'))
         if op=='ask_help' and result.get('status') not in (None,'delivered'):error(rid,result.get('reason') or result.get('error'))
         records.append(dict(id=rid,kind='formal_version' if op=='submit' else 'no_eval_execution' if op=='run' else 'help' if op=='ask_help' else 'probe',
-            op=op,status=response['status'],at=job.get('reserved_at'),version_id=vid,execution_id=eid,probe_id=pid,
+            op=op,status=response['status'],at=job.get('reserved_at'),version_id=vid or (result.get('version_id') if op=='ask_help' else None),execution_id=eid,probe_id=pid,
             result=clean(result),error=clean(response.get('error')),links=links(names)))
     demo=_read(public,'events/demo.json')
     if demo is not None:
@@ -173,4 +186,7 @@ def projection(store,cell,*,api='/api/dev-v2',now=None):
         quota=clean(quota),dev_model=selection.get('dev_model','gpt-6-astra'),eval_model=selection.get('eval_model','gpt-6-astra'),
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
         history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
+    from .dev_agent_ui_projection import compat, error_groups
+    result['agent']['failure_errors'], result['agent']['details'] = error_groups(errors, records)
+    result['dev_v2_compat']=compat(cell,result['agent'],jobs)
     return result

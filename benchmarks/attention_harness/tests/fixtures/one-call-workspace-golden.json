@@ -1,0 +1,189 @@
+{
+  "baseline": "fd972d6; existing test_dev_workspace.cjs rendererSnapshot(dev2)",
+  "snapshot": {
+    "run": {
+      "run_id": "private_record_id",
+      "suite": "robosuite",
+      "task_id": "cube_lift",
+      "status": "completed",
+      "seed": 101,
+      "policy_id": "reactive_help",
+      "assistance_mode": "live_human_first",
+      "execution_target": "robosuite_sim",
+      "developer_model": "provider/GLM",
+      "locked": true
+    },
+    "task_plan": {
+      "max_attempts": 3
+    },
+    "attempts": [
+      {
+        "attempt_id": "a1",
+        "index": 0,
+        "status": "failed",
+        "execution_complete": true,
+        "started_at": 100,
+        "ended_at": 110,
+        "dev_version": 1
+      }
+    ],
+    "traces": {
+      "t1": {
+        "trace_id": "t1",
+        "attempt_id": "a1",
+        "events": [
+          {
+            "timestamp": 1,
+            "timestamp_basis": "relative",
+            "status": "failed",
+            "operation": "right_arm.move_delta"
+          }
+        ],
+        "failure": {
+          "message": "RuntimeError: joint tracking exceeds 4 mrad"
+        },
+        "evidence": [
+          {
+            "media_url": "/replay.mp4",
+            "mime_type": "video/mp4"
+          }
+        ]
+      }
+    },
+    "requests": [
+      {
+        "request_id": "r1",
+        "response_id": "reply1",
+        "trace_id": "t1",
+        "attempt_id": "a1",
+        "request_type": "hint",
+        "state": "answered",
+        "mode": "automatic"
+      }
+    ],
+    "responses": {
+      "reply1": {
+        "responder": "advisor_proxy",
+        "content": "Use smaller movements."
+      }
+    },
+    "response_evidence": {},
+    "response_uses": {},
+    "station": {},
+    "eval": {
+      "native_success": false,
+      "stopped_reason": "max_attempts"
+    },
+    "dev_evidence_gaps": [],
+    "work_items": [],
+    "attention_control": {
+      "binding": {
+        "allowed_policies": []
+      },
+      "read_only": true,
+      "active_policy": "reactive_help",
+      "segments": []
+    },
+    "resources": {
+      "assistance": {
+        "used": 1,
+        "limit": 2,
+        "reserved": 0,
+        "remaining": 1
+      },
+      "executions": {
+        "used": 1,
+        "limit": 3,
+        "reserved": 0,
+        "remaining": 2
+      },
+      "help_count": {
+        "used": 1,
+        "limit": 2,
+        "reserved": 0,
+        "remaining": 1
+      },
+      "model_calls": {
+        "used": 1,
+        "limit": 3,
+        "reserved": 0,
+        "remaining": 2
+      },
+      "tokens": {
+        "used": 500,
+        "limit": 1000,
+        "reserved": 0,
+        "remaining": 500
+      },
+      "execution_seconds": {
+        "used": 10,
+        "limit": 60,
+        "reserved": 0,
+        "remaining": 50
+      },
+      "wall_seconds": {
+        "used": 50,
+        "limit": 100,
+        "reserved": 0,
+        "remaining": 50
+      },
+      "gpu_seconds": {
+        "used": 0,
+        "limit": 60,
+        "reserved": 0,
+        "remaining": 60
+      }
+    },
+    "dev_session": {
+      "session_id": "dev_fixture",
+      "state": "budget_exhausted",
+      "locked": {
+        "config": {}
+      },
+      "model": "provider/GLM",
+      "versions": [
+        {
+          "version": 1,
+          "valid": true,
+          "reason": "Use smaller movements.",
+          "source": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ],
+      "jobs": [],
+      "used": {
+        "executions": 3
+      },
+      "budget": {
+        "executions": 3
+      },
+      "remaining": {},
+      "reason": "executions exhausted",
+      "attention_control": {
+        "binding": {
+          "allowed_policies": []
+        },
+        "read_only": true,
+        "active_policy": "reactive_help",
+        "segments": []
+      }
+    },
+    "dev_v2": {
+      "key": "cell1",
+      "mode": "interactive",
+      "experiment_id": "experiment1",
+      "jobs": [],
+      "ledger": {
+        "goal_id": "private_goal",
+        "goal": {
+          "limits": {},
+          "used": {},
+          "reserved": {}
+        },
+        "recompute_matches": true
+      }
+    }
+  },
+  "html": "<header class=\"op-page-title\" data-page-title><div><p>Run · Reactive help · Scene seed 101<span class=\"op-excluded\" data-sdk-description title=\"Unsealed legacy SDK description\">SDK description: base stationary</span></p><h1>Lift the cube</h1></div><div class=\"op-title-actions\"><button class=\"ab-button-primary op-new-run\" type=\"button\" data-open-launch disabled><span class=\"op-new-run-tri\" aria-hidden=\"true\"></span>New run</button></div></header><section class=\"panel ab-run-settings\" data-run-settings data-settings-run=\"private_record_id\" aria-label=\"Task setup\"><div class=\"panel-title op-heading\"><span class=\"op-number\">01</span><h3>TASK SETUP</h3><span>What is the robot trying to do?</span></div><div class=\"op-fields\">\n      <div class=\"op-field op-wide op-task\"><span>Task</span><b>Lift the cube</b><small>Robosuite</small></div>\n      <div class=\"op-field\"><span>Robot</span><b>Simulated robot arm</b><small>Base stays in place</small></div>\n      <div class=\"op-field\"><span>Where it runs</span><b>Robosuite simulator</b><small>Scene seed 101</small></div>\n      <div class=\"op-field op-wide\"><span>Help strategy</span><b>Reactive help</b><small>Ask for help after each failed attempt · an automatic advisor answers</small></div>\n      <div class=\"op-field\"><span>Dev agent</span><b>GLM</b><small>AI rewrites its plan after each attempt</small></div>\n      <div class=\"op-field\"><span>Eval agent</span><b>Simulator&#39;s own task check</b><small>Success is decided by the simulator, not by an AI model</small></div></div></section><section class=\"panel ab-run-overview\" data-core-region=\"status\" data-run-overview=\"private_record_id\" data-expanded=\"true\" data-tone=\"failed\" aria-label=\"Status and progress\"><div class=\"panel-title op-heading\"><span class=\"op-number\">02</span><h3>STATUS &amp; PROGRESS</h3><span>How is it going? · PARCC (GLM + Qwen)</span></div><div class=\"op-outcome failed\" data-operator-outcome=\"failed\" role=\"status\"><strong>✕ NOT COMPLETED</strong><div><p>All 1 attempts failed. In the last attempt the arm moved too abruptly, so the safety controller halted it at 0:01.</p><p>Ended because it used all 3 allowed attempts</p></div></div><div class=\"op-attention\" data-attention-efficiency data-attention-state=\"unsolved\" aria-label=\"Attention efficiency\"><div class=\"op-attn-head\" title=\"0 of 3 attempts solved · not solved · no help requested · 0 s of human time · 1 credit\"><h4>Attention efficiency</h4><span class=\"op-attn-outcome unsolved\">Not solved</span><span class=\"op-attn-progress\">1 of 3 attempts used</span><span class=\"op-attn-sr\">0 of 3 attempts solved · not solved · no help requested · 0 s of human time · 1 credit</span></div><div class=\"op-attn-filters\" role=\"group\" aria-label=\"Highlight help requests\"><button type=\"button\" class=\"op-attn-filter\" data-attn-filter=\"all\" data-kpi=\"progress\" aria-pressed=\"true\"><b>0</b><span>Help requests</span></button><button type=\"button\" class=\"op-attn-filter\" data-attn-filter=\"human\" data-kpi=\"spent\" aria-pressed=\"false\" title=\"Time from a help request to a person&#39;s reply. Automatic-advisor replies count as credits, not human time.\"><b>0 s</b><span>Human attention</span></button><button type=\"button\" class=\"op-attn-filter\" data-attn-filter=\"paid\" data-kpi=\"hit\" aria-pressed=\"false\"><b>—</b><span>Help that paid off</span></button><button type=\"button\" class=\"op-attn-filter\" data-attn-filter=\"rate\" data-kpi=\"rate\" aria-pressed=\"false\" title=\"tasks solved so far. Tasks solved ÷ human attention; pass/fail only, no partial credit.\"><b>0</b><span>Progress per attention</span></button></div><div class=\"op-attn-scroll\" tabindex=\"0\" aria-label=\"Attempts and help requests; scroll for more\"><svg viewBox=\"0 0 320 190\" style=\"width:100%;min-width:320px;max-width:320px\" preserveAspectRatio=\"xMinYMin meet\" role=\"group\" aria-label=\"Attempts and help requests in order\"><line x1=\"72\" x2=\"120\" y1=\"92\" y2=\"92\" class=\"op-attn-connector\"/><g class=\"op-attn-end unsolved\"><rect x=\"120\" y=\"71\" width=\"116\" height=\"42\" rx=\"21\"/><text class=\"op-attn-end-small\" x=\"178\" y=\"88\" text-anchor=\"middle\">Ended</text><text x=\"178\" y=\"104\" text-anchor=\"middle\">Not completed</text></g><g class=\"op-attn-attempt failed\" data-attn-attempt=\"1\" data-attn-watch=\"a1\" role=\"button\" tabindex=\"0\" aria-label=\"Watch Attempt 1\"><title>Watch Attempt 1</title><circle cx=\"48\" cy=\"92\" r=\"24\"/><text x=\"48\" y=\"99\" text-anchor=\"middle\">✕</text><text class=\"op-attn-attempt-name\" x=\"48\" y=\"136\" text-anchor=\"middle\">Attempt 1</text></g></svg></div><div class=\"op-attn-legend\"><span><i class=\"failed\"></i>Failed attempt</span><span><i class=\"solved\"></i>Solved</span><span><i class=\"automatic\"></i>Automatic advisor</span><span><i class=\"person\"></i>Person replied</span><span>Bar under each help = attention it cost</span></div><div class=\"op-attn-detail\" data-attn-detail aria-live=\"polite\"><p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p></div></div><div class=\"op-controls\" data-ended=\"true\"><button type=\"button\" data-open-run-again>Run again with the same settings</button><span class=\"op-controls-sp\"></span><button type=\"button\" class=\"danger\" id=\"ab-emergency-interrupt\" disabled>■ Stop run</button><button type=\"button\" data-dev-resume disabled>Resume</button></div><p data-picture-warning hidden></p></section><section class=\"panel ab-execution-viewer\" data-core-region=\"execution\" data-execution-viewer data-replay-attempt=\"a1\"><div class=\"panel-title op-heading\"><span class=\"op-number\">03</span><h3>REPLAY &amp; ATTEMPTS</h3><span>What did the robot do, and where did it go wrong?</span></div><nav class=\"ab-history-tabs op-tabs\" aria-label=\"Attempt selection\"><button type=\"button\" data-history-select=\"live\" aria-pressed=\"false\" class=\"op-tab-live\"><i class=\"op-live-dot\" aria-hidden=\"true\"></i>Current view</button><button type=\"button\" data-history-select=\"a1\" aria-pressed=\"true\">✕ Attempt 1</button></nav><div class=\"ab-viewer-layout\"><div class=\"ab-viewer-media\"><figure class=\"op-video\" data-op-stage=\"replay\" data-state=\"loading\"><span class=\"op-failure-tag\">Attempt 1 · failed at 0:01</span><div class=\"op-loading\" data-op-loading role=\"status\" aria-live=\"polite\"><div class=\"op-loading-word\" aria-hidden=\"true\">LOADING</div><div class=\"op-loading-text\" data-op-loading-text>Loading replay…</div><i class=\"op-loading-bar\" aria-hidden=\"true\"></i></div><video data-history-replay id=\"ab-history-replay\" data-replay-key=\"[&quot;private_record_id&quot;,&quot;a1&quot;,&quot;t1&quot;,null,null,&quot;/replay.mp4&quot;]\" controls playsinline preload=\"metadata\" src=\"/replay.mp4\" aria-label=\"Attempt 1 execution replay\" data-operator-failure-seconds=\"1\"></video></figure></div><aside class=\"ab-viewer-trace\"><h4>What the robot did</h4><p class=\"op-hint\">Click a step to jump to that moment in the video.</p><div class=\"ab-history-events\" ><details data-history-event class=\"op-step failed\"><summary data-replay-event=\"0\" data-replay-seconds=\"1\" data-replay-mode=\"approximate\" title=\"Seek to recorded time\"><time>0:01</time><span>✕</span><div><b>Moved right arm a small step</b><small class=\"op-why\">Stopped: the arm moved too abruptly, so the safety controller halted it</small></div></summary></details></div><details class=\"op-revision\" data-persist-detail=\"operator-revision:1\"><summary>What changed in this attempt (version 1)</summary><div class=\"op-clamp six\" data-operator-copy>Use smaller movements.</div><button type=\"button\" class=\"op-more\" data-operator-expand>Show more</button></details></aside></div><section class=\"op-eval-review\" data-eval-review data-ai-review data-review-mode=\"unavailable\" data-attempt=\"a1\"><h4>Eval review <span class=\"op-review-tag\" data-eval-verdict data-result=\"unavailable\">Not reviewed</span></h4></section></section><section class=\"panel detail ab-current-request\" data-core-region=\"request\" data-state=\"idle\" aria-label=\"Help and replies\"><div class=\"panel-title op-heading\"><span class=\"op-number\">04</span><h3>HELP &amp; REPLIES</h3><span>Do I need to do anything?</span></div><div class=\"op-action none\"><h4>✓ Nothing to do</h4><p>This run has ended. The help the robot received is listed below.</p></div><ul class=\"op-thread\"><li data-operator-request=\"r1\"><div><b>After attempt 1</b><small>Answered</small></div><div><p class=\"op-asked\">Asked: \"Attempt 1 failed. How should I fix it?\"</p><p class=\"op-moment-generic\" data-moment-generic>Generic request</p><span class=\"op-who\">Advisor (simulated human)</span><div class=\"op-clamp\" data-operator-copy><p>Use smaller movements.</p></div><button type=\"button\" class=\"op-more\" data-operator-expand=\"Read full reply\">Read full reply</button></div></li></ul></section><section class=\"panel ab-resource-details\" data-resource-details data-resources-run=\"private_record_id\" aria-label=\"Resources\"><div class=\"panel-title op-heading\"><span class=\"op-number\">05</span><h3>RESOURCES</h3><span>How much budget is left?</span></div><div class=\"op-meters\"><div data-dev-budget-key=\"executions\"><div class=\"op-meter\" data-fill=\"33\"><span>Attempts</span><b><em data-count-to=\"1\" data-count-seconds=\"\">1</em> <small>/ 3</small></b><div class=\"op-budget-track\"><i style=\"width:33.33333333333333%\"></i></div></div></div><div data-dev-budget-key=\"eval_calls\"><div class=\"op-meter op-meter--na\" title=\"Not tracked for this run\"><span>Reviews requested</span><b>—</b><small>Not tracked for this run</small></div></div><div data-dev-budget-key=\"help_count\"><div class=\"op-meter\" data-fill=\"50\"><span>Help requests</span><b><em data-count-to=\"1\" data-count-seconds=\"\">1</em> <small>/ 2</small></b><div class=\"op-budget-track\"><i style=\"width:50%\"></i></div></div></div><div data-dev-budget-key=\"help_wait_seconds\"><div class=\"op-meter op-meter--na\" title=\"Not tracked for this run\"><span>Waiting for replies</span><b>—</b><small>Not tracked for this run</small></div></div><div data-dev-budget-key=\"model_calls\"><div class=\"op-meter\" data-fill=\"33\"><span>AI plan rewrites</span><b><em data-count-to=\"1\" data-count-seconds=\"\">1</em> <small>/ 3</small></b><div class=\"op-budget-track\"><i style=\"width:33.33333333333333%\"></i></div></div></div><div data-dev-budget-key=\"execution_seconds\"><div class=\"op-meter\" data-fill=\"17\"><span>Robot run time</span><b><em data-count-to=\"10\" data-count-seconds=\"1\">0:10</em> <small>/ 1:00</small></b><div class=\"op-budget-track\"><i style=\"width:16.666666666666664%\"></i></div></div></div></div><div class=\"op-budget-foot\"><span>AI usage: 500 of 1k tokens</span><span><a href=\"/api/dev-v2/experiments/experiment1/export.csv\" target=\"_blank\" rel=\"noopener\">Download data (CSV)</a></span></div></section><p class=\"minor\" id=\"ab-live-message\" aria-live=\"polite\"></p>"
+}
