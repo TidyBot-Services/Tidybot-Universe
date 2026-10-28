@@ -131,3 +131,17 @@ def test_ledger_version_record_failure_is_the_ledger_invariant(ws):  # noqa: F81
 def test_allowed_fatal_list_is_closed():
     assert FATAL_CAUSES=={'ledger_invariant','broker_invariant','quota_stop','quota_unavailable',
                           'wall_stop','operator_cancel','session_failure'}
+
+
+def test_memory_service_failure_after_a_version_is_not_fatal(ws):  # noqa: F811
+    class FlakyMemory:
+        def start(self):return 'Memory for v1: none'
+        message=''
+        def recheck(self):pass
+        def open(self,version,previous):raise ConnectionError('memory service unreachable')
+    ledger=AgentLedger(ws.private/'db','cell')
+    session=fake_session(ws,["tool('submit','--entry','work/main.py');tool('submit','--entry','work/main.py')","pass"])
+    result=drive(ws,session,ledger,executor=Executor(),prober=FakeProber(),memory=FlakyMemory())
+    assert result['reason']=='agent_idle' and 'fatal_cause' not in result
+    assert ledger.snapshot()['used']['formal_versions']==2
+    assert result['memory_errors'][0]['version']==2 and 'unreachable' in result['memory_errors'][0]['error']

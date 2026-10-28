@@ -55,7 +55,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
           version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60,
           memory=None, exporter=None):
     """Injectable offline seam; production always supplies a preflighted session."""
-    stop=None;successful={};completion_failures={};delivered=0;idle=0;broker=None;events=[];session_failures=0
+    stop=None;successful={};completion_failures={};delivered=0;idle=0;broker=None;events=[];session_failures=0;export_errors=[];memory_errors=[]
     state_path=workspace.private/'loop.json'
     if state_path.exists():
         state=json.loads(state_path.read_bytes());delivered=state['delivered'];idle=state['idle'];events=state['events']
@@ -94,15 +94,17 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             workspace.publish('versions/'+vid+'/continue.json',dict(message=CONTINUE_MESSAGE))
         if memory and stop is None:
             previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
-            value['memory_message']=memory.open(int(vid[1:])+1,previous)
+            try:value['memory_message']=memory.open(int(vid[1:])+1,previous)
+            except Exception as exc:
+                # Memory is advice; an unavailable service delivers no notes for vN+1.
+                memory_errors.append(dict(version=int(vid[1:])+1,error=type(exc).__name__+': '+str(exc)))
     def settled(response):
         nonlocal stop
         if exporter:
+            # Export is a per-version step (r6 policy): a failure is recorded on the
+            # cell and in the result, never a fatal stop; import simply refuses it.
             try:exporter.settle(response,memory)
-            except Exception as exc:
-                completion_failures['export']=str(exc)
-                stop='fatal_error';broker.stop_reason='run_error';session.cancel('run_error')
-                raise
+            except Exception as exc:export_errors.append(dict(request_id=response['request_id'],error=type(exc).__name__+': '+str(exc)))
         if response['status']=='completed':
             event=dict(event_id=len(events)+1,request_id=response['request_id'],op=response['op'],
                        response='rpc/responses/'+response['request_id']+'.json')
@@ -189,6 +191,8 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         if stop=='operator_paused':ledger.pause()
         result=dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable') else 'failed',
                     reason=stop,resources=ledger.snapshot())
+        if export_errors:result['export_errors']=export_errors
+        if memory_errors:result['memory_errors']=memory_errors
         if stop=='fatal_error':
             # Surface the cause; a bare reason hid a probe timeout (10-28).
             cause=fatal_cause(broker,session_failures)

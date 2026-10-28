@@ -312,7 +312,9 @@ def test_drive_generations_export_and_resume_messages(fixture):
     assert {r['development_id'] for r in imports}=={'cell:v1','cell:v2'}
 
 
-def test_export_failure_cannot_report_completed_run(fixture):
+def test_export_failure_is_recorded_not_fatal(fixture):
+    # r6 policy: export is a per-version step; the run outcome stands and the
+    # failure is surfaced on the cell/result (the importer refuses that version).
     f=fixture
     class BrokenExport:
         def capture(self,*a):pass
@@ -320,8 +322,8 @@ def test_export_failure_cannot_report_completed_run(fixture):
     session=fake_session(f.ws,["tool('submit');time.sleep(20)"])
     result=drive(f.ws,session,f.ledger,executor=Executor(),prober=FakeProber(),
         exporter=BrokenExport(),completion_reader=lambda *a:True)
-    assert result['state']=='needs_review' and result['reason']=='fatal_error'
-    assert result['error']=='synthetic export failure'
+    assert result['reason']=='native_success' and 'fatal_cause' not in result
+    assert any('synthetic export failure' in e['error'] for e in result['export_errors'])
 
 
 @pytest.mark.parametrize('history', [False, True])
