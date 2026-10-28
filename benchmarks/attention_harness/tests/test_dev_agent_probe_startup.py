@@ -130,3 +130,22 @@ def test_projection_tolerates_null_validation_fields():
         value=project_planner_result(result)
         assert 'contacts' in value['missing'] and value['diagnostics_complete'] is False
     assert 'contacts' not in project_planner_result({'validation':{'exact_geometry':{'contacts':[{'a':1}]}}})['missing']
+
+
+def test_out_of_limit_base_offset_rejects_only_that_request(workspace):  # noqa: F811
+    # r4: validate_delta raises PlanningRejected (not ValueError); it escaped accept and killed the run.
+    b=broker(workspace)
+    try:
+        target=dict(side='left',position=[.5,-2.4,.95],quaternion_xyzw=[0,0,0,1])
+        value=b.accept(request('o1',op='ik_check',payload=dict(target=target,base_offset=dict(dx=0,dy=.25,dyaw=0))))
+        assert value['status']=='rejected' and 'Base delta exceeds' in value['validation_error']
+        b.accept(request('o2',op='ik_check',payload=dict(target=target,base_offset=dict(dx=0,dy=.2,dyaw=0))))
+        assert settled(b,'o2')['status']=='completed' and not b.quarantined
+    finally:b.close()
+
+
+def test_sdk_doc_is_delivered_not_withheld(workspace):  # noqa: F811
+    text=(workspace.ws/'docs'/'sdk.md').read_text()
+    assert 'withheld' not in text and len(text)>500
+    for name in ('tools.md','guide.md'):
+        assert 'withheld' not in (workspace.ws/'docs'/name).read_text()

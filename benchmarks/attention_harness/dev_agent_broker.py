@@ -195,7 +195,9 @@ class Broker:
                     response['probe_id'] = 'p%06d' % self.budget.counts['probes']
                     response['charged'] = {'probes':1}
                 else: self.budget.charge()
-            except (ValueError, OSError, TypeError, KeyError) as exc:
+            except Exception as exc:
+                # Any validation failure (e.g. PlanningRejected from validate_delta, r4)
+                # rejects this request only; it never reaches the controller loop.
                 if str(exc) in {'budget_exhausted','wall_stop'}:return reject(str(exc))
                 if op in PROBES:response['validation_error']=screen_text(type(exc).__name__+': '+str(exc))[:500]
                 return reject('invalid_request')

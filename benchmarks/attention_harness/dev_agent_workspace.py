@@ -114,7 +114,7 @@ class Workspace:
 
     def prepare(self, task, config):
         from .dev_tasks import dev_sdk, dev_sdk_prompt
-        from .dev_agent_diagnostics import public_observation, screen_text
+        from .dev_agent_diagnostics import public_observation, FORBIDDEN
         if config.get('budget_tier') != 'dev' or config.get('runner_boundary') != 'dev_loop':
             raise ValueError('agent_requires_dev_tier')
         for name in DIRS:
@@ -132,7 +132,10 @@ class Workspace:
         prompt = prompt.replace('Repair runtime errors before the next full attempt.',
                                 'Recoverable rejections do not alone fail a completed execution.')
         self.publish('task.json', public_observation(task))
-        self.publish('docs/sdk.md', screen_text(prompt).encode())
+        # Trusted system text: the path heuristic withheld all of it in r4
+        # ("open()/close()", "dict.get/keys"). Forbidden terms are a hard error.
+        if FORBIDDEN.search(prompt):raise ValueError('sdk_doc_forbidden_term')
+        self.publish('docs/sdk.md', prompt.encode())
         self.publish('docs/sdk.json', dev_sdk(config))
         self.publish('docs/safety.json', dict(translation_coordinate_m=.05, rotation_rad=.5,
             joint_margin_rad=.02, base_clearance_m=.010, sdk_calls=320, control_steps=9600,
