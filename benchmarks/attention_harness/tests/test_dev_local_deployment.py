@@ -236,6 +236,9 @@ def test_config_and_formal_rejection(base,monkeypatch,tmp_path):
     ref=d.make_lock(tmp_path/'dev-identity.json',planner_source=source)
     identity=d.verify_lock(ref)
     assert identity['planner_deployment_kind']=='dev-local'
+    for resource in ('openarm365_dev_v2/prompts/pick_place_counter_to_cabinet.json',
+                     'benchmarks/attention_harness/robocasa365/tasks.py'):
+        assert str(base.repo/resource) in identity['files']
     # Resource fixtures are intentionally synthetic; planner identity is checked by the real validator above.
     monkeypatch.setattr(d,'verify_lock',lambda *a,**kw:identity)
     config=d.make_dev_config('open_cabinet',102,ref,planner_source=source)

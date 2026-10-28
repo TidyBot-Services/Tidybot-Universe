@@ -30,6 +30,7 @@ class LedgerRunner:
         self.origins=OriginPreparation(self)
 
     def origin_needed(self,note):
+        if getattr(self.client,'family_channel',False):return None
         from .memory_validation_provision import Provisioner
         return self.origins.needed(note) if isinstance(self.provision,Provisioner) else None
 
@@ -116,6 +117,8 @@ class LedgerRunner:
         return batch
 
     def validation_ready(self,note,current,*,cross=False):
+        if getattr(note,'record_kind',None)=='family_candidate':
+            return cross and note.status in {'candidate','family_trusted'}
         if getattr(note,'record_kind',None)=='positive_control':
             decision=self.client.decision(current['memory_id'])
             return bool(decision and decision['decision']=='would_pass') if cross else decision is None
@@ -167,6 +170,7 @@ class LedgerRunner:
                     note=self.client.get_memory(current['memory_id'])
                     if not cross and (not self.validation_ready(note,current) or self.client.get_plan(current['memory_id'])!=current['plan']):raise DevConflict('validation candidate or plan changed before generation')
                     memory=dict(memory_id=note.memory_id,version=note.version,guidance=note.guidance) if current['arm']=='treatment' else None
+                    if memory is not None and getattr(note,'treatment_label',None):memory['label']=note.treatment_label
                     record=generate(store,key,config,current['origin'],json.loads(checked(current['origin_feedback']).read_bytes()),owner,memory=memory,client=self.provider,version=version)
             if record.get('status')=='invalid_generation':
                 store.update_cell(key,state='invalid_generation',reason=record['validation_error']);return

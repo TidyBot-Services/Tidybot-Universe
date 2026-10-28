@@ -108,6 +108,10 @@ def automatic_checks(root=None,gateway=None):
                     value['positive_controls'].append(dict(control_id=spec['control_id'],title=safe_text(spec['title']),
                         label='Test · not counted in results',status='Queued',pairs=[],failed_gates=[],errors=[]))
             except Exception as exc:value['errors'].append('Positive-control queue unavailable: '+safe_detail(str(exc)))
+    value['family']=dict(fixtures=[],candidates=[],events=[])
+    if gateway and callable(getattr(gateway,'family_list',None)):
+        try:value['family']=gateway.family_list()
+        except Exception as exc:value['errors'].append('Family feed unavailable: '+safe_detail(str(exc)))
     if gateway:
         try:
             value['queue']=[{k:r.get(k) for k in ('memory_id','title','uses','failure_gone')} for r in gateway.validation_queue()]

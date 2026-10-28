@@ -18,8 +18,11 @@ PHYSICAL_TO_NATIVE = {'left': 'right', 'right': 'left'}
 def initial_joints(task_id):
     from benchmarks.attention_harness.dev_tasks import get_task
     get_task(task_id)
-    from openarm365.model import ROOT
-    p=copy.deepcopy(json.loads((ROOT/'configs/robot_parameters_v1.json').read_text())[get_task(task_id).official_env])
+    # Dev-only alias: never add a key to the sealed robot parameter record.
+    root=Path(__file__).resolve().parents[1]/'openarm365'
+    env_name=get_task(task_id).official_env
+    if task_id=='pick_place_counter_to_cabinet':env_name='PickPlaceCounterToSink'
+    p=copy.deepcopy(json.loads((root/'configs/robot_parameters_v1.json').read_text())[env_name])
     p=copy.deepcopy(p)
     # The old OSC reset settled joint5 slightly outside its original lower limit.
     # Targets move inward; measured states and original URDF limits stay exact.
@@ -115,8 +118,8 @@ def rng_epoch(seed,env=None):
 def create_env(env_name, **kw):
     import robocasa, robosuite
     from openarm365 import robot  # Register the accepted physical MJCF.
-    from benchmarks.attention_harness.dev_tasks import TASKS,validate_selection
-    task=next((t for t in TASKS.values() if t.official_env==env_name),None)
+    from benchmarks.attention_harness.dev_tasks import TASKS,EXPLICIT_TASKS,validate_selection
+    task=next((t for t in (*TASKS.values(), *EXPLICIT_TASKS.values()) if t.official_env==env_name),None)
     if task is None or kw.get('robots')!='OpenArm365':raise ValueError('unregistered robot/task')
     validate_selection(task.task_id,kw.get('seed'))
     if kw.get('layout_and_style_ids')!=[(11,34)]:raise ValueError('unregistered scene')

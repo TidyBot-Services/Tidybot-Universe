@@ -85,7 +85,10 @@ def resolve_origin(provision,note):
 
 def admit(provision,note,seed,path):
     if not path or not Path(path).is_file():raise DevConflict(f'Seed {seed}: no scene contract registered')
-    resolved=resolve_origin(provision,note)
+    if getattr(provision.client,'family_channel',False):
+        ref=dict(uri=str(Path(path).resolve()),sha256=hashlib.sha256(Path(path).read_bytes()).hexdigest())
+        resolved=provision.target_origin(note,seed,ref)
+    else:resolved=resolve_origin(provision,note)
     roots=provision.config.get('contract_registration_roots',[])
     ref,catalog=register_contract(provision.client,roots,path,seed,resolved['context'])
     return dict(seed=seed,contract=ref,catalog=catalog)
@@ -94,11 +97,13 @@ def admit(provision,note,seed,path):
 def provision_cross(provision,note,operation,target,*,pairs=None):
     runs=1 if pairs is None else 2*pairs
     if runs not in (1,6,10):raise DevConflict('One probe, three or five pairs required')
-    resolved=resolve_origin(provision,note)
+    family=getattr(provision.client,'family_channel',False)
+    resolved=provision.resolve_target(note,target,pairs=pairs) if family else resolve_origin(provision,note)
     # Recheck file and importer admission on every retry before any allocation.
     ref,catalog=register_contract(provision.client,provision.config.get('contract_registration_roots',[]),target['contract']['uri'],target['seed'],resolved['context'])
     if ref!=target['contract']:raise DevConflict('Target contract changed after admission')
     origin=dict(resolved['sealed'],cross_seed=dict(seed=target['seed'],contract=ref,runs=runs))
+    if family:origin['cross_seed']['family_check_id']=provision.client.family_spec['family_check_id']
     config=target_config(origin)
     selection=dict(request_key='cross-'+operation,tasks=[config['task_id']],seeds=[config['seed']],policies=[resolved['policy_id']],mode='diagnostic',budget_tier='dev',model_source='codex',help_budget=0,run_notes=False,memory_family=False,target_depth=1,target_valid_executions=1,max_versions=1,reproducible_reset=True,scene_contract=ref,attempt_wall_seconds=config['attempt_wall_seconds'])
     from .dev_configuration import normalize_configuration,derive_cell_budget,worst_slot

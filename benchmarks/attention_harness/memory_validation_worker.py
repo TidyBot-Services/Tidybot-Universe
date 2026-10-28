@@ -35,10 +35,13 @@ def settings(root):
         if type(enabled) is not bool:raise ValueError('invalid automatic checks switch')
         return {'enabled':enabled}
     value=json.loads(p.read_bytes())
-    if not isinstance(value,dict) or set(value)-{'enabled','cross_seed','daily_run_limit','weekly_quota_stop_percent','daily_quota_rise_stop_points'} or type(value.get('enabled')) is not bool:raise ValueError('invalid automatic checks settings')
+    if not isinstance(value,dict) or set(value)-{'enabled','cross_seed','family_checks','daily_run_limit','weekly_quota_stop_percent','daily_quota_rise_stop_points'} or type(value.get('enabled')) is not bool:raise ValueError('invalid automatic checks settings')
     validate_daily_run_limit(value.get('daily_run_limit',20))
     validate_quota_setting('weekly_quota_stop_percent',value.get('weekly_quota_stop_percent',70))
     validate_quota_setting('daily_quota_rise_stop_points',value.get('daily_quota_rise_stop_points',5))
+    if 'family_checks' in value:
+        family=value['family_checks']
+        if not isinstance(family,dict) or set(family)!={'enabled'} or type(family['enabled']) is not bool:raise ValueError('invalid family checks settings')
     if 'cross_seed' in value:
         cross=value['cross_seed']
         if not isinstance(cross,dict) or set(cross)-{'enabled','candidate_seeds','contracts'} or type(cross.get('enabled',False)) is not bool:raise ValueError('invalid cross-seed settings')
@@ -433,9 +436,15 @@ def request_current_retry(root):
     """Mailbox only: works with a running/Off worker, never enables dispatch."""
     import uuid
     root=Path(root);state=json.loads((root/'state.json').read_bytes())
+    if state.get('family_active'):
+        state=state.get('family_checks',{}).get(state['family_active'],{}).get('worker',{})
     active=state.get('positive_control_active')
     if active:state=state.get('positive_controls',{}).get(active,{}).get('worker',{})
     current=state.get('current')
+    cross=state.get('cross_pending') or state.get('cross_waiting')
+    if cross and cross.get('begin_cycle'):
+        atomic(root/'retry-current.json',dict(operation=cross['operation'],request_id=uuid.uuid4().hex,cross=True))
+        return 'Current family batch retry requested; switches remain unchanged.'
     from .memory_validation_replacements import legacy_invalid_available,attempt_version
     if legacy_invalid_available(current):
         atomic(root/'retry-current.json',dict(arm_id=current['arm_id'],version=attempt_version(current),evaluation_key=evaluation_key(current),request_id=uuid.uuid4().hex))
@@ -450,6 +459,13 @@ def request_current_retry(root):
 
 
 def tick(state,deps):
+    from .memory_family import tick_channel as family_tick
+    try:
+        if family_tick(state,deps,_tick):return state
+    except Exception as exc:
+        from .notices import safe_detail
+        state['status']='Family check paused: '+safe_detail(str(exc) or type(exc).__name__)
+        deps.save(state);return state
     from .memory_positive_control import tick_channel
     try:
         if tick_channel(state,deps,_tick):return state
@@ -484,6 +500,9 @@ def _tick(state,deps):
         request=json.loads(request_path.read_bytes()) if request_path.exists() else None
         if request and request['request_id']!=state.get('retry_request_id'):
             pending=state.get('pending')
+            if request.get('cross'):
+                cross=state.get('cross_pending') or state.get('cross_waiting')
+                if cross and cross['operation']==request['operation']:deps.begin_cycle=request['request_id']
             if request.get('arm_id') and current and current.get('arm_id')==request['arm_id'] and current.get('pair_version',1)==request.get('version') and evaluation_key(current)==request.get('evaluation_key'):
                 current['recover_invalid_requested']=True
             elif request.get('evaluation_key'):

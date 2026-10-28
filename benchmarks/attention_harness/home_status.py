@@ -18,7 +18,7 @@ from pathlib import Path
 from .dev_loop import owner_alive
 from .parcc_client import DEFAULT_PARCC_URL
 
-TASK_TITLES = {'pick_place_counter_to_sink': 'Pick Place: Counter → Sink', 'open_cabinet': 'Open the cabinet',
+TASK_TITLES = {'pick_place_counter_to_cabinet': 'Pick Place: Counter → Cabinet', 'pick_place_counter_to_sink': 'Pick Place: Counter → Sink', 'open_cabinet': 'Open the cabinet',
                'counter_to_sink': 'Move to the sink', 'counter_to_cab': 'Move into the cabinet'}
 PROBE_TTL_SECONDS = 60
 ENDED = {'needs_review', 'cancelled', 'condition_invalid', 'completed', 'failed'}

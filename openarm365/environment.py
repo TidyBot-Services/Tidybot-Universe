@@ -64,8 +64,12 @@ def physics_sample(env):
 def configure_display_camera(env):
     # A world camera keeps the actual arm and target in view while the base moves.
     from scipy.spatial.transform import Rotation
-    target=np.array(env.sink.pos if hasattr(env,'sink') else env.fxtr.pos,dtype=float)
-    target[2]=1.05 if hasattr(env,'sink') else 1.55
+    if not hasattr(env,'sink') and not hasattr(env,'fxtr') and hasattr(env,'cab'):
+        # Pick/place cabinets can be upper or lower: retain the fixture height.
+        target=np.array(env.cab.pos,dtype=float)
+    else:
+        target=np.array(env.sink.pos if hasattr(env,'sink') else env.fxtr.pos,dtype=float)
+        target[2]=1.05 if hasattr(env,'sink') else 1.55
     pos=target+np.array([1.7,-1.2,1.25]);z=(pos-target)/np.linalg.norm(pos-target)
     x=np.cross([0,0,1],z);x/=np.linalg.norm(x);y=np.cross(z,x)
     cam=env.sim.model.camera_name2id('robot0_agentview_left')

@@ -103,20 +103,26 @@ class DevTask:
                     robot=self.robot,execution_arm=self.execution_arm,seeds=list(self.seeds),sdk=dev_sdk(config))
     def system_prompt(self,config=None):
         return ('You are the AttentionBench Dev policy author. Return ONLY JSON with source (complete Python source) and reason (changes based on public feedback). Make a real bounded attempt for this task: '+self.task_prompt+' Use only supplied public task/configuration/observations/actions/errors. Task scoring is not provided. '+dev_sdk_prompt(config))
-TASKS={}
-def register_dev_task(task):
+TASKS={}  # Default workbench and matrix catalog.
+EXPLICIT_TASKS={}  # Available only when selected by task ID.
+def register_dev_task(task, *, explicit_only=False):
     if not isinstance(task,DevTask) or task.robot!="OpenArm365" or task.execution_arm!="both":raise ValueError("complete dual-arm task contract required")
     if official_task(task.task_id).official_env!=task.official_env:raise ValueError("official task mismatch")
     # Existing frozen task prompt is cross-checked, never changed.
     import json
     frozen=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs')/(task.task_id+'_seed101.json')
+    if task.task_id == 'pick_place_counter_to_cabinet':
+        frozen=ROOT/'openarm365_dev_v2/prompts/pick_place_counter_to_cabinet.json'
+        if hashlib.sha256(frozen.read_bytes()).hexdigest() != 'a1ed2b3eb6bb70edeafe30315ee5a6a68190421d9ed09956fa44711a05ae3c22':
+            raise ValueError('dev frozen public prompt digest mismatch')
     if json.loads(frozen.read_bytes())['task_prompt']!=task.task_prompt:raise ValueError("frozen public prompt mismatch")
     if not task.seeds or any(type(s) is not int or s not in SEEDS for s in task.seeds):raise ValueError("development seeds required")
     validate_generated_policy(Path(task.initial_policy).read_text())
-    if task.task_id in TASKS:raise ValueError("task already registered")
-    TASKS[task.task_id]=task
+    if task.task_id in TASKS or task.task_id in EXPLICIT_TASKS:raise ValueError("task already registered")
+    (EXPLICIT_TASKS if explicit_only else TASKS)[task.task_id]=task
     return task
 def get_task(task_id):
+    if task_id in EXPLICIT_TASKS:return EXPLICIT_TASKS[task_id]
     if task_id not in TASKS:raise ValueError("unregistered Dev task")
     return TASKS[task_id]
 def validate_selection(task_id,seed,layout_id=11,style_id=34):
@@ -125,8 +131,8 @@ def validate_selection(task_id,seed,layout_id=11,style_id=34):
     if type(seed) is not int or seed not in t.seeds:raise ValueError("seed must be a registered development seed (101–125)")
     if type(layout_id) is not int or type(style_id) is not int or (layout_id,style_id)!=(11,34):raise ValueError("unregistered scene")
     return t
-for tid,env,prompt in [('pick_place_counter_to_sink','PickPlaceCounterToSink','Pick the object from the counter and place it in the sink.'),('open_cabinet','OpenCabinet','Open the cabinet door.')]:
-    register_dev_task(DevTask(tid,env,prompt,str(ROOT/'openarm365_dev_v2/policies'/ (tid+'.py'))))
+for tid,env,prompt in [('pick_place_counter_to_sink','PickPlaceCounterToSink','Pick the object from the counter and place it in the sink.'),('open_cabinet','OpenCabinet','Open the cabinet door.'),('pick_place_counter_to_cabinet','PickPlaceCounterToCabinet','Pick the object from the counter and place it in the cabinet.')]:
+    register_dev_task(DevTask(tid,env,prompt,str(ROOT/'openarm365_dev_v2/policies'/ (tid+'.py'))), explicit_only=tid=='pick_place_counter_to_cabinet')
 def options():
     return {'tasks':[t.public() for t in TASKS.values()], 'robot':'OpenArm365','execution_arm':'both',
             'disabled_profiles':[{'robot':'PandaOmron','enabled':False,'reason':'No authenticated V2 owner'}],

@@ -31,6 +31,7 @@ def order(service_entries, run_notes=(), *, family=False):
     others = _newest([e for e in entries if layer_of(e) == 'scene' and _get(e, 'trusted_here') is False])
     others += _newest([e for e in entries if layer_of(e) == 'task' and _get(e, 'trusted_here') is not True])
     families = _newest([e for e in entries if layer_of(e) == 'family']) if family else []
+    families.sort(key=lambda e:_get(e,'trust_scope')!='family_scoped')
     return trusted + runs[:RUN_NOTE_CAP] + others[:OTHER_UNVALIDATED_CAP] + families[:FAMILY_CAP]
 
 
@@ -45,4 +46,5 @@ def label(entry):
         if _get(entry, 'trusted_here') is True:return 'Trusted for this task: '
         seed = _get(entry, 'source_seed')
         return prefix + (f' (scene {seed}): ' if seed is not None else ': ')
+    if _get(entry,'trust_scope')=='family_scoped':return 'Trusted for the family (model rewrite): '
     return f"Reference (task {_get(entry, 'source_task_id')}): "

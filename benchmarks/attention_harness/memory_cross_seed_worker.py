@@ -10,7 +10,7 @@ def progress(current):
 
 
 def choose(state,deps,save,status):
-    config=settings(deps.root).get('cross_seed',{})
+    config=settings(deps.root).get('family_checks' if getattr(deps.client,'family_channel',False) else 'cross_seed',{})
     state['cross_seed_enabled']=config.get('enabled',False)
     if not state['cross_seed_enabled']:return status('Automatic checks waiting for used notes')
     waiting=state.get('cross_waiting')
@@ -18,6 +18,9 @@ def choose(state,deps,save,status):
         needed=10 if waiting['probe']['role']=='transfer' else 6
         stop=daily_run_stop(state,deps.root,needed=needed)
         if stop:return status(stop)
+        if getattr(deps.client,'family_channel',False):
+            if waiting.get('begin_cycle')==deps.begin_cycle:return status('Family paired batch waiting for --retry-current')
+            waiting['begin_cycle']=deps.begin_cycle;save()
         batch=deps.runner.begin_cross(waiting['note'],waiting['operation']+'-pairs',waiting['target'],pairs=needed//2)
         batch.update(pair_index=0,arm='control',active=False,title=waiting['title'])
         state['current']=batch;state.pop('cross_waiting');save()
@@ -35,9 +38,9 @@ def choose(state,deps,save,status):
         if preparing is not None:return preparing
         tested={r['target_seed'] for r in note['seeds']}
         targets={t['seed']:t['contract'] for t in note.get('cross_seed_targets',[])}
-        for seed in (targets if note.get('record_kind')=='positive_control' else config.get('candidate_seeds',[])):
+        for seed in (targets if note.get('record_kind') in {'positive_control','family_candidate'} else config.get('candidate_seeds',[])):
             if seed in tested or seed==note['source_seed']:continue
-            try:target=deps.runner.admit_seed(note,seed,targets.get(seed) if note.get('record_kind')=='positive_control' else config.get('contracts',{}).get(str(seed)))
+            try:target=deps.runner.admit_seed(note,seed,targets.get(seed) if note.get('record_kind') in {'positive_control','family_candidate'} else config.get('contracts',{}).get(str(seed)))
             except Exception as exc:
                 from .notices import safe_detail
                 state['skipped_seeds'].append(dict(memory_id=note['memory_id'],seed=seed,reason=safe_detail(str(exc))));save();continue
@@ -47,6 +50,9 @@ def choose(state,deps,save,status):
     if not pending:return status('Cross-seed checks waiting for usable registered candidate seeds')
     stop=daily_run_stop(state,deps.root)
     if stop:return status(stop)
+    if getattr(deps.client,'family_channel',False):
+        if pending.get('begin_cycle')==deps.begin_cycle:return status('Family probe batch waiting for --retry-current')
+        pending['begin_cycle']=deps.begin_cycle;save()
     current=deps.runner.begin_cross(pending['note'],pending['operation'],pending['target'])
     current.update(pair_index=0,arm='probe',active=False,title=pending['note'].get('title') or 'Untitled note')
     state['current']=current;state.pop('cross_pending');save()
@@ -55,7 +61,7 @@ def choose(state,deps,save,status):
 
 def advance(state,deps,reason,save,status):
     current=state['current']
-    if not settings(deps.root).get('cross_seed',{}).get('enabled',False):reason=reason or 'Cross-seed checks are Off'
+    if not settings(deps.root).get('family_checks' if getattr(deps.client,'family_channel',False) else 'cross_seed',{}).get('enabled',False):reason=reason or 'Cross-seed checks are Off'
     if current.get('active'):
         if current.get('dispatch_pending'):
             if reason:return status(reason)

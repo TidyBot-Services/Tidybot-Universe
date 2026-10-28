@@ -19,6 +19,8 @@ if str(ROOT) not in sys.path:
 
 TASK = 'pick_place_counter_to_sink'
 SEEDS = (102, 104, 107, 114)
+CABINET_TASK = 'pick_place_counter_to_cabinet'
+PLACEMENT_FIELDS = {TASK: 'object_in_sink', CABINET_TASK: 'object_in_cabinet'}
 CONTRACT = Path('/home/truares/桌面/AttentionBench-Workspace/experiments/scene-contracts/scene-contract-r3-104-107-114.json')
 REASON = 'reference policy (simulator truth constants, diagnostic only)'
 
@@ -41,24 +43,26 @@ def preflight(out):
         raise ValueError(active + ' (daily_dev_v2 --worker); wait until idle')
 
 
-def contract_ref(seed, path=None):
+def contract_ref(seed, path=None, task=TASK):
     # Same SHA-bound uri + load_contract/seed_entry mechanism as
     # memory_cross_seed.register_contract, without a Memory-service catalog.
     from openarm365_dev_v2.scene_contract import registered_contract_ref, load_contract, seed_entry
-    if seed == 102:
+    if task not in PLACEMENT_FIELDS:raise ValueError('unsupported reference task')
+    if task == CABINET_TASK and path is None:raise ValueError('cabinet requires explicit candidate --scene-contract')
+    if seed == 102 and task == TASK:
         ref = registered_contract_ref()
         if path is not None and Path(path).resolve() != Path(ref['uri']).resolve():
             raise ValueError('Seed 102 requires the registered scene contract')
     else:
         p = Path(path or CONTRACT).resolve(strict=True)
         ref = dict(uri=str(p), sha256=hashlib.sha256(p.read_bytes()).hexdigest())
-    seed_entry(load_contract(ref), TASK, seed)
+    seed_entry(load_contract(ref), task, seed)
     return ref
 
 
-def selection(seed, source, ref):
-    return dict(request_key='reference-' + hashlib.sha256((str(seed) + source).encode()).hexdigest()[:24],
-                mode='interactive', budget_tier='dev', tasks=[TASK], seeds=[seed],
+def selection(seed, source, ref, task=TASK):
+    return dict(request_key='reference-' + hashlib.sha256((str(seed) + source + (task if task != TASK else '')).encode()).hexdigest()[:24],
+                mode='interactive', budget_tier='dev', tasks=[task], seeds=[seed],
                 policies=['autonomous'], target_depth=1, target_valid_executions=1,
                 max_versions=1, help_budget=0, coverage='budget_limited',
                 reproducible_reset=True, scene_contract=ref, run_notes=False, memory_family=False)
@@ -233,15 +237,19 @@ def build_verdict(out, experiment_id):
         errors.append('scene contract was not verified')
     if condition.get('validation', {}).get('contract') != config.get('scene_contract'):
         errors.append('execution scene contract differs from config')
-    if native.get('evaluated') is True and type(native.get('object_in_sink')) is not bool:
-        errors.append('evaluated native result lacks object_in_sink evidence')
-    if native.get('native_success') is True and (native.get('evaluated') is not True or native.get('object_in_sink') is not True):
+    task = config.get('task_id', TASK)
+    placement = PLACEMENT_FIELDS.get(task, 'object_in_sink')
+    if task not in PLACEMENT_FIELDS:errors.append('unsupported reference task')
+    if native.get('evaluated') is True and type(native.get(placement)) is not bool:
+        errors.append('evaluated native result lacks ' + placement + ' evidence')
+    if native.get('native_success') is True and (native.get('evaluated') is not True or native.get(placement) is not True):
         errors.append('native success contradicts evaluation/placement evidence')
     if sandbox.get('outcome_unknown'):
         errors.append('simulator outcome unknown')
     reference = read(out / 'reference.json')
     if reference.get('seed') != config.get('seed') or reference.get('scene_contract') != config.get('scene_contract'):
         errors.append('reference seed/contract differs from config')
+    if task != TASK and reference.get('task_id') != task:errors.append('reference task differs from config')
     if episode:
         try:
             frozen = (out / 'reference-policy.py').read_bytes()
@@ -287,6 +295,9 @@ def build_verdict(out, experiment_id):
                   monitor_abort_reason=monitor_reason, reached_close=reached_close(all_rpc, actions),
                   simulator_wall_seconds=wall, execution_profile=labels['execution_profile'],
                   planner_lock_sha256=labels['planner_lock_sha256'], audited_receipts=receipt_count)
+    if task != TASK:
+        result.pop('object_in_sink');result.pop('object_in_sink_source')
+        result.update(task_id=task, **{placement:native.get(placement), placement+'_source':native.get(placement+'_source')})
     if labels.get('deployment_kind')=='dev-local':result.update(deployment_kind='dev-local',formal_eligible=False)
     return result
 
@@ -300,15 +311,17 @@ def write_verdict(out, verdict):
     (out / 'verdict.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 
-def run(seed, source, out, scene_contract=None, planner_source=None):
+def run(seed, source, out, scene_contract=None, planner_source=None, task=TASK):
     out = Path(out).absolute()
     preflight(out)
-    if seed not in SEEDS:
+    if task not in PLACEMENT_FIELDS:raise ValueError('unsupported reference task')
+    allowed = SEEDS if task == TASK else range(101, 126)
+    if type(seed) is not int or seed not in allowed:
         raise ValueError('unsupported reference seed')
     source_path = Path(source).resolve(strict=True)
     source_bytes = source_path.read_bytes()
     source_text = source_bytes.decode('utf-8')
-    ref = contract_ref(seed, scene_contract)
+    ref = contract_ref(seed, scene_contract, task)
     from curobo_v2.execution_settings import R3_20261025
     R3_20261025.to_dict()  # Refuse before allocation if deployment-06 is absent.
     from benchmarks.attention_harness.dev_ledger import DevV2Store
@@ -317,11 +330,11 @@ def run(seed, source, out, scene_contract=None, planner_source=None):
     out.mkdir(parents=True, exist_ok=False)
     (out / 'reference-policy.py').write_bytes(source_bytes)
     write_json(out / 'reference.json', dict(seed=seed, source=str(source_path),
-               source_sha256=hashlib.sha256(source_bytes).hexdigest(), scene_contract=ref, reason=REASON))
+               source_sha256=hashlib.sha256(source_bytes).hexdigest(), scene_contract=ref, reason=REASON, **({'task_id': task} if task != TASK else {})))
     experiment_id = None
     try:
         store = DevV2Store(out / 'store.sqlite')
-        selected=selection(seed, source_text, ref)
+        selected=selection(seed, source_text, ref, task)
         if planner_source is not None:selected['planner_source']=dict(kind='dev-local',source_root=str(Path(planner_source).resolve()))
         experiment = dev_experiment.create(store, out / 'artifacts', selected)
         experiment_id = experiment['experiment_id']
@@ -341,14 +354,15 @@ def run(seed, source, out, scene_contract=None, planner_source=None):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--seed', type=int, choices=SEEDS, required=True)
+    parser.add_argument('--task', choices=tuple(PLACEMENT_FIELDS), default=TASK)
+    parser.add_argument('--seed', type=int, required=True)
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--scene-contract', type=Path)
     parser.add_argument('--planner-source', type=Path)
     args = parser.parse_args(argv)
     try:
-        verdict = run(args.seed, args.source, args.out, args.scene_contract, args.planner_source)
+        verdict = run(args.seed, args.source, args.out, args.scene_contract, args.planner_source, args.task)
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
     print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))

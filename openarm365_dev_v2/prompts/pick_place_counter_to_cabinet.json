@@ -1,0 +1,5 @@
+{
+  "official_env": "PickPlaceCounterToCabinet",
+  "task_id": "pick_place_counter_to_cabinet",
+  "task_prompt": "Pick the object from the counter and place it in the cabinet."
+}

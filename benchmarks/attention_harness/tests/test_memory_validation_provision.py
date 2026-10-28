@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import pytest
 from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
+from benchmarks.attention_harness.tests.c22_fixtures import source_only_lock, frozen_r3_experiment
 pytestmark = pytest.mark.usefixtures("r3_deployment")
 from benchmarks.attention_harness.tests.autovalidate_fakes import ProvisionedFakeRunner,synthetic_creation
 from benchmarks.attention_harness.memory_validation_provision import Provisioner
@@ -116,8 +117,20 @@ def test_adapter_inprocess_service_and_clean_generated_prompts(tmp_path):
         assert packet['previous_complete_source']==Path(batch['origin']['uri']).read_text()
 
 
-def test_validation_creation_preserves_real_registered_config_and_checks(tmp_path,monkeypatch):
+def test_validation_creation_preserves_real_registered_config_and_checks(tmp_path,monkeypatch,frozen_r3_experiment):
     from benchmarks.attention_harness import dev_experiment as experiments
+    # Freeze the same source-only inventory the refresh path will discover.
+    # This test exercises no drift; separate source-drift tests cover refresh.
+    from benchmarks.attention_harness.memory_source_drift import current_source_lock
+    make_lock=experiments.make_lock
+    def stable_lock(path,**kwargs):
+        ref=make_lock(path,**kwargs)
+        value=json.loads(path.read_text())
+        folder=dev_config.ROOT/'openarm365_dev_v2/policies'
+        value.update(formal_eligible=False,source_sets={str(folder):[]})
+        path.write_text(json.dumps(current_source_lock(value),sort_keys=True))
+        return dict(ref,sha256=dev_config.sha(path))
+    monkeypatch.setattr(experiments,'make_lock',stable_lock)
     from openarm365_dev_v2 import dev_config
     from openarm365_dev_v2.scene_contract import registered_contract_ref
     monkeypatch.setattr(dev_config,'model_sources',lambda *a,**kw:{})

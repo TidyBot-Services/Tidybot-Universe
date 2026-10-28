@@ -257,7 +257,11 @@ class CuroboPlanner:
             expected_limits = self.limits[[self.joint_names.index(n) for n in planner.joint_names]]
             if not np.allclose(actual_limits,expected_limits,rtol=0.,atol=1e-6):
                 raise IdentityError('V2 active joint bounds differ from the original URDF')
-            planner.warmup(num_warmup_iterations=1,enable_graph=search is None)
+            # MotionPlanner.warmup constructs a singleton current_state. A
+            # heading-only solver has fixed batch-8 buffers, so warm it through
+            # its first batch IK query instead (no trajectory optimizer needed).
+            if not heading_search:
+                planner.warmup(num_warmup_iterations=1,enable_graph=search is None)
             checker_options = {}
             if carried_supports:
                 from curobo._src.geom.collision.collision_scene import SceneCollisionCfg
@@ -374,19 +378,25 @@ class CuroboPlanner:
                                   locked_joints=locked_joints, heading_batch=True)
         if list(planner.joint_names) != list(active_joints):
             raise ValueError('Heading batch requires the declared active joint order')
-        checked = [self.check_targets(goal) for goal in goals]
+        if not 1 <= len(goals) <= 8:
+            raise ValueError('Heading query requires one to eight goals')
+        count = len(goals)
+        # Fixed-size solver/CUDA graph buffers cannot alternate batch 1 and 8.
+        # Padding duplicates the last query; only requested results are exposed.
+        padded = goals + [goals[-1]] * (8 - count)
+        checked = [self.check_targets(goal) for goal in padded]
         poses = {name: Pose(
             position=torch.as_tensor(np.array([g[name][0] for g in checked]), device=self._device),
             quaternion=torch.as_tensor(np.array([g[name][1] for g in checked]), device=self._device))
             for name in goals[0]}
         goal = GoalToolPose.from_poses(poses, num_goalset=1)
         result = planner.ik_solver.solve_pose(goal,
-            current_state=self._state(np.repeat(current[None], len(goals), axis=0), planner), return_seeds=8)
-        if result.solution.shape[0] != len(goals) or result.success.shape[0] != len(goals):
+            current_state=self._state(np.repeat(current[None], 8, axis=0), planner), return_seeds=8)
+        if result.solution.shape[0] != 8 or result.success.shape[0] != 8:
             raise ValueError('Heading batch result does not cover every heading')
         # Clone: subsequent public calls reuse solver output buffers.
         return [SimpleNamespace(solution=result.solution[i:i+1].clone(),
-                                success=result.success[i:i+1].clone()) for i in range(len(goals))]
+                                success=result.success[i:i+1].clone()) for i in range(count)]
 
     def check_targets(self, targets: dict):
         """Validate _goal inputs without creating cuRobo tensors."""

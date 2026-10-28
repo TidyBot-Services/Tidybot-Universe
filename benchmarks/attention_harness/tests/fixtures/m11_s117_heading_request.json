@@ -1,0 +1,186 @@
+{
+  "current_q": [
+    -0.39970378352263813,
+    -0.8006890137465994,
+    0.0011646288752883822,
+    0.800330149739134,
+    -0.00018002623723451154,
+    -5.840212377788166e-06,
+    3.905345534816443e-05,
+    0.8974040739095457,
+    0.628607287160547,
+    -0.7643807295589041,
+    0.37492381499741034,
+    -0.8023729187478176,
+    0.3787966063276123,
+    0.36677954387833583
+  ],
+  "joint_names": [
+    "openarm_left_joint1",
+    "openarm_left_joint2",
+    "openarm_left_joint3",
+    "openarm_left_joint4",
+    "openarm_left_joint5",
+    "openarm_left_joint6",
+    "openarm_left_joint7",
+    "openarm_right_joint1",
+    "openarm_right_joint2",
+    "openarm_right_joint3",
+    "openarm_right_joint4",
+    "openarm_right_joint5",
+    "openarm_right_joint6",
+    "openarm_right_joint7"
+  ],
+  "active_joints": [
+    "openarm_right_joint1",
+    "openarm_right_joint2",
+    "openarm_right_joint3",
+    "openarm_right_joint4",
+    "openarm_right_joint5",
+    "openarm_right_joint6",
+    "openarm_right_joint7"
+  ],
+  "locked_joints": {
+    "openarm_left_finger_joint1": 0.021854046134432304,
+    "openarm_right_finger_joint1": 0.04315416790967589
+  },
+  "targets": {
+    "openarm_right_hand_tcp": {
+      "position": [
+        0.46580368372634623,
+        -0.35767623622554723,
+        0.37090787063030217
+      ],
+      "quaternion_wxyz": [
+        0.26987454657061016,
+        0.6581975713094907,
+        0.6490858048068574,
+        0.26950195589982234
+      ]
+    }
+  },
+  "grasp_search": {
+    "lift_targets": {
+      "openarm_right_hand_tcp": {
+        "position": [
+          0.4758036837263462,
+          -0.35767623719472175,
+          0.9760349290594393
+        ],
+        "quaternion_wxyz": [
+          0.26987454657061016,
+          0.6581975713094907,
+          0.6490858048068574,
+          0.26950195589982234
+        ]
+      }
+    },
+    "place_targets": {
+      "openarm_right_hand_tcp": {
+        "position": [
+          0.4548698555725927,
+          -0.49385145994330504,
+          0.876034929059439
+        ],
+        "quaternion_wxyz": [
+          0.26987454657061016,
+          0.6581975713094907,
+          0.6490858048068574,
+          0.26950195589982234
+        ]
+      }
+    },
+    "world_vertical": [
+      0.0,
+      0.0,
+      1.0000000000000002
+    ],
+    "attachment": {
+      "holder": "right",
+      "target_id": 257,
+      "object_pose": [
+        [
+          -0.4492355908629973,
+          0.8657627085720833,
+          -0.22055003139402385,
+          0.474875457709992
+        ],
+        [
+          -0.8114658330901723,
+          -0.4986817541017603,
+          -0.30469609425338146,
+          -0.35773212470057336
+        ],
+        [
+          -0.3737787923749121,
+          0.042088485027649815,
+          0.9265624500263491,
+          0.34988195319484794
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "tcp_object_transform": [
+        [
+          -0.8184947121265072,
+          -0.48796727035348164,
+          -0.30323975544891857,
+          0.00012276790160781204
+        ],
+        [
+          -0.5725600965267609,
+          0.6493344699193515,
+          0.5005393910970674,
+          -0.008155981689995484
+        ],
+        [
+          -0.04734281451513232,
+          0.583311828474555,
+          -0.8108674174459465,
+          0.031974557394873315
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "tool_frame": "openarm_right_hand_tcp",
+      "shape_names": [
+        "entity:257:shape:1683",
+        "entity:257:shape:1684",
+        "entity:257:shape:1685",
+        "entity:257:shape:1686",
+        "entity:257:shape:1687",
+        "entity:257:shape:1688",
+        "entity:257:shape:1689"
+      ],
+      "support_names": [
+        "mujoco:530:counter_2_main_group_base_right",
+        "mujoco:531:counter_2_main_group_base_left",
+        "mujoco:532:counter_2_main_group_base_back",
+        "mujoco:533:counter_2_main_group_base_front",
+        "mujoco:541:counter_2_main_group_top_0",
+        "mujoco:542:counter_2_main_group_top_1",
+        "mujoco:543:counter_2_main_group_top_2"
+      ]
+    }
+  },
+  "heading_offsets": [
+    0.1,
+    -0.1,
+    0.2,
+    -0.2,
+    0.3,
+    -0.3,
+    0.5,
+    -0.5
+  ],
+  "goal_joint_margin_rad": 0.02,
+  "evidence_note": "Numeric request from M-11 ref/s117-e final descent, HTTP 500. No robot assets or deployment credentials."
+}

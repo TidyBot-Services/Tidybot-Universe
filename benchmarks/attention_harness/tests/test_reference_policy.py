@@ -9,6 +9,7 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
+from benchmarks.attention_harness.tests.c22_fixtures import source_only_lock
 
 from scripts import run_reference_policy as ref
 from benchmarks.attention_harness.tests.r3_fixtures import r3_deployment
@@ -200,7 +201,7 @@ def test_failure_before_any_completed_action_needs_no_executor_receipt(tree):
 
 
 @pytest.mark.parametrize('seed', ref.SEEDS)
-def test_contract_and_ordinary_creation(tmp_path, monkeypatch, r4_deployment, seed):
+def test_contract_and_ordinary_creation(tmp_path, monkeypatch, r4_deployment, source_only_lock, seed):
     from benchmarks.attention_harness import dev_experiment as exp
     from benchmarks.attention_harness.dev_ledger import DevV2Store
     from openarm365_dev_v2 import dev_config
@@ -255,7 +256,8 @@ def test_private_native_placement_uses_task_predicate(monkeypatch, r3):
 
 
 @pytest.mark.parametrize('seed', ref.SEEDS)
-def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r4_deployment, seed):
+@pytest.mark.parametrize('task', [ref.TASK, ref.CABINET_TASK])
+def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r4_deployment, source_only_lock, seed, task):
     """Real create/verify/run + real runner; only native and policy sandbox faked."""
     from benchmarks.attention_harness import dev_experiment as exp
     from openarm365_dev_v2 import dev_config, runner as native
@@ -263,7 +265,7 @@ def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r4_deploym
     monkeypatch.setattr(dev_config, 'model_sources', lambda *a, **kw: {})
     contract = tmp_path / 'contract.json'
     ref.write_json(contract, dict(schema='attentionbench.public-scene-contract.v2', tolerance=1e-6,
-                                tasks={ref.TASK: dict(seeds={str(seed): dict(normalized_sha256='c'*64)})}))
+                                tasks={task: dict(seeds={str(seed): dict(normalized_sha256='c'*64)})}))
     source = tmp_path / 'input.py'
     code = 'from robot_sdk import sensors\nsensors.get_observation()\n'
     source.write_text(code)
@@ -285,7 +287,7 @@ def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r4_deploym
                         scene_state={}, scene_condition=dict(matched=True, contract=self.config['scene_contract']))
         def rpc(self, group, operation, *args, **kwargs):
             return (dict(robot={}, perception=dict(values={})) if operation == 'observe' else
-                    dict(evaluated=True, native_success=False, object_in_sink=False))
+                    dict(evaluated=True, native_success=False, **{ref.PLACEMENT_FIELDS[task]: False}))
         def stop(self, reason):
             return dict(leader_reaped=True, process_group_gone=True, planner_process_groups_gone=True)
     monkeypatch.setattr(native, 'NativeOwner', Owner)
@@ -305,7 +307,7 @@ def test_normal_dispatch_once_with_fake_native(tmp_path, monkeypatch, r4_deploym
         calls.append('dispatch')
         return real_run(store, experiment_id, **kwargs)
     monkeypatch.setattr(exp, 'run', dispatch)
-    verdict = ref.run(seed, source, tmp_path / 'out', None if seed == 102 else contract)
+    verdict = ref.run(seed, source, tmp_path / 'out', None if seed == 102 and task == ref.TASK else contract, task=task)
     assert verdict['verdict'] == 'failure', verdict
     assert calls == ['dispatch', 'native_start', 'policy']
     assert verdict['reached_close'] is False

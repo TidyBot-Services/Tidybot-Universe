@@ -65,6 +65,16 @@ class MemoryServiceClient(_Client):
         if not getattr(self, '_importer_file', False):raise PermissionError('positive controls require importer key file')
         return self._call('POST', '/dev-v2/positive-controls/'+action, payload, importer=True)
 
+    def family_list(self):return self._call('GET','/dev-v2/family')
+
+    def family_read(self,key,action):
+        from urllib.parse import quote
+        return self._call('GET','/dev-v2/family/'+quote(key,safe='')+'/'+action,importer=True)
+
+    def family_write(self,action,**payload):
+        if not getattr(self,'_importer_file',False):raise PermissionError('family writes require importer key file')
+        return self._call('POST','/dev-v2/family/'+action,payload,importer=True)
+
     def memory_events(self,*,after=0):
         if type(after) is not int or after<0:raise ValueError('nonnegative event cursor required')
         return self._call('GET',f'/dev-v2/memory-events?after={after}')['events']

@@ -20,3 +20,15 @@ def r4_deployment(base, monkeypatch):
         return dict(snapshot)
     monkeypatch.setattr(dev_local, 'materialize', materialize)
     return settings
+
+
+@pytest.fixture
+def offline_dev_identity(monkeypatch, r4_deployment):
+    """Synthetic model identity for routing tests; never open installed models."""
+    from pathlib import Path
+    import hashlib
+    original = dev_config.sha
+    identity = dev_config.ROOT / 'openarm365/model/identity.json'
+    monkeypatch.setattr(dev_config, 'model_sources', lambda *a, **kw: {})
+    monkeypatch.setattr(dev_config, 'sha', lambda path: hashlib.sha256(b'{}').hexdigest()
+                        if Path(path) == identity else original(path))

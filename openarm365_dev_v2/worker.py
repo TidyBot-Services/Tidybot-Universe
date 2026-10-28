@@ -9,7 +9,15 @@ def native_evaluation(env, config):
         from robocasa.utils import object_utils
         value['object_in_sink'] = bool(object_utils.obj_inside_of(env, 'obj', env.sink, partial_check=True))
         value['object_in_sink_source'] = 'robocasa.utils.object_utils.obj_inside_of(partial_check=True)'
+    if config.get('execution_settings') and config['task_id'] == 'pick_place_counter_to_cabinet':
+        from robocasa.utils import object_utils
+        # Match upstream _check_success: full object bounds, default th=0.05.
+        value['object_in_cabinet'] = bool(object_utils.obj_inside_of(env, 'obj', env.cab))
+        value['object_in_cabinet_source'] = 'robocasa.utils.object_utils.obj_inside_of(partial_check=False, th=0.05)'
     return value
+
+def cabinet_public_values(env):
+    return {'cabinet_pos': [float(x) for x in env.cab.pos]} if hasattr(env, 'cab') else {}
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True)
@@ -96,6 +104,7 @@ def main():
                 robot[f'robot0_{side}_gripper_qpos']=env.sim.data.qpos[r._ref_gripper_joint_pos_indexes[native]].tolist()
             values={n+'_pos':env.sim.data.body_xpos[bid].tolist() for n,bid in env.obj_body_id.items()}
             if hasattr(env,'sink'):values['sink_pos']=np.asarray(env.sink.pos,float).tolist()
+            values.update(cabinet_public_values(env))
             # Public sim_gt fixture/handle positions, never scoring/door-state tests.
             if hasattr(env,'fxtr'):
                 values['cabinet_pos']=np.asarray(env.fxtr.pos,float).tolist()

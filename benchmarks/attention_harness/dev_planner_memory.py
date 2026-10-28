@@ -136,10 +136,11 @@ def client_for(settings):
 class Note:
     """One retrieved note with its applicability level for this Dev context."""
     def __init__(self, memory_id, version, guidance, status, applicability, *, created_at=0.0,
-                 match_level='same_scene', trusted_here=None, source_seed=None, source_task_id=None):
+                 match_level='same_scene', trusted_here=None, source_seed=None, source_task_id=None, trust_scope=None):
         self.memory_id, self.version, self.guidance = memory_id, version, guidance
         self.status, self.applicability, self.created_at = status, applicability or {}, created_at or 0.0
         self.match_level = match_level
+        self.trust_scope = trust_scope
         self.trusted_here = (status == 'trusted' and match_level == 'same_scene') if trusted_here is None else trusted_here
         self.unvalidated = status == 'provisional'
         self.source_seed = source_seed
@@ -194,7 +195,7 @@ class DevMemory:
         if callable(getattr(self.gateway, 'retrieve_entries', None)):
             rows = [Note(r['memory_id'], r['version'], r['guidance'], r['status'], r.get('applicability'),
                          created_at=r.get('created_at'), match_level=r.get('match_level', 'same_scene'),
-                         trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'), source_task_id=r.get('source_task_id'))
+                         trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'), source_task_id=r.get('source_task_id'), trust_scope=r.get('trust_scope'))
                     for r in self.gateway.retrieve_entries(self.context, now=now,
                         match_levels=levels)
                     if (not reference_only or r.get('match_level') in levels and r.get('trusted_here') is False)
@@ -407,7 +408,7 @@ def journal_result(store, cell, version, packet, source_ref, public_feedback_ref
         return None
     if not packet.get('entries') and not run_notes:return
     from .dev_v2_memory_import import queue
-    provisional=[e for e in packet.get('entries',[]) if (e.get('trust_scope')=='provisional'
+    provisional=[e for e in packet.get('entries',[]) if (e.get('trust_scope') in {'provisional','family_scoped'}
                  or e.get('status')=='trusted' and e.get('trusted_here') is not False)
                  and not e.get('seeded_for_tests')
                  and packet.get('scope') != 'reference_only']

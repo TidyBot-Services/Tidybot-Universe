@@ -12,6 +12,7 @@ TASKS = {
     for name, env in [
         ("pick_place_counter_to_sink", "PickPlaceCounterToSink"),
         ("open_cabinet", "OpenCabinet"),
+        ("pick_place_counter_to_cabinet", "PickPlaceCounterToCabinet"),
     ]
 }
 

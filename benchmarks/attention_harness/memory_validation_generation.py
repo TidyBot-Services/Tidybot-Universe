@@ -59,6 +59,7 @@ def generate(store,cell,config,origin,feedback,owner,*,memory=None,client=None,v
     remaining=dict(base)
     manifest=json.loads(checked(experiment['manifest']).read_bytes())
     messages=model_messages(config,checked(parent).read_text(),feedback,{'memory':[{'content':memory['guidance']}] if memory else []},remaining,source_size_limit_bytes=source_limit(config,manifest),validation_memory=True)
+    if memory and memory.get('label'):messages[0]['content']+='\n'+memory['label']
     text,request,response,usage=provider_call(store,cell,version,'model',messages,owner,directory,client)
     source,reason,error=parse_generation(text,config,manifest)
     exposure=exposure_receipt(directory,cell,version,request,parent,memory=memory)

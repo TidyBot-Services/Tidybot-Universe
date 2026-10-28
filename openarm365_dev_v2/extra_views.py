@@ -48,6 +48,8 @@ def look_target(env):
     import numpy as np
     if hasattr(env, 'sink'):
         target = np.array(env.sink.pos, dtype=float); target[2] = 1.0
+    elif hasattr(env, 'cab'):
+        target = np.array(env.cab.pos, dtype=float)
     else:
         target = np.array(env.fxtr.pos, dtype=float); target[2] = 1.3
     return target

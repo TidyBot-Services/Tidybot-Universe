@@ -58,6 +58,8 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
             verify_lock(actual_ref,expected_source_root=current['source_root'])
             replay_config=execution_config(config,actual_ref,source_drift) if origin else config
         artifacts={k:read(bundle['artifacts'][k]) for k in ('native_result','trace','safety','sandbox_receipt')}
+        from attention_memory_service.resource_receipt import valid as valid_resource_receipt
+        if not valid_resource_receipt(config, artifacts['sandbox_receipt']):raise Refused('native resource receipt exceeds frozen bounds')
         feedback=public_trace_projection(artifacts['trace']);present=signature_present(feedback,failure_signature);position=stop_position(artifacts['trace'])
         bindings={k:bundle[k] for k in ('run_id','attempt_id','policy_sha256','config_sha256','task_id','seed')}
         if origin:

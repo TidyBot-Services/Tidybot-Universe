@@ -60,7 +60,17 @@ def validate_creation(selection,origin):
     count=arm_count(origin)
     if 'cross_seed' in origin:
         target=origin['cross_seed']
-        if set(target)!={'seed','contract','runs'} or type(target['seed']) is not int or target['seed']==config['seed'] or type(count) is not int or count not in (1,6,10):raise DevConflict('exact cross-seed probe or paired batch required')
+        family='family_check_id' in target
+        expected_target={'seed','contract','runs'} | ({'family_check_id'} if family else set())
+        if set(target)!=expected_target or type(target['seed']) is not int or (target['seed']==config['seed'] and not family) or type(count) is not int or count not in (1,6,10):raise DevConflict('exact cross-seed probe or paired batch required')
+        if family:
+            from .dev_tasks import get_task
+            from openarm365_dev.policy_validation import validate_generated_policy
+            from openarm365_dev_v2.source_policy import source_limit
+            get_task(config['task_id'])
+            source=checked(origin['source']).read_text();validate_generated_policy(source,config=config,manifest=manifest)
+            if len(source.encode())>source_limit(config,manifest):raise DevConflict('source_size_limit_exceeded')
+            if not isinstance(target['family_check_id'],str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,99}',target['family_check_id']):raise DevConflict('frozen family check ID required')
         from openarm365_dev_v2.scene_contract import load_contract,seed_entry,SCHEMA_V2
         contract=load_contract(target['contract'])
         if contract['schema']!=SCHEMA_V2:raise DevConflict('seed-keyed target contract required')

@@ -103,7 +103,8 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     require_eval_gate(mode,selection)
     from openarm365_dev_v2.diag_budget import diagnostic_budget
     if diagnostic_budget() and mode!='diagnostic':raise ValueError('scaled attempt requires diagnostic experiment')
-    tasks=selection.get('tasks',list(__import__('benchmarks.attention_harness.dev_tasks',fromlist=['TASKS']).TASKS))
+    # Preserve the existing default matrix; new Dev tasks are explicitly selectable.
+    tasks=selection.get('tasks',['pick_place_counter_to_sink','open_cabinet'])
     seeds=selection.get('seeds',[101]);policies=selection.get('policies',list(POLICY_IDS))
     if not isinstance(tasks,list) or not tasks or len(tasks)>32 or len(set(tasks))!=len(tasks):raise ValueError('unique registered task list required')
     if not isinstance(seeds,list) or not seeds or len(set(seeds))!=len(seeds):raise ValueError('unique seed list required')

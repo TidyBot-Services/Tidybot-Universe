@@ -89,6 +89,11 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
     for folder in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']:
         files.extend(p for p in (ROOT/folder).rglob('*.py') if '__pycache__' not in p.parts)
     files.extend(p for p in (ROOT/'benchmarks/attention_harness').glob('dev*.py'))
+    # Cabinet resources belong only to the opt-in dev-local identity.
+    from curobo_v2.execution_settings import receipt_fields
+    if execution_settings is not None and receipt_fields(execution_settings).get('deployment_kind')=='dev-local':
+        files.append(ROOT/'openarm365_dev_v2/prompts/pick_place_counter_to_cabinet.json')
+        files.append(ROOT/'benchmarks/attention_harness/robocasa365/tasks.py')
     files.append(ROOT/'benchmarks/attention_harness/v2_evaluator.py')
     files.append(ROOT/'benchmarks/attention_harness/daily_dev_v2.py')
     for name in ['core/policies.py','core/assessment.py','core/models.py','core/trace.py','core/dev_store.py','formal_runner_boundary.py','policy_input.py','parcc_client.py','dev_attention.py','ui_server.py','ui/live.js','ui/index.html','ui_history.py','ui_observability.py','ui_media.py','robocasa_native/policy_sandbox.py','robocasa365/recording.py','robocasa365/human_camera.py']:
@@ -117,6 +122,8 @@ def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planne
 
 
 def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None):
+    if task_id=='pick_place_counter_to_cabinet' and (budget_tier!='dev' or budget_boundary!='dev_loop'):
+        raise ValueError('cabinet pick/place requires dev tier and dev_loop boundary')
     if planner_source is None and budget_tier=='dev' and budget_boundary=='dev_loop':
         planner_source=dict(kind='dev-local',source_root=str(ROOT))
     if planner_source is not None:_planner_source(planner_source,budget_tier,budget_boundary)
@@ -132,6 +139,10 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
 
 
 def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None):
+    if task_id=='pick_place_counter_to_cabinet' and (budget_tier!='dev' or budget_boundary!='dev_loop'):
+        raise ValueError('cabinet pick/place requires dev tier and dev_loop boundary')
+    if task_id=='pick_place_counter_to_cabinet' and (execution_settings is None or execution_settings.profile!='r4-20261027' or planner_source is None):
+        raise ValueError('cabinet pick/place requires r4 dev-local execution settings')
     if planner_source is not None:
         _planner_source(planner_source,budget_tier,budget_boundary)
         from curobo_v2.identity import load_lock

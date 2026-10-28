@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment, offline_dev_identity
 
 from benchmarks.attention_harness import dev_planner_memory as memory, dev_v2_loop as loop
 from benchmarks.attention_harness.dev_capabilities import execution_environment, provider_environment
@@ -304,7 +304,7 @@ def test_validation_consumption_binds_original_input_and_code(tmp_path):
     with pytest.raises(DevConflict):policy_input(dict(input=inp,grant=grant,guidance=public['guidance']),r)
 
 
-def test_real_main_http_handler_without_transport(tmp_path,monkeypatch):
+def test_real_main_http_handler_without_transport(tmp_path,monkeypatch,offline_dev_identity):
     """Handler routing only; the separate test_main_bridge_http uses real TCP."""
     import io
     import re

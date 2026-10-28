@@ -95,7 +95,7 @@
     return [execution,scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract'].filter(Boolean).join(' · ');
   }
   const warningText=warnings=>Array.isArray(warnings)&&warnings.length?'Some note details are unavailable right now.':'';
-  const api={automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
+  const api={familyHtml,automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   if(!global.document)return;
   const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -274,7 +274,7 @@
     const errors=(value.errors||[]).map(e=>`<p class="ac-err" role="alert">${esc(e)}</p>`).join('');
     const queue=value.queue||[],results=value.results||[],demoted=(value.events||[]).filter(n=>n.event==='demoted');
     const ignored=(value.ignored_stale_runs||[]).map(r=>`<p class="ac-skip">Skipped stale run: ${esc(r.id)} · ${esc(r.reason)}</p>`).join('');
-    const cross=crossSeedHtml(value)+positiveControlHtml(value);
+    const cross=crossSeedHtml(value)+positiveControlHtml(value)+familyHtml(value.family);
     if(!on&&!value.current&&!queue.length&&!results.length&&!demoted.length)return head+refresh+errors+ignored+cross;
     const c=value.current,pair=Number(c?.pair)||0,total=c?.pairs_needed||5;
     const now=c?.stage==='evaluate'?`<li><b>${esc(c.title)}</b><small>Evaluating 5 pairs (this can take several minutes)${c.paused?' · paused':''}</small></li>`:c?.stage==='begin'?`<li><b>${esc(c.title)}</b><small>Preparing validation batch · waiting to retry</small></li>`:c?.stage==='origin'?`<li><b>${esc(c.title)}</b><small>Preparing origin evidence${c.paused?' · paused':''}</small></li>`:c?.stage==='probe'?`<li><b>${esc(c.title)}</b><small>Seed ${esc(c.seed)} · probe without notes${c.paused?' · paused':''}</small></li>`:c?`<li><b>${esc(c.title)}</b><div class="ac-dots" aria-hidden="true">${Array.from({length:total},(_,i)=>`<i class="${i+1<pair?'done':i+1===pair?(c.paused?'hold':'now'):''}"></i>`).join('')}</div><small>${c.seed!==undefined?`Seed ${esc(c.seed)} · `:''}pair ${esc(c.pair)} of ${total} · ${esc(c.arm)} run, ${c.arm==='control'?'without':'with'} the note${c.paused?' · paused':''}</small></li>`:'<li class="ac-empty">Nothing is being checked</li>';
@@ -284,6 +284,15 @@
     const col=(title,count,body)=>`<div class="ac-col"><h3>${title}${count?`<b>${count}</b>`:''}</h3><ul>${body}</ul></div>`;
     return `${head}${refresh}${errors}${ignored}<div class="ac-grid">${col('Checking now',0,now+(c?`<li>${c.replacement_notice?`<small>${esc(c.replacement_notice)}</small>`:''}${discards(c)}</li>`:''))}${col('Waiting notes',queue.length,waiting)}${col('Results',results.length+demoted.length,done)}</div>${cross}`;
   }
+  function familyHtml(value){
+    if(!value)return '';
+    const esc=escapeHtml;
+    const fixtures=(value.fixtures||[]).map(f=>`<li><b>${esc(f.title)}</b><strong>${esc(f.label)}</strong><p>${esc(f.guidance)}</p><p>${esc(f.statement)}</p><p>${esc(f.statement_zh)}</p><ul>${(f.user_quotes||[]).map(q=>`<li>${esc(q)}</li>`).join('')}</ul><strong>${f.revoked_at?'Revoked':'Operator preset · scene trusted + task trusted'}</strong></li>`).join('');
+    const candidates=(value.candidates||[]).map(c=>`<li><b>${esc(c.title)}</b><span class="ac-tag">Model rewrite</span><small>${esc(c.label||'')}</small><p>${esc(c.guidance)}</p><details><summary>original, unchanged · ${esc(c.from_source?.title)}</summary><p>${esc(c.original_guidance)}</p><small>${esc(c.from_source?.kind)}:${esc(c.from_source?.id)} · v${esc(c.from_source?.version)} · ${esc(c.from_source?.guidance_sha256)}</small></details><small>Model receipt: ${esc(c.model_receipt?.provider)} / ${esc(c.model_receipt?.model)} · ${esc(c.model_receipt?.response_sha256)}</small><ul>${(c.scenes||[]).map(s=>`<li>Seed ${esc(s.target_seed)} · ${esc(s.role)} · ${esc(s.pairs_done)}/${esc(s.pairs_needed??"—")} pairs · ${esc(s.verdict||'Waiting')}<small>${esc(s.reason)}</small></li>`).join('')}</ul><strong>${esc(c.status==='revoked'?'Revoked':c.decision?.decision||c.status)}</strong><small>${esc(c.conditions?.evidence_strength)}</small><ul>${(c.conditions?.met||[]).map(x=>`<li>Met: ${esc(x)}</li>`).join('')}${(c.conditions?.missing||[]).map(x=>`<li>Missing: ${esc(x)}</li>`).join('')}</ul></li>`).join('');
+    const events=(value.events||[]).slice(-20).map(e=>`<li>${esc(e.kind)} · ${esc(e.reason)}</li>`).join('');
+    return `<section class="ac-cross ac-family"><h3>Family</h3><ul>${fixtures}${candidates}</ul><details><summary>Family notices</summary><ul>${events}</ul></details></section>`;
+  }
+
   function positiveControlHtml(value){
     const esc=escapeHtml,controls=value.positive_controls||[];
     if(!controls.length)return '';

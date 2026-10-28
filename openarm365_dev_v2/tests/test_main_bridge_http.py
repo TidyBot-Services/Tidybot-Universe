@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 import pytest
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment, offline_dev_identity
 
 from benchmarks.attention_harness.ui_server import create_server
 from benchmarks.attention_harness.core.store import AttentionStore
@@ -18,7 +19,7 @@ from openarm365_dev_v2.tests.test_main_integration import make_bridge
 from openarm365_dev_v2.tests.test_planner_features import add_version, SENSOR, SOURCE
 
 
-def test_main_workbench_real_http_creation_permissions_refresh_and_cancel(tmp_path,monkeypatch):
+def test_main_workbench_real_http_creation_permissions_refresh_and_cancel(tmp_path,monkeypatch,offline_dev_identity):
     human='controlled-human-capability-only-123456'
     monkeypatch.setenv('ATTENTION_HUMAN_APPROVAL_TOKEN',human)
     bridge,body=make_bridge(tmp_path)

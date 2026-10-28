@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment, offline_dev_identity
 
 from benchmarks.attention_harness import daily_dev_v2 as daily, dev_experiment as experiments
 from benchmarks.attention_harness import dev_planner_memory as memory, dev_v2_loop as loop
@@ -343,7 +343,7 @@ def test_switch_before_and_while_owned_keeps_next_dev_prompt(tmp_path, monkeypat
         assert len(notes) == 3 and notes[0]['content'] == 'Guidance 0'
 
 
-def test_probe_cells_never_bind_or_retrieve_memory(tmp_path, monkeypatch):
+def test_probe_cells_never_bind_or_retrieve_memory(tmp_path, monkeypatch, offline_dev_identity):
     from benchmarks.attention_harness.dev_tasks import TASKS
     from benchmarks.attention_harness.dev_configuration import normalize_configuration, configured_budget
     selection = dict(request_key='memory-probe-parent', tasks=list(TASKS), seeds=[102],
