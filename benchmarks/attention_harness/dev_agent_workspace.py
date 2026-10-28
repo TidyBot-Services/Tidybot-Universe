@@ -133,10 +133,11 @@ class Workspace:
         prompt = prompt.replace('Repair runtime errors before the next full attempt.',
                                 'Recoverable rejections do not alone fail a completed execution.')
         self.publish('task.json', public_observation(task))
-        prompt += (' Shape notes: the observe PROBE nests robot state under "robot" (and objects'
-            ' under "perception"), but sensors.get_observation() in executed code returns the flat'
-            ' robot0_* keys listed above. Successful motion calls (move_delta, move_joints, gripper'
-            ' open/close) return None; only a pre-dispatch refusal returns a dict with rejected true.')
+        prompt += (' Shape notes: the observe probe returns "observation" with the same flat'
+            ' robot0_* keys as sensors.get_observation(), and "perception" as a sibling key.'
+            ' Successful motion calls (move_delta, move_joints, gripper open/close) return'
+            ' {ok:true,rejected:false}; pre-dispatch refusals return'
+            ' {ok:false,rejected:true,reason,diagnostics}.')
         # Only the frozen, hash-bound SDK prompt is published verbatim: the path
         # heuristic withheld all of it in r4 ("open()/close()", "dict.get/keys").
         # Run-derived files keep their screening; a forbidden term is a hard error.
@@ -161,10 +162,15 @@ TOOLS = '''# Dev tools (file protocol v1)
 Run /usr/bin/python3 docs/devtool.py OP. All paths are relative to this workspace.
 Requests are served one at a time. A request sent while another is running is
 rejected with error busy (no charge); wait for the first response, then retry.
+Memory notes in memory/vN.json are advice, not authority. Each note is bound to
+the version it was issued for; read the current version's notes before moving.
 submit --entry work/main.py [--reason TEXT]: one formal version, one reset execution,
 then Eval; blocks until feedback. Only one formal submission may be in flight (busy).
 run --no-eval --entry work/main.py: one reset execution, no version and no Eval.
-observe: public robot observation from the registered reset scene.
+observe: public robot observation from the registered reset scene. The observation dict
+has the same flat robot0_* keys as sensors.get_observation(); perception is a sibling key.
+Successful SDK motion calls return {ok:true,rejected:false}; refusals return
+{ok:false,rejected:true,reason,diagnostics}.
 find_objects [--names JSON]: public object positions (world metres), reset scene.
 ik_check --target JSON [--start-joints JSON] [--base-offset JSON]: target {side, position, quaternion_xyzw};
 plan_dry_run --action JSON [--start-joints JSON] [--base-offset JSON]: one {group, operation, args, kwargs}.

@@ -123,11 +123,14 @@ def provisional_payload(proposal, namespace, *, taken=()):
 
 def pending(ledger):
     """Yield ``(item_key, kind, cell, version, payload_builder)`` not yet receipted."""
-    agents=set()
+    agents={}
     try:
         with sqlite3.connect('file:' + str(Path(ledger).resolve()) + '?mode=ro', uri=True) as db:
-            agents={key for key,raw in db.execute('SELECT id,payload FROM v2_cells')
+            agents={key:json.loads(raw) for key,raw in db.execute('SELECT id,payload FROM v2_cells')
                     if json.loads(raw).get('dev_mode')=='agent'}
+            for key,cell in agents.items():
+                cell['jobs']=[dict(json.loads(raw),state=state) for state,raw in db.execute(
+                    'SELECT state,payload FROM v2_jobs WHERE cell=?',(key,))]
     except sqlite3.OperationalError:
         pass  # Ledgers without v2_cells cannot hold agent cells; keep the old behaviour.
     events = _events(ledger)
@@ -136,7 +139,12 @@ def pending(ledger):
         if kind != 'planner_memory_offline_queued' or event.get('kind') not in ('provisional', 'provisional_outcome'):
             continue
         if event.get('cell') in agents:
-            raise Refused('agent_memory_auto_import_and_validation_unsupported')
+            from .dev_agent_export import exported
+            cell=agents[event['cell']]
+            if (event['kind']!='provisional_outcome' or not exported(cell,event.get('version'))
+                    or cell.get('validation_experiment') or cell.get('positive_control')
+                    or (Path(cell['artifact_dir'])/f"v{event['version']}"/'memory-validation-input.json').exists()):
+                raise Refused('agent_memory_auto_import_and_validation_unsupported')
         queue = event['queue']
         if event['kind'] == 'provisional':
             item = 'provisional:' + queue['sha256']
@@ -298,7 +306,17 @@ def launch_after_run(experiment_dir, *, environ=None, popen=subprocess.Popen):
         with sqlite3.connect('file:' + str(ledger.resolve()) + '?mode=ro', uri=True) as db:
             experiment = json.loads(db.execute('SELECT payload FROM v2_experiments').fetchone()[0])
         manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
-        if manifest.get('dev_mode')=='agent':return None
+        if manifest.get('dev_mode')=='agent':
+            if manifest.get('validation_experiment') or manifest.get('positive_control'):return None
+            from .dev_agent_export import exported
+            with sqlite3.connect('file:'+str(ledger.resolve())+'?mode=ro',uri=True) as db:
+                cells=[(key,json.loads(raw)) for key,raw in db.execute('SELECT id,payload FROM v2_cells')]
+                eligible=False
+                for key,cell in cells:
+                    cell['jobs']=[dict(json.loads(raw),state=state) for state,raw in db.execute(
+                        'SELECT state,payload FROM v2_jobs WHERE cell=?',(key,))]
+                    eligible=eligible or any(exported(cell,j['version']) for j in cell['jobs'])
+                if not eligible:return None
         settings = manifest.get('memory_authority') or (manifest.get('planner_features') or {}).get('memory')
         if not settings:
             return None

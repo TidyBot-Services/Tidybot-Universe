@@ -396,12 +396,14 @@ def test_production_wires_real_eval_helper_and_frozen_model(tmp_path,monkeypatch
     from benchmarks.attention_harness import dev_agent_loop as loop,dev_agent_isolation as isolation
     config=dict(CONFIG,task_id='fake',task_prompt='Move object.',model_source='codex',advisor_proxy=dev_advisor_proxy.default_config(model_source='codex'))
     manifest=dict(configs={'fake:102':config},selection={'help_budget':1},dev_model='gpt-6-sol',eval_model='gpt-6-astra',
+        memory={'entries':[]},
         dev_reasoning_effort='high',quota_stop_percent=90,initial_sources={'fake':{'source':SOURCE.decode()}},
         policies={'reactive_help':{}},demos={'fake':{'content':'Example'}},**manifest_fields())
     updates=[]
     class Store:
         path=tmp_path/'ledger.sqlite'
-        def cell(self,key):return dict(task_id='fake',seed=102,policy_id='reactive_help')
+        def cell(self,key):return dict(task_id='fake',seed=102,policy_id='reactive_help',
+            artifact_dir=str(tmp_path/'run'/'cells'/key))
         def update_cell(self,key,**kw):updates.append(kw)
         def version(self,*a):pass
     class Listener:
@@ -418,6 +420,7 @@ def test_production_wires_real_eval_helper_and_frozen_model(tmp_path,monkeypatch
         assert kw['evaluator'].model=='gpt-6-astra' and session.model=='gpt-6-sol'
         assert kw['evaluator'].prompt==manifest['eval_agent_prompt']
         assert kw['helper'].policy=='reactive_help'
+        assert kw['helper'].memory is kw['memory'] and kw['exporter'].config==config
         return dict(state='completed',reason='fixture',resources=ledger.snapshot())
     monkeypatch.setattr(loop,'drive',checked_drive)
     result=loop.run_agent_cell(Store(),{'artifact_dir':str(tmp_path/'run')},manifest,'cell')

@@ -24,6 +24,7 @@ class Executor:
     def _execute(self, source, directory, *, deadline):
         from .formal_runner_boundary import FormalRunRequest
         directory=Path(directory)
+        self.result=None;self.episode=None;self.execution_usage=None;self.native_result_ref=None
         atomic_write(directory,'policy.py',source);atomic_write(directory,'config.json',encode(self.config))
         episodes=[]
         self.runner=self.runner_factory(service_source_root=None,sim_python=self.python,
@@ -36,6 +37,7 @@ class Executor:
             config_path=directory/'config.json',artifact_root=directory,overall_deadline_seconds=seconds,
             attempt_deadline_seconds=seconds,sdk_call_limit=320,run_id='run:agent',attempt_id='attempt:agent:0')
         result=self.runner.execute(request)
+        self.result=result
         if result.get('error'):
             atomic_write(directory,'controller-error.json',encode(dict(error=result['error'])))
         episode=Path(episodes[-1]) if episodes else None

@@ -9,6 +9,8 @@ def build_sdk(owner, record_event):
             event = dict(source=group, operation=operation, arguments=dict(args=list(args), kwargs=kwargs))
             try:
                 value = owner.rpc(group, operation, args, kwargs)
+                if value is None and group != 'sensors':
+                    value = dict(ok=True, rejected=False)
                 rejected = isinstance(value, dict) and value.get('rejected') is True
                 event.update(status='rejected' if rejected else 'completed', result=value)
                 record_event(event)

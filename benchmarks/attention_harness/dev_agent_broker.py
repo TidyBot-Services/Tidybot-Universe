@@ -71,12 +71,13 @@ class FakeEvaluator:
 class Broker:
     def __init__(self, workspace, *, executor, prober, evaluator, helper=None, budget=None,
                  agent_mode=False, timeouts=None, quota=None, on_cut=None, on_version=None,
-                 on_execution=None, on_settled=None, quiesce=nullcontext):
+                 on_execution=None, on_settled=None, quiesce=nullcontext, memory=None):
         if agent_mode is not True: raise ValueError('agent_mode_required')
         self.workspace = workspace
         self.quota=quota; self.stop_reason=None
         self.on_cut=on_cut; self.on_version=on_version; self.on_execution=on_execution
         self.on_settled=on_settled; self.quiesce=quiesce
+        self.memory=memory
         self.executor, self.prober, self.evaluator = executor, prober, evaluator
         self.helper, self.budget = helper or Helper(), budget or Budget()
         self.timeouts = {**TIMEOUTS, **(timeouts or {})}
@@ -202,6 +203,12 @@ class Broker:
                         except (ValueError,OSError):source=b''
                     if op == 'run' and invalid: return reject('invalid_source')
                     if time.monotonic() - started > self.timeouts['validation']: return reject('validation_timeout')
+                    if not invalid and self.memory:
+                        from .dev_agent_memory import MemoryRevoked
+                        try:self.memory.recheck()
+                        except MemoryRevoked:
+                            response['result']=dict(ok=False,rejected=True,reason='memory_revoked')
+                            return reject('memory_revoked')
                     self.budget.charge(**({'versions': 1} if op == 'submit' else {}),
                                        **({'executions': 1} if not invalid else {}))
                     response['charged'] = dict(versions=int(op=='submit'), executions=int(not invalid))
@@ -328,8 +335,10 @@ class Broker:
         return dict(outcome=outcome, artifacts=artifacts)
 
     def _dispatch(self, rid, source, invalid):
+        from .dev_agent_memory import MemoryRevoked
         record = self.records[rid]; response = record['response']; request = record['request']
         op, payload = request['op'], request['payload']
+        memory_revoked=False
         try:
             with self.lock:
                 if hasattr(self.budget,'claim'):self.budget.claim(rid)
@@ -368,10 +377,16 @@ class Broker:
                     eid = response['execution_id']
                     directory = self.workspace.private / 'executions' / eid
                     directory.mkdir(parents=True)
-                    errored = None
+                    errored = None;not_dispatched=False
                     try:
+                        if self.memory:self.memory.recheck()
                         result = self._bounded(self.executor, self.executor.execute, source, directory,
                                                timeout=self.timeouts[op], quarantine=False)
+                    except MemoryRevoked:
+                        memory_revoked=True;not_dispatched=True
+                        response['execution_dispatched']=False
+                        result=dict(status='memory_revoked',error='memory_revoked',trace=[],
+                                    stdout='',stderr='',memory_revoked=True)
                     except Exception as exc:
                         if isinstance(exc, TimeoutError) and not self._stopped(self.executor):
                             raise BrokerInvariant('execution_not_stopped_after_timeout') from exc
@@ -381,13 +396,20 @@ class Broker:
                         atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(op=op,error='execution_error',**errored)))
                         result = dict(status='execution_error', error=errored['error_class'], stdout='',
                                       stderr='execution_error: '+errored['error_class']+': '+errored['message']+'\n', trace=[])
+                    if self.memory and not not_dispatched:
+                        try:self.memory.recheck()
+                        except MemoryRevoked:
+                            memory_revoked=True
+                            result['memory_revoked']=True
                     if hasattr(self.budget,'ledger'):
-                        self.budget.ledger.record_execution('request:'+rid,getattr(self.executor,'execution_usage',None) if errored is None else None)
+                        usage=(dict(sdk_calls=0,control_steps=0,wall_seconds=0) if not_dispatched else
+                               getattr(self.executor,'execution_usage',None) if errored is None else None)
+                        self.budget.ledger.record_execution('request:'+rid,usage)
                     value = step('execution_artifacts', self._execution, eid, source, result)
                     if value is None:
                         value = dict(outcome=public_outcome('failed', [], error='artifacts_unavailable'), artifacts={})
                     if errored:value['execution_error']=errored
-                    elif hasattr(self.helper,'capture'):step('help_capture', self.helper.capture, self.executor)
+                    elif not not_dispatched and hasattr(self.helper,'capture'):step('help_capture', self.helper.capture, self.executor)
                     # The trusted completion read; its failure only means "not completed".
                     if self.on_execution and errored is None:step('completion_read', self.on_execution, response, directory, result)
                     if self.on_cut and op=='submit':step('cut_post_exec', self.on_cut, 'post-exec', response)
@@ -404,8 +426,8 @@ class Broker:
                             self.workspace.publish(base+'sources/'+path.name,feedback(path.read_text()).encode())
                     step('version_files', publish_version)
                     value.update(version_id=vid,execution_id=response.get('execution_id'))
-                    if invalid:
-                        verdict=dict(status='not_run_invalid_submission',passed=None)
+                    if invalid or memory_revoked:
+                        verdict=dict(status='memory_revoked' if memory_revoked else 'not_run_invalid_submission',passed=None)
                     else:
                         ledger=getattr(self.budget,'ledger',None);eval_id='eval:'+rid
                         if ledger:
@@ -443,7 +465,10 @@ class Broker:
                 if value.get('version_id'):
                     for row in self.histories['versions']:
                         if row['version_id']==value['version_id']:row['help']=value
-            response.update(status='needs_review' if self.quarantined else 'completed', result=value)
+            if memory_revoked:
+                value.update(ok=False,rejected=True,reason='memory_revoked')
+                response['error']='memory_revoked'
+            response.update(status='needs_review' if self.quarantined else 'rejected' if memory_revoked else 'completed', result=value)
             if self.quarantined:response['error']=(self.failure or {}).get('error') or 'run_error'
         except BaseException as exc:
             if isinstance(exc, Exception) and not isinstance(exc, BrokerInvariant) and (op in PROBES or op == 'ask_help'):

@@ -52,7 +52,8 @@ def trusted_completion(executor, directory, result):
 
 def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helper=None, quota=None,
           policy='reactive_help', completion_reader=trusted_completion, control=lambda:None,
-          version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60):
+          version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60,
+          memory=None, exporter=None):
     """Injectable offline seam; production always supplies a preflighted session."""
     stop=None;successful={};completion_failures={};delivered=0;idle=0;broker=None;events=[];session_failures=0
     state_path=workspace.private/'loop.json'
@@ -66,6 +67,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             budgets=ledger.snapshot(),session=session.checkpoint(),request_cursor=len(broker.records)),quiesce=session.quiesce)
     def execution(response,directory,result):
         if response['op']=='submit':
+            if result.get('memory_revoked'):return
             try:successful[response['version_id']]=completion_reader(executor,directory,result)
             except Exception as exc:
                 # Unevaluated/unreadable native: not completed, recorded privately only.
@@ -80,19 +82,32 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                  agreement=(value.get('eval',{}).get('passed')==success if type(value.get('eval',{}).get('passed')) is bool and type(success) is bool else None))
         row['agree']=row['agreement']
         if vid in completion_failures:row.update(native='unknown',native_error=completion_failures[vid])
-        atomic_write(workspace.private,'versions/'+vid+'.json',encode(row));version_record(row)
+        row['reason']=broker.records[response['request_id']]['request']['payload'].get('reason') or value['outcome']['status']
+        atomic_write(workspace.private,'versions/'+vid+'.json',encode(row))
+        if exporter:exporter.capture(response,row,executor)
+        else:version_record(row)
         if success:
             stop='native_success';broker.stop_reason='run_complete'
             session.cancel('run_complete')
         elif value.get('eval',{}).get('passed') is True:
             value['message']=CONTINUE_MESSAGE
             workspace.publish('versions/'+vid+'/continue.json',dict(message=CONTINUE_MESSAGE))
+        if memory and stop is None:
+            previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
+            value['memory_message']=memory.open(int(vid[1:])+1,previous)
     def settled(response):
+        nonlocal stop
+        if exporter:
+            try:exporter.settle(response,memory)
+            except Exception as exc:
+                completion_failures['export']=str(exc)
+                stop='fatal_error';broker.stop_reason='run_error';session.cancel('run_error')
+                raise
         if response['status']=='completed':
             event=dict(event_id=len(events)+1,request_id=response['request_id'],op=response['op'],
                        response='rpc/responses/'+response['request_id']+'.json')
             if response.get('result',{}).get('message'):event['message']=response['result']['message']
-            for key in ('eval','help'):
+            for key in ('eval','help','memory_message'):
                 if key in response.get('result',{}):event[key]=response['result'][key]
             if response['op']=='ask_help':event['help']=response.get('result')
             events.append(event);workspace.publish('events/evt%06d.json'%len(events),event);save()
@@ -103,7 +118,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
     try:
         broker=Broker(workspace,executor=executor,prober=prober,evaluator=evaluator or FakeEvaluator(),
             agent_mode=True,helper=helper,budget=LedgerBudget(ledger),quota=quota,on_cut=cut,on_version=version,
-            on_execution=execution,on_settled=settled,quiesce=session.quiesce)
+            on_execution=execution,on_settled=settled,quiesce=session.quiesce,memory=memory)
         unknown=ledger.recover()
         if broker.quarantined or unknown:raise ValueError('unresolved_agent_work')
         for path in (workspace.private/'versions').glob('*.json'):
@@ -112,6 +127,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         ledger.resume()
         initial_help=helper.initial() if helper and hasattr(helper,'initial') else None
         prompt=bootstrap(workspace,ledger,policy) if not session.thread_id else continuation()
+        if memory:prompt+='\n'+memory.start()
         if session.thread_id:
             prompt+=' Unseen events: '+json.dumps(events[delivered:],sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
             delivered=len(events);save()
@@ -168,6 +184,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             prompt=('No formal submission yet; ' if not broker.histories['versions'] else '')+'Continue the task. History files are authoritative. '
             if failure:prompt='The previous turn ended with an error: '+failure[:300]+'. '+prompt
             prompt+='Unseen events: '+json.dumps(unseen,sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
+            if memory:prompt+='\n'+memory.message
             workspace.publish('events/resume-t%06d.json'%(session.turn+1),dict(message=prompt));save()
         if stop=='operator_paused':ledger.pause()
         result=dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable') else 'failed',
@@ -234,14 +251,19 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             return 'cancel' if current['cancelled'] else 'pause' if current.get('pause_requested_at') else None
         from .dev_agent_eval import Evaluator
         from .dev_agent_attention import Helper
+        from .dev_agent_memory import Memory
+        from .dev_agent_export import Exporter
         from .dev_v2_loop import proxy_client
+        memory=Memory(store,key,workspace,config,manifest['initial_sources'][cell['task_id']]['source'],
+            default=manifest['memory'],help_pricing=manifest.get('help_pricing'))
+        exporter=Exporter(store,key,workspace,config,ledger)
         helper=Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
-            config=config,client=proxy_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota)
+            config=config,client=proxy_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory)
         evaluator=Evaluator(workspace,model=manifest['eval_model'],prompt=manifest['eval_agent_prompt'],quota=quota)
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory),
             prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
-            progress=lambda row:store.update_cell(key,agent_resources=row))
+            progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter)
         store.update_cell(key,**{k:v for k,v in result.items() if k!='resources'},agent_resources=result['resources'],owner=None)
         print(end_line(key,result),file=sys.stderr,flush=True)
         return result

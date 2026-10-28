@@ -52,7 +52,12 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         from .memory_origin_evidence import OriginalStore
         return OriginalStore(store.path).planner_snapshot(cell)
     c=store.cell(cell)
-    if c.get('dev_mode')=='agent':raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
+    if c.get('dev_mode')=='agent':
+        from .dev_agent_export import exported
+        if (not exported(c,version) or source is not None or motion_permission or import_purpose
+                or c.get('validation_experiment') or c.get('positive_control')
+                or (Path(c['artifact_dir'])/f'v{version}'/'memory-validation-input.json').exists()):
+            raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
     v=next(v for v in c['versions'] if v['version']==version)
     if source is None:
         packet_path=Path(c['artifact_dir'])/f'v{version}'/'memory-input.json'
@@ -65,6 +70,11 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
     config_ref={'uri':str(Path(c['artifact_dir'])/'config.json')}
     config_ref['sha256']=sha(config_ref['uri']);config=json.loads(checked(config_ref).read_bytes())
+    if c.get('dev_mode')=='agent':
+        manifest=json.loads(checked(e['manifest']).read_bytes())
+        if (manifest.get('validation_experiment') or manifest.get('positive_control')
+                or manifest.get('selection',{}).get('positive_control') or config.get('origin_dev_lock')):
+            raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
     record_ref={'uri':str(Path(c['artifact_dir'])/f'v{version}'/'version.json')}
     record_ref['sha256']=sha(record_ref['uri'])
     if json.loads(checked(record_ref).read_bytes())!=v:raise DevConflict('original version artifact differs from ledger')
@@ -100,7 +110,13 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         bundle=json.loads(checked(j['receipt']['bundle']).read_bytes());episode=Path(bundle['artifact_dir'])
         if import_purpose is not None:descriptor['import_purpose']=import_purpose
         scope=binding(cell,version,checked(v['source']).read_text(),config)
-        if scope:
+        if scope and c.get('dev_mode')=='agent':
+            # Export the exact motion scope without fabricating the human
+            # approval used by planner cells. The agent request is its own
+            # execution receipt; validation/origin admission above stays shut.
+            descriptor['permission_scope']=scope
+            descriptor['agent_execution']=dict(request_id=j['receipt']['agent_request_id'])
+        elif scope:
             approvals=planner_snapshot()['requests']
             matches=[a for a in approvals if a.get('state')=='consumed' and a.get('consumed_by')==j['job_id']]
             if not matches and motion_permission == ACTION:

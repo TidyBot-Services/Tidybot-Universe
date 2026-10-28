@@ -25,8 +25,8 @@ def test_defaults_and_old_config_bytes():
     with pytest.raises(ValueError):source_limit(dict(budget_tier='legacy',dev_mode='agent'))
 
 @pytest.mark.parametrize('change',[dict(budget_tier='legacy'),dict(budget_tier='formal'),dict(configuration={}),
-    dict(seeds=[101,102]),dict(tasks=[]),dict(positive_control=True),dict(memory_authority={'x':1}),
-    dict(memory_family=True),dict(model_source='parcc'),dict(dev_model='unknown'),dict(quota_stop_percent=float('nan'))])
+    dict(seeds=[101,102]),dict(tasks=[]),dict(positive_control=True),dict(planner_features={'x':1}),
+    dict(fork={'x':1}),dict(model_source='parcc'),dict(dev_model='unknown'),dict(quota_stop_percent=float('nan'))])
 def test_creation_options_reject_unsupported(change):
     with pytest.raises(ValueError):normalize({**SELECTION,**change})
 

@@ -111,7 +111,7 @@ def flat_usage(usage):
 
 class Helper:
     def __init__(self, workspace, ledger, *, policy, parameters=None, config=None, client=None,
-                 demo=None, quota=None, ask_provider=None, view_builder=request_view):
+                 demo=None, quota=None, ask_provider=None, view_builder=request_view, memory=None):
         self.workspace,self.ledger,self.policy=workspace,ledger,policy
         self.parameters=policy_parameters(policy,parameters)
         self.config=config or {};self.client=client;self.demo=demo;self.quota=quota
@@ -119,11 +119,15 @@ class Helper:
         self.path=workspace.private/'attention.json'
         self.state=json.loads(self.path.read_bytes()) if self.path.exists() else dict(failures=0,prior=[],current=None,intervals={})
         self.context={}
+        self.memory=memory
 
     def _save(self):atomic_write(self.workspace.private,'attention.json',encode(self.state))
 
     def _publish(self,vid):
         row={k:v for k,v in self.state['intervals'][vid].items() if k not in ('context','review')}
+        if 'memory' in row.get('decision',{}):
+            from .dev_v2_loop import prompt_memory_view
+            row['decision']=prompt_memory_view(row['decision'])
         self.workspace.publish('versions/'+vid+'/help.json',public_feedback(row))
         self._save()
         return public_feedback(row)
@@ -163,9 +167,16 @@ class Helper:
         diagnostic=dict(execution_status=outcome.get('status'),public_error=outcome.get('error') or '',
                         public_failure=outcome.get('status') in ('failed','timeout'),action_trace=evidence)
         review={k:verdict[k] for k in ('passed','reason') if k in verdict}
+        from .dev_help import EMPTY_MEMORY
+        memory=self.memory.packet if self.memory else EMPTY_MEMORY
+        shared=self.memory.shared if self.memory else False
+        default=self.memory.default if self.memory else EMPTY_MEMORY
+        decision_memory=memory if not shared or self.policy=='full_trace_aware_attention_planner' else default
         decision=decide(self.policy,self.parameters,int(vid[1:]),diagnostic,self.state['failures'],self.state['prior'],
             help_remaining=self.ledger.snapshot()['remaining']['help'],eval_review={'passed':verdict.get('passed')},
-            eval_available=type(verdict.get('passed')) is bool)
+            eval_available=type(verdict.get('passed')) is bool,memory=decision_memory)
+        if decision['action']=='retrieve_memory' and not shared and self.memory:
+            self.memory.cache(self.ledger,int(vid[1:]),decision['memory'])
         eligible=decision['action']=='request'
         # D4 explicitly grants reactive help for unavailable Eval, without
         # counting it as a failed verdict or advancing threshold/random slots.

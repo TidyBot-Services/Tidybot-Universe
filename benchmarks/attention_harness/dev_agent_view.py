@@ -164,7 +164,8 @@ def projection(store,cell,*,api='/api/dev-v2',now=None):
         if any(j['resources'].get('moving_executions') for j in active):phase='waiting on execution'
         if any(j['kind']=='eval' for j in active):phase='Eval'
         if any(j['kind']=='help' for j in active):phase='help'
-    versions=[{k:v[k] for k in ('version','version_id','execution_id','valid','eval','eval_verdict','native_success','agree','agreement') if k in v} for v in cell.get('versions',[])]
+    version_rows=[dict(v,**v.get('agent',{})) for v in cell.get('versions',[])]
+    versions=[{k:v[k] for k in ('version','version_id','execution_id','valid','eval','eval_verdict','native_success','agree','agreement') if k in v} for v in version_rows]
     result=clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','error','task_id','seed','policy_id','mode','budget','used','versions','jobs')})
     result.update(dev_mode='agent',versions=clean(versions),jobs=[],agent=dict(
         phase=phase,reason=clean(cell.get('reason')),fatal_cause=clean(cell.get('fatal_cause')),errors=errors,counts=used,held=held,limits=limits,

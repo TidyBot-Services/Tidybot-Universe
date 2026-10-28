@@ -112,7 +112,9 @@ def probe(env, executor, planner, observe, request):
     if executor.held or payload.get('held_object') or payload.get('attachment'):
         return dict(base,unsupported_scope='held_object')
     before = state_fingerprint(env,executor)
-    if op=='observe':return dict(base,observation=observe())
+    if op=='observe':
+        value=observe()
+        return dict(base,observation=value['robot'],perception=value['perception'])
     if op=='find_objects':
         values=observe()['perception']['values'];names=payload.get('names')
         return dict(base,objects=[dict(name=k[:-4],position=v,frame='world') for k,v in values.items()
