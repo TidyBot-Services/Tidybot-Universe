@@ -4727,11 +4727,17 @@
     return snapshot;
   }
 
+  // A finished agent run is immutable; re-check it every 30 s instead of every poll.
+  const agentTerminalFetch=new Map();
   async function updateV2Snapshot(s) {
     const cellBase=`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}/cells/${encodeURIComponent(s.key)}`;
+    const ended=agentTerminalFetch.get(s.key);
+    if(ended && Date.now()-ended<30000 && currentSnapshot?.agent && currentSnapshot?.dev_v2?.key===s.key)return;
     const response=await fetch(`${cellBase}/view`,{cache:'no-store'});
     if(!response.ok)throw new Error(`Dev v2 HTTP ${response.status}`);
     const cell=await response.json();if(selectedDev!==s.session_id)return;
+    if(cell.dev_mode==='agent' && ['completed','failed','cancelled','needs_review','stopped','condition_invalid','budget_exhausted','not_started'].includes(cell.state))agentTerminalFetch.set(s.key,Date.now());
+    else agentTerminalFetch.delete(s.key);
     const experimentResponse=await fetch(`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}`,{cache:'no-store'});
     if(!experimentResponse.ok)throw new Error(`Dev v2 experiment HTTP ${experimentResponse.status}`);
     const experiment=await experimentResponse.json();if(selectedDev!==s.session_id)return;

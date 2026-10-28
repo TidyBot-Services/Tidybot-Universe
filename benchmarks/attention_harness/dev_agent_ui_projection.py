@@ -45,6 +45,34 @@ def episode_file(cell, eid, name):
         raise FileNotFoundError('Agent recording unavailable') from None
 
 
+_DIGESTS = {}
+
+
+def episode_path(cell, eid, name):
+    """Enumerated display media as a verified local Path (range-capable transport)."""
+    if not re.fullmatch(r'e\d+', eid) or not re.fullmatch(VIDEO, name):
+        raise FileNotFoundError('Not agent recording evidence')
+    root = (Path(cell['artifact_dir'])/'agent/private/executions'/eid).resolve()
+    episodes = [p for p in root.glob('openarm365-dev-*') if p.is_dir() and not p.is_symlink()]
+    if len(episodes) != 1:
+        raise FileNotFoundError('Agent recording unavailable')
+    path = episodes[0]/name
+    if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(root):
+        raise FileNotFoundError('Agent recording unavailable')
+    return path
+
+
+def file_digest(path):
+    """SHA-256 of a sealed recording, cached by (path, size, mtime)."""
+    stat = path.stat(); key = (str(path), stat.st_size, stat.st_mtime_ns)
+    if key not in _DIGESTS:
+        h = hashlib.sha256()
+        with path.open('rb') as f:
+            for chunk in iter(lambda: f.read(1 << 20), b''):h.update(chunk)
+        _DIGESTS[key] = h.hexdigest()
+    return _DIGESTS[key]
+
+
 def recording(cell, eid):
     from .dev_agent_view import clean
     try:
@@ -226,10 +254,11 @@ def evidence(cell, name):
     match = re.fullmatch(r'replays/(e\d+)/([a-f0-9]{64})/('+VIDEO+r')', name)
     if match:
         eid, digest, filename = match.groups()
-        raw = episode_file(cell, eid, filename)
-        if hashlib.sha256(raw).hexdigest() != digest:
+        path = episode_path(cell, eid, filename)
+        if file_digest(path) != digest:
             raise FileNotFoundError('Agent recording digest mismatch')
-        return raw, 'video/mp4'
+        # A Path lets the server answer Range requests (206) like one-call files/.
+        return path, 'video/mp4'
     match = re.fullmatch(r'compat/(v\d+)/(policy\.py|sources/[A-Za-z0-9_-]+\.py|(?:bundle|trace|frames|state-log|eval|help|request-view|camera_views)\.json|'+VIDEO+r')', name)
     if not match:
         raise FileNotFoundError('Not agent display evidence')

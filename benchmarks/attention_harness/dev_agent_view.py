@@ -1,4 +1,5 @@
 """Read-only operator projection. Never used by Dev/Eval or as a file browser."""
+import copy
 import json
 from pathlib import Path
 import re
@@ -66,7 +67,7 @@ def artifact(cell,name):
     return (clean(json.loads(text)),'application/json') if name.endswith('.json') else (clean(text),'text/plain; charset=utf-8')
 
 
-def projection(store,cell,*,api='/api/dev-v2',now=None):
+def _projection(store,cell,*,api='/api/dev-v2',now=None):
     if not is_agent(cell):raise ValueError('agent_view_requires_agent')
     now=time.time() if now is None else now
     key=cell['key'];root=Path(cell.get('artifact_dir','/missing'))/'agent';private=root/'private'
@@ -189,4 +190,29 @@ def projection(store,cell,*,api='/api/dev-v2',now=None):
     from .dev_agent_ui_projection import compat, error_groups
     result['agent']['failure_errors'], result['agent']['details'] = error_groups(errors, records)
     result['dev_v2_compat']=compat(cell,result['agent'],jobs)
+    # The UI needs only identity, status and links per timeline row; full probe
+    # results (about 90% of the r6 payload) stay behind each row's links.
+    result['agent']['timeline']=[r if r.get('kind')=='help' else {k:v for k,v in r.items() if k!='result'}|({'version_id':r['result']['version_id']}
+        if isinstance(r.get('result'),dict) and r['result'].get('version_id') and not r.get('version_id') else {}) for r in records]
     return result
+
+
+_CACHE={}
+TERMINAL=('completed','failed','cancelled','needs_review','stopped','condition_invalid','budget_exhausted','not_started')
+
+
+def projection(store,cell,*,api='/api/dev-v2',now=None):
+    """Terminal agent cells are immutable: reuse the projection while the ledger is unchanged."""
+    if cell.get('state') not in TERMINAL or now is not None:return _projection(store,cell,api=api,now=now)
+    stat=Path(store.path).stat()
+    # Publishing is atomic rename, so any rewrite of display evidence changes a
+    # directory mtime under these roots; include them all in the key.
+    root=Path(cell.get('artifact_dir','/missing'))/'agent'
+    dirs=[]
+    for top in (root/'ws/versions',root/'ws/executions',root/'private/versions',root/'private/help',root/'private/public'):
+        if top.is_dir():dirs+=[(str(d),d.stat().st_mtime_ns) for d in [top,*sorted(p for p in top.rglob('*') if p.is_dir())]]
+    key=(cell['key'],api,stat.st_size,stat.st_mtime_ns,json.dumps(cell,sort_keys=True,default=str),tuple(dirs))
+    if key not in _CACHE:
+        if len(_CACHE)>16:_CACHE.clear()
+        _CACHE[key]=_projection(store,cell,api=api)
+    return copy.deepcopy(_CACHE[key])

@@ -72,7 +72,7 @@ def test_compatible_projection_and_digest_bound_evidence(workspace_run):
         for name, value in assets.items():
             logical = f'compat/{version["version_id"]}/{name}'
             result, mime = artifact(cell, logical)
-            raw = result if isinstance(result, bytes) else result.encode() if isinstance(result,str) else wire(result)
+            raw = result if isinstance(result, bytes) else result.read_bytes() if isinstance(result, Path) else result.encode() if isinstance(result,str) else wire(result)
             files['agent-view/'+logical] = dict(base64=base64.b64encode(raw).decode(),mime=mime)
         for key in ('source','eval_review','help','bundle','trace','frames','instrument'):
             ref = version[key]
@@ -171,3 +171,42 @@ def test_failures_deduplicate_per_execution_and_routine_details_collapse():
     assert len(failures[0]['reports']) == 3
     assert len(details) == 3
     assert {d['source'] for d in details} == {'ask','e000003 action','eval/v0001/stderr'}
+
+
+def test_replay_range_request_returns_206(workspace_run, tmp_path, monkeypatch):
+    # Over an SSH tunnel a full-body 200 blocked seeking until the whole mp4 arrived.
+    from benchmarks.attention_harness import ui_server
+    from benchmarks.attention_harness.tests.test_daily_bridge_compatibility import OfflineServer, request
+    store, cell, ws = workspace_run
+    version, assets = version_evidence(cell, cell['versions'][0])
+    name = assets['advisor_replay.mp4']['uri'].removeprefix('agent-view/')
+    result, mime = artifact(cell, name)
+    assert isinstance(result, Path) and mime == 'video/mp4'
+    monkeypatch.setattr(ui_server, 'ThreadingHTTPServer', OfflineServer)
+    server = ui_server.create_server(dev_v2_root=tmp_path, dev_v2_per_run_budget=True)
+    url = f"/api/dev-v2/experiments/{cell['experiment_id']}/cells/{cell['key']}/agent/files/{name}"
+    size = len(b'offline fake recording bytes')
+    status, payload, headers = request(server, url, headers={'Range': 'bytes=0-9'})
+    assert status == 206 and payload == b'offline fa'
+    assert headers['Content-Range'] == f'bytes 0-9/{size}' and headers['Accept-Ranges'] == 'bytes'
+    status, payload, headers = request(server, url, headers={'Range': 'bytes=8-'})
+    assert status == 206 and payload == b'offline fake recording bytes'[8:]
+    assert request(server, url, headers={'Range': f'bytes={size}-'})[0] == 416
+    status, payload, headers = request(server, url)
+    assert status == 200 and len(payload) == size and headers['Accept-Ranges'] == 'bytes'
+
+
+def test_view_payload_is_slim_and_terminal_projection_cached(workspace_run, monkeypatch):
+    from benchmarks.attention_harness import dev_agent_view
+    store, cell, ws = workspace_run
+    first = projection(store, cell)
+    assert all('result' not in r for r in first['agent']['timeline'] if r.get('kind')!='help')
+    assert any(r.get('version_id') for r in first['agent']['timeline'])
+    calls = []
+    real = dev_agent_view._projection
+    monkeypatch.setattr(dev_agent_view, '_projection', lambda *a, **kw: calls.append(1) or real(*a, **kw))
+    dev_agent_view._CACHE.clear()
+    second = projection(store, cell); third = projection(store, cell)
+    assert len(calls) == 1 and second == third == first
+    third['agent']['timeline'].clear()
+    assert projection(store, cell) == first
