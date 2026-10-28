@@ -380,6 +380,9 @@ class Broker:
                     errored = None;not_dispatched=False
                     try:
                         if self.memory:self.memory.recheck()
+                        if hasattr(self.executor, 'bind_execution') and hasattr(self.budget, 'ledger'):
+                            self.executor.bind_execution(self.budget.ledger.cell,
+                                int(response['version_id'][1:]) if op == 'submit' else None, eid)
                         result = self._bounded(self.executor, self.executor.execute, source, directory,
                                                timeout=self.timeouts[op], quarantine=False)
                     except MemoryRevoked:

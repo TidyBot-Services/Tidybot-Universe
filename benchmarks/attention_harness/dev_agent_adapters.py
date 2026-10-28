@@ -15,6 +15,13 @@ class Executor:
         if config.get('budget_tier')!='dev' or config.get('runner_boundary')!='dev_loop':raise ValueError('dev_tier_required')
         self.config=config;self.python=sim_python;self.runner_factory=runner_factory or OpenArm365DevRunnerV2
         self.runner=None;self.running=False
+        self.execution_identity = dict(run_id='run:agent', attempt_id='attempt:agent:0')
+
+    def bind_execution(self, cell, version, execution_id):
+        # Formal versions share the one-call identity convention. No-eval work
+        # has a disjoint attempt ID and cannot collide with a formal version.
+        self.execution_identity = dict(run_id='run:' + cell,
+            attempt_id=f'attempt:{cell}:{version-1}' if version is not None else f'probe:{cell}:{execution_id}')
 
     def execute(self, source, directory, *, deadline):
         self.running=True
@@ -35,7 +42,7 @@ class Executor:
             policy_code_path=directory/'policy.py',policy_sha256=hashlib.sha256(source).hexdigest(),
             config_sha256=hashlib.sha256((directory/'config.json').read_bytes()).hexdigest(),
             config_path=directory/'config.json',artifact_root=directory,overall_deadline_seconds=seconds,
-            attempt_deadline_seconds=seconds,sdk_call_limit=320,run_id='run:agent',attempt_id='attempt:agent:0')
+            attempt_deadline_seconds=seconds,sdk_call_limit=320,**self.execution_identity)
         result=self.runner.execute(request)
         self.result=result
         if result.get('error'):

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .core.dev_store import DevConflict
 from .dev_ledger import encoded
-from .dev_loop import public_feedback, sha
+from .dev_loop import public_feedback, sha, numbers
 from .dev_v2_loop import immutable
 from .dev_version_history import enabled as history_enabled
 
@@ -69,7 +69,10 @@ class Exporter:
         # ws is writable by Dev: bind the canonical digest, never follow a
         # replacement link there while collecting trusted export references.
         help_ref = dict(uri=str(self.workspace.ws / f'versions/v{number}/help.json'), sha256=sha(snapshot))
+        with self.store.tx() as db:
+            experiment = self.store.get(db, 'experiments', self.store.get(db, 'cells', self.key)['experiment_id'])
         record = dict(version=number, source=source, help=help_ref,
+            valid=row.get('valid') is True, config_sha256=self.config_ref['sha256'], manifest=experiment['manifest'],
             reason=row.get('reason', response.get('result', {}).get('outcome', {}).get('status', '')), formal_eligible=False,
             agent={k: v for k, v in row.items() if k not in ('version', 'formal_eligible', 'reason')})
         result, episode = pending['result'], pending['episode']
@@ -101,14 +104,23 @@ class Exporter:
         scene = reference(episode / 'scene-condition.json')
         trace_ref = reference(episode / 'trace.json')
         visible = history_enabled(self.config) and not self.memory_validation
+        memory_input = memory_dir / 'memory-input.json'
+        previous = next((v['source'] for v in self.store.cell(self.key)['versions'] if v['version'] == number - 1), None)
         bundle = immutable(directory / 'bundle.json', dict(result, channel='dev_agent',
             artifact_dir=str(episode), config_lock=self.config_ref, dev_version=number,
             policy_id=self.store.cell(self.key)['policy_id'], formal_eligible=False,
-            public_base_yaw_visible=visible, public_observations=observations, scene_condition=scene))
+            public_base_yaw_visible=visible, public_observations=observations,
+            **({'agent_memory_input': reference(memory_input)} if memory_input.is_file() else {}),
+            **({'agent_memory_previous_source': previous} if memory_input.is_file() and previous else {})))
         projected = (dict(schema_version='attentionbench.dev-public-feedback.v1',
                           execution_status='condition_invalid', public_error='scene_contract_mismatch', action_trace=[])
                      if result['status']=='condition_invalid' else
                      public_feedback(json.loads((episode / 'trace.json').read_bytes()), base_yaw_visible=visible))
+        for label, ref in observations.items():
+            obs = json.loads(Path(ref['uri']).read_bytes())
+            projected[label + '_observation'] = dict(
+                robot={k: numbers(v) for k, v in obs['robot'].items()},
+                objects={k: numbers(v) for k, v in obs['perception']['values'].items()})
         feedback = immutable(directory / 'public-feedback.json', projected)
         actual = dict(executions=1, sdk_calls=usage['sdk_calls'], control_steps=usage['control_steps'],
                       execution_seconds=usage['wall_seconds'])

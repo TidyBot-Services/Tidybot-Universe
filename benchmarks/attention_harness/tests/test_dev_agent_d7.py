@@ -340,7 +340,7 @@ def test_export_projection_import_and_validation_gate(fixture, monkeypatch, hist
     response = dict(op='submit', request_id='r', version_id='v0001', execution_id='e000001', status='completed')
     f.ledger.settle('request:r', response)
     exporter = Exporter(f.store, 'cell', f.ws, f.config, f.ledger, memory_validation=validation)
-    exporter.capture(response, dict(version=1, eval_verdict='fail', agreement=False), ex)
+    exporter.capture(response, dict(version=1, valid=True, eval_verdict='fail', agreement=False), ex)
     row = exporter.settle(response, f.memory)
     f.ws.publish('versions/v0001/help.json',dict(status='delivered',content='A later manual hint'))
     exporter.settle(response, f.memory)  # immutable replay, no double accounting
@@ -350,7 +350,10 @@ def test_export_projection_import_and_validation_gate(fixture, monkeypatch, hist
     assert json.loads((f.root / 'v1/version.json').read_bytes()) == f.store.cell('cell')['versions'][0] == row
     assert f.ledger.snapshot()['used']['moving_executions'] == 1
     projected = json.loads((f.root / 'v1/public-feedback.json').read_bytes())
-    assert projected == dev_v2_loop.public_feedback(json.loads((ex.episode / 'trace.json').read_bytes()), base_yaw_visible=history and not validation)
+    expected = dev_v2_loop.public_feedback(json.loads((ex.episode / 'trace.json').read_bytes()), base_yaw_visible=history and not validation)
+    expected.update({label + '_observation': dict(robot={'robot0_x': [0.]}, objects={}) for label in ('initial', 'final')})
+    assert projected == expected
+    assert row['valid'] is True and row['config_sha256'] == exporter.config_ref['sha256']
     monkeypatch.setattr(shared, 'sdk_identity', lambda *a: {})
     from benchmarks.attention_harness import dev_planner, memory_source_drift
     monkeypatch.setattr(memory_source_drift, 'current_identity', lambda config, lock, out: (lock, None))
@@ -360,6 +363,8 @@ def test_export_projection_import_and_validation_gate(fixture, monkeypatch, hist
     assert descriptor['execute_job_id'] == 'cell:1:execute'
     assert descriptor['agent_execution'] == dict(request_id='request:r')
     assert descriptor['permission_scope']['scope']['operations'] == ['left_arm.move_delta']
+    assert descriptor['permission_scope']['action'] == 'agent_dev_tier_motion'
+    assert 'actor' not in descriptor['permission_scope']
     assert 'approval_id' not in descriptor
     assert set(descriptor['public_observations']) == {'initial', 'final'}
     with pytest.raises(Exception, match='unsupported'):
@@ -431,3 +436,24 @@ def test_creation_freezes_memory_selection(tmp_path,offline_dev_identity):
     for value in (manifest,cell):
         assert value['memory_authority']==SETTINGS
         assert value['memory_family'] is True and value['run_notes'] is True
+
+
+def test_formal_identity_after_no_eval(fixture):
+    from benchmarks.attention_harness.dev_agent_adapters import Executor as Adapter
+    class BoundExecutor(Executor):
+        bind_execution = Adapter.bind_execution
+        def __init__(self):
+            super().__init__()
+            self.identities = []
+        def execute(self, *args, **kwargs):
+            self.identities.append(dict(self.execution_identity))
+            return super().execute(*args, **kwargs)
+    f = fixture; executor = BoundExecutor()
+    session = fake_session(f.ws, ["tool('run','--no-eval');tool('submit')",
+                                 "tool('run','--no-eval');tool('submit')", 'pass'])
+    drive(f.ws, session, f.ledger, executor=executor, prober=FakeProber(), completion_reader=lambda *a: False)
+    assert executor.identities == [
+        dict(run_id='run:cell', attempt_id='probe:cell:e000001'),
+        dict(run_id='run:cell', attempt_id='attempt:cell:0'),
+        dict(run_id='run:cell', attempt_id='probe:cell:e000003'),
+        dict(run_id='run:cell', attempt_id='attempt:cell:1')]

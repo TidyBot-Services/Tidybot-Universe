@@ -110,12 +110,10 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         bundle=json.loads(checked(j['receipt']['bundle']).read_bytes());episode=Path(bundle['artifact_dir'])
         if import_purpose is not None:descriptor['import_purpose']=import_purpose
         scope=binding(cell,version,checked(v['source']).read_text(),config)
-        if scope and c.get('dev_mode')=='agent':
-            # Export the exact motion scope without fabricating the human
-            # approval used by planner cells. The agent request is its own
-            # execution receipt; validation/origin admission above stays shut.
-            descriptor['permission_scope']=scope
+        if c.get('dev_mode')=='agent':
             descriptor['agent_execution']=dict(request_id=j['receipt']['agent_request_id'])
+        if scope and c.get('dev_mode')=='agent':
+            descriptor['permission_scope']=dict(scope, action='agent_dev_tier_motion')
         elif scope:
             approvals=planner_snapshot()['requests']
             matches=[a for a in approvals if a.get('state')=='consumed' and a.get('consumed_by')==j['job_id']]
