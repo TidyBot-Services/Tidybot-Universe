@@ -3,7 +3,9 @@ import hashlib
 import json
 from pathlib import Path
 import socket
+import sys
 import time
+import traceback
 from .dev_agent_broker import Broker, FakeEvaluator
 from .dev_agent_ledger import AgentLedger, LedgerBudget
 from .dev_agent_quota import QuotaMonitor
@@ -153,8 +155,14 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             prompt+='Unseen events: '+json.dumps(unseen,sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
             workspace.publish('events/resume-t%06d.json'%(session.turn+1),dict(message=prompt));save()
         if stop=='operator_paused':ledger.pause()
-        return dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable') else 'failed',
+        result=dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable') else 'failed',
                     reason=stop,resources=ledger.snapshot())
+        if stop=='fatal_error':
+            # Surface the cause; a bare reason hid a probe timeout (10-28).
+            f=broker.failure or {}
+            result['error']=('; '.join(completion_failures.values()) if completion_failures else
+                             'broker_quarantined: %s %s %s (%s)'%(f.get('op'),f.get('request_id'),f.get('error'),f.get('detail')) if f else 'broker_quarantined')
+        return result
     finally:
         session.cancel('controller_exit')
         if broker:broker.close()
@@ -210,12 +218,15 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
             progress=lambda row:store.update_cell(key,agent_resources=row))
         store.update_cell(key,**{k:v for k,v in result.items() if k!='resources'},agent_resources=result['resources'],owner=None)
+        print('agent cell %s ended: state=%s reason=%s%s'%(key,result['state'],result['reason'],' error='+result['error'] if result.get('error') else ''),file=sys.stderr,flush=True)
         return result
     except Exception as exc:
+        traceback.print_exc()
         if setup_id and ledger and any(j['id']==setup_id and j['state']=='claimed' for j in ledger.jobs()):
             ledger.settle(setup_id,dict(status='setup_failed',error=str(exc)))
         reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable' if 'quota' in str(exc) else 'isolation_unavailable' if isinstance(exc,IsolationUnavailable) else 'fatal_error'
         store.update_cell(key,state='failed' if reason=='quota_stop' else 'needs_review',reason=reason,error=str(exc),owner=None)
+        print('agent cell %s ended: state=failed reason=%s error=%s'%(key,reason,exc),file=sys.stderr,flush=True)
         return dict(state='failed',reason=reason,error=str(exc))
 
 

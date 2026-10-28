@@ -1,4 +1,5 @@
 """Agent-only collaborators. Constructors do not start any simulator."""
+import concurrent.futures
 import hashlib
 import json
 from pathlib import Path
@@ -74,6 +75,10 @@ class Prober:
         if config.get('budget_tier')!='dev' or config.get('runner_boundary')!='dev_loop':raise ValueError('dev_tier_required')
         self.config=config;self.python=sim_python;self.private=Path(private_dir)
         self.owner_factory=owner_factory or NativeOwnerV2;self.owner=None;self.cancelled=threading.Event();self.index=0;self.run_deadline=time.monotonic()+21600
+        # The worker binds PR_SET_PDEATHSIG to the thread that spawned it, and the
+        # broker runs each probe on a fresh thread. Spawn from one long-lived thread
+        # so the warm owner survives between probes (10-28 real run).
+        self.spawner=concurrent.futures.ThreadPoolExecutor(max_workers=1,thread_name_prefix='probe-owner-spawn')
 
     @staticmethod
     def validate(op,payload):
@@ -90,13 +95,15 @@ class Prober:
             self.cancelled.clear()
             self.owner=self.owner_factory(python=self.python,config=directory/'config.json',evidence=directory,
                 deadline=self.run_deadline,cancel_check=self.cancelled.is_set,agent_mode=True)
-            ready=self.owner.start()
+            ready=self.spawner.submit(self.owner.start).result()
             if ready.get('scene_condition') and not ready['scene_condition']['matched']:
                 self.close();raise ValueError('scene_contract_mismatch')
         # Owner's deadline is per probe. Recreate if prior deadline is already exhausted.
         self.owner.deadline=deadline
         return self.owner.rpc('owner','agent_probe',kwargs=dict(op=op,payload=payload))
 
+    @property
+    def cold(self):return self.owner is None
     def cancel(self):self.cancelled.set();self.close()
     def close(self):
         if self.owner:

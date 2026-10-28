@@ -202,7 +202,8 @@ Limits: 10 formal versions, 40 executions, 300 probes, 6 hours total wall time;
 per execution 1920 seconds, 320 SDK calls and 9600 control steps. Every accepted
 probe, including rejection/timeout, counts. Invalid formal code consumes a version.
 Observe/find timeout 10 s, planning probes 240 s, execution 1920 s, Eval 900 s;
-validation 5 s. Deadlines are clipped to remaining run time. Uncertain work blocks dispatch.
+validation 5 s. A probe that must first start the simulator (the first probe, and the
+first after any execution) gets 300 s more. Deadlines are clipped to remaining run time. Uncertain work blocks dispatch.
 Safety: arm coordinates <= 0.05 m / 0.5 rad per action, joint margin 0.02 rad,
 base path clearance 10 mm; base translation <= 0.20 m and yaw <= 0.30 rad.
 Never bypass safety. Authenticated pre-dispatch rejections return a structured result

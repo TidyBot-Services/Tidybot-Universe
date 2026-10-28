@@ -23,7 +23,9 @@ SCHEMA = 'attentionbench.dev-agent-request.v1'
 OPS = {'submit', 'run', 'observe', 'find_objects', 'ik_check', 'plan_dry_run', 'ask_help', 'status'}
 PROBES = {'observe', 'find_objects', 'ik_check', 'plan_dry_run'}
 TIMEOUTS = dict(validation=5., observe=10., find_objects=10., ik_check=240.,
-                plan_dry_run=240., run=1920., submit=1920., evaluate=900., ask_help=120.)
+                plan_dry_run=240., run=1920., submit=1920., evaluate=900., ask_help=120.,
+                # A cold probe owner builds the simulator scene first (~55 s measured).
+                probe_startup=300.)
 
 
 def canonical(value):
@@ -71,7 +73,7 @@ class Broker:
         self.helper, self.budget = helper or Helper(), budget or Budget()
         self.timeouts = {**TIMEOUTS, **(timeouts or {})}
         self.lock = threading.RLock(); self.closing = threading.Event()
-        self.records = {}; self.active = None; self.quarantined = False
+        self.records = {}; self.active = None; self.quarantined = False; self.failure = None
         self.histories = {k: [] for k in ('versions', 'executions', 'probes')}
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix='agent-broker')
         self.lease = (workspace.private / 'broker.lock').open('a')
@@ -232,7 +234,7 @@ class Broker:
             if quarantine:self.quarantined = True
             # Never wait indefinitely for cancellation, nor reuse this simulator.
             threading.Thread(target=collaborator.cancel, daemon=True).start()
-            raise TimeoutError('collaborator_timeout')
+            raise TimeoutError('collaborator_timeout after %.1f s' % timeout)
         ok, value = result[0]
         if not ok: raise value
         return value
@@ -288,7 +290,8 @@ class Broker:
                 if hasattr(self.budget,'claim'):self.budget.claim(rid)
                 response['status'] = 'running'; self._publish(response)
             if op in PROBES:
-                value = self._bounded(self.prober, self.prober.probe, op, payload, timeout=self.timeouts[op])
+                timeout = self.timeouts[op] + (self.timeouts['probe_startup'] if getattr(self.prober, 'cold', False) else 0)
+                value = self._bounded(self.prober, self.prober.probe, op, payload, timeout=timeout)
                 value = public_observation(value)
                 artifact = self.workspace.publish('probes/' + response['probe_id'] + '.json', value)
                 self._history('probes', dict(probe_id=response['probe_id'], artifact=artifact))
@@ -351,11 +354,14 @@ class Broker:
                         if row['version_id']==value['version_id']:row['help']=value
             response.update(status='needs_review' if self.quarantined else 'completed', result=value)
             if self.quarantined:response['error']='timeout'
-        except TimeoutError:
+        except TimeoutError as exc:
             self.quarantined = True
+            self.failure = dict(request_id=rid, op=op, error='timeout', detail=str(exc))
+            atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(self.failure,error_class='TimeoutError')))
             response.update(status='needs_review', error='timeout')
         except BaseException as exc:
             self.quarantined = True
+            self.failure = dict(request_id=rid, op=op, error='collaborator_failure', detail=type(exc).__name__+': '+str(exc))
             atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(error=str(exc),error_class=type(exc).__name__)))
             response.update(status='needs_review', error='collaborator_failure')
         finally:
