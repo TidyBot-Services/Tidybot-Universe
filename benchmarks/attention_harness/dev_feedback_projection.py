@@ -82,7 +82,8 @@ def _select(events, k, f):
 def project_messages(messages, max_input_bytes):
     """Return messages and audit data; leave fitting requests byte-for-byte intact.
 
-    First reduce observation precision and discard joint arrays. Then try K
+    Drop oldest history entries first, if present. Then reduce observation
+    precision and discard joint arrays. Try K
     from ceil(N/2) down to zero, keeping the first K, last K, and every failed
     or error-bearing event in original order. The first fitting K wins. If even
     K=0 does not fit, keep only the first and last F failures, F decreasing to
@@ -93,6 +94,32 @@ def project_messages(messages, max_input_bytes):
     if before <= max_input_bytes:
         return messages, None
     packet = json.loads(messages[-1]['content'])
+    history = packet.get('version_history')
+    if isinstance(history, dict) and history.get('entries'):
+        # History is expendable before the current feedback. Never copy its
+        # action summaries into inspect_trace's second trace or into the audit.
+        original_omitted = history['omitted']
+        candidate = list(messages)
+        while history['entries']:
+            history['entries'].pop(0)
+            history['omitted'] += 1
+            candidate[-1] = {**candidate[-1], 'content': encoded(packet).decode()}
+            if input_bound(candidate) <= max_input_bytes - PROJECTION_MARGIN_BYTES:
+                break
+        projected, audit = project_messages(candidate, max_input_bytes)
+        if input_bound(projected) > max_input_bytes:
+            return messages, None  # Existing provider boundary still refuses it.
+        audit = dict(audit or {'schema_version': 'attentionbench.dev-feedback-projection.v1',
+                              'original_feedback_bytes': len(encoded(packet['public_feedback'])),
+                              'projected_feedback_bytes': len(encoded(packet['public_feedback'])),
+                              'public_feedback': packet['public_feedback'],
+                              'input_bound_after': input_bound(projected),
+                              'max_input_bytes': max_input_bytes,
+                              'margin_bytes': max_input_bytes - input_bound(projected)})
+        audit.update(input_bound_before=before,
+                     history_entries_dropped=history['omitted'] - original_omitted,
+                     history_omitted=history['omitted'])
+        return projected, audit
     original = packet['public_feedback']
     compact = _compact(original)
     events = compact.get('action_trace', [])

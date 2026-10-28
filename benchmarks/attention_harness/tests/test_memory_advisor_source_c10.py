@@ -17,10 +17,17 @@ from benchmarks.attention_harness.tests.test_memory_origin_c9 import snapshot, s
 pytestmark = pytest.mark.usefixtures('r3_deployment')
 
 
-def make_fake(tmp_path, *, planner=False, fault=None):
+def make_fake(tmp_path, *, planner=False, fault=None, history=False):
     write = Fixture.write; advice = Fixture.add_advice
 
     def write_origin(path, value):
+        if history and path.name == 'model-input.json' and path.parent.name == 'failed':
+            # Ordinary Dev source requests may carry H1; generated validation
+            # arms must retain the authority's original six-key contract.
+            from benchmarks.attention_harness.dev_version_history import bounded, summarize
+            packet = json.loads(value['messages'][-1]['content'])
+            packet['version_history'] = bounded([summarize(1, b'controlled source', packet['public_feedback'])])
+            value['messages'][-1]['content'] = json.dumps(packet, sort_keys=True, ensure_ascii=False)
         if not planner and isinstance(value, dict):
             if value.get('schema') == 'attentionbench.dev-experiment.v3':
                 value['selection'] = {'policies': ['reactive_help']}
@@ -68,8 +75,11 @@ def make_fake(tmp_path, *, planner=False, fault=None):
 
 
 @pytest.mark.parametrize('planner', [False, True])
-def test_check_origin_and_source_export(tmp_path, planner, capsys):
-    fake = make_fake(tmp_path, planner=planner)
+@pytest.mark.parametrize('history', [False, True])
+def test_check_origin_and_source_export(tmp_path, planner, history, capsys):
+    fake = make_fake(tmp_path, planner=planner, history=history)
+    sent = json.loads((fake.f.root / 'failed' / 'model-input.json').read_bytes())
+    assert ('version_history' in json.loads(sent['messages'][-1]['content'])) is history
     state = snapshot(fake.provision.state_root); history = snapshot(fake.f.root)
     with synthetic_export(fake):
         assert worker.main(['--state-dir', str(fake.provision.state_root), '--check-origin', fake.mid], client=fake.service) == 0
@@ -105,8 +115,9 @@ def test_origin_and_direct_export_refuse_bad_job_evidence(tmp_path, fault, reaso
     assert snapshot(fake.f.root) == before and fake.replays == 0
 
 
-def test_reactive_origin_candidate_and_validation_plan_accepted(tmp_path):
-    fake = make_fake(tmp_path); deps = fake.deps(fake.provision.state_root)
+@pytest.mark.parametrize('history', [False, True])
+def test_reactive_origin_candidate_and_validation_plan_accepted(tmp_path, history):
+    fake = make_fake(tmp_path, history=history); deps = fake.deps(fake.provision.state_root)
     worker.set_enabled(deps.root, True); state = {}
     for _ in range(35):
         worker.tick(state, deps); fake.phase = 'completed'

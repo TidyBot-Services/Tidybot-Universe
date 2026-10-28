@@ -269,7 +269,7 @@ def feedback_for(cell):
             else:break
     return feedback,source,failures,prior
 
-def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None,*,validation_memory=False):
+def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None,*,validation_memory=False,version_history=None):
     from .eval_agent import visible_review
     if validation_memory:
         if set(attention)!={'memory'} or not isinstance(attention['memory'],list) or len(attention['memory'])>1 or any(set(e)!={'content'} or not isinstance(e['content'],str) for e in attention['memory']):raise DevConflict('clean validation Memory required')
@@ -286,10 +286,15 @@ def model_messages(config,previous,feedback,attention,remaining,trace_visible=Tr
     if not trace_visible:f.pop('action_trace',None)
     packet={'locked_task':public_cfg,'previous_complete_source':previous,'public_feedback':f,'attention_control':attention,'remaining_budget':remaining}
     if source_size_limit_bytes:packet['source_size_limit_bytes']=source_size_limit_bytes
+    from .dev_version_history import enabled,bounded
+    if not validation_memory and enabled(config) and version_history is not None:
+        packet['version_history']=bounded(version_history['entries'],version_history['omitted'])
     screen_model_packet(packet)
     opinion=''
     if 'eval_review' in f:
         opinion='\nEval agent verdict and objective reason for your previous attempt: '+json.dumps(f['eval_review'],ensure_ascii=False)
+    if 'version_history' in packet:
+        opinion+='\nversion_history summarizes earlier versions in this run, oldest first; use it to avoid repeating a change that already failed.'
     return [{'role':'system','content':t.system_prompt(config)+opinion},{'role':'user','content':json.dumps(packet,ensure_ascii=False,sort_keys=True)}]
 
 def prompt_memory_view(value):
@@ -492,7 +497,8 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
             if meter is not None:measurement=meter.stop()
         bundle=immutable(directory/'bundle.json',{**result,'channel':'diagnostic' if result.get('diagnostic_budget_override') else 'dev_v2','formal_eligible':False,'dev_version':version,'policy_id':cell['policy_id'],'config_lock':{'uri':str(config_path),'sha256':sha(config_path)}})
         if result.get('infrastructure_failure') or result.get('outcome_unknown'):raise DevConflict('native infrastructure/dispatch unknown; no revision/retry')
-        trace=json.loads(checked(result['artifacts']['trace']).read_bytes());projected={'schema_version':'attentionbench.dev-public-feedback.v1','execution_status':'condition_invalid','public_error':'scene_contract_mismatch','action_trace':[]} if result['status']=='condition_invalid' else public_feedback(trace)
+        from .dev_version_history import enabled as history_enabled
+        trace=json.loads(checked(result['artifacts']['trace']).read_bytes());projected={'schema_version':'attentionbench.dev-public-feedback.v1','execution_status':'condition_invalid','public_error':'scene_contract_mismatch','action_trace':[]} if result['status']=='condition_invalid' else public_feedback(trace,base_yaw_visible=history_enabled(config) and not memory_validation)
         episode_root=Path(result['artifact_dir'])
         for label in ['initial','final']:
             path=episode_root/(label+'_public_observation.json')
@@ -833,7 +839,9 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
             if 'goal_id' in m:
                 for resource in ['model_seconds','execution_seconds','help_wait_seconds']:
                     remaining[resource]=max(0,cell['budget'][resource]-sum(j['reservation'].get(resource,0) for j in store.cell(key)['jobs'] if j['state']=='settled'))
-            messages=model_messages(config,previous,feedback,packet,remaining,m['trace_visible'],m.get('source_size_limit_bytes'))
+            from .dev_version_history import enabled,build
+            history=build(cell,trace_visible=m['trace_visible']) if m.get('dev_version_history') is True and enabled(config) and not m.get('validation_experiment') else None
+            messages=model_messages(config,previous,feedback,packet,remaining,m['trace_visible'],m.get('source_size_limit_bytes'),version_history=history)
             projection_ref=None
             if cell.get('runtime'):
                 messages,projection=project_messages(messages,cell['runtime']['max_input_bytes_per_request'])

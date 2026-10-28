@@ -97,7 +97,7 @@ def numbers(value,depth=0):
     raise ValueError('public numeric observation required')
 
 
-def event_projection(e):
+def event_projection(e,*,base_yaw_visible=False):
     screen(e)
     operation=e.get('operation')
     if operation not in OPERATIONS:return None
@@ -114,6 +114,8 @@ def event_projection(e):
     args={}
     for k,v in (e.get('arguments') or {}).items():
         if k in {'dx','dy','dz','rotation_delta','settle_steps','values','command','target_qpos'}:args[k]=numbers(v)
+        elif base_yaw_visible and k=='dyaw' and operation=='move_delta' and e.get('source') in (None,'base'):
+            args[k]=numbers(v)
     p['arguments']=args
     error=e.get('error')
     if error:
@@ -128,13 +130,13 @@ def event_projection(e):
     return p
 
 
-def public_feedback(trace):
+def public_feedback(trace,*,base_yaw_visible=False):
     # Only this runner-owned public trace file is read. result/native/safety/diagnosis
     # are independent evidence files and are not arguments to this function.
     screen(trace)
     status=trace.get('status')
     if status not in {'completed','failed','timeout','cancelled'}:raise ValueError('invalid public execution state')
-    events=[v for e in trace.get('sdk_events',[]) if (v:=event_projection(e)) is not None]
+    events=[v for e in trace.get('sdk_events',[]) if (v:=event_projection(e,base_yaw_visible=base_yaw_visible)) is not None]
     feedback={'schema_version':'attentionbench.dev-public-feedback.v1','execution_status':status,
               'public_error':str(trace.get('error') or '')[:1200], 'action_trace':events[-40:]}
     screen(feedback)

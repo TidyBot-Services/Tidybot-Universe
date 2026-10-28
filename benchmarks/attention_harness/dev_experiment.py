@@ -292,6 +292,11 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         sources.clear();sources[tasks[0]]=dict(source=origin_text,sha256=validation_origin['source']['sha256'])
         manifest.update(validation_origin=validation_origin,validation_experiment=True)
         manifest['schedule']=[dict(cell=c['key'],through_version=1) for c in cells]
+    elif budget_tier=='dev':
+        # Creation-only opt-in: existing experiments returned above retain their
+        # original manifest, and validation keeps its frozen origin config.
+        manifest['dev_version_history']=True
+        for config in configs.values():config['dev_version_history']=True
     from .execution_profile import manifest_metadata
     metadata=manifest_metadata(manifest)
     # Absence encodes legacy on disk; display helpers supply its label.
@@ -395,6 +400,8 @@ def verify_manifest(exp):
     verify_lock(m['identity_lock'],expected_source_root=epoch_root)
     for c in m['configs'].values():
         if c.get('budget_tier','legacy')!=tier:raise DevConflict('config budget tier differs from manifest')
+        if not m.get('validation_experiment') and c.get('dev_version_history')!=m.get('dev_version_history'):
+            raise DevConflict('version history gate differs from manifest')
         if m.get('validation_experiment'):
             from .memory_validation_provision import target_config
             expected=target_config(m['validation_origin'])
