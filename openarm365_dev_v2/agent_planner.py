@@ -2,7 +2,31 @@
 from openarm365_dev.planner import MujocoV2Planner
 from .agent_rejection import RecoverablePlanRejection
 
+
+class _ProbeResult(BaseException):
+    """Carries a dry-run response out of the planning closure before any plan is issued."""
+    def __init__(self, response):
+        super().__init__('probe_result');self.response=response
+
+
+class _ProbeLedger:
+    """While probing, issuing an executable plan is replaced by returning the response."""
+    def __init__(self, real):self.real=real
+    def issue(self, response, **kwargs):raise _ProbeResult(response)
+    def __getattr__(self, name):return getattr(self.real, name)
+
+
 class AgentPlanner(MujocoV2Planner):
+    agent_probe_only = False
+
+    @property
+    def ledger(self):
+        return _ProbeLedger(self._ledger) if self.agent_probe_only else self._ledger
+
+    @ledger.setter
+    def ledger(self, value):
+        self._ledger = value
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.execution_settings is None:
@@ -12,6 +36,8 @@ class AgentPlanner(MujocoV2Planner):
     def guard(self, operation):
         if self.failed: return super().guard(operation)
         try: return operation()
+        except _ProbeResult as result:
+            return result.response
         except RecoverablePlanRejection:
             self.ledger.invalidate('pre_dispatch_rejection')
             raise
