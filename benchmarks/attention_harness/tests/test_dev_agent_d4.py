@@ -459,3 +459,23 @@ def test_exhausted_and_malformed_help_make_no_provider_call(ws):
         ledger.reserve('spent'+str(i),'help',{'help':1});ledger.claim('spent'+str(i));ledger.settle('spent'+str(i),{})
     assert h.ask({'question':'Help?'},deadline=time.monotonic()+5)['status']=='not_eligible'
     assert not client.calls
+
+
+def test_nested_advisor_usage_keeps_delivered_status_and_actual_cost(ws):
+    # r6 v0002: nested codex usage failed ledger validation (invalid_usage); the except
+    # path relabelled a delivered hint 'unavailable' and charged the 768-word reserve.
+    h,ledger,client=helper(ws)
+    real=h.ask_provider
+    nested={'codex_usage':{'input_tokens':22222,'output_tokens':198,'reasoning_output_tokens':80,'cached_input_tokens':0},
+            'prompt_tokens':22222,'completion_tokens':198,'total_tokens':22420}
+    h.ask_provider=lambda *a,**kw:dict(real(*a,**kw),usage=nested)
+    h.boundary(seed_record(ws),deadline=time.monotonic()+5)
+    result=h.ask({'question':'What stopped?'},deadline=time.monotonic()+5)
+    assert result['status']=='delivered' and result['delivered'] and 'error' not in result
+    view=json.loads((ws.private/'help/v0001/request-view.json').read_bytes())
+    from benchmarks.attention_harness.dev_request_view import human_seconds,shown_words,READ_WPS,WRITE_WPS
+    assert result['hint_human_seconds']==human_seconds(view,result['content'])['hint_human_seconds']
+    assert result['hint_human_seconds']<view['shown_video_seconds']+shown_words(view)/READ_WPS+768/WRITE_WPS
+    job=next(j for j in ledger.jobs() if j['kind']=='help')
+    assert job['usage']['total_tokens']==22420 and job['usage']['codex_output_tokens']==198
+    assert ledger.snapshot()['used']['help']==1

@@ -100,6 +100,15 @@ def request_view(episode, config, decision, *, exec_version, policy, recording,
     return evidence
 
 
+def flat_usage(usage):
+    """Provider usage as the ledger's flat non-negative ints (nested codex_usage prefixed)."""
+    if not isinstance(usage,dict):return None
+    flat={k:v for k,v in usage.items() if type(v) is int and v>=0}
+    for k,v in (usage.get('codex_usage') or {}).items():
+        if type(v) is int and v>=0:flat['codex_'+k]=v
+    return flat
+
+
 class Helper:
     def __init__(self, workspace, ledger, *, policy, parameters=None, config=None, client=None,
                  demo=None, quota=None, ask_provider=None, view_builder=request_view):
@@ -215,13 +224,20 @@ class Helper:
             row.update(status='delivered',delivered=True,content=record['feedback'],help_count=1,
                        cache_hit=record.get('cache_hit',False),**cost)
             atomic_write(self.workspace.private,'help/'+vid+'/advisor.json',encode(record))
-            self.ledger.settle(jid,{k:v for k,v in row.items() if k!='context'},usage=record.get('usage'))
-            if self.quota:
-                for name in ('quota_before','quota_after'):self.quota.event(record.get(name) or {})
         except Exception as exc:
+            record=None
             atomic_write(self.workspace.private,'help/'+vid+'/error.json',encode(dict(error=str(exc),error_class=type(exc).__name__)))
             row.update(status='unavailable',error=type(exc).__name__,help_count=1,hint_human_seconds=reserve)
             self.ledger.settle(jid,{k:v for k,v in row.items() if k!='context'})
+            return self._publish(vid)
+        # r6: a delivered hint must stay delivered with its actual attention cost even
+        # if usage bookkeeping fails; the nested Advisor usage is flattened to ints.
+        try:self.ledger.settle(jid,{k:v for k,v in row.items() if k!='context'},usage=flat_usage(record.get('usage')))
+        except ValueError:
+            row['usage_record']='unknown'
+            self.ledger.settle(jid,{k:v for k,v in row.items() if k!='context'})
+        if self.quota:
+            for name in ('quota_before','quota_after'):self.quota.event(record.get(name) or {})
         return self._publish(vid)
 
     def finish(self):
