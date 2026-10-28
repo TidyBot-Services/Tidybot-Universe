@@ -106,6 +106,41 @@ def test_pending_note_survives_queue_removal(tmp_path):
     tick(state,d);assert state['current'] and d.runner.begun==['head']
 
 
+@pytest.mark.parametrize('kind',['family-template','validation','cross-probe','cross-pairs'])
+@pytest.mark.parametrize('mismatch',[None,'unowned','eid','operation','request_key','tier','missing_tier','mode','missing_mode','marker','prefix'])
+def test_run_activity_durable_family_and_validation_ownership(tmp_path,monkeypatch,kind,mismatch):
+    import sqlite3
+    from benchmarks.attention_harness import memory_validation_worker as worker
+    from benchmarks.attention_harness.memory_validation_ownership import record_experiment,owned_experiments
+    monkeypatch.setattr(worker,'Path',lambda p:SimpleNamespace(iterdir=lambda:[]) if str(p)=='/proc' else Path(p))
+    family=kind=='family-template'
+    operation=('family-template-' if family else '')+'a'*32+('-pairs' if kind=='cross-pairs' else '')
+    request=operation if family else ('validation-' if kind=='validation' else 'cross-')+operation
+    selection=dict(request_key=request,budget_tier='dev',mode='diagnostic')
+    experiment=dict(experiment_id='owned',selection=selection,state='planned')
+    if not family:experiment['validation_experiment']=True
+    if mismatch=='request_key':selection['request_key']+='-different'
+    if mismatch=='tier':selection['budget_tier']='formal'
+    if mismatch=='missing_tier':selection.pop('budget_tier')
+    if mismatch=='mode':selection['mode']='experiment'
+    if mismatch=='missing_mode':selection.pop('mode')
+    if mismatch=='marker':experiment.pop('validation_experiment',None)
+    if mismatch=='prefix':
+        operation='family-other-'+'a'*32
+        selection['request_key']=operation
+    if mismatch!='unowned':
+        record_experiment(tmp_path,operation+'-different' if mismatch=='operation' else operation,
+                          'different-eid' if mismatch=='eid' else 'owned')
+    ledger=tmp_path/'ledger.sqlite3'
+    with sqlite3.connect(ledger) as db:
+        db.executescript('CREATE TABLE v2_experiments(payload TEXT); CREATE TABLE v2_jobs(state TEXT,payload TEXT);')
+        db.execute('INSERT INTO v2_experiments VALUES (?)',(json.dumps(experiment),))
+    # No own_experiment shortcut: restart reads only the durable registry.
+    reason=run_activity([ledger],owned_experiments=owned_experiments(tmp_path))
+    exempt=mismatch is None or (family and mismatch=='marker') or (not family and mismatch in {'mode','missing_mode'})
+    assert reason is None if exempt else reason=='Another run is active: owned'
+
+
 def test_run_activity_ledger_and_frozen_main_matrix(tmp_path,monkeypatch):
     import sqlite3
     from benchmarks.attention_harness import memory_validation_worker as worker

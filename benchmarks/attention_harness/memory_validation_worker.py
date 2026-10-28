@@ -286,6 +286,13 @@ def run_activity(ledgers,*,own_experiment=None,owned_experiments=None,own_pids=(
                 for eid,e in experiments.items():
                     if eid==own_experiment:continue
                     selection=e.get('selection',{})
+                    # Family templates have no validation marker. Only the
+                    # durable ownership record can exempt their exact Dev key.
+                    request_key=selection.get('request_key')
+                    if (isinstance(request_key,str) and request_key.startswith('family-template-')
+                        and (owned_experiments or {}).get(request_key)==eid
+                        and selection.get('budget_tier')=='dev'
+                        and selection.get('mode')=='diagnostic'):continue
                     if e.get('validation_experiment') is True and selection.get('budget_tier')=='dev' and any(
                         eid==owned and selection.get('request_key') in ('validation-'+operation,'cross-'+operation)
                         for operation,owned in (owned_experiments or {}).items()):continue
