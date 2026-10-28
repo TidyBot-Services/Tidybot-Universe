@@ -81,7 +81,7 @@ class Broker:
         self.helper, self.budget = helper or Helper(), budget or Budget()
         self.timeouts = {**TIMEOUTS, **(timeouts or {})}
         self.lock = threading.RLock(); self.closing = threading.Event()
-        self.records = {}; self.active = None; self.quarantined = False; self.failure = None; self.owner_start_failures = 0
+        self.records = {}; self.active = None; self.quarantined = False; self.failure = None; self.owner_start_failures = 0; self.step_errors = []
         self.histories = {k: [] for k in ('versions', 'executions', 'probes')}
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix='agent-broker')
         self.lease = (workspace.private / 'broker.lock').open('a')
@@ -231,7 +231,7 @@ class Broker:
                     for name,data in frozen.sources.items():
                         atomic_write(self.workspace.private,'sources/'+rid+'/'+name,data)
                     atomic_write(self.workspace.private,'sources/'+rid+'/bundle-map.json',encode(frozen.source_map))
-                if self.on_cut and op=='submit':self.on_cut('pre-submit',response)
+                if self.on_cut and op=='submit':self._step(rid,'cut_pre_submit',self.on_cut,'pre-submit',response)
                 self._publish(response)
                 self.pool.submit(self._dispatch, rid, source, invalid)
             except BaseException:
@@ -260,6 +260,29 @@ class Broker:
         ok, value = result[0]
         if not ok: raise value
         return value
+
+    def _step(self, rid, name, fn, *args, **kwargs):
+        """Run one per-version step; a failure is recorded privately and skipped."""
+        try:return fn(*args, **kwargs)
+        except BrokerInvariant:raise
+        except Exception as exc:
+            row=dict(request_id=rid, step=name, **soft_error(exc))
+            self.step_errors.append(row)
+            try:atomic_write(self.workspace.private,'step-errors/%s-%s.json'%(rid,name),encode(row))
+            except OSError:pass
+            return None
+
+    @staticmethod
+    def _stopped(collaborator, wait=30.):
+        """After a timeout, confirm the collaborator's simulator has stopped."""
+        done=threading.Event()
+        def stop():
+            try:collaborator.cancel()
+            finally:done.set()
+        threading.Thread(target=stop,daemon=True).start()
+        if not done.wait(wait):return False
+        check=getattr(collaborator,'stopped',None)
+        return check() if callable(check) else True
 
     def _history(self, kind, row):
         self.histories[kind].append(row)
@@ -335,6 +358,10 @@ class Broker:
                 artifact = self.workspace.publish('probes/' + response['probe_id'] + '.json', value)
                 self._history('probes', dict(probe_id=response['probe_id'], artifact=artifact))
             elif op in ('submit', 'run'):
+                # Every per-version step answers this request; none ends the run.
+                # Only BrokerInvariant (and ledger invariants raised by on_version)
+                # may reach the boundary below for a moving request.
+                step = lambda name, fn, *a, **kw: self._step(rid, name, fn, *a, **kw)
                 value = dict(outcome=dict(status='invalid_submission',error=record.get('validation_error')))
                 if not invalid:
                     self.prober.close()
@@ -344,32 +371,38 @@ class Broker:
                     errored = None
                     try:
                         result = self._bounded(self.executor, self.executor.execute, source, directory,
-                                               timeout=self.timeouts[op])
-                    except TimeoutError:raise
+                                               timeout=self.timeouts[op], quarantine=False)
                     except Exception as exc:
-                        # Each execution owns a fresh simulator; its failure is that
-                        # execution's result, not an unknown run state.
+                        if isinstance(exc, TimeoutError) and not self._stopped(self.executor):
+                            raise BrokerInvariant('execution_not_stopped_after_timeout') from exc
+                        # Each execution owns a fresh simulator (stopped above on timeout);
+                        # its failure is that execution's result, not an unknown run state.
                         errored = soft_error(exc)
                         atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(op=op,error='execution_error',**errored)))
                         result = dict(status='execution_error', error=errored['error_class'], stdout='',
                                       stderr='execution_error: '+errored['error_class']+': '+errored['message']+'\n', trace=[])
                     if hasattr(self.budget,'ledger'):
                         self.budget.ledger.record_execution('request:'+rid,getattr(self.executor,'execution_usage',None) if errored is None else None)
-                    value = self._execution(eid, source, result)
+                    value = step('execution_artifacts', self._execution, eid, source, result)
+                    if value is None:
+                        value = dict(outcome=public_outcome('failed', [], error='artifacts_unavailable'), artifacts={})
                     if errored:value['execution_error']=errored
-                    elif hasattr(self.helper,'capture'):self.helper.capture(self.executor)
-                    if self.on_execution and errored is None:self.on_execution(response,directory,result)
-                    if self.on_cut and op=='submit':self.on_cut('post-exec',response)
-                elif self.on_cut and op=='submit':self.on_cut('post-exec',response)
+                    elif hasattr(self.helper,'capture'):step('help_capture', self.helper.capture, self.executor)
+                    # The trusted completion read; its failure only means "not completed".
+                    if self.on_execution and errored is None:step('completion_read', self.on_execution, response, directory, result)
+                    if self.on_cut and op=='submit':step('cut_post_exec', self.on_cut, 'post-exec', response)
+                elif self.on_cut and op=='submit':step('cut_post_exec', self.on_cut, 'post-exec', response)
                 if op == 'submit':
                     vid = response['version_id']; base = 'versions/' + vid + '/'
-                    self.workspace.publish(base + 'policy.py', feedback(source.decode('utf-8', errors='replace')).encode())
-                    self.workspace.publish(base + 'submission.json', dict(version_id=vid,
-                        execution_id=response.get('execution_id'), source_sha256=record['source_sha256']))
-                    self.workspace.publish(base+'bundle.py',feedback(source.decode('utf-8',errors='replace')).encode())
-                    self.workspace.publish(base+'bundle-map.json',record.get('bundle_map',{}))
-                    for path in sorted((self.workspace.private/'sources'/rid).glob('*.py')):
-                        self.workspace.publish(base+'sources/'+path.name,feedback(path.read_text()).encode())
+                    def publish_version():
+                        self.workspace.publish(base + 'policy.py', feedback(source.decode('utf-8', errors='replace')).encode())
+                        self.workspace.publish(base + 'submission.json', dict(version_id=vid,
+                            execution_id=response.get('execution_id'), source_sha256=record['source_sha256']))
+                        self.workspace.publish(base+'bundle.py',feedback(source.decode('utf-8',errors='replace')).encode())
+                        self.workspace.publish(base+'bundle-map.json',record.get('bundle_map',{}))
+                        for path in sorted((self.workspace.private/'sources'/rid).glob('*.py')):
+                            self.workspace.publish(base+'sources/'+path.name,feedback(path.read_text()).encode())
+                    step('version_files', publish_version)
                     value.update(version_id=vid,execution_id=response.get('execution_id'))
                     if invalid:
                         verdict=dict(status='not_run_invalid_submission',passed=None)
@@ -382,31 +415,36 @@ class Broker:
                                                     timeout=self.timeouts['evaluate'],quarantine=False)
                         except BaseException as exc:
                             verdict=unavailable(vid,'timeout' if isinstance(exc,TimeoutError) else type(exc).__name__)
+                        if not isinstance(verdict, dict):verdict=unavailable(vid,'invalid_verdict')
                         if ledger:ledger.settle(eval_id,verdict,usage=getattr(self.evaluator,'usage',None))
                     value['eval'] = feedback(verdict)
-                    self.workspace.publish(base + 'eval.json', value['eval'])
-                    if self.on_cut:self.on_cut('post-feedback',response)
+                    step('eval_file', self.workspace.publish, base + 'eval.json', value['eval'])
+                    if self.on_cut:step('cut_post_feedback', self.on_cut, 'post-feedback', response)
                     value['help'] = dict(status='not_requested')
-                    self.workspace.publish(base + 'help.json', value['help'])
-                    self._history('versions', dict(source_sha256=record['source_sha256'],source_bytes=len(source),**value))
+                    step('help_file', self.workspace.publish, base + 'help.json', value['help'])
+                    step('version_history', self._history, 'versions', dict(source_sha256=record['source_sha256'],source_bytes=len(source),**value))
                     # Record Eval and completion before requesting any new help.
                     # A completed run terminates here, even when Eval disagrees.
-                    if self.on_version:self.on_version(response,value)
+                    # on_version writes the ledger version row: a ledger invariant.
+                    if self.on_version:
+                        try:self.on_version(response,value)
+                        except Exception as exc:raise BrokerInvariant('ledger_version_record: '+type(exc).__name__+': '+str(exc)) from exc
                     if self.stop_reason not in ('run_complete','run_error'):
                         try:
                             value['help'] = (self._bounded(self.helper,self.helper.boundary,value,timeout=self.timeouts['ask_help'],quarantine=False)
                                 if hasattr(self.helper,'boundary') else dict(status='policy_denied'))
                         except Exception as exc:
                             value['help'] = dict(status='help_error',**soft_error(exc))
+                        if not isinstance(value['help'], dict):value['help']=dict(status='help_error',error_class='TypeError',message='invalid help value')
                         if value['help'].get('decision',{}).get('action')=='stop':self.stop_reason='help_policy_stop'
-                        self.workspace.publish(base + 'help.json', value['help'])
+                        step('help_file', self.workspace.publish, base + 'help.json', value['help'])
             else:
                 value = self._bounded(self.helper, self.helper.ask, payload, timeout=self.timeouts['ask_help'], quarantine=False)
                 if value.get('version_id'):
                     for row in self.histories['versions']:
                         if row['version_id']==value['version_id']:row['help']=value
             response.update(status='needs_review' if self.quarantined else 'completed', result=value)
-            if self.quarantined:response['error']='timeout'
+            if self.quarantined:response['error']=(self.failure or {}).get('error') or 'run_error'
         except BaseException as exc:
             if isinstance(exc, Exception) and not isinstance(exc, BrokerInvariant) and (op in PROBES or op == 'ask_help'):
                 # Request boundary for read-only/help requests: any failure at any

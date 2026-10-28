@@ -67,7 +67,7 @@ def test_unrecoverable_owner_quarantines_with_cause(ws):  # noqa: F811
     session=fake_session(ws,["tool('observe');tool('observe');time.sleep(20)"])
     result=drive(ws,session,ledger,executor=Executor(),prober=NoStart())
     assert result['state']=='needs_review' and result['reason']=='fatal_error'
-    assert result['error'].startswith('broker_quarantined: observe ')
+    assert result['error'].startswith('broker_invariant: observe ') and result['fatal_cause']=='broker_invariant'
     assert 'probe_owner_unrecoverable' in result['error'] and 'synthetic' in result['error']
     assert ledger.snapshot()['used']['read_only_probes']==2
 

@@ -14,9 +14,14 @@ class Executor:
         from openarm365_dev_v2.runner import OpenArm365DevRunnerV2
         if config.get('budget_tier')!='dev' or config.get('runner_boundary')!='dev_loop':raise ValueError('dev_tier_required')
         self.config=config;self.python=sim_python;self.runner_factory=runner_factory or OpenArm365DevRunnerV2
-        self.runner=None
+        self.runner=None;self.running=False
 
     def execute(self, source, directory, *, deadline):
+        self.running=True
+        try:return self._execute(source, directory, deadline=deadline)
+        finally:self.running=False
+
+    def _execute(self, source, directory, *, deadline):
         from .formal_runner_boundary import FormalRunRequest
         directory=Path(directory)
         atomic_write(directory,'policy.py',source);atomic_write(directory,'config.json',encode(self.config))
@@ -67,6 +72,11 @@ class Executor:
 
     def cancel(self):
         if self.runner:self.runner.cancel_event.set()
+    def stopped(self, wait=60.):
+        # The broker reuses no simulator after a timeout until this returns True.
+        until=time.monotonic()+wait
+        while self.running and time.monotonic()<until:time.sleep(.1)
+        return not self.running
 
 
 class Prober:

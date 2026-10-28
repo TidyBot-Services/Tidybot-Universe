@@ -391,15 +391,19 @@ def test_unreadable_quota_prevents_new_turn(ws):
     assert session.turn==0 and ledger.snapshot()['model_turns']==0
 
 
-def test_snapshot_failure_quarantines_instead_of_hanging(ws):
+def test_snapshot_failure_is_recorded_and_does_not_hang_or_end_the_run(ws):
+    # r6 policy: replay snapshots are export steps; a failure is recorded privately.
     def fail(*a):raise ValueError('synthetic unsafe snapshot')
     ledger=AgentLedger(ws.private/'db','c')
     b=Broker(ws,executor=Executor(),prober=FakeProber(),evaluator=FakeEvaluator(),agent_mode=True,
              budget=LedgerBudget(ledger),on_cut=fail)
     try:
-        response=b.accept(dict(schema=SCHEMA,request_id='formal',op='submit',payload={}))
-        assert response['status']=='needs_review' and b.quarantined and b.active is None
-        assert b.executor.calls==0 and ledger.snapshot()['held']['formal_versions']==1
+        b.accept(dict(schema=SCHEMA,request_id='formal',op='submit',payload={}))
+        until=time.monotonic()+10
+        while b.records['formal']['response']['status'] not in ('completed','needs_review') and time.monotonic()<until:time.sleep(.02)
+        assert b.records['formal']['response']['status']=='completed' and not b.quarantined
+        assert b.executor.calls==1 and {e['step'] for e in b.step_errors}>={'cut_pre_submit','cut_post_exec','cut_post_feedback'}
+        assert (ws.private/'step-errors').is_dir()
     finally:b.close()
 
 
@@ -436,9 +440,11 @@ def test_disallowed_sdk_ast_is_invalid_formal_not_fatal(ws):
 def test_crash_after_execution_keeps_receipt_and_unknown_usage(ws):
     ledger=AgentLedger(ws.private/'db','c')
     session=fake_session(ws,["tool('run','--no-eval');sys.exit(7)"])
-    with pytest.raises(RuntimeError,match='turn_process_failed'):
-        drive(ws,session,ledger,executor=Executor(),prober=FakeProber())
-    assert ledger.snapshot()['used']['moving_executions']==1
+    # r6 policy: a failed Dev turn is retried; 3 in a row is the session_failure cause.
+    result=drive(ws,session,ledger,executor=Executor(),prober=FakeProber())
+    assert result['reason']=='fatal_error' and result['fatal_cause']=='session_failure'
+    assert 'turn_process_failed' in result['error']
+    assert ledger.snapshot()['used']['moving_executions']==3
     turn=next(r for r in ledger.jobs() if r['kind']=='model_turn')
     assert turn['usage']=='unknown'
     request=next(r for r in ledger.jobs() if r['kind']=='request')
@@ -456,15 +462,18 @@ def test_native_success_still_records_unavailable_eval_and_no_private_eval_input
     assert not any(word in ''.join(seen) for word in ('native_success','object_in_sink','native_result','check_success','reward'))
 
 
-def test_missing_completion_evidence_fails_closed_after_eval_is_recorded(ws):
+def test_missing_completion_evidence_is_not_completed_and_run_continues(ws):
+    # r6 policy: unreadable native = "not completed", native=unknown privately.
     class Missing(Executor):
         def execute(self,*a,**kw):
             result=super().execute(*a,**kw);self.native_result_ref=None;return result
-    ledger=AgentLedger(ws.private/'db','c');session=fake_session(ws,["tool('submit');time.sleep(20)"])
+    ledger=AgentLedger(ws.private/'db','c');session=fake_session(ws,["tool('submit')","pass"])
     result=drive(ws,session,ledger,executor=Missing(),prober=FakeProber())
-    assert result['state']=='needs_review' and result['reason']=='fatal_error'
-    assert session.turn==1 and (ws.ws/'versions/v0001/eval.json').exists()
-    assert json.loads((ws.private/'versions/v0001.json').read_bytes())['native_success'] is None
+    assert result['reason']=='agent_idle' and session.turn==4
+    assert (ws.ws/'versions/v0001/eval.json').exists()
+    row=json.loads((ws.private/'versions/v0001.json').read_bytes())
+    assert row['native_success'] is None and row['native']=='unknown' and 'completion_evidence_missing' in row['native_error']
+    assert 'native' not in (ws.ws/'versions/v0001/eval.json').read_text()
 
 
 def test_quota_sample_on_idempotent_retry_does_not_redispatch(ws):

@@ -14,6 +14,21 @@ from .dev_agent_session import CodexAgentSession
 from .dev_agent_workspace import Workspace, atomic_write, encode
 
 CONTINUE_MESSAGE='Eval judged this version as passed, but the run has not ended; continue.'
+# The only causes allowed to end a run early (r5, 10-29). Everything that
+# happens inside one version - execution, completion read, Eval, help, export,
+# history - is that version's result; native unknown means "not completed".
+FATAL_CAUSES=frozenset({'ledger_invariant','broker_invariant','quota_stop','quota_unavailable','wall_stop','operator_cancel',
+                        # Added: the Dev model process itself failing 3 turns in a row.
+                        'session_failure'})
+SESSION_FAILURE_LIMIT=3
+
+
+def fatal_cause(broker, session_failures):
+    if broker is not None and broker.quarantined:
+        detail=str((broker.failure or {}).get('detail',''))
+        return 'ledger_invariant' if detail.startswith('BrokerInvariant: ledger_') or 'ledger_' in detail[:40] else 'broker_invariant'
+    if session_failures>=SESSION_FAILURE_LIMIT:return 'session_failure'
+    return None
 
 
 def bootstrap(workspace, ledger, policy):
@@ -39,7 +54,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
           policy='reactive_help', completion_reader=trusted_completion, control=lambda:None,
           version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60):
     """Injectable offline seam; production always supplies a preflighted session."""
-    stop=None;successful={};completion_failures={};delivered=0;idle=0;broker=None;events=[]
+    stop=None;successful={};completion_failures={};delivered=0;idle=0;broker=None;events=[];session_failures=0
     state_path=workspace.private/'loop.json'
     if state_path.exists():
         state=json.loads(state_path.read_bytes());delivered=state['delivered'];idle=state['idle'];events=state['events']
@@ -53,9 +68,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         if response['op']=='submit':
             try:successful[response['version_id']]=completion_reader(executor,directory,result)
             except Exception as exc:
+                # Unevaluated/unreadable native: not completed, recorded privately only.
                 successful[response['version_id']]=None
-                completion_failures[response['version_id']]=str(exc)
-                broker.quarantined=True
+                completion_failures[response['version_id']]=type(exc).__name__+': '+str(exc)
     def version(response,value):
         nonlocal stop
         vid=response['version_id'];success=successful.get(vid)
@@ -64,12 +79,11 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                  eval=value.get('eval'),eval_verdict=('pass' if value.get('eval',{}).get('passed') is True else 'fail' if value.get('eval',{}).get('passed') is False else 'unavailable'),native_success=success,
                  agreement=(value.get('eval',{}).get('passed')==success if type(value.get('eval',{}).get('passed')) is bool and type(success) is bool else None))
         row['agree']=row['agreement']
+        if vid in completion_failures:row.update(native='unknown',native_error=completion_failures[vid])
         atomic_write(workspace.private,'versions/'+vid+'.json',encode(row));version_record(row)
         if success:
             stop='native_success';broker.stop_reason='run_complete'
             session.cancel('run_complete')
-        elif vid in completion_failures:
-            stop='fatal_error';broker.stop_reason='run_error';session.cancel('run_error')
         elif value.get('eval',{}).get('passed') is True:
             value['message']=CONTINUE_MESSAGE
             workspace.publish('versions/'+vid+'/continue.json',dict(message=CONTINUE_MESSAGE))
@@ -144,14 +158,15 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                     if control()=='cancel':broker.closing.set()
                     time.sleep(.02)
                 ledger.settle(jid,dict(error=failure),usage=session.usage if isinstance(session.usage,dict) else None)
-            if failure and stop is None:raise RuntimeError(failure)
+            session_failures=session_failures+1 if failure and stop is None else 0
             if stop:break
-            if broker.quarantined:raise RuntimeError('broker_quarantined')
+            if broker.quarantined or session_failures>=SESSION_FAILURE_LIMIT:stop='fatal_error';break
             idle=idle+1 if len(broker.records)==before else 0
             save()
             if idle>=3:stop='agent_idle';break
             unseen=events[delivered:];delivered=len(events)
             prompt=('No formal submission yet; ' if not broker.histories['versions'] else '')+'Continue the task. History files are authoritative. '
+            if failure:prompt='The previous turn ended with an error: '+failure[:300]+'. '+prompt
             prompt+='Unseen events: '+json.dumps(unseen,sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
             workspace.publish('events/resume-t%06d.json'%(session.turn+1),dict(message=prompt));save()
         if stop=='operator_paused':ledger.pause()
@@ -159,9 +174,12 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                     reason=stop,resources=ledger.snapshot())
         if stop=='fatal_error':
             # Surface the cause; a bare reason hid a probe timeout (10-28).
+            cause=fatal_cause(broker,session_failures)
+            if cause not in FATAL_CAUSES:raise AssertionError('fatal stop without an allowed cause')
             f=broker.failure or {}
-            result['error']=('; '.join(completion_failures.values()) if completion_failures else
-                             'broker_quarantined: %s %s %s (%s)'%(f.get('op'),f.get('request_id'),f.get('error'),f.get('detail')) if f else 'broker_quarantined')
+            result['fatal_cause']=cause
+            result['error']=(cause+': %s %s %s (%s)'%(f.get('op'),f.get('request_id'),f.get('error'),f.get('detail')) if broker.quarantined
+                             else cause+': '+str(failure))
         return result
     finally:
         session.cancel('controller_exit')

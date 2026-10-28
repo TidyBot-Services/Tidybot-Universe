@@ -440,8 +440,11 @@ def test_execution_timeout_holds_but_eval_timeout_is_unavailable(workspace,op,co
             assert b.accept(request('r2'))['status']=='accepted'
             assert settled(b,'r2')['status']=='completed'
         else:
-            assert receipt['status']=='needs_review'
-            assert b.accept(request('r2'))['error']=='needs_review'
+            # r6 policy: a stopped, timed-out execution is that execution's result.
+            assert receipt['status']=='completed' and not b.quarantined
+            assert receipt['result']['execution_error']['error_class']=='TimeoutError'
+            gate.set();time.sleep(.05)
+            assert b.accept(request('r2'))['status']=='accepted'
     finally:gate.set();b.close()
 
 
