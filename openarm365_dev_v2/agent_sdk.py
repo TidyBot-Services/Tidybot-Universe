@@ -13,7 +13,10 @@ def build_sdk(owner, record_event):
                 event.update(status='rejected' if rejected else 'completed', result=value)
                 record_event(event)
                 return value
-            except Exception:
-                event.update(status='failed', error='fatal_sdk_error'); record_event(event); raise
+            except Exception as exc:
+                # Same shape as the one-call SDK event: the runner reads error.type
+                # (OutcomeUnknown); a bare string crashed it after a real fault (r5).
+                event.update(status='failed', error={'type': type(exc).__name__, 'message': str(exc)[:1200]})
+                record_event(event); raise
         return call
     return SimpleNamespace(**{g: SimpleNamespace(**{op: method(g, op) for op in ops}) for g, ops in OPERATIONS.items()})

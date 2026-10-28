@@ -171,3 +171,22 @@ def test_run_derived_files_keep_their_screening(workspace):  # noqa: F811
         b.accept(request('x',op='run',payload=dict(entry='work/main.py')));value=settled(b,'x')
         assert (workspace.ws/'executions'/value['execution_id']/'stdout.txt').read_text()=='[withheld]'
     finally:b.close()
+
+
+def test_fatal_sdk_event_has_runner_shape():
+    # r5: "Native joint tracking exceeds 4mrad endpoint bound" -> agent event error was the
+    # string 'fatal_sdk_error'; runner.py's e.get('error',{}).get('type') then raised and the
+    # native evaluator never ran (completion_evidence_unavailable -> fatal_error).
+    from openarm365_dev_v2.agent_sdk import build_sdk
+    events=[]
+    class Owner:
+        def rpc(self,*a,**k):raise RuntimeError('Native joint tracking exceeds 4mrad endpoint bound')
+    with pytest.raises(RuntimeError):build_sdk(Owner(),events.append).left_arm.move_delta(0,0,-.04)
+    error=events[-1]['error']
+    assert events[-1]['status']=='failed' and error['type']=='RuntimeError' and '4mrad' in error['message']
+    assert not any(e.get('error',{}).get('type')=='OutcomeUnknown' for e in events)
+    from openarm365_dev.owner import OutcomeUnknown
+    class Lost:
+        def rpc(self,*a,**k):raise OutcomeUnknown('Native response channel closed')
+    with pytest.raises(OutcomeUnknown):build_sdk(Lost(),events.append).left_arm.move_delta(0,0,-.04)
+    assert any(e.get('error',{}).get('type')=='OutcomeUnknown' for e in events)
