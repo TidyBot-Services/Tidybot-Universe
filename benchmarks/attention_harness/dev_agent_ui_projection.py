@@ -218,7 +218,7 @@ def public_config(cell):
     try:
         return clean(json.loads(read_beneath(root, 'config.json', 32*1024*1024)))
     except FileNotFoundError:
-        return dict(task_id=cell['task_id'], seed=cell['seed'])
+        return dict(task_id=cell.get('task_id'), seed=cell.get('seed'))
 
 
 def evidence(cell, name):
