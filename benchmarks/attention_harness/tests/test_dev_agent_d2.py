@@ -10,7 +10,7 @@ import pytest
 from benchmarks.attention_harness.dev_agent_workspace import Workspace,atomic_write
 from benchmarks.attention_harness.dev_agent_session import CodexAgentSession,SessionError
 from benchmarks.attention_harness.dev_agent_ledger import AgentLedger,LedgerBudget
-from benchmarks.attention_harness.dev_agent_quota import QuotaMonitor,QuotaUnavailable
+from benchmarks.attention_harness.dev_agent_quota import QuotaMonitor,read_weekly_quota,QuotaUnavailable
 from benchmarks.attention_harness.dev_agent_bundle import bundle
 from benchmarks.attention_harness.dev_agent_replay import freeze_origin,provision_replay
 from benchmarks.attention_harness.dev_agent_loop import drive,CONTINUE_MESSAGE
@@ -174,7 +174,23 @@ def test_quota_same_window_stale_and_crossing(ws):
     assert len((ws.private/'quota.jsonl').read_text().splitlines())==2
     assert sqlite3.connect(ledger.path).execute('SELECT count(*) FROM v2_agent_quota').fetchone()[0]==2
     now[0]=1701
-    with pytest.raises(QuotaUnavailable):quota.check('stale')
+    with pytest.raises(ValueError,match='quota_stop'):quota.check('stale')
+    assert json.loads((ws.private/'quota.jsonl').read_text().splitlines()[-1])['stale'] is True
+
+
+def test_quota_reset_jitter_same_window(ws, tmp_path):
+    now=time.time();ledger=AgentLedger(ws.private/'jitter-db','c')
+    day=tmp_path/'.codex/sessions/2026/10/28';day.mkdir(parents=True)
+    def row(ts,used,reset):
+        return json.dumps(dict(timestamp=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime(ts)),
+            payload=dict(rate_limits=dict(primary=dict(used_percent=used,window_minutes=10080,resets_at=reset)))))
+    (day/'rollout-a.jsonl').write_text(row(now-7200,73,now+5002)+'\n')
+    (day/'rollout-b.jsonl').write_text(row(now-3600,82,now+5000)+'\n'+row(now-3600,10,now-10)+'\n')
+    reading=read_weekly_quota(tmp_path,now=now)
+    assert reading['used_percent']==82 and reading['resets_at']==now+5002
+    quota=QuotaMonitor(ws.private,ledger,reader=lambda:read_weekly_quota(tmp_path),stop_percent=90)
+    sample=quota.sample('start')
+    assert sample['used_percent']==82 and sample['stale'] is True and not sample['stopped']
 
 
 def test_quota_mid_run_refuses_request(ws):
