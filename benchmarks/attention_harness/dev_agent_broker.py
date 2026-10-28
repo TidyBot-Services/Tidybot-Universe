@@ -28,6 +28,14 @@ TIMEOUTS = dict(validation=5., observe=10., find_objects=10., ik_check=240.,
                 probe_startup=300.)
 
 
+class BrokerInvariant(RuntimeError):
+    """The only failures allowed to end a run from inside one request."""
+
+
+def soft_error(exc):
+    return dict(error_class=type(exc).__name__, message=screen_text(str(exc))[:500])
+
+
 def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
 
@@ -116,7 +124,17 @@ class Broker:
         # Freeze the complete acceptance cut, including source validation and
         # private copies. Background tools cannot change code between the bundle
         # and pre-submit snapshot. Reentrant quiesce also covers snapshot hooks.
-        with self.quiesce():return self._accept(request)
+        with self.quiesce():
+            try:return self._accept(request)
+            except Exception as exc:
+                # Request boundary: a failure while accepting a well-formed request
+                # becomes that request's rejection; malformed envelopes still raise.
+                rid=request.get('request_id') if isinstance(request,dict) else None
+                record=self.records.get(rid) if isinstance(rid,str) else None
+                if record is None or record['response']['status']!='accepted' or self.active==rid:raise
+                record['response'].update(status='rejected',error='request_failed',
+                    validation_error=screen_text(type(exc).__name__+': '+str(exc))[:500])
+                return self._publish(record['response'])
 
     def _accept(self, request):
         started = time.monotonic()
@@ -311,7 +329,7 @@ class Broker:
                     atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(op=op,error='probe_error',detail=detail,cold=cold)))
                     if self.owner_start_failures >= 2:
                         self.failure = dict(request_id=rid, op=op, error='probe_owner_unrecoverable', detail=detail)
-                        raise RuntimeError('probe_owner_unrecoverable')
+                        raise BrokerInvariant('probe_owner_unrecoverable')
                     value = dict(probe_error=dict(error_class=type(exc).__name__, message=screen_text(str(exc))[:500]),
                                  owner_restarted=True, state_basis='reset_scene', physics_steps=0)
                 artifact = self.workspace.publish('probes/' + response['probe_id'] + '.json', value)
@@ -323,13 +341,24 @@ class Broker:
                     eid = response['execution_id']
                     directory = self.workspace.private / 'executions' / eid
                     directory.mkdir(parents=True)
-                    result = self._bounded(self.executor, self.executor.execute, source, directory,
-                                           timeout=self.timeouts[op])
+                    errored = None
+                    try:
+                        result = self._bounded(self.executor, self.executor.execute, source, directory,
+                                               timeout=self.timeouts[op])
+                    except TimeoutError:raise
+                    except Exception as exc:
+                        # Each execution owns a fresh simulator; its failure is that
+                        # execution's result, not an unknown run state.
+                        errored = soft_error(exc)
+                        atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(op=op,error='execution_error',**errored)))
+                        result = dict(status='execution_error', error=errored['error_class'], stdout='',
+                                      stderr='execution_error: '+errored['error_class']+': '+errored['message']+'\n', trace=[])
                     if hasattr(self.budget,'ledger'):
-                        self.budget.ledger.record_execution('request:'+rid,getattr(self.executor,'execution_usage',None))
+                        self.budget.ledger.record_execution('request:'+rid,getattr(self.executor,'execution_usage',None) if errored is None else None)
                     value = self._execution(eid, source, result)
-                    if hasattr(self.helper,'capture'):self.helper.capture(self.executor)
-                    if self.on_execution:self.on_execution(response,directory,result)
+                    if errored:value['execution_error']=errored
+                    elif hasattr(self.helper,'capture'):self.helper.capture(self.executor)
+                    if self.on_execution and errored is None:self.on_execution(response,directory,result)
                     if self.on_cut and op=='submit':self.on_cut('post-exec',response)
                 elif self.on_cut and op=='submit':self.on_cut('post-exec',response)
                 if op == 'submit':
@@ -364,28 +393,40 @@ class Broker:
                     # A completed run terminates here, even when Eval disagrees.
                     if self.on_version:self.on_version(response,value)
                     if self.stop_reason not in ('run_complete','run_error'):
-                        value['help'] = (self._bounded(self.helper,self.helper.boundary,value,timeout=self.timeouts['ask_help'])
-                            if hasattr(self.helper,'boundary') else dict(status='policy_denied'))
+                        try:
+                            value['help'] = (self._bounded(self.helper,self.helper.boundary,value,timeout=self.timeouts['ask_help'],quarantine=False)
+                                if hasattr(self.helper,'boundary') else dict(status='policy_denied'))
+                        except Exception as exc:
+                            value['help'] = dict(status='help_error',**soft_error(exc))
                         if value['help'].get('decision',{}).get('action')=='stop':self.stop_reason='help_policy_stop'
                         self.workspace.publish(base + 'help.json', value['help'])
             else:
-                value = self._bounded(self.helper, self.helper.ask, payload, timeout=self.timeouts['ask_help'])
+                value = self._bounded(self.helper, self.helper.ask, payload, timeout=self.timeouts['ask_help'], quarantine=False)
                 if value.get('version_id'):
                     for row in self.histories['versions']:
                         if row['version_id']==value['version_id']:row['help']=value
             response.update(status='needs_review' if self.quarantined else 'completed', result=value)
             if self.quarantined:response['error']='timeout'
-        except TimeoutError as exc:
-            self.quarantined = True
-            self.failure = dict(request_id=rid, op=op, error='timeout', detail=str(exc))
-            atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(self.failure,error_class='TimeoutError')))
-            response.update(status='needs_review', error='timeout')
         except BaseException as exc:
-            self.quarantined = True
-            if not (self.failure and self.failure['request_id']==rid):
-                self.failure = dict(request_id=rid, op=op, error='collaborator_failure', detail=type(exc).__name__+': '+str(exc))
-            atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(error=str(exc),error_class=type(exc).__name__)))
-            response.update(status='needs_review', error='collaborator_failure')
+            if isinstance(exc, Exception) and not isinstance(exc, BrokerInvariant) and (op in PROBES or op == 'ask_help'):
+                # Request boundary for read-only/help requests: any failure at any
+                # stage is that request's answer; the run continues.
+                kind = 'probe_error' if op in PROBES else 'help_error'
+                atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(op=op,error=kind,**soft_error(exc))))
+                response.update(status='completed', result=(
+                    {kind: soft_error(exc), 'state_basis': 'reset_scene', 'physics_steps': 0} if op in PROBES
+                    else dict(status=kind, **soft_error(exc))))
+            elif isinstance(exc, TimeoutError):
+                self.quarantined = True
+                self.failure = dict(request_id=rid, op=op, error='timeout', detail=str(exc))
+                atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(self.failure,error_class='TimeoutError')))
+                response.update(status='needs_review', error='timeout')
+            else:
+                self.quarantined = True
+                if not (self.failure and self.failure['request_id']==rid):
+                    self.failure = dict(request_id=rid, op=op, error='collaborator_failure', detail=type(exc).__name__+': '+str(exc))
+                atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(error=str(exc),error_class=type(exc).__name__)))
+                response.update(status='needs_review', error='collaborator_failure')
         finally:
             with self.lock:
                 try:
@@ -418,7 +459,7 @@ class Broker:
                 finally: os.close(inbox)
                 if response.get('error') == 'request_id_conflict':
                     self.workspace.publish('rpc/responses/' + request['request_id'] + '.json', response)
-            except (ValueError, OSError, TypeError, AttributeError):
+            except Exception:
                 continue
 
     def serve(self, stop):

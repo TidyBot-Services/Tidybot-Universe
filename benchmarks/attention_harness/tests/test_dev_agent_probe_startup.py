@@ -138,14 +138,13 @@ def test_out_of_limit_base_offset_rejects_only_that_request(workspace):  # noqa:
     try:
         target=dict(side='left',position=[.5,-2.4,.95],quaternion_xyzw=[0,0,0,1])
         value=b.accept(request('o1',op='ik_check',payload=dict(target=target,base_offset=dict(dx=0,dy=.25,dyaw=0))))
-        assert value['status']=='rejected' and 'Base delta exceeds' in value['validation_error']
+        assert value['status']=='rejected' and 'exceeds the per-call base limit' in value['validation_error']
         b.accept(request('o2',op='ik_check',payload=dict(target=target,base_offset=dict(dx=0,dy=.2,dyaw=0))))
         assert settled(b,'o2')['status']=='completed' and not b.quarantined
     finally:b.close()
 
 
 def test_sdk_doc_is_delivered_not_withheld(workspace):  # noqa: F811
-    text=(workspace.ws/'docs'/'sdk.md').read_text()
-    assert 'withheld' not in text and len(text)>500
+    # sdk.md verbatim delivery is covered with a hash-bound config in test_dev_agent_request_boundary.
     for name in ('tools.md','guide.md'):
         assert 'withheld' not in (workspace.ws/'docs'/name).read_text()

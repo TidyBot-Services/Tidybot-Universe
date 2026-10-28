@@ -19,6 +19,16 @@ def action_arguments(action):
     return [values.get(name,[0.,0.,0.] if name=='rotation_delta' else 0.) for name in names]
 
 
+def base_limit(dx, dy, dyaw, what):
+    """Same per-call bound as execution (unchanged); a clear recoverable rejection."""
+    from openarm365_dev.base_motion import validate_delta
+    try: validate_delta(dx, dy, dyaw)
+    except Exception as exc:
+        if 'exceeds' in str(exc):
+            raise ValueError(what+' exceeds the per-call base limit 0.20 m / 0.3 rad; a larger move needs several steps') from exc
+        raise ValueError('invalid_'+what.replace(' ','_')) from exc
+
+
 def validate(op, payload):
     def vector(value, n):
         if not isinstance(value, list) or len(value) != n or any(type(v) not in (int,float) or not math.isfinite(v) for v in value):
@@ -29,8 +39,7 @@ def validate(op, payload):
         if op not in ('ik_check','plan_dry_run') or not isinstance(offset,dict) or set(offset)!={'dx','dy','dyaw'}:
             raise ValueError('invalid_base_offset')
         vector([offset[k] for k in ('dx','dy','dyaw')],3)
-        from openarm365_dev.base_motion import validate_delta
-        validate_delta(**offset)
+        base_limit(offset['dx'],offset['dy'],offset['dyaw'],'base_offset')
     if 'start_joints' in payload:
         joints = payload['start_joints']
         if not isinstance(joints, dict) or not joints: raise ValueError('invalid_start_joints')
@@ -54,7 +63,7 @@ def validate(op, payload):
         if action['group']=='bimanual':
             if len(args)!=1:raise ValueError('one_target_required')
             vector(args[0],14)
-        elif action['group']=='base': vector(args,3)
+        elif action['group']=='base': vector(args,3);base_limit(*args,'base action')
         else:
             if len(args) not in (3,4):raise ValueError('invalid_delta')
             vector(args[:3],3)

@@ -114,7 +114,8 @@ class Workspace:
 
     def prepare(self, task, config):
         from .dev_tasks import dev_sdk, dev_sdk_prompt
-        from .dev_agent_diagnostics import public_observation, FORBIDDEN
+        import hashlib
+        from .dev_agent_diagnostics import public_observation, FORBIDDEN, screen_text
         if config.get('budget_tier') != 'dev' or config.get('runner_boundary') != 'dev_loop':
             raise ValueError('agent_requires_dev_tier')
         for name in DIRS:
@@ -132,10 +133,16 @@ class Workspace:
         prompt = prompt.replace('Repair runtime errors before the next full attempt.',
                                 'Recoverable rejections do not alone fail a completed execution.')
         self.publish('task.json', public_observation(task))
-        # Trusted system text: the path heuristic withheld all of it in r4
-        # ("open()/close()", "dict.get/keys"). Forbidden terms are a hard error.
+        prompt += (' Shape notes: the observe PROBE nests robot state under "robot" (and objects'
+            ' under "perception"), but sensors.get_observation() in executed code returns the flat'
+            ' robot0_* keys listed above. Successful motion calls (move_delta, move_joints, gripper'
+            ' open/close) return None; only a pre-dispatch refusal returns a dict with rejected true.')
+        # Only the frozen, hash-bound SDK prompt is published verbatim: the path
+        # heuristic withheld all of it in r4 ("open()/close()", "dict.get/keys").
+        # Run-derived files keep their screening; a forbidden term is a hard error.
+        trusted = hashlib.sha256(dev_sdk_prompt(config).encode()).hexdigest() == config.get('dev_sdk_prompt_sha256')
         if FORBIDDEN.search(prompt):raise ValueError('sdk_doc_forbidden_term')
-        self.publish('docs/sdk.md', prompt.encode())
+        self.publish('docs/sdk.md', (prompt if trusted else screen_text(prompt)).encode())
         self.publish('docs/sdk.json', dev_sdk(config))
         self.publish('docs/safety.json', dict(translation_coordinate_m=.05, rotation_rad=.5,
             joint_margin_rad=.02, base_clearance_m=.010, sdk_calls=320, control_steps=9600,
@@ -191,6 +198,9 @@ Exact accepted payloads (the CLI builds these; extra keys are rejected):
              with args [dx,dy,dyaw] | group "bimanual", operation "move_joints",
              args [[14 joint radians]]; optional "start_joints", "base_offset"
   start_joints: {"openarm_left_joint1": rad, ...}; base_offset: {"dx": m, "dy": m, "dyaw": rad}
+A base_offset (or plan_dry_run base action) beyond the per-call base limit
+(0.20 m translation / 0.3 rad yaw, same as base.move_delta) is rejected with that
+message; probe a larger move as several steps.
 A malformed payload is rejected before dispatch (error invalid_request,
 validation_error names the check) and costs nothing. A planner rejection returns
 planning_accepted false with its reason. If a probe itself fails (exception or timeout),
