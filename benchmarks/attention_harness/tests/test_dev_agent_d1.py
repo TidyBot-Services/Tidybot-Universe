@@ -503,3 +503,18 @@ def test_agent_local_rejection_never_clears_after_motion(monkeypatch):
     monkeypatch.setattr(NativeExecutor,'base_move',after_motion)
     with pytest.raises(BasePathRejected):executor.base_move(0,0,0,request_id='fake')
     assert executor.failed and attests==[True]
+
+
+def test_real_bwrap_transport_runs_policy(tmp_path):
+    # 10-28 offline e2e: every real execution died on "bwrap: Unknown option --preserve-fds".
+    import shutil
+    if shutil.which('bwrap') is None:pytest.skip('bubblewrap required')
+    from openarm365_dev_v2.agent_sandbox import execute_agent_policy
+    from openarm365_dev_v2.agent_sdk import build_sdk
+    events=[]
+    owner=SimpleNamespace(rpc=lambda *a,**k:{'robot0_left_joint_pos':[0.]*7})
+    source='from robot_sdk import sensors\nprint("obs", len(sensors.get_observation()))\n'
+    outcome=execute_agent_policy(code=source,sdk=build_sdk(owner,events.append),context={},deadline=time.monotonic()+20,
+        stderr_path=tmp_path/'policy-stderr.txt')
+    assert outcome.status=='completed',(tmp_path/'policy-stderr.txt').read_text()
+    assert outcome.call_count==1 and 'obs 1' in (tmp_path/'policy-stdout.txt').read_text()

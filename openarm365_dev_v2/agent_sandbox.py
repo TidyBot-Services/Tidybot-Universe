@@ -24,8 +24,8 @@ def execute_agent_policy(*, code, sdk, context, deadline, stderr_path, cancel_ch
     prefix = [] if unsafe_test_transport else _bwrap_prefix(worker)
     protocol_read, protocol_write = os.pipe()
     command = (['/usr/bin/python3', '-I', str(worker)] if unsafe_test_transport else
-               prefix + ['--preserve-fds', str(protocol_write - 2),
-                                        '/usr/bin/python3', '-I', '/worker/worker.py'])
+               # bwrap 0.6.1 has no --preserve-fds; it passes inherited (pass_fds) fds through.
+               prefix + ['/usr/bin/python3', '-I', '/worker/worker.py'])
     command += [str(memory_limit_mb), str(protocol_write)]
     started = time.monotonic(); calls = 0; status = 'failed'; error = None
     try:
