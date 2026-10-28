@@ -286,7 +286,7 @@ def test_real_probe_logic_held_start_limits_and_state(tmp_path,monkeypatch):
     planner.body=lambda active:{'current_q':data.qpos.tolist(),'active_joints':active}
     planner.client=SimpleNamespace(call=lambda path,body:(seen.append((path,body)) or {'status':'success','qpos':[0]*14}))
     result=probe(env,executor,planner,observe,{'op':'ik_check','payload':{'target':TARGET,'start_joints':{'openarm_left_joint1':.5}}})
-    assert result['planning_accepted'] and seen[-1][1]['current_q'][0]==.5
+    assert result['planning_accepted'] and seen[-1][1]['seed_q'][0]==.5
     assert state_fingerprint(env,executor)==before
 
 

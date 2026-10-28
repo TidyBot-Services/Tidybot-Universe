@@ -351,7 +351,7 @@
     if(item.development&&item.lifecycle)return ({prepared:'Prepared / Not started',queued:'Queued / Next round',model:'Model working',advisor:'Waiting for Advisor',approval:'Needs human approval',sdk:'SDK running',preparing:'Preparing public work',review:'Needs review',terminal:'Ended'})[item.lifecycle.phase] || 'Unconfirmed';
     if(!DEBUG_VIEW&&item.development&&item.status==='running')return 'Running';
     // Same words as the cover's task rail (shell.js outcome): a completed run says whether it solved the task.
-    if(!DEBUG_VIEW&&item.development&&item.status==='completed')return item.reason==='eval_passed'?'Solved':'Not solved';
+    if(!DEBUG_VIEW&&item.development&&item.status==='completed')return ['eval_passed','native_success'].includes(item.reason)?'Solved':'Not solved';
     if(item.development&&item.status==='budget_exhausted'&&item.end_summary)return item.end_summary.short;
     if(item.development)return {ready:'Ready',running:'Developing',stopping:'Stopping',stopped:'Stopped',budget_exhausted:'Budget reached',needs_review:'Needs review',failed:'Failed',paused:'Paused'}[item.status]||label(item.status||'Not recorded');
     return {running:'Running',completed:'Finished',succeeded:'Succeeded',failed:'Failed',cancelled:'Stopped',timed_out:'Timed out'}[item.status]||label(item.status||'Not recorded');
@@ -1909,17 +1909,34 @@
     const low=used>=70;
     return {text:`Codex quota: ${Math.round(used)}% of ${quota.window_minutes===10080?'this week':'this window'} used${reset}${low?' · Running low this week':''}`,low};
   }
+  function agentOptionGate({channel,tier,policyCount=1,taskCount=1,seedCount=1,fork=false}) {
+    if(channel!=='dev_v2'||tier!=='dev')return 'Agent 仅支持现代 dev 档；formal / legacy 不支持。';
+    if(policyCount!==1||taskCount!==1||seedCount!==1)return 'Agent 仅支持单 cell；多任务、seed 或策略矩阵不支持。';
+    if(fork)return 'Agent 不支持从旧版本继续；请创建独立 run。';
+    return '';
+  }
+  function agentLaunchSelection(selection,values={}) {
+    if(!values.devMode||values.devMode==='one_call')return selection;
+    if(values.devMode!=='agent')throw new Error('Unknown Dev mode');
+    const reason=agentOptionGate({channel:values.channel,tier:values.tier,policyCount:selection.policies?.length,taskCount:selection.tasks?.length,seedCount:selection.seeds?.length,fork:!!selection.fork});
+    if(reason)throw new Error(reason);
+    const {configuration,human_wait_seconds,eval_agent,...rest}=selection;
+    return {...rest,dev_mode:'agent',model_source:'codex',budget_tier:'dev',
+      dev_model:values.devModel||'gpt-6-astra',eval_model:values.evalModel||'gpt-6-astra',quota_stop_percent:90,
+      goal_key:configuration?.goal_id||selection.goal_key,wall_limit:21600};
+  }
   function runConfigDefaultModelMinutes(options) {
     return Math.ceil(Number(options?.default_cell_budget?.model_seconds ?? 1800)/60);
   }
   function runConfigDefaultsFromSelection(selection) {
     const config=selection?.configuration||{},cell=config.cell_budget||selection?.cell_budget||{};
     return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:selection?.policies?.length?'all':null,
+      ...(selection?.dev_mode==='agent'?{devMode:'agent',devModel:selection.dev_model,evalModel:selection.eval_model}:{}),
       mode:selection?.mode,modelSource:selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
       help:selection?.help_budget,waitSeconds:selection?.human_wait_seconds??selection?.planner_features?.human_wait_seconds,
       wallSeconds:config.wall_seconds??selection?.wall_limit,modelMinutes:cell.model_seconds==null?null:Math.ceil(cell.model_seconds/60),
       reviewer:selection?.eval_agent?.enabled,cellBudget:config.cell_budget||selection?.cell_budget,
-      experimentBudget:config.experiment_budget||selection?.goal_limits,goalId:config.goal_id,nameSuffix:selection?.name_suffix};
+      experimentBudget:config.experiment_budget||selection?.goal_limits,goalId:config.goal_id||selection?.goal_key,nameSuffix:selection?.name_suffix};
   }
   function runConfigBudget({versions,help,waitSeconds,modelMinutes,profile,defaults,reviewer,policyCount=1}) {
     const n=Number(versions),h=Number(help),modelSeconds=Number(modelMinutes)*60;
@@ -2007,6 +2024,13 @@
             <label class="ab-launch-field">Time to wait for a person (seconds)<input name="human_wait_seconds" type="number" min="1" max="600" value="300"></label>
             <p class="ab-launch-field wide ab-run-hint">Each request uses one unit of human attention.</p>
           </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
+          <section class="ab-launch-section" data-agent-controls><div class="ab-run-section-head"><h4>Dev mode</h4></div><div class="ab-launch-grid">
+            <label class="ab-launch-field">Dev mode<select name="dev_mode" aria-label="Dev mode"><option value="one_call">一次调用</option><option value="agent">Agent</option></select></label>
+            <label class="ab-launch-field">Dev model<select name="dev_model" aria-label="Dev model"><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
+            <label class="ab-launch-field">Eval model<select name="eval_model" aria-label="Eval model"><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
+            <label class="ab-launch-field">Quota stop %<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %"></label>
+            <p class="ab-run-hint wide" data-agent-reason role="status"></p>
+          </div></section>
           <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
             <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small data-codex-quota hidden role="status"></small><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
@@ -2037,7 +2061,7 @@
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
       function showQuota() {
-        quotaLine.hidden=form.model_source.value!=='codex'||form.model_source.disabled;
+        quotaLine.hidden=form.model_source.value!=='codex'||(form.model_source.disabled&&form.dev_mode.value!=='agent');
         if(quotaLine.hidden)return;
         const message=codexQuotaText(dialogQuota);
         quotaLine.textContent=message.text;
@@ -2090,7 +2114,27 @@
           if(options.dev_v2.bridge_schema!=='main-dev-v3'&&key in calculated.experiment)input.value=calculated.experiment[key];
         }
       }
+      function syncAgentOptions() {
+        const profile=selectedProfile();
+        const reason=agentOptionGate({channel:profile?.channel,tier:options?.dev_v2?.budget_tier,
+          policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart});
+        form.dev_mode.disabled=!!reason;
+        form.dev_mode.querySelector('option[value="agent"]').disabled=!!reason;
+        if(reason)form.dev_mode.value='one_call';
+        const agent=form.dev_mode.value==='agent';
+        form.dev_model.disabled=!agent;form.eval_model.disabled=!agent;
+        form.querySelector('[data-agent-reason]').textContent=reason||(agent?'10 正式版本 · 40 执行 · 300 只读探查 · 6 小时 · 额度 90% 停止。Eval 独立选模；原生成功结束运行。':'一次调用保留现有设置。切换 Agent 后可独立选择 Dev / Eval 模型。');
+        if(agent){form.model_source.value='codex';form.eval_agent_enabled.checked=true;form.max_attempts.value='10';form.wall_seconds.value='21600';}
+        form.model_source.disabled=agent||profile?.channel!=='dev_v2';
+        form.eval_agent_enabled.disabled=agent||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
+        if(profile?.channel==='dev_v2'){form.max_attempts.readOnly=agent;form.wall_seconds.readOnly=agent;}
+        form.model_seconds_minutes.disabled=agent;
+        form.querySelector('[data-v2-config]').hidden=agent||profile?.channel!=='dev_v2';
+        showQuota();
+        form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval 只评正式提交，反馈包含判定、证据和建议；原生成功结束 run。每次 Eval 最多 15 分钟。':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention.';
+      }
       function updatePreview() {
+        syncAgentOptions();
         const profile = selectedProfile();
         form.querySelector('[data-launch-name-preview]').textContent = `${taskName(form.task_id.value)}${form.name_suffix.value.trim()?` -- ${form.name_suffix.value.trim()}`:''}`;
         const iterations = Number(form.max_attempts.value);
@@ -2107,7 +2151,7 @@
         for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled;
         if(profile?.channel==='dev_v2'){
           form.querySelector('[data-launch-preview]').textContent=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
-            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.model_source.value});
+            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.dev_mode.value==='agent'?'parcc':form.model_source.value})+(form.dev_mode.value==='agent'?` · Agent · Dev ${form.dev_model.value} · Eval ${form.eval_model.value}`:'');
           syncSeedOptions();
         }
       }
@@ -2197,6 +2241,7 @@
       }
       if(repeat && sourceProfile?.channel==='dev_v2') {
         const set=(name,value)=>{if(value!=null)form[name].value=String(value);};
+        if(repeat.devMode&&form.dev_mode){set('dev_mode',repeat.devMode);set('dev_model',repeat.devModel);set('eval_model',repeat.evalModel);}
         set('v2_mode',repeat.mode);
         syncSeedOptions();
         if([...form.seed.options].some(option=>Number(option.value)===repeat.seed))set('seed',repeat.seed);
@@ -2260,6 +2305,7 @@
               selection.fork=fork.request();
             }
           }
+          selection=agentLaunchSelection(selection,{devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
           const result = await response.json();
@@ -3874,6 +3920,14 @@
     return `<aside class="ab-secondary" aria-label="Developer tools"><details data-secondary="debug" data-persist-detail="debug"><summary>Developer debug</summary>${agentRecords}${snapshot ? `<section class="panel"><h3>Agent work & scheduling</h3><div class="work-list">${(orchestrator?.agents || []).map(agent=>`<button class="work-card" type="button" data-dag-skill="${esc(agent.skill)}"><strong>${esc(agent.skill)}</strong><p>${esc(agent.agent_id)} · ${esc(agent.model)} · ${esc(agent.status)}</p></button>`).join('')}${(snapshot.work_items || []).map(item=>`<div class="work-card"><strong>${esc(label(item.resource))} · ${esc(item.state)}</strong><p>Requires ${esc(number(item.required))}, remaining ${esc(number(item.remaining))} · ${esc(item.reason)}</p></div>`).join('') || '<p>No active work records.</p>'}</div></section>` : ''}${dagPanel()}${sessionPanel()}<p class="minor">The live projection reads the persisted SQLite AttentionStore. Requests, budgets, executions and traces survive restarts.</p></details></aside>`;
   }
   function render(snapshot) {
+    if(snapshot.agent){
+      const expanded=[...view.querySelectorAll('[data-persist-detail][open]')].map(e=>e.dataset.persistDetail);
+      currentSnapshot=snapshot;renderSidebar();devTag.hidden=DEBUG_VIEW;
+      view.innerHTML=agentRunPage(snapshot.dev_v2);
+      view.querySelectorAll('[data-persist-detail]').forEach(e=>{e.open=expanded.includes(e.dataset.persistDetail);});
+      view.querySelector('[data-agent-stop]')?.addEventListener('click',()=>sidebarWrite(`/api/dev-v2/experiments/${snapshot.dev_v2.experiment_id}/cancel`,{}));
+      bindLaunch();openRequestedLaunch();return;
+    }
     stopGuidancePreview(); activeGuidancePreview = null;
     const devDraft=view.querySelector('[data-dev-guidance] textarea');
     const devDraftFocus=devDraft&&document.activeElement===devDraft?[devDraft.selectionStart,devDraft.selectionEnd,devDraft.selectionDirection]:null;
@@ -4446,6 +4500,27 @@
     render(snapshot);
   }
   // Adapt persisted Dev v2 records to the original five-region workspace.
+  // Agent operator view: public evidence links plus trusted controller outcomes.
+  function agentRunPage(cell) {
+    const a=cell.agent,c=a.counts,h=a.held||{},cap=a.limits;
+    const hours=Math.floor(a.wall_seconds/3600),minutes=Math.floor(a.wall_seconds%3600/60);
+    const wall=`${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
+    const link=rows=>(rows||[]).map(r=>r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.label)}</a>`:`<span>${esc(r.label)}</span>`).join(' · ');
+    const json=value=>esc(JSON.stringify(value,null,2));
+    return `<section class="panel ab-run-settings" data-agent-run><div class="ab-status-head"><div><span class="label">DEV · AGENT</span><h2>${esc(cell.task_id)} · seed ${esc(cell.seed)}</h2></div><div class="ab-status-controls"><button type="button" data-open-launch>New run</button><button type="button" data-open-run-again>Run again with the same settings</button>${['turn running','waiting on execution','Eval','help'].includes(a.phase)?'<button type="button" class="danger" data-agent-stop>■ Stop</button>':''}</div></div><p>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)} · quota stop ${esc(a.quota_stop_percent)}%</p><p role="status" data-agent-state>${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}</p></section>
+    <section class="panel ab-resource-details" data-agent-counts><h3>Resources</h3><p>正式版本 ${c.formal_versions}/${cap.formal_versions} · 执行 ${c.moving_executions}/${cap.moving_executions} · 只读探查 ${c.read_only_probes}/${cap.read_only_probes} · 墙钟 ${wall}/6:00 · 额度 ${a.quota?.used_percent??'—'}%</p><p>Reserved: versions ${h.formal_versions||0} · executions ${h.moving_executions||0} · probes ${h.read_only_probes||0} · state basis: ${esc(a.state_basis)}</p>${link(a.history)}</section>
+    <section class="panel" data-agent-errors><h3>Errors</h3>${a.errors.length?a.errors.map(e=>`<article><strong>${esc(e.source)}</strong><pre>${typeof e.error==='string'?esc(e.error):json(e.error)}</pre></article>`).join(''):'<p>No recorded errors.</p>'}</section>
+    <section class="panel ab-execution-viewer" data-execution-viewer data-agent-timeline><h3>Timeline</h3>${a.timeline.map(r=>`<details data-persist-detail="agent:${esc(r.id)}"><summary>${esc(r.version_id||r.execution_id||r.probe_id||r.id)} · ${esc(r.kind)} · ${esc(r.op)} · ${esc(r.status)}${r.error?' · '+esc(r.error):''}</summary><p>${link(r.links)}</p><pre>${json(r.result)}</pre></details>`).join('')||'<p>No requests yet.</p>'}</section>
+    <section class="panel" data-agent-versions><h3>Formal versions · operator results</h3><div class="ab-agent-table"><table><thead><tr><th>Version</th><th>Eval verdict</th><th>Native result</th><th>Agreement</th><th>Eval advice</th></tr></thead><tbody>${a.versions.map(v=>`<tr><td>${esc(v.version_id)}</td><td>${esc(v.eval_verdict)}</td><td>${v.native_success===true?'success':v.native_success===false?'failure':'unavailable'}</td><td>${v.agree===true?'agree':v.agree===false?'disagree':'unavailable'}</td><td>${esc(v.eval?.advice||v.eval?.reason||'')}</td></tr>`).join('')}</tbody></table></div></section><p id="ab-live-message" role="status"></p>`;
+  }
+  async function agentWorkspaceSnapshot(s,cell,experiment) {
+    const empty={...s,versions:[],jobs:[],budget:cell.budget||{},used:cell.used||{},reserved:{},remaining:{},state:cell.state,reason:cell.reason,
+      attention_control:{binding:{allowed_policies:[]},active_policy:cell.policy_id,read_only:true}};
+    const snapshot=await devWorkspaceSnapshot(empty);
+    snapshot.dev_v2=cell;snapshot.agent=cell.agent;snapshot.dev_v2_selection=experiment.selection;
+    snapshot.run.status=cell.state;
+    return snapshot;
+  }
   function devV2State(cellState, experimentState) {
     if(['needs_review','cancelled','condition_invalid','failed','stopped','budget_exhausted','not_started','paused'].includes(experimentState))
       return experimentState;
@@ -4546,6 +4621,12 @@
     const experimentResponse=await fetch(`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}`,{cache:'no-store'});
     if(!experimentResponse.ok)throw new Error(`Dev v2 experiment HTTP ${experimentResponse.status}`);
     const experiment=await experimentResponse.json();if(selectedDev!==s.session_id)return;
+    if(cell.dev_mode==='agent'){
+      const snapshot=await agentWorkspaceSnapshot(s,cell,experiment);if(selectedDev!==s.session_id)return;
+      selectedRun=s.session_id;render(snapshot);lastRendered=null;
+      if(experimentFromHash(location.hash)!==s.experiment_id){const url=new URL(location.href);url.hash=`exp=${s.experiment_id}`;history.replaceState(null,'',url);}
+      return;
+    }
     const quiet=goal=>({...goal,wall_used:0,wall_remaining:0});
     // The goal clock ticks on every poll, in the shared goal and in each per-goal copy; neither should force a redraw.
     const fingerprint=JSON.stringify({experiment_state:experiment.state,experiment_reason:experiment.reason,

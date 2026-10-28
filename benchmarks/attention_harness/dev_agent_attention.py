@@ -217,6 +217,7 @@ class Helper:
             if self.quota:
                 for name in ('quota_before','quota_after'):self.quota.event(record.get(name) or {})
         except Exception as exc:
+            atomic_write(self.workspace.private,'help/'+vid+'/error.json',encode(dict(error=str(exc),error_class=type(exc).__name__)))
             row.update(status='unavailable',error=type(exc).__name__,help_count=1,hint_human_seconds=reserve)
             self.ledger.settle(jid,{k:v for k,v in row.items() if k!='context'})
         return self._publish(vid)

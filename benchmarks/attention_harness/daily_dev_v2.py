@@ -163,7 +163,11 @@ class DailyDevV2:
     def sessions(self,e):
         if e.get('validation_experiment'):return []
         config=json.loads(Path(e['manifest']['uri']).read_bytes())
-        return [dict(c,**config_metadata(config['configs'][f"{c['task_id']}:{c['seed']}"]),channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],locked={'config':dict(config['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=config['model']['model'],experiment_state=e['state'],manifest=e['manifest'],name_suffix=e['selection'].get('name_suffix','')) for c in e['cells']]
+        rows=[dict(c,**config_metadata(config['configs'][f"{c['task_id']}:{c['seed']}"]),channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],locked={'config':dict(config['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=config['model']['model'],experiment_state=e['state'],manifest=e['manifest'],name_suffix=e['selection'].get('name_suffix','')) for c in e['cells']]
+        if config.get('dev_mode')=='agent':
+            from .dev_agent_view import clean
+            return clean(rows)
+        return rows
     def create(self,body):
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('explicit selection and start required')
         selection=body['selection']
@@ -171,6 +175,9 @@ class DailyDevV2:
         if not selection.get('planner_features'):
             selection={k:v for k,v in selection.items() if k!='human_wait_seconds'}
         experiments.validate_selection_fields(selection)
+        if selection.get('dev_mode')=='agent':
+            from .dev_agent_config import normalize
+            normalize(selection)  # Refuse legacy/formal/matrices before any conversion or writes.
         if selection.get('mode')=='experiment':
             # Reject uncovered seeds before creating ledger files. New legacy
             # experiment manifests bind this reference to each config in create().
@@ -191,10 +198,16 @@ class DailyDevV2:
             if shown['blocked']:raise ValueError(' '.join(r['title'] for r in shown['checks'] if r['level']=='block'))
             if selection.get('tasks')!=[shown['task_id']] or selection.get('seeds')!=[shown['seed']]:raise ValueError('A continued run keeps the source task and seed')
             selection={**selection,'fork':dev_fork.materialize(self.root,directory,request)}
-        selection=bind_daily_run_notes(selection,directory/'selection.json')
-        selection=bind_daily_advisor(selection,directory/'selection.json')
-        selection=bind_daily_memory(selection,self.memory,directory/'selection.json')
-        selection=bind_daily_codex(selection)
+        if selection.get('dev_mode')=='agent':
+            from openarm365_dev_v2.scene_contract import registered_contract_ref
+            selection={**selection,'model_source':'codex','reproducible_reset':True,
+                       'scene_contract':registered_contract_ref()}
+            selection=bind_daily_advisor(selection,directory/'selection.json')
+        else:
+            selection=bind_daily_run_notes(selection,directory/'selection.json')
+            selection=bind_daily_advisor(selection,directory/'selection.json')
+            selection=bind_daily_memory(selection,self.memory,directory/'selection.json')
+            selection=bind_daily_codex(selection)
         experiments.validate_selection_fields(selection)
         configuration=selection.get('configuration')
         goal_key=configuration['goal_id'] if configuration is not None else selection.get('goal_key')
@@ -231,7 +244,13 @@ class DailyDevV2:
                 runtime=Path(json.loads(Path(old_lock['path']).read_bytes())['source_root'])
             with (directory/'creation.log').open('ab') as log:
                 result=subprocess.run([sys.executable,'-B','-m','benchmarks.attention_harness.dev_experiment','create','--store',str(path),'--artifacts',str(directory/'artifacts'),'--selection',str(request_file),'--output',str(directory/'created.json')],cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,timeout=60)
-            if result.returncode:raise DevConflict('Experiment materialization failed; creation.log preserves diagnostic evidence')
+            if result.returncode:
+                if selection.get('dev_mode')=='agent':
+                    from .dev_agent_view import clean
+                    from .dev_agent_workspace import read_beneath
+                    detail=read_beneath(directory,'creation.log',32*1024*1024).decode('utf-8',errors='replace')
+                    raise DevConflict('Agent experiment materialization failed: '+clean(detail))
+                raise DevConflict('Experiment materialization failed; creation.log preserves diagnostic evidence')
             e=experiments.snapshot(s,eid)
             manifest=json.loads(Path(e['manifest']['uri']).read_bytes())
             if budget.exists():
@@ -251,7 +270,11 @@ class DailyDevV2:
                 with s.tx() as db:
                     gid=manifest.get('goal_id',s.goal_id);goal=s.get(db,'goals',gid);goal['authorized_until']=declaration['deadline_epoch'];s.put(db,'goals',gid,goal)
         if body['start']:self.start(eid)
-        return experiments.snapshot(s,eid)
+        value=experiments.snapshot(s,eid)
+        if selection.get('dev_mode')=='agent':
+            from .dev_agent_view import clean
+            return clean(value)
+        return value
     def start(self,eid):
         s=self.store(eid);e=experiments.snapshot(s,eid);directory,path,budget=self.paths(eid)
         if not self.per_run_budget and (not self.authorization or time.time()>=self.authorization['deadline_epoch']):raise DevBudgetExhausted('No current authorization: create offline or supply a new explicit run budget')
@@ -328,7 +351,12 @@ class DailyDevV2:
         match=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})(?:/(.*))?',path)
         if not match:raise FileNotFoundError('Unknown Dev v2 resource')
         eid,suffix=match.groups();s=self.store(eid)
-        if not suffix:return experiments.snapshot(s,eid),'application/json'
+        if not suffix:
+            value=experiments.snapshot(s,eid)
+            if value['selection'].get('dev_mode')=='agent':
+                from .dev_agent_view import clean
+                value=clean(value)
+            return value,'application/json'
         if suffix=='fork-preview':
             from .dev_fork import preview
             q=parse_qs(parsed.query)
@@ -341,13 +369,24 @@ class DailyDevV2:
             if not re.fullmatch(r'[1-9][0-9]{0,3}',version):raise ValueError('version must be a positive integer')
             return preview(self.root,eid,one('cell'),int(version),one('carry','feedback')),'application/json'
         if suffix in {'report','export.json','export.csv','ledger.json'}:
+            exp=experiments.snapshot(s,eid)
+            if exp['selection'].get('dev_mode')=='agent':
+                from .dev_agent_view import projection
+                if suffix=='export.csv':raise FileNotFoundError('Use the agent JSON report')
+                return projection(s,exp['cells'][0]),'application/json'
             from .dev_report import report,report_csv
             if suffix=='ledger.json':return s.export_ledger(),'application/json'
             value=report(s,eid);return (report_csv(value),'text/csv; charset=utf-8') if suffix=='export.csv' else (value,'application/json')
-        cm=re.fullmatch(r'cells/([a-f0-9]{64})/(view|live|live/frame|files/(.+))',suffix)
+        cm=re.fullmatch(r'cells/([a-f0-9]{64})/(view|agent/view|agent/files/(.+)|live|live/frame|files/(.+))',suffix)
         if not cm:raise FileNotFoundError('Unknown cell resource')
-        key,kind,name=cm.groups();c=s.cell(key)
+        key,kind,agent_name,name=cm.groups();c=s.cell(key)
         if c['experiment_id']!=eid:raise FileNotFoundError('Cell experiment mismatch')
+        if c.get('dev_mode')=='agent':
+            from .dev_agent_view import projection,artifact
+            if kind in ('view','agent/view'):return projection(s,c),'application/json'
+            if agent_name:return artifact(c,agent_name)
+            raise FileNotFoundError('Agent evidence requires the public agent view')
+        if kind.startswith('agent/'):raise FileNotFoundError('Not an agent run')
         if kind=='view':return self.view(s,c),'application/json'
         if kind.startswith('live'):
             from .dev_live_monitor import response
@@ -359,6 +398,9 @@ class DailyDevV2:
         return file,'video/mp4' if file.suffix=='.mp4' else 'application/json' if file.suffix=='.json' else 'text/plain; charset=utf-8'
     def view(self,s,c):
         # This projection is consumed only by UI, never the worker/model.
+        if c.get('dev_mode')=='agent':
+            from .dev_agent_view import projection
+            return projection(s,c)
         from .codex_quota import run_quota_usage
         rows=[]
         def read(ref,text=False):

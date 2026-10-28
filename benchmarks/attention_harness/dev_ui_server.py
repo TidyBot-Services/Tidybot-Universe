@@ -11,6 +11,13 @@ from .dev_configuration import normalize_configuration,derive_cell_budget,config
 from openarm365_dev_v2.dev_config import ROOT
 UI=Path(__file__).with_name('dev_ui')
 
+def agent_display(value):
+    if value.get('dev_mode')=='agent' or value.get('selection',{}).get('dev_mode')=='agent':
+        from .dev_agent_view import clean
+        return clean(value)
+    return value
+
+
 def budget_preview(selection):
     """Show the same normalized worst-case budget that create validates; do not allocate anything."""
     if not isinstance(selection,dict):raise ValueError('selection object required')
@@ -75,12 +82,17 @@ def serve(store,artifact_root,port,budget_file=None):
                 if path in {'/ui/app.js','/ui/view_model.js'}:self.send((UI/path.rsplit('/',1)[-1]).read_bytes(),'text/javascript');return
                 if not self.authorized():self.obj({'error':'control token required'},403);return
                 if path=='/api/dev/options':self.obj(experiments.options());return
-                if path=='/api/dev/experiments':self.obj(experiments.list_experiments(store));return
-                if path=='/api/dev/resources':self.obj(store.export_ledger());return
+                if path=='/api/dev/experiments':self.obj([agent_display(e) for e in experiments.list_experiments(store)]);return
+                if path=='/api/dev/resources':
+                    value=store.export_ledger()
+                    if any(e.get('selection',{}).get('dev_mode')=='agent' for e in experiments.list_experiments(store)):
+                        from .dev_agent_view import clean
+                        value=clean(value)
+                    self.obj(value);return
                 match=re.fullmatch(r'/api/dev/experiments/(devexp-[a-f0-9]{24})(?:/(.*))?',path)
                 if not match:raise FileNotFoundError('unknown resource')
                 eid,suffix=match.groups()
-                if not suffix:self.obj(experiments.snapshot(store,eid));return
+                if not suffix:self.obj(agent_display(experiments.snapshot(store,eid)));return
                 approval=re.fullmatch(r'approvals/(planner-[a-f0-9]{64})',suffix)
                 if approval:
                     row=planner().get(approval[1])
@@ -88,14 +100,29 @@ def serve(store,artifact_root,port,budget_file=None):
                     self.obj(row);return
                 if suffix in {'report','export.json','export.csv'}:
                     from .dev_report import report,report_csv
+                    exp=experiments.snapshot(store,eid)
+                    if exp['selection'].get('dev_mode')=='agent':
+                        from .dev_agent_view import projection
+                        if suffix=='export.csv':raise FileNotFoundError('Use the agent JSON report')
+                        self.obj(projection(store,exp['cells'][0],api='/api/dev'));return
                     value=report(store,eid)
                     if suffix=='export.csv':self.send(report_csv(value),'text/csv; charset=utf-8')
                     else:self.obj(value)
                     return
-                cell=re.fullmatch(r'cells/([a-f0-9]{64})/(live(?:/frame)?|files/(.+))',suffix)
+                cell=re.fullmatch(r'cells/([a-f0-9]{64})/(view|agent/view|agent/files/(.+)|live(?:/frame)?|files/(.+))',suffix)
                 if not cell:raise FileNotFoundError('unknown cell resource')
-                key,kind,name=cell.groups();c=store.cell(key)
+                key,kind,agent_name,name=cell.groups();c=store.cell(key)
                 if c['experiment_id']!=eid:raise FileNotFoundError('cell outside experiment')
+                if c.get('dev_mode')=='agent':
+                    from .dev_agent_view import projection,artifact
+                    if kind in ('view','agent/view'):self.obj(projection(store,c,api='/api/dev'));return
+                    if agent_name:
+                        content,mime=artifact(c,agent_name)
+                        if mime=='application/json':self.obj(content)
+                        else:self.send(content,mime)
+                        return
+                    raise FileNotFoundError('Agent evidence requires the public agent view')
+                if kind.startswith('agent/') or kind=='view':raise FileNotFoundError('Not an agent run')
                 if kind.startswith('live'):
                     c,row,frame=live(store,eid,key)
                     if kind.endswith('/frame'):self.send(frame.read_bytes(),'image/jpeg')
@@ -131,7 +158,7 @@ def serve(store,artifact_root,port,budget_file=None):
                 body=json.loads(self.rfile.read(size));path=urlsplit(self.path).path
                 if not isinstance(body,dict):raise ValueError('JSON object required')
                 if path=='/api/dev/preview':self.obj(budget_preview(body));return
-                if path=='/api/dev/experiments':self.obj(experiments.create(store,artifact_root,body),201);return
+                if path=='/api/dev/experiments':self.obj(agent_display(experiments.create(store,artifact_root,body)),201);return
                 approval=re.fullmatch(r'/api/dev/experiments/(devexp-[a-f0-9]{24})/approvals/(planner-[a-f0-9]{64})/decision',path)
                 if approval:
                     supplied=self.headers.get('X-Attention-Human-Token','')

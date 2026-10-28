@@ -25,6 +25,12 @@ class AgentPlanner(MujocoV2Planner):
         self.client.attest()
         try: return super().check_goal_margin(target, active)
         except PlanningRejected:
+            import numpy as np
+            import xml.etree.ElementTree as ET
+            from curobo_v2.execution_settings import goal_margin
+            joints={j.get('name'):j for j in ET.parse(self.spec['robot_cfg']['kinematics']['urdf_path']).getroot().findall('joint')}
+            limits=np.array([[float(joints[n].find('limit').get(b)) for b in ('lower','upper')] for n in self.names])
+            margin=goal_margin(target,self.names,limits,active,execution_settings=self.execution_settings)
             # This method performs only the existing numeric margin check.
             raise RecoverablePlanRejection(dict(reason='goal_joint_margin_below_execution_limit',
-                validation={'joint_limits':False},joint_margin_limit_rad=.02))
+                validation={'joint_limits':False},**margin))

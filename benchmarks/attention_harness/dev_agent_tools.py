@@ -41,7 +41,7 @@ def main():
     parser.add_argument('id', nargs='?')
     parser.add_argument('--entry'); parser.add_argument('--reason', default='')
     parser.add_argument('--question', default=''); parser.add_argument('--no-eval', action='store_true')
-    for name in ('target', 'action', 'start-joints', 'names'):
+    for name in ('target', 'action', 'start-joints', 'base-offset', 'names'):
         parser.add_argument('--' + name, type=json.loads)
     parser.add_argument('--timeout', type=float, default=3000)
     parser.add_argument('--request-id')
@@ -59,7 +59,7 @@ def main():
             payload = dict(reason=args.reason)
             if args.entry:payload['entry']=args.entry
         if args.op == 'ask_help': payload = dict(question=args.question)
-        for name in ('target', 'action', 'start_joints', 'names'):
+        for name in ('target', 'action', 'start_joints', 'base_offset', 'names'):
             value = getattr(args, name)
             if value is not None: payload[name] = value
         request = dict(schema=SCHEMA, request_id=rid, op=args.op, payload=payload)

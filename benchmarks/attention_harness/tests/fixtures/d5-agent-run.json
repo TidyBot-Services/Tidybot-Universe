@@ -1,0 +1,629 @@
+{
+  "key": "90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd",
+  "experiment_id": "devexp-83efc4d3d4ed2aadb16a85de",
+  "state": "completed",
+  "reason": "native_success",
+  "error": null,
+  "task_id": "open_cabinet",
+  "seed": 102,
+  "policy_id": "reactive_help",
+  "mode": "interactive",
+  "budget": {
+    "advisor_calls": 1,
+    "control_steps": 96000,
+    "dev_calls": 10,
+    "eval_calls": 0,
+    "execution_seconds": 19800,
+    "executions": 10,
+    "help_count": 1,
+    "help_credits": 1,
+    "help_wait_seconds": 120,
+    "hint_human_seconds": 0,
+    "input_tokens": 1650000,
+    "model_seconds": 3720,
+    "output_tokens": 82944,
+    "provider_tokens": 1732944,
+    "sdk_calls": 3200
+  },
+  "used": {
+    "advisor_calls": 0,
+    "control_steps": 0,
+    "dev_calls": 0,
+    "eval_calls": 0,
+    "execution_seconds": 0,
+    "executions": 0,
+    "help_count": 0,
+    "help_credits": 0,
+    "help_wait_seconds": 0,
+    "hint_human_seconds": 0,
+    "input_tokens": 0,
+    "model_seconds": 0,
+    "output_tokens": 0,
+    "provider_tokens": 0,
+    "sdk_calls": 0
+  },
+  "versions": [
+    {
+      "version": 1,
+      "version_id": "v0001",
+      "execution_id": "e000002",
+      "valid": true,
+      "eval": {
+        "advice": "Scan a smaller base offset.",
+        "evidence": [
+          {
+            "claim": "Approach was rejected",
+            "source": "stdout.txt"
+          }
+        ],
+        "passed": false,
+        "reason": "Blocked approach",
+        "status": "completed"
+      },
+      "eval_verdict": "fail",
+      "native_success": false,
+      "agree": true
+    },
+    {
+      "version": 2,
+      "version_id": "v0002",
+      "execution_id": "e000003",
+      "valid": true,
+      "eval": {
+        "advice": "Scan a smaller base offset.",
+        "evidence": [
+          {
+            "claim": "Approach was rejected",
+            "source": "stdout.txt"
+          }
+        ],
+        "passed": true,
+        "reason": "Visible success",
+        "status": "completed"
+      },
+      "eval_verdict": "pass",
+      "native_success": false,
+      "agree": false
+    },
+    {
+      "version": 3,
+      "version_id": "v0003",
+      "execution_id": "e000004",
+      "valid": true,
+      "eval": {
+        "advice": "Scan a smaller base offset.",
+        "evidence": [
+          {
+            "claim": "Approach was rejected",
+            "source": "stdout.txt"
+          }
+        ],
+        "passed": null,
+        "reason": "Eval unavailable: timeout",
+        "status": "unavailable"
+      },
+      "eval_verdict": "unavailable",
+      "native_success": true,
+      "agree": null
+    }
+  ],
+  "jobs": [],
+  "dev_mode": "agent",
+  "agent": {
+    "phase": "stopped",
+    "reason": "native_success",
+    "errors": [
+      {
+        "source": "help",
+        "error": "help_integration_unavailable"
+      }
+    ],
+    "counts": {
+      "eval_runs": 3,
+      "formal_versions": 3,
+      "help": 0,
+      "moving_executions": 4,
+      "read_only_probes": 2
+    },
+    "held": {
+      "eval_runs": 0,
+      "formal_versions": 0,
+      "help": 0,
+      "moving_executions": 0,
+      "read_only_probes": 0
+    },
+    "limits": {
+      "eval_runs": 10,
+      "formal_versions": 10,
+      "help": 1,
+      "moving_executions": 40,
+      "read_only_probes": 300
+    },
+    "remaining": {
+      "eval_runs": 7,
+      "formal_versions": 7,
+      "help": 1,
+      "moving_executions": 36,
+      "read_only_probes": 298
+    },
+    "wall_seconds": 0.4511260986328125,
+    "wall_limit": 21600,
+    "quota": {
+      "at": 1793162979.2345498,
+      "stop_percent": 90,
+      "used_percent": 72.5
+    },
+    "dev_model": "gpt-6-sol",
+    "eval_model": "gpt-6-astra",
+    "quota_stop_percent": 90,
+    "timeline": [
+      {
+        "id": "probe",
+        "kind": "probe",
+        "op": "ik_check",
+        "status": "completed",
+        "at": 1793159398.754836,
+        "version_id": null,
+        "execution_id": null,
+        "probe_id": "p000001",
+        "result": {
+          "diagnostics": {
+            "diagnostics_complete": false,
+            "missing": [
+              "candidate_qpos",
+              "ik_candidates",
+              "candidate_joint_margins",
+              "selected_candidate",
+              "solver_diagnostics",
+              "validation",
+              "contacts",
+              "world_revision",
+              "timing"
+            ],
+            "reason": "official_ik_non_success"
+          },
+          "physics_steps": 0,
+          "planning_accepted": false,
+          "rejected": true,
+          "state_basis": "reset_scene"
+        },
+        "error": null,
+        "links": [
+          {
+            "label": "receipt",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/rpc/responses/probe.json"
+          },
+          {
+            "label": "diagnostics",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/probes/p000001.json"
+          }
+        ]
+      },
+      {
+        "id": "dry",
+        "kind": "probe",
+        "op": "plan_dry_run",
+        "status": "completed",
+        "at": 1793159398.7900949,
+        "version_id": null,
+        "execution_id": null,
+        "probe_id": "p000002",
+        "result": {
+          "diagnostics": {
+            "diagnostics_complete": false,
+            "missing": [
+              "candidate_qpos",
+              "ik_candidates",
+              "candidate_joint_margins",
+              "selected_candidate",
+              "solver_diagnostics",
+              "validation",
+              "contacts",
+              "world_revision",
+              "timing"
+            ]
+          },
+          "physics_steps": 0,
+          "planning_accepted": true,
+          "rejected": false,
+          "state_basis": "reset_scene"
+        },
+        "error": null,
+        "links": [
+          {
+            "label": "receipt",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/rpc/responses/dry.json"
+          },
+          {
+            "label": "diagnostics",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/probes/p000002.json"
+          }
+        ]
+      },
+      {
+        "id": "noeval",
+        "kind": "no_eval_execution",
+        "op": "run",
+        "status": "completed",
+        "at": 1793159398.8233654,
+        "version_id": null,
+        "execution_id": "e000001",
+        "probe_id": null,
+        "result": {
+          "outcome": {
+            "completed": true,
+            "error": null,
+            "rejected_calls": 0,
+            "schema": "attentionbench.agent-public-outcome.v1",
+            "sdk_calls": 0,
+            "status": "completed"
+          }
+        },
+        "error": null,
+        "links": [
+          {
+            "label": "receipt",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/rpc/responses/noeval.json"
+          },
+          {
+            "label": "stdout",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000001/stdout.txt"
+          },
+          {
+            "label": "stderr",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000001/stderr.txt"
+          },
+          {
+            "label": "diagnostics",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000001/diagnostics/planner.json"
+          },
+          {
+            "label": "code",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000001/policy.py"
+          },
+          {
+            "label": "trace",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000001/trace.json"
+          },
+          {
+            "label": "state log",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000001/state_log.json"
+          }
+        ]
+      },
+      {
+        "id": "v1",
+        "kind": "formal_version",
+        "op": "submit",
+        "status": "completed",
+        "at": 1793159398.8867702,
+        "version_id": "v0001",
+        "execution_id": "e000002",
+        "probe_id": null,
+        "result": {
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": false,
+            "reason": "Blocked approach",
+            "status": "completed"
+          },
+          "execution_id": "e000002",
+          "help": {
+            "status": "policy_denied"
+          },
+          "outcome": {
+            "completed": true,
+            "error": null,
+            "rejected_calls": 0,
+            "schema": "attentionbench.agent-public-outcome.v1",
+            "sdk_calls": 0,
+            "status": "completed"
+          },
+          "version_id": "v0001"
+        },
+        "error": null,
+        "links": [
+          {
+            "label": "receipt",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/rpc/responses/v1.json"
+          },
+          {
+            "label": "stdout",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000002/stdout.txt"
+          },
+          {
+            "label": "stderr",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000002/stderr.txt"
+          },
+          {
+            "label": "diagnostics",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000002/diagnostics/planner.json"
+          },
+          {
+            "label": "code",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000002/policy.py"
+          },
+          {
+            "label": "trace",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000002/trace.json"
+          },
+          {
+            "label": "state log",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000002/state_log.json"
+          },
+          {
+            "label": "code bundle",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0001/bundle.py"
+          },
+          {
+            "label": "Eval verdict + advice",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0001/eval.json"
+          },
+          {
+            "label": "help",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0001/help.json"
+          }
+        ]
+      },
+      {
+        "id": "help",
+        "kind": "help",
+        "op": "ask_help",
+        "status": "completed",
+        "at": 1793159398.9836457,
+        "version_id": null,
+        "execution_id": null,
+        "probe_id": null,
+        "result": {
+          "reason": "help_integration_unavailable",
+          "status": "policy_denied"
+        },
+        "error": null,
+        "links": [
+          {
+            "label": "receipt",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/rpc/responses/help.json"
+          }
+        ]
+      },
+      {
+        "id": "v2",
+        "kind": "formal_version",
+        "op": "submit",
+        "status": "completed",
+        "at": 1793159399.010514,
+        "version_id": "v0002",
+        "execution_id": "e000003",
+        "probe_id": null,
+        "result": {
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": true,
+            "reason": "Visible success",
+            "status": "completed"
+          },
+          "execution_id": "e000003",
+          "help": {
+            "status": "policy_denied"
+          },
+          "outcome": {
+            "completed": true,
+            "error": null,
+            "rejected_calls": 0,
+            "schema": "attentionbench.agent-public-outcome.v1",
+            "sdk_calls": 0,
+            "status": "completed"
+          },
+          "version_id": "v0002"
+        },
+        "error": null,
+        "links": [
+          {
+            "label": "receipt",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/rpc/responses/v2.json"
+          },
+          {
+            "label": "stdout",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000003/stdout.txt"
+          },
+          {
+            "label": "stderr",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000003/stderr.txt"
+          },
+          {
+            "label": "diagnostics",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000003/diagnostics/planner.json"
+          },
+          {
+            "label": "code",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000003/policy.py"
+          },
+          {
+            "label": "trace",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000003/trace.json"
+          },
+          {
+            "label": "state log",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000003/state_log.json"
+          },
+          {
+            "label": "code bundle",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0002/bundle.py"
+          },
+          {
+            "label": "Eval verdict + advice",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0002/eval.json"
+          },
+          {
+            "label": "help",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0002/help.json"
+          }
+        ]
+      },
+      {
+        "id": "v3",
+        "kind": "formal_version",
+        "op": "submit",
+        "status": "completed",
+        "at": 1793159399.117828,
+        "version_id": "v0003",
+        "execution_id": "e000004",
+        "probe_id": null,
+        "result": {
+          "eval": {
+            "advice": "Scan a smaller base offset.",
+            "evidence": [
+              {
+                "claim": "Approach was rejected",
+                "source": "stdout.txt"
+              }
+            ],
+            "passed": null,
+            "reason": "Eval unavailable: timeout",
+            "status": "unavailable"
+          },
+          "execution_id": "e000004",
+          "help": {
+            "status": "policy_denied"
+          },
+          "outcome": {
+            "completed": true,
+            "error": null,
+            "rejected_calls": 0,
+            "schema": "attentionbench.agent-public-outcome.v1",
+            "sdk_calls": 0,
+            "status": "completed"
+          },
+          "version_id": "v0003"
+        },
+        "error": null,
+        "links": [
+          {
+            "label": "receipt",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/rpc/responses/v3.json"
+          },
+          {
+            "label": "stdout",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000004/stdout.txt"
+          },
+          {
+            "label": "stderr",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000004/stderr.txt"
+          },
+          {
+            "label": "diagnostics",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000004/diagnostics/planner.json"
+          },
+          {
+            "label": "code",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000004/policy.py"
+          },
+          {
+            "label": "trace",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000004/trace.json"
+          },
+          {
+            "label": "state log",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/executions/e000004/state_log.json"
+          },
+          {
+            "label": "code bundle",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0003/bundle.py"
+          },
+          {
+            "label": "Eval verdict + advice",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0003/eval.json"
+          },
+          {
+            "label": "help",
+            "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/versions/v0003/help.json"
+          }
+        ]
+      }
+    ],
+    "versions": [
+      {
+        "version": 1,
+        "version_id": "v0001",
+        "execution_id": "e000002",
+        "valid": true,
+        "eval": {
+          "advice": "Scan a smaller base offset.",
+          "evidence": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt"
+            }
+          ],
+          "passed": false,
+          "reason": "Blocked approach",
+          "status": "completed"
+        },
+        "eval_verdict": "fail",
+        "native_success": false,
+        "agree": true
+      },
+      {
+        "version": 2,
+        "version_id": "v0002",
+        "execution_id": "e000003",
+        "valid": true,
+        "eval": {
+          "advice": "Scan a smaller base offset.",
+          "evidence": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt"
+            }
+          ],
+          "passed": true,
+          "reason": "Visible success",
+          "status": "completed"
+        },
+        "eval_verdict": "pass",
+        "native_success": false,
+        "agree": false
+      },
+      {
+        "version": 3,
+        "version_id": "v0003",
+        "execution_id": "e000004",
+        "valid": true,
+        "eval": {
+          "advice": "Scan a smaller base offset.",
+          "evidence": [
+            {
+              "claim": "Approach was rejected",
+              "source": "stdout.txt"
+            }
+          ],
+          "passed": null,
+          "reason": "Eval unavailable: timeout",
+          "status": "unavailable"
+        },
+        "eval_verdict": "unavailable",
+        "native_success": true,
+        "agree": null
+      }
+    ],
+    "history": [
+      {
+        "label": "version history",
+        "url": "/api/dev-v2/experiments/devexp-83efc4d3d4ed2aadb16a85de/cells/90b9ae03542021b219a1dbc3302f958f06fecda4691cefb995841dd2dd7c62bd/agent/files/history/version_history.json"
+      }
+    ],
+    "state_basis": "reset_scene"
+  }
+}

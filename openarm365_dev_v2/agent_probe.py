@@ -24,6 +24,13 @@ def validate(op, payload):
         if not isinstance(value, list) or len(value) != n or any(type(v) not in (int,float) or not math.isfinite(v) for v in value):
             raise ValueError('finite_vector_required')
     if op not in ('observe', 'find_objects', 'ik_check', 'plan_dry_run'): raise ValueError('unsupported_probe')
+    if 'base_offset' in payload:
+        offset=payload['base_offset']
+        if op not in ('ik_check','plan_dry_run') or not isinstance(offset,dict) or set(offset)!={'dx','dy','dyaw'}:
+            raise ValueError('invalid_base_offset')
+        vector([offset[k] for k in ('dx','dy','dyaw')],3)
+        from openarm365_dev.base_motion import validate_delta
+        validate_delta(**offset)
     if 'start_joints' in payload:
         joints = payload['start_joints']
         if not isinstance(joints, dict) or not joints: raise ValueError('invalid_start_joints')
@@ -92,6 +99,23 @@ def probe(env, executor, planner, observe, request):
             if not executor.limits[i][0] <= value <= executor.limits[i][1]:raise ValueError('start_joint_limit')
             data.qpos[planner.addresses[i]]=value
         if payload.get('start_joints'):env.sim.forward()
+        if 'base_offset' in payload:
+            from openarm365_dev.base_motion import check_exact_base_path,validate_delta,base_joint_delta
+            from openarm365_dev.world import snapshot
+            delta=validate_delta(**payload['base_offset'])
+            try:
+                audit=check_exact_base_path(env,snapshot(env,chassis_binding=planner.chassis_binding),
+                    planner.chassis_binding,delta,executor.base_initial,
+                    execution_settings=executor.execution_settings)
+                accepted=True
+            except BasePathRejected as exc:
+                audit=exc.collision_check;accepted=False
+            base['base_clearance']=dict(accepted=accepted,**project_planner_result(audit))
+            base['base_offset']=payload['base_offset']
+            indexes=env.robots[0]._ref_base_joint_pos_indexes
+            current=data.qpos[indexes].copy()
+            data.qpos[indexes]=current+base_joint_delta(delta,current,executor.base_initial)
+            env.sim.forward()
         planner.agent_probe_only=True
         if op=='ik_check':
             target=payload['target'];side=target['side'];active=[f'openarm_{side}_joint{i}' for i in range(1,8)]
@@ -101,7 +125,20 @@ def probe(env, executor, planner, observe, request):
             body['targets']={f'openarm_{side}_hand_tcp':dict(position=(local@np.r_[target['position'],1])[:3].tolist(),
                 quaternion_wxyz=Rotation.from_matrix(rot).as_quat()[[3,0,1,2]].tolist())}
             planner.client.call('/warmup',{k:v for k,v in body.items() if k not in ('env_id','targets')})
-            result=planner.client.call('/plan/ik',body)
+            body=dict(body)
+            body['seed_q']=body.pop('current_q')
+            from openarm365_dev.planning_rejection import call_with_rejection_facts
+            settings=getattr(executor,'execution_settings',None)
+            result=(call_with_rejection_facts(planner.client,'/plan/ik',body,settings)
+                    if settings is not None else planner.client.call('/plan/ik',body))
+            if result.get('qpos') is not None:
+                from curobo_v2.execution_settings import minimum_arm_margin
+                margin=dict(minimum_arm_margin(result['qpos'],planner.names,executor.limits,active),
+                    joint_margin_limit_rad=settings.goal_joint_margin_rad if settings is not None else .02)
+                result['goal_margin']=margin
+                if margin['minimum_joint_margin_rad']<margin['joint_margin_limit_rad']:
+                    return dict(base,planning_accepted=False,rejected=True,
+                        reason='goal_joint_margin_below_execution_limit',diagnostics=project_planner_result(result))
         else:
             action=payload['action'];group=action['group'];args=action_arguments(action)
             if group=='base':
@@ -136,7 +173,7 @@ def probe(env, executor, planner, observe, request):
     finally:
         planner.agent_probe_only=False
         for name,value in saved.items():getattr(data,name)[:]=value
-        if payload.get('start_joints'):env.sim.forward()
+        if payload.get('start_joints') or 'base_offset' in payload:env.sim.forward()
         # forward may update warmstart; restore all primary state exactly.
         for name,value in saved.items():getattr(data,name)[:]=value
         if state_fingerprint(env,executor)!=before:raise RuntimeError('probe_mutated_scene')

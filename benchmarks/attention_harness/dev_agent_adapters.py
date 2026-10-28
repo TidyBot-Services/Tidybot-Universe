@@ -30,6 +30,8 @@ class Executor:
             config_path=directory/'config.json',artifact_root=directory,overall_deadline_seconds=seconds,
             attempt_deadline_seconds=seconds,sdk_call_limit=320,run_id='run:agent',attempt_id='attempt:agent:0')
         result=self.runner.execute(request)
+        if result.get('error'):
+            atomic_write(directory,'controller-error.json',encode(dict(error=result['error'])))
         episode=Path(episodes[-1]) if episodes else None
         self.episode=episode
         self.recording=result.get('recording',{})

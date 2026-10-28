@@ -159,8 +159,8 @@ class Broker:
             if self.active is not None: return reject('busy')
             allowed = ({'entry', 'reason'} if op in ('submit', 'run') else
                        {'question'} if op == 'ask_help' else {'names'} if op == 'find_objects' else
-                       {'target', 'start_joints', 'held_object', 'attachment'} if op == 'ik_check' else
-                       {'action', 'start_joints', 'held_object', 'attachment'} if op == 'plan_dry_run' else set())
+                       {'target', 'start_joints', 'base_offset', 'held_object', 'attachment'} if op == 'ik_check' else
+                       {'action', 'start_joints', 'base_offset', 'held_object', 'attachment'} if op == 'plan_dry_run' else set())
             if set(payload) - allowed: return reject('invalid_payload')
             source = None; invalid = False; frozen = None; validation_error=None
             if hasattr(self.budget,'request_id'):self.budget.request_id=rid

@@ -154,9 +154,28 @@ then Eval; blocks until feedback. Only one formal submission may be in flight (b
 run --no-eval --entry work/main.py: one reset execution, no version and no Eval.
 observe: public robot observation from the registered reset scene.
 find_objects [--names JSON]: public object positions (world metres), reset scene.
-ik_check --target JSON [--start-joints JSON]: target {side, position, quaternion_xyzw};
-plan_dry_run --action JSON [--start-joints JSON]: one {group, operation, args, kwargs}.
+ik_check --target JSON [--start-joints JSON] [--base-offset JSON]: target {side, position, quaternion_xyzw};
+plan_dry_run --action JSON [--start-joints JSON] [--base-offset JSON]: one {group, operation, args, kwargs}.
 Both planning probes use reset obstacles; start_joints maps named arm joints to radians.
+base_offset is {dx,dy,dyaw}, in the SAME mount frame/metres/radians as base.move_delta.
+It hypothetically moves the reset base (optionally with start_joints), using only forward
+kinematics, then restores all state. It never steps physics or issues a trajectory.
+base_clearance reports accepted, minimum_clearance_m, minimum_clearance_pair.obstacle,
+start_minimum_clearance_m, and the unchanged execution path/start thresholds. R4 uses 10 mm path clearance
+and a 2 mm absolute start floor with its existing near-start allowance; the exact
+execution check decides acceptance. Read required_clearance_m and absolute_min_distance_m.
+The arm result is evaluated even when base_clearance.accepted is false; both checks
+must pass. Public diagnostics include joint margins versus 0.02 rad; missing planner
+fields are marked missing, never fabricated. Each offset probe costs ONE of 300 probes.
+Example: scan offsets before spending moving executions (replace target with your pose):
+```python
+import json, subprocess
+for dy in (0.03, 0.06, 0.09):
+    subprocess.run(["/usr/bin/python3", "docs/devtool.py", "ik_check",
+        "--target", json.dumps({"side":"right", "position":[0.5,0.1,0.9],
+                                "quaternion_xyzw":[0,0,0,1]}),
+        "--base-offset", json.dumps({"dx":0,"dy":dy,"dyaw":0})], check=False)
+```
 Held objects/attachments report unsupported_scope: held_object. No physics is stepped.
 A planning acceptance is not a guarantee of dynamic execution success.
 ask_help --question TEXT: available once per eligible formal interval while help remains.
