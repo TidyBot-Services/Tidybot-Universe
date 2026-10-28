@@ -78,12 +78,14 @@ def test_acceptance_stage_failure_rejects_only_that_request(workspace,monkeypatc
 def test_r4_out_of_limit_base_offset_is_clear_rejection(workspace):  # noqa: F811
     b=broker(workspace)
     try:
-        value=b.accept(request('r4',op='ik_check',payload=R4))
-        assert value['status']=='rejected' and 'per-call base limit 0.20 m / 0.3 rad' in value['validation_error']
+        # User decision 10-29: the r4 hypothetical dy=0.25 probe is now within the 0.6 m probe limit.
+        b.accept(request('r4',op='ik_check',payload=R4));assert settled(b,'r4')['status']=='completed'
+        until=time.monotonic()+2
+        while b.active is not None and time.monotonic()<until:time.sleep(.01)
         action=dict(action=dict(group='base',operation='move_delta',args=[0,.25,0],kwargs={}))
         value=b.accept(request('r4b',op='plan_dry_run',payload=action))
         assert value['status']=='rejected' and 'per-call base limit' in value['validation_error']
-        assert b.budget.counts['probes']==0 and not b.quarantined
+        assert b.budget.counts['probes']==1 and not b.quarantined
     finally:b.close()
 
 
@@ -142,7 +144,7 @@ def test_drive_survives_every_failure_kind(ws,monkeypatch):  # noqa: F811
     result=drive(ws,session,ledger,executor=Raising(),prober=Mixed(),evaluator=FakeEvaluator())
     assert result['reason']=='agent_idle',result
     used=ledger.snapshot()['used']
-    assert used['read_only_probes']==3 and used['moving_executions']==1
+    assert used['read_only_probes']==4 and used['moving_executions']==1
 
 
 def test_only_hash_bound_sdk_doc_is_verbatim(tmp_path):

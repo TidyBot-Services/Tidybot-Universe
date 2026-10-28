@@ -137,8 +137,8 @@ def test_out_of_limit_base_offset_rejects_only_that_request(workspace):  # noqa:
     b=broker(workspace)
     try:
         target=dict(side='left',position=[.5,-2.4,.95],quaternion_xyzw=[0,0,0,1])
-        value=b.accept(request('o1',op='ik_check',payload=dict(target=target,base_offset=dict(dx=0,dy=.25,dyaw=0))))
-        assert value['status']=='rejected' and 'exceeds the per-call base limit' in value['validation_error']
+        value=b.accept(request('o1',op='ik_check',payload=dict(target=target,base_offset=dict(dx=0,dy=.61,dyaw=0))))
+        assert value['status']=='rejected' and 'exceeds the probe limit 0.6 m / 0.9 rad' in value['validation_error']
         b.accept(request('o2',op='ik_check',payload=dict(target=target,base_offset=dict(dx=0,dy=.2,dyaw=0))))
         assert settled(b,'o2')['status']=='completed' and not b.quarantined
     finally:b.close()
