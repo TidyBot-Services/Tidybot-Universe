@@ -195,6 +195,10 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         settings=from_config(c['execution_settings'])
     expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'))
     if source=='codex':expected['model_source']='codex'
+    if 'dev_mode' in c:
+        if c['dev_mode']!='agent' or tier!='dev' or budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop':
+            raise ValueError('agent requires dev tier and dev_loop boundary')
+        expected['dev_mode']='agent'
     if 'dev_version_history' in c:
         if type(c['dev_version_history']) is not bool or tier!='dev' or budget_boundary!='dev_loop':
             raise ValueError('version history requires dev tier and dev_loop boundary')

@@ -4,6 +4,7 @@ All collaborators receive absolute monotonic deadlines and must implement cancel
 An unacknowledged timeout quarantines the cell, preserving its charge and excluding
 subsequent work. The caller never retries an ambiguous moving execution.
 """
+from contextlib import nullcontext
 import concurrent.futures
 import fcntl
 import hashlib
@@ -58,9 +59,13 @@ class FakeEvaluator:
 
 class Broker:
     def __init__(self, workspace, *, executor, prober, evaluator, helper=None, budget=None,
-                 agent_mode=False, timeouts=None):
+                 agent_mode=False, timeouts=None, quota=None, on_cut=None, on_version=None,
+                 on_execution=None, on_settled=None, quiesce=nullcontext):
         if agent_mode is not True: raise ValueError('agent_mode_required')
         self.workspace = workspace
+        self.quota=quota; self.stop_reason=None
+        self.on_cut=on_cut; self.on_version=on_version; self.on_execution=on_execution
+        self.on_settled=on_settled; self.quiesce=quiesce
         self.executor, self.prober, self.evaluator = executor, prober, evaluator
         self.helper, self.budget = helper or Helper(), budget or Budget()
         self.timeouts = {**TIMEOUTS, **(timeouts or {})}
@@ -74,7 +79,21 @@ class Broker:
         # D3 supplies durable accounting. Refuse ambiguous restart in D1.
         self.journal = workspace.private / 'journal'; self.journal.mkdir(exist_ok=True)
         if any(self.journal.iterdir()):
-            self.lease.close(); self.pool.shutdown(); raise ValueError('recovery_requires_review')
+            if not hasattr(self.budget,'ledger'):
+                self.lease.close(); self.pool.shutdown(); raise ValueError('recovery_requires_review')
+            jobs={r['id']:r for r in self.budget.ledger.jobs()}
+            for path in sorted(self.journal.glob('*.json')):
+                record=json.loads(path.read_bytes()); self.records[path.stem]=record
+                job=jobs.get('request:'+path.stem,{})
+                if job.get('state')=='settled':record['response']=job['receipt']
+                if record['response']['status'] in ('accepted','running','needs_review'):
+                    self.quarantined=True
+            for kind in self.histories:
+                path=workspace.canonical/'history'/(kind+'.jsonl')
+                if path.exists():self.histories[kind]=[json.loads(line) for line in path.read_bytes().splitlines()]
+            workspace.published={str(p.relative_to(workspace.canonical)) for p in workspace.canonical.rglob('*') if p.is_file()}
+            workspace.regenerate()
+            for record in self.records.values():self._publish(record['response'])
 
     def status(self):
         return dict(counts=dict(self.budget.counts), limits=dict(self.budget.limits),
@@ -83,11 +102,20 @@ class Broker:
     def _publish(self, response):
         rid = response['request_id']
         atomic_write(self.journal, rid + '.json', encode(self.records[rid]))
+        if response['status'] in ('completed','rejected','needs_review'):
+            self._regenerate_history()
+            self.workspace.regenerate()
         self.workspace.publish('rpc/responses/' + rid + '.json', response)
         self.workspace.publish('rpc/status.json', self.status())
         return response
 
     def accept(self, request):
+        # Freeze the complete acceptance cut, including source validation and
+        # private copies. Background tools cannot change code between the bundle
+        # and pre-submit snapshot. Reentrant quiesce also covers snapshot hooks.
+        with self.quiesce():return self._accept(request)
+
+    def _accept(self, request):
         started = time.monotonic()
         if (not isinstance(request, dict) or set(request) != {'schema', 'request_id', 'op', 'payload'}
                 or request.get('schema') != SCHEMA or request.get('op') not in OPS
@@ -101,6 +129,10 @@ class Broker:
         digest = hashlib.sha256(data).hexdigest()
         with self.lock:
             if rid in self.records:
+                if self.quota:
+                    try:self.quota.check('broker:retry:'+op)
+                    except Exception as exc:
+                        self.stop_reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable'
                 record = self.records[rid]
                 if record['digest'] != digest:
                     # Do not overwrite the first request's authoritative receipt.
@@ -113,6 +145,12 @@ class Broker:
             def reject(reason):
                 response.update(status='rejected', error=reason)
                 return self._publish(response)
+            if self.quota:
+                try:self.quota.check('broker:'+op)
+                except Exception as exc:
+                    self.stop_reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable'
+                    return reject(self.stop_reason)
+            if self.stop_reason and op!='status':return reject(self.stop_reason)
             if op == 'status':
                 response.update(status='completed', result=self.status())
                 return self._publish(response)
@@ -123,17 +161,24 @@ class Broker:
                        {'target', 'start_joints', 'held_object', 'attachment'} if op == 'ik_check' else
                        {'action', 'start_joints', 'held_object', 'attachment'} if op == 'plan_dry_run' else set())
             if set(payload) - allowed: return reject('invalid_payload')
-            source = None; invalid = False
+            source = None; invalid = False; frozen = None; validation_error=None
+            if hasattr(self.budget,'request_id'):self.budget.request_id=rid
             try:
                 if op in ('submit', 'run'):
                     entry = payload.get('entry')
-                    if not isinstance(entry, str) or not entry.startswith('work/') or not entry.endswith('.py'):
+                    if entry is not None and (not isinstance(entry,str) or not entry.startswith('work/') or not entry.endswith('.py')):
                         return reject('invalid_entry')
-                    source = read_beneath(self.workspace.ws, entry, SOURCE_LIMIT)
                     try:
-                        from openarm365_dev_v2.agent_policy import validate_source
-                        validate_source(source.decode('utf-8'))
-                    except (ValueError, SyntaxError, UnicodeError): invalid = True
+                        from .dev_agent_bundle import bundle
+                        with self.quiesce():frozen=bundle(self.workspace.ws,entry)
+                        source=frozen.script
+                    except (ValueError, SyntaxError, UnicodeError, OSError) as exc:
+                        invalid=True;validation_error=screen_text(str(exc))
+                        response['validation_error']=validation_error
+                        # Invalid submissions consume a version but never dispatch.
+                        # Preserve readable authored entry as evidence, not executable code.
+                        try:source=read_beneath(self.workspace.ws,entry or 'work/main.py',SOURCE_LIMIT)
+                        except (ValueError,OSError):source=b''
                     if op == 'run' and invalid: return reject('invalid_source')
                     if time.monotonic() - started > self.timeouts['validation']: return reject('validation_timeout')
                     self.budget.charge(**({'versions': 1} if op == 'submit' else {}),
@@ -150,11 +195,26 @@ class Broker:
             except (ValueError, OSError, TypeError) as exc:
                 return reject(str(exc) if str(exc) in {'budget_exhausted','wall_stop'} else 'invalid_request')
             self.active = rid
-            self.records[rid]['source_sha256'] = hashlib.sha256(source).hexdigest() if source is not None else None
-            if source is not None:
-                atomic_write(self.workspace.private, 'sources/' + rid + '.py', source)
-            self._publish(response)
-            self.pool.submit(self._dispatch, rid, source, invalid)
+            try:
+                self.records[rid]['validation_error']=validation_error
+                self.records[rid]['source_sha256'] = hashlib.sha256(source).hexdigest() if source is not None else None
+                if source is not None:
+                    atomic_write(self.workspace.private, 'sources/' + rid + '.py', source)
+                if frozen:
+                    record=self.records[rid]
+                    record['bundle_map']=frozen.source_map
+                    for name,data in frozen.sources.items():
+                        atomic_write(self.workspace.private,'sources/'+rid+'/'+name,data)
+                    atomic_write(self.workspace.private,'sources/'+rid+'/bundle-map.json',encode(frozen.source_map))
+                if self.on_cut and op=='submit':self.on_cut('pre-submit',response)
+                self._publish(response)
+                self.pool.submit(self._dispatch, rid, source, invalid)
+            except BaseException:
+                self.active=None;self.quarantined=True
+                response.update(status='needs_review',error='acceptance_failure')
+                atomic_write(self.journal,rid+'.json',encode(self.records[rid]))
+                try:self._publish(response)
+                except (OSError,ValueError):pass
             return dict(response)
 
     def _bounded(self, collaborator, method, *args, timeout):
@@ -180,7 +240,16 @@ class Broker:
         self.histories[kind].append(row)
         self.workspace.publish('history/' + kind + '.jsonl',
             b''.join(canonical(r) + b'\n' for r in self.histories[kind]))
-        if kind == 'versions': self.workspace.publish('history/version_history.json', self.histories[kind])
+        self._regenerate_history()
+
+    def _regenerate_history(self):
+        from .dev_version_history import bounded
+        for kind,rows in self.histories.items():
+            self.workspace.publish('history/'+kind+'.jsonl',b''.join(canonical(r)+b'\n' for r in rows))
+        entries=[dict(version_id=r['version_id'],execution_id=r.get('execution_id'),
+                      outcome=r.get('outcome'),eval=r.get('eval'),help=r.get('help'),
+                      source_sha256=r.get('source_sha256'),source_bytes=r.get('source_bytes')) for r in self.histories['versions']]
+        self.workspace.publish('history/version_history.json',bounded(entries))
 
     def _execution(self, eid, source, result):
         base = 'executions/' + eid + '/'
@@ -205,6 +274,7 @@ class Broker:
         op, payload = request['op'], request['payload']
         try:
             with self.lock:
+                if hasattr(self.budget,'claim'):self.budget.claim(rid)
                 response['status'] = 'running'; self._publish(response)
             if op in PROBES:
                 value = self._bounded(self.prober, self.prober.probe, op, payload, timeout=self.timeouts[op])
@@ -212,7 +282,7 @@ class Broker:
                 artifact = self.workspace.publish('probes/' + response['probe_id'] + '.json', value)
                 self._history('probes', dict(probe_id=response['probe_id'], artifact=artifact))
             elif op in ('submit', 'run'):
-                value = dict(outcome=dict(status='invalid_submission'))
+                value = dict(outcome=dict(status='invalid_submission',error=record.get('validation_error')))
                 if not invalid:
                     self.prober.close()
                     eid = response['execution_id']
@@ -220,22 +290,47 @@ class Broker:
                     directory.mkdir(parents=True)
                     result = self._bounded(self.executor, self.executor.execute, source, directory,
                                            timeout=self.timeouts[op])
+                    if hasattr(self.budget,'ledger'):
+                        self.budget.ledger.record_execution('request:'+rid,getattr(self.executor,'execution_usage',None))
                     value = self._execution(eid, source, result)
+                    if self.on_execution:self.on_execution(response,directory,result)
+                    if self.on_cut and op=='submit':self.on_cut('post-exec',response)
+                elif self.on_cut and op=='submit':self.on_cut('post-exec',response)
                 if op == 'submit':
                     vid = response['version_id']; base = 'versions/' + vid + '/'
                     self.workspace.publish(base + 'policy.py', screen_text(source.decode('utf-8', errors='replace')).encode())
                     self.workspace.publish(base + 'submission.json', dict(version_id=vid,
                         execution_id=response.get('execution_id'), source_sha256=record['source_sha256']))
-                    verdict = self._bounded(self.evaluator, self.evaluator.evaluate, value,
-                                            timeout=self.timeouts['evaluate'])
+                    self.workspace.publish(base+'bundle.py',screen_text(source.decode('utf-8',errors='replace')).encode())
+                    self.workspace.publish(base+'bundle-map.json',record.get('bundle_map',{}))
+                    for path in sorted((self.workspace.private/'sources'/rid).glob('*.py')):
+                        self.workspace.publish(base+'sources/'+path.name,screen_text(path.read_text()).encode())
+                    if invalid:
+                        verdict=dict(status='not_run_invalid_submission',passed=None)
+                    else:
+                        ledger=getattr(self.budget,'ledger',None);eval_id='eval:'+rid
+                        if ledger:
+                            ledger.reserve(eval_id,'eval',{'eval_runs':1});ledger.claim(eval_id)
+                        try:
+                            verdict = self._bounded(self.evaluator, self.evaluator.evaluate, value,
+                                                    timeout=self.timeouts['evaluate'])
+                        except BaseException:
+                            verdict=dict(status='unavailable',passed=None,reason='Eval unavailable for '+vid)
+                            if ledger:ledger.settle(eval_id,verdict,unknown=True)
+                        else:
+                            if ledger:ledger.settle(eval_id,dict(status='completed'))
                     value['eval'] = public_observation(verdict)
                     self.workspace.publish(base + 'eval.json', value['eval'])
+                    if self.on_cut:self.on_cut('post-feedback',response)
                     value['help'] = dict(status='policy_denied')
                     self.workspace.publish(base + 'help.json', value['help'])
-                    self._history('versions', dict(version_id=vid, execution_id=response.get('execution_id'), **value))
+                    self._history('versions', dict(version_id=vid, execution_id=response.get('execution_id'),
+                        source_sha256=record['source_sha256'],source_bytes=len(source),**value))
+                    if self.on_version:self.on_version(response,value)
             else:
                 value = self._bounded(self.helper, self.helper.ask, payload, timeout=self.timeouts['ask_help'])
-            response.update(status='completed', result=value)
+            response.update(status='needs_review' if self.quarantined else 'completed', result=value)
+            if self.quarantined:response['error']='timeout'
         except TimeoutError:
             self.quarantined = True
             response.update(status='needs_review', error='timeout')
@@ -244,8 +339,17 @@ class Broker:
             response.update(status='needs_review', error='collaborator_failure')
         finally:
             with self.lock:
-                self.active = None
-                self._publish(response)
+                try:
+                    if hasattr(self.budget,'settle'):self.budget.settle(rid,response)
+                    self._regenerate_history()
+                    self.workspace.regenerate()
+                    if self.on_settled:self.on_settled(response)
+                    self._publish(response)
+                except BaseException as exc:
+                    self.quarantined=True
+                    response.update(status='needs_review',error='settlement_failure')
+                    atomic_write(self.workspace.private,'settlement-error.json',encode(dict(error=str(exc))))
+                finally:self.active = None
 
     def poll(self):
         from .dev_agent_workspace import directory

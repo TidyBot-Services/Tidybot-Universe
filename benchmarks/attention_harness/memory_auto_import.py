@@ -92,6 +92,8 @@ def summary_for(guidance):
 def provisional_payload(proposal, namespace, *, taken=()):
     if proposal.get('schema_version') != SCHEMA or proposal.get('status') != 'pending_import':
         raise Refused('not a pending provisional proposal')
+    if proposal.get('dev_mode')=='agent' or proposal.get('origin',{}).get('dev_mode')=='agent':
+        raise Refused('agent_memory_auto_import_and_validation_unsupported')
     refs = proposal['refs']
     if set(refs) != set(REF_KEYS):
         raise Refused('proposal evidence refs incomplete')
@@ -121,11 +123,20 @@ def provisional_payload(proposal, namespace, *, taken=()):
 
 def pending(ledger):
     """Yield ``(item_key, kind, cell, version, payload_builder)`` not yet receipted."""
+    agents=set()
+    try:
+        with sqlite3.connect('file:' + str(Path(ledger).resolve()) + '?mode=ro', uri=True) as db:
+            agents={key for key,raw in db.execute('SELECT id,payload FROM v2_cells')
+                    if json.loads(raw).get('dev_mode')=='agent'}
+    except sqlite3.OperationalError:
+        pass  # Ledgers without v2_cells cannot hold agent cells; keep the old behaviour.
     events = _events(ledger)
     done = _done(events)
     for kind, event in events:
         if kind != 'planner_memory_offline_queued' or event.get('kind') not in ('provisional', 'provisional_outcome'):
             continue
+        if event.get('cell') in agents:
+            raise Refused('agent_memory_auto_import_and_validation_unsupported')
         queue = event['queue']
         if event['kind'] == 'provisional':
             item = 'provisional:' + queue['sha256']
@@ -287,6 +298,7 @@ def launch_after_run(experiment_dir, *, environ=None, popen=subprocess.Popen):
         with sqlite3.connect('file:' + str(ledger.resolve()) + '?mode=ro', uri=True) as db:
             experiment = json.loads(db.execute('SELECT payload FROM v2_experiments').fetchone()[0])
         manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
+        if manifest.get('dev_mode')=='agent':return None
         settings = manifest.get('memory_authority') or (manifest.get('planner_features') or {}).get('memory')
         if not settings:
             return None

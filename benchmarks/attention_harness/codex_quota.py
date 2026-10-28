@@ -25,7 +25,7 @@ def current_window_readings(readings,*,now=None):
     return [r for r in readings if r.get('resets_at')==reset]
 
 
-def read_quota(home=None,*,newest_session=False,now=None):
+def read_quota(home=None,*,newest_session=False,now=None,include_observed_at=False):
     root = Path(home).expanduser() if home is not None else Path.home()
     newest = None
     readings=[]
@@ -76,7 +76,7 @@ def read_quota(home=None,*,newest_session=False,now=None):
     if known:
         result=max(current_window_readings(known,now=time.time() if now is None else now),
                    key=lambda r:(r['used_percent'],r['observed_at'] or 0))
-        result.pop('observed_at')
+        if not include_observed_at:result.pop('observed_at')
     return result
 
 

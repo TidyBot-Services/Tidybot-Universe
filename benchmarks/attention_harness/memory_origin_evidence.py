@@ -109,6 +109,7 @@ def locate(provision,note):
             rows=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(o['experiment_id'],)).fetchall()
             for raw, in rows:
                 e=json.loads(raw);m=read(e['manifest'])
+                if m.get('dev_mode')=='agent':raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
                 # Import snapshots retain the original ledger_path; never select them.
                 if Path(m['ledger_path']).resolve()==path:
                     if m['experiment_id']!=o['experiment_id']:raise DevConflict('Original manifest belongs to another experiment')

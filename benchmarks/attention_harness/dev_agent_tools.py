@@ -55,9 +55,9 @@ def main():
     else:
         payload = {}
         if args.op in ('submit', 'run'):
-            if not args.entry: parser.error('--entry required')
             if args.op == 'run' and not args.no_eval: parser.error('run requires --no-eval')
-            payload = dict(entry=args.entry, reason=args.reason)
+            payload = dict(reason=args.reason)
+            if args.entry:payload['entry']=args.entry
         if args.op == 'ask_help': payload = dict(question=args.question)
         for name in ('target', 'action', 'start_joints', 'names'):
             value = getattr(args, name)

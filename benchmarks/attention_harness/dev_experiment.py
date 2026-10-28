@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
@@ -62,7 +62,22 @@ def slot_wall_seconds(manifest):
 
 def create(store,artifact_root,selection,*,validation_origin=None):
     validate_selection_fields(selection)
+    agent_options=None
+    if selection.get('dev_mode','one_call') not in ('one_call','agent'):raise ValueError('unknown_dev_mode')
+    if selection.get('dev_mode')=='agent':
+        from .dev_agent_config import normalize
+        agent_options=normalize(selection,validation_origin=validation_origin)
+        selection={**selection,**agent_options,'model_source':'codex'}
+    else:
+        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent')):raise ValueError('agent_options_require_agent_mode')
+        if 'dev_mode' in selection:selection={k:v for k,v in selection.items() if k!='dev_mode'}
+    if validation_origin is not None and (validation_origin.get('dev_mode')=='agent' or validation_origin.get('config',{}).get('dev_mode')=='agent'):
+        raise ValueError('agent_memory_validation_unsupported')
     if validation_origin is not None:
+        if isinstance(validation_origin.get('manifest'),dict):
+            from .dev_v2_loop import checked
+            if json.loads(checked(validation_origin['manifest']).read_bytes()).get('dev_mode')=='agent':
+                raise ValueError('agent_memory_validation_unsupported')
         from .memory_validation_provision import validate_creation,arm_count,target_config,target_config_text
         validate_creation(selection,validation_origin)
     fork_record=None
@@ -86,7 +101,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     from .dev_configuration import validate_run_notes
     validate_run_notes(selection)
     modern_fields=FIELDS-{'run_notes','memory_family'} if 'configuration' in selection else FIELDS
-    v3=bool(set(selection)&modern_fields)
+    v3=bool(agent_options or set(selection)&modern_fields)
     source=selection.get('model_source','parcc')
     if source not in {'parcc','codex'} or (source=='codex' and (budget_tier!='dev' or not v3 or 'configuration' in selection or 'human_proxy' in selection)):
         raise ValueError('Codex model source requires modern dev tier')
@@ -100,7 +115,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     if not isinstance(key,str) or not re.fullmatch('[A-Za-z0-9_.-]{8,100}',key):raise ValueError('stable request key required')
     mode=selection.get('mode','experiment')
     if mode not in {'experiment','interactive','diagnostic'}:raise ValueError('unsupported Dev mode')
-    require_eval_gate(mode,selection)
+    if not agent_options:require_eval_gate(mode,selection)
     from openarm365_dev_v2.diag_budget import diagnostic_budget
     if diagnostic_budget() and mode!='diagnostic':raise ValueError('scaled attempt requires diagnostic experiment')
     # Preserve the existing default matrix; new Dev tasks are explicitly selectable.
@@ -158,6 +173,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         if wall_limit<worst_slot(configuration):raise ValueError('zero slot wall refused')
         normalized.update({k:configuration[k] for k in FIELDS if k in configuration})
         normalized.update(cell_budget=budget,goal_limits=goal_limits,wall_limit=wall_limit)
+    if agent_options:normalized.update(agent_options)
     if legacy_configuration is not None:normalized['configuration']=legacy_configuration
     if 'human_proxy' in selection:
         if 'eval_agent' in selection or 'advisor_proxy' in selection or v3:
@@ -297,6 +313,13 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         # original manifest, and validation keeps its frozen origin config.
         manifest['dev_version_history']=True
         for config in configs.values():config['dev_version_history']=True
+    if agent_options:
+        manifest.update(agent_options,source_size_limit_bytes=131072,agent_accounting='attentionbench.agent-ledger.v1')
+        manifest['schedule']=[dict(cell=cells[0]['key'],through_version=10)]
+        manifest['model']=dict(model=agent_options['dev_model'],reasoning_effort=agent_options['dev_reasoning_effort'],provider_retries=0)
+        manifest['agent_budget']=dict(formal_versions=10,moving_executions=40,read_only_probes=300,eval_runs=10,help=help_budget,
+            sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=21600,model_turns=None,tokens=None)
+        for config in configs.values():config['dev_mode']='agent'
     from .execution_profile import manifest_metadata
     metadata=manifest_metadata(manifest)
     # Absence encodes legacy on disk; display helpers supply its label.
@@ -341,6 +364,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
                 payload=dict(row,experiment_id=exp_id,state='planned',owner=None,mode=mode,
                     mixed_policy=False,experiment_eligible=mode=='experiment',policy_segments=[row['policy_id']],
                     budget=budget,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False)
+                if agent_options:payload['dev_mode']='agent'
                 if validation_origin is not None:
                     payload.update(validation_experiment=True,experiment_eligible=False,artifact_dir=str(directory/row['key']))
                     config_path=Path(payload['artifact_dir'])/'config.json';config_text=json.dumps(frozen,sort_keys=True,indent=2,ensure_ascii=False) if source_drift else target_config_text(validation_origin)
@@ -357,8 +381,15 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     return snapshot(store,exp_id)
 
 def validate_fairness(m):
+    if m.get('dev_mode')=='agent':
+        from .dev_agent_config import normalize
+        options=normalize(m['selection'])
+        if any(m.get(k)!=v for k,v in options.items()) or len(m['cells'])!=1 or m.get('validation_experiment'):
+            raise ValueError('agent_frozen_options_differ')
+        if any(c.get('dev_mode')!='agent' for c in m['configs'].values()):raise ValueError('agent_config_gate_differs')
     source=m.get('model_source','parcc')
     expected_model={**MODEL,'model':'gpt-6-astra','reasoning_effort':'high'} if source=='codex' else MODEL
+    if m.get('dev_mode')=='agent':expected_model=dict(model=m['dev_model'],reasoning_effort=m['dev_reasoning_effort'],provider_retries=0)
     if source not in {'parcc','codex'} or (source=='codex' and (m.get('budget_tier')!='dev' or m.get('schema')!='attentionbench.dev-experiment.v3')) or m['selection'].get('model_source','parcc')!=source or m['formal_eligible'] is not False or m['model']!=expected_model or m['memory']!=EMPTY_MEMORY:raise ValueError('Dev conditions differ')
     if len({c['key'] for c in m['cells']})!=len(m['cells']):raise ValueError('duplicate cell keys')
     expected={(t,s,p) for t in m['selection']['tasks'] for s in m['selection']['seeds'] for p in m['selection']['policies']}
@@ -645,6 +676,10 @@ def acquire(store,exp_id,owner):
         return e
 
 def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=None,max_slots=None,outer_deadline_epoch=None,min_start_wall_seconds=None):
+    if snapshot(store,exp_id)['selection'].get('dev_mode')=='agent':
+        from .dev_agent_loop import run_agent_experiment
+        return run_agent_experiment(store,exp_id,max_cells=max_cells,client=client,runner_factory=runner_factory,
+            outer_deadline_epoch=outer_deadline_epoch,max_slots=max_slots)
     from .dev_wait_recovery import reconcile_waits
     reconcile_waits(store,exp_id)
     from openarm365_dev_v2.diag_budget import diagnostic_budget

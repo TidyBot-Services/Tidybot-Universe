@@ -31,6 +31,8 @@ class Executor:
             attempt_deadline_seconds=seconds,sdk_call_limit=320,run_id='run:agent',attempt_id='attempt:agent:0')
         result=self.runner.execute(request)
         episode=Path(episodes[-1]) if episodes else None
+        # Only the trusted controller consumes this private reference.
+        self.native_result_ref=result.get('artifacts',{}).get('native_result')
         # Never load the private evaluator file. Only enumerated public inputs.
         def read(name, default):
             path=episode/name if episode else None
@@ -48,6 +50,9 @@ class Executor:
             diagnostics=diagnostics,initial_observation=json.loads(read('initial_public_observation.json','{}')),
             final_observation=json.loads(read('final_public_observation.json','{}')))
         # Preserve full per-physics-state public evidence independently of action events.
+        receipt=json.loads(read('sandbox_receipt.json','{}'))
+        self.execution_usage=dict(sdk_calls=receipt.get('sdk_call_budget',{}).get('dispatched'),
+            control_steps=receipt.get('control_steps'),wall_seconds=receipt.get('elapsed_seconds'))
         public['state_log']=[]
         physics=episode/'native-physics.jsonl' if episode else None
         if physics and physics.is_file():public['state_log']=[public_observation(json.loads(line)) for line in physics.read_text().splitlines()]

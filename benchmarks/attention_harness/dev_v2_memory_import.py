@@ -51,7 +51,9 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         if hasattr(store,'planner_snapshot'):return store.planner_snapshot(cell)
         from .memory_origin_evidence import OriginalStore
         return OriginalStore(store.path).planner_snapshot(cell)
-    c=store.cell(cell);v=next(v for v in c['versions'] if v['version']==version)
+    c=store.cell(cell)
+    if c.get('dev_mode')=='agent':raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
+    v=next(v for v in c['versions'] if v['version']==version)
     if source is None:
         packet_path=Path(c['artifact_dir'])/f'v{version}'/'memory-input.json'
         if packet_path.is_file():

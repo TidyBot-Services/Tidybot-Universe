@@ -775,6 +775,9 @@ def requested_eval(cell):
     return None
 
 def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=None):
+    if m.get('dev_mode')=='agent':
+        from .dev_agent_loop import run_agent_cell
+        return run_agent_cell(store,exp,m,key,through_version,owner,client=client,runner_factory=runner_factory)
     from .dev_experiment import verify_manifest
     cell=store.cell(key);root=Path(exp['artifact_dir'])/'cells'/key;root.mkdir(parents=True,exist_ok=True)
     config=m['configs'][f"{cell['task_id']}:{cell['seed']}"];source=m['initial_sources'][cell['task_id']]['source']

@@ -20,6 +20,11 @@ def validate_run_notes(selection):
   if selection['run_notes'] and selection.get('budget_tier','dev')!='dev' and not MAIN_MATRIX_RUN_NOTES:raise ValueError('run_notes not enabled at the matrix freeze')
 
 def normalize_configuration(selection):
+ if selection.get('dev_mode','one_call') not in ('one_call','agent'):raise ValueError('unknown_dev_mode')
+ if selection.get('dev_mode')=='agent':
+  from .dev_agent_config import configuration
+  return configuration(selection)
+ if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent')):raise ValueError('agent_options_require_agent_mode')
  tier=selection.get('budget_tier','dev')
  validate_run_notes(selection)
  source=selection.get('model_source','parcc')

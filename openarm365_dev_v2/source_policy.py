@@ -15,6 +15,11 @@ def dev_tier(config):
 
 
 def source_limit(config, manifest=None):
+    if config.get('dev_mode') == 'agent':
+        if not dev_tier(config):raise ValueError('agent_requires_dev_tier')
+        if manifest is not None and manifest.get('source_size_limit_bytes',131072)!=131072:
+            raise ValueError('agent_source_limit_mismatch')
+        return 131072
     if manifest is not None and 'source_size_limit_bytes' in manifest:
         return manifest['source_size_limit_bytes']
     return DEV_SOURCE_BYTES if dev_tier(config) else LEGACY_SOURCE_BYTES

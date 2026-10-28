@@ -155,7 +155,11 @@ status: current counts and in-flight work. wait ID: resume polling an existing r
 All commands accept --timeout SECONDS; work is not cancelled by client timeout.
 Use --request-id ID to retry the exact request; changing its payload is a conflict.
 Use print(...) for stdout and print(..., file=stderr) for stderr.
-Single Python source file, at most 128 KiB. Source is frozen before dispatch.
+work/submission.json may declare {"entry":"main.py","modules":["helpers.py"]}.
+Default entry: main.py. Flat helper modules contain functions/constants and SDK imports.
+Use explicit from helpers import name (no aliases). One shared namespace; conflicting
+names, cycles, dynamic imports, helper side effects and defaults are rejected. Original
+UTF-8 sources and flattened bundle must EACH fit 131072 bytes. Sources freeze before dispatch.
 Limits: 10 formal versions, 40 executions, 300 probes, 6 hours total wall time;
 per execution 1920 seconds, 320 SDK calls and 9600 control steps. Every accepted
 probe, including rejection/timeout, counts. Invalid formal code consumes a version.
