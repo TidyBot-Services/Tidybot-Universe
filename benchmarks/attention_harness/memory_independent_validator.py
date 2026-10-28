@@ -31,7 +31,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
     it cannot emit a trial or relax any native, permission, safety or scene check.
     """
     from attention_memory_service.core.store import StateConflictError
-    from attention_memory_service.dev_v2 import scene_matches,public_trace_projection,signature_present,stop_position
+    from attention_memory_service.dev_v2 import scene_matches,public_base_yaw_visible,public_trace_projection,signature_present,stop_position
     try:
         if type(version) is not int or version<1:raise Refused('positive integer version required')
         er=Path(experiments_root).resolve();vr=Path(validator_root).resolve();directory=Path(experiment_dir).resolve()
@@ -60,7 +60,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         artifacts={k:read(bundle['artifacts'][k]) for k in ('native_result','trace','safety','sandbox_receipt')}
         from attention_memory_service.resource_receipt import valid as valid_resource_receipt
         if not valid_resource_receipt(config, artifacts['sandbox_receipt']):raise Refused('native resource receipt exceeds frozen bounds')
-        feedback=public_trace_projection(artifacts['trace']);present=signature_present(feedback,failure_signature);position=stop_position(artifacts['trace'])
+        feedback=public_trace_projection(artifacts['trace'],base_yaw_visible=public_base_yaw_visible(bundle,config));present=signature_present(feedback,failure_signature);position=stop_position(artifacts['trace'])
         bindings={k:bundle[k] for k in ('run_id','attempt_id','policy_sha256','config_sha256','task_id','seed')}
         if origin:
             if grant is not None or probe_input is not None or not ledger_ref:raise Refused('origin requires the original ledger and no validation grant')

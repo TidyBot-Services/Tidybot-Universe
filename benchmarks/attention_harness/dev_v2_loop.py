@@ -431,6 +431,9 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     return packet,ref,help_record
 
 def execute(store,key,version,record,config,owner,directory,runner_factory,client=None,*,memory_validation=None):
+    from .dev_version_history import enabled as history_enabled
+    # Seal the invocation decision; failed traces may lack validation consumption.
+    base_yaw_visible=history_enabled(config) and not memory_validation
     cell=store.cell(key);goal=store.goal_for_cell(key);cleanup=cell.get('runtime',{}).get('startup_cleanup_seconds',25);seconds=min(config['attempt_wall_seconds'],goal['wall_remaining']-cleanup,cell['budget']['execution_seconds']-cell['used']['execution_seconds']-cleanup)
     if seconds<=20:raise DevBudgetExhausted('insufficient execution and cleanup time')
     from openarm365_dev_v2.diag_budget import diagnostic_budget
@@ -495,10 +498,9 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         try:result=run_with_formal_boundary(request,runner=runner)
         finally:
             if meter is not None:measurement=meter.stop()
-        bundle=immutable(directory/'bundle.json',{**result,'channel':'diagnostic' if result.get('diagnostic_budget_override') else 'dev_v2','formal_eligible':False,'dev_version':version,'policy_id':cell['policy_id'],'config_lock':{'uri':str(config_path),'sha256':sha(config_path)}})
+        bundle=immutable(directory/'bundle.json',{**result,'channel':'diagnostic' if result.get('diagnostic_budget_override') else 'dev_v2','formal_eligible':False,'dev_version':version,'policy_id':cell['policy_id'],'config_lock':{'uri':str(config_path),'sha256':sha(config_path)},'public_base_yaw_visible':base_yaw_visible})
         if result.get('infrastructure_failure') or result.get('outcome_unknown'):raise DevConflict('native infrastructure/dispatch unknown; no revision/retry')
-        from .dev_version_history import enabled as history_enabled
-        trace=json.loads(checked(result['artifacts']['trace']).read_bytes());projected={'schema_version':'attentionbench.dev-public-feedback.v1','execution_status':'condition_invalid','public_error':'scene_contract_mismatch','action_trace':[]} if result['status']=='condition_invalid' else public_feedback(trace,base_yaw_visible=history_enabled(config) and not memory_validation)
+        trace=json.loads(checked(result['artifacts']['trace']).read_bytes());projected={'schema_version':'attentionbench.dev-public-feedback.v1','execution_status':'condition_invalid','public_error':'scene_contract_mismatch','action_trace':[]} if result['status']=='condition_invalid' else public_feedback(trace,base_yaw_visible=base_yaw_visible)
         episode_root=Path(result['artifact_dir'])
         for label in ['initial','final']:
             path=episode_root/(label+'_public_observation.json')
