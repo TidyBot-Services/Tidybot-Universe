@@ -23,8 +23,9 @@ class OpenArm365DevRunnerV2:
     runner_boundary='dev_loop'
     allow_entry_lock=False
     def __init__(self,*,service_source_root,sim_python,sim_source_root,task_source_root,asset_manifest,
-                 record_replay=True,independent_evaluation=True,service_process_observer=None,episode_observer=None,memory_validation=None):
+                 record_replay=True,independent_evaluation=True,service_process_observer=None,episode_observer=None,memory_validation=None,agent_mode=False):
         if not independent_evaluation:raise ValueError('Dual-arm Dev requires independent evaluation')
+        self.agent_mode=agent_mode
         self.python=sim_python;self.process_observer=service_process_observer;self.episode_observer=episode_observer
         self.cancel_event=threading.Event();self.memory_validation=memory_validation
 
@@ -53,6 +54,14 @@ class OpenArm365DevRunnerV2:
             raise ValueError('diagnostic budget cannot enter the formal boundary')
         if request.entry_lock is not None and not self.allow_entry_lock:raise ValueError('Dev-only runner cannot claim an approved formal entry')
         c=self.load_config(request)
+        agent = getattr(self, 'agent_mode', False)
+        policy_executor, sdk_builder = execute_formal_policy, build_sdk
+        if agent:
+            if self.runner_boundary != 'dev_loop' or c.get('budget_tier') != 'dev' or self.memory_validation:
+                raise ValueError('agent requires dev tier without Memory validation')
+            from .agent_sandbox import execute_agent_policy
+            from .agent_sdk import build_sdk as agent_sdk
+            policy_executor, sdk_builder = execute_agent_policy, agent_sdk
         from curobo_v2.execution_settings import from_config,receipt_fields
         execution_labels=receipt_fields(from_config(c.get('execution_settings')))
         if c.get('budget_tier','legacy')!='dev':tier=None
@@ -70,7 +79,7 @@ class OpenArm365DevRunnerV2:
             origin='native_pipe://owned-openarm365-v2',dev_version=dev_version_label(request.attempt_id))
         write(episode/'recording_context.json',recording_context)
         owner=NativeOwner(python=self.python,config=episode/'config.json',evidence=episode,deadline=deadline,
-            cancel_check=self.cancel_event.is_set,process_observer=self.process_observer)
+            cancel_check=self.cancel_event.is_set,process_observer=self.process_observer,**({"agent_mode":True} if agent else {}))
         validation_public=validation_receipt=None
         if self.memory_validation:
             from benchmarks.attention_harness.dev_memory_validation import policy_input
@@ -86,7 +95,7 @@ class OpenArm365DevRunnerV2:
             if condition and not condition['matched']:
                 status='condition_invalid';error='scene_contract_mismatch';native={'evaluated':False,'native_success':False,'reason':error}
             else:
-                outcome=execute_formal_policy(code=request.policy_code_path.read_text(),sdk=build_sdk(owner,event),
+                outcome=policy_executor(code=request.policy_code_path.read_text(),sdk=sdk_builder(owner,event),
                     **({'source_config':c} if self.runner_boundary=='dev_loop' and c.get('budget_tier')=='dev' else {}),
                     context=self.policy_context(request,c,ready,validation_public,episode),
                     deadline=deadline,stderr_path=episode/'policy-stderr.txt',cancel_check=self.cancel_event.is_set,max_sdk_calls=limit)

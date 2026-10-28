@@ -157,6 +157,7 @@ class MujocoV2Planner:
             if retention is not None:
                 from copy import deepcopy
                 response['support_retention']=deepcopy(body['attachment']['support_retention'])
+            if getattr(self, 'agent_probe_only', False): return response
             pid=self.ledger.issue(response,epoch=epoch,state=body['current_q'],world=world['cuboids'],
                 identity=self.client.identity,attachment=attachment)
             response.update(plan_id=pid,epoch=epoch,world_receipt=receipt)

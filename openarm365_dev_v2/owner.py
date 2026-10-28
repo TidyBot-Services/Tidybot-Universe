@@ -3,9 +3,9 @@ import json,os,selectors,subprocess
 from pathlib import Path
 from openarm365_dev.owner import NativeOwner
 class NativeOwnerV2(NativeOwner):
-    def __init__(self,*args,source_root=None,**kwargs):
+    def __init__(self,*args,source_root=None,agent_mode=False,**kwargs):
         super().__init__(*args,**kwargs);self.source_root=Path(source_root) if source_root is not None else None
-        self.startup_response=None
+        self.startup_response=None;self.agent_mode=agent_mode
     def start(self):
         env={k:v for k,v in os.environ.items() if not k.startswith(('PYTHON','CUROBO_'))
             and not k.startswith('ATTENTION_MEMORY_')
@@ -18,7 +18,7 @@ class NativeOwnerV2(NativeOwner):
         self.log=(self.evidence/'native-service.log').open('ab')
         self.process=subprocess.Popen([self.python,'-B','-u','-m','openarm365_dev_v2.worker',
             '--config',str(self.config),'--evidence',str(self.evidence),'--deadline',str(self.deadline),
-            '--owner-pid',str(os.getpid())],env=env,cwd=project,stdin=subprocess.PIPE,
+            '--owner-pid',str(os.getpid()),*(['--agent-mode'] if self.agent_mode else [])],env=env,cwd=project,stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,stderr=self.log,start_new_session=True)
         from benchmarks.attention_harness.dev_loop import process_identity
         launch={'argv':self.process.args,'cwd':str(project),'PYTHONPATH':env['PYTHONPATH'],

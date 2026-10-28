@@ -102,6 +102,9 @@ class V2Client:
                 settings = from_config(body['execution_settings'])
                 if result.get('execution_settings_sha256') != settings.sha256:
                     raise IdentityError('Planner response execution settings mismatch')
+            if planning and result.get("status") != "success" and getattr(self, "agent_mode", False):
+                from openarm365_dev_v2.agent_rejection import classify
+                classify(result, body, self.worlds[env_id])
             if planning and result.get("status") != "success":
                 detail = "cuRoboV2 planning rejected: " + str(result.get("reason", result.get("status")))
                 if 'headings_tried_rad' in result:
@@ -130,7 +133,11 @@ class V2Client:
             self._check_live()
             return result
         except Exception as exc:
-            self.failed = True
+            recoverable = False
+            if getattr(self, "agent_mode", False):
+                from openarm365_dev_v2.agent_rejection import is_recoverable
+                recoverable = is_recoverable(exc)
+            if not recoverable: self.failed = True
             row["error"] = f"{type(exc).__name__}: {exc}"
             raise
         finally:

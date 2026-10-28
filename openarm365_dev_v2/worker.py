@@ -22,7 +22,7 @@ def cabinet_public_values(env):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True)
     parser.add_argument('--evidence',type=Path,required=True);parser.add_argument('--deadline',type=float,required=True)
-    parser.add_argument('--owner-pid',type=int,required=True);args=parser.parse_args()
+    parser.add_argument('--owner-pid',type=int,required=True);parser.add_argument('--agent-mode',action='store_true');args=parser.parse_args()
     output=os.fdopen(os.dup(sys.stdout.fileno()),'w',buffering=1)
     os.dup2(sys.stderr.fileno(),sys.stdout.fileno())  # Also redirect native C/C++ stdout.
     sys.stdout=sys.stderr  # Upstream imports may print; stdout is exclusively RPC.
@@ -47,6 +47,12 @@ def main():
         override=diagnostic_budget()
         c=validate_config(json.loads(args.config.read_bytes()));args.evidence.mkdir(parents=True,exist_ok=True)
         execution_settings=from_config(c.get('execution_settings'))
+        if args.agent_mode:
+            if c.get('budget_tier') != 'dev' or c['runner_boundary'] != 'dev_loop':
+                raise ValueError('agent requires dev tier')
+            from .agent_planner import AgentPlanner as MujocoV2Planner
+            from .agent_rejection import RecoverablePlanRejection
+            from .agent_executor import AgentExecutor as NativeExecutor
         tier=dev_tier_budget() if c['runner_boundary']=='dev_loop' and c.get('budget_tier','legacy')=='dev' else None
         if override and c['runner_boundary']!='dev_loop':raise ValueError('diagnostic budget cannot enter formal worker')
         identity=OfficialEnvironmentIdentity({
@@ -154,10 +160,16 @@ def main():
             public=group!='owner'
             if public and operation not in OPERATIONS.get(group,()):raise ValueError('Unauthorized native SDK operation')
             before=executor.sequence
+            if args.agent_mode:
+                from .agent_probe import state_fingerprint
+                before_state=state_fingerprint(env, executor)
             try:
                 value=None
                 if group=='owner':
                     if operation=='observe':value=observe()
+                    elif operation=='agent_probe' and args.agent_mode:
+                        from .agent_probe import probe
+                        value=probe(env, executor, planner, observe, request['kwargs'])
                     elif operation=='reset':
                         if c.get('scene_contract'):raise ValueError('matrix reset requires a new metered execution')
                         env.reset();validate_physical_model(env);configure_display_camera(env)
@@ -192,6 +204,11 @@ def main():
             except Exception as exc:
                 response={'kind':'response','request_id':rid,'ok':False,
                     'error':f'{type(exc).__name__}: {exc}'[:1200],'sequence':executor.sequence,'start_sequence':before}
+                if (args.agent_mode and isinstance(exc, RecoverablePlanRejection)
+                        and executor.sequence == before and not executor.failed
+                        and state_fingerprint(env, executor) == before_state):
+                    response.update(ok=True, value=exc.public())
+                    response.pop('error',None)
                 # Log full private exception separately, not in public feedback.
                 with (args.evidence/'native-errors.jsonl').open('a') as f:
                     f.write(json.dumps({'request_id':rid,'traceback':traceback.format_exc()})+'\n')
