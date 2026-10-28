@@ -274,7 +274,7 @@ class LedgerRunner:
 
     def finish(self,current):
         if current.get('kind')=='origin':return self.origins.finish(current)
-        from .dev_v2_memory_import import prepare
+        from .dev_v2_memory_import import prepare_recoverable
         store,key,c=self._cell(current)
         # Other finish paths retain the resolved cell key and original v1 imports.
         pair_arm=(current.get('kind') not in {'begin','origin','cross_seed'}
@@ -290,7 +290,7 @@ class LedgerRunner:
         output=Path(e['artifact_dir'])/'validation-import'/identity
         ref=output/'catalog.json'
         cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
-        if not ref.exists():prepare(store,key,version,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_validation',**({'contract_catalog':current['target']['catalog']} if cross else {}))
+        prepare_recoverable(store,key,version,current['context']['namespace'],output,self.experiments_root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_validation',**({'contract_catalog':current['target']['catalog']} if cross else {}))
         catalog=json.loads(ref.read_bytes());descriptor=json.loads((output/'descriptor.json').read_bytes())
         # Service import includes exact original refs without relocating them.
         # Independent replay keeps its stricter, arm-experiment-only root/seal.

@@ -49,7 +49,7 @@ def test_target_template_uses_frozen_manifest_and_probe_feedback(tmp_path,monkey
     selections=[]
     def create(store,root,selection):
         selections.append(selection)
-        return dict(manifest=manifest,cells=[dict(key='cell',policy_id='full_trace_aware_attention_planner')])
+        return dict(manifest=manifest,artifact_dir=str(root/'template'),cells=[dict(key='cell',policy_id='full_trace_aware_attention_planner')])
     monkeypatch.setattr(dev_experiment,'create',create)
     contract=dict(uri='/contract',sha256='b'*64)
     catalog={'role':'contract'}

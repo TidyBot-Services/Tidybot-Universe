@@ -20,7 +20,7 @@ class FamilyProvisioner(Provisioner):
         target=next(t for t in spec['targets'] if t['seed']==seed)
         task=get_task(spec['target_task_id'])
         baseline=target['baseline_source'];source_ref=dict(uri=baseline['path'],sha256=baseline['sha256'])
-        source=checked(source_ref).read_text();validate_generated_policy(source,config=dict(budget_tier='dev',runner_boundary='dev_loop'))
+        source=checked(source_ref).read_bytes().decode('utf-8');validate_generated_policy(source,config=dict(budget_tier='dev',runner_boundary='dev_loop'))
         if len(source.encode())>DEV_SOURCE_BYTES:raise DevConflict('source_size_limit_exceeded')
         candidate=self.client.read('record');ctx=candidate['context']
         # Create an ordinary, never-started target template. It supplies a genuine
@@ -34,9 +34,15 @@ class FamilyProvisioner(Provisioner):
         record_experiment(self.state_root,key,eid)
         cell=experiment['cells'][0]
         config=read(experiment['manifest'])['configs'][f'{task.task_id}:{seed}']
-        config_path=self.state_root/'family-templates'/key/'config.json'
-        config_path.parent.mkdir(parents=True,exist_ok=True)
-        config_ref=immutable(config_path,config)
+        # Every origin reference becomes transitive executor evidence when the
+        # probe (and later its arms) is imported. Keep it with its owning cell,
+        # including baselines supplied from outside any registered catalog.
+        directory=Path(experiment['artifact_dir'])/'cells'/cell['key']
+        config_ref=immutable(directory/'config.json',config)
+        source_path=directory/'baseline-policy.py'
+        if not source_path.exists():immutable(source_path,source)
+        source_ref=dict(uri=str(source_path),sha256=baseline['sha256'])
+        checked(source_ref)
         from .memory_cross_seed import register_contract
         registration_context=dict(ctx,task_id=task.task_id,task_prompt=task.task_prompt,
                                   task_variant_id=task.official_env+':'+ctx['task_variant_id'].split(':',1)[1])
@@ -44,9 +50,7 @@ class FamilyProvisioner(Provisioner):
         if ref!=contract:raise DevConflict('Target contract changed before template admission')
         target_ctx=context(config,ctx['namespace'],contract_catalog=catalog)
         if any(ctx.get(k)!=target_ctx.get(k) for k in set(ctx)|set(target_ctx) if k not in TARGET_DIFFERENCES):raise DevConflict('Family target template differs from source scope/profile/SDK; fresh compatible source required')
-        feedback_path=self.state_root/'family-templates'/key/'no-feedback.json'
-        feedback_path.parent.mkdir(parents=True,exist_ok=True)
-        feedback=immutable(feedback_path,{})
+        feedback=immutable(directory/'no-feedback.json',{})
         return dict(sealed=dict(manifest=experiment['manifest'],config=config_ref,source=source_ref,cell=cell['key'],version=1),
                     context=target_ctx,config=config,feedback=feedback,signature=self.client.provenance(note['memory_id'])['failure_signature'],policy_id=cell['policy_id'])
 

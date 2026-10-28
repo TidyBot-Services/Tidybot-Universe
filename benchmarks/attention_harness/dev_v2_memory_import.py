@@ -208,6 +208,26 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         context=descriptor['context'],files=files,symlinks=symlinks))
 
 
+def prepare_recoverable(store, cell, version, namespace, output, catalog_root, **options):
+    """Resume a worker export without relocating its absolute sealed references.
+
+    catalog.json is the completion marker, written last by prepare. Serialize
+    retries before removing an interrupted export; completed exports are never
+    removed or rewritten, even if a later consumer rejects them.
+    """
+    import fcntl
+    import shutil
+    out=Path(output)
+    out.parent.mkdir(parents=True,exist_ok=True)
+    with (out.parent/('.'+out.name+'.prepare.lock')).open('a') as guard:
+        fcntl.flock(guard,fcntl.LOCK_EX)
+        if out.is_symlink():raise DevConflict('import output must not be a symlink')
+        catalog=out/'catalog.json'
+        if catalog.exists():return dict(uri=str(catalog.resolve()),sha256=sha(catalog))
+        if out.exists():shutil.rmtree(out)
+        return prepare(store,cell,version,namespace,out,catalog_root,**options)
+
+
 OPERATIONS={'execution':'import_dev_v2_execution','source':'import_dev_v2_source',
     'candidate':'create_dev_v2_candidate','trial':'import_dev_v2_trial','pair':'record_dev_v2_pair','result':'record_dev_v2_result'}
 
