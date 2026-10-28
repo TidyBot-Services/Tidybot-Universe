@@ -3939,6 +3939,8 @@
     return `<aside class="ab-secondary" aria-label="Developer tools"><details data-secondary="debug" data-persist-detail="debug"><summary>Developer debug</summary>${agentRecords}${snapshot ? `<section class="panel"><h3>Agent work & scheduling</h3><div class="work-list">${(orchestrator?.agents || []).map(agent=>`<button class="work-card" type="button" data-dag-skill="${esc(agent.skill)}"><strong>${esc(agent.skill)}</strong><p>${esc(agent.agent_id)} · ${esc(agent.model)} · ${esc(agent.status)}</p></button>`).join('')}${(snapshot.work_items || []).map(item=>`<div class="work-card"><strong>${esc(label(item.resource))} · ${esc(item.state)}</strong><p>Requires ${esc(number(item.required))}, remaining ${esc(number(item.remaining))} · ${esc(item.reason)}</p></div>`).join('') || '<p>No active work records.</p>'}</div></section>` : ''}${dagPanel()}${sessionPanel()}<p class="minor">The live projection reads the persisted SQLite AttentionStore. Requests, budgets, executions and traces survive restarts.</p></details></aside>`;
   }
   function workspaceHTML(snapshot,chosen) {
+    // One-call keeps the original five-module composition unchanged.
+    if(!snapshot.agent)return `${runSettings(snapshot)}${runOverview(snapshot)}${executionViewer(snapshot)}${requestPanel(snapshot,chosen)}${resourceDetails(snapshot)}<p class="minor" id="ab-live-message" aria-live="polite"></p>`;
     const append=(html,extra)=>{const end=html.lastIndexOf('</section>');return html.slice(0,end)+extra+html.slice(end);};
     const regions=[runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)];
     if(snapshot.agent){
