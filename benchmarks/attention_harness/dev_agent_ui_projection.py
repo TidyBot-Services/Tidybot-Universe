@@ -332,6 +332,24 @@ def compat(cell, agent, ledger_jobs):
     goal = dict(wall_used=agent['wall_seconds'], wall_limit=agent['wall_limit'],
                 wall_remaining=max(0, agent['wall_limit']-agent['wall_seconds']), limits=budget, used=used, reserved=held)
     phase = 'terminal' if agent['phase']=='stopped' else {'waiting on execution':'sdk','Eval':'eval','help':'advisor','turn running':'model'}.get(agent['phase'], 'prepared')
+    # Same shapes as a one-call cell: a finished run has no lifecycle, only ended
+    # run controls, plus the Codex quota points spent (first and last sample).
+    terminal = phase == 'terminal'
+    controls = dict(state='ended' if terminal else 'running', can_pause=False, can_resume=False, can_keep_running=False,
+                    resume_blocked_reason='This run has finished.' if terminal else None, current_step=None,
+                    paused_since=None, paused_seconds_total=0, interrupted_by_stop=None)
     return dict(clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','task_id','seed','policy_id','mode')}),
                 dev_mode='agent', artifact_dir=ROOT, versions=versions, help_intervals=intervals, jobs=jobs, budget=budget, used=used,
-                ledger={'goal':goal}, lifecycle={'phase':phase, 'can_stop':phase!='terminal'})
+                ledger={'goal':goal}, lifecycle=None if terminal else {'phase':phase, 'can_stop':True},
+                run_controls=controls, quota_usage=quota_usage(cell))
+
+
+def quota_usage(cell):
+    """First and last recorded weekly Codex usage for this cell, if both are readable."""
+    path = Path(cell.get('artifact_dir', '/missing'))/'agent/private/quota.jsonl'
+    try:
+        rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    except (OSError, ValueError):
+        return None
+    values = [r.get('used_percent') for r in rows if isinstance(r.get('used_percent'), (int, float))]
+    return dict(before=values[0], after=values[-1]) if values else None

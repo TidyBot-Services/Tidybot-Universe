@@ -198,10 +198,10 @@
         "moving_executions": 36,
         "read_only_probes": 298
       },
-      "wall_seconds": 3600.5461502075195,
+      "wall_seconds": 3601.9862570762634,
       "wall_limit": 21600,
       "quota": {
-        "at": 1793224446.569869,
+        "at": 1793226515.4035091,
         "stop_percent": 90,
         "used_percent": 72.5
       },
@@ -214,31 +214,10 @@
           "kind": "probe",
           "op": "ik_check",
           "status": "completed",
-          "at": 1793220866.0662827,
+          "at": 1793222933.4611878,
           "version_id": null,
           "execution_id": null,
           "probe_id": "p000001",
-          "result": {
-            "diagnostics": {
-              "diagnostics_complete": false,
-              "missing": [
-                "candidate_qpos",
-                "ik_candidates",
-                "candidate_joint_margins",
-                "selected_candidate",
-                "solver_diagnostics",
-                "validation",
-                "contacts",
-                "world_revision",
-                "timing"
-              ],
-              "reason": "official_ik_non_success"
-            },
-            "physics_steps": 0,
-            "planning_accepted": false,
-            "rejected": true,
-            "state_basis": "reset_scene"
-          },
           "error": null,
           "links": [
             {
@@ -258,30 +237,10 @@
           "kind": "probe",
           "op": "plan_dry_run",
           "status": "completed",
-          "at": 1793220866.1021023,
+          "at": 1793222933.5286727,
           "version_id": null,
           "execution_id": null,
           "probe_id": "p000002",
-          "result": {
-            "diagnostics": {
-              "diagnostics_complete": false,
-              "missing": [
-                "candidate_qpos",
-                "ik_candidates",
-                "candidate_joint_margins",
-                "selected_candidate",
-                "solver_diagnostics",
-                "validation",
-                "contacts",
-                "world_revision",
-                "timing"
-              ]
-            },
-            "physics_steps": 0,
-            "planning_accepted": true,
-            "rejected": false,
-            "state_basis": "reset_scene"
-          },
           "error": null,
           "links": [
             {
@@ -301,62 +260,10 @@
           "kind": "no_eval_execution",
           "op": "run",
           "status": "completed",
-          "at": 1793220866.1339397,
+          "at": 1793222933.5663424,
           "version_id": null,
           "execution_id": "e000001",
           "probe_id": null,
-          "result": {
-            "artifacts": {
-              "diagnostics/planner.json": {
-                "path": "executions/e000001/diagnostics/planner.json",
-                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
-              },
-              "final_observation.json": {
-                "path": "executions/e000001/final_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "frames.json": {
-                "path": "executions/e000001/frames.json",
-                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
-              },
-              "initial_observation.json": {
-                "path": "executions/e000001/initial_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "policy.py": {
-                "path": "executions/e000001/policy.py",
-                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
-              },
-              "result.json": {
-                "path": "executions/e000001/result.json",
-                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
-              },
-              "state_log.json": {
-                "path": "executions/e000001/state_log.json",
-                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
-              },
-              "stderr.txt": {
-                "path": "executions/e000001/stderr.txt",
-                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
-              },
-              "stdout.txt": {
-                "path": "executions/e000001/stdout.txt",
-                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
-              },
-              "trace.json": {
-                "path": "executions/e000001/trace.json",
-                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
-              }
-            },
-            "outcome": {
-              "completed": true,
-              "error": null,
-              "rejected_calls": 0,
-              "schema": "attentionbench.agent-public-outcome.v1",
-              "sdk_calls": 0,
-              "status": "completed"
-            }
-          },
           "error": null,
           "links": [
             {
@@ -401,82 +308,10 @@
           "kind": "formal_version",
           "op": "submit",
           "status": "completed",
-          "at": 1793220866.194832,
+          "at": 1793222933.6383216,
           "version_id": "v0001",
           "execution_id": "e000002",
           "probe_id": null,
-          "result": {
-            "artifacts": {
-              "diagnostics/planner.json": {
-                "path": "executions/e000002/diagnostics/planner.json",
-                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
-              },
-              "final_observation.json": {
-                "path": "executions/e000002/final_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "frames.json": {
-                "path": "executions/e000002/frames.json",
-                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
-              },
-              "initial_observation.json": {
-                "path": "executions/e000002/initial_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "policy.py": {
-                "path": "executions/e000002/policy.py",
-                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
-              },
-              "result.json": {
-                "path": "executions/e000002/result.json",
-                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
-              },
-              "state_log.json": {
-                "path": "executions/e000002/state_log.json",
-                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
-              },
-              "stderr.txt": {
-                "path": "executions/e000002/stderr.txt",
-                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
-              },
-              "stdout.txt": {
-                "path": "executions/e000002/stdout.txt",
-                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
-              },
-              "trace.json": {
-                "path": "executions/e000002/trace.json",
-                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
-              }
-            },
-            "eval": {
-              "advice": "Scan a smaller base offset.",
-              "evidence": [
-                {
-                  "claim": "Approach was rejected",
-                  "source": "stdout.txt"
-                }
-              ],
-              "passed": false,
-              "reason": "Blocked approach",
-              "status": "completed"
-            },
-            "execution_id": "e000002",
-            "help": {
-              "delivered": false,
-              "error": "public_view_unavailable",
-              "requested": false,
-              "status": "unavailable"
-            },
-            "outcome": {
-              "completed": true,
-              "error": null,
-              "rejected_calls": 0,
-              "schema": "attentionbench.agent-public-outcome.v1",
-              "sdk_calls": 0,
-              "status": "completed"
-            },
-            "version_id": "v0001"
-          },
           "error": null,
           "links": [
             {
@@ -536,7 +371,7 @@
           "kind": "help",
           "op": "ask_help",
           "status": "completed",
-          "at": 1793220866.3129816,
+          "at": 1793222934.5067637,
           "version_id": null,
           "execution_id": null,
           "probe_id": null,
@@ -558,83 +393,10 @@
           "kind": "formal_version",
           "op": "submit",
           "status": "completed",
-          "at": 1793220866.3415937,
+          "at": 1793222934.8166397,
           "version_id": "v0002",
           "execution_id": "e000003",
           "probe_id": null,
-          "result": {
-            "artifacts": {
-              "diagnostics/planner.json": {
-                "path": "executions/e000003/diagnostics/planner.json",
-                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
-              },
-              "final_observation.json": {
-                "path": "executions/e000003/final_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "frames.json": {
-                "path": "executions/e000003/frames.json",
-                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
-              },
-              "initial_observation.json": {
-                "path": "executions/e000003/initial_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "policy.py": {
-                "path": "executions/e000003/policy.py",
-                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
-              },
-              "result.json": {
-                "path": "executions/e000003/result.json",
-                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
-              },
-              "state_log.json": {
-                "path": "executions/e000003/state_log.json",
-                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
-              },
-              "stderr.txt": {
-                "path": "executions/e000003/stderr.txt",
-                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
-              },
-              "stdout.txt": {
-                "path": "executions/e000003/stdout.txt",
-                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
-              },
-              "trace.json": {
-                "path": "executions/e000003/trace.json",
-                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
-              }
-            },
-            "eval": {
-              "advice": "Scan a smaller base offset.",
-              "evidence": [
-                {
-                  "claim": "Approach was rejected",
-                  "source": "stdout.txt"
-                }
-              ],
-              "passed": true,
-              "reason": "Visible success",
-              "status": "completed"
-            },
-            "execution_id": "e000003",
-            "help": {
-              "content": "Try a smaller offset.",
-              "delivered": true,
-              "error": "ValueError",
-              "hint_human_seconds": 1231.960857142857,
-              "status": "unavailable"
-            },
-            "outcome": {
-              "completed": true,
-              "error": null,
-              "rejected_calls": 0,
-              "schema": "attentionbench.agent-public-outcome.v1",
-              "sdk_calls": 0,
-              "status": "completed"
-            },
-            "version_id": "v0002"
-          },
           "error": null,
           "links": [
             {
@@ -694,79 +456,10 @@
           "kind": "formal_version",
           "op": "submit",
           "status": "completed",
-          "at": 1793220866.4493155,
+          "at": 1793222935.2595906,
           "version_id": "v0003",
           "execution_id": "e000004",
           "probe_id": null,
-          "result": {
-            "artifacts": {
-              "diagnostics/planner.json": {
-                "path": "executions/e000004/diagnostics/planner.json",
-                "sha256": "5d974e38c3626b4042030ce48f288c03cce2114137093ac37da60c8787ca642f"
-              },
-              "final_observation.json": {
-                "path": "executions/e000004/final_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "frames.json": {
-                "path": "executions/e000004/frames.json",
-                "sha256": "a035fd8b02e895796040998ef193bdbad1fcf5f0ce13d82f63aa3c43b0cdb9a0"
-              },
-              "initial_observation.json": {
-                "path": "executions/e000004/initial_observation.json",
-                "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
-              },
-              "policy.py": {
-                "path": "executions/e000004/policy.py",
-                "sha256": "a412d6ab832c1b01b7e3e22c97dc6471a4f7af3275ad1e95ff35e182b4794a6b"
-              },
-              "result.json": {
-                "path": "executions/e000004/result.json",
-                "sha256": "7c1ddabcd5602eaae0ea92011aeb00af514acc3c24715742c33ee606b9ea94f9"
-              },
-              "state_log.json": {
-                "path": "executions/e000004/state_log.json",
-                "sha256": "1b21adf766848b329d2469d3d368bc433861f8cd0f8f8aa08eb249e77c703a8d"
-              },
-              "stderr.txt": {
-                "path": "executions/e000004/stderr.txt",
-                "sha256": "af3afd32528716096966f58ee058f15cd595a14eb65f5f76dd477e3271ba5c26"
-              },
-              "stdout.txt": {
-                "path": "executions/e000004/stdout.txt",
-                "sha256": "1dad202963de8d0d34e04a06a0b4c327b67c1eec123d270e407202674ca1a31b"
-              },
-              "trace.json": {
-                "path": "executions/e000004/trace.json",
-                "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
-              }
-            },
-            "eval": {
-              "advice": "Scan a smaller base offset.",
-              "evidence": [
-                {
-                  "claim": "Approach was rejected",
-                  "source": "stdout.txt"
-                }
-              ],
-              "passed": null,
-              "reason": "Eval unavailable: timeout",
-              "status": "unavailable"
-            },
-            "execution_id": "e000004",
-            "help": {
-              "status": "not_requested"
-            },
-            "outcome": {
-              "completed": true,
-              "error": null,
-              "rejected_calls": 0,
-              "schema": "attentionbench.agent-public-outcome.v1",
-              "sdk_calls": 0,
-              "status": "completed"
-            },
-            "version_id": "v0003"
-          },
           "error": null,
           "links": [
             {
@@ -1419,8 +1112,8 @@
           "decision_content": null,
           "after_version": 1,
           "version": 2,
-          "reserved_at": 1793220866.3129816,
-          "settled_at": 1793220866.3313696
+          "reserved_at": 1793222934.5067637,
+          "settled_at": 1793222934.7899728
         },
         {
           "help_content": {
@@ -1444,8 +1137,8 @@
           "decision_content": null,
           "after_version": 2,
           "version": 3,
-          "reserved_at": 1793224466.6153083,
-          "settled_at": 1793224466.619536
+          "reserved_at": 1793226535.4769614,
+          "settled_at": 1793226535.4833808
         }
       ],
       "jobs": [
@@ -1454,8 +1147,8 @@
           "kind": "execute",
           "version": 1,
           "state": "settled",
-          "reserved_at": 1793220866.194832,
-          "settled_at": 1793220866.2927673,
+          "reserved_at": 1793222933.6383216,
+          "settled_at": 1793222934.473837,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1475,8 +1168,8 @@
           "kind": "eval",
           "version": 1,
           "state": "settled",
-          "reserved_at": 1793220866.2641037,
-          "settled_at": 1793220866.2683132,
+          "reserved_at": 1793222934.2066586,
+          "settled_at": 1793222934.3170123,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1491,8 +1184,8 @@
           "kind": "advisor",
           "version": 2,
           "state": "settled",
-          "reserved_at": 1793220866.3129816,
-          "settled_at": 1793220866.3313696,
+          "reserved_at": 1793222934.5067637,
+          "settled_at": 1793222934.7899728,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1507,8 +1200,8 @@
           "kind": "execute",
           "version": 2,
           "state": "settled",
-          "reserved_at": 1793220866.3415937,
-          "settled_at": 1793220866.4336934,
+          "reserved_at": 1793222934.8166397,
+          "settled_at": 1793222935.240582,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1528,8 +1221,8 @@
           "kind": "eval",
           "version": 2,
           "state": "settled",
-          "reserved_at": 1793220866.4105072,
-          "settled_at": 1793220866.4150953,
+          "reserved_at": 1793222935.2114234,
+          "settled_at": 1793222935.218335,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1544,8 +1237,8 @@
           "kind": "execute",
           "version": 3,
           "state": "settled",
-          "reserved_at": 1793220866.4493155,
-          "settled_at": 1793220866.5472033,
+          "reserved_at": 1793222935.2595906,
+          "settled_at": 1793222935.3777971,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1565,8 +1258,8 @@
           "kind": "eval",
           "version": 3,
           "state": "settled",
-          "reserved_at": 1793220866.520699,
-          "settled_at": 1793220866.525367,
+          "reserved_at": 1793222935.348341,
+          "settled_at": 1793222935.3542473,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1581,8 +1274,8 @@
           "kind": "advisor",
           "version": 3,
           "state": "settled",
-          "reserved_at": 1793224466.6153083,
-          "settled_at": 1793224466.619536,
+          "reserved_at": 1793226535.4769614,
+          "settled_at": 1793226535.4833808,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1609,9 +1302,9 @@
       },
       "ledger": {
         "goal": {
-          "wall_used": 3600.5461502075195,
+          "wall_used": 3601.9862570762634,
           "wall_limit": 21600,
-          "wall_remaining": 17999.45384979248,
+          "wall_remaining": 17998.013742923737,
           "limits": {
             "executions": 40,
             "dev_calls": null,
@@ -1634,10 +1327,19 @@
           }
         }
       },
-      "lifecycle": {
-        "phase": "terminal",
-        "can_stop": false
-      }
+      "lifecycle": null,
+      "run_controls": {
+        "state": "ended",
+        "can_pause": false,
+        "can_resume": false,
+        "can_keep_running": false,
+        "resume_blocked_reason": "This run has finished.",
+        "current_step": null,
+        "paused_since": null,
+        "paused_seconds_total": 0,
+        "interrupted_by_stop": null
+      },
+      "quota_usage": null
     }
   },
   "files": {

@@ -45,7 +45,8 @@ test('agent snapshot uses all formal versions and verified original execution ev
   assert.ok(Object.values(snapshot.responses).some(r=>r.content==='Try a smaller offset.'));
   assert.ok(calls.every(url=>url.includes('/agent/files/')));
   const trace=Object.values(snapshot.traces)[0];
-  assert.ok(trace.evidence.some(e=>e.kind==='recording_frame'&&e.media_url.includes('/frames/')));
+  // Parity with one-call: views that have a video carry no extra still frames.
+  assert.ok(!trace.evidence.some(e=>e.kind==='recording_frame'));
   assert.ok(trace.evidence.some(e=>e.kind==='advisor_replay_side'));
   assert.equal(trace.recording.replay_timing.frame_video_seconds[0],0);
 });
@@ -57,6 +58,7 @@ test('agent renders original five regions with compact facts, secondary activity
   for(const selector of ['data-agent-settings','data-agent-secondary','data-agent-secondary-row','data-agent-errors','data-agent-versions','data-agent-code','data-agent-citations','data-agent-help-refusal','data-instrument-canvas','data-history-replay'])assert.ok(html.includes(selector),selector);
   for(const text of ['versions 3/10','executions 4/40','probes 2/300','quota stop 90%','fatal_cause: broker_invariant','1 no-eval executions','1 ik_check','Blocked approach','Approach was rejected','Try a smaller offset.'])assert.ok(html.includes(text),text);
   assert.equal((html.match(/data-agent-version="/g)||[]).length,3);
+  assert.ok(!html.includes('Saved static frame'));
   assert.match(html,/<details[^>]*><summary>controller · broker_invariant/);
   assert.doesNotMatch(html,/&quot;outcome&quot;|&quot;diagnostics&quot;|data-agent-timeline|\/home\/|\/private\//);
   assert.match(html,/<details data-agent-code[^>]*><summary>Code[^]*?<pre>/);
@@ -98,7 +100,8 @@ test('agent help uses two post-attempt boundaries, refused vs delivered, and per
   const html=api.workspaceHTML(snapshot,null);
   for(const text of ['Completed on attempt 3 of 10','on attempt 3 of 10','274.8 s','corrected; recorded 1231.96 s','1 delivered and charged, 1 refused and not charged','1 of 1 delivered','not delivered','Attempt 1 · Not solved · Eval: fail'])assert.ok(html.includes(text),text);
   assert.match(html,/After attempt 1<\/b><small> · refused \(evaluation-derived text rejected at Dev boundary\)/);
-  assert.match(html,/After attempt 2<\/b><small> · answered/);
+  assert.match(html,/After attempt 2<\/b><small>Answered( in [^<]+)?<\/small>/);
+  assert.ok(!html.includes('all undefined cells') && html.includes('This run has ended. The help the robot received is listed below.'));
   assert.doesNotMatch(html,/Closed without a reply|closed before anyone|After attempt 3<\/b>|of 40|Reviews requested/);
   const resources=api.resourceDetails(snapshot);
   for(const [name,used,limit] of [['Versions',3,10],['Executions',4,40],['Probes',2,300],['Help',1,1],['Eval',3,10]]){

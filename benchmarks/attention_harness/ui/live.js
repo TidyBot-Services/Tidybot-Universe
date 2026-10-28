@@ -3573,7 +3573,7 @@
       const k=attempt?attempt.index+1:null;
       const seconds=response?.created_at!=null && request.created_at!=null ? Math.max(0,Math.round(response.created_at-request.created_at)) : null;
       const author=response?.responder==='advisor_proxy'?'Advisor (simulated human)':response?.responder==='human'?'You':'Operator';
-      return {version:Number(request.request_id.match(/:v(\d+):help$/)?.[1]??Infinity),html:`<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${snapshot.agent?(response?' · answered':request.state==='rejected'?` · refused (${esc(request.reason)})`:' · waiting for a reply'):response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${operatorRequestView(request.request_view,request.request_id)}${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':snapshot.agent&&request.state==='rejected'?`<p class="op-quiet" data-agent-help-refusal>Not answered · refused · not delivered. ${esc(request.reason)}</p>`:'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`};
+      return {version:Number(request.request_id.match(/:v(\d+):help$/)?.[1]??Infinity),html:`<li data-operator-request="${esc(request.request_id)}"><div><b>${k==null?'Before the first attempt':`After attempt ${k}`}</b><small>${snapshot.agent&&!response?(request.state==='rejected'?` · refused (${esc(request.reason)})`:' · waiting for a reply'):response?seconds==null?'Answered':`Answered in ${humanDuration(seconds)}`:request.state==='pending'?'Waiting for a reply…':'Closed without a reply'}</small></div><div><p class="op-asked">Asked: "${k==null?'The robot needs help':`Attempt ${k} failed`}. How should I fix it?"</p>${operatorRequestView(request.request_view,request.request_id)}${selectedMomentDetails(snapshot,request)}${response?`<span class="op-who">${author}</span><div class="op-clamp" data-operator-copy>${readableReply(response)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button>`:request.state==='pending'?'<p class="op-quiet">No reply yet.</p>':snapshot.agent&&request.state==='rejected'?`<p class="op-quiet" data-agent-help-refusal>Not answered · refused · not delivered. ${esc(request.reason)}</p>`:'<p class="op-quiet">This request was closed before anyone answered it.</p>'}</div></li>`};
     });
     const hint=snapshot.dev_session && !snapshot.dev_v2 && snapshot.attention_control?.hint;
     const devReply=hint?.content?`<li><div><b>After attempt ${Math.max(1,hint.version-1)}</b><small>${hint.answered_at != null && hint.created_at != null ? `Answered in ${humanDuration(hint.answered_at-hint.created_at)}`:'Answered'}</small></div><div><p class="op-asked">Asked: "Attempt ${Math.max(1,hint.version-1)} failed. How should I fix it?"</p><span class="op-who">You</span><div class="op-clamp" data-operator-copy>${esc(hint.content)}</div><button type="button" class="op-more" data-operator-expand="Read full reply">Read full reply</button></div></li>`:'';
@@ -3945,7 +3945,8 @@
       regions[0]=append(regions[0],agentSettingsLine(snapshot.agent));
       regions[1]=append(regions[1],agentErrorDetails(snapshot.agent));
       regions[2]=append(regions[2],agentSecondaryRows(snapshot.agent)+agentVersionDetails(snapshot)+agentInstrumentPanel(snapshot));
-      regions[1]=regions[1].replace('Codex subscription (gpt-6-astra, high effort)','Codex subscription');
+      if(snapshot.agent.dev_model!=='gpt-6-astra')regions[1]=regions[1].replace('(gpt-6-astra, high effort)',`(${esc(snapshot.agent.dev_model)}, high effort)`);
+      regions[3]=regions[3].replace('This run has ended. Recorded work and replies remain available.','This run has ended. The help the robot received is listed below.');
       regions[4]=regions[4].replace('/export.csv"','/report"').replace('Download data (CSV)','Download agent report (JSON)');
     }
     return regions.join('')+'<p class="minor" id="ab-live-message" aria-live="polite"></p>';
@@ -4630,7 +4631,9 @@
         let frames=devEvidenceCache.get(key);
         if(!frames){frames=await readDevEvidence(snapshot.dev_session,version.frames);devEvidenceCache.set(key,frames);}
         const first=new Map();for(const frame of frames)if(!first.has(frame.view))first.set(frame.view,frame);
-        for(const [view,frame] of first)trace.evidence.push({kind:view==='overview'?'recording_frame':`recording_frame_${view}`,mime_type:'image/png',media_url:devFile(snapshot.dev_session,`agent-view/executions/${version.execution_id}/${frame.filename}`),sha256:frame.sha256});
+        // Parity with one-call: a recorded still is only a fallback for a view with no video.
+        const videoFor=view=>version.replays?.[view==='overview'?'advisor_replay.mp4':`advisor_replay_${view}.mp4`];
+        for(const [view,frame] of first)if(!videoFor(view))trace.evidence.push({kind:view==='overview'?'recording_frame':`recording_frame_${view}`,mime_type:'image/png',media_url:devFile(snapshot.dev_session,`agent-view/executions/${version.execution_id}/${frame.filename}`),sha256:frame.sha256});
       } catch(error){snapshot.dev_evidence_gaps.push(`v${version.version} frames: ${error.message}`);}
     }
     return snapshot;

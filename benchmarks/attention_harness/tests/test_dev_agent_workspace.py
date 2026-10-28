@@ -61,8 +61,9 @@ def test_compatible_projection_and_digest_bound_evidence(workspace_run):
     assert {j['kind'] for j in compat['jobs']} == {'execute','eval','advisor'}
     assert all(j['state']=='settled' for j in compat['jobs'])
     assert compat['ledger']['goal']['wall_used'] + compat['ledger']['goal']['wall_remaining'] == 21600
-    assert compat['lifecycle']['phase']=='terminal'
-    assert compat['lifecycle']['can_stop'] is False
+    # Parity with a finished one-call cell: no lifecycle, ended run controls.
+    assert compat['lifecycle'] is None and compat['run_controls']['state']=='ended'
+    assert compat['run_controls']['can_resume'] is False
     files = {}
     for version in compat['versions']:
         assert version['source_text'] and version['sources']
