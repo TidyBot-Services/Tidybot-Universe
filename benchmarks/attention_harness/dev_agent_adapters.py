@@ -31,6 +31,8 @@ class Executor:
             attempt_deadline_seconds=seconds,sdk_call_limit=320,run_id='run:agent',attempt_id='attempt:agent:0')
         result=self.runner.execute(request)
         episode=Path(episodes[-1]) if episodes else None
+        self.episode=episode
+        self.recording=result.get('recording',{})
         # Only the trusted controller consumes this private reference.
         self.native_result_ref=result.get('artifacts',{}).get('native_result')
         # Never load the private evaluator file. Only enumerated public inputs.
@@ -56,6 +58,8 @@ class Executor:
         public['state_log']=[]
         physics=episode/'native-physics.jsonl' if episode else None
         if physics and physics.is_file():public['state_log']=[public_observation(json.loads(line)) for line in physics.read_text().splitlines()]
+        from .dev_agent_recording import recording_frames
+        public['frames']=recording_frames(episode,self.config['control_freq']) if episode and ((episode/'recording_frames').is_dir() or (episode/'advisor_replay.mp4').is_file()) else []
         return public
 
     def cancel(self):

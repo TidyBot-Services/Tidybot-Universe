@@ -314,6 +314,8 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         manifest['dev_version_history']=True
         for config in configs.values():config['dev_version_history']=True
     if agent_options:
+        from .dev_agent_prompts import manifest_fields
+        manifest.update(manifest_fields())
         manifest.update(agent_options,source_size_limit_bytes=131072,agent_accounting='attentionbench.agent-ledger.v1')
         manifest['schedule']=[dict(cell=cells[0]['key'],through_version=10)]
         manifest['model']=dict(model=agent_options['dev_model'],reasoning_effort=agent_options['dev_reasoning_effort'],provider_retries=0)
@@ -383,6 +385,8 @@ def create(store,artifact_root,selection,*,validation_origin=None):
 def validate_fairness(m):
     if m.get('dev_mode')=='agent':
         from .dev_agent_config import normalize
+        from .dev_agent_prompts import manifest_fields
+        if any(m.get(k)!=v for k,v in manifest_fields().items()):raise ValueError('agent_prompt_drift')
         options=normalize(m['selection'])
         if any(m.get(k)!=v for k,v in options.items()) or len(m['cells'])!=1 or m.get('validation_experiment'):
             raise ValueError('agent_frozen_options_differ')

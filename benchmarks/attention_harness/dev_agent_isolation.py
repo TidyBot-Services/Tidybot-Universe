@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import tempfile
 
-DISABLED = '''web_search_request web_search_cached standalone_web_search js_repl
+DISABLED = '''standalone_web_search js_repl
 code_mode code_mode_only code_mode_buffered_exec code_mode_interrupt
 code_mode_prewarm multi_agent multi_agent_v2 multi_agent_mode plugins
 browser_use browser_use_external browser_use_full_cdp_access computer_use memories

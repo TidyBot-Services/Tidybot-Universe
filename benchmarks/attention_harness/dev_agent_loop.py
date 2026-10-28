@@ -15,17 +15,9 @@ CONTINUE_MESSAGE='Eval judged this version as passed, but the run has not ended;
 
 
 def bootstrap(workspace, ledger, policy):
-    return ('Work on the task in task.json. Read docs/sdk.md, docs/tools.md and docs/guide.md. '
-        'Use /usr/bin/python3 docs/devtool.py for simulator tools; submit a formal version '
-        'with submit (default work/main.py or work/submission.json); run --no-eval is a metered trial. '
-        'History files are authoritative: history/{versions,executions,probes}.jsonl and '
-        'history/version_history.json link full code, bundles, logs, Eval and help. '
-        'Keep your own notes in work/notes.md across turns. An authenticated pre-dispatch '
-        'planning rejection consumes one SDK call but permits another safe action; never bypass safety. '
-        'Each execution permits 320 SDK calls, 9600 control steps and 1920 seconds. '
-        'The run permits 21600 active wall seconds; tokens and model turns are recorded without a cap. '
-        'Help policy: '+policy+'. ask_help currently returns policy_denied until the help integration is installed. '
-        'After Eval feedback continue work if the session remains active. Budgets: '+json.dumps(ledger.limits,sort_keys=True))
+    from .dev_agent_prompts import DEV_PROMPT
+    return DEV_PROMPT+'\nHelp policy: '+policy+'. See docs/tools.md for its exact availability.\nBudgets: '+json.dumps(ledger.limits,sort_keys=True)
+
 
 
 def trusted_completion(executor, directory, result):
@@ -41,7 +33,7 @@ def trusted_completion(executor, directory, result):
     return value.get('native_success') is True or value.get('object_in_sink') is True
 
 
-def drive(workspace, session, ledger, *, executor, prober, evaluator=None, quota=None,
+def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helper=None, quota=None,
           policy='reactive_help', completion_reader=trusted_completion, control=lambda:None,
           version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60):
     """Injectable offline seam; production always supplies a preflighted session."""
@@ -67,8 +59,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, quota
         vid=response['version_id'];success=successful.get(vid)
         row=dict(version=int(vid[1:]),version_id=vid,execution_id=response.get('execution_id'),
                  valid=value['outcome']['status']!='invalid_submission',formal_eligible=False,
-                 eval=value.get('eval'),native_success=success,
+                 eval=value.get('eval'),eval_verdict=('pass' if value.get('eval',{}).get('passed') is True else 'fail' if value.get('eval',{}).get('passed') is False else 'unavailable'),native_success=success,
                  agreement=(value.get('eval',{}).get('passed')==success if type(value.get('eval',{}).get('passed')) is bool and type(success) is bool else None))
+        row['agree']=row['agreement']
         atomic_write(workspace.private,'versions/'+vid+'.json',encode(row));version_record(row)
         if success:
             stop='native_success';broker.stop_reason='run_complete'
@@ -83,6 +76,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, quota
             event=dict(event_id=len(events)+1,request_id=response['request_id'],op=response['op'],
                        response='rpc/responses/'+response['request_id']+'.json')
             if response.get('result',{}).get('message'):event['message']=response['result']['message']
+            for key in ('eval','help'):
+                if key in response.get('result',{}):event[key]=response['result'][key]
+            if response['op']=='ask_help':event['help']=response.get('result')
             events.append(event);workspace.publish('events/evt%06d.json'%len(events),event);save()
         snap=ledger.snapshot()
         if snap['remaining']['formal_versions']<=0 or snap['remaining']['moving_executions']<=0:
@@ -90,7 +86,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, quota
         progress(snap)
     try:
         broker=Broker(workspace,executor=executor,prober=prober,evaluator=evaluator or FakeEvaluator(),
-            agent_mode=True,budget=LedgerBudget(ledger),quota=quota,on_cut=cut,on_version=version,
+            agent_mode=True,helper=helper,budget=LedgerBudget(ledger),quota=quota,on_cut=cut,on_version=version,
             on_execution=execution,on_settled=settled,quiesce=session.quiesce)
         unknown=ledger.recover()
         if broker.quarantined or unknown:raise ValueError('unresolved_agent_work')
@@ -98,7 +94,12 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, quota
             if json.loads(path.read_bytes()).get('native_success') is True:
                 return dict(state='completed',reason='native_success',resources=ledger.snapshot())
         ledger.resume()
+        initial_help=helper.initial() if helper and hasattr(helper,'initial') else None
         prompt=bootstrap(workspace,ledger,policy) if not session.thread_id else continuation()
+        if session.thread_id:
+            prompt+=' Unseen events: '+json.dumps(events[delivered:],sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
+            delivered=len(events);save()
+        if initial_help:prompt+='\nPre-task demo: '+json.dumps(initial_help,ensure_ascii=False)
         while stop is None:
             command=control()
             if command in ('pause','cancel'):
@@ -157,6 +158,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, quota
     finally:
         session.cancel('controller_exit')
         if broker:broker.close()
+        if stop!='operator_paused' and helper and hasattr(helper,'finish'):
+            helper.finish()
+            if broker:broker._regenerate_history()
 
 
 def continuation():
@@ -195,8 +199,14 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         def control():
             with store.tx() as db:current=store.get(db,'experiments',exp['experiment_id'])
             return 'cancel' if current['cancelled'] else 'pause' if current.get('pause_requested_at') else None
+        from .dev_agent_eval import Evaluator
+        from .dev_agent_attention import Helper
+        from .dev_v2_loop import proxy_client
+        helper=Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
+            config=config,client=proxy_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota)
+        evaluator=Evaluator(workspace,model=manifest['eval_model'],prompt=manifest['eval_agent_prompt'],quota=quota)
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory),
-            prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),quota=quota,policy=cell['policy_id'],
+            prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
             progress=lambda row:store.update_cell(key,agent_resources=row))
         store.update_cell(key,**{k:v for k,v in result.items() if k!='resources'},agent_resources=result['resources'],owner=None)

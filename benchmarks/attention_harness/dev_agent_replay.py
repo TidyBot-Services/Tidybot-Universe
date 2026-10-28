@@ -7,7 +7,8 @@ import re
 import stat
 from .dev_agent_workspace import Workspace, atomic_write, encode, read_beneath
 
-TREE_LIMIT=32*1024*1024
+TREE_LIMIT=32*1024*1024  # Untrusted authored work/scratch only.
+PUBLIC_FILE_LIMIT=512*1024*1024
 
 
 def freeze_origin(workspace, cut, *, metadata=None, quiesce=nullcontext):
@@ -18,7 +19,7 @@ def freeze_origin(workspace, cut, *, metadata=None, quiesce=nullcontext):
         # Only authored work/scratch comes from hostile ws. All public history,
         # docs and responses are regenerated from the controller's sealed copies.
         workspace.regenerate()
-        files={};total=0
+        files={};total=0;authored_total=0;authored_count=0
         for root in (workspace.canonical,workspace.ws/'work',workspace.ws/'scratch'):
             if not root.exists():continue
             if not stat.S_ISDIR(root.lstat().st_mode):raise ValueError('unsafe_snapshot_root')
@@ -29,12 +30,15 @@ def freeze_origin(workspace, cut, *, metadata=None, quiesce=nullcontext):
                 if path.is_dir():continue
                 name=str(path.relative_to(workspace.canonical)) if root==workspace.canonical else str(path.relative_to(workspace.ws))
                 if name.startswith('rpc/'):continue # never replay request ids/responses
-                raw=read_beneath(root,str(path.relative_to(root)),TREE_LIMIT)
-                if len(files)>=65536:raise ValueError('snapshot_file_limit')
+                public=root==workspace.canonical
+                raw=read_beneath(root,str(path.relative_to(root)),PUBLIC_FILE_LIMIT if public else TREE_LIMIT)
+                if not public:
+                    authored_count+=1;authored_total+=len(raw)
+                    if authored_count>65536:raise ValueError('snapshot_file_limit')
+                    if authored_total>TREE_LIMIT:raise ValueError('snapshot_oversize')
                 total+=len(raw)
-                if total>TREE_LIMIT:raise ValueError('snapshot_oversize')
                 digest=hashlib.sha256(raw).hexdigest()
-                atomic_write(store,'objects/'+digest,raw)
+                if not (store/'objects'/digest).exists():atomic_write(store,'objects/'+digest,raw)
                 files[name]=dict(sha256=digest,bytes=len(raw),mode=0o600)
         manifest=dict(schema='attentionbench.agent-cut.v1',cut=cut,files=files,bytes=total,
                       metadata=metadata or {},replay='file_rehydration')
@@ -55,7 +59,7 @@ def provision_replay(cut, destination):
     for name,entry in manifest['files'].items():
         digest=entry['sha256']
         if not re.fullmatch('[a-f0-9]{64}',digest):raise ValueError('invalid_object_id')
-        data=read_beneath(path.parent.parent,'objects/'+digest,TREE_LIMIT)
+        data=read_beneath(path.parent.parent,'objects/'+digest,TREE_LIMIT if name.startswith(('work/','scratch/')) else PUBLIC_FILE_LIMIT)
         if len(data)!=entry['bytes'] or hashlib.sha256(data).hexdigest()!=digest:raise ValueError('snapshot_object_mismatch')
         if name.startswith(('work/','scratch/')):atomic_write(workspace.ws,name,data)
         else:workspace.publish(name,data)

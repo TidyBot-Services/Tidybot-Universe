@@ -417,7 +417,7 @@ raise SystemExit(pytest.main(['-q','-p','no:cacheprovider',
 
 
 @pytest.mark.parametrize('op,collaborator',[('run','executor'),('submit','evaluator')])
-def test_execution_eval_timeout_holds_dispatch(workspace,op,collaborator):
+def test_execution_timeout_holds_but_eval_timeout_is_unavailable(workspace,op,collaborator):
     gate=threading.Event()
     class SlowExecutor(FakeExecutor):
         def execute(self,*a,**kw):gate.wait(2);return super().execute(*a,**kw)
@@ -427,9 +427,19 @@ def test_execution_eval_timeout_holds_dispatch(workspace,op,collaborator):
     b=broker(workspace,timeouts={op:.02 if op=='run' else 3,'evaluate':.02},**opts)
     try:
         b.accept(request(op=op,payload={'entry':'work/main.py'}))
-        assert settled(b)['status']=='needs_review'
+        receipt=settled(b)
         assert b.budget.counts['executions']==1
-        assert b.accept(request('r2'))['error']=='needs_review'
+        if collaborator=='evaluator':
+            # D4/R4: unavailable Eval is neither a failed version nor a physical
+            # execution of uncertain outcome. Public work may continue.
+            assert receipt['status']=='completed'
+            assert receipt['result']['eval']['status']=='unavailable'
+            assert receipt['result']['eval']['passed'] is None
+            assert b.accept(request('r2'))['status']=='accepted'
+            assert settled(b,'r2')['status']=='completed'
+        else:
+            assert receipt['status']=='needs_review'
+            assert b.accept(request('r2'))['error']=='needs_review'
     finally:gate.set();b.close()
 
 

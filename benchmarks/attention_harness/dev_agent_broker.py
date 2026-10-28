@@ -17,6 +17,7 @@ import time
 from .dev_agent_workspace import read_beneath, atomic_write, encode, REQUEST_LIMIT, SOURCE_LIMIT
 from .dev_agent_diagnostics import screen_text, public_observation, project_planner_result
 from .dev_agent_feedback import public_outcome
+from .dev_agent_eval import feedback, unavailable
 
 SCHEMA = 'attentionbench.dev-agent-request.v1'
 OPS = {'submit', 'run', 'observe', 'find_objects', 'ik_check', 'plan_dry_run', 'ask_help', 'status'}
@@ -217,7 +218,7 @@ class Broker:
                 except (OSError,ValueError):pass
             return dict(response)
 
-    def _bounded(self, collaborator, method, *args, timeout):
+    def _bounded(self, collaborator, method, *args, timeout, quarantine=True):
         deadline = min(self.budget.deadline, time.monotonic() + timeout)
         done = threading.Event(); result = []
         def invoke():
@@ -228,7 +229,7 @@ class Broker:
         while not done.wait(min(.05, max(0, deadline-time.monotonic()))):
             if self.closing.is_set() or time.monotonic() >= deadline: break
         if not done.is_set():
-            self.quarantined = True
+            if quarantine:self.quarantined = True
             # Never wait indefinitely for cancellation, nor reuse this simulator.
             threading.Thread(target=collaborator.cancel, daemon=True).start()
             raise TimeoutError('collaborator_timeout')
@@ -244,6 +245,9 @@ class Broker:
 
     def _regenerate_history(self):
         from .dev_version_history import bounded
+        for row in self.histories['versions']:
+            path=self.workspace.canonical/'versions'/row['version_id']/'help.json'
+            if path.is_file():row['help']=json.loads(path.read_bytes())
         for kind,rows in self.histories.items():
             self.workspace.publish('history/'+kind+'.jsonl',b''.join(canonical(r)+b'\n' for r in rows))
         entries=[dict(version_id=r['version_id'],execution_id=r.get('execution_id'),
@@ -255,15 +259,22 @@ class Broker:
         base = 'executions/' + eid + '/'
         artifacts = {}
         for name, value in (
-            ('policy.py', screen_text(source.decode()).encode()),
-            ('stdout.txt', screen_text(result.get('stdout', '')).encode()),
-            ('stderr.txt', screen_text(result.get('stderr', '')).encode()),
-            ('trace.json', public_observation(result.get('trace', []))),
-            ('state_log.json', public_observation(result.get('state_log', []))),
+            ('policy.py', feedback(source.decode()).encode()),
+            ('stdout.txt', feedback(result.get('stdout', '')).encode()),
+            ('stderr.txt', feedback(result.get('stderr', '')).encode()),
+            ('trace.json', feedback(result.get('trace', []))),
+            ('state_log.json', feedback(result.get('state_log', []))),
             ('final_observation.json', public_observation(result.get('final_observation', {}))),
             ('initial_observation.json', public_observation(result.get('initial_observation', {}))),
             ('diagnostics/planner.json', [project_planner_result(d) for d in result.get('diagnostics', [])])):
             artifacts[name] = self.workspace.publish(base + name, value)
+        frames=[];export_deadline=self.budget.deadline
+        for row in result.get('frames',[]):
+            if self.closing.is_set() or time.monotonic()>=export_deadline:raise TimeoutError('recording_export_timeout')
+            data=row['data'];entry={k:v for k,v in row.items() if k!='data'}
+            entry['sha256']=hashlib.sha256(data).hexdigest()
+            self.workspace.publish(base+entry['filename'],data);frames.append(entry)
+        artifacts['frames.json']=self.workspace.publish(base+'frames.json',frames)
         outcome = public_outcome(result.get('status'), result.get('trace', []), error=result.get('error'))
         artifacts['result.json'] = self.workspace.publish(base + 'result.json', outcome)
         self._history('executions', dict(execution_id=eid, outcome=outcome, artifacts=artifacts))
@@ -293,18 +304,20 @@ class Broker:
                     if hasattr(self.budget,'ledger'):
                         self.budget.ledger.record_execution('request:'+rid,getattr(self.executor,'execution_usage',None))
                     value = self._execution(eid, source, result)
+                    if hasattr(self.helper,'capture'):self.helper.capture(self.executor)
                     if self.on_execution:self.on_execution(response,directory,result)
                     if self.on_cut and op=='submit':self.on_cut('post-exec',response)
                 elif self.on_cut and op=='submit':self.on_cut('post-exec',response)
                 if op == 'submit':
                     vid = response['version_id']; base = 'versions/' + vid + '/'
-                    self.workspace.publish(base + 'policy.py', screen_text(source.decode('utf-8', errors='replace')).encode())
+                    self.workspace.publish(base + 'policy.py', feedback(source.decode('utf-8', errors='replace')).encode())
                     self.workspace.publish(base + 'submission.json', dict(version_id=vid,
                         execution_id=response.get('execution_id'), source_sha256=record['source_sha256']))
-                    self.workspace.publish(base+'bundle.py',screen_text(source.decode('utf-8',errors='replace')).encode())
+                    self.workspace.publish(base+'bundle.py',feedback(source.decode('utf-8',errors='replace')).encode())
                     self.workspace.publish(base+'bundle-map.json',record.get('bundle_map',{}))
                     for path in sorted((self.workspace.private/'sources'/rid).glob('*.py')):
-                        self.workspace.publish(base+'sources/'+path.name,screen_text(path.read_text()).encode())
+                        self.workspace.publish(base+'sources/'+path.name,feedback(path.read_text()).encode())
+                    value.update(version_id=vid,execution_id=response.get('execution_id'))
                     if invalid:
                         verdict=dict(status='not_run_invalid_submission',passed=None)
                     else:
@@ -313,29 +326,37 @@ class Broker:
                             ledger.reserve(eval_id,'eval',{'eval_runs':1});ledger.claim(eval_id)
                         try:
                             verdict = self._bounded(self.evaluator, self.evaluator.evaluate, value,
-                                                    timeout=self.timeouts['evaluate'])
-                        except BaseException:
-                            verdict=dict(status='unavailable',passed=None,reason='Eval unavailable for '+vid)
-                            if ledger:ledger.settle(eval_id,verdict,unknown=True)
-                        else:
-                            if ledger:ledger.settle(eval_id,dict(status='completed'))
-                    value['eval'] = public_observation(verdict)
+                                                    timeout=self.timeouts['evaluate'],quarantine=False)
+                        except BaseException as exc:
+                            verdict=unavailable(vid,'timeout' if isinstance(exc,TimeoutError) else type(exc).__name__)
+                        if ledger:ledger.settle(eval_id,verdict,usage=getattr(self.evaluator,'usage',None))
+                    value['eval'] = feedback(verdict)
                     self.workspace.publish(base + 'eval.json', value['eval'])
                     if self.on_cut:self.on_cut('post-feedback',response)
-                    value['help'] = dict(status='policy_denied')
+                    value['help'] = dict(status='not_requested')
                     self.workspace.publish(base + 'help.json', value['help'])
-                    self._history('versions', dict(version_id=vid, execution_id=response.get('execution_id'),
-                        source_sha256=record['source_sha256'],source_bytes=len(source),**value))
+                    self._history('versions', dict(source_sha256=record['source_sha256'],source_bytes=len(source),**value))
+                    # Record Eval and completion before requesting any new help.
+                    # A completed run terminates here, even when Eval disagrees.
                     if self.on_version:self.on_version(response,value)
+                    if self.stop_reason not in ('run_complete','run_error'):
+                        value['help'] = (self._bounded(self.helper,self.helper.boundary,value,timeout=self.timeouts['ask_help'])
+                            if hasattr(self.helper,'boundary') else dict(status='policy_denied'))
+                        if value['help'].get('decision',{}).get('action')=='stop':self.stop_reason='help_policy_stop'
+                        self.workspace.publish(base + 'help.json', value['help'])
             else:
                 value = self._bounded(self.helper, self.helper.ask, payload, timeout=self.timeouts['ask_help'])
+                if value.get('version_id'):
+                    for row in self.histories['versions']:
+                        if row['version_id']==value['version_id']:row['help']=value
             response.update(status='needs_review' if self.quarantined else 'completed', result=value)
             if self.quarantined:response['error']='timeout'
         except TimeoutError:
             self.quarantined = True
             response.update(status='needs_review', error='timeout')
-        except BaseException:
+        except BaseException as exc:
             self.quarantined = True
+            atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(error=str(exc),error_class=type(exc).__name__)))
             response.update(status='needs_review', error='collaborator_failure')
         finally:
             with self.lock:

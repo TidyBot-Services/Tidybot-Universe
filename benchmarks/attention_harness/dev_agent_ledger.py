@@ -152,7 +152,10 @@ class AgentLedger:
         now=run['paused_at'] if run['paused_at'] is not None else self.clock()
         remaining=max(0,run['deadline']-now) if run['deadline'] is not None else run['wall_seconds']
         return dict(run, used=used, held=held, remaining={k:self.limits[k]-used[k]-held[k] for k in self.limits}, wall_remaining=remaining,
-                    model_turns=sum(r['resources'].get('model_turns',0) for r in rows if r['state']!='released'))
+                    model_turns=sum(r['resources'].get('model_turns',0) for r in rows if r['state']!='released'),
+                    attention=dict(help_count=used['help'],hint_human_seconds=sum(
+                        (r.get('receipt') or {}).get('hint_human_seconds',0) for r in rows
+                        if r['kind']=='help' and r['state'] in ('settled','unknown'))))
 
     def quota(self, sample):
         with self.tx() as db:

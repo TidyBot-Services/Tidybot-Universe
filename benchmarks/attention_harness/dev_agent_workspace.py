@@ -94,14 +94,23 @@ class Workspace:
 
     def publish(self, name, value):
         data = value if isinstance(value, bytes) else encode(value)
-        atomic_write(self.canonical, name, data)
+        self._restore(self.canonical,name,data)
         self.published.add(name)
-        atomic_write(self.ws, name, data)
+        self._restore(self.ws,name,data)
         return {'path': name, 'sha256': hashlib.sha256(data).hexdigest()}
+
+    @staticmethod
+    def _restore(root,name,data):
+        # Full byte comparison through the no-follow reader; do not trust mtimes
+        # or Dev-written history. Avoid fsync/rewrite of thousands of intact frames.
+        try:
+            if read_beneath(root,name,len(data))==data:return
+        except (OSError,ValueError):pass
+        atomic_write(root,name,data)
 
     def regenerate(self):
         for name in sorted(self.published):
-            atomic_write(self.ws, name, read_beneath(self.canonical, name, max(SOURCE_LIMIT, (self.canonical / name).stat().st_size)))
+            self._restore(self.ws, name, read_beneath(self.canonical, name, max(SOURCE_LIMIT, (self.canonical / name).stat().st_size)))
 
     def prepare(self, task, config):
         from .dev_tasks import dev_sdk, dev_sdk_prompt
@@ -150,7 +159,17 @@ plan_dry_run --action JSON [--start-joints JSON]: one {group, operation, args, k
 Both planning probes use reset obstacles; start_joints maps named arm joints to radians.
 Held objects/attachments report unsupported_scope: held_object. No physics is stepped.
 A planning acceptance is not a guarantee of dynamic execution success.
-ask_help --question TEXT: policy_denied until the help integration is installed.
+ask_help --question TEXT: available once per eligible formal interval while help remains.
+reactive_help: eligible after formal Eval fail OR unavailable, until the next submit.
+retry_k_then_ask: eligible after k consecutive formal Eval failures (default k=2);
+passed/unavailable resets that streak. Neither probes nor no-eval runs create eligibility.
+autonomous: no help. demo_first: fixed demo before v1, no manual help.
+budget_matched_random_escalation, trace_aware_hint_only and
+full_trace_aware_attention_planner: system injects a hint only on a policy grant at
+a formal boundary; manual asks return policy_denied. Reactive/threshold asks outside
+an unused eligible interval return not_eligible. Denied asks cost no attention.
+Inspect versions/vNNNN/help.json and submit responses for eligibility, instructions
+and hints. Eval advice and help are also delivered in the next resume message.
 status: current counts and in-flight work. wait ID: resume polling an existing request.
 All commands accept --timeout SECONDS; work is not cancelled by client timeout.
 Use --request-id ID to retry the exact request; changing its payload is a conflict.
