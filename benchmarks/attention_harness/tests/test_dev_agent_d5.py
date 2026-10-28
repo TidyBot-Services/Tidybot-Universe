@@ -181,7 +181,7 @@ def fixture_run(root,offline_dev_identity,label='native_success'):
         state='running';reason=None
     else:state='completed' if label=='native_success' else 'needs_review' if label=='fatal_error' else 'failed';reason=label
     store.update_cell(key,state=state,reason=reason,agent_resources=ledger.snapshot(),
-                      **({'error':'Solver exploded: fixture error verbatim'} if label=='fatal_error' else {}))
+                      **({'error':'broker_invariant: Solver exploded: fixture error verbatim','fatal_cause':'broker_invariant'} if label=='fatal_error' else {}))
     if label=='fatal_error':
         atomic_write(ws.private,'errors/failure.json',encode(dict(error='Failure opening /home/example/private/data',error_class='RuntimeError')))
         atomic_write(ws.private,'eval/v0003/error.json',encode(dict(error_class='timeout',error_text='Eval exceeded its hard deadline')))
@@ -233,6 +233,10 @@ def test_all_states_and_build_browser_fixture(tmp_path,offline_dev_identity,labe
     if label=='fatal_error':
         text=json.dumps(result)
         assert 'fixture error verbatim' in text and 'Eval exceeded its hard deadline' in text and 'Codex failed' in text
+        assert result['agent']['fatal_cause']=='broker_invariant'
+        from benchmarks.attention_harness.dev_agent_loop import end_line
+        line=end_line('k',dict(state='needs_review',reason='fatal_error',fatal_cause='broker_invariant',error=cell['error']))
+        assert 'fatal_cause=broker_invariant' in line and 'fixture error verbatim' in line
         assert '/home/example' not in text and '[host path]' in text
     if os.environ.get('D5_FIXTURE_DIR'):
         (root/(label+'.view.json')).write_text(json.dumps(result,ensure_ascii=False,indent=2))

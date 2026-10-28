@@ -60,6 +60,8 @@ test('all states, raw errors, held resources and stop reasons remain visible and
       assert.ok(!html.includes('<script>'));
     }
   }
+  const fatal=structuredClone(fixture);fatal.agent.phase='stopped';fatal.agent.reason='fatal_error';fatal.agent.fatal_cause='broker_invariant';
+  assert.ok(api.agentRunPage(fatal).includes('fatal_error · cause broker_invariant'));
 });
 test('new controls are connected to actual launcher serialization and separate agent rendering',()=>{
   for(const name of ['dev_mode','dev_model','eval_model','quota_stop_percent'])assert.ok(source.includes(`name="${name}"`));

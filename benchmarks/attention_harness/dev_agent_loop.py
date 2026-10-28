@@ -189,6 +189,13 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             if broker:broker._regenerate_history()
 
 
+def end_line(key, result):
+    """The scheduler.log line: reason, the fatal cause and the verbatim error."""
+    return 'agent cell %s ended: state=%s reason=%s%s%s'%(key,result['state'],result['reason'],
+        ' fatal_cause='+result['fatal_cause'] if result.get('fatal_cause') else '',
+        ' error='+result['error'] if result.get('error') else '')
+
+
 def continuation():
     return 'Continue from the authoritative history files and work/notes.md. Inspect the latest results and budgets with devtool status.'
 
@@ -236,7 +243,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
             progress=lambda row:store.update_cell(key,agent_resources=row))
         store.update_cell(key,**{k:v for k,v in result.items() if k!='resources'},agent_resources=result['resources'],owner=None)
-        print('agent cell %s ended: state=%s reason=%s%s'%(key,result['state'],result['reason'],' error='+result['error'] if result.get('error') else ''),file=sys.stderr,flush=True)
+        print(end_line(key,result),file=sys.stderr,flush=True)
         return result
     except Exception as exc:
         traceback.print_exc()

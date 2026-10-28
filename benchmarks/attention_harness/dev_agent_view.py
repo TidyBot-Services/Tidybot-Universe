@@ -167,7 +167,7 @@ def projection(store,cell,*,api='/api/dev-v2',now=None):
     versions=[{k:v[k] for k in ('version','version_id','execution_id','valid','eval','eval_verdict','native_success','agree','agreement') if k in v} for v in cell.get('versions',[])]
     result=clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','error','task_id','seed','policy_id','mode','budget','used','versions','jobs')})
     result.update(dev_mode='agent',versions=clean(versions),jobs=[],agent=dict(
-        phase=phase,reason=clean(cell.get('reason')),errors=errors,counts=used,held=held,limits=limits,
+        phase=phase,reason=clean(cell.get('reason')),fatal_cause=clean(cell.get('fatal_cause')),errors=errors,counts=used,held=held,limits=limits,
         remaining={k:limits[k]-used[k]-held[k] for k in limits},wall_seconds=wall,wall_limit=21600,
         quota=clean(quota),dev_model=selection.get('dev_model','gpt-6-astra'),eval_model=selection.get('eval_model','gpt-6-astra'),
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
