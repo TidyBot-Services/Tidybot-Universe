@@ -73,7 +73,7 @@ class Broker:
         self.helper, self.budget = helper or Helper(), budget or Budget()
         self.timeouts = {**TIMEOUTS, **(timeouts or {})}
         self.lock = threading.RLock(); self.closing = threading.Event()
-        self.records = {}; self.active = None; self.quarantined = False; self.failure = None
+        self.records = {}; self.active = None; self.quarantined = False; self.failure = None; self.owner_start_failures = 0
         self.histories = {k: [] for k in ('versions', 'executions', 'probes')}
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix='agent-broker')
         self.lease = (workspace.private / 'broker.lock').open('a')
@@ -195,8 +195,10 @@ class Broker:
                     response['probe_id'] = 'p%06d' % self.budget.counts['probes']
                     response['charged'] = {'probes':1}
                 else: self.budget.charge()
-            except (ValueError, OSError, TypeError) as exc:
-                return reject(str(exc) if str(exc) in {'budget_exhausted','wall_stop'} else 'invalid_request')
+            except (ValueError, OSError, TypeError, KeyError) as exc:
+                if str(exc) in {'budget_exhausted','wall_stop'}:return reject(str(exc))
+                if op in PROBES:response['validation_error']=screen_text(type(exc).__name__+': '+str(exc))[:500]
+                return reject('invalid_request')
             self.active = rid
             try:
                 self.records[rid]['validation_error']=validation_error
@@ -290,9 +292,26 @@ class Broker:
                 if hasattr(self.budget,'claim'):self.budget.claim(rid)
                 response['status'] = 'running'; self._publish(response)
             if op in PROBES:
-                timeout = self.timeouts[op] + (self.timeouts['probe_startup'] if getattr(self.prober, 'cold', False) else 0)
-                value = self._bounded(self.prober, self.prober.probe, op, payload, timeout=timeout)
-                value = public_observation(value)
+                cold = getattr(self.prober, 'cold', False)
+                timeout = self.timeouts[op] + (self.timeouts['probe_startup'] if cold else 0)
+                try:
+                    value = self._bounded(self.prober, self.prober.probe, op, payload, timeout=timeout, quarantine=False)
+                    self.owner_start_failures = 0
+                    value = public_observation(value)
+                except Exception as exc:
+                    # Read-only probes never touch the execution scene: report a charged
+                    # probe error and restart the owner. Quarantine only if the owner
+                    # cannot be started again after one restart.
+                    try:self.prober.cancel()
+                    except Exception:pass
+                    if getattr(self.prober, 'start_failed', False) or (cold and isinstance(exc, TimeoutError)):self.owner_start_failures += 1
+                    detail = type(exc).__name__ + ': ' + str(exc)
+                    atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(op=op,error='probe_error',detail=detail,cold=cold)))
+                    if self.owner_start_failures >= 2:
+                        self.failure = dict(request_id=rid, op=op, error='probe_owner_unrecoverable', detail=detail)
+                        raise RuntimeError('probe_owner_unrecoverable')
+                    value = dict(probe_error=dict(error_class=type(exc).__name__, message=screen_text(str(exc))[:500]),
+                                 owner_restarted=True, state_basis='reset_scene', physics_steps=0)
                 artifact = self.workspace.publish('probes/' + response['probe_id'] + '.json', value)
                 self._history('probes', dict(probe_id=response['probe_id'], artifact=artifact))
             elif op in ('submit', 'run'):
@@ -361,7 +380,8 @@ class Broker:
             response.update(status='needs_review', error='timeout')
         except BaseException as exc:
             self.quarantined = True
-            self.failure = dict(request_id=rid, op=op, error='collaborator_failure', detail=type(exc).__name__+': '+str(exc))
+            if not (self.failure and self.failure['request_id']==rid):
+                self.failure = dict(request_id=rid, op=op, error='collaborator_failure', detail=type(exc).__name__+': '+str(exc))
             atomic_write(self.workspace.private,'errors/'+rid+'.json',encode(dict(error=str(exc),error_class=type(exc).__name__)))
             response.update(status='needs_review', error='collaborator_failure')
         finally:

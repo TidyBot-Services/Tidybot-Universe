@@ -37,7 +37,7 @@ class Executor:
         self.episode=episode
         self.recording=result.get('recording',{})
         # Only the trusted controller consumes this private reference.
-        self.native_result_ref=result.get('artifacts',{}).get('native_result')
+        self.native_result_ref=(result.get('artifacts') or {}).get('native_result')
         # Never load the private evaluator file. Only enumerated public inputs.
         def read(name, default):
             path=episode/name if episode else None
@@ -56,7 +56,7 @@ class Executor:
             final_observation=json.loads(read('final_public_observation.json','{}')))
         # Preserve full per-physics-state public evidence independently of action events.
         receipt=json.loads(read('sandbox_receipt.json','{}'))
-        self.execution_usage=dict(sdk_calls=receipt.get('sdk_call_budget',{}).get('dispatched'),
+        self.execution_usage=dict(sdk_calls=(receipt.get('sdk_call_budget') or {}).get('dispatched'),
             control_steps=receipt.get('control_steps'),wall_seconds=receipt.get('elapsed_seconds'))
         public['state_log']=[]
         physics=episode/'native-physics.jsonl' if episode else None
@@ -86,7 +86,7 @@ class Prober:
         validate(op,payload)
 
     def probe(self,op,payload,*,deadline):
-        self.validate(op,payload)
+        self.validate(op,payload);self.start_failed=False
         if self.owner is None:
             self.index+=1;directory=self.private/('probe-owner-%04d'%self.index);directory.mkdir(parents=True)
             atomic_write(directory,'config.json',encode(self.config))
@@ -95,9 +95,11 @@ class Prober:
             self.cancelled.clear()
             self.owner=self.owner_factory(python=self.python,config=directory/'config.json',evidence=directory,
                 deadline=self.run_deadline,cancel_check=self.cancelled.is_set,agent_mode=True)
-            ready=self.spawner.submit(self.owner.start).result()
-            if ready.get('scene_condition') and not ready['scene_condition']['matched']:
-                self.close();raise ValueError('scene_contract_mismatch')
+            try:
+                ready=self.spawner.submit(self.owner.start).result()
+                if ready.get('scene_condition') and not ready['scene_condition']['matched']:raise ValueError('scene_contract_mismatch')
+            except BaseException:
+                self.start_failed=True;self.close();raise
         # Owner's deadline is per probe. Recreate if prior deadline is already exhausted.
         self.owner.deadline=deadline
         return self.owner.rpc('owner','agent_probe',kwargs=dict(op=op,payload=payload))

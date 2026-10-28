@@ -178,6 +178,21 @@ for dy in (0.03, 0.06, 0.09):
 ```
 Held objects/attachments report unsupported_scope: held_object. No physics is stepped.
 A planning acceptance is not a guarantee of dynamic execution success.
+Exact accepted payloads (the CLI builds these; extra keys are rejected):
+  observe: {}
+  find_objects: {} or {"names": ["obj", ...]}
+  ik_check: {"target": {"side": "left"|"right", "position": [x,y,z] (world m),
+             "quaternion_xyzw": [x,y,z,w] (unit)}, optional "start_joints", "base_offset"}
+  plan_dry_run: {"action": {"group": "left_arm"|"right_arm", "operation": "move_delta",
+             "args": [dx,dy,dz] or [dx,dy,dz,[rx,ry,rz]], "kwargs": {}}} | group "base"
+             with args [dx,dy,dyaw] | group "bimanual", operation "move_joints",
+             args [[14 joint radians]]; optional "start_joints", "base_offset"
+  start_joints: {"openarm_left_joint1": rad, ...}; base_offset: {"dx": m, "dy": m, "dyaw": rad}
+A malformed payload is rejected before dispatch (error invalid_request,
+validation_error names the check) and costs nothing. A planner rejection returns
+planning_accepted false with its reason. If a probe itself fails (exception or timeout),
+the response is completed with probe_error {error_class, message} and owner_restarted;
+it costs one probe and the run continues with a fresh simulator owner.
 ask_help --question TEXT: available once per eligible formal interval while help remains.
 reactive_help: eligible after formal Eval fail OR unavailable, until the next submit.
 retry_k_then_ask: eligible after k consecutive formal Eval failures (default k=2);

@@ -72,8 +72,9 @@ def project_planner_result(result):
     def present(key):
         if key in public and public[key] not in (None, [], {}): return True
         if key == 'contacts':
-            validation=public.get('validation',{})
-            return bool(validation.get('contacts') or validation.get('exact_geometry',{}).get('contacts'))
+            # Real planner rejections carry validation/exact_geometry: null (10-28 run).
+            validation=public.get('validation') or {}
+            return bool(validation.get('contacts') or (validation.get('exact_geometry') or {}).get('contacts'))
         if key == 'timing':
             return any(public.get(k) is not None for k in ('time_from_start_seconds','ik_seconds','ik_selection_seconds'))
         return False

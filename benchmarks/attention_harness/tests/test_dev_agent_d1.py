@@ -134,17 +134,19 @@ def test_wall_and_atomic_budget():
     assert b.counts['versions']==0
 
 
-def test_probe_timeout_quarantines(workspace):
+def test_probe_timeout_is_a_charged_probe_error(workspace):
+    # 10-28 policy: read-only probes never quarantine; the owner is restarted.
     gate=threading.Event()
     class Slow(FakeProber):
         def probe(self,*a,**kw):gate.wait(2);return super().probe(*a,**kw)
     b=broker(workspace,prober=Slow(),timeouts={'observe':.02})
     try:
-        b.accept(request());assert settled(b)['error']=='timeout'
+        b.accept(request());value=settled(b)
+        assert value['status']=='completed' and value['result']['probe_error']['error_class']=='TimeoutError'
+        assert value['result']['owner_restarted'] is True and not b.quarantined
         assert b.budget.counts['probes']==1
-        assert b.accept(request('r2'))['error']=='needs_review'
-        gate.set();time.sleep(.03)
-        assert b.records['r1']['response']['status']=='needs_review'
+        gate.set();b.accept(request('r2'));assert settled(b,'r2')['status']=='completed'
+        assert b.budget.counts['probes']==2
     finally:gate.set();b.close()
 
 

@@ -53,27 +53,57 @@ def test_warm_probe_keeps_per_op_limit(workspace):
     try:
         b.accept(request());assert settled(b)['status']=='completed'
         started=time.monotonic();b.accept(request('r2'));value=settled(b,'r2')
-        assert value['error']=='timeout' and time.monotonic()-started<1.
-        assert b.failure['op']=='observe' and 'after 0.1 s' in b.failure['detail']
+        assert value['result']['probe_error']['error_class']=='TimeoutError' and time.monotonic()-started<1.
+        assert 'after 0.1 s' in value['result']['probe_error']['message'] and not b.quarantined
         error=json.loads((workspace.private/'errors'/'r2.json').read_text())
-        assert error['error']=='timeout' and error['error_class']=='TimeoutError'
+        assert error['error']=='probe_error' and error['op']=='observe' and 'TimeoutError' in error['detail']
     finally:gate.set();b.close()
 
 
-def test_fatal_stop_carries_the_cause(ws):  # noqa: F811
-    class Hang(FakeProber):
-        def probe(self,*a,**kw):time.sleep(3);return super().probe(*a,**kw)
-    import benchmarks.attention_harness.dev_agent_broker as module
-    saved=dict(module.TIMEOUTS)
-    module.TIMEOUTS.update(observe=.05,probe_startup=0.)
-    try:
-        ledger=AgentLedger(ws.private/'db','cell')
-        session=fake_session(ws,["tool('observe');time.sleep(20)"])
-        result=drive(ws,session,ledger,executor=Executor(),prober=Hang())
-    finally:module.TIMEOUTS.clear();module.TIMEOUTS.update(saved)
+def test_unrecoverable_owner_quarantines_with_cause(ws):  # noqa: F811
+    class NoStart(FakeProber):
+        def probe(self,*a,**kw):self.start_failed=True;raise RuntimeError('Native startup failed: synthetic')
+    ledger=AgentLedger(ws.private/'db','cell')
+    session=fake_session(ws,["tool('observe');tool('observe');time.sleep(20)"])
+    result=drive(ws,session,ledger,executor=Executor(),prober=NoStart())
     assert result['state']=='needs_review' and result['reason']=='fatal_error'
     assert result['error'].startswith('broker_quarantined: observe ')
-    assert 'timeout' in result['error'] and 'collaborator_timeout after' in result['error']
+    assert 'probe_owner_unrecoverable' in result['error'] and 'synthetic' in result['error']
+    assert ledger.snapshot()['used']['read_only_probes']==2
+
+
+def test_probe_exception_returns_to_dev_and_owner_restarts(workspace):  # noqa: F811
+    class Flaky(FakeProber):
+        cancels=0
+        def probe(self,op,payload,**kw):
+            if self.calls==1:self.calls+=1;raise AttributeError("'NoneType' object has no attribute 'get'")
+            return super().probe(op,payload,**kw)
+        def cancel(self):self.cancels+=1
+    p=Flaky();b=broker(workspace,prober=p)
+    try:
+        b.accept(request('a'));assert settled(b,'a')['status']=='completed'
+        b.accept(request('b',op='ik_check',payload=dict(target=dict(side='left',position=[.5,-2.4,.95],quaternion_xyzw=[0,0,0,1]))))
+        value=settled(b,'b')
+        assert value['status']=='completed' and value['result']['probe_error']['error_class']=='AttributeError'
+        assert p.cancels==1 and not b.quarantined
+        b.accept(request('c',op='find_objects'));assert settled(b,'c')['status']=='completed'
+        assert b.budget.counts['probes']==3
+    finally:b.close()
+
+
+def test_malformed_probe_payload_returns_validation_reason(workspace):  # noqa: F811
+    b=broker(workspace)
+    bad=[('ik_check',dict(target=dict(side='left',position=[1,2],quaternion_xyzw=[0,0,0,1])),'finite_vector_required'),
+         ('ik_check',dict(target=dict(side='up',position=[1,2,3],quaternion_xyzw=[0,0,0,1])),'invalid_target'),
+         ('plan_dry_run',dict(action=dict(group='left_arm',operation='fly',args=[],kwargs={})),'unsupported_action'),
+         ('find_objects',dict(names='cup'),'invalid_names'),
+         ('ik_check',dict(target=dict(side='left',position=[1,2,3],quaternion_xyzw=[0,0,0,1]),base_offset=dict(dx=0)),'invalid_base_offset')]
+    try:
+        for i,(op,payload,reason) in enumerate(bad):
+            value=b.accept(request('m%d'%i,op=op,payload=payload))
+            assert value['status']=='rejected' and value['error']=='invalid_request' and reason in value['validation_error'],value
+        assert b.budget.counts['probes']==0 and not b.quarantined
+    finally:b.close()
 
 
 def test_owner_spawned_from_a_thread_that_outlives_each_probe(tmp_path):
@@ -91,3 +121,12 @@ def test_owner_spawned_from_a_thread_that_outlives_each_probe(tmp_path):
         assert spawned[-1] is not t and spawned[-1].is_alive()
     p.close();t=threading.Thread(target=call);t.start();t.join()
     assert len(spawned)==2 and spawned[0] is spawned[1] and spawned[1].is_alive()
+
+
+def test_projection_tolerates_null_validation_fields():
+    # 10-28 r3: a real /plan/ik rejection carried validation/exact_geometry null.
+    from benchmarks.attention_harness.dev_agent_diagnostics import project_planner_result
+    for result in ({'validation':None},{'validation':{'exact_geometry':None}},{'validation':{'contacts':None}}):
+        value=project_planner_result(result)
+        assert 'contacts' in value['missing'] and value['diagnostics_complete'] is False
+    assert 'contacts' not in project_planner_result({'validation':{'exact_geometry':{'contacts':[{'a':1}]}}})['missing']
