@@ -154,7 +154,7 @@ def tick_channel(state,deps,ordinary_tick):
     scoped=SimpleNamespace(**vars(deps));scoped.client=client;scoped.runner=runner;scoped.save=save
     status=client.read('status')
     if status['status'] in {'revoked','disabled'}:
-        if sub.get('current',{}).get('arm_id'):runner.pause(sub['current'])
+        if (sub.get('current') or {}).get('arm_id'):runner.pause(sub['current'])
         row.update(done=True,status=status);state.pop('family_active',None);save(sub);return True
     ordinary_tick(sub,scoped)
     if getattr(scoped,'begin_cycle',None):deps.begin_cycle=scoped.begin_cycle

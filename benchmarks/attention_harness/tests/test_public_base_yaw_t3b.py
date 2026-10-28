@@ -16,9 +16,10 @@ from openarm365_dev_v2.tests.test_planner_features import setup, add_version, SE
 @pytest.mark.parametrize('history', [False, True])
 @pytest.mark.parametrize('validation', [False, True])
 @pytest.mark.parametrize('factory_path', [False, True])
+@pytest.mark.parametrize('gpu_measurement', [False, True])
 @pytest.mark.parametrize('terminal', ['completed', 'failed', 'timeout', 'cancelled', 'condition_invalid', 'exception', 'infrastructure_failure'])
 def test_execute_seals_exact_public_yaw_decision(tmp_path, monkeypatch, frozen_creation,
-                                                fake_native, history, validation, factory_path, terminal):
+                                                fake_native, history, validation, factory_path, gpu_measurement, terminal):
     from benchmarks.attention_harness import dev_experiment
     write = dev_experiment.immutable
     def freeze(path, value):
@@ -50,8 +51,9 @@ def test_execute_seals_exact_public_yaw_decision(tmp_path, monkeypatch, frozen_c
     monkeypatch.setattr(native.NativeOwner, 'start', start_owner)
     from benchmarks.attention_harness import dev_memory_validation, gpu_meter, dev_version_history
     monkeypatch.setattr(dev_memory_validation, 'policy_input', lambda *a: ({'controlled': True}, {'controlled': True}))
-    monkeypatch.setattr(gpu_meter.GpuMeter, 'start', lambda self: self)
-    monkeypatch.setattr(gpu_meter.GpuMeter, 'stop', lambda self: {'gpu_seconds': 0})
+    meter_calls = []
+    monkeypatch.setattr(gpu_meter.GpuMeter, 'start', lambda self: meter_calls.append('start') or self)
+    monkeypatch.setattr(gpu_meter.GpuMeter, 'stop', lambda self: meter_calls.append('stop') or {'gpu_seconds': 1.25, 'samples': 3})
     calls = []
     enabled = dev_version_history.enabled
     monkeypatch.setattr(dev_version_history, 'enabled', lambda cfg: calls.append(cfg) or enabled(cfg))
@@ -66,9 +68,11 @@ def test_execute_seals_exact_public_yaw_decision(tmp_path, monkeypatch, frozen_c
             native.OpenArm365DevRunnerV2 if factory_path else None)
     if terminal == 'infrastructure_failure':
         with pytest.raises(loop.DevConflict, match='native infrastructure'):
-            loop.execute(*args, memory_validation={'controlled': True} if validation else None)
+            loop.execute(*args, memory_validation={'controlled': True} if validation else None, gpu_measurement=gpu_measurement)
     else:
-        loop.execute(*args, memory_validation={'controlled': True} if validation else None)
+        loop.execute(*args, memory_validation={'controlled': True} if validation else None, gpu_measurement=gpu_measurement)
+    metered = (validation or gpu_measurement) and not factory_path
+    assert meter_calls == (['start', 'stop'] if metered else [])
     bundle = json.loads((directory / 'bundle.json').read_bytes())
     visible = history and not validation
     assert bundle.pop('public_base_yaw_visible') is visible
@@ -96,9 +100,16 @@ def test_execute_seals_exact_public_yaw_decision(tmp_path, monkeypatch, frozen_c
         assert bundle['status'] == 'failed'
         trace = json.loads(loop.checked(bundle['artifacts']['trace']).read_bytes())
         assert 'memory_validation' not in trace
-    if validation and not factory_path:
+    if metered:
         measurement = json.loads(loop.checked(job['receipt']['gpu_measurement']).read_bytes())
         assert measurement['bundle_sha256'] == job['receipt']['bundle']['sha256']
+        assert measurement['cell'] == cell['key'] and measurement['version'] == 1
+        assert measurement['attempt_id'] == bundle['attempt_id']
+        from benchmarks.attention_harness.memory_validation_provision import Provisioner
+        assert Provisioner.gpu_seconds(store, cell['key']) == 1.25
+    else:
+        assert 'gpu_measurement' not in job['receipt']
+        assert not (directory / 'gpu-measurement.json').exists()
 
 
 @pytest.mark.parametrize('flag,history,error', [

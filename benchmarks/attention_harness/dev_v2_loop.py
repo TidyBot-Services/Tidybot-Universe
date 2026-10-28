@@ -430,7 +430,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     public_screen(packet)
     return packet,ref,help_record
 
-def execute(store,key,version,record,config,owner,directory,runner_factory,client=None,*,memory_validation=None):
+def execute(store,key,version,record,config,owner,directory,runner_factory,client=None,*,memory_validation=None,gpu_measurement=False):
     from .dev_version_history import enabled as history_enabled
     # Seal the invocation decision; failed traces may lack validation consumption.
     base_yaw_visible=history_enabled(config) and not memory_validation
@@ -492,7 +492,9 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
     watcher.start()
     meter=None;measurement=None
     try:
-        if memory_validation and runner_factory is None:
+        # Probes need independent cost evidence while retaining ordinary public
+        # projection and clean-origin execution (no validation envelope).
+        if (memory_validation or gpu_measurement) and runner_factory is None:
             from .gpu_meter import GpuMeter
             meter=GpuMeter().start()
         try:result=run_with_formal_boundary(request,runner=runner)

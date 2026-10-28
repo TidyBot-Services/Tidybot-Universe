@@ -26,7 +26,9 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
     ``grant`` includes the runner's sealed permission_scope (validation grants bind
     source/config; permission is either consumed human approval or the explicit
     frozen simulated Dev validation scope).
-    Arms use injected execution GPU seconds; origins meter their two fresh replays.
+    Arms and clean-origin probes use independently measured execution GPU seconds;
+    origins meter their two fresh replays. A probe's lack of a validation grant
+    does not exempt it from the finite, nonnegative independent-cost checks.
     Origin mode binds the settled historical ledger instead of a validation grant;
     it cannot emit a trial or relax any native, permission, safety or scene check.
     """

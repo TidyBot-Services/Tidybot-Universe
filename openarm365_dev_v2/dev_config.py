@@ -46,7 +46,7 @@ def verify_lock(ref,*,expected_source_root=None):
     for folder,expected in lock.get('source_sets',{}).items():
         actual=sorted(str(p.absolute()) for p in Path(folder).rglob('*.py') if '__pycache__' not in p.parts)
         if actual!=expected:raise ValueError('source file set drift: '+folder)
-    models=model_sources(runtime_root=expected_root)
+    models=model_sources(identity_path=expected_root/'openarm365/model/identity.json',runtime_root=expected_root)
     if lock.get('model_sources')!=models or any(lock['files'].get(k)!=v for k,v in models.items()):raise ValueError('transitive robot model lock incomplete/drifted')
     for name,digest in lock['files'].items():
         if sha(name)!=digest:raise ValueError('resource source drift: '+name)

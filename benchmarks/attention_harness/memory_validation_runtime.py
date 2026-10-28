@@ -180,7 +180,7 @@ class LedgerRunner:
             envelope_ref=directory/'memory-validation-envelope.json'
             if probe:
                 immutable(directory/'memory-validation-input.json',dict(memory_ids=[],exposure='none',context=current['context'],policy_sha256=record['source']['sha256'],config_sha256=current['config']['sha256']))
-                execute(store,key,version,record,config,owner,directory,self.runner_factory,self.provider)
+                execute(store,key,version,record,config,owner,directory,self.runner_factory,self.provider,gpu_measurement=True)
                 store.update_cell(key,state='completed');return
             if envelope_ref.exists():envelope=json.loads(envelope_ref.read_bytes())
             else:

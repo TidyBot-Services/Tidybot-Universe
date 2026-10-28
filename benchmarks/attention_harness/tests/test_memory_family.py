@@ -78,6 +78,21 @@ def test_family_switch_default_off(tmp_path):
     with pytest.raises(ValueError):settings(tmp_path)
 
 
+@pytest.mark.parametrize('status',['revoked','disabled'])
+def test_closed_family_between_batches_has_no_current_arm(tmp_path,status):
+    spec=dict(candidate_id='candidate',family_check_id='check')
+    atomic(tmp_path/'family-checks/check.json',spec)
+    atomic(tmp_path/'autovalidate.json',dict(enabled=True,family_checks=dict(enabled=True)))
+    state=dict(family_active='candidate',family_checks=dict(candidate=dict(worker=dict(current=None))))
+    client=SimpleNamespace(read=lambda action:spec if action=='check' else dict(status=status))
+    runner=SimpleNamespace(pause=lambda *a:pytest.fail('no active arm to pause'))
+    deps=SimpleNamespace(root=tmp_path,family_adapters={'candidate':(client,runner)},save=lambda value:None)
+    assert tick_channel(state,deps,lambda *a:pytest.fail('closed family dispatched'))
+    assert state['family_checks']['candidate']['done'] is True
+    assert state['family_checks']['candidate']['status']==dict(status=status)
+    assert 'family_active' not in state
+
+
 def test_family_reference_label_and_cap():
     trusted=dict(layer='family',trust_scope='family_scoped',created_at=1)
     reference=dict(layer='family',created_at=2)

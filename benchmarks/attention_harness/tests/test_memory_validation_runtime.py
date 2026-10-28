@@ -49,6 +49,27 @@ def test_runtime_refuses_overlapping_roots(tmp_path):
     with pytest.raises(ValueError):runtime.LedgerRunner(None,None,experiments_root=tmp_path,validator_root=tmp_path/'inside',state_root=tmp_path)
 
 
+def test_probe_requests_gpu_measurement_without_validation_envelope(tmp_path,monkeypatch):
+    from benchmarks.attention_harness import dev_v2_loop
+    from benchmarks.attention_harness.tests.family_import_evidence import layout
+    evidence=layout(tmp_path,monkeypatch)
+    current=dict(evidence.probe,arm_id=evidence.probe['probe_cell'])
+    calls=[]
+    monkeypatch.setattr(dev_v2_loop,'execute',lambda *a,**kw:calls.append(kw))
+    client=SimpleNamespace(get_memory=lambda mid:SimpleNamespace(
+        record_kind='family_candidate',status='candidate',version=1))
+    runner=runtime.LedgerRunner(client,None,experiments_root=evidence.experiments,
+        validator_root=tmp_path/'validator',state_root=evidence.state)
+    try:runner._run(current,None)
+    finally:runner.pool.shutdown()
+    assert calls==[dict(gpu_measurement=True)]
+    cell=evidence.exports[0].store.cell(current['arm_id'])
+    directory=Path(cell['artifact_dir'])/'v1'
+    clean=json.loads((directory/'memory-validation-input.json').read_bytes())
+    assert clean['memory_ids']==[] and clean['exposure']=='none'
+    assert not (directory/'memory-validation-envelope.json').exists()
+
+
 def test_start_acquires_ledger_before_background_work(tmp_path,monkeypatch):
     from benchmarks.attention_harness import dev_experiment
     c=dict(experiment_id='exp',jobs=[],owner=None);calls=[]
