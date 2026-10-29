@@ -2697,7 +2697,7 @@
     const recording = trace?.recording;
     const flipStaticRows = run.suite === 'robocasa365' && recording?.source !== 'official_simulator_display_rgb_after_each_control_step';
     const native = snapshot.eval?.native_outcomes?.[attempt?.attempt_id];
-    const nativeText = native?.evaluated === true ? (native.native_success === true ? 'Native task successful' : 'Native task unsuccessful') : 'Native outcome awaiting verification';
+    const nativeText = native?.evaluated === true ? (native.native_success === true ? 'Native task successful' : 'Native task unsuccessful') : isTerminal(snapshot) ? 'No native outcome recorded' : 'Native outcome awaiting verification';
     const nextAttempt=attempt&&attempts.find(a=>a.index===attempt.index+1);
     const switchMarkers=currentReplay ? '' : (snapshot.attention_control?.segments||[]).filter(s=>attempt&&(s.attempt_id===attempt.attempt_id||(!s.attempt_id&&s.generation>0&&s.effective_at>=attempt.started_at&&(!nextAttempt||s.effective_at<nextAttempt.started_at)))).map(s=>{
       let target=s.trace_seconds!=null?replayTarget({timestamp:s.trace_seconds,timestamp_basis:'relative'},recording,videos.length>0):{seconds:null};
@@ -3475,10 +3475,12 @@
     return [{state:'completed',stages:steps,label:`${steps.length} steps`,title:leading.map(stage=>stage.label).join(' · '),cause:''},...stages.slice(count)];
   }
   function agentEvalStrip(version,attemptId) {
-    const review=version?.evaluator_review,passed=version?.native_success===true||review?.passed===true;
-    const failed=review?.passed===false;
+    // The native task check decides the outcome; Eval's verdict only fills in when no native result exists.
+    const review=version?.evaluator_review,native=version?.native_success;
+    const passed=native===true||(typeof native!=='boolean'&&review?.passed===true);
+    const failed=native===false||review?.passed===false;
     const stages=agentStripStages(version?.eval_stages||[]);
-    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span></h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}"${stage.title?` title="${esc(stage.title)}"`:''}>${stage.state==='completed'?'✓ ':stage.state==='failed'?'✕ ':''}${esc(stage.label)}${stage.state==='failed'?`: ${esc(version.story?.short||stage.cause)}`:''}</span>`).join('<span class="op-eval-arrow" aria-hidden="true">→</span>')}</div>${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
+    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}"${stage.title?` title="${esc(stage.title)}"`:''}>${stage.state==='completed'?'✓ ':stage.state==='failed'?'✕ ':''}${esc(stage.label)}${stage.state==='failed'?`: ${esc(version.story?.short||stage.cause)}`:''}</span>`).join('<span class="op-eval-arrow" aria-hidden="true">→</span>')}</div>${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
   }
 
   function operatorEvalReview(review,attemptId) {
@@ -3796,12 +3798,12 @@
       }
     }
     rows.sort((a,b)=>(a.nextIndex??Infinity)-(b.nextIndex??Infinity)||(a.requestedAt??0)-(b.requestedAt??0)||String(a.id).localeCompare(String(b.id)));
-    const now=Date.now()/1000;
+    const now=Date.now()/1000, ended=isTerminal(snapshot);
     for (const row of rows) {
       row.seconds=row.responder==='human'&&row.requestedAt!=null?(row.answeredAt!=null?Math.max(0,row.answeredAt-row.requestedAt):row.state==='pending'?Math.max(0,now-row.requestedAt):0):0;
       if(snapshot.agent)row.seconds=row.help.delivered?Number(row.help.hint_human_seconds)||0:0;
       const next=attempts.find(a=>a.index===row.nextIndex);
-      row.effect=row.state!=='answered'?(row.state==='pending'?'awaiting_reply':'no_reply'):!next?'waiting':succeeded(next)?'fixed':next.status==='running'?'running':'still_failed';
+      row.effect=row.state!=='answered'?(row.state==='pending'&&!ended?'awaiting_reply':'no_reply'):!next?(ended?'no_next':'waiting'):succeeded(next)?'fixed':next.status==='running'&&!ended?'running':'still_failed';
     }
     const humanSeconds=rows.reduce((t,r)=>t+r.seconds,0);
     const humanRows=rows.filter(r=>r.responder==='human'&&r.state==='answered').length;
@@ -3888,7 +3890,7 @@
     else if(g.solved){rate=`1 per ${g.requests}`;rateNote=`task solved per help request${g.requests===1?'':'s'}`;}
     else {rate='0';rateNote=g.requests?`tasks solved · ${g.anyHuman?attentionTime(g.humanSeconds)+' of human time':g.requests+' help request'+(g.requests===1?'':'s')} spent`:'tasks solved so far';}
     const hit=snapshot.agent?`${g.hits} of ${delivered} delivered`:g.judged?`${g.hits} / ${g.judged}`:'—';
-    const effect={fixed:['✓ Next attempt succeeded','good'],still_failed:['✕ Next attempt still failed','bad'],running:['● Next attempt running','mid'],waiting:['… Waiting for the next attempt','mid'],awaiting_reply:['● Waiting for a reply','mid'],no_reply:['— No reply given','mid']};
+    const effect={fixed:['✓ Next attempt succeeded','good'],still_failed:['✕ Next attempt still failed','bad'],running:['● Next attempt running','mid'],waiting:['… Waiting for the next attempt','mid'],no_next:['— Run ended before another attempt','mid'],awaiting_reply:['● Waiting for a reply','mid'],no_reply:['— No reply given','mid']};
     const kind={hint:'Hint',approval:'Approval',interrupt:'Interrupt',advisor:'Automatic advisor',demo:'Example'};
     const {baseline,height,step}=model,R=24;
     const x=index=>model.left+index*step;
@@ -4649,8 +4651,8 @@
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
     const passed=version.evaluator_review?.passed;
-    const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':'unavailable'}`;
-    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&story.short?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(story.short)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+    const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':version.eval_unavailable?'did not run':'unavailable'}`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&story.short?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(story.short)}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);

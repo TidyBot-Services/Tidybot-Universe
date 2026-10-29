@@ -373,9 +373,40 @@ def replay_stages(events, review, solved=False):
     return rows
 
 
+TERMINAL_STATES = ('completed','failed','cancelled','needs_review','stopped','condition_invalid','budget_exhausted','not_started')
+
+
+def native_of(version):
+    """Operator-only native verdict. Agent runs from 10-29 store it under version['agent'] (sol3)."""
+    for value in (version.get('native_success'), (version.get('agent') or {}).get('native_success')):
+        if type(value) is bool:
+            return value
+    return None
+
+
+def eval_unavailable_reason(cell, vid, review):
+    """Why a formal Eval produced no verdict, from the recorded error (never hidden)."""
+    try:
+        recorded = json.loads(read_beneath(Path(cell['artifact_dir'])/'agent/private', f'eval/{vid}/error.json', 1024*1024))
+    except (OSError, ValueError):
+        recorded = {}
+    text = str(recorded.get('error_text') or '')
+    kind = str(recorded.get('error_class') or review.get('error') or '')
+    if 'Errno 28' in text or 'No space left' in text:
+        return 'disk full (ENOSPC)'
+    if kind == 'timeout' or 'timeout' in text.lower():
+        return 'timed out'
+    if kind or text:
+        return ': '.join(x for x in (kind, text) if x)
+    return 'no verdict was recorded'
+
+
 def version_evidence(cell, version, *, media=True, instruments=True):
     """Bind public evidence to the same identities checked by devWorkspaceSnapshot."""
     from .dev_agent_view import clean
+    native = native_of(version)
+    if native is not None:
+        version = dict(version, native_success=native)
     n = version['version']; vid = version.get('version_id', f'v{n:04d}')
     prefix = f'compat/{vid}/'
     submission = public(cell, f'versions/{vid}/submission.json', {})
@@ -418,6 +449,17 @@ def version_evidence(cell, version, *, media=True, instruments=True):
                try_next='' if version.get('native_success') is True or review.get('passed') is True else plain_sentence(review.get('reference_suggestion')),
                eval_stages=replay_stages([], review, version.get('native_success') is True), execution_state='not_dispatched')
     row['version_id'] = vid
+    # The banner and captions follow the native verdict; an Eval that did not run says so with its reason.
+    story = row['story']
+    if review.get('status') == 'unavailable' or (review.get('passed') is None and cell.get('state') in TERMINAL_STATES):
+        row['eval_unavailable'] = eval_unavailable_reason(cell, vid, review)
+        story = dict(story, short='Eval did not run', failure_class=None,
+                     sentence=f'Eval did not run: {row["eval_unavailable"]}.')
+    if native is True:
+        story = dict(story, short='solved', failure_class=None)
+    elif native is False and story.get('short') == 'solved':
+        story = dict(story, short='Eval passed, task check failed', failure_class='Eval disagreed')
+    row['story'] = story
     if not eid:
         return row, assets
     citations = []
