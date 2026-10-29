@@ -322,6 +322,10 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         manifest['agent_budget']=dict(formal_versions=10,moving_executions=40,read_only_probes=300,eval_runs=10,help=help_budget,
             sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=21600,model_turns=None,tokens=None)
         for config in configs.values():config['dev_mode']='agent'
+        # Creation-only freeze of the Eval-only container rule (option A); old manifests have none.
+        from .dev_agent_success import EVAL_RULE,for_configs
+        conditions=for_configs(configs)
+        if conditions:manifest.update(success_conditions=conditions,eval_success_rule=EVAL_RULE)
     from .execution_profile import manifest_metadata
     metadata=manifest_metadata(manifest)
     # Absence encodes legacy on disk; display helpers supply its label.

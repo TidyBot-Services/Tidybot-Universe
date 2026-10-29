@@ -264,7 +264,9 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         exporter=Exporter(store,key,workspace,config,ledger)
         helper=Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
             config=config,client=proxy_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory)
-        evaluator=Evaluator(workspace,model=manifest['eval_model'],prompt=manifest['eval_agent_prompt'],quota=quota)
+        condition=manifest.get('success_conditions',{}).get(f"{cell['task_id']}:{cell['seed']}")
+        evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota,success_condition=condition,
+            prompt=manifest['eval_agent_prompt']+(manifest['eval_success_rule'] if condition else ''))
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory),
             prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),

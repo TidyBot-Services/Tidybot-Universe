@@ -44,7 +44,7 @@ def validate(value):
     return value
 
 
-def build_workspace(workspace, execution):
+def build_workspace(workspace, execution, success_condition=None):
     vid,eid = execution['version_id'],execution['execution_id']
     root = workspace.private/'eval'/vid
     ws = root/'ws'; ws.mkdir(parents=True,exist_ok=False)
@@ -58,13 +58,20 @@ def build_workspace(workspace, execution):
         copy('versions/'+vid+'/sources/'+path.name,'sources/'+path.name)
     frames=json.loads((ws/'frames.json').read_bytes())
     for row in frames: copy('executions/'+eid+'/'+row['filename'],row['filename'])
+    if success_condition:
+        # Eval-only public container rule; final pose is required to apply it.
+        from .dev_agent_success import FILE,eval_view
+        copy('executions/'+eid+'/final_observation.json','final_observation.json')
+        atomic_write(ws,FILE,encode(eval_view(success_condition)))
     return ws
 
 
 class Evaluator:
-    def __init__(self, workspace, *, model='gpt-6-astra', prompt=EVAL_PROMPT, quota=None, command_factory=None):
+    def __init__(self, workspace, *, model='gpt-6-astra', prompt=EVAL_PROMPT, quota=None, command_factory=None,
+                 success_condition=None):
         from .dev_agent_isolation import controller_command
         self.workspace,self.model,self.prompt,self.quota=workspace,model,prompt,quota
+        self.success_condition=success_condition
         self.command_factory=command_factory or controller_command
         self.preflight=command_factory is None
         self.process=None;self.usage=None;self.cancelled=threading.Event()
@@ -74,7 +81,7 @@ class Evaluator:
         root=self.workspace.private/'eval'/vid
         error=None;answer=None;completed=False
         try:
-            ws=build_workspace(self.workspace,execution)
+            ws=build_workspace(self.workspace,execution,self.success_condition)
             if self.preflight:
                 import socket
                 from .dev_agent_isolation import verify_runtime
@@ -121,6 +128,12 @@ class Evaluator:
                     raise RuntimeError('process_failed')
                 try:verdict=validate(json.loads(answer))
                 except (ValueError,TypeError):raise ValueError('schema_invalid')
+                if self.success_condition:
+                    from .dev_agent_success import redact_bounds
+                    atomic_write(root,'verdict.json',encode(verdict))
+                    hide=lambda text:redact_bounds(text,self.success_condition)
+                    verdict=dict(verdict,reason=hide(verdict['reason']),advice=hide(verdict['advice']),
+                                 evidence=[dict(r,claim=hide(r['claim'])) for r in verdict['evidence']])
                 result=dict(status='completed',**feedback(verdict))
         except (TimeoutError,subprocess.TimeoutExpired):
             error='timeout';result=unavailable(vid,error)
