@@ -26,7 +26,7 @@ class Memory:
         self.packet, self.generations = self.default, {}
         self.message = ''
 
-    def open(self, number, previous):
+    def open(self, number, previous, *, deliver_notes=True):
         directory = self.workspace.private / 'memory' / f'v{number}'
         directory.mkdir(parents=True, exist_ok=True)
         packet, service = memory.load_memory(self.store, self.key, number, previous,
@@ -35,7 +35,7 @@ class Memory:
             packet = self.default
         self.number, self.previous, self.packet, self.service = number, previous, packet, service
         self._binding()
-        notes = memory_run_notes.deliver(self.store, self.key, number, directory) if self.run_notes else []
+        notes = memory_run_notes.deliver(self.store, self.key, number, directory) if self.run_notes and deliver_notes else []
         entries = memory_run_notes.merge(packet['entries'], notes, family=self.family) if notes else packet['entries']
         view = feedback(prompt_memory_view(dict(memory=entries)))
         self.workspace.publish(f'memory/v{number}.json', view)
@@ -92,3 +92,82 @@ class Memory:
         mirror_job(self.store, self.key, number, 'cache', job,
                    dict(help_count=price['count'], help_credits=price['credits'], help_wait_seconds=0),
                    dict(help=ref, agent_request_id=jid, accounting='agent_ledger_mirror'))
+
+
+def stage_provisional(store, key, version, directory, workspace, ledger):
+    """Seal the prior formal interval; bookkeeping can never stop a run."""
+    from pathlib import Path
+    from . import memory_provisional as provisional
+    from .dev_agent_export import exported
+    from .dev_v2_loop import immutable, checked
+    from .dev_agent_workspace import read_beneath
+    try:
+        directory = Path(directory)
+        cell = store.cell(key)
+        if (not exported(cell, version) or cell.get('validation_experiment') or cell.get('positive_control')
+                or (directory / 'memory-validation-input.json').exists()):
+            return None
+        projected = json.loads((directory / 'public-feedback.json').read_bytes())
+        memory_run_notes.outcomes(store, key, version, directory, projected)
+        if version < 2:
+            return None
+        answer = json.loads((directory / 'help.json').read_bytes())
+        if (answer.get('provider') != 'advisor' or answer.get('delivered') is not True
+                or answer.get('status') != 'delivered' or answer.get('cache_hit')
+                or answer.get('rejected')):
+            return None
+        vid = f'v{version - 1:04d}'
+        jobs = ledger.jobs()
+        help_job = next(j for j in jobs if j['id'] == 'help:' + vid)
+        evidence_dir = directory / 'agent-help'
+        refs = dict(request_view=provisional._ref(workspace.private / 'help' / vid / 'request-view.json'),
+                    advisor=provisional._ref(workspace.private / 'help' / vid / 'advisor.json'),
+                    help_job=immutable(evidence_dir / 'help-job.json', help_job))
+        for label, number in (('origin', version - 1), ('help', version)):
+            record = json.loads((directory.parent / f'v{number}' / 'version.json').read_bytes())
+            checked(record['source'])
+            if provisional._ref(directory.parent / f'v{number}' / 'policy.py')['sha256'] != record['source']['sha256']:
+                raise provisional.NotStaged('source_export_drift')
+            refs[label + '_record'] = provisional._ref(directory.parent / f'v{number}' / 'version.json')
+            job = next(j for j in cell['jobs'] if j['version'] == number and j['kind'] == 'execute' and j['state'] == 'settled')
+            refs[label + '_export'] = immutable(evidence_dir / (label + '-export.json'), job)
+            agent_job = next(j for j in jobs if j['id'] == job['receipt']['agent_request_id'])
+            refs[label + '_execution'] = immutable(evidence_dir / (label + '-execution.json'), agent_job)
+        if answer.get('system_injected') is True:
+            refs['delivery'] = immutable(evidence_dir / 'proactive-grant.json', help_job['receipt'])
+        else:
+            responses = workspace.canonical / 'rpc/responses'
+            matches = []
+            for path in sorted(responses.glob('*.json')):
+                value = json.loads(read_beneath(responses, path.name, 32*1024*1024))
+                if (value.get('op') == 'ask_help' and value.get('status') == 'completed'
+                        and value.get('result', {}).get('version_id') == vid
+                        and value['result'].get('delivered') is True):
+                    matches.append(path)
+            if len(matches) != 1:
+                raise provisional.NotStaged('help_delivery_missing_or_ambiguous')
+            refs['delivery'] = provisional._ref(matches[0])
+        evidence = immutable(directory / 'agent-help-evidence.json', dict(
+            schema_version='attentionbench.agent-help-evidence.v1', channel='dev_agent',
+            origin_version=version - 1, help_version=version, refs=refs))
+        # The importer and Service share the same byte and interval verifier.
+        from .memory_auto_import import agent_evidence
+        proposal_refs = dict(agent_help_evidence=evidence, help=provisional._ref(directory / 'help.json'))
+        for label, number in (('origin', version - 1), ('help', version)):
+            base = directory.parent / f'v{number}'
+            proposal_refs[label + '_source'] = provisional._ref(base / 'policy.py')
+            proposal_refs[label + '_public_feedback'] = provisional._ref(base / 'public-feedback.json')
+        from attention_memory_service.agent_provisional import verify
+        verify(dict(origin_version=version - 1, help_version=version, provider=answer['provider'], cell=key,
+                    digests={name: ref['sha256'] for name, ref in proposal_refs.items()}),
+               answer['content'], agent_evidence(dict(refs=proposal_refs)))
+        memory_run_notes.create(store, key, version, directory)
+        return provisional.stage(store, key, version, directory, agent_help_evidence=evidence)
+    except Exception as exc:
+        reason = str(exc) if isinstance(exc, provisional.NotStaged) else 'error:' + type(exc).__name__
+        try:
+            with store.tx() as db:
+                store.event(db, 'planner_memory_provisional_skipped', dict(cell=key, version=version, reason=reason[:200]))
+        except Exception:
+            pass
+        return None

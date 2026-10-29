@@ -232,7 +232,7 @@ class Helper:
             record=self.ask_provider(view,self.config['advisor_proxy'],self.client,cache_dir=self.workspace.private/'advisor-cache')
             public_screen(record['feedback'])
             cost=human_seconds(view,record['feedback'])
-            row.update(status='delivered',delivered=True,content=record['feedback'],help_count=1,
+            row.update(status='delivered',delivered=True,provider='advisor',content=record['feedback'],help_count=1,
                        cache_hit=record.get('cache_hit',False),**cost)
             atomic_write(self.workspace.private,'help/'+vid+'/advisor.json',encode(record))
         except Exception as exc:
