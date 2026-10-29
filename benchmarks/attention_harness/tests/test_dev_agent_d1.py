@@ -219,7 +219,7 @@ def test_isolation_profile_and_identity(tmp_path,monkeypatch):
 def test_preflight_pass_fail_and_missing_bwrap(workspace,monkeypatch):
     monkeypatch.setattr(isolation,'real_binary',lambda:Path('/usr/bin/codex'))
     monkeypatch.setattr(isolation.shutil,'which',lambda _: '/usr/bin/bwrap')
-    checks=dict(outside_hidden=True,home_listing_restricted=True,workspace_rw=True,network_denied=True)
+    checks=dict(outside_hidden=True,home_listing_restricted=True,workspace_rw=True,shared_readonly=True,network_denied=True)
     def run(cmd,**kw):
         assert cmd[:2]==['codex','sandbox'] and kw['stdin']==subprocess.DEVNULL
         return SimpleNamespace(returncode=0,stdout=json.dumps(checks),stderr='')

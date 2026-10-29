@@ -8,7 +8,7 @@ import signal
 import subprocess
 import threading
 import time
-from .dev_agent_workspace import atomic_write, encode, read_beneath
+from .dev_agent_workspace import atomic_write, encode, read_beneath, share
 from .dev_agent_prompts import EVAL_PROMPT
 from .dev_agent_diagnostics import FORBIDDEN
 
@@ -57,7 +57,9 @@ def build_workspace(workspace, execution, success_condition=None):
     for path in sorted((workspace.canonical/'versions'/vid/'sources').glob('*.py')):
         copy('versions/'+vid+'/sources/'+path.name,'sources/'+path.name)
     frames=json.loads((ws/'frames.json').read_bytes())
-    for row in frames: copy('executions/'+eid+'/'+row['filename'],row['filename'])
+    # One physical frame: the canonical 0444 inode, mounted read-only under frames/.
+    if frames:(ws/'frames').mkdir(mode=0o700,exist_ok=True)
+    for row in frames: share(workspace.canonical,'executions/'+eid+'/'+row['filename'],ws,row['filename'])
     if success_condition:
         # Eval-only public container rule; final pose is required to apply it.
         from .dev_agent_success import FILE,eval_view

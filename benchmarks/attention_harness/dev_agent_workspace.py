@@ -1,8 +1,10 @@
 """Per-cell workspace. Only private/public is authoritative; ws is hostile."""
+import errno
 import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import stat
 import uuid
 
@@ -10,6 +12,16 @@ SOURCE_LIMIT = 128 * 1024
 REQUEST_LIMIT = 64 * 1024
 DIRS = ('docs', 'history', 'versions', 'executions', 'probes', 'events',
         'rpc/requests', 'rpc/responses', 'work', 'scratch')
+# Frames are stored once: canonical, ws and Eval share one 0444 inode. This is safe
+# only because the sandbox mounts these folders read-only (build_profile); a plain
+# 0444 hardlink is not, since Dev owns the inode and can chmod it back (10-29).
+READONLY_DIRS = ('executions', 'frames')
+SHARED_MODE = 0o444
+COPY_ERRORS = (errno.EXDEV, errno.EPERM, errno.EMLINK, errno.EOPNOTSUPP)
+
+
+def shared_name(name):
+    return bool(re.fullmatch(r'executions/e\d+/frames/[^/]+\.png', name))
 
 
 def encode(value):
@@ -41,14 +53,16 @@ def directory(root, components=(), *, create=False):
         raise
 
 
-def read_beneath(root, name, limit=SOURCE_LIMIT):
+def read_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
+    """shared=True also accepts a read-only shared frame inode (nlink > 1, no write bits)."""
     components = parts(name)
     parent = directory(root, components[:-1])
     try:
         fd = os.open(components[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
         try:
             before = os.fstat(fd)
-            if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or before.st_size > limit:
+            linked = shared and not before.st_mode & 0o222
+            if not stat.S_ISREG(before.st_mode) or (before.st_nlink != 1 and not linked) or before.st_size > limit:
                 raise ValueError('unsafe_file')
             data = bytearray()
             while len(data) <= limit:
@@ -56,7 +70,7 @@ def read_beneath(root, name, limit=SOURCE_LIMIT):
                 if not chunk: break
                 data.extend(chunk)
             after = os.fstat(fd)
-            if (len(data) > limit or before.st_size != len(data) or after.st_nlink != 1
+            if (len(data) > limit or before.st_size != len(data) or (after.st_nlink != 1 and not linked)
                     or (before.st_mtime_ns, before.st_ctime_ns) != (after.st_mtime_ns, after.st_ctime_ns)):
                 raise ValueError('file_changed_or_oversize')
             return bytes(data)
@@ -64,7 +78,7 @@ def read_beneath(root, name, limit=SOURCE_LIMIT):
     finally: os.close(parent)
 
 
-def atomic_write(root, name, data):
+def atomic_write(root, name, data, mode=0o600):
     components = parts(name)
     parent = directory(root, components[:-1], create=True)
     temp = '.publish-' + uuid.uuid4().hex
@@ -73,6 +87,7 @@ def atomic_write(root, name, data):
         try:
             with os.fdopen(fd, 'wb', closefd=False) as stream:
                 stream.write(data); stream.flush(); os.fsync(fd)
+            if mode != 0o600: os.fchmod(fd, mode)
         finally: os.close(fd)
         os.replace(temp, components[-1], src_dir_fd=parent, dst_dir_fd=parent)
         os.fsync(parent)
@@ -80,6 +95,40 @@ def atomic_write(root, name, data):
         try: os.unlink(temp, dir_fd=parent)
         except FileNotFoundError: pass
         os.close(parent)
+
+
+def share(source_root, name, root, destination=None):
+    """Hardlink one read-only canonical frame to root/destination; copy across filesystems.
+
+    Returns 'linked', 'present' (already the same inode) or 'copied'.
+    """
+    destination = destination or name
+    src, dst = parts(name), parts(destination)
+    source = directory(source_root, src[:-1])
+    try:
+        info = os.stat(src[-1], dir_fd=source, follow_symlinks=False)
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o222: raise ValueError('unsafe_shared_source')
+        parent = directory(root, dst[:-1], create=True)
+        try:
+            try:
+                current = os.stat(dst[-1], dir_fd=parent, follow_symlinks=False)
+                if (current.st_dev, current.st_ino) == (info.st_dev, info.st_ino): return 'present'
+            except FileNotFoundError: pass
+            temp = '.publish-' + uuid.uuid4().hex
+            try:
+                os.link(src[-1], temp, src_dir_fd=source, dst_dir_fd=parent, follow_symlinks=False)
+            except OSError as exc:
+                if exc.errno not in COPY_ERRORS: raise
+            else:
+                try: os.replace(temp, dst[-1], src_dir_fd=parent, dst_dir_fd=parent)
+                finally:
+                    try: os.unlink(temp, dir_fd=parent)
+                    except FileNotFoundError: pass
+                return 'linked'
+        finally: os.close(parent)
+    finally: os.close(source)
+    atomic_write(root, destination, read_beneath(source_root, name, info.st_size, shared=True), SHARED_MODE)
+    return 'copied'
 
 
 class Workspace:
@@ -94,22 +143,28 @@ class Workspace:
 
     def publish(self, name, value):
         data = value if isinstance(value, bytes) else encode(value)
-        self._restore(self.canonical,name,data)
+        linked = shared_name(name)
+        self._restore(self.canonical,name,data,linked)
         self.published.add(name)
-        self._restore(self.ws,name,data)
+        if linked: share(self.canonical,name,self.ws)
+        else: self._restore(self.ws,name,data)
         return {'path': name, 'sha256': hashlib.sha256(data).hexdigest()}
 
     @staticmethod
-    def _restore(root,name,data):
+    def _restore(root,name,data,linked=False):
         # Full byte comparison through the no-follow reader; do not trust mtimes
         # or Dev-written history. Avoid fsync/rewrite of thousands of intact frames.
         try:
-            if read_beneath(root,name,len(data))==data:return
+            if read_beneath(root,name,len(data),shared=linked)==data:
+                if not linked or not os.lstat(root/name).st_mode & 0o222:return
         except (OSError,ValueError):pass
-        atomic_write(root,name,data)
+        atomic_write(root,name,data,SHARED_MODE if linked else 0o600)
 
     def regenerate(self):
         for name in sorted(self.published):
+            # A shared frame is re-linked from the trusted canonical inode, never copied from ws.
+            if shared_name(name) and not os.lstat(self.canonical / name).st_mode & 0o222:
+                share(self.canonical, name, self.ws); continue
             self._restore(self.ws, name, read_beneath(self.canonical, name, max(SOURCE_LIMIT, (self.canonical / name).stat().st_size)))
 
     def prepare(self, task, config, success_condition=None):

@@ -50,8 +50,9 @@ def artifact(cell,name):
     if not _public_name(name):raise FileNotFoundError('Not an agent public artifact')
     root=Path(cell['artifact_dir'])/'agent'
     try:
-        raw=read_beneath(root/'ws',name,32*1024*1024)
-        canonical=read_beneath(root/'private/public',name,32*1024*1024)
+        linked=name.endswith('.png')
+        raw=read_beneath(root/'ws',name,32*1024*1024,shared=linked)
+        canonical=read_beneath(root/'private/public',name,32*1024*1024,shared=linked)
     except (OSError,ValueError):raise FileNotFoundError('Agent public evidence unavailable') from None
     if raw!=canonical:raise FileNotFoundError('Agent public evidence digest mismatch')
     if name.endswith('.png'):
@@ -99,7 +100,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         result=[]
         for label,name in names:
             if not _public_name(name):continue
-            try:read_beneath(public,name,32*1024*1024)
+            try:read_beneath(public,name,32*1024*1024,shared=name.endswith('.png'))
             except FileNotFoundError:
                 result.append(dict(label=label+' (not yet available)',available=False));continue
             result.append(dict(label=label,available=True,url=base+quote(name,safe='/')))

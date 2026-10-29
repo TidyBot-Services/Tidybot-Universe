@@ -69,11 +69,14 @@ def codex_identity():
 
 
 def build_profile(workspace):
+    from .dev_agent_workspace import READONLY_DIRS
     workspace = Path(workspace).resolve(strict=True)
     if not workspace.is_dir(): raise IsolationUnavailable('workspace_missing')
     binary = real_binary()
     q = json.dumps
-    filesystem = '{ ":minimal" = "read", ":project_roots" = { "." = "write" }, ' + \
+    # Shared frame inodes live under these folders; read-only mounts stop chmod/write/unlink.
+    readonly = ''.join(', ' + q(name) + ' = "read"' for name in READONLY_DIRS if (workspace / name).is_dir())
+    filesystem = '{ ":minimal" = "read", ":project_roots" = { "." = "write"' + readonly + ' }, ' + \
         q(str(binary.parent)) + ' = "read", ' + q(str(Path.home() / '.codex/tmp/arg0')) + ' = "read" }'
     return ['-c', 'permissions.ws.filesystem=' + filesystem, '-c', 'default_permissions="ws"']
 
@@ -118,6 +121,10 @@ def verify_runtime(workspace, private_dir, *, planner_port=None, run=subprocess.
         synthetic.mkdir()
         native = synthetic / 'native_result.json'
         native.write_text('SYNTHETIC PRIVATE CANARY')
+        from .dev_agent_workspace import READONLY_DIRS, SHARED_MODE
+        readonly = [name for name in READONLY_DIRS if (ws / name).is_dir()]
+        for name in readonly:
+            canary = ws / name / '.ro-canary'; canary.write_text('SYNTHETIC SHARED CANARY'); canary.chmod(SHARED_MODE)
         link = ws / ('outside-' + sibling.name)
         link.symlink_to(sibling / 'outside.txt')
         paths = [str(sibling / 'outside.txt'), str(sibling / 'reference-policies/answer.py'),
@@ -135,6 +142,13 @@ p=pathlib.Path(".preflight-write")
 p.write_text("workspace-ok")
 checks["workspace_rw"]=p.read_text()=="workspace-ok"
 p.unlink()
+ro=True
+for d in __READONLY__:
+ for name,fn in (("create",lambda:open(d+"/.ro-new","w").close()),("chmod",lambda:os.chmod(d+"/.ro-canary",0o644)),
+                 ("append",lambda:open(d+"/.ro-canary","ab").close()),("unlink",lambda:os.unlink(d+"/.ro-canary"))):
+  try:fn();ro=False
+  except OSError:pass
+checks["shared_readonly"]=ro
 checks["network_denied"]=True
 for port in __PORTS__:
  s=None
@@ -143,7 +157,7 @@ for port in __PORTS__:
  finally:
   if s is not None:s.close()
 print(json.dumps(checks))
-'''.replace('__PATHS__', repr(paths)).replace('__PORTS__', repr([8769, 8878, planner_port])).replace(
+'''.replace('__PATHS__', repr(paths)).replace('__PORTS__', repr([8769, 8878, planner_port])).replace('__READONLY__', repr(readonly)).replace(
     '__ANCESTORS__', repr([str(p) for target in (ws, real_binary(), Path.home()/'.codex/tmp/arg0') for p in target.parents]))
         command = ['codex', 'sandbox', '-P', 'ws', *build_profile(ws), '-C', str(ws), '--', '/usr/bin/python3', '-I', '-c', script]
         try:
@@ -154,13 +168,15 @@ print(json.dumps(checks))
             if completed.returncode: raise IsolationUnavailable('sandbox_preflight_failed: ' + completed.stderr[-1000:])
             try: checks = json.loads(completed.stdout)
             except ValueError as exc: raise IsolationUnavailable('invalid_preflight_receipt') from exc
-            if set(checks) != {'outside_hidden', 'home_listing_restricted', 'workspace_rw', 'network_denied'} or not all(v is True for v in checks.values()):
+            if set(checks) != {'outside_hidden', 'home_listing_restricted', 'workspace_rw', 'shared_readonly', 'network_denied'} or not all(v is True for v in checks.values()):
                 raise IsolationUnavailable('boundary_check_failed')
             return receipt
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise IsolationUnavailable('sandbox_runtime_unavailable') from exc
         finally:
             link.unlink(missing_ok=True); native.unlink(); synthetic.rmdir()
+            for name in readonly:
+                (ws / name / '.ro-canary').unlink(missing_ok=True); (ws / name / '.ro-new').unlink(missing_ok=True)
 
 
 def launch_controller(workspace, private_dir, prompt, *, planner_port):

@@ -111,7 +111,7 @@ def test_media_and_virtual_routes_fail_closed(workspace_run, tmp_path):
                  'compat/v0001/native_result.json','replays/e000002/'+ 'a'*64+'/config.json'):
         with pytest.raises(FileNotFoundError):artifact(cell,name)
     frame = ws.ws/'executions'/version['execution_id']/'frames/overview-000000-sim-0.000000s.png'
-    frame.write_bytes(b'tampered')
+    frame.unlink();frame.write_bytes(b'tampered')  # frames are a shared 0444 inode; Dev can only replace the ws name
     with pytest.raises(FileNotFoundError,match='digest'):
         artifact(cell,str(frame.relative_to(ws.ws)))
 
