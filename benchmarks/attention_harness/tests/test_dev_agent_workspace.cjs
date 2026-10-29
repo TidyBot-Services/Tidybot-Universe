@@ -12,7 +12,7 @@ const golden=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/one-call-w
 const harness=fs.readFileSync(path.join(__dirname,'test_dev_workspace.cjs'),'utf8');
 const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.indexOf("test('Current view keeps"))
   .replace('({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',
-    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages})');
+    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages,operatorTitle,taskTitle,taskDisplayName})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
 function apiFor(snapshot=null,overrides={}) {
   const calls=[];
@@ -55,8 +55,10 @@ test('agent keeps five regions and selected-attempt evidence without duplicate a
   const {api}=apiFor(snapshot,{sessionStorage:{getItem:key=>key.startsWith('attention.history:')?snapshot.attempts[0].attempt_id:null}});
   const html=api.workspaceHTML(snapshot,null);
   for(let n=1;n<=5;n++)assert.equal((html.match(new RegExp(`class="op-number">0${n}<`,'g'))||[]).length,1);
-  for(const selector of ['data-agent-settings','data-agent-story-open','data-agent-story','data-agent-help-refusal','data-history-replay'])assert.ok(html.includes(selector),selector);
-  for(const text of ['versions 3/10','executions 4/40','probes 2/300','quota stop 90%','fatal_cause: broker_invariant','Try a smaller offset.'])assert.ok(html.includes(text),text);
+  for(const selector of ['data-agent-story-open','data-agent-story','data-agent-help-refusal','data-history-replay'])assert.ok(html.includes(selector),selector);
+  for(const text of ['stopped on a fatal error (broker_invariant)','Try a smaller offset.'])assert.ok(html.includes(text),text);
+  // 10-30: no settings/counter line in 01 and no model subtitle in 02; 05 keeps the counters.
+  assert.doesNotMatch(html,/data-agent-settings|quota stop|Codex subscription/);
   assert.doesNotMatch(html,/data-agent-version=|data-agent-secondary|data-agent-errors|v3 · Execution instruments/);
   assert.ok(!html.includes('Saved static frame'));
   assert.doesNotMatch(html,/&quot;outcome&quot;|&quot;diagnostics&quot;|data-agent-timeline|\/home\/|\/private\//);
@@ -308,7 +310,17 @@ test('agent cards show each run\'s recorded Dev, Eval and Advisor models (10-30:
     const html=api.workspaceHTML(view,null);
     assert.equal(card(html,'Eval agent')[1],model);
     assert.ok(card(html,'Help strategy')[2].endsWith(`an automatic advisor answers · ${model}`),card(html,'Help strategy')[2]);
-    assert.match(html,new RegExp(`Dev ${model.replace('.','\\.')} · Eval ${model.replace('.','\\.')} · Advisor ${model.replace('.','\\.')}`));
-    if(model!=='gpt-6-astra')assert.doesNotMatch(html.slice(0,html.indexOf('data-agent-settings')),/gpt-6-astra/);
+    assert.doesNotMatch(html,/data-agent-settings|Codex subscription/);
+    if(model!=='gpt-6-astra')assert.doesNotMatch(html.slice(0,html.indexOf('data-core-region="status"')),/gpt-6-astra/);
   }
+});
+test('the launch name suffix stays in the run list but not in the headline, 01 Task or tab title (10-30)',async()=>{
+  const {snapshot}=await agentSnapshot();
+  const view={...snapshot,run:{...snapshot.run,name_suffix:'line B agent sol'}},{api}=apiFor(view);
+  assert.ok(api.taskDisplayName(view.run).endsWith(' -- line B agent sol'));
+  assert.doesNotMatch(api.taskTitle(view.run),/line B agent sol/);
+  assert.doesNotMatch(api.operatorTitle(view),/line B agent sol/i);
+  const html=api.workspaceHTML(view,null),setup=html.slice(0,html.indexOf('data-core-region="status"'));
+  assert.match(setup,/<span>Task<\/span>/);
+  assert.doesNotMatch(setup,/line B agent sol/);
 });

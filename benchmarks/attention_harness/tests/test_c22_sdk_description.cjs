@@ -22,7 +22,7 @@ test('history labels come from the frozen config, with legacy stationary fallbac
   assert.doesNotMatch(badges({development:false}),/SDK description/);
 });
 test('run detail labels use the same frozen description and digest',()=>{
-  const title=load('operatorTitle',{...common,taskDisplayName:()=> 'Open cabinet',navigationRecords:()=>[],
+  const title=load('operatorTitle',{...common,taskTitle:()=> 'Open cabinet',taskDisplayName:()=> 'Open cabinet',navigationRecords:()=>[],
     relativeTime:()=>'',policyTitle:String,isTerminal:()=>false});
   for(const description of ['base enabled','base stationary',undefined]) {
     const result=title({run:{},dev_session:{locked:{config:{dev_sdk_description:description,dev_sdk_sha256:'b'.repeat(64)}}}});

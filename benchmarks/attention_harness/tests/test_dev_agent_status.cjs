@@ -7,7 +7,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slice=(from,to)=>source.slice(source.indexOf(from),source.indexOf(to));
-const api=vm.runInNewContext(slice('  function agentStripStages(','  function operatorEvalReview(')+slice('  function agentSettingsLine(','  async function agentWorkspaceSnapshot(')+
+const api=vm.runInNewContext(slice('  function agentStripStages(','  function operatorEvalReview(')+slice('  function enterAgentWorkspace(','  async function agentWorkspaceSnapshot(')+
   '\n({agentEvalStrip,agentAttemptCard})',{esc});
 const sol3v3={version:3,native_success:true,eval_unavailable:'disk full (ENOSPC)',evaluator_review:{status:'unavailable',passed:null},story:{short:'solved'},eval_stages:[]};
 test('sol3 attempt 3: solved by the task check, Eval did not run with its reason',()=>{
@@ -31,3 +31,16 @@ test('a finished run shows no waiting/awaiting help effect',()=>{
   assert.match(source,/!next\?\(ended\?'no_next':'waiting'\)/);
   assert.match(source,/isTerminal\(snapshot\) \? 'No native outcome recorded' : 'Native outcome awaiting verification'/);
 });
+test('a generic "not solved" reason is not repeated next to the outcome; a named cause still shows (10-30)',()=>{
+  const stages=[{stages:[0],label:'Find objects',state:'completed',cause:''},{stages:[1],label:'Pre-grasp',state:'failed',cause:'not solved'}];
+  const generic={version:2,native_success:false,evaluator_review:{passed:false},story:{short:'not solved'},eval_stages:stages};
+  const card=api.agentAttemptCard(generic,false),strip=api.agentEvalStrip(generic,'a2');
+  assert.match(card,/Not solved · Eval fail/);
+  assert.doesNotMatch(card,/data-agent-failure-reason/);
+  assert.match(strip,/<b>Stopped at Pre-grasp<\/b><\/p>/);
+  assert.doesNotMatch(strip,/· not solved/);
+  const named={...generic,story:{short:'grasp not confirmed'}};
+  assert.match(api.agentAttemptCard(named,false),/data-agent-failure-reason>grasp not confirmed</);
+  assert.match(api.agentEvalStrip(named,'a2'),/Stopped at Pre-grasp<\/b> · grasp not confirmed/);
+});
+

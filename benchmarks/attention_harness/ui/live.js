@@ -308,7 +308,9 @@
     const profiles=[...(launchOptions?.profiles||[]),...(launchOptions?.dev_loop?.profiles||[])];
     return profiles.some(p=>p.suite===item.suite&&(p.task_id||p.task)===item.task_id)?label(item.task_id):null;
   }
-  function taskDisplayName(item){return `${resolvedTask(item)||taskName(item.task_id)}${item.name_suffix?` -- ${item.name_suffix}`:''}`;}
+  // Operator headline, 01 Task and tab title show the task alone; the launch name suffix stays in the run list (10-30).
+  function taskTitle(item){return resolvedTask(item)||taskName(item.task_id);}
+  function taskDisplayName(item){return `${taskTitle(item)}${item.name_suffix?` -- ${item.name_suffix}`:''}`;}
   function customRunName(item){
     const fallback=item.name_suffix?taskDisplayName(item):'';
     const name=item.display_name?.trim();
@@ -951,7 +953,7 @@
   }
   function bindOperatorEnhancements(snapshot,runChanged) {
     if(DEBUG_VIEW)return;
-    const state=operatorState(snapshot),name=taskDisplayName(snapshot.run);
+    const state=operatorState(snapshot),name=taskTitle(snapshot.run);
     view.dataset.tone=state;
     document.title=operatorPageTitle(snapshot,name);
     const before=lastOperatorState.get(snapshot.run.run_id);lastOperatorState.set(snapshot.run.run_id,state);
@@ -3278,7 +3280,7 @@
     const changeable = snapshot.attention_control && !snapshot.attention_control.read_only && !isTerminal(snapshot) && (!history || history === 'live');
     const field = (title,main,sub='',wide=false,extra='') => `<div class="op-field${wide?' op-wide':''}${title==='Task'?' op-task':''}"><span>${title}</span><b>${esc(main)}</b>${sub?`<small>${esc(sub)}</small>`:''}${extra}</div>`;
     return `<section class="panel ab-run-settings" data-run-settings data-settings-run="${esc(run.run_id)}" aria-label="Task setup">${operatorHeading('01','TASK SETUP','')}<div class="op-fields">
-      ${field('Task',taskDisplayName(run),(snapshot.task_plan?.definition?.description && snapshot.task_plan.definition.description !== taskDisplayName(run)) ? snapshot.task_plan.definition.description : kitchen,true)}
+      ${field('Task',taskTitle(run),(snapshot.task_plan?.definition?.description && snapshot.task_plan.definition.description !== taskTitle(run)) ? snapshot.task_plan.definition.description : kitchen,true)}
       ${field('Robot',`${robot}${arms?' · '+arms:''}`,mobile?'Base can move':'Base stays in place')}
       ${field('Where it runs',simulator?`${benchmark} simulator`:'Real robot',run.seed == null?'Scene seed not recorded':`Scene seed ${run.seed}`)}
       ${field('Help strategy',policyTitle(policy),`${operatorPolicy(snapshot)} · ${snapshot.dev_v2 || (snapshot.dev_session && !snapshot.attention_control?.binding) || run.assistance_mode !== 'live_human_first' ? 'an automatic advisor answers' : 'a person answers'}`,true,changeable?'<details class="op-strategy" data-persist-detail="operator-strategy"><summary>Change</summary><div data-policy-host></div></details>':'')}
@@ -3340,7 +3342,7 @@
       const detail=status==='condition_invalid' ? /scene_contract_mismatch/i.test(reason) ? 'Invalid run: the scene did not match the registered scene.'
         : /eval_vision_unavailable|unparseable_answer/i.test(reason) ? 'Invalid run: the automatic reviewer could not read the recording.'
         : 'Invalid run: the required execution conditions could not be verified.'
-        : status==='needs_review' ? 'Needs review: the worker stopped unexpectedly and the run cannot continue automatically.'
+        : status==='needs_review' ? (snapshot.agent?.fatal_cause ? `Needs review: the agent run stopped on a fatal error (${snapshot.agent.fatal_cause}) and cannot continue automatically.` : 'Needs review: the worker stopped unexpectedly and the run cannot continue automatically.')
           : status==='not_started'?'Not started: this task ended before any execution began.'
           : status==='cancelled'?'Stopped: this run was cancelled.':'Stopped: this run was stopped.';
       const title={condition_invalid:'⚠ CONDITION INVALID',needs_review:'⚠ NEEDS REVIEW',cancelled:'○ CANCELLED',stopped:'○ STOPPED',not_started:'○ NOT STARTED'}[status];
@@ -3403,8 +3405,7 @@
   function operatorOverview(snapshot) {
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
-    const source=snapshot.dev_v2?(s?.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'):null;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source||'')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`${runAgainButton(snapshot)}<span class="op-controls-sp"></span>`:''}<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${isTerminal(snapshot)?'':launchButton(snapshot)+runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`${runAgainButton(snapshot)}<span class="op-controls-sp"></span>`:''}<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${isTerminal(snapshot)?'':launchButton(snapshot)+runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -3474,13 +3475,18 @@
       return labels.map((label,i)=>({...stage,stages:[indices[i]],label}));
     });
   }
+  function agentStoryReason(version,fallback='') {
+    // attempt_story falls back to "not solved" / "awaiting evaluation", which only repeat the outcome (10-30).
+    const short=String(version?.story?.short||fallback||'');
+    return ['not solved','awaiting evaluation','solved'].includes(short)?'':short;
+  }
   function agentEvalStrip(version,attemptId) {
     // The native task check decides the outcome; Eval's verdict only fills in when no native result exists.
     const review=version?.evaluator_review,native=version?.native_success;
     const passed=native===true||(typeof native!=='boolean'&&review?.passed===true);
     const failed=native===false||review?.passed===false;
     const stages=agentStripStages(version?.eval_stages||[]),stopped=stages.find(stage=>stage.state==='failed');
-    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}" title="${esc(`${stage.label} · ${stage.state==='completed'?'done':stage.state==='failed'?'stopped here':'not reached'}`)}"><i aria-hidden="true">${stage.state==='completed'?'✓':stage.state==='failed'?'✕':''}</i><b>${esc(stage.label)}</b></span>`).join('')}</div>${stopped?`<p class="op-eval-stopped" data-eval-stopped><b>Stopped at ${esc(stopped.label)}</b> · ${esc(version.story?.short||stopped.cause)}</p>`:''}${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
+    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}" title="${esc(`${stage.label} · ${stage.state==='completed'?'done':stage.state==='failed'?'stopped here':'not reached'}`)}"><i aria-hidden="true">${stage.state==='completed'?'✓':stage.state==='failed'?'✕':''}</i><b>${esc(stage.label)}</b></span>`).join('')}</div>${stopped?`<p class="op-eval-stopped" data-eval-stopped><b>Stopped at ${esc(stopped.label)}</b>${agentStoryReason(version,stopped.cause)?` · ${esc(agentStoryReason(version,stopped.cause))}`:''}</p>`:''}${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
   }
 
   function operatorEvalReview(review,attemptId) {
@@ -3692,7 +3698,7 @@
   // End operator presentation.
   // Page title, the same pattern as the Memory monitor's: amber eyebrow, condensed headline, the run's status on the right.
   function operatorTitle(snapshot) {
-    const run = snapshot.run, name = taskDisplayName(run), cut = name.indexOf(':');
+    const run = snapshot.run, name = taskTitle(run), cut = name.indexOf(':');
     const record = navigationRecords().find(r => r.development ? r.session_id === selectedDev : !selectedDev && r.run_id === selectedRun);
     const policy = snapshot.attention_control?.active_policy || run.policy_id;
     const eyebrow = ['Run', relativeTime(record?.created_at ?? run.created_at), policy ? policyTitle(policy) : '', run.seed == null ? '' : `Scene seed ${run.seed}`].filter(Boolean).join(' · ');
@@ -3989,13 +3995,11 @@
     const append=(html,extra)=>{const end=html.lastIndexOf('</section>');return html.slice(0,end)+extra+html.slice(end);};
     const regions=[runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)];
     if(snapshot.agent){
-      regions[0]=append(regions[0],agentSettingsLine(snapshot.agent));
       // Agent runs record their own models; the one-call card text above assumes gpt-6-astra (10-30).
       if(snapshot.agent.eval_model)regions[0]=regions[0].replace(/(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/,(_,a,b)=>`${a}${esc(snapshot.agent.eval_model)}${b}`);
       if(snapshot.agent.advisor_model)regions[0]=regions[0].replace('an automatic advisor answers',`an automatic advisor answers · ${esc(snapshot.agent.advisor_model)}`);
       regions[1]=regions[1].replace('</h3><span>', '</h3><button type="button" class="op-agent-story-entry" data-agent-story-open>See the full story <span aria-hidden="true">→</span></button><span>');
       regions[1]=append(regions[1],agentFullStory(snapshot));
-      if(snapshot.agent.dev_model!=='gpt-6-astra')regions[1]=regions[1].replace('(gpt-6-astra, high effort)',`(${esc(snapshot.agent.dev_model)}, high effort)`);
       regions[3]=regions[3].replace('This run has ended. Recorded work and replies remain available.','This run has ended. The help the robot received is listed below.');
       regions[4]=regions[4].replace('/export.csv"','/report"').replace('Download data (CSV)','Download agent report (JSON)');
     }
@@ -4577,11 +4581,6 @@
   }
   // Adapt persisted Dev v2 records to the original five-region workspace.
   // Agent additions live inside the original five regions.
-  function agentSettingsLine(a) {
-    const c=a.counts,cap=a.limits;
-    const wall=seconds=>`${Math.floor(seconds/3600)}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}`;
-    return `<p class="minor" data-agent-settings data-agent-counts>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)}${a.advisor_model?` · Advisor ${esc(a.advisor_model)}`:''} · quota stop ${esc(a.quota_stop_percent)}% · versions ${c.formal_versions}/${cap.formal_versions} · executions ${c.moving_executions}/${cap.moving_executions} · probes ${c.read_only_probes}/${cap.read_only_probes} · wall ${wall(a.wall_seconds)}/${wall(a.wall_limit)} · ${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}${a.fatal_cause?' · fatal_cause: '+esc(a.fatal_cause):''}</p>`;
-  }
   function enterAgentWorkspace(snapshot) {
     const index=devSessions.findIndex(s=>s.session_id===snapshot.dev_session.session_id);
     if(index>=0)devSessions[index]={...devSessions[index],...snapshot.dev_session};
@@ -4638,7 +4637,7 @@
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
     const passed=version.evaluator_review?.passed;
     const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':version.eval_unavailable?'did not run':'unavailable'}`;
-    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&story.short?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(story.short)}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
@@ -4827,8 +4826,6 @@
       const fingerprint=JSON.stringify([experiment.state,experiment.reason,{...cell.agent,wall_seconds:0},cell.dev_v2_compat.versions,cell.dev_v2_compat.jobs]);
       if(lastRendered===fingerprint && currentSnapshot?.agent){
         currentSnapshot.agent=cell.agent;
-        const line=view.querySelector('[data-agent-settings]');
-        if(line)line.outerHTML=agentSettingsLine(cell.agent);
         return;
       }
       const snapshot=await agentWorkspaceSnapshot(s,cell,experiment);if(selectedDev!==s.session_id)return;

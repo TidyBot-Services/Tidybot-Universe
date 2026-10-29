@@ -5,7 +5,7 @@ const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const block=source.slice(source.indexOf('  // Operator presentation:'),source.indexOf('  // End operator presentation.'));
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 function api(){return vm.runInNewContext(block+'\n({operatorSettings,operatorAIReview,operatorResources,codexRunQuotaText})',{
- DEBUG_VIEW:false,esc,number:String,pct:()=>0,launches:[],stored:()=>null,isTerminal:()=>true,devEndSummary:()=>({key:'executions'}),taskDisplayName:()=> 'Open cabinet',policyTitle:()=> 'Reactive help'
+ DEBUG_VIEW:false,esc,number:String,pct:()=>0,launches:[],stored:()=>null,isTerminal:()=>true,devEndSummary:()=>({key:'executions'}),taskTitle:()=> 'Open cabinet',taskDisplayName:()=> 'Open cabinet',policyTitle:()=> 'Reactive help'
 });}
 test('Codex run quota line uses recorded first-to-last points only',()=>{
  const snapshot={run:{run_id:'q'},dev_session:{locked:{config:{model_source:'codex'}},versions:[]},

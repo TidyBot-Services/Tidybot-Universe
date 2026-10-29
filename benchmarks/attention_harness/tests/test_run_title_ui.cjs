@@ -11,7 +11,7 @@ function title(ended) {
   const record = {development: true, session_id: 'v2-k', created_at: 1};
   return vm.runInNewContext(block + '\noperatorTitle(snapshot)', {
     esc, snapshot: {run: {seed: 102, policy_id: 'autonomous'}, ended}, selectedDev: 'v2-k', selectedRun: null,
-    navigationRecords: () => [record], taskDisplayName: () => 'Pick Place: Counter → Sink', policyTitle: () => 'Autonomous',
+    navigationRecords: () => [record], taskTitle: () => 'Pick Place: Counter → Sink', taskDisplayName: () => 'Pick Place: Counter → Sink', policyTitle: () => 'Autonomous',
     relativeTime: () => '23 h ago', recordStatus: () => 'Needs review', outcomeKind: () => '', isTerminal: s => s.ended,
     launchButton: (s, hero) => `<button class="ab-button-primary${hero ? ' op-new-run' : ''}" type="button" data-open-launch>New run</button>`,
   });
@@ -31,7 +31,7 @@ test('a running run keeps New run out of the title', () => {
 test('r3 execution label is shown beside the run title', () => {
   const html=vm.runInNewContext(block+'\noperatorTitle(snapshot)',{
     esc,snapshot:{run:{seed:102},dev_session:{locked:{config:{execution_settings:{profile:'r3-20261025'}}}}},
-    selectedDev:null,selectedRun:null,navigationRecords:()=>[],taskDisplayName:()=>'Task',policyTitle:()=>'',
+    selectedDev:null,selectedRun:null,navigationRecords:()=>[],taskTitle:()=>'Task',taskDisplayName:()=>'Task',policyTitle:()=>'',
     relativeTime:()=>'',recordStatus:()=>'',outcomeKind:()=>'',isTerminal:()=>false,
   });
   assert.match(html,/Execution settings r3 · not comparable with earlier runs/);
