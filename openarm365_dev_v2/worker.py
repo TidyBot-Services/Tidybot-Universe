@@ -223,9 +223,8 @@ def main():
         send({'kind':'fatal','error':f'{type(exc).__name__}: {exc}'[:1200]})
         with (args.evidence/'startup-error.txt').open('w') as f:f.write(traceback.format_exc())
     finally:
-        if executor:cleanup['planner']=executor.close()
-        elif planner:cleanup['planner']=planner.close()
-        if env:env.close()
+        from .live_retention import close_execution
+        close_execution(args.evidence,executor,planner,env,cleanup)
         (args.evidence/'native_cleanup.json').write_text(json.dumps(cleanup,indent=2)+'\n')
         output.close()
 

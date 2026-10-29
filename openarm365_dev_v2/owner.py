@@ -6,6 +6,12 @@ class NativeOwnerV2(NativeOwner):
     def __init__(self,*args,source_root=None,agent_mode=False,**kwargs):
         super().__init__(*args,**kwargs);self.source_root=Path(source_root) if source_root is not None else None
         self.startup_response=None;self.agent_mode=agent_mode
+    def stop(self,reason='normal_cleanup'):
+        from .live_retention import prune_live
+        try:return super().stop(reason)
+        finally:
+            pruning=prune_live(self.evidence)
+            if self.cleanup is not None:self.cleanup['live_pruning']=pruning
     def start(self):
         env={k:v for k,v in os.environ.items() if not k.startswith(('PYTHON','CUROBO_'))
             and not k.startswith('ATTENTION_MEMORY_')
