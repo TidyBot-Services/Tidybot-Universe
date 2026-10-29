@@ -55,8 +55,27 @@ def test_gripper_must_be_far():
 
 def test_redaction_hides_bounds_but_keeps_object_position():
     text = 'Object at y=-2.054 is outside: the basin spans y -1.972 to -1.424 and x 0.140..0.520.'
-    out = success.redact_bounds(text, COND)
+    out = success.redact(text, COND)
     assert '-2.054' in out and '-1.972' not in out and '-1.424' not in out and '0.520' not in out and '0.140' not in out
+
+
+def test_dev_view_of_real_smoke_verdict_leaks_no_rule():
+    """Verbatim gpt-6.1-sol verdict from the 10-29 offline smoke, whose first redaction leaked."""
+    obs = final((0.496910, -2.377295, 0.934829), left=(0.4500, -2.2, 1.0994), right=(0.41, -1.35, 1.09))
+    verdict = dict(passed=False, reason='The settled object position, (0.496910, -2.377295, 0.934829) m, is outside the sink: '
+                   'projections 1 and 3 fail containment. The left gripper also remains only 0.209900 m away, failing the required clearance.',
+                   advice='After settling, verify basin containment and both gripper distances exceed 0.25 m.',
+                   evidence=[dict(source='final_observation.json: perception.values.obj_pos; success_condition.json: '
+                                         'region.interior_sites_world_m and region.projection_ranges',
+                                  claim='Its three rule-defined projections are -1.304486 (below range), -0.188615 (inside range), '
+                                        'and 0.195 (above range).'),
+                             dict(source='success_condition.json: rule.gripper_far_m', claim='The left gripper fails the required 0.25 m clearance.')])
+    view = success.dev_view(verdict, COND, obs)
+    text = json.dumps(view)
+    for leaked in ('success_condition', 'interior_sites', 'projection_ranges', 'gripper_far', '1.304486', '0.188615', '0.25 m'):
+        assert leaked not in text, leaked
+    assert '(0.496910, -2.377295, 0.934829)' in view['reason'] and 'outside the sink' in view['reason']
+    assert view['passed'] is False and 'Eval-only success rule' in view['evidence'][0]['source']
 
 
 def test_eval_workspace_gets_condition_and_dev_does_not(ws):

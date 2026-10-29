@@ -96,14 +96,36 @@ def eval_view(condition):
 
 
 NUMBER = re.compile(r'-?\d+\.\d+')
+FILE_REF = re.compile(r'success_condition\.json(?::[^;|\n]*)?')
+FIELD_REF = re.compile(r'\b(?:region|rule)\.[A-Za-z_][A-Za-z_.]*')
 
 
-def redact_bounds(text, condition, tol=.005):
-    """Dev sees Eval's verdict text: hide any number that matches a region bound or corner."""
-    bounds = [v for p in condition['region']['interior_sites_world_m'] for v in p]
-    bounds += [v for r in condition['region']['projection_ranges'] for v in r]
-    bounds += [v for r in condition['region'].get('axis_aligned_box_world_m', {}).values() for v in r]
+def hidden_numbers(condition, final_observation=None):
+    """Every number Dev must not learn: region corners and bounds, the clearance
+    threshold, and this execution's projections onto the region axes."""
+    region = condition['region']
+    values = [v for p in region['interior_sites_world_m'] for v in p]
+    values += [v for r in region['projection_ranges'] for v in r]
+    values += [v for r in (region.get('axis_aligned_box_world_m') or {}).values() for v in r]
+    values.append(condition['rule']['gripper_far_m'])
+    if final_observation:
+        try:values += [row['value'] for row in check(condition, final_observation)['projections']]
+        except (KeyError, TypeError, ValueError):pass
+    return values
+
+
+def redact(text, condition, final_observation=None, tol=.005):
+    """Dev sees Eval's verdict text: keep the conclusion and the object position, hide
+    the rule's numbers, its file and its field names."""
+    hidden = hidden_numbers(condition, final_observation)
+    text = FIELD_REF.sub('the success rule', FILE_REF.sub('Eval-only success rule', text))
     def sub(m):
         x = float(m.group())
-        return '[region]' if any(abs(x-b) <= tol for b in bounds) else m.group()
+        return '[region]' if any(abs(x-b) <= tol for b in hidden) else m.group()
     return NUMBER.sub(sub, text)
+
+
+def dev_view(verdict, condition, final_observation=None):
+    hide = lambda text: redact(text, condition, final_observation)
+    return dict(verdict, reason=hide(verdict['reason']), advice=hide(verdict['advice']),
+                evidence=[dict(r, claim=hide(r['claim']), source=hide(r['source'])) for r in verdict['evidence']])

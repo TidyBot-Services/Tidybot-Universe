@@ -129,11 +129,10 @@ class Evaluator:
                 try:verdict=validate(json.loads(answer))
                 except (ValueError,TypeError):raise ValueError('schema_invalid')
                 if self.success_condition:
-                    from .dev_agent_success import redact_bounds
+                    # Raw verdict stays private; Dev gets the conclusion without the rule's numbers or names.
+                    from .dev_agent_success import dev_view
                     atomic_write(root,'verdict.json',encode(verdict))
-                    hide=lambda text:redact_bounds(text,self.success_condition)
-                    verdict=dict(verdict,reason=hide(verdict['reason']),advice=hide(verdict['advice']),
-                                 evidence=[dict(r,claim=hide(r['claim'])) for r in verdict['evidence']])
+                    verdict=dev_view(verdict,self.success_condition,json.loads((ws/'final_observation.json').read_bytes()))
                 result=dict(status='completed',**feedback(verdict))
         except (TimeoutError,subprocess.TimeoutExpired):
             error='timeout';result=unavailable(vid,error)
