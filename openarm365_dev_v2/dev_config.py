@@ -247,7 +247,7 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         expected['human_proxy']=normalize(c['human_proxy'])
     if 'advisor_proxy' in c:
         from benchmarks.attention_harness.dev_advisor_proxy import normalize
-        expected['advisor_proxy']=normalize(c['advisor_proxy'],source)
+        expected['advisor_proxy']=normalize(c['advisor_proxy'],source,agent=c.get('dev_mode')=='agent')
     if 'eval_agent' in expected and 'advisor_proxy' in expected:
         from benchmarks.attention_harness.dev_configuration import independent_eval_advisor
         independent_eval_advisor(expected['eval_agent'],expected['advisor_proxy'])

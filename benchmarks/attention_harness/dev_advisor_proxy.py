@@ -36,10 +36,14 @@ def default_config(enabled=True, model_source='parcc'):
     return result
 
 
-def normalize(value, model_source='parcc'):
+def normalize(value, model_source='parcc', *, agent=False):
     if not isinstance(value,dict):raise ValueError('Advisor configuration must be an object')
     old=value.get('prompt_version')==OLD_PROMPT_VERSION
     base=default_config(value.get('enabled',True),model_source)
+    if agent and model_source=='codex' and not old:
+        # Agent runs choose among the agent Advisor models (10-29); everything else stays fixed.
+        from .dev_agent_config import ADVISOR_MODELS
+        if value.get('model') in ADVISOR_MODELS:base['model']=value['model']
     if model_source=='codex' and old:raise ValueError('legacy Advisor cannot use Codex')
     if old:
         base.update(model=OLD_MODEL,mode='text_only',prompt_version=OLD_PROMPT_VERSION,prompt_sha256=hashlib.sha256(OLD_SYSTEM.encode()).hexdigest(),cache_version=OLD_CACHE_VERSION,max_selected_frames=4)
