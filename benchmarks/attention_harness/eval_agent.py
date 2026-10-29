@@ -90,9 +90,13 @@ def default_config(enabled=True, model_source='parcc'):
     return result
 
 
-def normalize(value, model_source='parcc'):
+def normalize(value, model_source='parcc', *, agent=False):
     if not isinstance(value, dict):raise ValueError('Eval config must be an object')
     base=default_config(value.get('enabled', True), model_source)
+    if agent and model_source=='codex':
+        # Agent runs record their Eval model here (10-29); the one-call Eval stays fixed.
+        from .dev_agent_config import MODELS
+        if value.get('model') in MODELS:base['model']=value['model']
     if model_source=='codex' and value.get('prompt_version')==OLD_PROMPT_VERSION:raise ValueError('legacy Eval cannot use Codex')
     if value.get('prompt_version')==OLD_PROMPT_VERSION:
         base['prompt_version']=OLD_PROMPT_VERSION

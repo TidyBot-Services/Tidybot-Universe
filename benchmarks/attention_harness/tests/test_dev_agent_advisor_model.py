@@ -62,3 +62,14 @@ def test_created_agent_config_with_sol_advisor_passes_run_time_validation(tmp_pa
     manifest = dev_experiment.verify_manifest(dev_experiment.snapshot(store, exp['experiment_id']))
     proxy = next(iter(manifest['configs'].values()))['advisor_proxy']
     assert proxy['model'] == 'gpt-6.1-sol' and proxy['prompt_version'] == 'advisor-vision-v3'
+    assert next(iter(manifest['configs'].values()))['eval_agent']['model'] == 'gpt-6.1-sol'
+
+
+def test_new_agent_config_records_the_agent_eval_model():
+    selection = dict(SELECTION, advisor_proxy={'enabled': True}, advisor_model='gpt-6.1-sol', eval_model='gpt-6.1-sol')
+    assert configuration(selection)['eval_agent']['model'] == 'gpt-6.1-sol'
+    assert configuration(dict(SELECTION, advisor_proxy={'enabled': True}))['eval_agent']['model'] == 'gpt-6-astra'
+    from benchmarks.attention_harness.eval_agent import default_config, normalize as normalize_eval
+    sol = dict(default_config(False, 'codex'), model='gpt-6.1-sol')
+    assert normalize_eval(sol, 'codex', agent=True)['model'] == 'gpt-6.1-sol'
+    with pytest.raises(ValueError):normalize_eval(sol, 'codex')

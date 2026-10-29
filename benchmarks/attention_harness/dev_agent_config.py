@@ -43,6 +43,8 @@ def configuration(selection):
     result=dict(normalize_configuration(clean),**options)
     if 'advisor_model' in options:
         result['advisor_proxy']=dict(result['advisor_proxy'],model=options['advisor_model'])
+        # Same creation option set: the (disabled) one-call Eval block records the agent Eval model.
+        result['eval_agent']=dict(result['eval_agent'],model=options['eval_model'])
     return result
 
 

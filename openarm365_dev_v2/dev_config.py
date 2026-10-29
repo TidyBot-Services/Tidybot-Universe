@@ -241,7 +241,7 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
     if 'eval_agent' in c:
         review=c['eval_agent']
         from benchmarks.attention_harness.eval_agent import normalize as normalize_eval
-        expected['eval_agent']=dict(review) if source=='parcc' and isinstance(review,dict) and set(review)=={'enabled','model'} and type(review['enabled']) is bool and review['model']=='parcc/Qwen' else normalize_eval(review,source)
+        expected['eval_agent']=dict(review) if source=='parcc' and isinstance(review,dict) and set(review)=={'enabled','model'} and type(review['enabled']) is bool and review['model']=='parcc/Qwen' else normalize_eval(review,source,agent=c.get('dev_mode')=='agent')
     if 'human_proxy' in c:
         from benchmarks.attention_harness.human_proxy import normalize
         expected['human_proxy']=normalize(c['human_proxy'])
