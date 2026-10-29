@@ -12,7 +12,7 @@ const golden=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/one-call-w
 const harness=fs.readFileSync(path.join(__dirname,'test_dev_workspace.cjs'),'utf8');
 const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.indexOf("test('Current view keeps"))
   .replace('({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',
-    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages,operatorTitle,taskTitle,taskDisplayName})');
+    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages,operatorTitle,taskTitle,taskDisplayName,agentTrialLegend})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
 function apiFor(snapshot=null,overrides={}) {
   const calls=[];
@@ -78,7 +78,11 @@ test('one intended one-call visual change: P3 PLAN row replaces revision; every 
   // Second intended change (10-30): region headings drop their question line; 02 keeps only the model source.
   const heading=h=>h.replace(/(<\/h3><span>)[^<]*(<\/span>)/g,'$1$2');
   assert.doesNotMatch(html,/What is the robot trying to do\?|How is it going\?|where did it go wrong\?|Do I need to do anything\?|How much budget is left\?/);
-  assert.equal(heading(html.replace(expectedPlan,'')),heading(golden.html.replace(oldRevision,'')));
+  // Third intended change (10-30): the attention legend lists only the marks the run shows.
+  const legendOf=h=>(h.match(/<div class="op-attn-legend">([^]*?)<\/div>/)||[])[1]||'';
+  assert.doesNotMatch(legendOf(html),/Failed attempt|<i class="solved">|Bar under each help/);
+  const noLegend=h=>h.replace(/<div class="op-attn-legend">[^]*?<\/div>/g,'');
+  assert.equal(noLegend(heading(html.replace(expectedPlan,''))),noLegend(heading(golden.html.replace(oldRevision,''))));
   assert.match(html,/<div class="ab-history-events"[^>]*><details class="op-plan"/);
 });
 test('agent virtual references reject traversal; shared digest check rejects modified evidence',async()=>{
@@ -102,7 +106,9 @@ test('agent help uses two post-attempt boundaries, refused vs delivered, and per
   assert.deepEqual(Array.from(strip.requests,r=>r.after),[0,1]);
   assert.equal(ledger.rows[0].seconds,0);assert.equal(ledger.rows[0].effect,'no_reply');
   const html=api.workspaceHTML(snapshot,null);
-  for(const text of ['Completed on attempt 3 of 10','on attempt 3 of 10','274.8 s','corrected; recorded 1231.96 s','1 delivered and charged, 1 refused and not charged','1 of 1 delivered','not delivered'])assert.ok(html.includes(text),text);
+  for(const text of ['Completed on attempt 3 of 10','on attempt 3 of 10','274.8 s','corrected; recorded 1231.96 s','1 of 1 delivered','not delivered'])assert.ok(html.includes(text),text);
+  // 10-30: the "N delivered and charged, M refused" line is gone; corrections stay in the Human attention tooltip.
+  assert.doesNotMatch(html,/delivered and charged|refused and not charged|data-agent-attention-detail/);
   assert.match(html,/After attempt 1<\/b><small> · refused \(evaluation-derived text rejected at Dev boundary\)/);
   assert.match(html,/After attempt 2<\/b><small>Answered( in [^<]+)?<\/small>/);
   assert.ok(!html.includes('all undefined cells') && html.includes('This run has ended. The help the robot received is listed below.'));
@@ -153,6 +159,12 @@ test('r6 timeline shows request-sequence dots, short verdicts and clean selected
   assert.equal((html.match(/<circle class="op-agent-trial red"/g)||[]).length,2);
   for(const text of ['18 checks · 2 previews','23 checks · 1 preview','20 checks · 1 preview','grasp not confirmed','out of reach','solved','Trial run, kept going','Trial run stopped by a safety limit'])assert.ok(html.includes(text),text);
   assert.match(html,/op-attn-help automatic dashed/);
+  // 10-30: the legend lists only marks this run shows.
+  const legend=html.match(/<div class="op-attn-legend">([^]*?)<\/div>/)[1];
+  assert.match(legend,/<i class="automatic"><\/i>Automatic advisor/);
+  assert.doesNotMatch(legend,/Failed attempt|<i class="solved">|Person replied|Bar under each help/);
+  assert.equal(api.agentTrialLegend([]),'');
+  assert.doesNotMatch(api.agentTrialLegend([{color:'red'}]),/kept going/);
   api.selectAgentAttempt(snapshot,snapshot.attempts[1].attempt_id);
   const card=api.agentTimelineDetail(snapshot,null);
   for(const text of ['Attempt 2','Not solved · Eval fail','out of reach','Before this attempt','help not delivered','23 checks · 1 preview','gripper speed limit'])assert.ok(card.includes(text),text);
@@ -324,3 +336,15 @@ test('the launch name suffix stays in the run list but not in the headline, 01 T
   assert.match(setup,/<span>Task<\/span>/);
   assert.doesNotMatch(setup,/line B agent sol/);
 });
+test('agent cost bars sit clear of the segment caption above them (10-30)',async()=>{
+  const snapshot=await timelineSnapshot(),{api}=apiFor(snapshot,{sessionStorage:memoryStorage()});
+  const html=api.attentionEfficiency(snapshot);
+  const captions=[...html.matchAll(/<text class="op-agent-activity" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
+  const bars=[...html.matchAll(/<rect class="op-attn-cost" x="[^"]+" y="([\d.]+)" width="26" height="([\d.]+)"/g)].map(m=>({top:Number(m[1]),bottom:Number(m[1])+Number(m[2])}));
+  const labels=[...html.matchAll(/<text class="op-attn-cost-label" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
+  const height=Number(html.match(/<svg viewBox="0 0 [\d.]+ ([\d.]+)"/)[1]);
+  assert.ok(captions.length&&bars.length&&labels.length);
+  for(const bar of bars)assert.ok(bar.top-Math.max(...captions)>=8,`bar top ${bar.top} vs caption ${Math.max(...captions)}`);
+  for(const label of labels)assert.ok(label+6<=height,`cost label ${label} inside svg height ${height}`);
+});
+
