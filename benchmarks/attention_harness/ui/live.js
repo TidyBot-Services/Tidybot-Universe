@@ -1942,7 +1942,7 @@
     const config=selection?.configuration||{},cell=config.cell_budget||selection?.cell_budget||{};
     return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:selection?.policies?.length?'all':null,
       devMode:selection?.dev_mode==='agent'?'agent':'one_call',
-      ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model,advisorModel:selection.advisor_model||'gpt-6-astra'}:{}),
+      ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model,advisorModel:selection.advisor_model||selection.advisor_proxy?.model||'gpt-6-astra'}:{}),
       mode:selection?.mode,modelSource:selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
       help:selection?.help_budget,waitSeconds:selection?.human_wait_seconds??selection?.planner_features?.human_wait_seconds,
       wallSeconds:config.wall_seconds??selection?.wall_limit,modelMinutes:cell.model_seconds==null?null:Math.ceil(cell.model_seconds/60),
@@ -3988,6 +3988,9 @@
     const regions=[runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)];
     if(snapshot.agent){
       regions[0]=append(regions[0],agentSettingsLine(snapshot.agent));
+      // Agent runs record their own models; the one-call card text above assumes gpt-6-astra (10-30).
+      if(snapshot.agent.eval_model)regions[0]=regions[0].replace(/(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/,(_,a,b)=>`${a}${esc(snapshot.agent.eval_model)}${b}`);
+      if(snapshot.agent.advisor_model)regions[0]=regions[0].replace('an automatic advisor answers',`an automatic advisor answers · ${esc(snapshot.agent.advisor_model)}`);
       regions[1]=regions[1].replace('</h3><span>How is it going?', '</h3><button type="button" class="op-agent-story-entry" data-agent-story-open>See the full story →</button><span>How is it going?');
       regions[1]=append(regions[1],agentFullStory(snapshot));
       if(snapshot.agent.dev_model!=='gpt-6-astra')regions[1]=regions[1].replace('(gpt-6-astra, high effort)',`(${esc(snapshot.agent.dev_model)}, high effort)`);
@@ -4574,12 +4577,13 @@
   // Adapt persisted Dev v2 records to the original five-region workspace.
   // Agent additions live inside the original five regions.
   function agentLinks(rows) {
-    return (rows||[]).map(r=>r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.label)}</a>`:`<span>${esc(r.label)}</span>`).join(' · ');
+    // An oversize or unsafe file marks only its own link, with the reason visible (10-30 sol3).
+    return (rows||[]).map(r=>r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener"${r.large?' data-large-file':''}>${esc(r.label)}</a>`:`<span${r.reason?` data-link-unavailable title="${esc(r.reason)}"`:''}>${esc(r.label)}${r.reason?` — ${esc(r.reason)}`:''}</span>`).join(' · ');
   }
   function agentSettingsLine(a) {
     const c=a.counts,cap=a.limits;
     const wall=seconds=>`${Math.floor(seconds/3600)}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}`;
-    return `<p class="minor" data-agent-settings data-agent-counts>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)} · quota stop ${esc(a.quota_stop_percent)}% · versions ${c.formal_versions}/${cap.formal_versions} · executions ${c.moving_executions}/${cap.moving_executions} · probes ${c.read_only_probes}/${cap.read_only_probes} · wall ${wall(a.wall_seconds)}/${wall(a.wall_limit)} · ${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}${a.fatal_cause?' · fatal_cause: '+esc(a.fatal_cause):''}</p>`;
+    return `<p class="minor" data-agent-settings data-agent-counts>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)}${a.advisor_model?` · Advisor ${esc(a.advisor_model)}`:''} · quota stop ${esc(a.quota_stop_percent)}% · versions ${c.formal_versions}/${cap.formal_versions} · executions ${c.moving_executions}/${cap.moving_executions} · probes ${c.read_only_probes}/${cap.read_only_probes} · wall ${wall(a.wall_seconds)}/${wall(a.wall_limit)} · ${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}${a.fatal_cause?' · fatal_cause: '+esc(a.fatal_cause):''}</p>`;
   }
   function agentDiagnosticItems(rows,key) {
     const words=value=>value==null?'':typeof value==='object'?Object.entries(value).map(([k,v])=>`${k}: ${words(v)}`).join(' · '):String(value);

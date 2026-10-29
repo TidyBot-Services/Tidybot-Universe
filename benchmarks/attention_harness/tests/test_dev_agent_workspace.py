@@ -266,3 +266,45 @@ def test_projection_partitions_by_sequence_not_clock_or_request_id(workspace_run
     assert len(sequence) > 1
     assert len(view['dev_v2_compat']['versions']) == 3
     assert sum(len(v['before_attempt']['trials']) for v in view['dev_v2_compat']['versions']) == 1
+
+
+def _links(view, name):
+    return [l for r in view['agent']['timeline'] for l in r.get('links', []) if l.get('url', '').endswith(name) or name in l['label']]
+
+
+def test_large_state_log_keeps_view_and_download_working(workspace_run):
+    # 10-30 sol3: two 42.3 MB state logs made the whole view 409 unsafe_file.
+    from benchmarks.attention_harness import dev_agent_view
+    store, cell, ws = workspace_run
+    eid = cell['versions'][0]['execution_id']
+    name = f'executions/{eid}/state_log.json'
+    big = encode([dict(physics_step=i, qpos=[0.123456789] * 40) for i in range(52000)])
+    assert len(big) > 42 * 1000 * 1000
+    ws.publish(name, big)
+    dev_agent_view._CACHE.clear()
+    view = projection(store, cell)
+    link = next(l for l in _links(view, name) if l['available'])
+    assert link['large'] and link['size_bytes'] == len(big) and '42.' in link['label'] and 'large' in link['label']
+    raw, kind = artifact(cell, name)
+    assert kind.startswith('text/plain') or kind == 'application/json'
+    assert (raw if isinstance(raw, list) else json.loads(raw))[-1]['physics_step'] == 51999
+
+
+def test_oversize_or_unsafe_file_marks_only_its_link_with_reason(workspace_run, monkeypatch):
+    from benchmarks.attention_harness import dev_agent_view
+    store, cell, ws = workspace_run
+    eid = cell['versions'][0]['execution_id']
+    monkeypatch.setattr(dev_agent_view, 'DOWNLOAD_LIMIT', 64)
+    ws.publish(f'executions/{eid}/state_log.json', b'[' + b'0,' * 100 + b'0]\n')
+    os.link(ws.canonical/f'executions/{eid}/stdout.txt', ws.private/'unsafe-second-name')
+    dev_agent_view._CACHE.clear()
+    view = projection(store, cell)
+    log = [l for l in _links(view, 'state log') if not l['available']][0]
+    assert 'too large to open' in log['label'] and 'download limit' in log['reason']
+    out = [l for l in _links(view, 'stdout') if not l['available']][0]
+    assert 'unsafe file' in out['label'] and out['reason'].startswith('unsafe file')
+    sources = [e['source'] for e in view['agent']['errors']]
+    assert f'executions/{eid}/state_log.json' in sources and f'executions/{eid}/stdout.txt' in sources
+    assert any(l['available'] for r in view['agent']['timeline'] for l in r.get('links', []))  # the rest still opens
+    with pytest.raises(FileNotFoundError, match='unavailable'):
+        artifact(cell, f'executions/{eid}/stdout.txt')

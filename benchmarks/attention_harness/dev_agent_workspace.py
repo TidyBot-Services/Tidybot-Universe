@@ -78,6 +78,20 @@ def read_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
     finally: os.close(parent)
 
 
+def stat_beneath(root, name, *, shared=False):
+    """Size of a safe file (same no-follow/regular/nlink rules as read_beneath) without reading it."""
+    components = parts(name)
+    parent = directory(root, components[:-1])
+    try:
+        fd = os.open(components[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        try: info = os.fstat(fd)
+        finally: os.close(fd)
+    finally: os.close(parent)
+    if not stat.S_ISREG(info.st_mode) or (info.st_nlink != 1 and not (shared and not info.st_mode & 0o222)):
+        raise ValueError('unsafe_file')
+    return info.st_size
+
+
 def atomic_write(root, name, data, mode=0o600):
     components = parts(name)
     parent = directory(root, components[:-1], create=True)

@@ -6,7 +6,7 @@ import re
 import sqlite3
 import time
 from urllib.parse import quote
-from .dev_agent_workspace import read_beneath
+from .dev_agent_workspace import read_beneath, stat_beneath
 from .dev_agent_ledger import LIMITS
 
 # Preserve error wording except host paths/credentials. Relative evidence names stay readable.
@@ -31,9 +31,31 @@ def display(value):
     return clean(value) if is_agent(value) else value
 
 
+VIEW_LIMIT=32*1024*1024       # inlined into the view
+DOWNLOAD_LIMIT=256*1024*1024  # one public file download; clean() needs the whole text (10-30: sol3 state logs 42 MB)
+
+
 def _read(root,name,default=None):
-    try:return json.loads(read_beneath(root,name,32*1024*1024))
+    try:return json.loads(read_beneath(root,name,VIEW_LIMIT))
     except FileNotFoundError:return default
+
+
+def _size(value):
+    return f'{value/1e6:.1f} MB'
+
+
+def _link(base,label,root,name):
+    """Availability without reading: an unsafe or oversize file marks only its own link."""
+    try:size=stat_beneath(root,name,shared=name.endswith('.png'))
+    except FileNotFoundError:return dict(label=label+' (not yet available)',available=False)
+    except (OSError,ValueError) as exc:
+        return dict(label=label+' (unavailable: unsafe file)',available=False,reason=f'unsafe file ({exc})')
+    if size>DOWNLOAD_LIMIT:
+        return dict(label=f'{label} (too large to open: {_size(size)})',available=False,size_bytes=size,
+                    reason=f'{_size(size)} exceeds the {_size(DOWNLOAD_LIMIT)} download limit')
+    entry=dict(label=label,available=True,url=base+quote(name,safe='/'),size_bytes=size)
+    if size>VIEW_LIMIT:entry.update(label=f'{label} ({_size(size)}, large)',large=True)
+    return entry
 
 
 def _public_name(name):
@@ -51,9 +73,10 @@ def artifact(cell,name):
     root=Path(cell['artifact_dir'])/'agent'
     try:
         linked=name.endswith('.png')
-        raw=read_beneath(root/'ws',name,32*1024*1024,shared=linked)
-        canonical=read_beneath(root/'private/public',name,32*1024*1024,shared=linked)
-    except (OSError,ValueError):raise FileNotFoundError('Agent public evidence unavailable') from None
+        raw=read_beneath(root/'ws',name,DOWNLOAD_LIMIT,shared=linked)
+        canonical=read_beneath(root/'private/public',name,DOWNLOAD_LIMIT,shared=linked)
+    except FileNotFoundError:raise FileNotFoundError('Agent public evidence unavailable') from None
+    except (OSError,ValueError) as exc:raise FileNotFoundError(f'Agent public evidence unavailable: {exc}') from None
     if raw!=canonical:raise FileNotFoundError('Agent public evidence digest mismatch')
     if name.endswith('.png'):
         import hashlib
@@ -96,14 +119,17 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     error('controller',cell.get('error'))
     if quota.get('error'):error('quota',quota['error'])
     base=f'{api}/experiments/{cell["experiment_id"]}/cells/{key}/agent/files/'
+    def soft(root,name,default=None):
+        # One unreadable evidence file is reported, never a failed view (10-30 sol3).
+        try:return _read(root,name,default)
+        except (OSError,ValueError) as exc:error(name,f'unreadable: {exc}');return default
     def links(names):
         result=[]
         for label,name in names:
             if not _public_name(name):continue
-            try:read_beneath(public,name,32*1024*1024,shared=name.endswith('.png'))
-            except FileNotFoundError:
-                result.append(dict(label=label+' (not yet available)',available=False));continue
-            result.append(dict(label=label,available=True,url=base+quote(name,safe='/')))
+            entry=_link(base,label,public,name)
+            if entry.get('reason') and not entry['available']:error(name,entry['reason'])
+            result.append(entry)
         return result
     records=[]
     for path in sorted((private/'journal').glob('*.json')):
@@ -119,15 +145,16 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
                       [('stdout','stdout.txt'),('stderr','stderr.txt'),('diagnostics','diagnostics/planner.json'),('code','policy.py'),('trace','trace.json'),('state log','state_log.json')]]
         if eid:
             try:
-                stderr=read_beneath(public,'executions/'+eid+'/stderr.txt',32*1024*1024).decode('utf-8')
+                stderr=read_beneath(public,'executions/'+eid+'/stderr.txt',VIEW_LIMIT).decode('utf-8')
                 if stderr.strip():error(eid+' stderr',stderr)
             except FileNotFoundError:pass
-            for event in _read(public,'executions/'+eid+'/trace.json',[]) or []:
+            except (OSError,ValueError) as exc:error(eid+' stderr',f'unreadable: {exc}')
+            for event in soft(public,'executions/'+eid+'/trace.json',[]) or []:
                 if isinstance(event,dict) and (event.get('error') or event.get('rejected') or event.get('status') in ('failed','rejected','timeout')):
                     error(eid+' action',{k:event[k] for k in ('status','rejected','error','reason','diagnostics') if k in event})
         if vid:
             names += [(label,'versions/'+vid+'/'+name) for label,name in [('code bundle','bundle.py'),('Eval verdict + advice','eval.json'),('help','help.json')]]
-            current_help=_read(public,'versions/'+vid+'/help.json')
+            current_help=soft(public,'versions/'+vid+'/help.json')
             if current_help is not None:result={**result,'help':current_help}
         elif op=='ask_help' and re.fullmatch(r'v\d+',str(result.get('version_id',''))):
             names.append(('help','versions/'+result['version_id']+'/help.json'))
@@ -137,7 +164,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         records.append(dict(id=rid,kind='formal_version' if op=='submit' else 'no_eval_execution' if op=='run' else 'help' if op=='ask_help' else 'probe',
             op=op,status=response['status'],sequence=response.get('sequence'),at=job.get('reserved_at'),version_id=vid or result.get('version_id'),execution_id=eid,probe_id=pid,
             result=clean(result),error=clean(response.get('error')),links=links(names)))
-    demo=_read(public,'events/demo.json')
+    demo=soft(public,'events/demo.json')
     if demo is not None:
         job=next((j for j in jobs if j['id']=='help:demo'),{})
         records.append(dict(id='help:demo',kind='help',op='demo',status=demo.get('status'),at=job.get('reserved_at'),
@@ -149,24 +176,26 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     error_files += [str(p.relative_to(private)) for p in (private/'help').glob('v*/error.json')]
     error_files += [str(p.relative_to(private)) for p in (private/'executions').glob('e*/controller-error.json')]
     for name in error_files:
-        value=_read(private,name)
+        value=soft(private,name)
         if value:error(name,{k:value[k] for k in ('error','error_class','error_text') if k in value})
     for folder in ('turns','eval'):
         for directory in sorted((private/folder).glob('*')):
             if not directory.is_dir() or directory.is_symlink():continue
             prefix=folder+'/'+directory.name+'/'
             try:
-                stderr=read_beneath(private,prefix+'stderr.txt',32*1024*1024).decode('utf-8',errors='replace')
+                stderr=read_beneath(private,prefix+'stderr.txt',VIEW_LIMIT).decode('utf-8',errors='replace')
                 if stderr.strip():error(prefix+'stderr',stderr)
             except FileNotFoundError:pass
+            except (OSError,ValueError) as exc:error(prefix+'stderr',f'unreadable: {exc}')
             try:
-                raw=read_beneath(private,prefix+'events.jsonl',32*1024*1024)
+                raw=read_beneath(private,prefix+'events.jsonl',VIEW_LIMIT)
                 for line in raw.splitlines():
                     try:event=json.loads(line)
                     except ValueError:continue
                     if event.get('type') in ('error','turn.failed'):
                         error(prefix+'error',event.get('error') or event.get('message') or event)
             except FileNotFoundError:pass
+            except (OSError,ValueError) as exc:error(prefix+'events',f'unreadable: {exc}')
     saved=cell.get('agent_resources',{}).get('used')
     if stopped and saved is not None and saved!=used:
         error('accounting',dict(error='persisted_count_disagreement',ledger=used,persisted=saved))
@@ -179,6 +208,13 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         if any(j['resources'].get('moving_executions') for j in active):phase='waiting on execution'
         if any(j['kind']=='eval' for j in active):phase='Eval'
         if any(j['kind']=='help' for j in active):phase='help'
+    # Advisor model: configured (10-29+), else the model recorded by the run's own Advisor calls,
+    # else the advisor_proxy setting; runs before 10-29 used the fixed gpt-6-astra Advisor.
+    recorded=[r.get('model') for r in (soft(private,str(p.relative_to(private))) for p in sorted((private/'help').glob('v*/advisor.json')))
+              if isinstance(r,dict) and isinstance(r.get('model'),str)]
+    advisor_model=(selection.get('advisor_model') or (recorded[-1] if recorded else None)
+                   or (selection.get('advisor_proxy') or {}).get('model')
+                   or ('gpt-6-astra' if selection.get('model_source')=='codex' else None))
     version_rows=[dict(v,**v.get('agent',{})) for v in cell.get('versions',[])]
     versions=[{k:v[k] for k in ('version','version_id','execution_id','valid','eval','eval_verdict','native_success','agree','agreement') if k in v} for v in version_rows]
     result=clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','error','task_id','seed','policy_id','mode','budget','used','versions','jobs')})
@@ -186,6 +222,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         phase=phase,reason=clean(cell.get('reason')),fatal_cause=clean(cell.get('fatal_cause')),errors=errors,counts=used,held=held,limits=limits,
         remaining={k:limits[k]-used[k]-held[k] for k in limits},wall_seconds=wall,wall_limit=21600,
         quota=clean(quota),dev_model=selection.get('dev_model','gpt-6-astra'),eval_model=selection.get('eval_model','gpt-6-astra'),
+        advisor_model=advisor_model,
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
         history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
     from .dev_agent_ui_projection import compat, error_groups

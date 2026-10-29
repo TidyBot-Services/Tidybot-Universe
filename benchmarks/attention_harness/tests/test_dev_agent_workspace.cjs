@@ -305,3 +305,23 @@ test('r6 A1 and A2 use the same Eval short reason in 02, 03 and full story',asyn
     assert.doesNotMatch(api.agentTimelineDetail(snapshot,null),/Planner refused|Out of reach/);
   }
 });
+test('agent cards show each run\'s recorded Dev, Eval and Advisor models (10-30: r6 astra, sol3 sol)',async()=>{
+  const {api}=apiFor();
+  const {snapshot}=await agentSnapshot();
+  const card=(html,title)=>html.match(new RegExp(`<span>${title}</span><b>([^<]*)</b>(?:<small>([^<]*)</small>)?`));
+  for(const model of ['gpt-6-astra','gpt-6.1-sol']){
+    const view={...snapshot,dev_eval_enabled:true,agent:{...snapshot.agent,dev_model:model,eval_model:model,advisor_model:model}};
+    const html=api.workspaceHTML(view,null);
+    assert.equal(card(html,'Eval agent')[1],model);
+    assert.ok(card(html,'Help strategy')[2].endsWith(`an automatic advisor answers · ${model}`),card(html,'Help strategy')[2]);
+    assert.match(html,new RegExp(`Dev ${model.replace('.','\\.')} · Eval ${model.replace('.','\\.')} · Advisor ${model.replace('.','\\.')}`));
+    if(model!=='gpt-6-astra')assert.doesNotMatch(html.slice(0,html.indexOf('data-agent-settings')),/gpt-6-astra/);
+  }
+});
+test('an oversize or unsafe evidence file marks only its own link, with the reason shown',()=>{
+  const links=vm.runInNewContext(source.slice(source.indexOf('  function agentLinks('),source.indexOf('  function agentSettingsLine('))+'\nagentLinks',{esc:v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))});
+  const out=links([{label:'stdout',available:true,url:'/x/stdout.txt'},{label:'state log (42.3 MB, large)',available:true,large:true,url:'/x/state_log.json'},
+    {label:'trace (too large to open: 300.0 MB)',available:false,reason:'300.0 MB exceeds the 268.4 MB download limit'}]);
+  assert.match(out,/<a href="\/x\/state_log.json"[^>]*data-large-file>state log \(42.3 MB, large\)<\/a>/);
+  assert.match(out,/<span data-link-unavailable title="300.0 MB exceeds[^"]*">trace \(too large to open: 300.0 MB\) — 300.0 MB exceeds/);
+});
