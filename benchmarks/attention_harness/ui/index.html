@@ -2322,8 +2322,8 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 .op-plan [data-plan-note]{padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
 .op-eval-strip{margin-top:14px;padding:14px;border:1px solid var(--op-line);border-radius:12px;background:var(--op-surface)}
 .op-eval-strip h4{display:flex;align-items:center;gap:10px;margin:0 0 12px}
-.op-eval-stages{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.op-eval-stage{padding:9px 10px;border-radius:10px;font-size:13px;border:1px solid var(--op-line)}
+.op-eval-stages{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;min-width:0}
+.op-eval-stage{padding:8px 6px;border-radius:10px;font-size:13px;border:1px solid var(--op-line);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .op-eval-stage.completed{background:#e3eee2;color:#2f5e2c;border-color:#b6cbb3}
 .op-eval-stage.failed{background:#8a2c1f;color:#fff;border-color:#8a2c1f;font-weight:600}
 .op-eval-stage.unreached{border-style:dashed;color:var(--op-muted)}

@@ -243,10 +243,10 @@ def plain_sentence(text):
     return re.split(r'(?<=[.!?])\s+', text)[0]
 
 
-def snapshot_notes(cell, number):
+def snapshot_notes(cell, number, cut='pre-submit'):
     root = Path(cell['artifact_dir'])/'agent/private/snapshots'
     try:
-        manifest = json.loads(read_beneath(root, f'pre-submit-v{number}.json', 32*1024*1024))
+        manifest = json.loads(read_beneath(root, f'{cut}-v{number}.json', 32*1024*1024))
         entry = manifest['files'].get('work/notes.md')
         if not entry:
             return ''
@@ -261,8 +261,20 @@ def snapshot_notes(cell, number):
         return None
 
 
+def plan_paragraphs(note):
+    # Dev's append-only journal uses one newline per entry. Also accept Markdown
+    # paragraphs with wrapped lines when blank-line separators are present.
+    return [p.strip() for p in re.split(r'\n\s*\n' if re.search(r'\n\s*\n', note) else r'\n', note) if p.strip()]
+
+
+def plan_sentence(paragraph, number):
+    sentences = re.split(r'(?<=[.!?])\s+', re.sub(r'\s+', ' ', paragraph).strip())
+    named = re.compile(rf'\bv0*{number}\b', re.I)
+    return next((s for s in sentences if named.search(s)), sentences[-1])
+
+
 def attempt_plan(cell, version, submission):
-    """Authored pre-submit notes only. Never use the compatibility Eval reason."""
+    """Authored plan notes only. Never use the compatibility Eval reason."""
     from difflib import SequenceMatcher
     from .dev_agent_view import clean
     from .dev_agent_diagnostics import screen_text
@@ -280,8 +292,19 @@ def attempt_plan(cell, version, submission):
                            if tag in ('insert', 'replace')).strip()
     summary = version.get('summary') or version.get('agent', {}).get('summary') or submission.get('summary')
     summary = clean(screen_text(summary)) if isinstance(summary, str) else ''
+    # Legacy r6 authored its submission paragraphs after the pre-submit cut.
+    # Recover only the explicit current-version submission paragraph from the
+    # verified post-exec snapshot, never its later execution/Eval recap.
+    if not summary and current is not None and previous is not None:
+        after = snapshot_notes(cell, number, 'post-exec')
+        if after is not None and after.startswith(current):
+            submitted = re.compile(rf'\bv0*{number}\s+(?:now running|submitted)\b', re.I)
+            paragraph = next((p for p in plan_paragraphs(after[len(current):]) if submitted.search(p)), '')
+            if paragraph:
+                note = paragraph
     note = clean(note)
-    return dict(summary=summary or plain_sentence(note), note=note or summary,
+    paragraphs = plan_paragraphs(note)
+    return dict(summary=summary or (plan_sentence(paragraphs[-1], number) if paragraphs else ''), note=note or summary,
                 source='summary' if summary else 'notes' if note else 'unavailable')
 
 
@@ -332,13 +355,8 @@ def replay_stages(events, review, solved=False):
                  6 if re.search(r'release|containment|outside.*sink', reason) else None)
         if stage is not None:
             states[stage] = 'failed'; errors[stage] = reason
-    def cause(text):
-        if re.search(r'\bik\b|ik_|inverse.kinematic', text):return 'no reachable path'
-        if 'bilateral' in text or 'contact' in text:return 'grasp not confirmed'
-        if 'collision' in text:return 'path is blocked'
-        if 'slip' in text:return 'object slipped'
-        return 'task not completed'
-    rows = [dict(stages=[i], label=name, state=states[i], cause=cause(errors.get(i, '')) if states[i]=='failed' else '')
+    reason = attempt_story(review)['short']
+    rows = [dict(stages=[i], label=name, state=states[i], cause=reason if states[i]=='failed' else '')
             for i, name in enumerate(names)]
     # Keep the failing stage distinct; combine the unreached suffix first, then
     # later completed phases. This retains 3–5 chips for every verdict.

@@ -3463,11 +3463,19 @@
     const summary=agent?(version.plan?.summary||'No plan recorded.'):full.replace(/\s+/g,' ').trim();
     return `<details class="op-plan" data-plan-row data-persist-detail="operator-plan:${esc(version.version)}"><summary><b>PLAN</b><span>${esc(summary)}</span></summary><div data-plan-note>${esc(full)}</div></details>`;
   }
+  function agentStripStages(stages) {
+    if(stages.length<=4)return stages;
+    const end=stages.findIndex(stage=>stage.state!=='completed');
+    const count=end<0?stages.length:end;
+    if(count<2)return stages;
+    const leading=stages.slice(0,count),steps=leading.flatMap(stage=>stage.stages);
+    return [{state:'completed',stages:steps,label:`${steps.length} steps`,title:leading.map(stage=>stage.label).join(' · '),cause:''},...stages.slice(count)];
+  }
   function agentEvalStrip(version,attemptId) {
     const review=version?.evaluator_review,passed=version?.native_success===true||review?.passed===true;
     const failed=review?.passed===false;
-    const stages=version?.eval_stages||[];
-    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span></h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}">${stage.state==='completed'?'✓ ':stage.state==='failed'?'✕ ':''}${esc(stage.label)}${stage.cause?`: ${esc(stage.cause)}`:''}</span>`).join('<span class="op-eval-arrow" aria-hidden="true">→</span>')}</div>${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
+    const stages=agentStripStages(version?.eval_stages||[]);
+    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span></h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}"${stage.title?` title="${esc(stage.title)}"`:''}>${stage.state==='completed'?'✓ ':stage.state==='failed'?'✕ ':''}${esc(stage.label)}${stage.state==='failed'?`: ${esc(version.story?.short||stage.cause)}`:''}</span>`).join('<span class="op-eval-arrow" aria-hidden="true">→</span>')}</div>${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
   }
 
   function operatorEvalReview(review,attemptId) {
@@ -4635,7 +4643,7 @@
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
     const passed=version.evaluator_review?.passed;
     const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':'unavailable'}`;
-    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${story.failure_class?`<span class="op-agent-chip failure-class">${esc(story.failure_class)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&story.short?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(story.short)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
@@ -4722,6 +4730,14 @@
     }catch(error){panel.querySelector('[data-instrument-status]').textContent=`Instruments unavailable: ${error.message}`;}};
     panel.addEventListener('toggle',load);load();
   }
+  function agentReplayEvents(events,version) {
+    if(version.evaluator_review?.passed!==false&&version.native_success!==false)return events;
+    // Sensor reads after the final action do not mean execution continued.
+    const last=events.findLastIndex(event=>!['started','running'].includes(event.status)
+      && !/^(sensors\.|.*\.(?:get_observation|get_state|get_full_state|state)$)/.test(event.operation||''));
+    return events.map((event,index)=>index===last&&(event.status==='rejected'||event.rejected===true||event.result?.rejected===true)
+      ? {...event,recorded_status:event.status,status:'failed',error:event.error||{message:event.result?.reason||event.reason||'Move refused'}}:event);
+  }
   async function agentWorkspaceSnapshot(s,cell,experiment) {
     const compat=cell.dev_v2_compat;
     const session={...s,agent:cell.agent,locked:{...s.locked,config:{...s.locked.config,eval_agent:{enabled:true}}}};
@@ -4742,6 +4758,7 @@
     Object.assign(snapshot.station,{camera_url:null,camera_preview_url:null,camera_state_url:null,camera_views:null,camera_monitor_v2:false});
     for(const version of snapshot.dev_session.versions){
       const trace=Object.values(snapshot.traces).find(t=>t.attempt_id===`attempt:${cell.key}:${version.version-1}`);
+      if(trace)trace.events=agentReplayEvents(trace.events,version);
       if(!trace||!version.frames)continue;
       for(const media of trace.evidence){
         const name=media.kind==='advisor_replay'?'advisor_replay.mp4':`${media.kind}.mp4`;

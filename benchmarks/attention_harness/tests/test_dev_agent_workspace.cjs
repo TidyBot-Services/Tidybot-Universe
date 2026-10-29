@@ -12,7 +12,7 @@ const golden=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/one-call-w
 const harness=fs.readFileSync(path.join(__dirname,'test_dev_workspace.cjs'),'utf8');
 const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.indexOf("test('Current view keeps"))
   .replace('({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',
-    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,drawAgentInstrument,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace})');
+    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,drawAgentInstrument,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
 function apiFor(snapshot=null,overrides={}) {
   const calls=[];
@@ -157,7 +157,7 @@ test('r6 timeline shows request-sequence dots, short verdicts and clean selected
   assert.match(html,/op-attn-help automatic dashed/);
   api.selectAgentAttempt(snapshot,snapshot.attempts[1].attempt_id);
   const card=api.agentTimelineDetail(snapshot,null);
-  for(const text of ['Attempt 2','Not solved · Eval fail','Out of reach','Before this attempt','help not delivered','23 checks · 1 preview','gripper speed limit'])assert.ok(card.includes(text),text);
+  for(const text of ['Attempt 2','Not solved · Eval fail','out of reach','Before this attempt','help not delivered','23 checks · 1 preview','gripper speed limit'])assert.ok(card.includes(text),text);
   assert.doesNotMatch(card,/<button|e000|v000|stdout|\.json|RuntimeError|Details \(/);
   assert.match(card,/op-agent-chip refused/);
   assert.ok(!card.includes(r6.versions[1].story.sentence));
@@ -241,8 +241,65 @@ test('r6 S3 strip follows each selected attempt under its video, with P3 plan fi
     const strip=html.match(/<section class="op-eval-strip"[^]*?<\/section>/)[0];
     assert.doesNotMatch(strip,/stdout\.txt|trace\.json|state_log\.json/);
     if(i===2){assert.doesNotMatch(strip,/op-eval-stage failed|op-eval-stage unreached|Try next:/);assert.match(strip,/>Completed<\/span>/);}
-    else{assert.equal((strip.match(/op-eval-stage failed/g)||[]).length,1);assert.match(strip,i===0?/✕ Close: grasp not confirmed/:/✕ Descent: no reachable path/);assert.match(strip,/Try next:/);}
+    else{assert.equal((strip.match(/op-eval-stage failed/g)||[]).length,1);assert.match(strip,i===0?/✕ Close: grasp not confirmed/:/✕ Descent: out of reach/);assert.match(strip,/Try next:/);}
     assert.match(html,/<details data-agent-attempt-details[^]*data-agent-instrument/);
   }
 });
 
+test('r6 terminal descent rejection becomes the last red step; continued rejections retain their status',async()=>{
+  const snapshot=await timelineSnapshot(),sessionStorage=memoryStorage(),{api}=apiFor(snapshot,{sessionStorage});
+  const version=r6.versions[1],raw=r6.evidence[`executions/${version.execution_id}/trace.json`];
+  const events=raw.map((e,i)=>({...e,event_id:`r6:${i}`,sequence:i,event_type:'sdk.call',operation:`${e.source}.${e.operation}`}));
+  const mapped=api.agentReplayEvents(events,version);
+  assert.equal(mapped.at(-1).status,'failed');
+  assert.equal(mapped.at(-1).recorded_status,'rejected');
+  assert.equal(mapped.at(-1).error.message,'official_ik_non_success');
+  assert.equal(events.at(-1).status,'rejected','recorded evidence remains intact');
+  const trace=Object.values(snapshot.traces).find(t=>t.attempt_id===snapshot.attempts[1].attempt_id);
+  trace.events=mapped;
+  api.selectAgentAttempt(snapshot,snapshot.attempts[1].attempt_id);
+  const html=api.executionViewer(snapshot),steps=[...html.matchAll(/<details data-history-event[^]*?<\/details>/g)].map(m=>m[0]);
+  assert.match(steps.at(-1),/class="op-step failed"/);
+  assert.match(steps.at(-1),/✕[^]*Moved left arm a small step[^]*Stopped:/);
+  assert.equal(steps.filter(s=>s.includes('op-step failed')).length,1);
+  const continued=[...events,{operation:'left_arm.move_delta',status:'completed'}];
+  assert.equal(api.agentReplayEvents(continued,version)[events.length-1].status,'rejected');
+  const observed=[...events,{operation:'sensors.get_observation',status:'completed'}];
+  assert.equal(api.agentReplayEvents(observed,version)[events.length-1].status,'failed');
+  const nested=events.map((e,i)=>i===events.length-1?{...e,status:'completed'}:e);
+  assert.equal(api.agentReplayEvents(nested,version).at(-1).status,'failed');
+  assert.equal(api.agentReplayEvents(events,{native_success:true,evaluator_review:{passed:true}}).at(-1).status,'rejected');
+});
+test('every r6 strip collapses leading completed stages above four chips and keeps step names in the title',async()=>{
+  const snapshot=await timelineSnapshot(),sessionStorage=memoryStorage(),{api}=apiFor(snapshot,{sessionStorage});
+  for(let i=0;i<3;i++){
+    api.selectAgentAttempt(snapshot,snapshot.attempts[i].attempt_id);
+    const version=r6.versions[i],stages=api.agentStripStages(version.eval_stages);
+    assert.ok(stages.length<=4);
+    assert.deepEqual(Array.from(stages.flatMap(s=>s.stages)),[0,1,2,3,4,5,6]);
+    const strip=api.executionViewer(snapshot).match(/<section class="op-eval-strip"[^]*?<\/section>/)[0];
+    assert.equal((strip.match(/class="op-eval-stage /g)||[]).length,stages.length);
+    if(version.eval_stages.length>4){
+      const first=stages[0];assert.equal(first.label,`${first.stages.length} steps`);
+      assert.ok(first.title.includes('Find objects'));assert.match(strip,/title="Find objects · Pre-grasp/);
+      assert.ok(strip.includes(`✓ ${first.label}`));
+    }else assert.equal(stages,version.eval_stages);
+  }
+  const css=fs.readFileSync(path.join(__dirname,'../ui/index.html'),'utf8');
+  assert.match(css,/\.op-eval-stages\{[^}]*flex-wrap:nowrap/);
+  assert.match(css,/\.op-eval-stage\{[^}]*white-space:nowrap/);
+});
+test('r6 A1 and A2 use the same Eval short reason in 02, 03 and full story',async()=>{
+  const snapshot=await timelineSnapshot(),sessionStorage=memoryStorage(),{api}=apiFor(snapshot,{sessionStorage});
+  for(let i=0;i<2;i++){
+    api.selectAgentAttempt(snapshot,snapshot.attempts[i].attempt_id);
+    const reason=r6.versions[i].story.short;
+    const node=api.attentionEfficiency(snapshot).match(new RegExp(`data-attn-attempt="${i+1}"[^]*?<\\/g>`))[0];
+    assert.ok(node.includes(`>${reason}</text>`));
+    const strip=api.executionViewer(snapshot).match(/class="op-eval-stage failed"[^>]*>([^<]+)/)[1];
+    assert.equal(strip.split(': ')[1],reason);
+    const story=api.agentFullStory(snapshot).match(new RegExp(`data-agent-attempt-card="${i+1}"[^]*?data-agent-failure-reason>([^<]+)`));
+    assert.equal(story[1],reason);
+    assert.doesNotMatch(api.agentTimelineDetail(snapshot,null),/Planner refused|Out of reach/);
+  }
+});

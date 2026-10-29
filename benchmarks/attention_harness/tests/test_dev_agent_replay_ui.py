@@ -7,7 +7,7 @@ import sys
 import pytest
 
 from benchmarks.attention_harness.dev_agent_ui_projection import (
-    attempt_plan, plain_sentence, replay_stages, snapshot_notes, version_evidence,
+    attempt_plan, plan_sentence, plain_sentence, replay_stages, snapshot_notes, version_evidence,
 )
 from benchmarks.attention_harness.tests.test_dev_agent_d1 import workspace, broker, request, settled
 
@@ -31,11 +31,11 @@ def test_r6_stage_strip_from_actual_trace(index, failure):
         assert all(s['state'] == 'completed' for s in stages)
 
 
-def notes_cut(root, number, text):
+def notes_cut(root, number, text, cut='pre-submit'):
     raw = text.encode(); digest = hashlib.sha256(raw).hexdigest()
     (root/'objects').mkdir(parents=True, exist_ok=True)
     (root/'objects'/digest).write_bytes(raw)
-    (root/f'pre-submit-v{number}.json').write_text(json.dumps({'files': {'work/notes.md': {'sha256': digest, 'bytes': len(raw)}}}))
+    (root/f'{cut}-v{number}.json').write_text(json.dumps({'files': {'work/notes.md': {'sha256': digest, 'bytes': len(raw)}}}))
 
 
 def test_r6_plan_uses_only_notes_added_between_pre_submit_snapshots(tmp_path, monkeypatch):
@@ -48,13 +48,49 @@ def test_r6_plan_uses_only_notes_added_between_pre_submit_snapshots(tmp_path, mo
         expected = R6['notes'][str(row['version'])][len(previous):].strip()
         from benchmarks.attention_harness.dev_agent_view import clean
         assert plan['note'] == clean(expected)
-        assert plan['summary'] == plain_sentence(clean(expected))
+        assert plan['summary'] == plan_sentence(clean(expected).splitlines()[-1], row['version'])
         assert plan['source'] == 'notes'
         assert plan['summary'] != row['evaluator_review']['reason']
         monkeypatch.setattr('benchmarks.attention_harness.dev_agent_ui_projection.public',
                             lambda cell, name, default=None: row['evaluator_review'] if name.endswith('eval.json') else default)
         version, _ = version_evidence(cell, dict(version=row['version']))
         assert version['reason'] == plan['summary'] != row['evaluator_review']['reason']
+
+
+@pytest.mark.parametrize('number,start', [
+    (1, 'Formal v1 submitted: higher grasp .965'),
+    (2, 'v0002 now running: use that pregrasp, straight descent .945'),
+    (3, 'v0003 submitted using these three joint poses'),
+])
+def test_r6_plan_submission_paragraph_expected_starts(tmp_path, number, start):
+    cell = {'artifact_dir': str(tmp_path)}; root = tmp_path/'agent/private/snapshots'
+    for n, note in R6['notes'].items():notes_cut(root, int(n), note)
+    for n, note in R6['post_exec_notes'].items():notes_cut(root, int(n), note, 'post-exec')
+    plan = attempt_plan(cell, {'version': number}, {})
+    assert plan['summary'].startswith(start)
+    assert '\n' not in plan['summary']
+    assert plan == R6['versions'][number-1]['plan']
+    assert 'execution completed all 9' not in plan['note']
+    assert attempt_plan(cell, {'version': number}, {'summary': 'Use the authored summary.'})['summary'] == 'Use the authored summary.'
+
+
+@pytest.mark.parametrize('paragraph,expected', [
+    ('Previous failure. v0002 uses a straight descent. Then close.', 'v0002 uses a straight descent.'),
+    ('Previous failure. v2 uses a straight descent. Then close.', 'v2 uses a straight descent.'),
+    ('v20 was different. Lower the wrist\nthen close.', 'Lower the wrist then close.'),
+])
+def test_plan_sentence_prefers_this_version_otherwise_last(paragraph, expected):
+    assert plan_sentence(paragraph, 2) == expected
+
+
+def test_post_exec_plan_recovery_ignores_outcome_and_corrupt_notes(tmp_path):
+    cell = {'artifact_dir': str(tmp_path)}; root = tmp_path/'agent/private/snapshots'
+    notes_cut(root, 1, 'Recap.\nCurrent plan. Lower the wrist.\n')
+    notes_cut(root, 1, 'Recap.\nCurrent plan. Lower the wrist.\nv0001 execution completed.\n', 'post-exec')
+    assert attempt_plan(cell, {'version': 1}, {})['summary'] == 'Lower the wrist.'
+    manifest = json.loads((root/'post-exec-v1.json').read_text())
+    (root/'objects'/manifest['files']['work/notes.md']['sha256']).write_text('v0001 submitted tampered plan.')
+    assert attempt_plan(cell, {'version': 1}, {})['summary'] == 'Lower the wrist.'
 
 
 def test_summary_wins_and_notes_diff_missing_or_corrupt_snapshots_fail_closed(tmp_path):
