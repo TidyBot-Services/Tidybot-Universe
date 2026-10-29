@@ -68,10 +68,10 @@ def build_workspace(workspace, execution, success_condition=None):
 
 class Evaluator:
     def __init__(self, workspace, *, model='gpt-6-astra', prompt=EVAL_PROMPT, quota=None, command_factory=None,
-                 success_condition=None):
+                 success_condition=None, redact=True):
         from .dev_agent_isolation import controller_command
         self.workspace,self.model,self.prompt,self.quota=workspace,model,prompt,quota
-        self.success_condition=success_condition
+        self.success_condition,self.redact=success_condition,redact
         self.command_factory=command_factory or controller_command
         self.preflight=command_factory is None
         self.process=None;self.usage=None;self.cancelled=threading.Event()
@@ -128,7 +128,7 @@ class Evaluator:
                     raise RuntimeError('process_failed')
                 try:verdict=validate(json.loads(answer))
                 except (ValueError,TypeError):raise ValueError('schema_invalid')
-                if self.success_condition:
+                if self.success_condition and self.redact:
                     # Raw verdict stays private; Dev gets the conclusion without the rule's numbers or names.
                     from .dev_agent_success import dev_view
                     atomic_write(root,'verdict.json',encode(verdict))

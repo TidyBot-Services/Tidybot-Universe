@@ -115,3 +115,27 @@ def test_manifest_freezes_condition_only_for_matching_configs():
     frozen = success.for_configs(configs)
     assert list(frozen) == ['pick_place_counter_to_sink:102'] and frozen['pick_place_counter_to_sink:102'] == COND
     assert 'never quote the region' in success.EVAL_RULE
+
+
+def test_dev_workspace_gets_public_rule_when_visible(tmp_path):
+    from benchmarks.attention_harness.dev_agent_workspace import Workspace
+    from benchmarks.attention_harness.dev_agent_diagnostics import FORBIDDEN
+    from benchmarks.attention_harness.tests.test_dev_agent_d2 import CONFIG
+    ws = Workspace(tmp_path/'agent').prepare(dict(task_id='pick_place_counter_to_sink', task_prompt='Put it in the sink.'),
+                                            CONFIG, success_condition=COND)
+    doc = json.loads((ws.ws/'docs/success_condition.json').read_bytes())
+    assert doc == success.eval_view(COND) and 'derivation' not in doc
+    assert not FORBIDDEN.search(json.dumps(doc))
+    assert 'docs/success_condition.json' in (ws.ws/'docs/tools.md').read_text()
+    plain = Workspace(tmp_path/'plain').prepare(dict(task_id='x', task_prompt='y'), CONFIG)
+    assert not (plain.ws/'docs/success_condition.json').exists()
+    assert 'success_condition' not in (plain.ws/'docs/tools.md').read_text()
+
+
+def test_eval_text_unredacted_when_dev_has_the_rule(ws):
+    execution = seed_record(ws)
+    ws.publish('executions/e000001/final_observation.json', final((0.414, -2.0535, 0.860)))
+    verdict = dict(passed=False, reason='y -2.054 is below the basin bound -1.972', evidence=[], advice='Move further into the basin.')
+    ev = Evaluator(ws, command_factory=eval_factory(ws, json.dumps(verdict)), success_condition=COND, redact=False)
+    result = ev.evaluate(execution, deadline=time.monotonic()+30)
+    assert '-1.972' in result['reason'] and not (ws.private/'eval/v0001/verdict.json').exists()

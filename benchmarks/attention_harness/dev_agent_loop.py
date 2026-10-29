@@ -262,8 +262,11 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         setup_id='setup:'+uuid.uuid4().hex
         ledger.reserve(setup_id,'setup',{});ledger.claim(setup_id)
         workspace=Workspace(root/'agent')
+        condition=manifest.get('success_conditions',{}).get(f"{cell['task_id']}:{cell['seed']}")
+        # Dev also reads the public rule (10-29 step 6); earlier manifests kept it Eval-only.
+        dev_condition=condition if manifest.get('success_condition_dev_visible') else None
         if not (workspace.canonical/'task.json').exists():
-            workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),config)
+            workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),config,success_condition=dev_condition)
             atomic_write(workspace.ws,'work/main.py',manifest['initial_sources'][cell['task_id']]['source'].encode())
         # The planner uses dynamically bound loopback sockets. Bind a synthetic
         # socket for preflight; nothing contacts a deployed planner or UI.
@@ -288,8 +291,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         exporter=Exporter(store,key,workspace,config,ledger)
         helper=Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
             config=config,client=advisor_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory)
-        condition=manifest.get('success_conditions',{}).get(f"{cell['task_id']}:{cell['seed']}")
         evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota,success_condition=condition,
+            redact=dev_condition is None,
             prompt=manifest['eval_agent_prompt']+(manifest['eval_success_rule'] if condition else ''))
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory),
             prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],

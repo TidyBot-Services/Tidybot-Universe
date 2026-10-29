@@ -325,7 +325,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         # Creation-only freeze of the Eval-only container rule (option A); old manifests have none.
         from .dev_agent_success import EVAL_RULE,for_configs
         conditions=for_configs(configs)
-        if conditions:manifest.update(success_conditions=conditions,eval_success_rule=EVAL_RULE)
+        if conditions:manifest.update(success_conditions=conditions,eval_success_rule=EVAL_RULE,success_condition_dev_visible=True)
     from .execution_profile import manifest_metadata
     metadata=manifest_metadata(manifest)
     # Absence encodes legacy on disk; display helpers supply its label.

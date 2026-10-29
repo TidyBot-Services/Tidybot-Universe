@@ -112,7 +112,7 @@ class Workspace:
         for name in sorted(self.published):
             self._restore(self.ws, name, read_beneath(self.canonical, name, max(SOURCE_LIMIT, (self.canonical / name).stat().st_size)))
 
-    def prepare(self, task, config):
+    def prepare(self, task, config, success_condition=None):
         from .dev_tasks import dev_sdk, dev_sdk_prompt
         import hashlib
         from .dev_agent_diagnostics import public_observation, FORBIDDEN, screen_text
@@ -149,7 +149,13 @@ class Workspace:
             joint_margin_rad=.02, base_clearance_m=.010, sdk_calls=320, control_steps=9600,
             execution_seconds=1920, versions=10, executions=40, probes=300, wall_seconds=21600))
         self.publish('docs/devtool.py', Path(__file__).with_name('dev_agent_tools.py').read_bytes())
-        self.publish('docs/tools.md', TOOLS.encode())
+        if success_condition:
+            # The public rule only (region + rule), never a verdict (10-29 step 6).
+            from .dev_agent_success import DEV_RULE, eval_view
+            self.publish('docs/success_condition.json', eval_view(success_condition))
+            self.publish('docs/tools.md', (TOOLS+DEV_RULE).encode())
+        else:
+            self.publish('docs/tools.md', TOOLS.encode())
         self.publish('docs/guide.md', b'Use docs/devtool.py for all simulator interaction. Read task.json and docs/sdk.md.\nKeep notes in work/notes.md. Every moving attempt starts from the registered reset scene.\n')
         for name in ('versions', 'executions', 'probes'):
             self.publish('history/' + name + '.jsonl', b'')

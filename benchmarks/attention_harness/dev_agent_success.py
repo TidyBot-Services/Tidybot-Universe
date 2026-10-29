@@ -1,10 +1,12 @@
-"""Public container success condition for the agent Eval only (user option A, 2026-10-29).
+"""Public container success condition for the agent run (user option A, then step 6, 2026-10-29).
 
 The region is the target fixture's public interior box, the same four interior
 sites robocasa.utils.object_utils.obj_inside_of(partial_check=True) uses. The
 native verdict itself (native_success, object_in_sink) never enters this file.
-Dev never receives it: it is frozen into the private manifest at creation and
-copied only into the per-version Eval workspace.
+It is frozen into the private manifest at creation and copied into the Eval
+workspace. Manifests with success_condition_dev_visible also publish it to Dev
+as docs/success_condition.json; earlier ones keep it Eval-only and redact
+Eval's Dev-facing text.
 """
 import hashlib
 import json
@@ -30,6 +32,12 @@ If any check fails, `passed` must be false and the reason must cite the object
 position and which check failed. In reason, advice and evidence claims state the
 object position and whether it is inside or outside, but never quote the region's
 bounds or corner coordinates.
+'''
+
+
+DEV_RULE = '''docs/success_condition.json is the task's public success rule: the final settled obj_pos
+(from find_objects or observe) must be inside its region, and both grippers released and at least
+gripper_far_m from the object. It is the rule, not a verdict.
 '''
 
 
