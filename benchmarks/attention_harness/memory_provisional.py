@@ -107,7 +107,7 @@ def run_note_link(store, key, version, directory):
     return None
 
 
-def stage(store, key, version, directory):
+def stage(store, key, version, directory, *, agent_help_evidence=None):
     """Write ``memory-provisional-proposal.json`` for version H when it qualifies.
 
     Returns the queue ref, or None when version H has no AdvisorProxy answer.
@@ -142,7 +142,7 @@ def stage(store, key, version, directory):
     reason = effective_reason(origin_value, helped_value, signature)
     record = json.loads((directory / 'version.json').read_bytes())
     model_input = record.get('model_input')
-    if not isinstance(model_input, dict) or sha(model_input['uri']) != model_input['sha256']:
+    if agent_help_evidence is None and (not isinstance(model_input, dict) or sha(model_input['uri']) != model_input['sha256']):
         raise NotStaged('missing_evidence:model-input.json')
     # The exact Memory tuple is computed here, where the runtime SDK still
     # equals the run's frozen identity; the importer only adds its namespace.
@@ -153,7 +153,8 @@ def stage(store, key, version, directory):
     except Exception as exc:
         raise NotStaged('context_unavailable:' + type(exc).__name__) from exc
     refs = dict(origin_public_feedback=origin_feedback, origin_source=_ref(origin_dir / 'policy.py'),
-                help=_ref(help_path), help_model_input={'uri': model_input['uri'], 'sha256': model_input['sha256']},
+                help=_ref(help_path), **({'help_model_input': {'uri': model_input['uri'], 'sha256': model_input['sha256']}}
+                   if agent_help_evidence is None else {'agent_help_evidence': agent_help_evidence}),
                 help_source=_ref(directory / 'policy.py'), help_public_feedback=help_feedback)
     proposal = dict(schema_version=SCHEMA, experiment_id=cell['experiment_id'], cell=key,
                     origin_version=version - 1, help_version=version, policy_id=cell['policy_id'],
@@ -162,6 +163,8 @@ def stage(store, key, version, directory):
                     eval_reason_class=eval_reason_class(_origin_review(cell, version - 1)),
                     context=memory_context, refs=refs, help_content=content, status='pending_import', authority_candidate=False,
                     unvalidated=True, excluded_from_results=True)
+    if agent_help_evidence is not None:
+        proposal.update(origin=dict(channel='dev_agent'), provenance=dict(channel='dev_agent'))
     link = run_note_link(store, key, version, directory)
     if link is not None:
         proposal['from_run_note'] = link

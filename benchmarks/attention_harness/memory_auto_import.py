@@ -92,12 +92,15 @@ def summary_for(guidance):
 def provisional_payload(proposal, namespace, *, taken=()):
     if proposal.get('schema_version') != SCHEMA or proposal.get('status') != 'pending_import':
         raise Refused('not a pending provisional proposal')
-    if proposal.get('dev_mode')=='agent' or proposal.get('origin',{}).get('dev_mode')=='agent':
+    agent = proposal.get('origin', {}).get('channel') == 'dev_agent'
+    if ((proposal.get('dev_mode') == 'agent' or proposal.get('origin', {}).get('dev_mode') == 'agent') and not agent
+            or proposal.get('provenance', {}).get('channel') == 'dev_agent' and not agent):
         raise Refused('agent_memory_auto_import_and_validation_unsupported')
     refs = proposal['refs']
-    if set(refs) != set(REF_KEYS):
+    keys = tuple('agent_help_evidence' if name == 'help_model_input' and agent else name for name in REF_KEYS)
+    if set(refs) != set(keys):
         raise Refused('proposal evidence refs incomplete')
-    paths = {name: _verified(refs[name]) for name in REF_KEYS}
+    paths = {name: _verified(refs[name]) for name in keys}
     help_value = json.loads(paths['help'].read_bytes())
     guidance = proposal['help_content']
     if help_value.get('content') != guidance or help_value.get('provider') != proposal['provider']:
@@ -107,18 +110,32 @@ def provisional_payload(proposal, namespace, *, taken=()):
                   origin_version=proposal['origin_version'], help_version=proposal['help_version'],
                   provider=proposal['provider'], effective_reason=proposal['effective_reason'],
                   eval_reason_class=proposal['eval_reason_class'],
-                  digests={name: refs[name]['sha256'] for name in REF_KEYS})
+                  digests={name: refs[name]['sha256'] for name in keys})
     payload = dict(actor=ACTOR, memory_id=provisional_id(proposal['experiment_id'], proposal['cell'], proposal['help_version']),
                    context=context, guidance=guidance, failure_signature=proposal['failure_signature'], origin=origin,
                    origin_public_feedback_text=paths['origin_public_feedback'].read_bytes().decode('utf-8'),
                    help_public_feedback_text=paths['help_public_feedback'].read_bytes().decode('utf-8'),
                    title=unique_title(note_title(guidance, proposal['failure_signature']), taken, proposal['help_version']))
+    if agent:
+        origin['channel'] = 'dev_agent'
+        payload['agent_evidence'] = agent_evidence(proposal)
+        from attention_memory_service.agent_provisional import verify
+        verify(origin, guidance, payload['agent_evidence'])
     if 'from_run_note' in proposal:
         payload['from_run_note'] = proposal['from_run_note']
     summary = summary_for(guidance)
     if summary:
         payload['summary'] = summary
     return payload
+
+
+def agent_evidence(proposal):
+    refs = proposal['refs']
+    path = _verified(refs['agent_help_evidence'])
+    value = json.loads(path.read_bytes())
+    texts = {name: _verified(ref).read_bytes().decode('utf-8') for name, ref in value['refs'].items()}
+    return dict(refs={name: _verified(ref).read_bytes().decode('utf-8') for name, ref in refs.items()},
+                help=texts)
 
 
 def pending(ledger):
@@ -141,9 +158,35 @@ def pending(ledger):
         if event.get('cell') in agents:
             from .dev_agent_export import exported
             cell=agents[event['cell']]
-            if (event['kind']!='provisional_outcome' or not exported(cell,event.get('version'))
+            if (not exported(cell,event.get('version'))
                     or cell.get('validation_experiment') or cell.get('positive_control')
                     or (Path(cell['artifact_dir'])/f"v{event['version']}"/'memory-validation-input.json').exists()):
+                raise Refused('agent_memory_auto_import_and_validation_unsupported')
+            if event['kind'] == 'provisional':
+                proposal = _queue_value(event['queue'])
+                if (proposal.get('origin', {}).get('channel') != 'dev_agent'
+                        or proposal.get('provenance', {}).get('channel') != 'dev_agent'
+                        or proposal.get('cell') != event['cell'] or proposal.get('help_version') != event['version']
+                        or proposal.get('experiment_id') != cell['experiment_id']):
+                    raise Refused('agent_memory_auto_import_and_validation_unsupported')
+                evidence = agent_evidence(proposal)
+                with sqlite3.connect('file:' + str(Path(ledger).resolve()) + '?mode=ro', uri=True) as db:
+                    for name in ('help_job', 'origin_execution', 'help_execution'):
+                        sealed = json.loads(evidence['help'][name])
+                        row = db.execute('SELECT state,payload FROM v2_agent_jobs WHERE cell=? AND id=?',
+                                         (event['cell'], sealed['id'])).fetchone()
+                        if row is None or dict(json.loads(row[1]), id=sealed['id'], state=row[0]) != sealed:
+                            raise Refused('evidence digest drift: agent ledger ' + name)
+                for name in ('origin_export', 'help_export'):
+                    sealed = json.loads(evidence['help'][name])
+                    if sealed not in cell['jobs']:
+                        raise Refused('evidence digest drift: agent execution mirror')
+            with sqlite3.connect('file:' + str(Path(ledger).resolve()) + '?mode=ro', uri=True) as db:
+                row = db.execute('SELECT payload FROM v2_experiments WHERE id=?', (cell['experiment_id'],)).fetchone()
+            manifest = json.loads(_verified(json.loads(row[0])['manifest']).read_bytes())
+            config = json.loads((Path(cell['artifact_dir']) / 'config.json').read_bytes())
+            if any(obj.get(k) for obj in (manifest, manifest.get('selection', {}), config)
+                   for k in ('validation_experiment', 'positive_control', 'origin_dev_lock')):
                 raise Refused('agent_memory_auto_import_and_validation_unsupported')
         queue = event['queue']
         if event['kind'] == 'provisional':

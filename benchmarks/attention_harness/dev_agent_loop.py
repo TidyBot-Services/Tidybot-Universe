@@ -114,17 +114,28 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             workspace.publish('versions/'+vid+'/continue.json',dict(message=CONTINUE_MESSAGE))
         if memory and stop is None:
             previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
-            try:value['memory_message']=memory.open(int(vid[1:])+1,previous)
+            try:value['memory_message']=memory.open(int(vid[1:])+1,previous,**({'deliver_notes':False} if exporter else {}))
             except Exception as exc:
-                # Memory is advice; an unavailable service delivers no notes for vN+1.
                 memory_errors.append(dict(version=int(vid[1:])+1,error=type(exc).__name__+': '+str(exc)))
     def settled(response):
         nonlocal stop
         if exporter:
             # Export is a per-version step (r6 policy): a failure is recorded on the
             # cell and in the result, never a fatal stop; import simply refuses it.
-            try:exporter.settle(response,memory)
+            try:
+                record=exporter.settle(response,memory)
+                if record is not None:
+                    from .dev_agent_memory import stage_provisional
+                    stage_provisional(exporter.store,exporter.key,record['version'],
+                                      exporter.root/f"v{record['version']}",workspace,ledger)
             except Exception as exc:export_errors.append(dict(request_id=response['request_id'],error=type(exc).__name__+': '+str(exc)))
+        if exporter and response['op']=='submit' and memory and stop is None:
+            vid=response['version_id']
+            previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
+            try:response['result']['memory_message']=memory.open(int(vid[1:])+1,previous)
+            except Exception as exc:
+                # Memory is advice; an unavailable service delivers no notes for vN+1.
+                memory_errors.append(dict(version=int(vid[1:])+1,error=type(exc).__name__+': '+str(exc)))
         if response['status']=='completed':
             event=dict(event_id=len(events)+1,request_id=response['request_id'],op=response['op'],
                        response='rpc/responses/'+response['request_id']+'.json')

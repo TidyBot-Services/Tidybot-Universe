@@ -84,6 +84,12 @@ class Exporter:
             native = (result.get('artifacts') or {}).get('native_result')
             if native:
                 record['agent']['native_result'] = native
+        from .dev_agent_workspace import read_beneath
+        immutable(directory / 'policy.py', read_beneath(self.workspace.private,
+            'sources/' + response['request_id'] + '.py').decode('utf-8'))
+        incoming = self.workspace.canonical / f'versions/v{number - 1:04d}/help.json'
+        immutable(directory / 'help.json', json.loads(incoming.read_bytes()) if incoming.is_file()
+                  else dict(status='not_requested'))
         immutable(directory / 'version.json', record)
         self.store.version(self.key, record)
         memory_dir = self.workspace.private / 'memory' / f'v{number}'
