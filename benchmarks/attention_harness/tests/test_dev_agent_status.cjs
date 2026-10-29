@@ -7,7 +7,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slice=(from,to)=>source.slice(source.indexOf(from),source.indexOf(to));
-const api=vm.runInNewContext(slice('  function agentStripStages(','  function operatorEvalReview(')+slice('  function agentLinks(','  async function agentWorkspaceSnapshot(')+
+const api=vm.runInNewContext(slice('  function agentStripStages(','  function operatorEvalReview(')+slice('  function agentSettingsLine(','  async function agentWorkspaceSnapshot(')+
   '\n({agentEvalStrip,agentAttemptCard})',{esc});
 const sol3v3={version:3,native_success:true,eval_unavailable:'disk full (ENOSPC)',evaluator_review:{status:'unavailable',passed:null},story:{short:'solved'},eval_stages:[]};
 test('sol3 attempt 3: solved by the task check, Eval did not run with its reason',()=>{
