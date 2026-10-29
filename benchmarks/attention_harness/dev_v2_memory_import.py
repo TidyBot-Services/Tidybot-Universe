@@ -43,9 +43,9 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     from .dev_planner_memory import context, sdk_identity
     from .dev_planner import binding
     from .memory_motion_permission import ACTION, PURPOSE, validation_scope
-    if motion_permission not in (None, ACTION) or import_purpose not in (None, PURPOSE):
+    if motion_permission not in (None, ACTION) or import_purpose not in (None, PURPOSE, 'memory_origin'):
         raise DevConflict('unsupported import permission or purpose')
-    if motion_permission and (source is not None or import_purpose != PURPOSE):
+    if motion_permission and (source is not None or import_purpose not in (PURPOSE, 'memory_origin')):
         raise DevConflict('simulated Dev motion is only for Memory validation execution imports')
     def planner_snapshot():
         if hasattr(store,'planner_snapshot'):return store.planner_snapshot(cell)
@@ -54,10 +54,11 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     c=store.cell(cell)
     if c.get('dev_mode')=='agent':
         from .dev_agent_export import exported
-        if (not exported(c,version) or source is not None or motion_permission or import_purpose
-                or c.get('validation_experiment') or c.get('positive_control')
+        if (not exported(c,version) or (source is not None or motion_permission or import_purpose) and import_purpose != 'memory_origin'
+                or c.get('validation_experiment') or c.get('positive_control') or c.get('validation_origin')
                 or (Path(c['artifact_dir'])/f'v{version}'/'memory-validation-input.json').exists()):
             raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
+    if import_purpose == 'memory_origin' and c.get('dev_mode') != 'agent':raise DevConflict('agent origin purpose required')
     v=next(v for v in c['versions'] if v['version']==version)
     if source is None:
         packet_path=Path(c['artifact_dir'])/f'v{version}'/'memory-input.json'
@@ -73,13 +74,16 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     if c.get('dev_mode')=='agent':
         manifest=json.loads(checked(e['manifest']).read_bytes())
         if (manifest.get('validation_experiment') or manifest.get('positive_control')
-                or manifest.get('selection',{}).get('positive_control') or config.get('origin_dev_lock')):
+                or any(obj.get(k) for obj in (manifest.get('selection',{}),config,manifest) for k in ('validation_experiment','positive_control','validation_origin','origin_dev_lock'))):
             raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
     record_ref={'uri':str(Path(c['artifact_dir'])/f'v{version}'/'version.json')}
     record_ref['sha256']=sha(record_ref['uri'])
     if json.loads(checked(record_ref).read_bytes())!=v:raise DevConflict('original version artifact differs from ledger')
     source_evidence={}
-    if source and source.get('request_id') is None and json.loads(checked(v['help']).read_bytes()).get('provider')=='advisor':
+    if source and c.get('dev_mode')=='agent':
+        from .memory_agent_origin import verify
+        source_evidence=verify(store,c,v,json.loads(checked(e['manifest']).read_bytes()),config)
+    elif source and source.get('request_id') is None and json.loads(checked(v['help']).read_bytes()).get('provider')=='advisor':
         from .memory_advisor_evidence import verify_advisor_job
         source_evidence=verify_advisor_job(store,c,v,json.loads(checked(e['manifest']).read_bytes()),config)
     elif source:
@@ -98,7 +102,8 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         # output and an already imported failed execution; no boolean verdicts.
         if set(source)!={'failed_execution_import_id','validator_id','validation_descriptor','request_id'}:raise ValueError('exact independent source prerequisites required')
         if failure_signature is not None:descriptor['failure_signature']=failure_signature
-        descriptor.update(source,advisor_job_id=jobs['advisor']['job_id'],model_job_id=jobs['model']['job_id'])
+        if c.get('dev_mode')=='agent':descriptor.update(source,agent_origin=source_evidence['agent_origin'],import_purpose='memory_origin')
+        else:descriptor.update(source,advisor_job_id=jobs['advisor']['job_id'],model_job_id=jobs['model']['job_id'])
         # Visual and verified non-planner Advisor help have no request row.
         # Omit the field so readers do not query a lazily-created table with a null ID.
         if descriptor.get('request_id') is None:descriptor.pop('request_id',None)
@@ -153,7 +158,13 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     files={};symlinks={};visited=set()
     def pin(path,expected=None):
         p=Path(path)
-        if not p.is_absolute():raise ValueError('only original absolute evidence paths are pinned')
+        if not p.is_absolute():
+            if c.get('dev_mode')!='agent':raise ValueError('only original absolute evidence paths are pinned')
+            from .dev_agent_workspace import read_beneath
+            base=Path(c['artifact_dir'])/'agent/private/public'
+            data=read_beneath(base,str(p),32*1024*1024,shared=True)
+            if hashlib.sha256(data).hexdigest()!=expected:raise DevConflict('agent public evidence digest drift')
+            p=base/p
         # This registered contract is sealed in a source or separate contract
         # catalog. Only exact locked source files may use source catalogs.
         if contract_catalog is not None:

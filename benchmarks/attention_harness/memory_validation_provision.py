@@ -160,9 +160,16 @@ class Provisioner:
         checked(source);public=read(feedback);signature=provenance['failure_signature'];digests=origin['digests']
         if source['sha256']!=digests['origin_source'] or feedback['sha256']!=digests['origin_public_feedback'] or not matches_frozen_derivation(public,signature):raise DevConflict('Origin source, feedback or failure signature differs from the note')
         if origin['policy_id']!=cell['policy_id']:raise DevConflict('Origin policy differs from the note')
-        for name,field in (('help','help'),('help_model_input','model_input'),('help_source','source')):
-            checked(source_version[field])
-            if source_version[field]['sha256']!=digests[name]:raise DevConflict('Source help evidence differs from the note: '+name)
+        if cell.get('dev_mode')=='agent':
+            from .memory_agent_origin import verify
+            from .memory_origin_evidence import OriginalStore
+            evidence=verify(OriginalStore(ledger),cell,source_version,manifest,config)
+            if {k:r['sha256'] for k,r in evidence['agent_origin'].items()}!=digests or sd.get('agent_origin')!=evidence['agent_origin']:
+                raise DevConflict('Source agent evidence differs from the note')
+        else:
+            for name,field in (('help','help'),('help_model_input','model_input'),('help_source','source')):
+                checked(source_version[field])
+                if source_version[field]['sha256']!=digests[name]:raise DevConflict('Source help evidence differs from the note: '+name)
         if version['config_sha256']!=fd['config']['sha256'] or bundle['config_sha256']!=fd['config']['sha256'] or bundle['policy_sha256']!=source['sha256']:raise DevConflict('Origin execution binding differs')
         if sd['validator_id'] not in catalogs:raise DevConflict('Independent source validator catalog is missing')
         from .memory_source_catalogs import manifest_sources,registration_order
@@ -175,6 +182,7 @@ class Provisioner:
         if not re.fullmatch('[A-Za-z0-9_.-]{8,100}',operation):raise DevConflict('Stable validation operation id required')
         resolved=self.resolve(note)  # Also recheck originals on every retry.
         config=resolved['config'];origin=resolved['sealed']
+        if config.get('dev_mode')=='agent':raise DevConflict('agent_memory_validation_unsupported')
         selection=dict(request_key='validation-'+operation,tasks=[config['task_id']],seeds=[config['seed']],policies=[resolved['policy_id']],mode='diagnostic',budget_tier='dev',model_source='codex',help_budget=0,run_notes=False,memory_family=False,target_depth=1,target_valid_executions=1,max_versions=1,reproducible_reset=True,scene_contract=config['scene_contract'],attempt_wall_seconds=config['attempt_wall_seconds'])
         from .dev_configuration import normalize_configuration,derive_cell_budget
         budget=derive_cell_budget(normalize_configuration(selection))

@@ -45,6 +45,9 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         # Recheck the whole seal before replay or creating a directory.
         for name,digest in files.items():sealed({'uri':str(root/name),'sha256':digest},root,files)
         bundle=read(bundle_ref);config=read(config_ref);source=sealed(source_ref,root,files).decode()
+        agent=bundle.get('channel')=='dev_agent'
+        if (config.get('dev_mode')=='agent') != agent:raise Refused('bundle channel differs from frozen agent mode')
+        if agent and (not origin or import_purpose!='memory_origin'):raise Refused('agent replay requires origin purpose')
         replay_config=config
         if source_drift is not None:
             from openarm365_dev_v2.source_policy import drift_record
@@ -82,6 +85,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         from .dev_planner import binding as motion_binding,digest as config_digest
         permission=motion_binding(cell,version,source,config)
         from .memory_motion_permission import ACTION, validation_scope
+        if agent and permission is not None:permission=dict(permission,action='agent_dev_tier_motion')
         if permission_scope.get('action') == ACTION:
             permission=validation_scope(cell,version,source,config,bundle,import_purpose)
         if permission is None:
@@ -103,6 +107,14 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
                     if len(executions)!=1 or executions[0].get('receipt',{}).get('bundle')!=bundle_ref:raise Refused('origin execution differs from sealed ledger')
                     versions=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_versions WHERE cell=? AND version=?',(cell,version))]
                     if len(versions)!=1 or versions[0].get('source')!=source_ref or versions[0].get('config_sha256')!=config_ref['sha256']:raise Refused('origin version differs from sealed ledger')
+                    if agent:
+                        from attention_memory_service.agent_execution import verify as verify_agent
+                        from types import SimpleNamespace
+                        from contextlib import nullcontext
+                        shim=SimpleNamespace(_ledger=lambda *a:nullcontext(db))
+                        cells=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_cells WHERE id=?',(cell,))]
+                        manifest=read(versions[0]['manifest'])
+                        verify_agent(shim,None,dict(cell=cell,version=version,permission_scope=permission_scope,import_purpose=import_purpose,agent_execution=dict(request_id=executions[0]['receipt']['agent_request_id'])),bundle,config,manifest,versions[0],cells[0],executions[0])
                 if probe_input is not None:
                     all_jobs=[json.loads(p) for p, in db.execute('SELECT payload FROM v2_jobs WHERE cell=? AND version<=?',(cell,version))]
                     if not all_jobs or any(j['kind']!='execute' for j in all_jobs):raise Refused('probe cannot call models or advisors')
@@ -146,6 +158,10 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         return dict(status='checked')
     observations=[];states=[];obs_values=[];state_values=[];scene_ok=True;errors=[];replayed=[];measurements=[]
     meter_refusal=dict(status='refused',reason='Independent GPU time measurement is unavailable for the origin replays.')
+    policy_replays=[]
+    if agent:
+        vr.mkdir(parents=True,exist_ok=True)
+        agent_out=Path(tempfile.mkdtemp(prefix='arm-',dir=vr));policy_root=agent_out/'policy-replays';policy_root.mkdir()
     for i in range(2):
         if before_replay is not None:before_replay()
         meter=None
@@ -158,7 +174,18 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
                     except Exception:pass
                 return meter_refusal
         try:
-            try:obs,state=replay(config['task_id'],config['seed'],replay_config)
+            try:
+                if agent:
+                    from .memory_agent_replay import replay_policy
+                    policy_replay=replay_policy if replay is None or replay is replay_fresh else replay
+                    obs,state,receipt=policy_replay(config['task_id'],config['seed'],replay_config,source=source,directory=policy_root/str(i),cell=cell,version=version)
+                    from attention_memory_service.agent_origin import verify_replays
+                    def replay_read(ref,raw=False):
+                        data=Path(ref['uri']).read_bytes()
+                        return data if raw else json.loads(data)
+                    verify_replays([receipt],replay_read,replay_config,source_ref['sha256'],vr,count=1)
+                    policy_replays.append(receipt)
+                else:obs,state=replay(config['task_id'],config['seed'],replay_config)
             finally:
                 if meter is not None:
                     try:measurements.append(meter.stop())
@@ -176,7 +203,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
     if origin:
         costs['gpu_seconds']=sum(m['gpu_seconds'] for m in measurements)
         if not math.isfinite(costs['gpu_seconds']):return meter_refusal
-    vr.mkdir(parents=True,exist_ok=True);out=Path(tempfile.mkdtemp(prefix='arm-',dir=vr))
+    vr.mkdir(parents=True,exist_ok=True);out=agent_out if agent else Path(tempfile.mkdtemp(prefix='arm-',dir=vr))
     for i,(obs,state) in enumerate(replayed):
         observations.append(immutable(out/f'observation-{i}.json',obs))
         states.append(immutable(out/f'state-{i}.json',state))
@@ -196,13 +223,14 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
             gpu_seconds=costs['gpu_seconds'],samples=sum(m['samples'] for m in measurements),replays=measurements,
             scene_replay_observations=observations,scene_replay_states=states))
         descriptor.update(gpu)
+    if agent:descriptor['agent_policy_replays']=policy_replays
     ref=immutable(out/'verdict.json',descriptor)
     if probe_input is None and not origin:
         trial=dict(schema_version='attentionbench.dev-v2-trial.v1',execution_import_id=execution_import_id,validation_descriptor='verdict.json',
             exposure=binding['exposure'],memory_id=binding['memory_id'] if binding['exposure']=='candidate_validation' else None,
             validation_grant_id=grant['grant_id'],costs=costs,developer_model=developer_model,budget=budget,validation_config=immutable(out/'comparison.json',comparison))
         immutable(out/'trial.json',trial)
-    catalog=dict(role='validator',root=str(out),context=executor_catalog['context'],files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir()})
+    catalog=dict(role='validator',root=str(out),context=executor_catalog['context'],files={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (out.rglob('*') if agent else out.iterdir()) if p.is_file()})
     return dict(status='passed' if all(checks.values()) else 'failed',descriptor=ref,catalog=catalog,checks=checks,errors=errors,**gpu)
 
 

@@ -109,7 +109,6 @@ def locate(provision,note):
             rows=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(o['experiment_id'],)).fetchall()
             for raw, in rows:
                 e=json.loads(raw);m=read(e['manifest'])
-                if m.get('dev_mode')=='agent':raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
                 # Import snapshots retain the original ledger_path; never select them.
                 if Path(m['ledger_path']).resolve()==path:
                     if m['experiment_id']!=o['experiment_id']:raise DevConflict('Original manifest belongs to another experiment')
@@ -125,6 +124,19 @@ def locate(provision,note):
     jobs=[j for j in c['jobs'] if j['version']==o['origin_version'] and j['kind']=='execute' and j['state']=='settled']
     if len(jobs)!=1:raise DevConflict('Original settled execution is missing or ambiguous')
     job=jobs[0];digests=o['digests']
+    if m.get('dev_mode')=='agent':
+        from .memory_agent_origin import verify
+        if p.get('channel')!='dev_agent' or o.get('channel')!='dev_agent' or o['help_version']!=o['origin_version']+1:
+            raise DevConflict('agent origin channel or interval differs')
+        config=read(dict(uri=str(Path(c['artifact_dir'])/'config.json'),sha256=v['config_sha256']))
+        if m['configs'].get(f"{c['task_id']}:{c['seed']}")!=config:raise DevConflict('Original frozen configuration differs')
+        evidence=verify(store,c,help_version,m,config)
+        if {k:r['sha256'] for k,r in evidence['agent_origin'].items()}!=digests:
+            raise DevConflict('Original agent evidence differs from note provenance')
+        from attention_memory_service.failure_signature import matches_frozen_derivation
+        if not matches_frozen_derivation(read(job['receipt']['public_feedback']),p['failure_signature']) or c['policy_id']!=o['policy_id']:
+            raise DevConflict('Origin policy or failure signature differs from the note')
+        return dict(key=key,note=original,provenance=p,store=store,cell=c,version=v,job=job,experiment=e,config=config,request_id=None,**evidence)
     from attention_memory_service.failure_signature import matches_frozen_derivation
     for ref,name in ((v['source'],'origin_source'),(job['receipt']['public_feedback'],'origin_public_feedback'),
                      (help_version['help'],'help'),(help_version['model_input'],'help_model_input'),(help_version['source'],'help_source')):
@@ -186,14 +198,17 @@ def check_origin(provision,memory_id,*,validator_root):
         raise DevConflict('The experiments root must be outside worker state for a read-only check.')
     with tempfile.TemporaryDirectory(prefix='.origin-check-',dir=provision.root) as scratch:
         out=Path(scratch);c=found['cell'];p=found['provenance']
-        prepare(found['store'],c['key'],found['version']['version'],ctx['namespace'],out/'execution',provision.root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_validation')
+        prepare(found['store'],c['key'],found['version']['version'],ctx['namespace'],out/'execution',provision.root,source_catalogs=sources,motion_permission='dev_tier_sim_motion',import_purpose='memory_origin' if c.get('dev_mode')=='agent' else 'memory_validation')
         catalog=json.loads((out/'execution/catalog.json').read_bytes());descriptor=json.loads((out/'execution/descriptor.json').read_bytes())
         result=validate_origin(provision,found,catalog,descriptor,validator_root=validator_root,check_only=True)
         if result['status']!='checked':raise DevConflict(result['reason'])
         prepare(found['store'],c['key'],p['origin']['help_version'],ctx['namespace'],out/'source',provision.root,source_catalogs=sources,
-                source=source_prerequisites(found),failure_signature=p['failure_signature'])
+                source=source_prerequisites(found),failure_signature=p['failure_signature'],**(dict(import_purpose='memory_origin') if c.get('dev_mode')=='agent' else {}))
         source=json.loads((out/'source/catalog.json').read_bytes())
         registration_order({**sources,found['key']+'-executor':catalog,found['key']+'-source':source})
+    if c.get('dev_mode')=='agent':
+        return ('PASS: Agent origin evidence and bindings checked. Replay would execute the sealed policy in two fresh validator-owned simulators with GPU metering. '
+                'No replay, registration or run reservation was performed.')
     return ('PASS: Origin evidence and bindings checked. Replay would run two fresh scene resets with GPU metering; '
             'registration would submit the sealed source, executor and validator catalogs after validation. '
             'No replay, registration or run reservation was performed.')
@@ -261,7 +276,7 @@ class OriginPreparation:
                     prepare(store,c['key'],version,ctx['namespace'],out,self.provision.root,source_catalogs=sources,**kwargs)
                 return json.loads(ref.read_bytes()),json.loads((out/'descriptor.json').read_bytes())
             reused=found.get('reused_execution')
-            catalog,d=(reused['catalog'],reused['descriptor']) if reused else export('execution',v['version'],motion_permission='dev_tier_sim_motion',import_purpose='memory_validation')
+            catalog,d=(reused['catalog'],reused['descriptor']) if reused else export('execution',v['version'],motion_permission='dev_tier_sim_motion',import_purpose='memory_origin' if c.get('dev_mode')=='agent' else 'memory_validation')
             def before_replay():
                 # Pause at native scene boundaries, like ledger arms finishing a
                 # dispatched execution. Never modify the historical experiment.
@@ -269,16 +284,20 @@ class OriginPreparation:
                 self.events[key].wait();self.phases[key]='running'
             result=validate_origin(self.provision,found,catalog,d,validator_root=runner.validator_root,replay=runner.replay,before_replay=before_replay)
             immutable(directory/'validation.json',result)
-            refs={}
+            refs={};registration=None
             if result['status']!='refused':
                 catalogs={**sources,(reused['catalog_id'] if reused else key+'-executor'):catalog,key+'-validator':result['catalog']}
                 if p.get('channel')!='positive_control':
-                    source,sd=export('source',p['origin']['help_version'],source=source_prerequisites(found),failure_signature=p['failure_signature'])
+                    source,sd=export('source',p['origin']['help_version'],source=source_prerequisites(found),failure_signature=p['failure_signature'],**(dict(import_purpose='memory_origin') if c.get('dev_mode')=='agent' else {}))
                     catalogs[key+'-source']=source
+                if c.get('dev_mode')=='agent' and result['status']=='passed':
+                    from .memory_agent_origin import register
+                    registration=register(self.provision,found,catalogs,d,sd)
                 catalogs=registration_order(catalogs)
                 for cid,value in catalogs.items():refs[cid]=immutable(directory/(cid+'.json'),value)
             reason='Origin evidence prepared' if result['status']=='passed' else 'Could not finish the check: origin '+('validation refused: '+result.get('reason','unknown reason') if result['status']=='refused' else 'independent checks failed: '+', '.join(k for k,v in result['checks'].items() if not v))
             receipt=dict(status=result['status'],reason=reason,catalogs=refs,validation=immutable(directory/'validation.json',result),origin_key=key,note=current['note'])
+            if registration is not None:receipt['registration']=registration
             receipt.update({k:found[k] for k in ('provider_identity','provider_identities','feedback_projection') if k in found})
             if 'gpu_measurement' in result:receipt['gpu_measurement']=result['gpu_measurement']
         except Exception as exc:
