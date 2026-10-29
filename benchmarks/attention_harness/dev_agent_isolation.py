@@ -48,6 +48,10 @@ in_app_local_automation remote_plugin recommended_plugins image_generation
 shell_snapshot workspace_dependencies'''.split()
 
 
+# 2026-10-29: bumped from 0.155.1 (gpt-6.1-sol needs the newer CLI); re-verified by preflight + canary.
+PINNED_VERSION = 'codex-cli 0.165.0'
+
+
 class IsolationUnavailable(RuntimeError): pass
 
 
@@ -60,7 +64,7 @@ def real_binary():
 def codex_identity():
     path = real_binary()
     version = subprocess.check_output(['codex', '--version'], text=True).strip()
-    if version != 'codex-cli 0.155.1': raise IsolationUnavailable('unpinned_codex_version')
+    if version != PINNED_VERSION: raise IsolationUnavailable('unpinned_codex_version')
     return dict(path=str(path), version=version, sha256=hashlib.sha256(path.read_bytes()).hexdigest())
 
 

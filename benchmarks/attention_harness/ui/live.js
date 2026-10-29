@@ -1930,7 +1930,7 @@
     if(reason)throw new Error(reason);
     const {configuration,human_wait_seconds,eval_agent,...rest}=selection;
     return {...rest,dev_mode:'agent',model_source:'codex',budget_tier:'dev',
-      dev_model:values.devModel||'gpt-6-astra',eval_model:values.evalModel||'gpt-6-astra',quota_stop_percent:90,
+      dev_model:values.devModel||'gpt-6.1-sol',eval_model:values.evalModel||'gpt-6.1-sol',quota_stop_percent:90,
       goal_key:configuration?.goal_id||selection.goal_key,wall_limit:21600};
   }
   function runConfigDefaultModelMinutes(options) {
@@ -2035,8 +2035,8 @@
           </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
           <section class="ab-launch-section" data-agent-controls><div class="ab-run-section-head"><h4>Dev mode</h4></div><div class="ab-launch-grid">
             <label class="ab-launch-field">Dev mode<output data-dev-mode-label>Agent</output><small>More modes are available in Advanced.</small></label>
-            <label class="ab-launch-field">Dev model<select name="dev_model" aria-label="Dev model"><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
-            <label class="ab-launch-field">Eval model<select name="eval_model" aria-label="Eval model"><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
+            <label class="ab-launch-field">Dev model<select name="dev_model" aria-label="Dev model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
+            <label class="ab-launch-field">Eval model<select name="eval_model" aria-label="Eval model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
             <label class="ab-launch-field">Quota stop %<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %"></label>
             <p class="ab-run-hint wide" data-agent-reason role="status"></p>
           </div></section>

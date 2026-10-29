@@ -22,7 +22,7 @@ test('absent mode and explicit one-call keep original body bytes and identity',(
 test('agent request is modern single cell and independently freezes model choices',()=>{
   const values={devMode:'agent',channel:'dev_v2',tier:'dev',devModel:'gpt-6-sol'};
   const result=api.agentLaunchSelection(old,values);
-  assert.equal(result.dev_mode,'agent');assert.equal(result.dev_model,'gpt-6-sol');assert.equal(result.eval_model,'gpt-6-astra');
+  assert.equal(result.dev_mode,'agent');assert.equal(result.dev_model,'gpt-6-sol');assert.equal(result.eval_model,'gpt-6.1-sol');
   assert.equal(result.model_source,'codex');assert.equal(result.quota_stop_percent,90);assert.equal(result.goal_key,'old-goal-123');
   assert.ok(!('configuration' in result));assert.ok(!('eval_agent' in result));
   assert.equal(api.agentLaunchSelection(old,{...values,evalModel:'gpt-6-sol',devModel:'gpt-6-astra'}).eval_model,'gpt-6-sol');

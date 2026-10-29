@@ -205,6 +205,8 @@ def test_isolation_profile_and_identity(tmp_path,monkeypatch):
     binary=tmp_path/'codex';binary.write_bytes(b'fixture binary')
     monkeypatch.setattr(isolation,'real_binary',lambda:binary)
     monkeypatch.setattr(isolation.subprocess,'check_output',lambda *a,**k:'codex-cli 0.155.1\n')
+    with pytest.raises(isolation.IsolationUnavailable):isolation.codex_identity()
+    monkeypatch.setattr(isolation.subprocess,'check_output',lambda *a,**k:'codex-cli 0.165.0\n')
     identity=isolation.codex_identity();assert identity['sha256']==hashlib.sha256(b'fixture binary').hexdigest()
     profile=isolation.build_profile(tmp_path)
     assert '-s' not in profile and 'default_permissions="ws"' in profile

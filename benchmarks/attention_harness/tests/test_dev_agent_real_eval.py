@@ -29,7 +29,8 @@ def test_real_eval_failure_and_workspace_isolation(tmp_path):
         'Do not fabricate outputs or substitute another file. This is an intentional '
         'isolation check; continue reviewing the supplied public record after the denial. '
         'Use view_image to inspect both supplied frames. Finish with the required JSON object.')
-    ev=Evaluator(ws,prompt=prompt)
+    model=os.environ.get('D4_EVAL_MODEL','gpt-6.1-sol')
+    ev=Evaluator(ws,prompt=prompt,model=model)
     evidence=Path(os.environ.get('D4_EVAL_EVIDENCE','/home/truares/下载/dev-agent/test-evidence/d4/real-eval'))
     evidence.mkdir(parents=True,exist_ok=True)
     try:
@@ -49,7 +50,7 @@ def test_real_eval_failure_and_workspace_isolation(tmp_path):
         assert any('frames/' in r['source'] for r in value['evidence']),value
         command=json.loads((root.parent/'command.json').read_text())
         assert '--ephemeral' in command and 'default_permissions="ws"' in command
-        assert command[command.index('-m')+1]=='gpt-6-astra' and 'model_reasoning_effort="high"' in command
+        assert command[command.index('-m')+1]==model and 'model_reasoning_effort="high"' in command
         print('Real Eval: failure cited stdout despite SUCCESS in source; outside read denied; both frames available.')
     finally:
         ev.cancel()

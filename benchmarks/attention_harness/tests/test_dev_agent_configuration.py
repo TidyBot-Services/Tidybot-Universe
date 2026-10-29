@@ -18,7 +18,7 @@ def test_defaults_and_old_config_bytes():
     assert json.dumps(old,sort_keys=True)==json.dumps(dev_configuration.normalize_configuration({'dev_mode':'one_call'}),sort_keys=True)
     assert not any(k in old for k in ('dev_mode','dev_model','eval_model','quota_stop_percent'))
     agent=normalize(SELECTION)
-    assert agent==dict(dev_mode='agent',dev_model='gpt-6-astra',eval_model='gpt-6-astra',dev_reasoning_effort='high',quota_stop_percent=90)
+    assert agent==dict(dev_mode='agent',dev_model='gpt-6.1-sol',eval_model='gpt-6.1-sol',dev_reasoning_effort='high',quota_stop_percent=90)
     assert source_limit(dict(budget_tier='dev',runner_boundary='dev_loop'))==32768
     assert source_limit({})==16384
     assert source_limit(dict(budget_tier='dev',runner_boundary='dev_loop',dev_mode='agent'))==131072

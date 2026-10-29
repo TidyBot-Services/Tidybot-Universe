@@ -34,7 +34,7 @@ def test_real_two_turn_resume_isolation(tmp_path):
         atomic_write(ws.private,'codex-identity.json',encode(codex_identity()))
         b=Broker(ws,executor=Executor(),prober=FakeProber(),evaluator=FakeEvaluator(),agent_mode=True)
         thread=threading.Thread(target=b.serve,args=(stop,),daemon=True);thread.start()
-        session=CodexAgentSession(ws.ws,ws.private,reasoning_effort='low')
+        session=CodexAgentSession(ws.ws,ws.private,model=os.environ.get('D2_SESSION_MODEL','gpt-6.1-sol'),reasoning_effort='low')
         def turn(events):
             deadline=time.monotonic()+240
             for _ in events:

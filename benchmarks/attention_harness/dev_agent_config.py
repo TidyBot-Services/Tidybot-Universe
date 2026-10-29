@@ -2,7 +2,8 @@
 import math
 
 FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent'}
-MODELS={'gpt-6-astra','gpt-6-sol'}
+MODELS={'gpt-6.1-sol','gpt-6-astra','gpt-6-sol'}
+DEFAULT_MODEL='gpt-6.1-sol'
 
 
 def normalize(selection, *, validation_origin=None):
@@ -17,8 +18,8 @@ def normalize(selection, *, validation_origin=None):
         raise ValueError('agent_single_cell_required')
     if selection.get('mode','experiment') not in ('experiment','interactive'):raise ValueError('agent_mode_not_supported')
     if selection.get('trace_visible',True) is not True:raise ValueError('agent_requires_full_public_trace')
-    result=dict(dev_mode='agent',dev_model=selection.get('dev_model','gpt-6-astra'),
-                eval_model=selection.get('eval_model','gpt-6-astra'),
+    result=dict(dev_mode='agent',dev_model=selection.get('dev_model',DEFAULT_MODEL),
+                eval_model=selection.get('eval_model',DEFAULT_MODEL),
                 dev_reasoning_effort=selection.get('dev_reasoning_effort','high'),
                 quota_stop_percent=selection.get('quota_stop_percent',90))
     if result['dev_model'] not in MODELS or result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
