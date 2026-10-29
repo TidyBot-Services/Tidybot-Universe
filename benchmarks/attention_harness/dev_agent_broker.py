@@ -28,6 +28,9 @@ TIMEOUTS = dict(validation=5., observe=10., find_objects=10., ik_check=240.,
                 probe_startup=300.)
 
 
+UNCHANGED_HINT = ('This bundle is byte-identical to your previous formal version, so it was not accepted and no '
+                  'version was charged. Change the code, or use run --no-eval to check repeatability.')
+
 class BrokerInvariant(RuntimeError):
     """The only failures allowed to end a run from inside one request."""
 
@@ -208,6 +211,10 @@ class Broker:
                         try:source=read_beneath(self.workspace.ws,entry or 'work/main.py',SOURCE_LIMIT)
                         except (ValueError,OSError):source=b''
                     if op == 'run' and invalid: return reject('invalid_source')
+                    if op == 'submit' and not invalid and hashlib.sha256(source).hexdigest() == self._previous_formal_sha256():
+                        # Identical-source guard (10-29): recoverable, no version charged.
+                        response['hint'] = UNCHANGED_HINT
+                        return reject('unchanged_source')
                     if time.monotonic() - started > self.timeouts['validation']: return reject('validation_timeout')
                     if not invalid and self.memory:
                         from .dev_agent_memory import MemoryRevoked
@@ -254,6 +261,11 @@ class Broker:
                 try:self._publish(response)
                 except (OSError,ValueError):pass
             return dict(response)
+
+    def _previous_formal_sha256(self):
+        rows=[r for r in self.records.values() if r['request']['op']=='submit' and r['response'].get('version_id')
+              and r.get('validation_error') is None and r.get('source_sha256')]
+        return max(rows,key=lambda r:r['response']['version_id'])['source_sha256'] if rows else None
 
     def _bounded(self, collaborator, method, *args, timeout, quarantine=True):
         deadline = min(self.budget.deadline, time.monotonic() + timeout)

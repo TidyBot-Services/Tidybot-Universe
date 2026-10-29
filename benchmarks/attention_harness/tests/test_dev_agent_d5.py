@@ -171,6 +171,8 @@ def fixture_run(root,offline_dev_identity,label='native_success'):
     try:
         for rid,op,payload in [('probe','ik_check',dict(target=TARGET,base_offset=OFFSET)),('dry','plan_dry_run',dict(action=ACTION,base_offset=OFFSET)),
             ('noeval','run',{}),('v1','submit',{}),('help','ask_help',{'question':'How far should the base move?'}),('v2','submit',{}),('v3','submit',{})]:
+            if op=='submit':  # each formal version changes the code (identical resubmits are rejected)
+                atomic_write(ws.ws,'work/main.py',(ws.ws/'work/main.py').read_bytes()+('\n# %s\n'%rid).encode())
             b.accept(request(rid,op,payload));settled(b,rid)
     finally:b.close()
     ledger.quota(dict(used_percent=90 if label=='quota_stop' else 72.5,stop_percent=90,at=time.time()-20))

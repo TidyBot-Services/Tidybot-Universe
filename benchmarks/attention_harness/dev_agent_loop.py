@@ -21,6 +21,16 @@ FATAL_CAUSES=frozenset({'ledger_invariant','broker_invariant','quota_stop','quot
                         # Added: the Dev model process itself failing 3 turns in a row.
                         'session_failure'})
 SESSION_FAILURE_LIMIT=3
+# Normal (non-fatal) stop after K consecutive executed versions where Eval passed
+# but the native check did not (10-29); flagged for operator review in the UI.
+DISAGREEMENT_LIMIT=2
+
+
+def disagreement_streak(rows):
+    streak=0
+    for row in sorted(rows,key=lambda r:r['version']):
+        streak=streak+1 if row.get('eval_verdict')=='pass' and row.get('native_success') is False else 0
+    return streak
 
 
 def fatal_cause(broker, session_failures):
@@ -90,6 +100,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         if success:
             stop='native_success';broker.stop_reason='run_complete'
             session.cancel('run_complete')
+        elif disagreement_streak(json.loads(p.read_bytes()) for p in (workspace.private/'versions').glob('v*.json'))>=DISAGREEMENT_LIMIT:
+            stop='eval_native_disagreement';broker.stop_reason='eval_native_disagreement'
+            session.cancel('eval_native_disagreement')
         elif value.get('eval',{}).get('passed') is True:
             value['message']=CONTINUE_MESSAGE
             workspace.publish('versions/'+vid+'/continue.json',dict(message=CONTINUE_MESSAGE))
@@ -180,7 +193,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             session_failures=session_failures+1 if failure and stop is None else 0
             if stop:break
             if broker.quarantined or session_failures>=SESSION_FAILURE_LIMIT:stop='fatal_error';break
-            idle=idle+1 if len(broker.records)==before else 0
+            # A turn whose only requests were unchanged_source rejections made no progress.
+            new=list(broker.records.values())[before:]
+            idle=idle+1 if all(r['response'].get('error')=='unchanged_source' for r in new) else 0
             save()
             if idle>=3:stop='agent_idle';break
             unseen=events[delivered:];delivered=len(events)

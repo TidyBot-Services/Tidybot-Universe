@@ -367,6 +367,8 @@
   function policyTitle(id){return ({autonomous:'Autonomous',reactive_help:'Reactive help',trace_aware_hint_only:'Trace aware Hint',full_trace_aware_attention_planner:'Full trace aware planner',retry_k_then_ask:'Retry K then ask'})[id]||label(id);}
   function devEndSummary(s){
     const reason=String(s.reason||'');
+    if(reason==='eval_native_disagreement')return {title:'Ended · Eval passed twice but the task check did not confirm · Review required',short:'Eval disagreed',key:'eval_native_disagreement',review:true,
+      explanation:'Eval judged two versions in a row as passed, but the task\'s own completion check did not confirm them. The run stopped so versions are not spent on a misleading verdict.'};
     const approval=/^motion approval (rejected|timed_out|cancelled|invalidated|authorization_exhausted)(; unresolved work retained)?$/.exec(reason);
     if(approval){
       const exhausted=approval[1]==='authorization_exhausted',review=!!approval[2]||s.state==='needs_review';

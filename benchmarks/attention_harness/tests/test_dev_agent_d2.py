@@ -53,6 +53,11 @@ note.write_text(str(turn))
 def emit(value):print(json.dumps(value),flush=True)
 def tool(op,*args):
  if op=='submit' and '--summary' not in args:args=(*args,'--summary','Try the planned motion.')
+ if op=='submit':
+  # A real Dev changes code between formal versions; byte-identical resubmits are rejected.
+  entry=Path(args[args.index('--entry')+1] if '--entry' in args else 'work/main.py');last=Path('work/.last-submit')
+  if entry.exists() and last.exists() and last.read_text()==entry.read_text():entry.write_text(entry.read_text()+'\\n# resubmit '+str(time.time_ns())+'\\n')
+  if entry.exists():last.write_text(entry.read_text())
  p=subprocess.run(['/usr/bin/python3','docs/devtool.py',op,*args],capture_output=True,text=True)
  emit({'type':'item.completed','item':{'type':'agent_message','text':p.stdout}})
  return p
@@ -68,6 +73,7 @@ def tool(op,*args):
     def command(root,prompt):
         return [str(path),'-a','never','exec','-C',str(root),'--json','-m','gpt-6-astra','-c','model_reasoning_effort="low"','-c','default_permissions="ws"',prompt]
     return CodexAgentSession(ws.ws,ws.private,command_factory=command)
+
 
 
 def run_fake(ws,scripts,*,successes=(),evaluator=None,quota=None,control=lambda:None):
@@ -264,6 +270,8 @@ def test_broker_last_durable_slot(ws,resource,cap,operation):
         while b.active and time.monotonic()<end:time.sleep(.01)
         assert b.active is None
         assert b.records['last']['response']['status']=='completed'
+        # A changed source, so the identical-source guard does not answer first.
+        atomic_write(ws.ws,'work/main.py',(ws.ws/'work/main.py').read_bytes()+b'\n# overflow\n')
         assert b.accept(request('overflow'))['error']=='budget_exhausted'
         assert ledger.snapshot()['used'][resource]==cap
     finally:b.close()
