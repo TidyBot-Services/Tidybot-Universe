@@ -6,9 +6,9 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/d5-agent-run.json'),'utf8'));
 const functions=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
-const render=source.slice(source.indexOf('  function agentLinks('),source.indexOf('  async function agentWorkspaceSnapshot('));
+const render=source.slice(source.indexOf('  function agentSettingsLine('),source.indexOf('  async function agentWorkspaceSnapshot('));
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,runConfigDefaultsFromSelection,agentSettingsLine,agentDiagnosticItems,agentActivityCaption,agentTrialChips})',{esc});
+const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,runConfigDefaultsFromSelection,agentSettingsLine,agentActivityCaption,agentTrialChips})',{esc});
 const old={eval_agent:{enabled:true,model:'parcc/Qwen'},request_key:'unchanged-123',tasks:['open_cabinet'],seeds:[102],policies:['reactive_help'],mode:'experiment',help_budget:5,human_wait_seconds:300,configuration:{goal_id:'old-goal-123',experiment_budget:{executions:5},cell_budget:{executions:5},max_iterations:5,wall_seconds:21600}};
 
 test('absent mode and explicit one-call keep original body bytes and identity',()=>{
@@ -47,7 +47,6 @@ test('agent facts fit the original workspace without raw sections',()=>{
   assert.doesNotMatch(html,/<pre|\{&quot;/);
   const fatal={...fixture.agent,fatal_cause:'broker_invariant',details:[{source:'Eval',error:'Exact timeout: <script>alert(1)</script>'}]};
   assert.match(api.agentSettingsLine(fatal),/fatal_cause: broker_invariant/);
-  assert.match(api.agentDiagnosticItems(fatal.details,'attempt-details'),/<details[^>]*><summary>Eval · Exact timeout: &lt;script&gt;/);
   assert.doesNotMatch(html,/data-agent-errors|data-agent-secondary|stdout/);
 });
 test('new controls are connected to actual launcher serialization and separate agent rendering',()=>{

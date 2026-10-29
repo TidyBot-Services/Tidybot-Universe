@@ -3277,7 +3277,7 @@
     const history = stored(`attention.history:${run.run_id}`);
     const changeable = snapshot.attention_control && !snapshot.attention_control.read_only && !isTerminal(snapshot) && (!history || history === 'live');
     const field = (title,main,sub='',wide=false,extra='') => `<div class="op-field${wide?' op-wide':''}${title==='Task'?' op-task':''}"><span>${title}</span><b>${esc(main)}</b>${sub?`<small>${esc(sub)}</small>`:''}${extra}</div>`;
-    return `<section class="panel ab-run-settings" data-run-settings data-settings-run="${esc(run.run_id)}" aria-label="Task setup">${operatorHeading('01','TASK SETUP','What is the robot trying to do?')}<div class="op-fields">
+    return `<section class="panel ab-run-settings" data-run-settings data-settings-run="${esc(run.run_id)}" aria-label="Task setup">${operatorHeading('01','TASK SETUP','')}<div class="op-fields">
       ${field('Task',taskDisplayName(run),(snapshot.task_plan?.definition?.description && snapshot.task_plan.definition.description !== taskDisplayName(run)) ? snapshot.task_plan.definition.description : kitchen,true)}
       ${field('Robot',`${robot}${arms?' · '+arms:''}`,mobile?'Base can move':'Base stays in place')}
       ${field('Where it runs',simulator?`${benchmark} simulator`:'Real robot',run.seed == null?'Scene seed not recorded':`Scene seed ${run.seed}`)}
@@ -3404,7 +3404,7 @@
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     const canStop = snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
     const source=snapshot.dev_v2?(s?.locked?.config?.model_source==='codex'?'Codex subscription (gpt-6-astra, high effort)':'PARCC (GLM + Qwen)'):null;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source?`How is it going? · ${source}`:'How is it going?')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`${runAgainButton(snapshot)}<span class="op-controls-sp"></span>`:''}<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${isTerminal(snapshot)?'':launchButton(snapshot)+runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS',source||'')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`${runAgainButton(snapshot)}<span class="op-controls-sp"></span>`:''}<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${isTerminal(snapshot)?'':launchButton(snapshot)+runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -3458,7 +3458,7 @@
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${run.status==='running' ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch Attempt ${attempt.index+1}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','What did the robot do, and where did it go wrong?')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4><p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div>${snapshot.dev_session && !neverStarted(snapshot)?revision:''}</aside></div>${attempt?(snapshot.agent?agentReplayDetails(snapshot,version):DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4><p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div>${snapshot.dev_session && !neverStarted(snapshot)?revision:''}</aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
   }
 
   function operatorPlanRow(version,agent=false) {
@@ -3467,20 +3467,20 @@
     return `<details class="op-plan" data-plan-row data-persist-detail="operator-plan:${esc(version.version)}"><summary><b>PLAN</b><span>${esc(summary)}</span></summary><div data-plan-note>${esc(full)}</div></details>`;
   }
   function agentStripStages(stages) {
-    if(stages.length<=4)return stages;
-    const end=stages.findIndex(stage=>stage.state!=='completed');
-    const count=end<0?stages.length:end;
-    if(count<2)return stages;
-    const leading=stages.slice(0,count),steps=leading.flatMap(stage=>stage.stages);
-    return [{state:'completed',stages:steps,label:`${steps.length} steps`,title:leading.map(stage=>stage.label).join(' · '),cause:''},...stages.slice(count)];
+    // The projection groups adjacent stages ("Lift · Carry"); the strip always shows all seven (10-30).
+    return stages.flatMap(stage=>{
+      const labels=String(stage.label||'').split(' · '),indices=stage.stages||[];
+      if(labels.length<2||labels.length!==indices.length)return [stage];
+      return labels.map((label,i)=>({...stage,stages:[indices[i]],label}));
+    });
   }
   function agentEvalStrip(version,attemptId) {
     // The native task check decides the outcome; Eval's verdict only fills in when no native result exists.
     const review=version?.evaluator_review,native=version?.native_success;
     const passed=native===true||(typeof native!=='boolean'&&review?.passed===true);
     const failed=native===false||review?.passed===false;
-    const stages=agentStripStages(version?.eval_stages||[]);
-    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}"${stage.title?` title="${esc(stage.title)}"`:''}>${stage.state==='completed'?'✓ ':stage.state==='failed'?'✕ ':''}${esc(stage.label)}${stage.state==='failed'?`: ${esc(version.story?.short||stage.cause)}`:''}</span>`).join('<span class="op-eval-arrow" aria-hidden="true">→</span>')}</div>${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
+    const stages=agentStripStages(version?.eval_stages||[]),stopped=stages.find(stage=>stage.state==='failed');
+    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}" title="${esc(`${stage.label} · ${stage.state==='completed'?'done':stage.state==='failed'?'stopped here':'not reached'}`)}"><i aria-hidden="true">${stage.state==='completed'?'✓':stage.state==='failed'?'✕':''}</i><b>${esc(stage.label)}</b></span>`).join('')}</div>${stopped?`<p class="op-eval-stopped" data-eval-stopped><b>Stopped at ${esc(stopped.label)}</b> · ${esc(version.story?.short||stopped.cause)}</p>`:''}${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
   }
 
   function operatorEvalReview(review,attemptId) {
@@ -3632,9 +3632,9 @@
   function operatorHelp(snapshot,chosen) {
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session);
     const modelReview=modelCallReview(snapshot);
-    if(modelReview)return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action"><h4>No reply needed</h4><p>${esc(modelReview.message)}</p><p>${esc(modelReview.reason)}</p></div>${operatorHelpHistory(snapshot)}</section>`;
-    if(end?.key==='action_approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action"><h4>Action permission closed</h4><p>${esc(end.explanation)}. This action was not executed.</p>${end.review?'<p>Review required · Unresolved work and any unknown paid holds remain recorded.</p>':''}</div>${operatorHelpHistory(snapshot)}</section>`;
-    if(snapshot.dev_v2?.lifecycle?.phase==='approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="waiting" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action need"><h4>A robot action needs your decision</h4><p>${esc(operatorLifecycleCopy(snapshot).text)}</p></div>${operatorHelpHistory(snapshot)}</section>`;
+    if(modelReview)return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div class="op-action"><h4>No reply needed</h4><p>${esc(modelReview.message)}</p><p>${esc(modelReview.reason)}</p></div>${operatorHelpHistory(snapshot)}</section>`;
+    if(end?.key==='action_approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div class="op-action"><h4>Action permission closed</h4><p>${esc(end.explanation)}. This action was not executed.</p>${end.review?'<p>Review required · Unresolved work and any unknown paid holds remain recorded.</p>':''}</div>${operatorHelpHistory(snapshot)}</section>`;
+    if(snapshot.dev_v2?.lifecycle?.phase==='approval')return `<section class="panel detail ab-current-request" data-core-region="request" data-state="waiting" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div class="op-action need"><h4>A robot action needs your decision</h4><p>${esc(operatorLifecycleCopy(snapshot).text)}</p></div>${operatorHelpHistory(snapshot)}</section>`;
     const waiting=operatorWaiting(snapshot),s=snapshot.dev_session,control=snapshot.attention_control;
     const dev=s && !snapshot.dev_v2;
     const hint=dev?control?.hint:chosen;
@@ -3645,7 +3645,7 @@
     const prompt=`Attempt ${k} failed: ${failure}. What should it do differently?`;
     const key=dev && hint?`${s.session_id}:${hint.request_id}`:'';
     const actions=dev?`<form data-dev-guidance data-request-id="${esc(hint?.request_id)}">${operatorQuickReplies()}<label class="op-guidance-label">Your reply<textarea name="content" maxlength="2000" required placeholder="${esc(placeholder)}">${esc(stored('attention.dev-guidance:'+key)||'')}</textarea></label><div class="op-controls"><button class="ab-button-primary" type="submit" value="answer" ${devGuidancePending.has(key)?'disabled':''}>Send reply</button><small>Watch the replay in 03 before replying</small></div><p role="status" data-dev-guidance-message></p></form>`:chosen?.request_type==='hint'?`<div class="ab-response-form">${operatorQuickReplies()}<label for="ab-hint-content">Your reply</label><textarea id="ab-hint-content" maxlength="4000" placeholder="${esc(placeholder)}"></textarea>${snapshot.run.robot?.execution_arm==='both'?'<div data-hint-scope><label>Target hand<select data-hint-arm aria-label="Hint target hand"><option value="left">Left hand</option><option value="right">Right hand</option><option value="both">Both hands</option></select></label><label>Task phase<select data-hint-phase aria-label="Hint task phase"><option value="pickup">Pickup</option><option value="handoff">Handoff</option><option value="placement">Placement</option></select></label></div>':''}<div class="op-controls"><button class="ab-button-primary" type="button" data-respond="hint">Send reply</button><small>Watch the replay in 03 before replying</small></div></div>`:chosen?.request_type==='approval'?'<div class="op-controls"><button type="button" data-respond="approve">Approve</button><button type="button" data-respond="deny">Deny</button></div>':'<button type="button" data-respond="interrupt">Confirm interrupt request</button>';
-    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${waiting?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<div class="op-action ${waiting?'need':'none'}"><h4>${waiting?'The robot needs your help':'✓ Nothing to do'}</h4>${waiting?`<p>${esc(prompt)}</p>${!dev&&chosen?.deadline_at!=null?`<p class="ab-countdown" data-reply-countdown data-deadline="${chosen.deadline_at}">${esc(countdown(chosen))}</p>`:''}${actions}`:`<p>${operatorLifecycleCopy(snapshot)?.text || (isTerminal(snapshot)?'This run has ended. The help the robot received is listed below.':"The robot is working on its own. You'll be asked here if it needs help.")}</p>`}</div>${operatorHelpHistory(snapshot)}</section>`;
+    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${waiting?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div class="op-action ${waiting?'need':'none'}"><h4>${waiting?'The robot needs your help':'✓ Nothing to do'}</h4>${waiting?`<p>${esc(prompt)}</p>${!dev&&chosen?.deadline_at!=null?`<p class="ab-countdown" data-reply-countdown data-deadline="${chosen.deadline_at}">${esc(countdown(chosen))}</p>`:''}${actions}`:`<p>${operatorLifecycleCopy(snapshot)?.text || (isTerminal(snapshot)?'This run has ended. The help the robot received is listed below.':"The robot is working on its own. You'll be asked here if it needs help.")}</p>`}</div>${operatorHelpHistory(snapshot)}</section>`;
   }
 
   function operatorBudgetCard(name,value,seconds=false,ended=false,showZero=false,recorded=false,plain=false) {
@@ -3683,7 +3683,7 @@
     const exportLink=snapshot.dev_v2?`<a href="/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/export.csv" target="_blank" rel="noopener">Download data (CSV)</a>`:'';
     // Wall-clock time keeps running after a run has ended; it only matters when it is why the run ended.
     const shown=fields.filter(([key])=>!(key==='wall_seconds' && isTerminal(snapshot) && endedKey!=='wall_seconds'));
-    return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','How much budget is left?')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
+    return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
       const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
       return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
     }).join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${quotaLine?`<small data-codex-run-quota>${quotaLine}</small>`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
@@ -3709,7 +3709,7 @@
 
   function runSettings(snapshot = null, launch = null) {
     const title = '<h3>Task & Run Settings</h3>';
-    if (!snapshot && !DEBUG_VIEW) return `<section class="panel ab-run-settings" data-run-settings>${operatorHeading('01','TASK SETUP','What is the robot trying to do?')}<p>Use New run to choose a task.</p></section>`;
+    if (!snapshot && !DEBUG_VIEW) return `<section class="panel ab-run-settings" data-run-settings>${operatorHeading('01','TASK SETUP','')}<p>Use New run to choose a task.</p></section>`;
     if (!snapshot) return `<section class="panel ab-run-settings" data-run-settings aria-label="Task & Run Settings"><div class="panel-title">${title}</div><p class="minor">${launch ? 'Launch request accepted; waiting for the executor to register this run.' : 'No run selected. Use New run to configure the task, assistance mode and budgets.'}</p></section>`;
     const run = snapshot.run;
     // Describe known execution mechanisms in user language without inventing a model.
@@ -3975,7 +3975,7 @@
       const fields = [['executions','Executions',''],['model_calls','Model calls',''],['tokens','Tokens',''],['sdk_calls','SDK calls',''],['execution_seconds','Execution time','s'],['wall_seconds',snapshot.dev_v2?'Goal wall time':'Session time','s']];
       return `${DEBUG_VIEW ? `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${title}<div class="budgets" aria-label="Resource budget">${(snapshot.dev_v2?[['help_count','Help requests',''],...(snapshot.dev_eval_enabled?[['eval_calls','Reviews requested','']]:[]),...fields]:fields).map(([key,name,unit])=>`<div data-dev-budget-key="${key}" data-limit-reached="${snapshot.dev_session.state==='budget_exhausted'&&devEndSummary(snapshot.dev_session).key===key}">${budgetCard(name,snapshot.resources[key],unit)}</div>`).join('')}</div>${snapshot.dev_v2?devV2LedgerDetails(snapshot):''}</section>` : operatorResources(snapshot)}`;
     }
-    if (!snapshot && !DEBUG_VIEW) return `<section class="panel ab-resource-details" data-resource-details>${operatorHeading('05','RESOURCES','How much budget is left?')}<p>Choose a run to see its resources.</p></section>`;
+    if (!snapshot && !DEBUG_VIEW) return `<section class="panel ab-resource-details" data-resource-details>${operatorHeading('05','RESOURCES','')}<p>Choose a run to see its resources.</p></section>`;
     if (!snapshot) return `<section class="panel ab-resource-details" data-resource-details aria-label="Resources">${title}<p class="minor">Resource usage and remaining budgets appear after run registration.</p></section>`;
     return `${DEBUG_VIEW ? `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${title}<div class="budgets" aria-label="Resource budget">${budgetCard('Assistance credits',snapshot.resources.assistance,'',true)}${budgetCard('Execution time',snapshot.resources.execution_seconds,'s')}${budgetCard('Tokens',snapshot.resources.tokens,'')}${budgetCard('GPU time',snapshot.resources.gpu_seconds,'s')}</div>${budgetHistory(snapshot)}</section>` : snapshot ? operatorResources(snapshot) : `<section class="panel ab-resource-details" data-resource-details>${operatorHeading("05","RESOURCES","How much budget is left?")}<p>Choose a run to see its resources.</p></section>`}`;
   }
@@ -3993,7 +3993,7 @@
       // Agent runs record their own models; the one-call card text above assumes gpt-6-astra (10-30).
       if(snapshot.agent.eval_model)regions[0]=regions[0].replace(/(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/,(_,a,b)=>`${a}${esc(snapshot.agent.eval_model)}${b}`);
       if(snapshot.agent.advisor_model)regions[0]=regions[0].replace('an automatic advisor answers',`an automatic advisor answers · ${esc(snapshot.agent.advisor_model)}`);
-      regions[1]=regions[1].replace('</h3><span>How is it going?', '</h3><button type="button" class="op-agent-story-entry" data-agent-story-open>See the full story →</button><span>How is it going?');
+      regions[1]=regions[1].replace('</h3><span>', '</h3><button type="button" class="op-agent-story-entry" data-agent-story-open>See the full story <span aria-hidden="true">→</span></button><span>');
       regions[1]=append(regions[1],agentFullStory(snapshot));
       if(snapshot.agent.dev_model!=='gpt-6-astra')regions[1]=regions[1].replace('(gpt-6-astra, high effort)',`(${esc(snapshot.agent.dev_model)}, high effort)`);
       regions[3]=regions[3].replace('This run has ended. Recorded work and replies remain available.','This run has ended. The help the robot received is listed below.');
@@ -4048,7 +4048,6 @@
     const active = actionableRequests(snapshot);
     const chosen = active.find(item => item.request_id === selectedRequest) || active[0];
     view.innerHTML = workspaceHTML(snapshot,chosen);
-    if(snapshot.agent)bindAgentInstrument(snapshot);
     bindAttentionEfficiency(snapshot);
     if(snapshot.agent)bindAgentStory(snapshot);
     const requestRegion=view.querySelector('[data-core-region="request"]');
@@ -4435,7 +4434,7 @@
     view.innerHTML = `${DEBUG_VIEW ? `${runSettings(null,launch)}<section class="panel ab-run-overview" data-core-region="status" data-phase="${launch ? 'launching' : 'empty'}" aria-label="Task Status & Progress"><div class="ab-status-panel-heading" aria-hidden="true">Task Status & Progress</div><div class="ab-status-head"><h2>${title}</h2>${!launch ? launchButton() : '<button data-dismiss-launch>View existing runs</button>'}${moreButton()}<button id="ab-cancel-run" type="button" disabled>Cancel run</button><button class="danger" id="ab-emergency-interrupt" disabled title="No executing run">■ Emergency stop</button></div><div class="ab-status-main"><div class="ab-action-needed" data-action-needed data-needed="no" role="status" data-connected-needed="no" data-connected-text="✓ No action required">✓ No action required</div></div><p>${launch ? `${esc(pendingLaunch)} · ${esc(launch.reason || 'Launch request accepted; waiting for the executor to create the run.')}` : 'Use New run to choose a robot, task and Dev iteration budgets.'}</p></section>
       <section class="panel" data-core-region="execution"><h3>Execution & History</h3><p class="minor">Waiting for a run and execution frames.</p></section>
       <section class="panel ab-current-request" data-core-region="request" data-state="idle"><div class="panel-title"><h3>Current Request & Reply</h3></div><p class="ab-idle-request">No action required</p></section>
-      ${resourceDetails()}<p id="ab-live-message" class="minor" aria-live="polite"></p>` : `${runSettings(null,launch)}<section class="panel ab-run-overview" data-core-region="status" data-phase="${phase}">${operatorHeading('02','STATUS &amp; PROGRESS','How is it going?')}${launch?(launch.state==='failed'?'<div class="op-outcome failed" role="status"><strong>✕ NOT STARTED</strong><div><p>The run could not be started.</p><p>Nothing was run. You can try again.</p></div></div>':'<div class="op-outcome running" role="status"><strong>● STARTING</strong><div><p>Setting up the simulator. This usually takes a few seconds.</p><p>Waiting for run registration</p></div></div>'):'<div class="op-outcome" role="status"><strong>○ NO RUN SELECTED</strong><div><p>Choose a task from the list on the left, or start a new run.</p></div></div>'}<div class="op-controls">${!launch?launchButton():'<button data-dismiss-launch>View existing runs</button>'}</div></section><section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer>${operatorHeading('03','REPLAY &amp; ATTEMPTS','What did the robot do, and where did it go wrong?')}${launch&&launch.state!=='failed'?`<div class="op-stage op-launch-stage" data-op-stage="launch" data-state="loading">${loadingOverlay('live')}</div>`:`<div class="op-idle"><b>${launch?'The run could not start':'Nothing to show yet'}</b><p>${launch?'Close this message and try again, or pick another task.':'Pick a task on the left, or start a new run to watch the robot live.'}</p></div>`}</section><section class="panel ab-current-request" data-core-region="request">${operatorHeading('04','HELP &amp; REPLIES','Do I need to do anything?')}<p>✓ Nothing to do</p></section>${resourceDetails()}<p id="ab-live-message" class="minor" aria-live="polite"></p>`}`;
+      ${resourceDetails()}<p id="ab-live-message" class="minor" aria-live="polite"></p>` : `${runSettings(null,launch)}<section class="panel ab-run-overview" data-core-region="status" data-phase="${phase}">${operatorHeading('02','STATUS &amp; PROGRESS','')}${launch?(launch.state==='failed'?'<div class="op-outcome failed" role="status"><strong>✕ NOT STARTED</strong><div><p>The run could not be started.</p><p>Nothing was run. You can try again.</p></div></div>':'<div class="op-outcome running" role="status"><strong>● STARTING</strong><div><p>Setting up the simulator. This usually takes a few seconds.</p><p>Waiting for run registration</p></div></div>'):'<div class="op-outcome" role="status"><strong>○ NO RUN SELECTED</strong><div><p>Choose a task from the list on the left, or start a new run.</p></div></div>'}<div class="op-controls">${!launch?launchButton():'<button data-dismiss-launch>View existing runs</button>'}</div></section><section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer>${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}${launch&&launch.state!=='failed'?`<div class="op-stage op-launch-stage" data-op-stage="launch" data-state="loading">${loadingOverlay('live')}</div>`:`<div class="op-idle"><b>${launch?'The run could not start':'Nothing to show yet'}</b><p>${launch?'Close this message and try again, or pick another task.':'Pick a task on the left, or start a new run to watch the robot live.'}</p></div>`}</section><section class="panel ab-current-request" data-core-region="request">${operatorHeading('04','HELP &amp; REPLIES','')}<p>✓ Nothing to do</p></section>${resourceDetails()}<p id="ab-live-message" class="minor" aria-live="polite"></p>`}`;
     view.querySelector('[data-dismiss-launch]')?.addEventListener('click', () => { pendingLaunch = null; stored('attention.pending-launch', null); lastRendered = ''; refresh(); });
     view.querySelectorAll('[data-persist-detail]').forEach(e => { e.open = expanded.includes(e.dataset.persistDetail); });
     mountPolicyController();
@@ -4578,23 +4577,10 @@
   }
   // Adapt persisted Dev v2 records to the original five-region workspace.
   // Agent additions live inside the original five regions.
-  function agentLinks(rows) {
-    // An oversize or unsafe file marks only its own link, with the reason visible (10-30 sol3).
-    return (rows||[]).map(r=>r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener"${r.large?' data-large-file':''}>${esc(r.label)}</a>`:`<span${r.reason?` data-link-unavailable title="${esc(r.reason)}"`:''}>${esc(r.label)}${r.reason?` — ${esc(r.reason)}`:''}</span>`).join(' · ');
-  }
   function agentSettingsLine(a) {
     const c=a.counts,cap=a.limits;
     const wall=seconds=>`${Math.floor(seconds/3600)}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}`;
     return `<p class="minor" data-agent-settings data-agent-counts>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)}${a.advisor_model?` · Advisor ${esc(a.advisor_model)}`:''} · quota stop ${esc(a.quota_stop_percent)}% · versions ${c.formal_versions}/${cap.formal_versions} · executions ${c.moving_executions}/${cap.moving_executions} · probes ${c.read_only_probes}/${cap.read_only_probes} · wall ${wall(a.wall_seconds)}/${wall(a.wall_limit)} · ${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}${a.fatal_cause?' · fatal_cause: '+esc(a.fatal_cause):''}</p>`;
-  }
-  function agentDiagnosticItems(rows,key) {
-    const words=value=>value==null?'':typeof value==='object'?Object.entries(value).map(([k,v])=>`${k}: ${words(v)}`).join(' · '):String(value);
-    return rows.map((e,i)=>{const detail=words(e.error),summary=(typeof e.error==='object'?(e.error?.error||e.error?.error_text||e.error?.reason):e.error)||detail;return `<details data-persist-detail="${esc(key)}:${i}"><summary>${esc(e.source)} · ${esc(words(summary).split('\n')[0].slice(0,180))}</summary><p>${esc(detail)}</p>${(e.reports||[]).filter(r=>r.source!==e.source).map(r=>`<p>${esc(r.source)} · ${esc(words(r.error))}</p>`).join('')}</details>`;}).join('');
-  }
-  function agentAttemptDiagnostics(a,v) {
-    const matches=e=>(v.execution_id&&e.execution_id===v.execution_id)||(v.version_id&&(e.version_id===v.version_id||e.source.includes('/'+v.version_id+'/')));
-    const rows=[...(a.failure_errors||[]),...(a.details||[])].filter(matches);
-    return rows.length?`<details data-agent-attempt-details><summary>Details (${rows.length})</summary>${agentDiagnosticItems(rows,`attempt-${v.version||v.execution_id||v.id}`)}</details>`:'';
   }
   function enterAgentWorkspace(snapshot) {
     const index=devSessions.findIndex(s=>s.session_id===snapshot.dev_session.session_id);
@@ -4686,58 +4672,6 @@
     dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
     dialog.addEventListener('scroll',()=>stored(key+':scroll',String(dialog.scrollTop)));
     if(stored(key)==='open'){dialog.showModal();dialog.scrollTop=Number(stored(key+':scroll'))||0;}
-  }
-  function agentTrialDetails(snapshot,activity) {
-    return (activity?.trials||[]).map((trial,index)=>{
-      const record=snapshot.agent.timeline.find(r=>r.execution_id===trial.execution_id);
-      return `<details data-agent-trial-details><summary>Trial run ${index+1} · ${esc(trial.cause)}</summary>${agentLinks(record?.links)}${agentAttemptDiagnostics(snapshot.agent,trial)}</details>`;
-    }).join('');
-  }
-  function agentRunDiagnostics(snapshot,version) {
-    if(version.version!==snapshot.dev_session.versions.at(-1)?.version)return '';
-    const versions=snapshot.dev_session.versions;
-    const linked=new Set(versions.flatMap(v=>[v.execution_id,...(v.before_attempt?.trials||[]).map(t=>t.execution_id)]).filter(Boolean));
-    const rows=[...(snapshot.agent.failure_errors||[]),...(snapshot.agent.details||[])].filter(e=>!linked.has(e.execution_id)&&!versions.some(v=>e.version_id===v.version_id||e.source.includes('/'+v.version_id+'/')));
-    return rows.length?`<details data-agent-run-diagnostics><summary>Run diagnostics</summary>${agentDiagnosticItems(rows,'agent-run-diagnostics')}</details>`:'';
-  }
-  function agentReplayDetails(snapshot,version) {
-    if(!version)return '';
-    const activity=version.before_attempt||{};
-    return `<details data-agent-attempt-details data-persist-detail="agent-attempt:${version.version}"><summary>Attempt details</summary><details data-agent-code class="ab-eval-source"><summary>Code · bundled policy.py and sources</summary><pre>${esc(version.source_text||'Source unavailable')}</pre>${agentLinks((version.sources||[]).map(r=>({label:r.name,url:devFile(snapshot.dev_session,r.uri)})))}</details><ul data-agent-citations>${(version.citations||[]).map(e=>`<li>${esc(e.claim)} · ${e.uri?`<a href="${esc(devFile(snapshot.dev_session,e.uri))}" target="_blank" rel="noopener">${esc(e.source)}</a>`:esc(e.source)}</li>`).join('')}</ul>${agentAttemptDiagnostics(snapshot.agent,version)}${agentTrialDetails(snapshot,activity)}${agentRunDiagnostics(snapshot,version)}${agentInstrumentPanel(snapshot)}</details>`;
-  }
-  function agentInstrumentPanel(snapshot) {
-    const selected=stored(`attention.history:${snapshot.run.run_id}`);
-    const attempt=snapshot.attempts.find(a=>a.attempt_id===selected)||snapshot.attempts.at(-1);
-    const version=snapshot.dev_session.versions.find(v=>v.version===attempt?.dev_version);
-    if(!version?.instrument)return '';
-    return `<details data-agent-instrument data-instrument-version="${version.version}" data-persist-detail="agent-instrument"><summary>Execution instruments</summary><p data-instrument-status>Joint positions · radians by physics step</p><canvas width="800" height="220" style="width:100%;max-width:800px" data-instrument-canvas aria-label="Recorded joint positions by physics step"></canvas></details>`;
-  }
-  function drawAgentInstrument(canvas,rows) {
-    const samples=rows.filter(r=>Array.isArray(r.qpos)&&r.qpos.length&&r.qpos.every(Number.isFinite)&&Number.isFinite(r.physics_step));
-    if(!samples.length)return 0;
-    const ctx=canvas.getContext('2d');if(!ctx)return 0;
-    const width=canvas.width,height=canvas.height,pad=28;
-    let low=Infinity,high=-Infinity;for(const row of samples)for(const q of row.qpos){low=Math.min(low,q);high=Math.max(high,q);}
-    const first=samples[0].physics_step,last=samples.at(-1).physics_step;
-    ctx.clearRect(0,0,width,height);ctx.fillStyle='#17212b';ctx.fillRect(0,0,width,height);
-    ctx.strokeStyle='#8b9aa8';ctx.beginPath();ctx.moveTo(pad,pad);ctx.lineTo(pad,height-pad);ctx.lineTo(width-pad,height-pad);ctx.stroke();
-    ctx.fillStyle='#dce5ed';ctx.font='11px sans-serif';ctx.fillText(high.toFixed(2),0,15);ctx.fillText(low.toFixed(2),0,height-pad);ctx.fillText(String(first),pad,height-8);ctx.fillText(String(last),width-60,height-8);
-    for(let joint=0;joint<samples[0].qpos.length;joint++){
-      ctx.strokeStyle=`hsl(${joint*360/samples[0].qpos.length},70%,65%)`;ctx.beginPath();
-      samples.forEach((r,i)=>{const x=pad+(r.physics_step-first)/Math.max(1,last-first)*(width-2*pad),y=height-pad-(r.qpos[joint]-low)/Math.max(.001,high-low)*(height-2*pad);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();
-    }
-    return samples.length;
-  }
-  function bindAgentInstrument(snapshot) {
-    const panel=view.querySelector('[data-agent-instrument]');if(!panel)return;
-    const version=snapshot.dev_session.versions.find(v=>v.version===Number(panel.dataset.instrumentVersion));
-    let loaded=false;
-    const load=async()=>{if(!panel.open||loaded)return;loaded=true;try{
-      const rows=await readDevEvidence(snapshot.dev_session,version.instrument);
-      const count=drawAgentInstrument(panel.querySelector('canvas'),rows);
-      panel.querySelector('[data-instrument-status]').textContent=count?`${count} recorded physics states · joint positions (radians) by physics step`:'No joint-position samples recorded.';
-    }catch(error){panel.querySelector('[data-instrument-status]').textContent=`Instruments unavailable: ${error.message}`;}};
-    panel.addEventListener('toggle',load);load();
   }
   function agentReplayEvents(events,version) {
     if(version.evaluator_review?.passed!==false&&version.native_success!==false)return events;
