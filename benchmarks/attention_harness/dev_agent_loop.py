@@ -226,6 +226,16 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             if broker:broker._regenerate_history()
 
 
+def advisor_client(client, config):
+    # Agent runs may use any agent Advisor model; the one-call client stays locked.
+    if client is None and config.get('model_source')=='codex':
+        from .codex_client import CodexClient
+        from .dev_agent_config import ADVISOR_MODELS
+        return CodexClient(timeout_seconds=90, models=ADVISOR_MODELS)
+    from .dev_v2_loop import proxy_client
+    return proxy_client(client,config)
+
+
 def end_line(key, result):
     """The scheduler.log line: reason, the fatal cause and the verbatim error."""
     return 'agent cell %s ended: state=%s reason=%s%s%s'%(key,result['state'],result['reason'],
@@ -273,12 +283,11 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         from .dev_agent_attention import Helper
         from .dev_agent_memory import Memory
         from .dev_agent_export import Exporter
-        from .dev_v2_loop import proxy_client
         memory=Memory(store,key,workspace,config,manifest['initial_sources'][cell['task_id']]['source'],
             default=manifest['memory'],help_pricing=manifest.get('help_pricing'))
         exporter=Exporter(store,key,workspace,config,ledger)
         helper=Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
-            config=config,client=proxy_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory)
+            config=config,client=advisor_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory)
         condition=manifest.get('success_conditions',{}).get(f"{cell['task_id']}:{cell['seed']}")
         evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota,success_condition=condition,
             prompt=manifest['eval_agent_prompt']+(manifest['eval_success_rule'] if condition else ''))

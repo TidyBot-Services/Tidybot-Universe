@@ -1,9 +1,11 @@
 """Creation-only options for the single-cell native-agent condition."""
 import math
 
-FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent'}
+FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model'}
 MODELS={'gpt-6.1-sol','gpt-6-astra','gpt-6-sol'}
 DEFAULT_MODEL='gpt-6.1-sol'
+# AdvisorProxy on agent runs (10-29). Absent in older selections, which keep the fixed one-call Advisor.
+ADVISOR_MODELS={'gpt-6-astra','gpt-6.1-sol'}
 
 
 def normalize(selection, *, validation_origin=None):
@@ -24,6 +26,9 @@ def normalize(selection, *, validation_origin=None):
                 quota_stop_percent=selection.get('quota_stop_percent',90))
     if result['dev_model'] not in MODELS or result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
     if result['dev_reasoning_effort'] not in ('low','medium','high'):raise ValueError('unsupported_agent_effort')
+    if 'advisor_model' in selection:
+        if selection['advisor_model'] not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
+        result['advisor_model']=selection['advisor_model']
     quota=result['quota_stop_percent']
     if type(quota) not in (int,float) or not math.isfinite(quota) or not 0<quota<=100:raise ValueError('invalid_quota_stop_percent')
     return result
@@ -35,7 +40,10 @@ def configuration(selection):
     clean={k:v for k,v in selection.items() if k not in FIELDS}
     clean.update(model_source='codex',target_depth=10,target_valid_executions=10,max_versions=10,
                  coverage='budget_limited',attempt_wall_seconds=1920,wall_limit=21600)
-    return dict(normalize_configuration(clean),**options)
+    result=dict(normalize_configuration(clean),**options)
+    if 'advisor_model' in options:
+        result['advisor_proxy']=dict(result['advisor_proxy'],model=options['advisor_model'])
+    return result
 
 
 def refuse_memory(value):

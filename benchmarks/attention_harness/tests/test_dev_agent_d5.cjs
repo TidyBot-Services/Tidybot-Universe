@@ -132,3 +132,11 @@ test('Advanced one-call serializes the actual submit form to the original reques
     assert.equal(JSON.stringify({selection:context.selection,start:true}),initial);
   }
 });
+test('agent launch defaults the Advisor to gpt-6.1-sol; Run again keeps an old run on the fixed Advisor',()=>{
+  const values={devMode:'agent',channel:'dev_v2',tier:'dev'};
+  assert.equal(api.agentLaunchSelection(old,values).advisor_model,'gpt-6.1-sol');
+  assert.equal(api.agentLaunchSelection(old,{...values,advisorModel:'gpt-6-astra'}).advisor_model,'gpt-6-astra');
+  assert.equal(api.runConfigDefaultsFromSelection({...old,dev_mode:'agent',dev_model:'gpt-6-astra',eval_model:'gpt-6-astra'}).advisorModel,'gpt-6-astra');
+  assert.equal(api.runConfigDefaultsFromSelection({...old,dev_mode:'agent',advisor_model:'gpt-6.1-sol'}).advisorModel,'gpt-6.1-sol');
+  assert.ok(!('advisor_model' in api.agentLaunchSelection(old,{})));
+});

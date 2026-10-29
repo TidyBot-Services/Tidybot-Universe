@@ -52,15 +52,16 @@ def _prompt(messages, root):
 
 
 class CodexClient:
-    def __init__(self, *, timeout_seconds=180.0, response_observer=None, runner=None):
+    def __init__(self, *, timeout_seconds=180.0, response_observer=None, runner=None, models=(MODEL,)):
         self.timeout_seconds = timeout_seconds
+        self.models = frozenset(models)  # one-call keeps the single locked model; agent runs widen it
         self.response_observer = response_observer
         self.runner = runner or subprocess.Popen
         self.quota_before = None
         self.quota_after = None
 
     def chat(self, *, model, messages, max_tokens, temperature=0.0, reasoning_effort=REASONING_EFFORT):
-        if model != MODEL:
+        if model not in self.models:
             raise ParccError('Unsupported Codex model')
         if reasoning_effort != REASONING_EFFORT:
             raise ParccError('Unsupported Codex reasoning effort')

@@ -1932,7 +1932,7 @@
     if(reason)throw new Error(reason);
     const {configuration,human_wait_seconds,eval_agent,...rest}=selection;
     return {...rest,dev_mode:'agent',model_source:'codex',budget_tier:'dev',
-      dev_model:values.devModel||'gpt-6.1-sol',eval_model:values.evalModel||'gpt-6.1-sol',quota_stop_percent:90,
+      dev_model:values.devModel||'gpt-6.1-sol',eval_model:values.evalModel||'gpt-6.1-sol',advisor_model:values.advisorModel||'gpt-6.1-sol',quota_stop_percent:90,
       goal_key:configuration?.goal_id||selection.goal_key,wall_limit:21600};
   }
   function runConfigDefaultModelMinutes(options) {
@@ -1942,7 +1942,7 @@
     const config=selection?.configuration||{},cell=config.cell_budget||selection?.cell_budget||{};
     return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:selection?.policies?.length?'all':null,
       devMode:selection?.dev_mode==='agent'?'agent':'one_call',
-      ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model}:{}),
+      ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model,advisorModel:selection.advisor_model||'gpt-6-astra'}:{}),
       mode:selection?.mode,modelSource:selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
       help:selection?.help_budget,waitSeconds:selection?.human_wait_seconds??selection?.planner_features?.human_wait_seconds,
       wallSeconds:config.wall_seconds??selection?.wall_limit,modelMinutes:cell.model_seconds==null?null:Math.ceil(cell.model_seconds/60),
@@ -2039,6 +2039,7 @@
             <label class="ab-launch-field">Dev mode<output data-dev-mode-label>Agent</output><small>More modes are available in Advanced.</small></label>
             <label class="ab-launch-field">Dev model<select name="dev_model" aria-label="Dev model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
             <label class="ab-launch-field">Eval model<select name="eval_model" aria-label="Eval model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
+            <label class="ab-launch-field">Advisor model<select name="advisor_model" aria-label="Advisor model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option></select></label>
             <label class="ab-launch-field">Quota stop %<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %"></label>
             <p class="ab-run-hint wide" data-agent-reason role="status"></p>
           </div></section>
@@ -2263,7 +2264,7 @@
       if(repeat && sourceProfile?.channel==='dev_v2') {
         oneCallFields=null;
         const set=(name,value)=>{if(value!=null)form[name].value=String(value);};
-        if(repeat.devMode&&form.dev_mode){set('dev_mode',repeat.devMode);set('dev_model',repeat.devModel);set('eval_model',repeat.evalModel);}
+        if(repeat.devMode&&form.dev_mode){set('dev_mode',repeat.devMode);set('dev_model',repeat.devModel);set('eval_model',repeat.evalModel);if(form.advisor_model)set('advisor_model',repeat.advisorModel);}
         set('v2_mode',repeat.mode);
         syncSeedOptions();
         if([...form.seed.options].some(option=>Number(option.value)===repeat.seed))set('seed',repeat.seed);
@@ -2328,7 +2329,7 @@
               selection.fork=fork.request();
             }
           }
-          selection=agentLaunchSelection(selection,{devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
+          selection=agentLaunchSelection(selection,{devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
           const result = await response.json();

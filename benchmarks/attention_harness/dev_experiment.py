@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
@@ -69,7 +69,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         agent_options=normalize(selection,validation_origin=validation_origin)
         selection={**selection,**agent_options,'model_source':'codex'}
     else:
-        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent')):raise ValueError('agent_options_require_agent_mode')
+        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model')):raise ValueError('agent_options_require_agent_mode')
         if 'dev_mode' in selection:selection={k:v for k,v in selection.items() if k!='dev_mode'}
     if validation_origin is not None and (validation_origin.get('dev_mode')=='agent' or validation_origin.get('config',{}).get('dev_mode')=='agent'):
         raise ValueError('agent_memory_validation_unsupported')
