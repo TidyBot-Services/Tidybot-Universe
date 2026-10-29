@@ -109,10 +109,16 @@ def automatic_checks(root=None,gateway=None):
                         label='Test · not counted in results',status='Queued',pairs=[],failed_gates=[],errors=[]))
             except Exception as exc:value['errors'].append('Positive-control queue unavailable: '+safe_detail(str(exc)))
     value['family']=dict(fixtures=[],candidates=[],events=[])
-    if gateway and callable(getattr(gateway,'family_list',None)):
-        try:value['family']=gateway.family_list()
-        except Exception as exc:value['errors'].append('Family feed unavailable: '+safe_detail(str(exc)))
-    if gateway:
+    if gateway is not None:
+        if callable(getattr(gateway,'family_list',None)):
+            try:value['family']=gateway.family_list()
+            except Exception as exc:value['errors'].append('Family feed unavailable: '+safe_detail(str(exc)))
+        else:value['errors'].append('Family feed unavailable: memory gateway has no family_list')
+        cross_available=True
+        for method in ('cross_seed_queue','cross_seed_status'):
+            if not callable(getattr(gateway,method,None)):
+                value['errors'].append('Cross-seed feed unavailable: memory gateway has no '+method)
+                cross_available=False
         try:
             value['queue']=[{k:r.get(k) for k in ('memory_id','title','uses','failure_gone')} for r in gateway.validation_queue()]
             scopes={};events=[]
@@ -122,7 +128,7 @@ def automatic_checks(root=None,gateway=None):
                 elif r['event']=='demoted':scopes[mid]='scene_scoped' if scopes.get(mid)=='task_scoped' else 'provisional'
                 event['trust_scope']=scopes.get(mid);events.append(event)
             value['events']=events[-100:]
-            if callable(getattr(gateway,'cross_seed_queue',None)):
+            if cross_available:
                 for row in gateway.cross_seed_queue():cross_notes[row['memory_id']]=row
                 for mid,row in list(cross_notes.items()):
                     cross_notes[mid]=dict(title=row.get('title'),**gateway.cross_seed_status(memory_id=mid))

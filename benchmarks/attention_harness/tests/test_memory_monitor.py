@@ -1,14 +1,55 @@
-"""Read-only monitor route against a trimmed real ledger and fake Memory client."""
+"""Read-only monitor route against a frozen synthetic v2 run and fake client."""
 import io
 import json
 import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 
-from benchmarks.attention_harness import memory_monitor, ui_server
+import pytest
 
-RUN = Path('/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-53cbf969f72783537ce5de61')
+from benchmarks.attention_harness import memory_monitor, ui_server
+from benchmarks.attention_harness.dev_ledger import DevV2Store
+
+FIXTURE = Path(__file__).parent / 'fixtures' / 'memory_monitor_run'
 EXPERIMENT = 'devexp-53cbf969f72783537ce5de61'
+
+
+@pytest.fixture(name='RUN')
+def synthetic_run(tmp_path):
+    """Materialize only repository data, using the production v2 table schema."""
+    run = tmp_path / EXPERIMENT
+    store = DevV2Store(run / 'ledger.sqlite3')
+    artifacts = run / 'artifacts'
+    artifacts.mkdir()
+    for source in (FIXTURE / 'artifacts').iterdir():
+        (artifacts / source.name).write_bytes(source.read_bytes())
+
+    def relocate(value):
+        if isinstance(value, dict):
+            if set(value) == {'$artifact'}:
+                path = artifacts / value['$artifact']
+                return {'uri': str(path), 'sha256': memory_monitor.sha(path)}
+            return {key: relocate(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [relocate(item) for item in value]
+        return value
+
+    data = relocate(json.loads((FIXTURE / 'run.json').read_text()))
+    cell = data['cell']
+    with store.tx() as db:
+        db.execute('INSERT INTO v2_cells VALUES (?, ?, ?)',
+                   (cell['key'], cell['experiment_id'], json.dumps(cell)))
+        for version in data['versions']:
+            db.execute('INSERT INTO v2_versions VALUES (?, ?, ?)',
+                       (cell['key'], version['version'], json.dumps(version)))
+        for record in data['jobs']:
+            job = record['payload']
+            db.execute('INSERT INTO v2_jobs VALUES (?, ?, ?, ?, ?, ?)',
+                       (job['job_id'], job['cell'], job['version'], job['kind'], record['state'], json.dumps(job)))
+        for event in data['events']:
+            db.execute('INSERT INTO v2_events (at, kind, payload) VALUES (?, ?, ?)',
+                       (event['at'], event['kind'], json.dumps(event['payload'])))
+    return run
 
 
 class Bridge:
@@ -63,7 +104,7 @@ def request(handler_class, path):
     return response['status'], handler.wfile.getvalue(), response
 
 
-def test_projection_uses_real_ledger_packet_and_scrubs_service_secrets():
+def test_projection_uses_real_ledger_packet_and_scrubs_service_secrets(RUN):
     assert RUN.joinpath('ledger.sqlite3').is_file()
     bridge = Bridge(RUN / 'ledger.sqlite3')
     memory = Memory([row('c2-seeded-small-steps-001', seeded_for_tests=True),
@@ -190,7 +231,7 @@ def test_version_budget_fallback_and_clamp(tmp_path):
         assert memory_monitor._max_versions({'manifest': ref}, cells) == expected
 
 
-def test_route_serves_monitor_files_and_bounds_payload_with_errors(monkeypatch, capsys):
+def test_route_serves_monitor_files_and_bounds_payload_with_errors(monkeypatch, capsys, RUN):
     monkeypatch.setattr(ui_server, 'ThreadingHTTPServer', lambda address, handler: handler)
     bridge = Bridge(RUN / 'ledger.sqlite3')
     memory = Memory([row(f'n-{i:04d}') for i in range(610)])
@@ -216,7 +257,7 @@ def test_route_serves_monitor_files_and_bounds_payload_with_errors(monkeypatch, 
     assert 'top-secret' not in line
 
 
-def test_bad_note_extras_degrade_without_failing_route(monkeypatch, capsys):
+def test_bad_note_extras_degrade_without_failing_route(monkeypatch, capsys, RUN):
     monkeypatch.setattr(ui_server, 'ThreadingHTTPServer', lambda address, handler: handler)
     bridge = Bridge(RUN / 'ledger.sqlite3')
 
@@ -240,7 +281,7 @@ def test_bad_note_extras_degrade_without_failing_route(monkeypatch, capsys):
     assert 'secret guidance' not in line
 
 
-def test_usage_scans_sibling_ledgers_and_caches_briefly(tmp_path, monkeypatch):
+def test_usage_scans_sibling_ledgers_and_caches_briefly(tmp_path, monkeypatch, RUN):
     bridge = Bridge(RUN / 'ledger.sqlite3')
     bridge.root = tmp_path
     other = tmp_path / ('devexp-' + 'a' * 24) / 'ledger.sqlite3'
@@ -267,7 +308,7 @@ def test_usage_scans_sibling_ledgers_and_caches_briefly(tmp_path, monkeypatch):
     assert memory_monitor.project(bridge, memory, EXPERIMENT)['notes'][0]['reads'] == 7
 
 
-def test_projection_shows_unvalidated_uses_expiry_and_other_scene_reference():
+def test_projection_shows_unvalidated_uses_expiry_and_other_scene_reference(RUN):
     bridge = Bridge(RUN / 'ledger.sqlite3')
     seed = bridge.get('/api/dev-v2/experiments/' + EXPERIMENT)[0]['cells'][0]['seed']
     now = 1792471444

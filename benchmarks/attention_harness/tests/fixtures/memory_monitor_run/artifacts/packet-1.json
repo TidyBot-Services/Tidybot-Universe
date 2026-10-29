@@ -1,0 +1,18 @@
+{
+  "entries": [
+    {
+      "memory_id": "c2-seeded-small-steps-001",
+      "version": 1,
+      "grant_id": "synthetic-grant-1",
+      "seeded_for_tests": true,
+      "excluded_from_results": true,
+      "trusted_here": true,
+      "unvalidated": false,
+      "match_level": "same_scene",
+      "source_seed": 102,
+      "development_id": "synthetic-monitor-cell:v1"
+    }
+  ],
+  "seeded_for_tests": true,
+  "excluded_from_results": true
+}
