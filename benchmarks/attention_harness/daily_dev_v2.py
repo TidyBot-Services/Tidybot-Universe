@@ -203,6 +203,9 @@ class DailyDevV2:
             selection={**selection,'model_source':'codex','reproducible_reset':True,
                        'scene_contract':registered_contract_ref()}
             selection=bind_daily_advisor(selection,directory/'selection.json')
+            # D7: agent runs bind the server's Memory authority and run notes like one-call.
+            selection=bind_daily_run_notes(selection,directory/'selection.json')
+            selection=bind_daily_memory(selection,self.memory,directory/'selection.json')
         else:
             selection=bind_daily_run_notes(selection,directory/'selection.json')
             selection=bind_daily_advisor(selection,directory/'selection.json')

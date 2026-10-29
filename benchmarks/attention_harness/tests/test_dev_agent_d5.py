@@ -270,7 +270,7 @@ def test_accounting_disagreement_visible_and_reads_do_not_mutate(agent_fixture):
     assert store.path.read_bytes()==before
 
 
-def test_daily_creation_reaches_real_create_and_skips_automatic_memory(tmp_path,offline_dev_identity,monkeypatch):
+def test_daily_creation_reaches_real_create_and_binds_automatic_memory(tmp_path,offline_dev_identity,monkeypatch):
     import subprocess
     original=subprocess.run
     calls=[]
@@ -281,14 +281,16 @@ def test_daily_creation_reaches_real_create_and_skips_automatic_memory(tmp_path,
         dev_experiment.create(DevV2Store(arg('--store')),Path(arg('--artifacts')),selection)
         return SimpleNamespace(returncode=0)
     bridge=daily_dev_v2.DailyDevV2(tmp_path,[],per_run_budget=True)
-    bridge.memory={'synthetic':'automatic memory must not enter agent config'}
+    # D7: agent runs bind the server's Memory authority exactly like one-call runs.
+    memory={'base_url':'http://127.0.0.1:8878','namespace':'attentionbench-dev-v2-c','store_id':'00000000-0000-4000-8000-000000000000','url_sha256':__import__('hashlib').sha256(b'http://127.0.0.1:8878').hexdigest()}
+    bridge.memory=memory
     monkeypatch.setattr(subprocess,'run',execute)
     body=dict(start=False,selection=dict(request_key='d5-ui-creation',tasks=['open_cabinet'],seeds=[102],
         policies=['reactive_help'],mode='experiment',dev_mode='agent',model_source='codex',budget_tier='dev',
         dev_model='gpt-6-sol',eval_model='gpt-6-astra',quota_stop_percent=90,goal_key='d5-ui-goal'))
     result=bridge.create(body)
     assert calls and calls[0]['model_source']=='codex' and 'configuration' not in calls[0]
-    assert not any(k in calls[0] for k in ('memory_authority','memory_family','run_notes'))
+    assert calls[0]['memory_authority']==memory and calls[0]['dev_mode']=='agent'
     assert 'uri' not in json.dumps(result) and '/home/' not in json.dumps(result)
     e=dev_experiment.snapshot(bridge.store(result['experiment_id']),result['experiment_id'])
     manifest=dev_experiment.verify_manifest(e)
