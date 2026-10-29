@@ -260,6 +260,8 @@ test('r6 terminal descent rejection becomes the last red step; continued rejecti
   api.selectAgentAttempt(snapshot,snapshot.attempts[1].attempt_id);
   const html=api.executionViewer(snapshot),steps=[...html.matchAll(/<details data-history-event[^]*?<\/details>/g)].map(m=>m[0]);
   assert.match(steps.at(-1),/class="op-step failed"/);
+  // Same plain wording as one-call for a planning rejection.
+  assert.match(steps.at(-1),/the motion planner refused the move \(out of reach or would collide\)/);
   assert.match(steps.at(-1),/✕[^]*Moved left arm a small step[^]*Stopped:/);
   assert.equal(steps.filter(s=>s.includes('op-step failed')).length,1);
   const continued=[...events,{operation:'left_arm.move_delta',status:'completed'}];

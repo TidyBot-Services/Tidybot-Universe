@@ -3180,7 +3180,7 @@
     while (/^(RuntimeError|ValueError|Exception):\s*/i.test(text)) text = text.replace(/^(RuntimeError|ValueError|Exception):\s*/i,'').trim();
     const map = [
       [/joint tracking exceeds|mrad/i,'the arm moved too abruptly, so the safety controller halted it'],
-      [/PlanningRejected|rejected by curobo|read_only_arm_plan_rejected|continuous_command_validation_rejected/i,'the motion planner refused the move (out of reach or would collide)'],
+      [/PlanningRejected|rejected by curobo|read_only_arm_plan_rejected|continuous_command_validation_rejected|official_ik_non_success|ik_non_success|goal_joint_margin_below_execution_limit|base_path_rejected|planning_rejected/i,'the motion planner refused the move (out of reach or would collide)'],
       [/slipped|grasp lost during/i,'the item slipped out of the gripper'],
       [/not uniquely visible|is required/i,"the robot couldn't clearly see the item"],
       [/infrastructure|dispatch unknown|outcome_unknown/i,"a system problem stopped it (not the robot's fault)"],
