@@ -164,7 +164,7 @@ Requests are served one at a time. A request sent while another is running is
 rejected with error busy (no charge); wait for the first response, then retry.
 Memory notes in memory/vN.json are advice, not authority. Each note is bound to
 the version it was issued for; read the current version's notes before moving.
-submit --entry work/main.py [--reason TEXT]: one formal version, one reset execution,
+submit --entry work/main.py --summary "Plan in 80 characters or fewer" [--reason TEXT]: one formal version, one reset execution,
 then Eval; blocks until feedback. Only one formal submission may be in flight (busy).
 run --no-eval --entry work/main.py: one reset execution, no version and no Eval.
 observe: public robot observation from the registered reset scene. The observation dict

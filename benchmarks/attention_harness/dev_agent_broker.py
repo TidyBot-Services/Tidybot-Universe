@@ -178,11 +178,17 @@ class Broker:
                 return self._publish(response)
             if self.quarantined: return reject('needs_review')
             if self.active is not None: return reject('busy')
-            allowed = ({'entry', 'reason'} if op in ('submit', 'run') else
+            allowed = ({'entry', 'reason', 'summary'} if op == 'submit' else {'entry', 'reason'} if op == 'run' else
                        {'question'} if op == 'ask_help' else {'names'} if op == 'find_objects' else
                        {'target', 'start_joints', 'base_offset', 'held_object', 'attachment'} if op == 'ik_check' else
                        {'action', 'start_joints', 'base_offset', 'held_object', 'attachment'} if op == 'plan_dry_run' else set())
             if set(payload) - allowed: return reject('invalid_payload')
+            if op == 'submit':
+                summary = payload.get('summary')
+                if not isinstance(summary, str) or not summary.strip() or len(summary) > 80 or '\n' in summary or '\r' in summary:
+                    return reject('invalid_summary')
+                if screen_text(summary) != summary:
+                    return reject('unsafe_summary')
             source = None; invalid = False; frozen = None; validation_error=None
             if hasattr(self.budget,'request_id'):self.budget.request_id=rid
             try:
@@ -422,7 +428,8 @@ class Broker:
                     def publish_version():
                         self.workspace.publish(base + 'policy.py', feedback(source.decode('utf-8', errors='replace')).encode())
                         self.workspace.publish(base + 'submission.json', dict(version_id=vid,
-                            execution_id=response.get('execution_id'), source_sha256=record['source_sha256']))
+                            execution_id=response.get('execution_id'), source_sha256=record['source_sha256'],
+                            summary=record['request']['payload'].get('summary', '').strip()))
                         self.workspace.publish(base+'bundle.py',feedback(source.decode('utf-8',errors='replace')).encode())
                         self.workspace.publish(base+'bundle-map.json',record.get('bundle_map',{}))
                         for path in sorted((self.workspace.private/'sources'/rid).glob('*.py')):

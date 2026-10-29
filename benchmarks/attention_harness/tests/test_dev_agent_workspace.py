@@ -211,3 +211,58 @@ def test_view_payload_is_slim_and_terminal_projection_cached(workspace_run, monk
     assert len(calls) == 1 and second == third == first
     third['agent']['timeline'].clear()
     assert projection(store, cell) == first
+
+
+def test_r6_activity_intervals_from_recorded_request_sequence(monkeypatch):
+    from benchmarks.attention_harness import dev_agent_ui_projection as ui
+    recorded = json.loads((Path(__file__).parent/'fixtures/agent-timeline-r6.json').read_text())
+    monkeypatch.setattr(ui, 'public', lambda cell, name, default=None: recorded['evidence'].get(name, default))
+    intervals = ui.activity_intervals({}, recorded['timeline'])
+    assert [(r['checks'], r['previews'], [t['color'] for t in r['trials']]) for r in intervals] == [
+        (18, 2, ['grey', 'grey']), (23, 1, ['red']), (20, 1, ['grey', 'red'])]
+    assert [r['version_id'] for r in intervals] == ['v0001', 'v0002', 'v0003']
+    assert intervals[1]['trials'][0]['cause'] == 'gripper speed limit'
+    assert intervals[2]['trials'][1]['cause'] == 'object slipped'
+    for version in recorded['versions']:
+        story = ui.attempt_story(version['evaluator_review'])
+        assert len(story['short'].split()) <= 3
+        assert not re.search(r'e\d{6}|v\d{4}|\.txt|\.json|RuntimeError', story['sentence'])
+    assert [ui.attempt_story(v['evaluator_review'])['short'] for v in recorded['versions']] == [
+        'grasp not confirmed', 'out of reach', 'solved']
+
+
+def test_intervals_preserve_trailing_activity_and_rejected_trials_are_grey(monkeypatch):
+    from benchmarks.attention_harness import dev_agent_ui_projection as ui
+    monkeypatch.setattr(ui, 'public', lambda cell, name, default=None:
+        {'status': 'completed_with_rejections', 'completed': True, 'rejected_calls': 1}
+        if name.endswith('result.json') else [{'status': 'rejected', 'error': 'planning rejection'}])
+    rows = [dict(kind='probe', op='ik_check'), dict(kind='no_eval_execution', execution_id='e000001'),
+            dict(kind='formal_version', version_id='v0001'), dict(kind='probe', op='plan_dry_run')]
+    first, trailing = ui.activity_intervals({}, rows)
+    assert first['checks'] == 1 and first['trials'][0]['color'] == 'grey'
+    assert trailing == dict(version_id=None, checks=0, previews=1, trials=[])
+
+
+def test_projection_partitions_by_sequence_not_clock_or_request_id(workspace_run):
+    store, cell, ws = workspace_run
+    records = []
+    for path in (ws.private/'journal').glob('*.json'):
+        record = json.loads(path.read_text())
+        records.append((record['response']['sequence'], path, record))
+    records.sort(key=lambda r: r[0])
+    import sqlite3
+    with sqlite3.connect(store.path) as db:
+        for sequence, _, record in records:
+            jid = 'request:'+record['response']['request_id']
+            row = db.execute('SELECT payload FROM v2_agent_jobs WHERE cell=? AND id=?', (cell['key'], jid)).fetchone()
+            if row:
+                payload = json.loads(row[0]); payload['reserved_at'] = -sequence
+                db.execute('UPDATE v2_agent_jobs SET payload=? WHERE cell=? AND id=?', (json.dumps(payload), cell['key'], jid))
+    # Journal filenames and ledger timestamps need not be the sequence order.
+    view = projection(store, cell, now=123)
+    positions = {r['response']['request_id']: n for n, _, r in records}
+    sequence = [positions[r['id']] for r in view['agent']['timeline'] if r['id'] in positions]
+    assert sequence == sorted(sequence)
+    assert len(sequence) > 1
+    assert len(view['dev_v2_compat']['versions']) == 3
+    assert sum(len(v['before_attempt']['trials']) for v in view['dev_v2_compat']['versions']) == 1

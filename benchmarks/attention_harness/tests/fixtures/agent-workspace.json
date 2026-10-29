@@ -198,10 +198,10 @@
         "moving_executions": 36,
         "read_only_probes": 298
       },
-      "wall_seconds": 3601.9862570762634,
+      "wall_seconds": 3600.9070217609406,
       "wall_limit": 21600,
       "quota": {
-        "at": 1793226515.4035091,
+        "at": 1793240423.360843,
         "stop_percent": 90,
         "used_percent": 72.5
       },
@@ -214,7 +214,7 @@
           "kind": "probe",
           "op": "ik_check",
           "status": "completed",
-          "at": 1793222933.4611878,
+          "at": 1793236842.491743,
           "version_id": null,
           "execution_id": null,
           "probe_id": "p000001",
@@ -237,7 +237,7 @@
           "kind": "probe",
           "op": "plan_dry_run",
           "status": "completed",
-          "at": 1793222933.5286727,
+          "at": 1793236842.5826957,
           "version_id": null,
           "execution_id": null,
           "probe_id": "p000002",
@@ -260,7 +260,7 @@
           "kind": "no_eval_execution",
           "op": "run",
           "status": "completed",
-          "at": 1793222933.5663424,
+          "at": 1793236842.6395197,
           "version_id": null,
           "execution_id": "e000001",
           "probe_id": null,
@@ -308,7 +308,7 @@
           "kind": "formal_version",
           "op": "submit",
           "status": "completed",
-          "at": 1793222933.6383216,
+          "at": 1793236842.765442,
           "version_id": "v0001",
           "execution_id": "e000002",
           "probe_id": null,
@@ -371,7 +371,7 @@
           "kind": "help",
           "op": "ask_help",
           "status": "completed",
-          "at": 1793222934.5067637,
+          "at": 1793236842.9387836,
           "version_id": null,
           "execution_id": null,
           "probe_id": null,
@@ -393,7 +393,7 @@
           "kind": "formal_version",
           "op": "submit",
           "status": "completed",
-          "at": 1793222934.8166397,
+          "at": 1793236842.990621,
           "version_id": "v0002",
           "execution_id": "e000003",
           "probe_id": null,
@@ -456,7 +456,7 @@
           "kind": "formal_version",
           "op": "submit",
           "status": "completed",
-          "at": 1793222935.2595906,
+          "at": 1793236843.1638367,
           "version_id": "v0003",
           "execution_id": "e000004",
           "probe_id": null,
@@ -746,7 +746,48 @@
             "sha256": "41784dafe52e7483f78ada73d7492856c4979ac6799e360e4eee0df49654165c"
           },
           "model_input": null,
-          "reason": "Blocked approach",
+          "reason": "Try the planned motion.",
+          "plan": {
+            "summary": "Try the planned motion.",
+            "note": "Try the planned motion.",
+            "source": "summary"
+          },
+          "story": {
+            "short": "not solved",
+            "failure_class": "Task incomplete",
+            "sentence": "Blocked approach"
+          },
+          "try_next": "Scan a smaller base offset.",
+          "eval_stages": [
+            {
+              "stages": [
+                0
+              ],
+              "label": "Find objects",
+              "state": "unreached",
+              "cause": ""
+            },
+            {
+              "stages": [
+                1
+              ],
+              "label": "Pre-grasp",
+              "state": "unreached",
+              "cause": ""
+            },
+            {
+              "stages": [
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "label": "Descent · Close · Lift · Carry · Release",
+              "state": "unreached",
+              "cause": ""
+            }
+          ],
           "execution_state": "settled",
           "citations": [
             {
@@ -804,6 +845,18 @@
           "trace": {
             "uri": "agent-view/compat/v0001/trace.json",
             "sha256": "1da512b07d50724b38aa44a43a1fb7096e68c86cf68d56a41500550653231750"
+          },
+          "before_attempt": {
+            "checks": 1,
+            "previews": 1,
+            "trials": [
+              {
+                "execution_id": "e000001",
+                "color": "grey",
+                "cause": "trial completed"
+              }
+            ],
+            "version_id": "v0001"
           },
           "after_help": {
             "delivered": false,
@@ -885,7 +938,62 @@
             "sha256": "45fdcdf80a837356f1875c79b48db664eff717452c589b2834fff71d05db464f"
           },
           "model_input": null,
-          "reason": "Visible success",
+          "reason": "Try the planned motion.",
+          "plan": {
+            "summary": "Try the planned motion.",
+            "note": "Try the planned motion.",
+            "source": "summary"
+          },
+          "story": {
+            "short": "solved",
+            "failure_class": null,
+            "sentence": "Visible success"
+          },
+          "try_next": "",
+          "eval_stages": [
+            {
+              "stages": [
+                0
+              ],
+              "label": "Find objects",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                1
+              ],
+              "label": "Pre-grasp",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                2
+              ],
+              "label": "Descent",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                3
+              ],
+              "label": "Close",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                4,
+                5,
+                6
+              ],
+              "label": "Lift · Carry · Release",
+              "state": "completed",
+              "cause": ""
+            }
+          ],
           "execution_state": "settled",
           "citations": [
             {
@@ -943,6 +1051,12 @@
           "trace": {
             "uri": "agent-view/compat/v0002/trace.json",
             "sha256": "356f4d7a7e3bf161c1059eec7ca76ec202302f2c6da1dc2b398e56bb28d5679b"
+          },
+          "before_attempt": {
+            "checks": 0,
+            "previews": 0,
+            "trials": [],
+            "version_id": "v0002"
           },
           "after_help": {
             "content": "Try a smaller offset.",
@@ -1030,7 +1144,62 @@
             "sha256": "dd4b42b24c76989d21856e7b6b096f6ba87c2390d19d7b7621fca8719d47d0ab"
           },
           "model_input": null,
-          "reason": "Eval unavailable: timeout",
+          "reason": "Try the planned motion.",
+          "plan": {
+            "summary": "Try the planned motion.",
+            "note": "Try the planned motion.",
+            "source": "summary"
+          },
+          "story": {
+            "short": "awaiting evaluation",
+            "failure_class": null,
+            "sentence": "Eval unavailable: timeout"
+          },
+          "try_next": "",
+          "eval_stages": [
+            {
+              "stages": [
+                0
+              ],
+              "label": "Find objects",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                1
+              ],
+              "label": "Pre-grasp",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                2
+              ],
+              "label": "Descent",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                3
+              ],
+              "label": "Close",
+              "state": "completed",
+              "cause": ""
+            },
+            {
+              "stages": [
+                4,
+                5,
+                6
+              ],
+              "label": "Lift · Carry · Release",
+              "state": "completed",
+              "cause": ""
+            }
+          ],
           "execution_state": "settled",
           "citations": [
             {
@@ -1089,6 +1258,12 @@
             "uri": "agent-view/compat/v0003/trace.json",
             "sha256": "2cdbaa8e080fba133802238e064ae83e8bbeb6fa4ae54bf40909ba21d59886f8"
           },
+          "before_attempt": {
+            "checks": 0,
+            "previews": 0,
+            "trials": [],
+            "version_id": "v0003"
+          },
           "after_help": null
         }
       ],
@@ -1112,8 +1287,8 @@
           "decision_content": null,
           "after_version": 1,
           "version": 2,
-          "reserved_at": 1793222934.5067637,
-          "settled_at": 1793222934.7899728
+          "reserved_at": 1793236842.9387836,
+          "settled_at": 1793236842.971457
         },
         {
           "help_content": {
@@ -1137,18 +1312,19 @@
           "decision_content": null,
           "after_version": 2,
           "version": 3,
-          "reserved_at": 1793226535.4769614,
-          "settled_at": 1793226535.4833808
+          "reserved_at": 1793240443.4398098,
+          "settled_at": 1793240443.4453833
         }
       ],
+      "trailing_activity": null,
       "jobs": [
         {
           "id": "request:v1",
           "kind": "execute",
           "version": 1,
           "state": "settled",
-          "reserved_at": 1793222933.6383216,
-          "settled_at": 1793222934.473837,
+          "reserved_at": 1793236842.765442,
+          "settled_at": 1793236842.910908,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1168,8 +1344,8 @@
           "kind": "eval",
           "version": 1,
           "state": "settled",
-          "reserved_at": 1793222934.2066586,
-          "settled_at": 1793222934.3170123,
+          "reserved_at": 1793236842.8734093,
+          "settled_at": 1793236842.8801198,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1184,8 +1360,8 @@
           "kind": "advisor",
           "version": 2,
           "state": "settled",
-          "reserved_at": 1793222934.5067637,
-          "settled_at": 1793222934.7899728,
+          "reserved_at": 1793236842.9387836,
+          "settled_at": 1793236842.971457,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1200,8 +1376,8 @@
           "kind": "execute",
           "version": 2,
           "state": "settled",
-          "reserved_at": 1793222934.8166397,
-          "settled_at": 1793222935.240582,
+          "reserved_at": 1793236842.990621,
+          "settled_at": 1793236843.133455,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1221,8 +1397,8 @@
           "kind": "eval",
           "version": 2,
           "state": "settled",
-          "reserved_at": 1793222935.2114234,
-          "settled_at": 1793222935.218335,
+          "reserved_at": 1793236843.1059346,
+          "settled_at": 1793236843.1115599,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1237,8 +1413,8 @@
           "kind": "execute",
           "version": 3,
           "state": "settled",
-          "reserved_at": 1793222935.2595906,
-          "settled_at": 1793222935.3777971,
+          "reserved_at": 1793236843.1638367,
+          "settled_at": 1793236843.330746,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1258,8 +1434,8 @@
           "kind": "eval",
           "version": 3,
           "state": "settled",
-          "reserved_at": 1793222935.348341,
-          "settled_at": 1793222935.3542473,
+          "reserved_at": 1793236843.2907715,
+          "settled_at": 1793236843.299689,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1274,8 +1450,8 @@
           "kind": "advisor",
           "version": 3,
           "state": "settled",
-          "reserved_at": 1793226535.4769614,
-          "settled_at": 1793226535.4833808,
+          "reserved_at": 1793240443.4398098,
+          "settled_at": 1793240443.4453833,
           "reservation": {},
           "actual": {},
           "receipt": {
@@ -1302,9 +1478,9 @@
       },
       "ledger": {
         "goal": {
-          "wall_used": 3601.9862570762634,
+          "wall_used": 3600.9070217609406,
           "wall_limit": 21600,
-          "wall_remaining": 17998.013742923737,
+          "wall_remaining": 17999.09297823906,
           "limits": {
             "executions": 40,
             "dev_calls": null,

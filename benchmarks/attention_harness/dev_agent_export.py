@@ -71,7 +71,7 @@ class Exporter:
         help_ref = dict(uri=str(self.workspace.ws / f'versions/v{number}/help.json'), sha256=sha(snapshot))
         with self.store.tx() as db:
             experiment = self.store.get(db, 'experiments', self.store.get(db, 'cells', self.key)['experiment_id'])
-        record = dict(version=number, source=source, help=help_ref,
+        record = dict(version=number, source=source, help=help_ref, summary=row.get('summary', ''),
             valid=row.get('valid') is True, config_sha256=self.config_ref['sha256'], manifest=experiment['manifest'],
             reason=row.get('reason', response.get('result', {}).get('outcome', {}).get('status', '')), formal_eligible=False,
             agent={k: v for k, v in row.items() if k not in ('version', 'formal_eligible', 'reason')})

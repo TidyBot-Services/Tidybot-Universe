@@ -74,7 +74,7 @@ test('Run again applies saved fields to the existing dialog before Start',()=>{
   const repeat=runConfigDefaultsFromSelection({seeds:[114],policies:['reactive_help'],mode:'interactive',model_source:'codex',
     help_budget:3,human_wait_seconds:240,eval_agent:{enabled:false},name_suffix:'again',configuration:{goal_id:'goal-1',
       max_iterations:4,wall_seconds:7200,cell_budget:{model_seconds:2761,dev_calls:4},experiment_budget:{dev_calls:4}}});
-  const context={repeat,sourceProfile:{channel:'dev_v2'},form,manualBudget:false,syncSeedOptions:()=>{},updatePreview:()=>{},showQuota:()=>{}};
+  const context={repeat,sourceProfile:{channel:'dev_v2'},form,oneCallFields:null,manualBudget:false,syncSeedOptions:()=>{},updatePreview:()=>{},showQuota:()=>{}};
   vm.runInNewContext(fragment,context);
   assert.equal(form.seed.value,'114');assert.equal(form.v2_policy.value,'reactive_help');assert.equal(form.model_source.value,'codex');
   assert.equal(form.max_attempts.value,'4');assert.equal(form.help_count.value,'3');assert.equal(form.human_wait_seconds.value,'240');

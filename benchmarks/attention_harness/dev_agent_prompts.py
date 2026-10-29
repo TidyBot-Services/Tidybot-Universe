@@ -110,7 +110,7 @@ You must write code AND test it. Continue iterating while the run is active.
    inspect the available execution record and continue.
 
 Exploration: /usr/bin/python3 docs/devtool.py run --no-eval --entry work/main.py
-Formal test: /usr/bin/python3 docs/devtool.py submit --entry work/main.py
+Formal test: /usr/bin/python3 docs/devtool.py submit --entry work/main.py --summary "Describe this attempt’s plan"
 All simulator interaction goes through devtool; workspace shell/Python is for
 local development. Each moving execution starts from the registered reset scene.
 Probes use that reset scene without stepping physics. A successful planning probe

@@ -35,7 +35,9 @@ def workspace(tmp_path):
 
 
 def request(rid='r1',op='observe',payload=None):
-    return dict(schema=SCHEMA,request_id=rid,op=op,payload=payload or {})
+    payload = dict(payload or {})
+    if op == 'submit':payload.setdefault('summary', 'Try the planned motion.')
+    return dict(schema=SCHEMA,request_id=rid,op=op,payload=payload)
 
 
 def broker(ws,**kw):
@@ -167,7 +169,7 @@ def test_fake_agent_real_cli_file_protocol(workspace):
 cli=sys.argv[1]
 commands=[['observe'],['find_objects'],['ik_check','--target',sys.argv[2]],
 ['plan_dry_run','--action',sys.argv[3]],['run','--no-eval','--entry','work/main.py'],
-['submit','--entry','work/main.py']]
+['submit','--entry','work/main.py','--summary','Try the planned motion.']]
 for command in commands:
  p=subprocess.run(['/usr/bin/python3',cli,*command,'--timeout','10'],capture_output=True,text=True)
  assert p.returncode==0,(p.stdout,p.stderr)

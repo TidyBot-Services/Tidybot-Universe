@@ -1,0 +1,1591 @@
+{
+  "timeline": [
+    {
+      "id": "55a8f9bb1f494e98b8556fd85b861bdb",
+      "op": "observe",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 1
+    },
+    {
+      "id": "a8458853a5d8497a9a1ab2bb1d321bf2",
+      "op": "find_objects",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 2
+    },
+    {
+      "id": "d872c652a9fd4c92800b884ef15ca527",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 3
+    },
+    {
+      "id": "17a4e7f054ce4629839e60de4d4cd238",
+      "op": "plan_dry_run",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 4
+    },
+    {
+      "id": "609ffb9ee5f44a82a558eefc04ae9c1e",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 5
+    },
+    {
+      "id": "fbf7ed4f12bd4599b02940d0c5c042c5",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 6
+    },
+    {
+      "id": "a12ba98b809f4c5e81ff7d3f124cfe84",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 7
+    },
+    {
+      "id": "d62b8dedc2f841eab7d1858b7e45af68",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 8
+    },
+    {
+      "id": "2d626475484b47288f6391616548c7bc",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 9
+    },
+    {
+      "id": "669df27c545d4c0db9de0ae05dd09905",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 10
+    },
+    {
+      "id": "390e3542ff834c6286cd998f7e45770e",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 11
+    },
+    {
+      "id": "3c2ba29845be443c95768fbe3b206687",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 12
+    },
+    {
+      "id": "48dfed52de72418490cdc780457f53e5",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 13
+    },
+    {
+      "id": "bf9bfaaf9725420a81c89ac6963570c3",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 14
+    },
+    {
+      "id": "f33258837d2f41c9b2e79f9cd25d9d6e",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 15
+    },
+    {
+      "id": "40245e9a1e644ae8b44893a1a45be760",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 16
+    },
+    {
+      "id": "ae866e275ba04660a43e32339dc5bcad",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 17
+    },
+    {
+      "id": "de34202857f040fa86bfbdfe31c3f5fd",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 18
+    },
+    {
+      "id": "6d7cb8e8eb5d407e8b73376dc4e336fb",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 19
+    },
+    {
+      "id": "d04634f1b3244fc1a89af2384f90b213",
+      "op": "run",
+      "kind": "no_eval_execution",
+      "execution_id": "e000001",
+      "version_id": null,
+      "sequence": 20
+    },
+    {
+      "id": "2adf7d705ccf485c88e825a7371118c5",
+      "op": "run",
+      "kind": "no_eval_execution",
+      "execution_id": "e000002",
+      "version_id": null,
+      "sequence": 22
+    },
+    {
+      "id": "935dae947bcc4fd6a3817b69f90422cb",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 24
+    },
+    {
+      "id": "3385274c7b144900b2c8173b435d416c",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 25
+    },
+    {
+      "id": "d4fcd8088607475aacfc91611918efd3",
+      "op": "plan_dry_run",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 26
+    },
+    {
+      "id": "b567662d3e244bb3ac50623183e03722",
+      "op": "submit",
+      "kind": "formal_version",
+      "execution_id": "e000003",
+      "version_id": "v0001",
+      "sequence": 27
+    },
+    {
+      "id": "e45962fcee41488993b464617055ab2c",
+      "op": "ask_help",
+      "kind": "help",
+      "execution_id": null,
+      "version_id": "v0001",
+      "sequence": 28
+    },
+    {
+      "id": "20d59f4202d041518c70b7cc7c3fe6a0",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 29
+    },
+    {
+      "id": "f2fadf738d1b4c519fa2683b15884a3f",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 30
+    },
+    {
+      "id": "687b5c85af0d45d7882d505d49a9538c",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 31
+    },
+    {
+      "id": "fc84074ce88c45b1a4343d249b5646a8",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 32
+    },
+    {
+      "id": "f7f9b61d15d8494fb05f60b40380d543",
+      "op": "run",
+      "kind": "no_eval_execution",
+      "execution_id": "e000004",
+      "version_id": null,
+      "sequence": 33
+    },
+    {
+      "id": "9151fd65805a4bfdb7d067d42ab03e26",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 34
+    },
+    {
+      "id": "30c22e392a644550bdce085ad1448de5",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 35
+    },
+    {
+      "id": "a7d35adf1cac40c3b9cba24923626913",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 36
+    },
+    {
+      "id": "d3ffa5bd85d944568e6bb70e5eacca78",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 37
+    },
+    {
+      "id": "131f71f067de414bb07ef0b8a06581f1",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 38
+    },
+    {
+      "id": "fc182868eb55436bb78ffb83c5b6d810",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 39
+    },
+    {
+      "id": "085c9fe33bac4a6fae41d1b7dc8444bf",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 40
+    },
+    {
+      "id": "2f2029d813454aa4af7a623da23c33ad",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 41
+    },
+    {
+      "id": "91403e3f98774f79bff2dc33dc4b2006",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 42
+    },
+    {
+      "id": "803ed6202f314da6a84ff7fa868e7bda",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 43
+    },
+    {
+      "id": "4db561acf2c049ff9a484042395f8c15",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 44
+    },
+    {
+      "id": "a96cfdf1578549ac90c42475fe928142",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 45
+    },
+    {
+      "id": "4237ad1b507c4deb85fba2033ca9e697",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 46
+    },
+    {
+      "id": "8c17aaec5fac43ffb0c34d4c7db7fbab",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 47
+    },
+    {
+      "id": "f41d9b509cf5405dbcebcfdc0b08451d",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 48
+    },
+    {
+      "id": "f40566eb64804476a3b752833d437195",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 49
+    },
+    {
+      "id": "69233fe4cdda46debecf6f067ce4ff44",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 50
+    },
+    {
+      "id": "61755639cc754cd688d5c7fc602d56ac",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 51
+    },
+    {
+      "id": "ae7c4f4a4b03433fba0f1b14e03890af",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 52
+    },
+    {
+      "id": "f1d65ef8bcf54ada83fefd62ed8ec4e8",
+      "op": "plan_dry_run",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 53
+    },
+    {
+      "id": "b5931ecaaee1477fae32421dae80a9d8",
+      "op": "submit",
+      "kind": "formal_version",
+      "execution_id": "e000005",
+      "version_id": "v0002",
+      "sequence": 54
+    },
+    {
+      "id": "a21e563f71f3471f84e3bff485f6e751",
+      "op": "ask_help",
+      "kind": "help",
+      "execution_id": null,
+      "version_id": "v0002",
+      "sequence": 55
+    },
+    {
+      "id": "20eff601e17a487bb195de8e5ff27037",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 56
+    },
+    {
+      "id": "d10fee9f81fc47c292f4d62ee120331b",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 57
+    },
+    {
+      "id": "c7c5b9d2538b489dbce676a437b81eae",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 58
+    },
+    {
+      "id": "586490c6ca084c64b6e63eece5288ad9",
+      "op": "plan_dry_run",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 59
+    },
+    {
+      "id": "39f3826714d64050a81901210b54c966",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 60
+    },
+    {
+      "id": "b7c71be3b32f424d9c56064c48c7c478",
+      "op": "run",
+      "kind": "no_eval_execution",
+      "execution_id": "e000006",
+      "version_id": null,
+      "sequence": 61
+    },
+    {
+      "id": "41ab25be1ac24df7ad973b4c99908e80",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 62
+    },
+    {
+      "id": "2daed011c47f408ba1800b81a0d17a42",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 63
+    },
+    {
+      "id": "7e7b103c82e145b9b969e0ea80327504",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 64
+    },
+    {
+      "id": "b15ba04f885d4b17bb738442265ac180",
+      "op": "run",
+      "kind": "no_eval_execution",
+      "execution_id": "e000007",
+      "version_id": null,
+      "sequence": 65
+    },
+    {
+      "id": "7c229ab02c55464184aa3bdb6d4b2003",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 66
+    },
+    {
+      "id": "cd4d5ea0db074f99924a71ff1c2fd67b",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 67
+    },
+    {
+      "id": "1c556a1187584beba012857fe480a869",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 68
+    },
+    {
+      "id": "ea5eb6230cfc42cab8bc0f99730fd5a9",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 69
+    },
+    {
+      "id": "33a9fb4258414584950839eb235f303e",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 70
+    },
+    {
+      "id": "2e487fb1973548c382c4d51df2d78fba",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 71
+    },
+    {
+      "id": "567f3094c83e434e87c08456261b9452",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 72
+    },
+    {
+      "id": "8eb92ba2e8854c4983bdd428a562e09d",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 73
+    },
+    {
+      "id": "9a24e2f6419d4102b4740dba9b269e54",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 74
+    },
+    {
+      "id": "a12d1352b7ce4ed386e7e919afd78434",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 75
+    },
+    {
+      "id": "a6fb76fa3a57426ebfc4d60743ad392c",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 76
+    },
+    {
+      "id": "495b86eded1a4c90be096b63d2c70c20",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 77
+    },
+    {
+      "id": "2ba4e7be8e274b9d96dca5dd5e7dc3aa",
+      "op": "ik_check",
+      "kind": "probe",
+      "execution_id": null,
+      "version_id": null,
+      "sequence": 78
+    },
+    {
+      "id": "1871e062659f4a23b72c7fff39306339",
+      "op": "submit",
+      "kind": "formal_version",
+      "execution_id": "e000008",
+      "version_id": "v0003",
+      "sequence": 79
+    }
+  ],
+  "evidence": {
+    "executions/e000001/result.json": {
+      "completed": true,
+      "error": null,
+      "rejected_calls": 1,
+      "schema": "attentionbench.agent-public-outcome.v1",
+      "sdk_calls": 7,
+      "status": "completed_with_rejections"
+    },
+    "executions/e000001/trace.json": [],
+    "executions/e000002/result.json": {
+      "completed": true,
+      "error": null,
+      "rejected_calls": 1,
+      "schema": "attentionbench.agent-public-outcome.v1",
+      "sdk_calls": 18,
+      "status": "completed_with_rejections"
+    },
+    "executions/e000002/trace.json": [],
+    "executions/e000004/result.json": {
+      "completed": false,
+      "error": "execution_failed",
+      "rejected_calls": 0,
+      "schema": "attentionbench.agent-public-outcome.v1",
+      "sdk_calls": 8,
+      "status": "failed"
+    },
+    "executions/e000004/trace.json": [
+      {
+        "error": {
+          "message": "RuntimeError: Measured native gripper position/velocity exceeds original URDF limit",
+          "type": "RuntimeError"
+        },
+        "status": "failed"
+      }
+    ],
+    "executions/e000006/result.json": {
+      "completed": true,
+      "error": null,
+      "rejected_calls": 1,
+      "schema": "attentionbench.agent-public-outcome.v1",
+      "sdk_calls": 9,
+      "status": "completed_with_rejections"
+    },
+    "executions/e000006/trace.json": [],
+    "executions/e000007/result.json": {
+      "completed": false,
+      "error": "execution_failed",
+      "rejected_calls": 0,
+      "schema": "attentionbench.agent-public-outcome.v1",
+      "sdk_calls": 15,
+      "status": "failed"
+    },
+    "executions/e000007/trace.json": [
+      {
+        "error": {
+          "message": "RuntimeError: Measured object/hand transform exceeds configured 10mm/0.1rad bound",
+          "type": "RuntimeError"
+        },
+        "status": "failed"
+      }
+    ],
+    "executions/e000003/trace.json": [
+      {
+        "operation": "find_objects",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_delta",
+        "source": "base",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            0.0,
+            0.2,
+            0.0
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "open",
+        "source": "left_gripper",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_joints",
+        "source": "bimanual",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            [
+              -0.9407859890630554,
+              -0.7600799550931074,
+              0.45202581518642165,
+              0.43921190034455093,
+              -0.7236017300943581,
+              -0.5057355805275189,
+              1.3891496464012747,
+              0.4000240908056186,
+              0.7998215636244818,
+              0.00028260023607814974,
+              0.8000039253258135,
+              4.5053440849084015e-06,
+              -9.839196297317624e-05,
+              -3.676914966530901e-05
+            ]
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_delta",
+        "source": "left_arm",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            5.1638720593660814e-05,
+            -3.650202572602623e-05,
+            -0.02006524927564457
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "close",
+        "source": "left_gripper",
+        "status": "failed",
+        "error": {
+          "message": "PlanningRejected: Close did not confirm bilateral grasp; attached transport forbidden",
+          "type": "RuntimeError"
+        },
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      }
+    ],
+    "executions/e000005/trace.json": [
+      {
+        "operation": "find_objects",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_delta",
+        "source": "base",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            0.0,
+            0.2,
+            0.0
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "open",
+        "source": "left_gripper",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_joints",
+        "source": "bimanual",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            [
+              -0.20260867476463318,
+              -0.5882409811019897,
+              -0.5742602944374084,
+              1.1989364624023438,
+              -0.8107231259346008,
+              0.48422375321388245,
+              1.2844548225402832,
+              0.4000240908056186,
+              0.7998215636244818,
+              0.00028260023607814974,
+              0.8000039253258135,
+              4.5053440849084015e-06,
+              -9.839196297317624e-05,
+              -3.676914966530901e-05
+            ]
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_delta",
+        "source": "left_arm",
+        "status": "rejected",
+        "arguments": {
+          "args": [
+            0.0003494382399215068,
+            -0.001287664523028642,
+            -0.03993054146205499
+          ],
+          "kwargs": {}
+        },
+        "result": {
+          "rejected": true,
+          "reason": "official_ik_non_success"
+        }
+      }
+    ],
+    "executions/e000008/trace.json": [
+      {
+        "operation": "find_objects",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_delta",
+        "source": "base",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            0.0,
+            0.2,
+            0.0
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "open",
+        "source": "left_gripper",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_joints",
+        "source": "bimanual",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            [
+              -0.7773826718330383,
+              -0.17690353095531464,
+              -0.9078927040100098,
+              1.0238059759140015,
+              0.573606550693512,
+              0.7076413631439209,
+              1.3871657848358154,
+              0.4000240908056186,
+              0.7998215636244818,
+              0.00028260023607814974,
+              0.8000039253258135,
+              4.5053440849084015e-06,
+              -9.839196297317624e-05,
+              -3.676914966530901e-05
+            ]
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_joints",
+        "source": "bimanual",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            [
+              -0.7530921101570129,
+              -0.19676129519939423,
+              -0.9752013087272644,
+              0.837658703327179,
+              0.41468456387519836,
+              0.7343840003013611,
+              1.127877950668335,
+              0.39997438491497206,
+              0.8000148026386916,
+              -6.849256817472532e-05,
+              0.8000529556553356,
+              6.0203440058791435e-05,
+              -0.00010109440700249184,
+              -3.147548970077226e-05
+            ]
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "close",
+        "source": "left_gripper",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_joints",
+        "source": "bimanual",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            [
+              -1.160767674446106,
+              -0.18713226914405823,
+              -1.1313132047653198,
+              0.7532486319541931,
+              0.9494619965553284,
+              0.7303021550178528,
+              1.307340145111084,
+              0.39997317619141,
+              0.8000155876954146,
+              -6.999364383909271e-05,
+              0.8000544243758778,
+              6.0236232215516134e-05,
+              -0.00010077139064509257,
+              -3.08378065178329e-05
+            ]
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "find_objects",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_delta",
+        "source": "base",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            0.0,
+            -0.19,
+            0.0
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "move_delta",
+        "source": "base",
+        "status": "completed",
+        "arguments": {
+          "args": [
+            0.0,
+            -0.19,
+            0.0
+          ],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "get_observation",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "open",
+        "source": "left_gripper",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      },
+      {
+        "operation": "find_objects",
+        "source": "sensors",
+        "status": "completed",
+        "arguments": {
+          "args": [],
+          "kwargs": {}
+        }
+      }
+    ]
+  },
+  "versions": [
+    {
+      "version": 1,
+      "version_id": "v0001",
+      "native_success": false,
+      "evaluator_review": {
+        "advice": "Revise the grasp pose: the commanded TCP position was reached, but closure produced no bilateral contact. Recheck the TCP-to-finger offset and adjust grasp height, lateral alignment, and orientation so both fingers bracket the object. Handle the close rejection with a bounded reopen/reposition retry. Require sustained bilateral contact and verified object lift before transport, then verify sink containment after release. Restore stdout/stderr capture.",
+        "evidence": [
+          {
+            "claim": "Printed execution evidence is unavailable: stdout and stderr both contain zero bytes.",
+            "source": "stdout.txt; stderr.txt"
+          },
+          {
+            "claim": "The base shifted approximately 0.199 m along its recorded Y coordinate, and the left TCP reached approximately [0.49703, -2.37736, 0.96504] before closure.",
+            "source": "state_log.json: physics_step 1, 1225, and 4000"
+          },
+          {
+            "claim": "Left finger joint positions decreased from approximately [0.0430, 0.0430] to [0.00256, 0.00256]; bilateral_contact_objects.left remained empty throughout closure.",
+            "source": "state_log.json: physics_step 4000–4500"
+          },
+          {
+            "claim": "The final recorded action failed with RuntimeError: 'PlanningRejected: Close did not confirm bilateral grasp; attached transport forbidden'. No subsequent lift, transport, or release action is recorded.",
+            "source": "trace.json: zero-based entry 8, final entry"
+          },
+          {
+            "claim": "The final overview shows the banana still on the counter beneath the gripper, outside the sink.",
+            "source": "frames/overview-000180-sim-9.000000s.png"
+          }
+        ],
+        "passed": false,
+        "reason": "The counter-to-sink task failed. The robot reached the intended grasp position and closed its left gripper, but did not establish bilateral contact. Execution ended at the failed close operation before lifting or transporting the object; the final frame confirms it remained on the counter.",
+        "status": "completed",
+        "reference_suggestion": "Revise the grasp pose: the commanded TCP position was reached, but closure produced no bilateral contact. Recheck the TCP-to-finger offset and adjust grasp height, lateral alignment, and orientation so both fingers bracket the object. Handle the close rejection with a bounded reopen/reposition retry. Require sustained bilateral contact and verified object lift before transport, then verify sink containment after release. Restore stdout/stderr capture."
+      },
+      "story": {
+        "short": "grasp not confirmed",
+        "failure_class": "Planner refused",
+        "sentence": "The robot reached the intended grasp position and closed its left gripper, but did not establish contact on both sides."
+      },
+      "before_attempt": {
+        "checks": 18,
+        "previews": 2,
+        "trials": [
+          {
+            "execution_id": "e000001",
+            "color": "grey",
+            "cause": "move refused, continued"
+          },
+          {
+            "execution_id": "e000002",
+            "color": "grey",
+            "cause": "move refused, continued"
+          }
+        ],
+        "exploration": [
+          "observed scene",
+          "found objects"
+        ],
+        "version_id": "v0001"
+      },
+      "help_content": null,
+      "plan": {
+        "summary": "Task: pick obj from counter and release inside sink.",
+        "note": "Task: pick obj from counter and release inside sink. Read task + all three guides.\nReset detections: obj [0.49691,-2.37729,0.93483], sink [0.30000,-1.79624,0.98619]. Distractors on counter and far side of sink.\nLeft TCP [0.41119,-2.27944,1.08939], quaternion [0.07736,0.76019,-0.38165,-0.52007].\nProbes: downward quaternion [0,1,0,0] at grasp [0.49691,-2.37729,0.96] failed IK. Initial exact-heading delta [0.04,-0.045,-0.04] accepted, collision-free with minimum joint margin 0.324 rad. Investigate original-heading grasp before moving.\nAll motion must use SDK safety; stop dependent steps on rejected planning. No handoff or dual-held transport.\nFurther IK: original orientation at z=.95 fails with all tested base shifts. Mount Y +.20 clears base and makes downward [0,1,0,0] grasp at [.49691,-2.37729,.95] reachable, minimum elbow margin about .028 rad. Mount X +.15 collides with cabinet handle; Y +[host path] .15 and +.20 clear. Y +.19 with yaw -.2 does not clear. No-eval run 1 tests lateral base shift, staged downward rotation, approach at z1.02.\nNo-eval e000001: base +mountY .20 works, world Y displacement -.1985m. Rotating in place works one third then IK fails. e000002 combines rotation with delta [.02875,.03356,-.02313] three times and reaches downward TCP [.4965,-2.3777,1.0203]; descend .985 accepted. Grasp search at .95 rejected on all headings (elbow singularity / IK). No contacts and target unchanged. Used 5225 physics steps already, so optimize motion count if full version exceeds 9600. Current plan tests grasp at .965, lift .12, carry base -mountY .38 in two steps, lower .04 and release near [.497,-1.997,1.045].",
+        "source": "notes"
+      },
+      "reason": "Task: pick obj from counter and release inside sink.",
+      "eval_stages": [
+        {
+          "stages": [
+            0
+          ],
+          "label": "Find objects",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            1
+          ],
+          "label": "Pre-grasp",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            2
+          ],
+          "label": "Descent",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            3
+          ],
+          "label": "Close",
+          "state": "failed",
+          "cause": "grasp not confirmed"
+        },
+        {
+          "stages": [
+            4,
+            5,
+            6
+          ],
+          "label": "Lift · Carry · Release",
+          "state": "unreached",
+          "cause": ""
+        }
+      ],
+      "try_next": "Revise the grasp pose: the commanded TCP position was reached, but closure produced no bilateral contact.",
+      "execution_id": "e000003"
+    },
+    {
+      "version": 2,
+      "version_id": "v0002",
+      "native_success": false,
+      "evaluator_review": {
+        "advice": "Resolve the grasp-descent IK failure before retrying. Inspect why descent reports zero position/orientation tolerances; use supported tolerances and adjust the wrist pose or base position until a collision-checked grasp trajectory succeeds. Then verify bilateral contact, object lift, and final sink containment.",
+        "evidence": [
+          {
+            "claim": "Execution explicitly failed: “Grasp descent rejected official_ik_non_success” followed by “Outcome: stopped after a planning rejection or unsuccessful lift”.",
+            "source": "stdout.txt:10–11"
+          },
+          {
+            "claim": "The gripper opened and the pregrasp joint motion completed, but the approximately 4 cm descent was rejected. No close, lift, transport, or release action followed.",
+            "source": "trace.json, zero-based entries 3–7 (final entry 7)"
+          },
+          {
+            "claim": "The final left TCP remained at [0.51965, -2.37600, 0.98493] m, above the requested 0.945 m grasp height. Left finger positions were [0.04310, 0.04290] m, with no bilateral object contact.",
+            "source": "state_log.json, entry 3249, physics_step 3250; stdout.txt:9"
+          },
+          {
+            "claim": "All eight descent IK candidates reported success=false. Diagnostics report zero position/orientation tolerances and a minimum candidate position error of approximately 0.01118 m.",
+            "source": "diagnostics/planner.json, entry 1, solver_diagnostics[0]"
+          },
+          {
+            "claim": "The final overview shows the banana still on the counter beside the sink.",
+            "source": "frames/overview-000130-sim-6.500000s.png"
+          }
+        ],
+        "passed": false,
+        "reason": "The robot reached pregrasp, but its grasp descent failed IK planning (stdout.txt:10–11). It stopped before closing the gripper or transferring the object (trace.json). The banana remained on the counter in the final frame, so the counter-to-sink task was not achieved.",
+        "status": "completed",
+        "reference_suggestion": "Resolve the grasp-descent IK failure before retrying. Inspect why descent reports zero position/orientation tolerances; use supported tolerances and adjust the wrist pose or base position until a collision-checked grasp trajectory succeeds. Then verify bilateral contact, object lift, and final sink containment."
+      },
+      "story": {
+        "short": "out of reach",
+        "failure_class": "Out of reach",
+        "sentence": "The robot reached pre-grasp, but its grasp descent had no reachable path."
+      },
+      "before_attempt": {
+        "checks": 23,
+        "previews": 1,
+        "trials": [
+          {
+            "execution_id": "e000004",
+            "color": "red",
+            "cause": "gripper speed limit"
+          }
+        ],
+        "version_id": "v0002"
+      },
+      "help_content": {
+        "decision": {
+          "action": "request",
+          "context": {
+            "approval_required": false,
+            "assessment": {
+              "code_changed": null,
+              "code_sha256": null,
+              "event_ids": [
+                "v0:8"
+              ],
+              "evidence_ids": [],
+              "evidence_sufficient": true,
+              "failure_type": "grasp",
+              "hypothesis_unverified": false,
+              "locally_repairable": true,
+              "prior_code_sha256": null,
+              "prior_event_ids": [],
+              "prior_trace_ids": [],
+              "progress": false,
+              "repeated_failure": false,
+              "risk": "normal",
+              "schema_version": "attentionbench.trace-assessment.v1",
+              "trace_id": "dev-public:v0"
+            },
+            "assistance_remaining": 10,
+            "attempt_index": 0,
+            "consecutive_failures": 1,
+            "demo_available": false,
+            "eval_fallback": false,
+            "eval_verdict": "failed",
+            "evidence_count": 9,
+            "failure_index": 0,
+            "has_hypothesis": true,
+            "matching_memory_count": 0,
+            "pending_requests": 0,
+            "run_id": "dev-policy",
+            "trace_evidence": true,
+            "unsafe": false
+          },
+          "event_ids": [],
+          "evidence_ids": [],
+          "formal_eligible": false,
+          "parameters": {},
+          "policy_id": "reactive_help",
+          "reason": "request_after_each_failure",
+          "request_type": "hint",
+          "trace_visible": true
+        },
+        "delivered": false,
+        "eligible": false,
+        "error": "public_view_unavailable",
+        "not_used": true,
+        "requested": false,
+        "status": "unavailable",
+        "system_injected": false,
+        "version_id": "v0001",
+        "provider": "advisor",
+        "rejected": true,
+        "after_version": 1,
+        "reason": "evaluation-derived text rejected at Dev boundary"
+      },
+      "plan": {
+        "summary": "Formal v1 submitted: higher grasp .965 IK accepted (elbow .287rad); sink pose unreachable at stationary grasp base, so omit optional grasp_search and use actual base transport.",
+        "note": "Formal v1 submitted: higher grasp .965 IK accepted (elbow .287rad); sink pose unreachable at stationary grasp base, so omit optional grasp_search and use actual base transport. Direct bimanual joint route to observed pregrasp joints passed plan_dry_run at base Y+.20 (collision-free, min joint margin .1816); v1 uses this shorter route. Single left arm grasp and base transport only. Frozen code in versions; await Eval before next version.\nv0001 Eval FAIL: close at .965 produced no bilateral contact; fingers closed to .00256, banana unchanged. Close throws fatal RuntimeError and execution stdout/stderr both empty despite authored print calls. Cannot recover an after-motion fatal close inside policy. Help request returned unavailable/public_view_unavailable; no hint supplied. Side image shows fingers just above banana. IK probes at z.938 with WORLD Y tilt +.3 and +.5 both accepted (tilt +.3 elbow .712 rad); -.3 fails. E000004 no-eval now tests +.3 tilt during final descent from .985 to .938. Lift two .05 increments; base transport two -.19; release directly over sink. Step accounting v1: base1225 +open500 +joint pregrasp1525 +descent750 +close500=4500; 2 lifts1500 +2base2450 +release500 totals8950 within9600. No optional lower/retract.\ne000004 failed during final descent before closure: measured native gripper position/velocity exceeded original URDF limit at TCP z.9524, gripper qpos [.04361,.04401]; target shifted ~1mm. Need no rotating near surface: set tilt + jaw heading at pregrasp height, then descend straight. Consider grasping banana's curved thick body slightly +worldX from reported center. Heading probes underway. Need preserve safety, no retry after fatal error.",
+        "source": "notes"
+      },
+      "reason": "Formal v1 submitted: higher grasp .965 IK accepted (elbow .287rad); sink pose unreachable at stationary grasp base, so omit optional grasp_search and use actual base transport.",
+      "eval_stages": [
+        {
+          "stages": [
+            0
+          ],
+          "label": "Find objects",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            1
+          ],
+          "label": "Pre-grasp",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            2
+          ],
+          "label": "Descent",
+          "state": "failed",
+          "cause": "no reachable path"
+        },
+        {
+          "stages": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "label": "Close · Lift · Carry · Release",
+          "state": "unreached",
+          "cause": ""
+        }
+      ],
+      "try_next": "Resolve the grasp-descent IK failure before retrying.",
+      "execution_id": "e000005"
+    },
+    {
+      "version": 3,
+      "version_id": "v0003",
+      "native_success": true,
+      "evaluator_review": {
+        "advice": "No repair is needed for this run. Add an explicit post-release sink-containment check after settling to verify completion automatically.",
+        "evidence": [
+          {
+            "claim": "The execution printed no failure or rejection, and stderr is empty.",
+            "source": "stdout.txt:1–20; stderr.txt"
+          },
+          {
+            "claim": "The left TCP reached grasp height at [0.51941, -2.37732, 0.94091]. Finger positions then decreased from approximately [0.04307, 0.04314] to [0.01435, 0.01494], with contacts against the target object's geometry.",
+            "source": "state_log.json: physics_step 4275 and 4775"
+          },
+          {
+            "claim": "The banana was lifted above the counter. Bilateral contact persisted through transport, with the TCP reaching [0.46911, -1.99932, 1.03991] before release.",
+            "source": "frames/overview-000242-sim-12.100000s.png; state_log.json: physics_step 4288–8450"
+          },
+          {
+            "claim": "The final gripper was open with no bilateral contact, and the final side view shows the banana inside the sink beneath the gripper.",
+            "source": "state_log.json: physics_step 8950; frames/side-000358-sim-17.900000s.png"
+          }
+        ],
+        "passed": true,
+        "reason": "The robot grasped the target banana from the counter, lifted and transported it, then released it into the sink. Recorded contacts and the final frame confirm completion; stdout/stderr contain no execution failure.",
+        "status": "completed",
+        "reference_suggestion": "No repair is needed for this run. Add an explicit post-release sink-containment check after settling to verify completion automatically."
+      },
+      "story": {
+        "short": "solved",
+        "failure_class": null,
+        "sentence": "The robot grasped the target banana from the counter, lifted and transported it, then released it into the sink."
+      },
+      "before_attempt": {
+        "checks": 20,
+        "previews": 1,
+        "trials": [
+          {
+            "execution_id": "e000006",
+            "color": "grey",
+            "cause": "move refused, continued"
+          },
+          {
+            "execution_id": "e000007",
+            "color": "red",
+            "cause": "object slipped"
+          }
+        ],
+        "version_id": "v0003"
+      },
+      "help_content": {
+        "answer_words": 98,
+        "cache_hit": false,
+        "content": "Align the jaw closing direction across the banana’s thick middle, perpendicular to its local length, and center the open gap over that section rather than a tip. Reduce wrist tilt and reposition the base toward the grasp so the arm has room to descend; solve a collision-free grasp pose first, then approach from above. Do not force z=.945 through the failed descent or treat the reported .952 finger limit as a safe target. The frames cannot establish an exact safe TCP height or yaw; verify both fingers bracket the body before closing and attempting a small test lift.",
+        "decision": {
+          "action": "request",
+          "context": {
+            "approval_required": false,
+            "assessment": {
+              "code_changed": null,
+              "code_sha256": null,
+              "event_ids": [],
+              "evidence_ids": [],
+              "evidence_sufficient": false,
+              "failure_type": "unknown",
+              "hypothesis_unverified": false,
+              "locally_repairable": false,
+              "prior_code_sha256": null,
+              "prior_event_ids": [
+                "v1:8"
+              ],
+              "prior_trace_ids": [
+                "dev-public:v1"
+              ],
+              "progress": false,
+              "repeated_failure": false,
+              "risk": "normal",
+              "schema_version": "attentionbench.trace-assessment.v1",
+              "trace_id": "dev-public:v1"
+            },
+            "assistance_remaining": 10,
+            "attempt_index": 1,
+            "consecutive_failures": 2,
+            "demo_available": false,
+            "eval_fallback": false,
+            "eval_verdict": "failed",
+            "evidence_count": 8,
+            "failure_index": 1,
+            "has_hypothesis": false,
+            "matching_memory_count": 0,
+            "pending_requests": 0,
+            "run_id": "dev-policy",
+            "trace_evidence": true,
+            "unsafe": false
+          },
+          "event_ids": [],
+          "evidence_ids": [],
+          "formal_eligible": false,
+          "parameters": {},
+          "policy_id": "reactive_help",
+          "reason": "request_after_each_failure",
+          "request_type": "hint",
+          "trace_visible": true
+        },
+        "delivered": true,
+        "eligible": true,
+        "error": "ValueError",
+        "help_count": 1,
+        "hint_human_seconds": 274.818,
+        "not_used": false,
+        "read_wps": 4.0,
+        "requested": true,
+        "shown_video_seconds": 40.068,
+        "shown_words": 379,
+        "status": "unavailable",
+        "system_injected": false,
+        "version_id": "v0002",
+        "write_wps": 0.7,
+        "provider": "advisor",
+        "rejected": false,
+        "after_version": 2,
+        "reason": "invalid_usage",
+        "recorded_hint_human_seconds": 1231.960857142857,
+        "cost_corrected": true
+      },
+      "plan": {
+        "summary": "New probes: shifted grasp x=.520 improves reach.",
+        "note": "New probes: shifted grasp x=.520 improves reach. WorldY tilt .5 with yaw1.2 gives feasible pregrasp [.52,-2.37729,.985] and lift [.52,-2.37729,1.045] (lift wrist margin .0418). Direct bimanual pregrasp route accepted collision-free. v0002 now running: use that pregrasp, straight descent .945, close, lift2*.0475 to1.04, base Y-.19 twice, release. Goal is avoid sweeping fingers while descending and bracket banana's curved body. No extra lower/retract to stay within step budget.\nv0002 FAIL: pregrasp reached, descent .985->.945 rejected official_ik_non_success (best position error .011m despite candidate joints away from limits). No contact. Authored stdout present for completed-with-rejection execution. Eval advised tolerances, but SDK exposes none; do not invent APIs. Second help delivered generic advice: jaw across thick middle, open gap centered, reduce tilt / base closer, solve collision-free grasp first; exact height/yaw not established by frames. Help status says unavailable with ValueError but content is delivered. Probing exact measured quaternion at .945/.955 plus ideal quaternion to distinguish solver convergence issue.\nExact measured v2 quaternion at [.52,-2.37729,.945] IK accepted when explicitly seeded with v2 pregrasp joints. Joint pose [-.22099149,-.54526842,-.57189840,1.05102122,-.81826580,.37547082,1.15677881]. Its pregrasp-to-grasp bimanual route passes collision checks. Lift at1.04 with same quaternion also accepted; using official bimanual planner for grasp and lift avoids observed Cartesian IK convergence failures and reduces steps. e000006 no-eval running full revised joint routes, base carry and release. All changes still use official safety checking; no tolerance overrides.\ne000006: bimanual grasp rejected before dispatch, exact geometry finger/counter collision (left right_finger vs counter_1_left_group_top_left_1). Probe used reset narrow finger opening; execution uses open .043, so open-finger clearance differs. Do not force that pose. Reduce tilt to .3 and yaw0 so fingers remain horizontal (tilt about closing axis) and preserve body offset x=.52. Probe new grasp/pre/lift poses. Side lesson: keep tilt axis aligned with jaw closure to avoid one open finger dropping into counter.\nAll three level-finger poses accepted: WORLD Y tilt .3, yaw0, x=.52,y=-2.37729; grasp z.945, pre z.985, lift z1.04. e000007 now runs these joint targets, unchanged base carry/release. Wrist lift q7=1.441 (<1.551 safety), so more margin than prior yaw1.2. Await physical contact/clearance outcome.\ne000007 SUCCESS grasp+lift, then fatal base transport slip: left bilateral contact persisted, obj after lift [.4988,-2.38647,1.02302], qpos fingers ~.0198. First base -.19 moved only ~.07m before object/hand transform >10mm/.1rad. Final fingers ~.0178, object still bilateral but shifted/rotated. Do not reset drift checks or re-anchor to evade; improve grasp stability. Probe yaw1.2/1.57/.8 with tilt .3 about the jaw-closing axis (Rz(yaw)*Ry(pi+.3)), keeping finger heights equal while closing across body. Grasp z.94 (5mm deeper), pre.985,lift1.04. Earlier rejected crosswise pose used WORLD-Y tilt, which lowered one open finger into counter; corrected tilt axis avoids that.",
+        "source": "notes"
+      },
+      "reason": "New probes: shifted grasp x=.520 improves reach.",
+      "eval_stages": [
+        {
+          "stages": [
+            0
+          ],
+          "label": "Find objects",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            1
+          ],
+          "label": "Pre-grasp",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            2
+          ],
+          "label": "Descent",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            3
+          ],
+          "label": "Close",
+          "state": "completed",
+          "cause": ""
+        },
+        {
+          "stages": [
+            4,
+            5,
+            6
+          ],
+          "label": "Lift · Carry · Release",
+          "state": "completed",
+          "cause": ""
+        }
+      ],
+      "try_next": "",
+      "execution_id": "e000008"
+    }
+  ],
+  "notes": {
+    "1": "Task: pick obj from counter and release inside sink. Read task + all three guides.\nReset detections: obj [0.49691,-2.37729,0.93483], sink [0.30000,-1.79624,0.98619]. Distractors on counter and far side of sink.\nLeft TCP [0.41119,-2.27944,1.08939], quaternion [0.07736,0.76019,-0.38165,-0.52007].\nProbes: downward quaternion [0,1,0,0] at grasp [0.49691,-2.37729,0.96] failed IK. Initial exact-heading delta [0.04,-0.045,-0.04] accepted, collision-free with minimum joint margin 0.324 rad. Investigate original-heading grasp before moving.\nAll motion must use SDK safety; stop dependent steps on rejected planning. No handoff or dual-held transport.\nFurther IK: original orientation at z=.95 fails with all tested base shifts. Mount Y +.20 clears base and makes downward [0,1,0,0] grasp at [.49691,-2.37729,.95] reachable, minimum elbow margin about .028 rad. Mount X +.15 collides with cabinet handle; Y +/- .15 and +.20 clear. Y +.19 with yaw -.2 does not clear. No-eval run 1 tests lateral base shift, staged downward rotation, approach at z1.02.\nNo-eval e000001: base +mountY .20 works, world Y displacement -.1985m. Rotating in place works one third then IK fails. e000002 combines rotation with delta [.02875,.03356,-.02313] three times and reaches downward TCP [.4965,-2.3777,1.0203]; descend .985 accepted. Grasp search at .95 rejected on all headings (elbow singularity / IK). No contacts and target unchanged. Used 5225 physics steps already, so optimize motion count if full version exceeds 9600. Current plan tests grasp at .965, lift .12, carry base -mountY .38 in two steps, lower .04 and release near [.497,-1.997,1.045].\n",
+    "2": "Task: pick obj from counter and release inside sink. Read task + all three guides.\nReset detections: obj [0.49691,-2.37729,0.93483], sink [0.30000,-1.79624,0.98619]. Distractors on counter and far side of sink.\nLeft TCP [0.41119,-2.27944,1.08939], quaternion [0.07736,0.76019,-0.38165,-0.52007].\nProbes: downward quaternion [0,1,0,0] at grasp [0.49691,-2.37729,0.96] failed IK. Initial exact-heading delta [0.04,-0.045,-0.04] accepted, collision-free with minimum joint margin 0.324 rad. Investigate original-heading grasp before moving.\nAll motion must use SDK safety; stop dependent steps on rejected planning. No handoff or dual-held transport.\nFurther IK: original orientation at z=.95 fails with all tested base shifts. Mount Y +.20 clears base and makes downward [0,1,0,0] grasp at [.49691,-2.37729,.95] reachable, minimum elbow margin about .028 rad. Mount X +.15 collides with cabinet handle; Y +/- .15 and +.20 clear. Y +.19 with yaw -.2 does not clear. No-eval run 1 tests lateral base shift, staged downward rotation, approach at z1.02.\nNo-eval e000001: base +mountY .20 works, world Y displacement -.1985m. Rotating in place works one third then IK fails. e000002 combines rotation with delta [.02875,.03356,-.02313] three times and reaches downward TCP [.4965,-2.3777,1.0203]; descend .985 accepted. Grasp search at .95 rejected on all headings (elbow singularity / IK). No contacts and target unchanged. Used 5225 physics steps already, so optimize motion count if full version exceeds 9600. Current plan tests grasp at .965, lift .12, carry base -mountY .38 in two steps, lower .04 and release near [.497,-1.997,1.045].\nFormal v1 submitted: higher grasp .965 IK accepted (elbow .287rad); sink pose unreachable at stationary grasp base, so omit optional grasp_search and use actual base transport. Direct bimanual joint route to observed pregrasp joints passed plan_dry_run at base Y+.20 (collision-free, min joint margin .1816); v1 uses this shorter route. Single left arm grasp and base transport only. Frozen code in versions; await Eval before next version.\nv0001 Eval FAIL: close at .965 produced no bilateral contact; fingers closed to .00256, banana unchanged. Close throws fatal RuntimeError and execution stdout/stderr both empty despite authored print calls. Cannot recover an after-motion fatal close inside policy. Help request returned unavailable/public_view_unavailable; no hint supplied. Side image shows fingers just above banana. IK probes at z.938 with WORLD Y tilt +.3 and +.5 both accepted (tilt +.3 elbow .712 rad); -.3 fails. E000004 no-eval now tests +.3 tilt during final descent from .985 to .938. Lift two .05 increments; base transport two -.19; release directly over sink. Step accounting v1: base1225 +open500 +joint pregrasp1525 +descent750 +close500=4500; 2 lifts1500 +2base2450 +release500 totals8950 within9600. No optional lower/retract.\ne000004 failed during final descent before closure: measured native gripper position/velocity exceeded original URDF limit at TCP z.9524, gripper qpos [.04361,.04401]; target shifted ~1mm. Need no rotating near surface: set tilt + jaw heading at pregrasp height, then descend straight. Consider grasping banana's curved thick body slightly +worldX from reported center. Heading probes underway. Need preserve safety, no retry after fatal error.\n",
+    "3": "Task: pick obj from counter and release inside sink. Read task + all three guides.\nReset detections: obj [0.49691,-2.37729,0.93483], sink [0.30000,-1.79624,0.98619]. Distractors on counter and far side of sink.\nLeft TCP [0.41119,-2.27944,1.08939], quaternion [0.07736,0.76019,-0.38165,-0.52007].\nProbes: downward quaternion [0,1,0,0] at grasp [0.49691,-2.37729,0.96] failed IK. Initial exact-heading delta [0.04,-0.045,-0.04] accepted, collision-free with minimum joint margin 0.324 rad. Investigate original-heading grasp before moving.\nAll motion must use SDK safety; stop dependent steps on rejected planning. No handoff or dual-held transport.\nFurther IK: original orientation at z=.95 fails with all tested base shifts. Mount Y +.20 clears base and makes downward [0,1,0,0] grasp at [.49691,-2.37729,.95] reachable, minimum elbow margin about .028 rad. Mount X +.15 collides with cabinet handle; Y +/- .15 and +.20 clear. Y +.19 with yaw -.2 does not clear. No-eval run 1 tests lateral base shift, staged downward rotation, approach at z1.02.\nNo-eval e000001: base +mountY .20 works, world Y displacement -.1985m. Rotating in place works one third then IK fails. e000002 combines rotation with delta [.02875,.03356,-.02313] three times and reaches downward TCP [.4965,-2.3777,1.0203]; descend .985 accepted. Grasp search at .95 rejected on all headings (elbow singularity / IK). No contacts and target unchanged. Used 5225 physics steps already, so optimize motion count if full version exceeds 9600. Current plan tests grasp at .965, lift .12, carry base -mountY .38 in two steps, lower .04 and release near [.497,-1.997,1.045].\nFormal v1 submitted: higher grasp .965 IK accepted (elbow .287rad); sink pose unreachable at stationary grasp base, so omit optional grasp_search and use actual base transport. Direct bimanual joint route to observed pregrasp joints passed plan_dry_run at base Y+.20 (collision-free, min joint margin .1816); v1 uses this shorter route. Single left arm grasp and base transport only. Frozen code in versions; await Eval before next version.\nv0001 Eval FAIL: close at .965 produced no bilateral contact; fingers closed to .00256, banana unchanged. Close throws fatal RuntimeError and execution stdout/stderr both empty despite authored print calls. Cannot recover an after-motion fatal close inside policy. Help request returned unavailable/public_view_unavailable; no hint supplied. Side image shows fingers just above banana. IK probes at z.938 with WORLD Y tilt +.3 and +.5 both accepted (tilt +.3 elbow .712 rad); -.3 fails. E000004 no-eval now tests +.3 tilt during final descent from .985 to .938. Lift two .05 increments; base transport two -.19; release directly over sink. Step accounting v1: base1225 +open500 +joint pregrasp1525 +descent750 +close500=4500; 2 lifts1500 +2base2450 +release500 totals8950 within9600. No optional lower/retract.\ne000004 failed during final descent before closure: measured native gripper position/velocity exceeded original URDF limit at TCP z.9524, gripper qpos [.04361,.04401]; target shifted ~1mm. Need no rotating near surface: set tilt + jaw heading at pregrasp height, then descend straight. Consider grasping banana's curved thick body slightly +worldX from reported center. Heading probes underway. Need preserve safety, no retry after fatal error.\nNew probes: shifted grasp x=.520 improves reach. WorldY tilt .5 with yaw1.2 gives feasible pregrasp [.52,-2.37729,.985] and lift [.52,-2.37729,1.045] (lift wrist margin .0418). Direct bimanual pregrasp route accepted collision-free. v0002 now running: use that pregrasp, straight descent .945, close, lift2*.0475 to1.04, base Y-.19 twice, release. Goal is avoid sweeping fingers while descending and bracket banana's curved body. No extra lower/retract to stay within step budget.\nv0002 FAIL: pregrasp reached, descent .985->.945 rejected official_ik_non_success (best position error .011m despite candidate joints away from limits). No contact. Authored stdout present for completed-with-rejection execution. Eval advised tolerances, but SDK exposes none; do not invent APIs. Second help delivered generic advice: jaw across thick middle, open gap centered, reduce tilt / base closer, solve collision-free grasp first; exact height/yaw not established by frames. Help status says unavailable with ValueError but content is delivered. Probing exact measured quaternion at .945/.955 plus ideal quaternion to distinguish solver convergence issue.\nExact measured v2 quaternion at [.52,-2.37729,.945] IK accepted when explicitly seeded with v2 pregrasp joints. Joint pose [-.22099149,-.54526842,-.57189840,1.05102122,-.81826580,.37547082,1.15677881]. Its pregrasp-to-grasp bimanual route passes collision checks. Lift at1.04 with same quaternion also accepted; using official bimanual planner for grasp and lift avoids observed Cartesian IK convergence failures and reduces steps. e000006 no-eval running full revised joint routes, base carry and release. All changes still use official safety checking; no tolerance overrides.\ne000006: bimanual grasp rejected before dispatch, exact geometry finger/counter collision (left right_finger vs counter_1_left_group_top_left_1). Probe used reset narrow finger opening; execution uses open .043, so open-finger clearance differs. Do not force that pose. Reduce tilt to .3 and yaw0 so fingers remain horizontal (tilt about closing axis) and preserve body offset x=.52. Probe new grasp/pre/lift poses. Side lesson: keep tilt axis aligned with jaw closure to avoid one open finger dropping into counter.\nAll three level-finger poses accepted: WORLD Y tilt .3, yaw0, x=.52,y=-2.37729; grasp z.945, pre z.985, lift z1.04. e000007 now runs these joint targets, unchanged base carry/release. Wrist lift q7=1.441 (<1.551 safety), so more margin than prior yaw1.2. Await physical contact/clearance outcome.\ne000007 SUCCESS grasp+lift, then fatal base transport slip: left bilateral contact persisted, obj after lift [.4988,-2.38647,1.02302], qpos fingers ~.0198. First base -.19 moved only ~.07m before object/hand transform >10mm/.1rad. Final fingers ~.0178, object still bilateral but shifted/rotated. Do not reset drift checks or re-anchor to evade; improve grasp stability. Probe yaw1.2/1.57/.8 with tilt .3 about the jaw-closing axis (Rz(yaw)*Ry(pi+.3)), keeping finger heights equal while closing across body. Grasp z.94 (5mm deeper), pre.985,lift1.04. Earlier rejected crosswise pose used WORLD-Y tilt, which lowered one open finger into counter; corrected tilt axis avoids that.\n"
+  }
+}

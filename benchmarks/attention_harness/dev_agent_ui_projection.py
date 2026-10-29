@@ -158,6 +158,203 @@ def error_groups(errors, timeline):
     return list(failures.values()), details
 
 
+def attempt_story(review):
+    """Small operator captions derived from Eval, without evidence citations or IDs."""
+    reason = str(review.get('reason') or '')
+    text = (str(review.get('failure_class') or '')+' '+reason).lower()
+    if review.get('passed') is True:
+        short, failure = 'solved', None
+    elif re.search(r'\bik\b|inverse kinematics|out.of.reach', text):
+        short, failure = 'out of reach', 'Out of reach'
+    elif re.search(r'no bilateral|not establish bilateral|not confirm.*grasp|grasp.*not confirmed', text):
+        short, failure = 'grasp not confirmed', 'Planner refused'
+    elif 'collision' in text:
+        short, failure = 'path blocked', 'Collision risk'
+    elif 'slip' in text:
+        short, failure = 'object slipped', 'Grasp lost'
+    elif review.get('passed') is False:
+        short, failure = 'not solved', 'Task incomplete'
+    else:
+        short, failure = 'awaiting evaluation', None
+    # Remove source citations before choosing the first sentence. Full Eval text
+    # remains available in the existing per-attempt details in region 03.
+    plain = re.sub(r'\([^)]*(?:\.txt|\.json|\.png|e\d{6}|v\d{4})[^)]*\)', '', reason)
+    plain = re.sub(r'\b(?:stdout|stderr|trace|state_log|frames)\b.*', '', plain, flags=re.I)
+    plain = re.sub(r'\b(?:e\d{6,}|v\d{4,}|[a-f0-9]{32,})\b', '', plain)
+    plain = re.sub(r'\s+', ' ', plain).strip()
+    plain = re.sub(r'\s+([.,;!?])', r'\1', plain)
+    sentences = re.split(r'(?<=[.!?])\s+', plain)
+    sentence = (next((s for s in sentences if 'bilateral' in s.lower()), sentences[0])
+                if short == 'grasp not confirmed' else sentences[0]) if plain else 'No evaluation reason recorded.'
+    sentence = sentence.replace('bilateral contact', 'contact on both sides').replace('pregrasp', 'pre-grasp')
+    sentence = sentence.replace('failed IK planning', 'had no reachable path')
+    if len(sentence) > 260:
+        sentence = sentence[:257].rsplit(' ', 1)[0]+'…'
+    return dict(short=short, failure_class=failure, sentence=sentence)
+
+
+def activity_intervals(cell, timeline):
+    """Partition request sequence at formal submits; rejected trials can keep going."""
+    intervals = []
+    current = dict(checks=0, previews=0, trials=[])
+    for record in timeline:
+        if record.get('kind') == 'formal_version' and record.get('version_id'):
+            intervals.append(dict(current, version_id=record['version_id']))
+            current = dict(checks=0, previews=0, trials=[])
+        elif record.get('op') == 'ik_check':
+            current['checks'] += 1
+        elif record.get('op') == 'plan_dry_run':
+            current['previews'] += 1
+        elif record.get('op') in ('observe', 'find_objects'):
+            label = 'observed scene' if record['op'] == 'observe' else 'found objects'
+            if label not in current.setdefault('exploration', []):
+                current['exploration'].append(label)
+        elif record.get('kind') == 'no_eval_execution' and record.get('execution_id'):
+            eid = record['execution_id']
+            outcome = public(cell, f'executions/{eid}/result.json', {})
+            events = public(cell, f'executions/{eid}/trace.json', []) or []
+            completed = outcome.get('completed') is True or outcome.get('status') in ('completed', 'completed_with_rejections')
+            errors = ' '.join(json.dumps(e.get('error', '')) for e in events).lower()
+            stopped = not completed and (outcome.get('status') == 'failed' or bool(outcome.get('error')))
+            if completed:
+                cause = 'move refused, continued' if outcome.get('rejected_calls') else 'trial completed'
+            elif 'gripper' in errors and ('velocity' in errors or 'speed' in errors):
+                cause = 'gripper speed limit'
+            elif 'object/hand transform' in errors or 'slip' in errors:
+                cause = 'object slipped'
+            elif 'limit' in errors or 'bound' in errors:
+                cause = 'safety limit reached'
+            elif stopped:
+                cause = 'fatal SDK fault'
+            else:
+                cause = 'trial in progress'
+            current['trials'].append(dict(execution_id=eid, color='red' if stopped else 'grey', cause=cause))
+    # Preserve activity after the latest submit for an in-progress full story.
+    if current['checks'] or current['previews'] or current['trials'] or current.get('exploration'):
+        intervals.append(dict(current, version_id=None))
+    return intervals
+
+
+def plain_sentence(text):
+    """One operator sentence, without file citations or diagnostic identifiers."""
+    text = re.sub(r'\([^)]*\.(?:txt|json|jsonl|png)[^)]*\)', '', str(text or ''))
+    text = re.sub(r'\b[\w/-]+\.(?:txt|json|jsonl|png)(?::[\d–—,: -]+)?', '', text)
+    text = re.sub(r'\s+([,;!?]|\.(?!\d))', r'\1', re.sub(r'\s+', ' ', text)).strip()
+    return re.split(r'(?<=[.!?])\s+', text)[0]
+
+
+def snapshot_notes(cell, number):
+    root = Path(cell['artifact_dir'])/'agent/private/snapshots'
+    try:
+        manifest = json.loads(read_beneath(root, f'pre-submit-v{number}.json', 32*1024*1024))
+        entry = manifest['files'].get('work/notes.md')
+        if not entry:
+            return ''
+        digest = entry['sha256']
+        if not re.fullmatch(r'[a-f0-9]{64}', digest):
+            return None
+        raw = read_beneath(root, 'objects/'+digest, 32*1024*1024)
+        if len(raw) != entry['bytes'] or hashlib.sha256(raw).hexdigest() != digest:
+            return None
+        return raw.decode('utf-8')
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def attempt_plan(cell, version, submission):
+    """Authored pre-submit notes only. Never use the compatibility Eval reason."""
+    from difflib import SequenceMatcher
+    from .dev_agent_view import clean
+    from .dev_agent_diagnostics import screen_text
+    number = version['version']
+    current = snapshot_notes(cell, number)
+    previous = snapshot_notes(cell, number-1) if number > 1 else ''
+    note = ''
+    if current is not None and previous is not None:
+        if current.startswith(previous):
+            note = current[len(previous):].strip()
+        else:
+            old, new = previous.splitlines(keepends=True), current.splitlines(keepends=True)
+            note = ''.join(''.join(new[j:k]) for tag, _, _, j, k in
+                           SequenceMatcher(None, old, new, autojunk=False).get_opcodes()
+                           if tag in ('insert', 'replace')).strip()
+    summary = version.get('summary') or version.get('agent', {}).get('summary') or submission.get('summary')
+    summary = clean(screen_text(summary)) if isinstance(summary, str) else ''
+    note = clean(note)
+    return dict(summary=summary or plain_sentence(note), note=note or summary,
+                source='summary' if summary else 'notes' if note else 'unavailable')
+
+
+def replay_stages(events, review, solved=False):
+    """Interpret ordered SDK actions, then group adjacent stages to a short strip."""
+    names = ['Find objects', 'Pre-grasp', 'Descent', 'Close', 'Lift', 'Carry', 'Release']
+    states = ['unreached']*7
+    errors = {}; closed = False; reached = False; lifted = False
+    for event in events or []:
+        op = str(event.get('operation', '')).split('.')[-1]
+        source = str(event.get('source', ''))
+        result = event.get('result') or {}
+        rejected = event.get('status') in ('failed', 'blocked', 'rejected') or isinstance(result, dict) and result.get('rejected') is True
+        if event.get('status') in ('started', 'running'):
+            continue
+        args = (event.get('arguments') or {}).get('args', [])
+        stage = None
+        if op == 'find_objects':stage = 0
+        elif op == 'close':stage = 3
+        elif op == 'open' and closed:stage = 6
+        elif op.startswith('move'):
+            if source == 'base':
+                if closed:stage = 5
+            elif closed:
+                stage = 5 if lifted else 4
+            elif op == 'move_delta' and len(args) >= 3 and isinstance(args[2], (int, float)) and args[2] < 0 and reached:
+                stage = 2
+            else:
+                stage = 2 if reached else 1
+        if stage is None:
+            continue
+        states[stage] = 'failed' if rejected else 'completed'
+        if rejected:errors[stage] = json.dumps(event.get('error') or result).lower()
+        else:
+            errors.pop(stage, None)
+            if stage == 1:reached = True
+            if stage == 3:closed = True
+            if stage == 4:lifted = True
+    passed = solved or review.get('passed') is True
+    if passed:
+        states = ['completed']*7
+    elif review.get('passed') is False and not errors:
+        reason = str(review.get('reason', '')).lower()
+        stage = (2 if re.search(r'descen\w*.*(?:fail|reject)|grasp.*\bik\b', reason) else
+                 3 if re.search(r'close|bilateral|grasp.*not confirmed', reason) else
+                 4 if re.search(r'lift|slip', reason) else
+                 5 if re.search(r'carry|transport', reason) else
+                 6 if re.search(r'release|containment|outside.*sink', reason) else None)
+        if stage is not None:
+            states[stage] = 'failed'; errors[stage] = reason
+    def cause(text):
+        if re.search(r'\bik\b|ik_|inverse.kinematic', text):return 'no reachable path'
+        if 'bilateral' in text or 'contact' in text:return 'grasp not confirmed'
+        if 'collision' in text:return 'path is blocked'
+        if 'slip' in text:return 'object slipped'
+        return 'task not completed'
+    rows = [dict(stages=[i], label=name, state=states[i], cause=cause(errors.get(i, '')) if states[i]=='failed' else '')
+            for i, name in enumerate(names)]
+    # Keep the failing stage distinct; combine the unreached suffix first, then
+    # later completed phases. This retains 3–5 chips for every verdict.
+    while len(rows) > 5:
+        pair = next((i for i in range(len(rows)-2, -1, -1)
+                     if rows[i]['state'] == rows[i+1]['state'] and rows[i]['state'] != 'failed'), None)
+        if pair is None:break
+        left, right = rows[pair:pair+2]
+        rows[pair:pair+2] = [dict(stages=left['stages']+right['stages'], label=left['label']+' · '+right['label'], state=left['state'], cause='')]
+    # For failed runs group the rest of an unreached suffix even at five chips.
+    while len(rows) > 3 and rows[-1]['state'] == rows[-2]['state'] == 'unreached':
+        left, right = rows[-2:]
+        rows[-2:] = [dict(stages=left['stages']+right['stages'], label=left['label']+' · '+right['label'], state='unreached', cause='')]
+    return rows
+
+
 def version_evidence(cell, version, *, media=True, instruments=True):
     """Bind public evidence to the same identities checked by devWorkspaceSnapshot."""
     from .dev_agent_view import clean
@@ -194,11 +391,15 @@ def version_evidence(cell, version, *, media=True, instruments=True):
     review = assets['eval.json'] or clean(version.get('eval', {}))
     review = dict(review, reference_suggestion=review.get('advice', ''))
     assets['eval.json'] = review
+    plan = attempt_plan(cell, version, submission)
     row = dict(clean(version), source=source, sources=sources, source_text=code,
                config_sha256=identity['config_sha256'], diff_text='', decision_content=(help_value or {}).get('decision'),
                help_content=help_value, help=ref(prefix+'help.json', help_value) if help_value else None,
                request_view=request_view, evaluator_review=review, eval_review=ref(prefix+'eval.json', review),
-               model_input=None, reason=review.get('reason', ''), execution_state='not_dispatched')
+               model_input=None, reason=plan['summary'], plan=plan, story=attempt_story(review),
+               try_next='' if version.get('native_success') is True or review.get('passed') is True else plain_sentence(review.get('reference_suggestion')),
+               eval_stages=replay_stages([], review, version.get('native_success') is True), execution_state='not_dispatched')
+    row['version_id'] = vid
     if not eid:
         return row, assets
     citations = []
@@ -212,6 +413,7 @@ def version_evidence(cell, version, *, media=True, instruments=True):
     row['citations'] = citations
     outcome = public(cell, f'executions/{eid}/result.json', {})
     events = public(cell, f'executions/{eid}/trace.json', [])
+    row['eval_stages'] = replay_stages(events, review, version.get('native_success') is True)
     assets['trace.json'] = dict(identity, sdk_events=events, error=outcome.get('error'))
     frames = public(cell, f'executions/{eid}/frames.json', [])
     assets['frames.json'] = frames
@@ -282,6 +484,10 @@ def evidence(cell, name):
 def compat(cell, agent, ledger_jobs):
     from .dev_agent_view import clean
     versions = [version_evidence(cell, v)[0] for v in cell.get('versions', [])]
+    activity = activity_intervals(cell, agent['timeline'])
+    for row in versions:
+        row['before_attempt'] = next((i for i in activity if i['version_id'] == row['version_id']),
+                                     dict(checks=0, previews=0, trials=[]))
     intervals = []
     incoming = {}
     for row in versions:
@@ -339,7 +545,8 @@ def compat(cell, agent, ledger_jobs):
                     resume_blocked_reason='This run has finished.' if terminal else None, current_step=None,
                     paused_since=None, paused_seconds_total=0, interrupted_by_stop=None)
     return dict(clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','task_id','seed','policy_id','mode')}),
-                dev_mode='agent', artifact_dir=ROOT, versions=versions, help_intervals=intervals, jobs=jobs, budget=budget, used=used,
+                dev_mode='agent', artifact_dir=ROOT, versions=versions, help_intervals=intervals,
+                trailing_activity=next((i for i in activity if i['version_id'] is None), None), jobs=jobs, budget=budget, used=used,
                 ledger={'goal':goal}, lifecycle=None if terminal else {'phase':phase, 'can_stop':True},
                 run_controls=controls, quota_usage=quota_usage(cell))
 

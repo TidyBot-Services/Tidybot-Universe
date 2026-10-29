@@ -52,6 +52,7 @@ turn=int(note.read_text())+1 if note.exists() else 1
 note.write_text(str(turn))
 def emit(value):print(json.dumps(value),flush=True)
 def tool(op,*args):
+ if op=='submit' and '--summary' not in args:args=(*args,'--summary','Try the planned motion.')
  p=subprocess.run(['/usr/bin/python3','docs/devtool.py',op,*args],capture_output=True,text=True)
  emit({'type':'item.completed','item':{'type':'agent_message','text':p.stdout}})
  return p
@@ -79,6 +80,7 @@ def run_fake(ws,scripts,*,successes=(),evaluator=None,quota=None,control=lambda:
 def test_multi_turn_resume_and_native_end(ws):
     result,session,ledger=run_fake(ws,["Path('work/notes.md').write_text('remember me'); tool('observe'); tool('run','--no-eval'); tool('run','--no-eval')", "assert Path('work/notes.md').read_text()=='remember me'; tool('submit'); time.sleep(20)"],successes=(3,))
     assert result['reason']=='native_success' and result['state']=='completed'
+    assert json.loads((ws.private/'versions/v0001.json').read_text())['summary'] == 'Try the planned motion.'
     assert session.turn==2 and len(session.messages)==2
     assert ledger.snapshot()['used']==dict(formal_versions=1,moving_executions=3,read_only_probes=1,eval_runs=1,help=0)
     second=json.loads((ws.private/'turns/t000002/input.json').read_bytes())['command']
@@ -255,7 +257,7 @@ def test_broker_last_durable_slot(ws,resource,cap,operation):
     ledger=AgentLedger(ws.private/'db','cell')
     ledger.reserve('previous','test',{resource:cap-1});ledger.claim('previous');ledger.settle('previous',{})
     b=Broker(ws,executor=Executor(),prober=FakeProber(),evaluator=FakeEvaluator(),agent_mode=True,budget=LedgerBudget(ledger))
-    def request(rid):return dict(schema=SCHEMA,request_id=rid,op=operation,payload={})
+    def request(rid):return dict(schema=SCHEMA,request_id=rid,op=operation,payload={'summary':'Try the planned motion.'} if operation=='submit' else {})
     try:
         b.accept(request('last'))
         end=time.monotonic()+5
@@ -398,7 +400,7 @@ def test_snapshot_failure_is_recorded_and_does_not_hang_or_end_the_run(ws):
     b=Broker(ws,executor=Executor(),prober=FakeProber(),evaluator=FakeEvaluator(),agent_mode=True,
              budget=LedgerBudget(ledger),on_cut=fail)
     try:
-        b.accept(dict(schema=SCHEMA,request_id='formal',op='submit',payload={}))
+        b.accept(dict(schema=SCHEMA,request_id='formal',op='submit',payload={'summary':'Try the planned motion.'}))
         until=time.monotonic()+10
         while b.records['formal']['response']['status'] not in ('completed','needs_review') and time.monotonic()<until:time.sleep(.02)
         assert b.records['formal']['response']['status']=='completed' and not b.quarantined
@@ -412,7 +414,7 @@ def test_invalid_bundle_records_version_without_eval(ws):
     ledger=AgentLedger(ws.private/'db','c')
     b=Broker(ws,executor=Executor(),prober=FakeProber(),evaluator=PassEval(),agent_mode=True,budget=LedgerBudget(ledger))
     try:
-        b.accept(dict(schema=SCHEMA,request_id='bad',op='submit',payload={}))
+        b.accept(dict(schema=SCHEMA,request_id='bad',op='submit',payload={'summary':'Try the planned motion.'}))
         end=time.monotonic()+5
         while b.active and time.monotonic()<end:time.sleep(.01)
         assert not b.active
@@ -427,7 +429,7 @@ def test_disallowed_sdk_ast_is_invalid_formal_not_fatal(ws):
     ledger=AgentLedger(ws.private/'db','c')
     b=Broker(ws,executor=Executor(),prober=FakeProber(),evaluator=FakeEvaluator(),agent_mode=True,budget=LedgerBudget(ledger))
     try:
-        b.accept(dict(schema=SCHEMA,request_id='bad',op='submit',payload={}))
+        b.accept(dict(schema=SCHEMA,request_id='bad',op='submit',payload={'summary':'Try the planned motion.'}))
         end=time.monotonic()+5
         while b.active and time.monotonic()<end:time.sleep(.01)
         assert not b.active and not b.quarantined

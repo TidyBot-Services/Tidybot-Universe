@@ -40,12 +40,15 @@ def main():
         'ik_check', 'plan_dry_run', 'ask_help', 'status', 'wait'])
     parser.add_argument('id', nargs='?')
     parser.add_argument('--entry'); parser.add_argument('--reason', default='')
+    parser.add_argument('--summary')
     parser.add_argument('--question', default=''); parser.add_argument('--no-eval', action='store_true')
     for name in ('target', 'action', 'start-joints', 'base-offset', 'names'):
         parser.add_argument('--' + name, type=json.loads)
     parser.add_argument('--timeout', type=float, default=3000)
     parser.add_argument('--request-id')
     args = parser.parse_args()
+    if args.op == 'submit' and (not args.summary or not args.summary.strip() or len(args.summary) > 80 or '\n' in args.summary or '\r' in args.summary):
+        parser.error('submit requires --summary (1–80 characters, one line)')
     root = Path(__file__).resolve().parents[1]
     rid = args.id if args.op == 'wait' else args.request_id or uuid.uuid4().hex
     if not rid or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', rid): parser.error('invalid request ID')
@@ -58,6 +61,7 @@ def main():
             if args.op == 'run' and not args.no_eval: parser.error('run requires --no-eval')
             payload = dict(reason=args.reason)
             if args.entry:payload['entry']=args.entry
+            if args.op == 'submit':payload['summary']=args.summary.strip()
         if args.op == 'ask_help': payload = dict(question=args.question)
         for name in ('target', 'action', 'start_joints', 'base_offset', 'names'):
             value = getattr(args, name)

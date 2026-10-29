@@ -1920,6 +1920,9 @@
     if(fork)return 'Agent 不支持从旧版本继续；请创建独立 run。';
     return '';
   }
+  function launcherDevMode(gate,requested='agent') {
+    return agentOptionGate(gate)?'one_call':requested;
+  }
   function agentLaunchSelection(selection,values={}) {
     if(!values.devMode||values.devMode==='one_call')return selection;
     if(values.devMode!=='agent')throw new Error('Unknown Dev mode');
@@ -1936,7 +1939,8 @@
   function runConfigDefaultsFromSelection(selection) {
     const config=selection?.configuration||{},cell=config.cell_budget||selection?.cell_budget||{};
     return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:selection?.policies?.length?'all':null,
-      ...(selection?.dev_mode==='agent'?{devMode:'agent',devModel:selection.dev_model,evalModel:selection.eval_model}:{}),
+      devMode:selection?.dev_mode==='agent'?'agent':'one_call',
+      ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model}:{}),
       mode:selection?.mode,modelSource:selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
       help:selection?.help_budget,waitSeconds:selection?.human_wait_seconds??selection?.planner_features?.human_wait_seconds,
       wallSeconds:config.wall_seconds??selection?.wall_limit,modelMinutes:cell.model_seconds==null?null:Math.ceil(cell.model_seconds/60),
@@ -2030,7 +2034,7 @@
             <p class="ab-launch-field wide ab-run-hint">Each request uses one unit of human attention.</p>
           </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
           <section class="ab-launch-section" data-agent-controls><div class="ab-run-section-head"><h4>Dev mode</h4></div><div class="ab-launch-grid">
-            <label class="ab-launch-field">Dev mode<select name="dev_mode" aria-label="Dev mode"><option value="one_call">一次调用</option><option value="agent">Agent</option></select></label>
+            <label class="ab-launch-field">Dev mode<output data-dev-mode-label>Agent</output><small>More modes are available in Advanced.</small></label>
             <label class="ab-launch-field">Dev model<select name="dev_model" aria-label="Dev model"><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
             <label class="ab-launch-field">Eval model<select name="eval_model" aria-label="Eval model"><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
             <label class="ab-launch-field">Quota stop %<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %"></label>
@@ -2050,6 +2054,7 @@
             <label class="ab-launch-field" data-fixed-tokens hidden>Token budget<input name="token_limit" type="number" min="0" max="100000" value="60000"></label>
           </div></section>
           <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><span class="op-number">05</span> Advanced <small>Fixed policy settings, goal and resource details.</small></summary><div class="ab-launch-grid">
+            <label class="ab-launch-field">Dev mode<select name="dev_mode" aria-label="Dev mode"><option value="agent">Agent</option><option value="one_call">一次调用</option></select></label>
             <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''}></label>
           </div><div data-fixed-config hidden><h4>Fixed policy settings</h4><div class="ab-launch-grid">
             <label class="ab-launch-field">Execution location<select name="execution_target_choice">${executionLocations.map(target=>`<option value="${esc(target.id)}" ${target.available?'':'disabled'}>${esc(label(target.id))}${target.available?'':` · Unavailable: ${esc(target.reason || 'No runner available')}`}</option>`).join('')}</select></label>
@@ -2063,6 +2068,7 @@
           <details><summary>Entry support matrix</summary>${(options?.dev_v2?.matrix||[]).map(r=>`<p>${esc(r.robot)} / ${esc(r.arm)} · ${esc(r.task)}: ${r.dev_v2_supported?'Supported':esc(r.reason)}</p>`).join('')}</details></div></details>
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
+      let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
       function showQuota() {
@@ -2125,11 +2131,18 @@
           policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart});
         form.dev_mode.disabled=!!reason;
         form.dev_mode.querySelector('option[value="agent"]').disabled=!!reason;
-        if(reason)form.dev_mode.value='one_call';
+        form.dev_mode.value=launcherDevMode({channel:profile?.channel,tier:options?.dev_v2?.budget_tier,policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart},requestedDevMode);
         const agent=form.dev_mode.value==='agent';
         form.dev_model.disabled=!agent;form.eval_model.disabled=!agent;
         form.querySelector('[data-agent-reason]').textContent=reason||(agent?'10 正式版本 · 40 执行 · 300 只读探查 · 6 小时 · 额度 90% 停止。Eval 独立选模；原生成功结束运行。':'一次调用保留现有设置。切换 Agent 后可独立选择 Dev / Eval 模型。');
-        if(agent){form.model_source.value='codex';form.eval_agent_enabled.checked=true;form.max_attempts.value='10';form.wall_seconds.value='21600';}
+        form.querySelector('[data-dev-mode-label]').textContent=agent?'Agent':'一次调用';
+        if(agent){
+          if(!oneCallFields)oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};
+          form.model_source.value='codex';form.eval_agent_enabled.checked=true;form.max_attempts.value='10';form.wall_seconds.value='21600';
+        }else if(oneCallFields){
+          form.model_source.value=oneCallFields.modelSource;form.eval_agent_enabled.checked=oneCallFields.reviewer;
+          form.max_attempts.value=oneCallFields.versions;form.wall_seconds.value=oneCallFields.wall;oneCallFields=null;
+        }
         form.model_source.disabled=agent||profile?.channel!=='dev_v2';
         form.eval_agent_enabled.disabled=agent||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
         if(profile?.channel==='dev_v2'){form.max_attempts.readOnly=agent;form.wall_seconds.readOnly=agent;}
@@ -2161,6 +2174,7 @@
         }
       }
       function syncProfile(resetWall) {
+        if(oneCallFields){form.model_source.value=oneCallFields.modelSource;oneCallFields=null;}
         manualBudget=false;
         const profile = selectedProfile();
         const certified = profile?.channel === 'certified_v2';
@@ -2245,6 +2259,7 @@
         if([...form.seed.options].some(option=>Number(option.value)===source.seed))form.seed.value=String(source.seed);
       }
       if(repeat && sourceProfile?.channel==='dev_v2') {
+        oneCallFields=null;
         const set=(name,value)=>{if(value!=null)form[name].value=String(value);};
         if(repeat.devMode&&form.dev_mode){set('dev_mode',repeat.devMode);set('dev_model',repeat.devModel);set('eval_model',repeat.evalModel);}
         set('v2_mode',repeat.mode);
@@ -2267,6 +2282,7 @@
       form.robot_model.addEventListener('change',syncArm);
       form.execution_arm.addEventListener('change',() => syncProfile(true));
       function budgetInput(event) {
+        if(event.target.name==='dev_mode')requestedDevMode=form.dev_mode.value;
         if(event.target.matches('[data-v2-cell],[data-v2-experiment]'))manualBudget=true;
         else if(['max_attempts','help_count','human_wait_seconds','model_seconds_minutes','v2_policy','eval_agent_enabled'].includes(event.target.name))manualBudget=false;
         updatePreview();
@@ -3434,11 +3450,24 @@
     else if (busy) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-state="loading"><div class="ab-camera-empty" data-camera-empty></div>${loadingOverlay('live')}</div>`;
     else live=`${strip}<div class="op-idle" data-camera-empty><b>Nothing is running right now</b><p>${last?'Pick an attempt above to watch what the robot did.':'Start a new run to see the robot live.'}</p>${last?`<button type="button" data-operator-attempt="${esc(last.attempt_id)}">Watch the last attempt</button>`:''}</div>`;
     const noVideo=neverStarted(snapshot)?'<div class="op-idle"><b>Nothing to replay</b><p>The robot never started, so there is no video and no steps.</p></div>':'<div class="op-idle"><b>No video was recorded for this attempt</b><p>The steps on the right still show what the robot did.</p></div>';
-    const revision=version?`<details class="op-revision" data-persist-detail="operator-revision:${esc(version.version)}"><summary>What changed in this attempt (version ${version.version})</summary><div class="op-clamp six" data-operator-copy>${esc(version.reason || 'No change description recorded.')}</div><button type="button" class="op-more" data-operator-expand>Show more</button></details>${continueButton(snapshot,version.version)?`<p class="op-continue-row">${continueButton(snapshot,version.version)}</p>`:''}`:'';
+    const plan=version && snapshot.dev_session && !neverStarted(snapshot)?operatorPlanRow(version,!!snapshot.agent):'';
+    const revision=version&&continueButton(snapshot,version.version)?`<p class="op-continue-row">${continueButton(snapshot,version.version)}</p>`:'';
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${run.status==='running' ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch Attempt ${attempt.index+1}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','What did the robot do, and where did it go wrong?')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}</div><aside class="ab-viewer-trace"><h4>${heading}</h4><p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div>${snapshot.dev_session && !neverStarted(snapshot)?revision:''}</aside></div>${attempt?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','What did the robot do, and where did it go wrong?')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4><p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div>${snapshot.dev_session && !neverStarted(snapshot)?revision:''}</aside></div>${attempt?(snapshot.agent?agentReplayDetails(snapshot,version):DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+  }
+
+  function operatorPlanRow(version,agent=false) {
+    const full=agent?(version.plan?.note||version.plan?.summary||'No plan recorded.'):(version.reason||'No change description recorded.');
+    const summary=agent?(version.plan?.summary||'No plan recorded.'):full.replace(/\s+/g,' ').trim();
+    return `<details class="op-plan" data-plan-row data-persist-detail="operator-plan:${esc(version.version)}"><summary><b>PLAN</b><span>${esc(summary)}</span></summary><div data-plan-note>${esc(full)}</div></details>`;
+  }
+  function agentEvalStrip(version,attemptId) {
+    const review=version?.evaluator_review,passed=version?.native_success===true||review?.passed===true;
+    const failed=review?.passed===false;
+    const stages=version?.eval_stages||[];
+    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span></h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}">${stage.state==='completed'?'✓ ':stage.state==='failed'?'✕ ':''}${esc(stage.label)}${stage.cause?`: ${esc(stage.cause)}`:''}</span>`).join('<span class="op-eval-arrow" aria-hidden="true">→</span>')}</div>${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
   }
 
   function operatorEvalReview(review,attemptId) {
@@ -3830,6 +3859,8 @@
   }
   function attentionEfficiency(snapshot) {
     const g=attentionLedger(snapshot),model=attentionStripModel(g),runId=snapshot.run.run_id;
+    if(snapshot.agent){model.left+=160;model.width+=160;model.natural+=160;if(model.endX!=null)model.endX+=160;model.requests.forEach(r=>{r.x+=160;r.mid+=160;if(!r.help.delivered)r.dashed=true;});}
+    const agentSelected=snapshot.agent?stored(`attention.history:${runId}`):null;
     const state=g.solved?'solved':g.terminal?'unsolved':'running';
     const filter=['all','human','paid','rate'].includes(stored(`attention.efficiency.filter:${runId}`))?stored(`attention.efficiency.filter:${runId}`):'all';
     const selected=g.rows.find(r=>String(r.id)===stored(`attention.efficiency.help:${runId}`));
@@ -3851,7 +3882,7 @@
     const {baseline,height,step}=model,R=24;
     const x=index=>model.left+index*step;
     const lines=model.attempts.slice(0,-1).map((_,i)=>`<line x1="${x(i)+R}" x2="${x(i+1)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`).join('');
-    const start=model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
+    const start=snapshot.agent?`<g class="op-attn-endpoint"><circle cx="${model.left-160}" cy="${baseline}" r="6"/><text x="${model.left-160}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${model.left-154}" x2="${model.left-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
     const outcome=g.solved?'Completed':(typeof systemFailure==='function'&&systemFailure(snapshot))?'System problem':'Not completed';
     const endX=model.endX;
     const endMark=model.ended?`<line x1="${x(model.attempts.length-1)+R}" x2="${endX-58}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/><g class="op-attn-end ${g.solved?'solved':'unsolved'}"><rect x="${endX-58}" y="${baseline-21}" width="116" height="42" rx="21"/><text class="op-attn-end-small" x="${endX}" y="${baseline-4}" text-anchor="middle">Ended</text><text x="${endX}" y="${baseline+12}" text-anchor="middle">${outcome}</text></g>`:'';
@@ -3865,10 +3896,11 @@
       const cost=snapshot.agent?(r.help.delivered?`${r.seconds.toFixed(1)} s`:'not delivered'):r.responder==='human'?attentionTime(r.seconds).replace(/s$/,' s'):'1 credit';
       const who=snapshot.agent&&r.state==='rejected'?'Refused · not delivered':r.responder==='human'?'Person replied':'Automatic advisor';
       const tip=`${tag} · ${kind[r.kind]||label(r.kind)} · ${who} · ${cost} · ${effect[r.effect][0].replace(/^[^A-Za-z]+/,'')}`;
-      return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${tag}</text><rect class="op-attn-cost" x="${r.x-13}" y="${baseline+74-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+90}" text-anchor="middle">${esc(cost)}</text></g>`;
+      return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${snapshot.agent&&!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${tag}</text><rect class="op-attn-cost" x="${r.x-13}" y="${baseline+74-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+90}" text-anchor="middle">${esc(cost)}</text></g>`;
     }).join('');
-    const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text><text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text></g>`).join('');
-    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="width:100%;min-width:${model.natural}px;max-width:${model.width}px" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
+    const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}${snapshot.agent&&agentSelected===a.id&&!selected?' selected':''}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text><text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text>${snapshot.agent?`<text class="op-agent-reason ${a.state}" x="${x(a.index)}" y="${baseline+62}" text-anchor="middle">${esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||'')}</text>`:''}</g>`).join('');
+    const activity=snapshot.agent?agentActivityMarks(snapshot,model):'';
+    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="${snapshot.agent?`width:${model.width}px;height:${height}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
     const next=selected&&g.attempts.find(a=>a.index===selected.nextIndex);
     const number=selected?g.rows.indexOf(selected)+1:0;
     const whoTitle=selected?(snapshot.agent&&selected.state==='rejected'?'Refused · not delivered':selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':'Automatic advisor'):'';
@@ -3876,13 +3908,13 @@
     const effectCls=selected?effect[selected.effect][1]:'';
     const costMain=selected?(snapshot.agent?(selected.help.delivered?`${selected.seconds.toFixed(1)} s`:'Not charged'):selected.responder==='human'?attentionTime(selected.seconds).replace(/s$/,' s'):'1 credit'):'';
     const costNote=selected?(snapshot.agent?(selected.help.cost_corrected?`corrected; recorded ${Number(selected.help.recorded_hint_human_seconds).toFixed(2)} s`:selected.help.delivered?'Recorded human attention':'Refused · not delivered'):selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
-    const detail=selected?`<div class="op-attn-detail-head"><h5><span class="op-attn-detail-num">${selected.kind==='demo'?'Example #'+number:'Help #'+number}</span><span class="op-attn-detail-who">${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</span></h5><div class="op-attn-detail-nav"><button type="button" class="op-attn-round" data-attn-step="-1" aria-label="Previous help request"${position<=0?' disabled':''}>‹</button><span class="op-attn-count">${position+1} / ${g.rows.length}</span><button type="button" class="op-attn-round" data-attn-step="1" aria-label="Next help request"${position>=g.rows.length-1?' disabled':''}>›</button><button type="button" class="op-attn-round" data-attn-close aria-label="Close details">×</button></div></div><div class="op-attn-tiles"><div class="op-attn-tile"><span>Why it was asked</span><b>${esc(selected.reason?label(selected.reason):'No reason recorded')}</b></div><div class="op-attn-tile"><span>Cost</span><b>${esc(costMain)}</b><small>${esc(costNote)}</small></div><div class="op-attn-tile effect ${effectCls}"><span>Effect</span><b>${effect[selected.effect][0]}</b></div><div class="op-attn-tile"><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<b class="op-attn-detail-note">Not started yet</b>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
+    const detail=snapshot.agent?agentTimelineDetail(snapshot,selected):selected?`<div class="op-attn-detail-head"><h5><span class="op-attn-detail-num">${selected.kind==='demo'?'Example #'+number:'Help #'+number}</span><span class="op-attn-detail-who">${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</span></h5><div class="op-attn-detail-nav"><button type="button" class="op-attn-round" data-attn-step="-1" aria-label="Previous help request"${position<=0?' disabled':''}>‹</button><span class="op-attn-count">${position+1} / ${g.rows.length}</span><button type="button" class="op-attn-round" data-attn-step="1" aria-label="Next help request"${position>=g.rows.length-1?' disabled':''}>›</button><button type="button" class="op-attn-round" data-attn-close aria-label="Close details">×</button></div></div><div class="op-attn-tiles"><div class="op-attn-tile"><span>Why it was asked</span><b>${esc(selected.reason?label(selected.reason):'No reason recorded')}</b></div><div class="op-attn-tile"><span>Cost</span><b>${esc(costMain)}</b><small>${esc(costNote)}</small></div><div class="op-attn-tile effect ${effectCls}"><span>Effect</span><b>${effect[selected.effect][0]}</b></div><div class="op-attn-tile"><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<b class="op-attn-detail-note">Not started yet</b>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
     const kpis=[['all','progress',String(g.requests),'Help requests',''],['human','spent',time,'Human attention',snapshot.agent?'Persisted Advisor human-attention cost. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Progress per attention',`${rateNote}. Tasks solved ÷ human attention; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
     const frontier=attentionFrontier(snapshot);
     const head=g.attemptsRun?`${g.solved?'1':'0'} of ${g.maximum||g.attemptsRun} attempts solved`:'No attempts yet';
     const sub=[state==='unsolved'?'not solved':state==='running'?'in progress':'',requestSummary,humanSummary,creditSummary].filter(Boolean).join(' · ');
     const progressLine=!g.attemptsRun?'No attempts yet':g.solved?`on attempt ${g.solved.index+1} of ${g.maximum||g.attemptsRun}`:`${g.attemptsRun} of ${g.maximum||g.attemptsRun} attempt${(g.maximum||g.attemptsRun)===1?'':'s'} used${state==='running'?' so far':''}`;
-    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${snapshot.agent?`<p data-agent-attention-detail>${esc(agentNote)}${corrections?` · ${esc(corrections)}`:''}</p>`:''}${strip}<div class="op-attn-legend"><span><i class="failed"></i>Failed attempt</span><span><i class="solved"></i>Solved</span><span><i class="automatic"></i>Automatic advisor</span><span><i class="person"></i>Person replied</span><span>Bar under each help = attention it cost</span></div><div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
+    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${snapshot.agent?`<p data-agent-attention-detail>${esc(agentNote)}${corrections?` · ${esc(corrections)}`:''}</p>`:''}${strip}<div class="op-attn-legend"><span><i class="failed"></i>Failed attempt</span><span><i class="solved"></i>Solved</span><span><i class="automatic"></i>Automatic advisor</span><span><i class="person"></i>Person replied</span><span>Bar under each help = attention it cost</span>${snapshot.agent?agentTrialLegend():''}</div><div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
   }
   function bindAttentionEfficiency(snapshot) {
     const runId=snapshot.run.run_id;
@@ -3910,7 +3942,7 @@
       }));
       panel.querySelector('[data-attn-close]')?.addEventListener('click',()=>{stored(`attention.efficiency.help:${runId}`,null);panel.outerHTML=attentionEfficiency(snapshot);bind();});
       panel.querySelectorAll('[data-attn-watch]').forEach(circle=>{
-        const watch=()=>{stored(`attention.history:${runId}`,circle.dataset.attnWatch);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});};
+        const watch=()=>{selectAgentAttempt(snapshot,circle.dataset.attnWatch);stored(`attention.history:${runId}`,circle.dataset.attnWatch);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});};
         circle.addEventListener('click',watch);
         circle.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();watch();}});
       });
@@ -3945,8 +3977,8 @@
     const regions=[runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)];
     if(snapshot.agent){
       regions[0]=append(regions[0],agentSettingsLine(snapshot.agent));
-      regions[1]=append(regions[1],agentErrorDetails(snapshot.agent));
-      regions[2]=append(regions[2],agentSecondaryRows(snapshot.agent)+agentVersionDetails(snapshot)+agentInstrumentPanel(snapshot));
+      regions[1]=regions[1].replace('</h3><span>How is it going?', '</h3><button type="button" class="op-agent-story-entry" data-agent-story-open>See the full story →</button><span>How is it going?');
+      regions[1]=append(regions[1],agentFullStory(snapshot));
       if(snapshot.agent.dev_model!=='gpt-6-astra')regions[1]=regions[1].replace('(gpt-6-astra, high effort)',`(${esc(snapshot.agent.dev_model)}, high effort)`);
       regions[3]=regions[3].replace('This run has ended. Recorded work and replies remain available.','This run has ended. The help the robot received is listed below.');
       regions[4]=regions[4].replace('/export.csv"','/report"').replace('Download data (CSV)','Download agent report (JSON)');
@@ -4002,6 +4034,7 @@
     view.innerHTML = workspaceHTML(snapshot,chosen);
     if(snapshot.agent)bindAgentInstrument(snapshot);
     bindAttentionEfficiency(snapshot);
+    if(snapshot.agent)bindAgentStory(snapshot);
     const requestRegion=view.querySelector('[data-core-region="request"]');
     if(requestRegion){requestRegion.id='request';requestRegion.tabIndex=-1;}
     updateWaitCountdown();
@@ -4021,7 +4054,7 @@
       if(attentionFocus)[...view.querySelectorAll(`[${attentionFocus[0]}]`)].find(e=>e.getAttribute(attentionFocus[0])===attentionFocus[1])?.focus({preventScroll:true});
     }
     bindTaskFlow(snapshot);
-    view.querySelectorAll('[data-operator-attempt]').forEach(button=>button.addEventListener('click',()=>{stored(`attention.history:${snapshot.run.run_id}`,button.dataset.operatorAttempt);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}));
+    view.querySelectorAll('[data-operator-attempt]').forEach(button=>button.addEventListener('click',()=>{selectAgentAttempt(snapshot,button.dataset.operatorAttempt);stored(`attention.history:${snapshot.run.run_id}`,button.dataset.operatorAttempt);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}));
     view.querySelectorAll('[data-operator-help]').forEach(button=>button.addEventListener('click',()=>view.querySelector('[data-core-region="request"]')?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})));
     if(previousRun===run.run_id&&graphFocus) {
       [...view.querySelectorAll(`[${graphFocus[0]}]`)].find(e=>e.getAttribute(graphFocus[0])===graphFocus[1])?.focus({preventScroll:true});
@@ -4117,11 +4150,7 @@
       input?.focus({preventScroll:true});
     });
 
-    view.querySelectorAll('[data-history-select]:not(.op-attn-watch)').forEach(button => button.addEventListener('click', () => {
-      stored(`attention.history:${run.run_id}`, button.dataset.historySelect);
-      render(currentSnapshot);
-      view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});
-    }));
+    bindHistorySelection(snapshot);
     view.querySelectorAll('video[data-starting-video]').forEach(video => {
       const holdFirstFrame = () => { video.pause(); video.currentTime = 0; };
       video.addEventListener('loadedmetadata', holdFirstFrame, {once:true});
@@ -4541,19 +4570,9 @@
     const wall=seconds=>`${Math.floor(seconds/3600)}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}`;
     return `<p class="minor" data-agent-settings data-agent-counts>Dev ${esc(a.dev_model)} · Eval ${esc(a.eval_model)} · quota stop ${esc(a.quota_stop_percent)}% · versions ${c.formal_versions}/${cap.formal_versions} · executions ${c.moving_executions}/${cap.moving_executions} · probes ${c.read_only_probes}/${cap.read_only_probes} · wall ${wall(a.wall_seconds)}/${wall(a.wall_limit)} · ${esc(a.phase)}${a.reason?' · '+esc(a.reason):''}${a.fatal_cause?' · fatal_cause: '+esc(a.fatal_cause):''}</p>`;
   }
-  function agentSecondaryRows(a) {
-    const rows=a.timeline.filter(r=>['probe','no_eval_execution'].includes(r.kind));
-    const counts=new Map();
-    for(const row of rows){const label=row.kind==='no_eval_execution'?'no-eval executions':row.op;counts.set(label,(counts.get(label)||0)+1);}
-    return `<details data-agent-secondary data-persist-detail="agent-secondary"><summary>${[...counts].map(([label,n])=>`${n} ${esc(label)}`).join(' · ')||'No secondary activity'}</summary>${rows.map(r=>`<p data-agent-secondary-row>${esc(r.execution_id||r.probe_id||r.id)} · ${esc(r.op)} · ${esc(r.status)} · ${agentLinks(r.links)}</p>${agentAttemptDiagnostics(a,r)}`).join('')}</details>`;
-  }
   function agentDiagnosticItems(rows,key) {
     const words=value=>value==null?'':typeof value==='object'?Object.entries(value).map(([k,v])=>`${k}: ${words(v)}`).join(' · '):String(value);
     return rows.map((e,i)=>{const detail=words(e.error),summary=(typeof e.error==='object'?(e.error?.error||e.error?.error_text||e.error?.reason):e.error)||detail;return `<details data-persist-detail="${esc(key)}:${i}"><summary>${esc(e.source)} · ${esc(words(summary).split('\n')[0].slice(0,180))}</summary><p>${esc(detail)}</p>${(e.reports||[]).filter(r=>r.source!==e.source).map(r=>`<p>${esc(r.source)} · ${esc(words(r.error))}</p>`).join('')}</details>`;}).join('');
-  }
-  function agentErrorDetails(a) {
-    const failures=a.failure_errors||[],details=a.details||[];
-    return `<div data-agent-errors>${agentDiagnosticItems(failures,'agent-error')}${details.length?`<details data-agent-error-details data-persist-detail="agent-error-details"><summary>Details (${details.length})</summary>${agentDiagnosticItems(details,'agent-detail')}</details>`:''}</div>`;
   }
   function agentAttemptDiagnostics(a,v) {
     const matches=e=>(v.execution_id&&e.execution_id===v.execution_id)||(v.version_id&&(e.version_id===v.version_id||e.source.includes('/'+v.version_id+'/')));
@@ -4565,16 +4584,114 @@
     if(index>=0)devSessions[index]={...devSessions[index],...snapshot.dev_session};
     if(currentSnapshot?.run?.run_id!==snapshot.run.run_id&&!matchMedia('(max-width:900px)').matches){sidebarOpen=true;sidebarLayout();}
   }
-  function agentVersionDetails(snapshot) {
-    const s=snapshot.dev_session;
-    return `<div data-agent-versions>${s.versions.map(v=>`<details data-agent-version="${v.version}" data-persist-detail="agent-version:${v.version}"><summary>Attempt ${v.version} · ${v.native_success===true?'Solved':'Not solved'} · Eval: ${esc(v.eval_verdict||'unavailable')}</summary><details data-agent-code class="ab-eval-source"><summary>Code · bundled policy.py and sources</summary><pre>${esc(v.source_text||'Source unavailable')}</pre>${agentLinks((v.sources||[]).map(r=>({label:r.name,url:devFile(s,r.uri)})))}</details>${operatorEvalReview(v.evaluator_review,`agent:v${v.version}`)}<ul data-agent-citations>${(v.citations||v.evaluator_review?.evidence||[]).map(e=>`<li>${esc(e.claim)} · ${e.uri?`<a href="${esc(devFile(s,e.uri))}" target="_blank" rel="noopener">${esc(e.source)}</a>`:esc(e.source)}</li>`).join('')}</ul>${v.after_help?`<p data-agent-help>After attempt ${v.version} · ${v.after_help.delivered?'answered':'refused'} · ${esc(v.after_help.content||v.after_help.reason||'No hint recorded')}</p>`:''}${agentAttemptDiagnostics(snapshot.agent,v)}</details>`).join('')}</div>`;
+  function bindHistorySelection(snapshot) {
+    view.querySelectorAll('[data-history-select]:not(.op-attn-watch)').forEach(button => button.addEventListener('click', () => {
+      selectAgentAttempt(snapshot,button.dataset.historySelect);
+      stored(`attention.history:${snapshot.run.run_id}`, button.dataset.historySelect);
+      render(currentSnapshot);
+      view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});
+    }));
+  }
+  function selectAgentAttempt(snapshot,id) {
+    if(!snapshot.agent)return;
+    stored(`attention.efficiency.help:${snapshot.run.run_id}`,null);
+    stored(`attention.history:${snapshot.run.run_id}`,id);
+  }
+  function agentActivityCaption(activity={}) {
+    return [activity.checks?`${activity.checks} check${activity.checks===1?'':'s'}`:'',activity.previews?`${activity.previews} preview${activity.previews===1?'':'s'}`:''].filter(Boolean).join(' · ');
+  }
+  function agentTrialLegend() {
+    return '<span><i class="op-agent-trial grey"></i>Trial run, kept going</span><span><i class="op-agent-trial red"></i>Trial run stopped by a safety limit</span>';
+  }
+  function agentTrialChips(activity={}) {
+    return (activity.trials||[]).map(t=>`<span class="op-agent-chip"><i class="op-agent-trial ${t.color==='red'?'red':'grey'}" aria-hidden="true"></i>1 trial run · ${esc(t.cause)}</span>`).join('');
+  }
+  function agentActivityMarks(snapshot,model) {
+    return model.attempts.map((a,index)=>{
+      const activity=snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.before_attempt||{};
+      const mid=model.left+index*model.step-(index?model.step:160)/2,trials=activity.trials||[];
+      const spacing=Math.min(16,Math.max(3,((index?model.step:160)-60)/Math.max(1,trials.length)));
+      return `<g data-agent-interval="${a.index+1}">${trials.map((t,i)=>`<circle class="op-agent-trial ${t.color==='red'?'red':'grey'}" cx="${mid+(i-(trials.length-1)/2)*spacing}" cy="${model.baseline}" r="5"><title>${esc(t.cause)}</title></circle>`).join('')}<text class="op-agent-activity" x="${mid}" y="${model.baseline+26}" text-anchor="middle">${esc(agentActivityCaption(activity))}</text></g>`;
+    }).join('');
+  }
+  function agentPlainHelpReason(help) {
+    const reason=String(help?.reason||'');
+    if(/evaluation-derived|eval.*boundary/i.test(reason))return 'The question quoted evaluation text, so it was refused before reaching the advisor.';
+    if(/budget|limit|quota/i.test(reason))return 'The help request exceeded the available budget.';
+    if(/unavailable|error|invalid|failed/i.test(reason))return 'The advisor could not deliver a reply.';
+    return help?.delivered?'The advisor delivered a hint.':'No reply was delivered.';
+  }
+  function agentHintPreview(content) {
+    const plain=content.split('\n').filter(line=>!/RuntimeError:|Traceback|(?:stdout|stderr|state_log|trace)\.(?:txt|json)/i.test(line)).join(' ').replace(/\b(?:e\d{6,}|v\d{4,}|[a-f0-9]{32,})\b/g,'').replace(/\s+/g,' ').trim();
+    return plain.length>220?plain.slice(0,217).replace(/\s+\S*$/,'')+'…':plain;
+  }
+  function agentHelpCard(help,number) {
+    const delivered=help.delivered===true,content=String(help.content||''),seconds=Number(help.hint_human_seconds)||0;
+    return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
+  }
+  function agentAttemptCard(version,before=true) {
+    const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
+    const passed=version.evaluator_review?.passed;
+    const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':'unavailable'}`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${story.failure_class?`<span class="op-agent-chip failure-class">${esc(story.failure_class)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+  }
+  function agentTimelineDetail(snapshot,helpRow) {
+    if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
+    const attempt=snapshot.attempts.find(a=>a.attempt_id===stored(`attention.history:${snapshot.run.run_id}`));
+    const version=snapshot.dev_session.versions.find(v=>v.version===attempt?.dev_version);
+    return version?agentAttemptCard(version):'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
+  }
+  function agentFullStory(snapshot) {
+    const versions=snapshot.dev_session.versions,rows=attentionLedger(snapshot).rows;
+    const row=(label,body,kind='')=>`<li class="op-agent-story-row ${kind}"><div class="op-agent-story-node">${label}</div><div>${body}</div></li>`;
+    const work=activity=>row('Explore &amp; try',`<div class="op-agent-before">${(activity.exploration||[]).map(text=>`<span>${esc(text)}</span>`).join('')}${agentActivityCaption(activity)?`<span>${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`);
+    const activities=[...versions.map(v=>v.before_attempt||{}),snapshot.dev_v2?.trailing_activity||{}];
+    let flow=row('Start',`Seed ${esc(snapshot.run.seed??'not recorded')}`);
+    for(const version of versions){
+      flow+=work(version.before_attempt||{});
+      flow+=row(`<span class="op-agent-story-circle" aria-hidden="true">${version.native_success===true?'✓':'✕'}</span><b>Attempt ${version.version}</b>`,agentAttemptCard(version,false),version.native_success===true?'solved':'failed');
+      for(const [index,help] of rows.entries())if(help.nextIndex===version.version)flow+=row('Help',agentHelpCard(help.help,index+1));
+    }
+    if(snapshot.dev_v2?.trailing_activity)flow+=work(snapshot.dev_v2.trailing_activity);
+    const ledger=attentionLedger(snapshot);
+    flow+=row(ledger.terminal?(ledger.solved?'Completed':'Ended'):'In progress',`${versions.length} of ${ledger.maximum} attempts`,ledger.solved?'solved':'');
+    return `<dialog class="op-agent-story" data-agent-story aria-labelledby="agent-story-title"><header><h3 id="agent-story-title">How the run got there</h3><button type="button" data-agent-story-close aria-label="Close full story">Close ×</button></header><p>${versions.length} attempts · ${activities.reduce((n,a)=>n+(a.trials?.length||0),0)} trial runs · ${activities.reduce((n,a)=>n+(a.checks||0),0)} reach checks · ${rows.length} help requests</p><ol>${flow}</ol><div class="op-attn-legend">${agentTrialLegend()}</div></dialog>`;
+  }
+  function bindAgentStory(snapshot) {
+    const dialog=view.querySelector('[data-agent-story]'),entry=view.querySelector('[data-agent-story-open]');
+    if(!dialog||!entry)return;
+    const key=`attention.agent-story:${snapshot.run.run_id}`;
+    const close=()=>{stored(key,null);dialog.close();entry.focus({preventScroll:true});};
+    entry.addEventListener('click',()=>{stored(key,'open');dialog.showModal();});
+    dialog.querySelector('[data-agent-story-close]').addEventListener('click',close);
+    dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
+    dialog.addEventListener('scroll',()=>stored(key+':scroll',String(dialog.scrollTop)));
+    if(stored(key)==='open'){dialog.showModal();dialog.scrollTop=Number(stored(key+':scroll'))||0;}
+  }
+  function agentTrialDetails(snapshot,activity) {
+    return (activity?.trials||[]).map((trial,index)=>{
+      const record=snapshot.agent.timeline.find(r=>r.execution_id===trial.execution_id);
+      return `<details data-agent-trial-details><summary>Trial run ${index+1} · ${esc(trial.cause)}</summary>${agentLinks(record?.links)}${agentAttemptDiagnostics(snapshot.agent,trial)}</details>`;
+    }).join('');
+  }
+  function agentRunDiagnostics(snapshot,version) {
+    if(version.version!==snapshot.dev_session.versions.at(-1)?.version)return '';
+    const versions=snapshot.dev_session.versions;
+    const linked=new Set(versions.flatMap(v=>[v.execution_id,...(v.before_attempt?.trials||[]).map(t=>t.execution_id)]).filter(Boolean));
+    const rows=[...(snapshot.agent.failure_errors||[]),...(snapshot.agent.details||[])].filter(e=>!linked.has(e.execution_id)&&!versions.some(v=>e.version_id===v.version_id||e.source.includes('/'+v.version_id+'/')));
+    return rows.length?`<details data-agent-run-diagnostics><summary>Run diagnostics</summary>${agentDiagnosticItems(rows,'agent-run-diagnostics')}</details>`:'';
+  }
+  function agentReplayDetails(snapshot,version) {
+    if(!version)return '';
+    const activity=version.before_attempt||{};
+    return `<details data-agent-attempt-details data-persist-detail="agent-attempt:${version.version}"><summary>Attempt details</summary><details data-agent-code class="ab-eval-source"><summary>Code · bundled policy.py and sources</summary><pre>${esc(version.source_text||'Source unavailable')}</pre>${agentLinks((version.sources||[]).map(r=>({label:r.name,url:devFile(snapshot.dev_session,r.uri)})))}</details><ul data-agent-citations>${(version.citations||[]).map(e=>`<li>${esc(e.claim)} · ${e.uri?`<a href="${esc(devFile(snapshot.dev_session,e.uri))}" target="_blank" rel="noopener">${esc(e.source)}</a>`:esc(e.source)}</li>`).join('')}</ul>${agentAttemptDiagnostics(snapshot.agent,version)}${agentTrialDetails(snapshot,activity)}${agentRunDiagnostics(snapshot,version)}${agentInstrumentPanel(snapshot)}</details>`;
   }
   function agentInstrumentPanel(snapshot) {
     const selected=stored(`attention.history:${snapshot.run.run_id}`);
     const attempt=snapshot.attempts.find(a=>a.attempt_id===selected)||snapshot.attempts.at(-1);
     const version=snapshot.dev_session.versions.find(v=>v.version===attempt?.dev_version);
     if(!version?.instrument)return '';
-    return `<details data-agent-instrument data-instrument-version="${version.version}" data-persist-detail="agent-instrument"><summary>v${version.version} · Execution instruments</summary><p data-instrument-status>Joint positions · radians by physics step</p><canvas width="800" height="220" style="width:100%;max-width:800px" data-instrument-canvas aria-label="Recorded joint positions by physics step"></canvas></details>`;
+    return `<details data-agent-instrument data-instrument-version="${version.version}" data-persist-detail="agent-instrument"><summary>Execution instruments</summary><p data-instrument-status>Joint positions · radians by physics step</p><canvas width="800" height="220" style="width:100%;max-width:800px" data-instrument-canvas aria-label="Recorded joint positions by physics step"></canvas></details>`;
   }
   function drawAgentInstrument(canvas,rows) {
     const samples=rows.filter(r=>Array.isArray(r.qpos)&&r.qpos.length&&r.qpos.every(Number.isFinite)&&Number.isFinite(r.physics_step));
@@ -4732,8 +4849,6 @@
     return snapshot;
   }
 
-  // A finished agent run is immutable; re-check it every 30 s instead of every poll.
-  const agentTerminalFetch=new Map();
   async function updateV2Snapshot(s) {
     const cellBase=`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}/cells/${encodeURIComponent(s.key)}`;
     const ended=agentTerminalFetch.get(s.key);
@@ -4775,6 +4890,8 @@
     if(experimentFromHash(location.hash)!==s.experiment_id){const url=new URL(location.href);url.hash=`exp=${s.experiment_id}`;history.replaceState(null,'',url);}
   }
 
+  // A finished agent run is immutable; re-check it every 30 s instead of every poll.
+  const agentTerminalFetch=new Map();
   async function updateDevSnapshot(s) {
     if(s.channel==='dev_v2'){await updateV2Snapshot(s);return;}
     const snapshot = await devWorkspaceSnapshot(s);

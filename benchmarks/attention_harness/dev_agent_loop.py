@@ -80,6 +80,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                  valid=value['outcome']['status']!='invalid_submission',formal_eligible=False,
                  eval=value.get('eval'),eval_verdict=('pass' if value.get('eval',{}).get('passed') is True else 'fail' if value.get('eval',{}).get('passed') is False else 'unavailable'),native_success=success,
                  agreement=(value.get('eval',{}).get('passed')==success if type(value.get('eval',{}).get('passed')) is bool and type(success) is bool else None))
+        row['summary']=broker.records[response['request_id']]['request']['payload'].get('summary', '').strip()
         row['agree']=row['agreement']
         if vid in completion_failures:row.update(native='unknown',native_error=completion_failures[vid])
         row['reason']=broker.records[response['request_id']]['request']['payload'].get('reason') or value['outcome']['status']

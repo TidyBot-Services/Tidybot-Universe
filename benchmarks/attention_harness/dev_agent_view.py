@@ -134,14 +134,14 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         error(rid,result.get('eval',{}).get('error'))
         if op=='ask_help' and result.get('status') not in (None,'delivered'):error(rid,result.get('reason') or result.get('error'))
         records.append(dict(id=rid,kind='formal_version' if op=='submit' else 'no_eval_execution' if op=='run' else 'help' if op=='ask_help' else 'probe',
-            op=op,status=response['status'],at=job.get('reserved_at'),version_id=vid or (result.get('version_id') if op=='ask_help' else None),execution_id=eid,probe_id=pid,
+            op=op,status=response['status'],sequence=response.get('sequence'),at=job.get('reserved_at'),version_id=vid or result.get('version_id'),execution_id=eid,probe_id=pid,
             result=clean(result),error=clean(response.get('error')),links=links(names)))
     demo=_read(public,'events/demo.json')
     if demo is not None:
         job=next((j for j in jobs if j['id']=='help:demo'),{})
         records.append(dict(id='help:demo',kind='help',op='demo',status=demo.get('status'),at=job.get('reserved_at'),
             result=clean(demo),links=links([('help','events/demo.json')])))
-    records.sort(key=lambda r:(r['at'] is None,r['at'] or 0,r['id']))
+    records.sort(key=lambda r:(r.get('sequence') is None,r.get('sequence') or 0,r['at'] is None,r['at'] or 0,r['id']))
     # Controller error fields only: never return command/prompt/event/session logs.
     error_files=['settlement-error.json']+[str(p.relative_to(private)) for p in (private/'errors').glob('*.json')]
     error_files += [str(p.relative_to(private)) for p in (private/'eval').glob('v*/error.json')]
@@ -194,6 +194,8 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     # results (about 90% of the r6 payload) stay behind each row's links.
     result['agent']['timeline']=[r if r.get('kind')=='help' else {k:v for k,v in r.items() if k!='result'}|({'version_id':r['result']['version_id']}
         if isinstance(r.get('result'),dict) and r['result'].get('version_id') and not r.get('version_id') else {}) for r in records]
+    for record in result['agent']['timeline']:
+        record.pop('sequence', None)  # Ordering is projected; do not duplicate its bookkeeping.
     return result
 
 
