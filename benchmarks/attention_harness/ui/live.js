@@ -4615,6 +4615,8 @@
     }).join('');
   }
   function agentPlainHelpReason(help) {
+    // A delivered hint stays delivered even if its bookkeeping recorded an error (invalid_usage).
+    if(help?.delivered===true)return 'The advisor delivered a hint.';
     const reason=String(help?.reason||'');
     if(/evaluation-derived|eval.*boundary/i.test(reason))return 'The question quoted evaluation text, so it was refused before reaching the advisor.';
     if(/budget|limit|quota/i.test(reason))return 'The help request exceeded the available budget.';

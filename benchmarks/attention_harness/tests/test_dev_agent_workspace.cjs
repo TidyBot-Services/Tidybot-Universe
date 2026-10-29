@@ -165,6 +165,8 @@ test('r6 timeline shows request-sequence dots, short verdicts and clean selected
   sessionStorage.setItem(`attention.efficiency.help:${snapshot.run.run_id}`,snapshot.requests[1].request_id);
   const help=api.agentTimelineDetail(snapshot,api.attentionLedger(snapshot).rows[1]);
   assert.match(help,/Automatic advisor · delivered/);assert.match(help,/274.8 s/);assert.match(help,/Full reply/);
+  // Delivered despite an invalid_usage bookkeeping error: never 'could not deliver'.
+  assert.doesNotMatch(help,/could not deliver/);assert.match(help,/delivered a hint/);
   assert.ok(help.includes('banana'));
   const refused=api.agentTimelineDetail(snapshot,api.attentionLedger(snapshot).rows[0]);
   assert.match(refused,/refused before reaching the advisor/);assert.match(refused,/0 s · not charged/);
@@ -243,3 +245,4 @@ test('r6 S3 strip follows each selected attempt under its video, with P3 plan fi
     assert.match(html,/<details data-agent-attempt-details[^]*data-agent-instrument/);
   }
 });
+
