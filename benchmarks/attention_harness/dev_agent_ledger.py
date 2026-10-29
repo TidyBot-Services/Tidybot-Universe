@@ -130,6 +130,18 @@ class AgentLedger:
                 elif row['state']=='reserved': self._put_job(db,row['id'],'released',row)
             return any(r['state']=='unknown' for r in self._jobs(db))
 
+    def park_request(self,jid):
+        with self.tx() as db:
+            row=next(r for r in self._jobs(db) if r['id']==jid)
+            if row['state']!='claimed':raise ValueError('pause_requires_claim')
+            self._put_job(db,jid,'paused',row)
+
+    def resume_request(self,jid):
+        with self.tx() as db:
+            row=next(r for r in self._jobs(db) if r['id']==jid)
+            if row['state']!='paused':raise ValueError('resume_requires_paused_request')
+            self._put_job(db,jid,'claimed',row)
+
     def pause(self):
         with self.tx() as db:
             run=self._run(db)

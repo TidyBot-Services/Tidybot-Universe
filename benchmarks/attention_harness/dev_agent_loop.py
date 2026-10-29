@@ -24,6 +24,7 @@ SESSION_FAILURE_LIMIT=3
 # Normal (non-fatal) stop after K consecutive executed versions where Eval passed
 # but the native check did not (10-29); flagged for operator review in the UI.
 DISAGREEMENT_LIMIT=2
+DISK_CHECK_INTERVAL=10
 
 
 def disagreement_streak(rows):
@@ -63,7 +64,7 @@ def trusted_completion(executor, directory, result):
 def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helper=None, quota=None,
           policy='reactive_help', completion_reader=trusted_completion, control=lambda:None,
           version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60,
-          memory=None, exporter=None):
+          memory=None, exporter=None, before_step=lambda kind:True):
     """Injectable offline seam; production always supplies a preflighted session."""
     stop=None;successful={};completion_failures={};delivered=0;idle=0;broker=None;events=[];session_failures=0;export_errors=[];memory_errors=[]
     state_path=workspace.private/'loop.json'
@@ -83,9 +84,14 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                 # Unevaluated/unreadable native: not completed, recorded privately only.
                 successful[response['version_id']]=None
                 completion_failures[response['version_id']]=type(exc).__name__+': '+str(exc)
+            atomic_write(workspace.private,'completion/'+response['version_id']+'.json',encode(dict(success=successful[response['version_id']],error=completion_failures.get(response['version_id']))))
     def version(response,value):
         nonlocal stop
         vid=response['version_id'];success=successful.get(vid)
+        saved=workspace.private/'completion'/(vid+'.json')
+        if vid not in successful and saved.exists():
+            previous=json.loads(saved.read_bytes());success=previous['success']
+            if previous.get('error'):completion_failures[vid]=previous['error']
         row=dict(version=int(vid[1:]),version_id=vid,execution_id=response.get('execution_id'),
                  valid=value['outcome']['status']!='invalid_submission',formal_eligible=False,
                  eval=value.get('eval'),eval_verdict=('pass' if value.get('eval',{}).get('passed') is True else 'fail' if value.get('eval',{}).get('passed') is False else 'unavailable'),native_success=success,
@@ -134,13 +140,18 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
     try:
         broker=Broker(workspace,executor=executor,prober=prober,evaluator=evaluator or FakeEvaluator(),
             agent_mode=True,helper=helper,budget=LedgerBudget(ledger),quota=quota,on_cut=cut,on_version=version,
-            on_execution=execution,on_settled=settled,quiesce=session.quiesce,memory=memory)
+            on_execution=execution,on_settled=settled,quiesce=session.quiesce,memory=memory,before_step=before_step)
         unknown=ledger.recover()
         if broker.quarantined or unknown:raise ValueError('unresolved_agent_work')
         for path in (workspace.private/'versions').glob('*.json'):
             if json.loads(path.read_bytes()).get('native_success') is True:
                 return dict(state='completed',reason='native_success',resources=ledger.snapshot())
         ledger.resume()
+        broker.resume_pending_eval()
+        while broker.active is not None:
+            if control()=='cancel':broker.stop_reason='operator_cancel';broker.closing.set()
+            time.sleep(.02)
+        if broker.stop_reason=='operator_paused':stop='operator_paused'
         initial_help=helper.initial() if helper and hasattr(helper,'initial') else None
         prompt=bootstrap(workspace,ledger,policy) if not session.thread_id else continuation()
         if memory:prompt+='\n'+memory.start()
@@ -279,9 +290,19 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         ledger.settle(setup_id,dict(status='prepared'));setup_id=None
         quota=QuotaMonitor(workspace.private,ledger,stop_percent=manifest['quota_stop_percent'])
         session=CodexAgentSession(workspace.ws,workspace.private,model=manifest['dev_model'],reasoning_effort=manifest['dev_reasoning_effort'])
+        last_disk_check=None
         def control():
+            nonlocal last_disk_check
+            now=time.monotonic()
+            if last_disk_check is None or now-last_disk_check>=DISK_CHECK_INTERVAL:
+                from .dev_disk import pause_if_low
+                last_disk_check=now
+                pause_if_low(store,exp['experiment_id'])
             with store.tx() as db:current=store.get(db,'experiments',exp['experiment_id'])
             return 'cancel' if current['cancelled'] else 'pause' if current.get('pause_requested_at') else None
+        def before_step(kind):
+            from .dev_disk import pause_if_low
+            return not pause_if_low(store,exp['experiment_id'])
         from .dev_agent_eval import Evaluator
         from .dev_agent_attention import Helper
         from .dev_agent_memory import Memory
@@ -297,7 +318,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory),
             prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
-            progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter)
+            progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter,before_step=before_step)
         store.update_cell(key,**{k:v for k,v in result.items() if k!='resources'},agent_resources=result['resources'],owner=None)
         print(end_line(key,result),file=sys.stderr,flush=True)
         return result
@@ -316,6 +337,8 @@ def run_agent_experiment(store, exp_id, *, max_cells, client=None, runner_factor
     from .dev_loop import process_identity,owner_alive
     from .core.dev_store import DevConflict
     exp=snapshot(store,exp_id);manifest=verify_manifest(exp)
+    from .dev_disk import require_start,experiment_root
+    require_start(experiment_root(exp))
     if max_cells!=1 or len(manifest['cells'])!=1:raise ValueError('agent_single_cell_required')
     owner=process_identity()
     with store.tx() as db:
@@ -332,7 +355,10 @@ def run_agent_experiment(store, exp_id, *, max_cells, client=None, runner_factor
         with store.tx() as db:
             current=store.get(db,'experiments',exp_id)
             current.update(owner=None,state='paused' if cell.get('reason')=='operator_paused' else 'needs_review' if cell['state']=='needs_review' else 'completed',reason=cell.get('reason'))
-            if cell.get('reason')=='operator_paused':current['paused_at']=time.time()
+            if cell.get('reason')=='operator_paused':
+                now=time.time();current['paused_at']=now
+                from .dev_ledger import experiment_goal
+                gid=experiment_goal(current);goal=store.get(db,'goals',gid);goal['paused_at']=now;store.put(db,'goals',gid,goal)
             if current.get('cancelled'):current['state']='cancelled'
             store.put(db,'experiments',exp_id,current)
     return snapshot(store,exp_id)

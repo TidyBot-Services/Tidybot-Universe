@@ -177,9 +177,10 @@ def readiness(probe, quota, failures, disk_root):
     used = (quota or {}).get('used_percent')
     codex = ({'state': 'ready' if used < 90 else 'low', 'detail': f'{used:.0f}% of this week used.'} if isinstance(used, (int, float))
              else {'state': 'unknown', 'detail': 'Quota could not be read.'})
-    usage = shutil.disk_usage(disk_root)
-    free_gb = usage.free / 1e9
-    disk = {'state': 'ready' if free_gb > 50 else 'low', 'value': f'{free_gb:.0f} GB', 'detail': f'{100 * usage.used / usage.total:.0f}% used.'}
+    from .dev_disk import status as disk_status
+    row = disk_status(disk_root);free_gb = row['free_gb']
+    disk = dict(row, state='ready' if free_gb >= row['start_min_free_gb'] else 'low', value=f'{free_gb:.0f} GB',
+                detail=f"{row['used_percent']:.0f}% used. Start ≥ {row['start_min_free_gb']:g} GB · Pause < {row['run_min_free_gb']:g} GB.")
     return {'codex': codex, 'glm': glm, 'qwen': qwen, 'disk': disk}
 
 

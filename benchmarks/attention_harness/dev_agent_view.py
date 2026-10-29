@@ -86,7 +86,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     limits=run.get('limits',dict(LIMITS,help=selection.get('help_budget',1)))
     used={k:sum(j['resources'].get(k,0) for j in jobs if j['state'] not in ('reserved','released')) for k in limits}
     held={k:sum(j['resources'].get(k,0) for j in jobs if j['state']=='reserved') for k in limits}
-    stopped=cell.get('state') not in ('running','planned') or (cell.get('state')=='planned' and bool(cell.get('reason')))
+    stopped=cell.get('state') not in ('running','planned') or (cell.get('state')=='planned' and bool(cell.get('reason')) and cell.get('reason')!='operator_paused')
     end=run.get('paused_at') or (max((j.get('settled_at',0) for j in jobs),default=0) if stopped else now)
     wall=max(0,min(21600,21600-(run['deadline']-(end or now)) if run.get('deadline') else 0))
     if stopped and cell.get('agent_resources',{}).get('wall_remaining') is not None:
@@ -191,6 +191,11 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     from .dev_agent_ui_projection import compat, error_groups
     result['agent']['failure_errors'], result['agent']['details'] = error_groups(errors, records)
     result['dev_v2_compat']=compat(cell,result['agent'],jobs)
+    if experiment.get('pause_requested_at') or experiment.get('state')=='paused':
+        from .daily_dev_v2 import DailyDevV2
+        bridge=object.__new__(DailyDevV2);bridge.workers={};bridge.root=Path(experiment.get('disk_root') or experiment.get('artifact_dir','/missing'))
+        result['dev_v2_compat']['run_controls']=bridge.run_controls(store,cell)
+        result['dev_v2_compat']['lifecycle']=None
     # The UI needs only identity, status and links per timeline row; full probe
     # results (about 90% of the r6 payload) stay behind each row's links.
     result['agent']['timeline']=[r if r.get('kind')=='help' else {k:v for k,v in r.items() if k!='result'}|({'version_id':r['result']['version_id']}

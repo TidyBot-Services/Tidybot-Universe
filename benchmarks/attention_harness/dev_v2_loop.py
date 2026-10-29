@@ -793,6 +793,8 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
         if cell.get('planner_features'):store.start_cell_clock(key)
         while True:
             verify_manifest(exp);cell=store.cell(key)
+            from .dev_disk import pause_if_low
+            pause_if_low(store,cell['experiment_id'])
             with store.tx() as db:current=store.get(db,'experiments',cell['experiment_id'])
             if cell['state']=='condition_invalid':return
             if current['cancelled']:store.update_cell(key,state='cancelled',reason='operator_cancel');return

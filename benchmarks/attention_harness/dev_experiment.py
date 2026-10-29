@@ -61,6 +61,8 @@ def slot_wall_seconds(manifest):
     return worst_slot(manifest)
 
 def create(store,artifact_root,selection,*,validation_origin=None):
+    from .dev_disk import require_start
+    require_start(artifact_root)
     validate_selection_fields(selection)
     agent_options=None
     if selection.get('dev_mode','one_call') not in ('one_call','agent'):raise ValueError('unknown_dev_mode')
@@ -334,7 +336,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     manifest_path=directory/'manifest.json'
     mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
     if json.loads(manifest_path.read_bytes())!=manifest:raise DevConflict('immutable manifest conflict')
-    exp=dict(experiment_id=exp_id,selection=normalized,manifest=mref,artifact_dir=str(directory),state='planned',cancelled=False,owner=None,created_at=time.time(),formal_eligible=False)
+    exp=dict(experiment_id=exp_id,selection=normalized,manifest=mref,artifact_dir=str(directory),disk_root=str(Path(artifact_root).resolve()),state='planned',cancelled=False,owner=None,created_at=time.time(),formal_eligible=False)
     from .dev_tasks import SDK_SEAL_KEYS
     exp.update({k:metadata[k] for k in SDK_SEAL_KEYS if k in metadata})
     if validation_origin is not None:exp['validation_experiment']=True
@@ -491,6 +493,10 @@ def withdraw_pause(store,exp_id):
     with store.tx() as db:
         e=store.get(db,'experiments',exp_id)
         if not e.get('pause_requested_at') or e['state']=='paused':return False
+        if e.get('pause_reason')=='disk_low':
+            from .dev_disk import require_start,experiment_root
+            require_start(experiment_root(e))
+        e.pop('pause_reason',None);e.pop('pause_detail',None)
         e.pop('pause_requested_at');store.put(db,'experiments',exp_id,e)
         store.event(db,'experiment_pause_withdrawn',{'experiment_id':exp_id})
     return True
@@ -499,9 +505,12 @@ def resume_paused(store,exp_id):
     with store.tx() as db:
         e=store.get(db,'experiments',exp_id)
         if e['cancelled'] or e['state']!='paused':raise DevConflict('Only a paused run can be resumed.')
+        if e.get('pause_reason')=='disk_low':
+            from .dev_disk import require_start,experiment_root
+            require_start(experiment_root(e))
         now=time.time();span=close_pause(store,db,e,now)
         e.setdefault('pauses',[]).append(dict(requested_at=e.pop('pause_requested_at',None),paused_at=e.pop('paused_at',None),resumed_at=now,seconds=span))
-        e['state']='planned';store.put(db,'experiments',exp_id,e)
+        e['state']='planned';e.pop('pause_reason',None);e.pop('pause_detail',None);store.put(db,'experiments',exp_id,e)
         for key,p in db.execute('SELECT id,payload FROM v2_cells WHERE exp=?',(exp_id,)).fetchall():
             c=json.loads(p)
             if c.get('reason')=='operator_paused':c['reason']=None;store.put(db,'cells',key,c)
@@ -688,6 +697,8 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
         from .dev_agent_loop import run_agent_experiment
         return run_agent_experiment(store,exp_id,max_cells=max_cells,client=client,runner_factory=runner_factory,
             outer_deadline_epoch=outer_deadline_epoch,max_slots=max_slots)
+    from .dev_disk import require_start,experiment_root
+    require_start(experiment_root(snapshot(store,exp_id)))
     from .dev_wait_recovery import reconcile_waits
     reconcile_waits(store,exp_id)
     from openarm365_dev_v2.diag_budget import diagnostic_budget

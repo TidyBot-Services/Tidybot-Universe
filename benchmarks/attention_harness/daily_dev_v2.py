@@ -169,6 +169,8 @@ class DailyDevV2:
             return clean(rows)
         return rows
     def create(self,body):
+        from .dev_disk import require_start
+        require_start(self.root)
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('explicit selection and start required')
         selection=body['selection']
         if not isinstance(selection,dict):raise ValueError('bounded explicit experiment selection required')
@@ -255,6 +257,8 @@ class DailyDevV2:
                     raise DevConflict('Agent experiment materialization failed: '+clean(detail))
                 raise DevConflict('Experiment materialization failed; creation.log preserves diagnostic evidence')
             e=experiments.snapshot(s,eid)
+            with s.tx() as db:
+                current=s.get(db,'experiments',eid);current['disk_root']=str(self.root);s.put(db,'experiments',eid,current)
             manifest=json.loads(Path(e['manifest']['uri']).read_bytes())
             if budget.exists():
                 declaration=json.loads(budget.read_bytes())
@@ -279,6 +283,8 @@ class DailyDevV2:
             return clean(value)
         return value
     def start(self,eid):
+        from .dev_disk import require_start
+        require_start(self.root)
         s=self.store(eid);e=experiments.snapshot(s,eid);directory,path,budget=self.paths(eid)
         if not self.per_run_budget and (not self.authorization or time.time()>=self.authorization['deadline_epoch']):raise DevBudgetExhausted('No current authorization: create offline or supply a new explicit run budget')
         with self.mutex:
@@ -451,9 +457,14 @@ class DailyDevV2:
         elif g is not None and g['wall_remaining']<=0:blocked="This run's time budget is used up. Start a new run instead."
         elif paused and any(row.get('owner') and owner_alive(row['owner']) for row in self.list() if row['experiment_id']!=eid):blocked='Another run is using the robot right now. Resume this one after it finishes.'
         resumable=paused or (state=='idle' and any(row.get('versions') for row in cells))  # e.g. worker lost while pausing
+        if resumable and e.get('pause_reason')=='disk_low':
+            from .dev_disk import require_start,experiment_root
+            try:require_start(experiment_root(e))
+            except DevConflict as exc:blocked=str(exc)
         return dict(state=state,can_pause=state=='running' and not e.get('cancelled'),can_resume=resumable and blocked is None,
             can_keep_running=pausing,resume_blocked_reason=None if state in {'running','pausing'} or (resumable and blocked is None) else blocked,
-            current_step=step,paused_since=e.get('paused_at'),paused_seconds_total=g['paused_seconds_total'] if g else 0,interrupted_by_stop=interrupted)
+            current_step=step,paused_since=e.get('paused_at'),paused_seconds_total=g['paused_seconds_total'] if g else 0,interrupted_by_stop=interrupted,
+            pause_reason=e.get('pause_reason'),pause_detail=e.get('pause_detail'))
     def post(self,path,body,*,human_authorized=False):
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.

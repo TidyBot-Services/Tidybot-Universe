@@ -10,6 +10,7 @@ PUBLIC_FAILURE_RULE={'schema':'attentionbench.public-failure.v1','validation_fai
 # Per-request Dev input ceiling in UTF-8 bytes; raised from 30000 by the user on 2026-10-22
 # after a run stopped at v8 with input_bound_exceeded. Cell token budgets scale with it.
 MAX_INPUT_BYTES=150000
+DISK_DEFAULTS=dict(start_min_free_gb=40,run_min_free_gb=15)
 
 def validate_run_notes(selection):
  if 'memory_family' in selection:

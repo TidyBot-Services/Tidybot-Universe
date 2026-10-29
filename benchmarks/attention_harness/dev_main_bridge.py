@@ -142,6 +142,8 @@ class DevMainBridge:
             basis='persisted experiment/cells/jobs/requests/goal clock and observed process identity')
 
     def create(self,body):
+        from .dev_disk import require_start
+        require_start(self.artifacts)
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('selection and explicit start required')
         v=body['selection'];configuration=v['configuration'];g=self.store.goal(self.goal_id)
         from .dev_configuration import require_eval_gate, require_scene_gate
@@ -209,6 +211,8 @@ class DevMainBridge:
         return self.experiment(e['experiment_id'])
 
     def start(self,eid,wall_seconds=None):
+        from .dev_disk import require_start
+        require_start(self.artifacts)
         from .dev_wait_recovery import reconcile_waits
         # Cleanup is independent of dispatch permission and source validity.
         self.experiment(eid)  # Verify this bridge's goal before any mutation.

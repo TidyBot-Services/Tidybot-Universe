@@ -183,6 +183,8 @@ def serve(store,artifact_root,port,budget_file=None):
                 if set(body)!={'max_cells'} or type(body['max_cells']) is not int or not 1<=body['max_cells']<=len(e['cells']):raise ValueError('explicit max_cells within manifest denominator required')
                 e=experiments.snapshot(store,eid)
                 if e['cancelled']:raise DevConflict('experiment cancelled')
+                from .dev_disk import require_start
+                require_start(artifact_root)
                 experiments.verify_manifest(e)
                 with worker_lock:
                     if any(p.poll() is None for p in workers.values()):raise DevConflict('serial UI worker already active')

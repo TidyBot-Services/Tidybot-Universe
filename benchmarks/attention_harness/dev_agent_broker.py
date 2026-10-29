@@ -74,13 +74,14 @@ class FakeEvaluator:
 class Broker:
     def __init__(self, workspace, *, executor, prober, evaluator, helper=None, budget=None,
                  agent_mode=False, timeouts=None, quota=None, on_cut=None, on_version=None,
-                 on_execution=None, on_settled=None, quiesce=nullcontext, memory=None):
+                 on_execution=None, on_settled=None, quiesce=nullcontext, memory=None, before_step=lambda kind:True):
         if agent_mode is not True: raise ValueError('agent_mode_required')
         self.workspace = workspace
         self.quota=quota; self.stop_reason=None
         self.on_cut=on_cut; self.on_version=on_version; self.on_execution=on_execution
         self.on_settled=on_settled; self.quiesce=quiesce
         self.memory=memory
+        self.before_step=before_step
         self.executor, self.prober, self.evaluator = executor, prober, evaluator
         self.helper, self.budget = helper or Helper(), budget or Budget()
         self.timeouts = {**TIMEOUTS, **(timeouts or {})}
@@ -181,6 +182,9 @@ class Broker:
                 return self._publish(response)
             if self.quarantined: return reject('needs_review')
             if self.active is not None: return reject('busy')
+            if op in ('submit','run') and not self.before_step('execute'):
+                self.stop_reason='operator_paused'
+                return reject('operator_paused')
             allowed = ({'entry', 'reason', 'summary'} if op == 'submit' else {'entry', 'reason'} if op == 'run' else
                        {'question'} if op == 'ask_help' else {'names'} if op == 'find_objects' else
                        {'target', 'start_joints', 'base_offset', 'held_object', 'attachment'} if op == 'ik_check' else
@@ -266,6 +270,16 @@ class Broker:
         rows=[r for r in self.records.values() if r['request']['op']=='submit' and r['response'].get('version_id')
               and r.get('validation_error') is None and r.get('source_sha256')]
         return max(rows,key=lambda r:r['response']['version_id'])['source_sha256'] if rows else None
+
+    def resume_pending_eval(self):
+        for rid,record in self.records.items():
+            if record['response']['status']!='paused':continue
+            if not self.before_step('eval'):
+                self.stop_reason='operator_paused';return
+            self.active=rid
+            source=read_beneath(self.workspace.private,'sources/'+rid+'.py',REQUEST_LIMIT*16)
+            self.pool.submit(self._dispatch,rid,source,False)
+            return
 
     def _bounded(self, collaborator, method, *args, timeout, quarantine=True):
         deadline = min(self.budget.deadline, time.monotonic() + timeout)
@@ -356,10 +370,11 @@ class Broker:
         from .dev_agent_memory import MemoryRevoked
         record = self.records[rid]; response = record['response']; request = record['request']
         op, payload = request['op'], request['payload']
-        memory_revoked=False
+        memory_revoked=False;parked=False;deferred=record.get('deferred_eval')
         try:
             with self.lock:
-                if hasattr(self.budget,'claim'):self.budget.claim(rid)
+                if deferred:self.budget.ledger.resume_request('request:'+rid)
+                elif hasattr(self.budget,'claim'):self.budget.claim(rid)
                 response['status'] = 'running'; self._publish(response)
             if op in PROBES:
                 cold = getattr(self.prober, 'cold', False)
@@ -390,7 +405,11 @@ class Broker:
                 # may reach the boundary below for a moving request.
                 step = lambda name, fn, *a, **kw: self._step(rid, name, fn, *a, **kw)
                 value = dict(outcome=dict(status='invalid_submission',error=record.get('validation_error')))
-                if not invalid:
+                if deferred:
+                    value=deferred['value']
+                    for name,value_state in deferred['executor_state'].items():setattr(self.executor,name,value_state)
+                    if hasattr(self.helper,'capture'):step('help_capture',self.helper.capture,self.executor)
+                elif not invalid:
                     self.prober.close()
                     eid = response['execution_id']
                     directory = self.workspace.private / 'executions' / eid
@@ -451,6 +470,13 @@ class Broker:
                     if invalid or memory_revoked:
                         verdict=dict(status='memory_revoked' if memory_revoked else 'not_run_invalid_submission',passed=None)
                     else:
+                        if not self.before_step('eval'):
+                            state={name:getattr(self.executor,name,None) for name in ('result','episode','native_result_ref','recording','execution_usage')}
+                            if state['episode'] is not None:state['episode']=str(state['episode'])
+                            record['deferred_eval']=dict(value=value,executor_state=state)
+                            response.update(status='paused',error='disk_low')
+                            self.stop_reason='operator_paused';parked=True
+                            return
                         ledger=getattr(self.budget,'ledger',None);eval_id='eval:'+rid
                         if ledger:
                             ledger.reserve(eval_id,'eval',{'eval_runs':1});ledger.claim(eval_id)
@@ -491,6 +517,8 @@ class Broker:
                 value.update(ok=False,rejected=True,reason='memory_revoked')
                 response['error']='memory_revoked'
             response.update(status='needs_review' if self.quarantined else 'rejected' if memory_revoked else 'completed', result=value)
+            record.pop('deferred_eval',None)
+            if response.get('error')=='disk_low':response.pop('error')
             if self.quarantined:response['error']=(self.failure or {}).get('error') or 'run_error'
         except BaseException as exc:
             if isinstance(exc, Exception) and not isinstance(exc, BrokerInvariant) and (op in PROBES or op == 'ask_help'):
@@ -515,6 +543,10 @@ class Broker:
         finally:
             with self.lock:
                 try:
+                    if parked:
+                        self.budget.ledger.park_request('request:'+rid)
+                        self._publish(response)
+                        return
                     if hasattr(self.budget,'settle'):self.budget.settle(rid,response)
                     self._regenerate_history()
                     self.workspace.regenerate()

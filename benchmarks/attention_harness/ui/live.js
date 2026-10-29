@@ -3256,7 +3256,7 @@
       // Why Resume is unavailable lives in its tooltip; the row stays one line (the banner above already explains the stop).
       const why=!rc.can_resume&&rc.resume_blocked_reason?` title="${esc(rc.resume_blocked_reason)}"`:'';
       const resume=rc.can_keep_running?'<button type="button" data-dev-resume>Keep running</button>':`<button type="button"${why} data-dev-resume ${rc.can_resume?'':'disabled'}>▶ Resume</button>`;
-      const note=rc.state==='pausing'?`Pausing · the current step${rc.current_step?` (${rc.current_step})`:''} will finish first`:rc.state==='paused'?"Paused · the run's time budget is not counting":'';
+      const note=rc.pause_detail || (rc.state==='pausing'?`Pausing · the current step${rc.current_step?` (${rc.current_step})`:''} will finish first`:rc.state==='paused'?"Paused · the run's time budget is not counting":'');
       return pause+resume+(note?`<small data-run-control-note>${esc(note)}</small>`:'');
     }
     const s=snapshot.dev_session;
@@ -3332,7 +3332,7 @@
   }
   function operatorOutcome(snapshot) {
     const rc=snapshot.dev_v2?.run_controls;
-    if(rc?.state==='paused')return `<div class="op-outcome waiting" data-operator-outcome="paused" role="status"><strong>⏸ PAUSED</strong><div><p>${esc(`Paused${rc.paused_since==null?'':` since ${dateTime(rc.paused_since)}`}. Nothing is running and the run's time budget is not counting.`)}</p><p>${esc(rc.can_resume?'Press Resume to continue with the next step.':rc.resume_blocked_reason||'')}</p></div></div>`;
+    if(rc?.state==='paused')return `<div class="op-outcome waiting" data-operator-outcome="paused" role="status"><strong>⏸ PAUSED</strong><div><p>${esc(rc.pause_detail || `Paused${rc.paused_since==null?'':` since ${dateTime(rc.paused_since)}`}. Nothing is running and the run's time budget is not counting.`)}</p><p>${esc(rc.can_resume?'Press Resume to continue with the next step.':rc.resume_blocked_reason||'')}</p></div></div>`;
     if(rc?.state==='pausing')return `<div class="op-outcome waiting" data-operator-outcome="pausing" role="status"><strong>● PAUSING</strong><div><p>${esc(`The current step${rc.current_step?` (${rc.current_step})`:''} will finish normally, then the run pauses before the next step.`)}</p><p>Press Keep running to cancel the pause.</p></div></div>`;
     const status=snapshot.run.status,reason=String(snapshot.dev_session?.reason||snapshot.eval?.stopped_reason||'');
     const modelReview=modelCallReview(snapshot);
