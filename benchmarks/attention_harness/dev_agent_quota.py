@@ -5,7 +5,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from .codex_quota import WEEKLY_READING_MAX_AGE
+from .codex_quota import WEEKLY_READING_MAX_AGE,latest_quota_readings
 
 # The same weekly window is reported with a few seconds of resets_at jitter across
 # Codex sessions (seen 2026-10-28: ...690 vs ...692); real windows are 7 days apart.
@@ -14,7 +14,7 @@ ROLLOUT_MAX_AGE = 3 * 86400
 
 
 def read_weekly_quota(home=None, *, now=None):
-    """Newest weekly window across recent rollouts; max used within that window."""
+    """Newest weekly window and observation, allowing ten minutes of session lag."""
     now=time.time() if now is None else now
     root=Path(home).expanduser() if home is not None else Path.home()
     rows=[]
@@ -41,7 +41,7 @@ def read_weekly_quota(home=None, *, now=None):
                 elif isinstance(value,list):stack.extend(value)
     if not rows:raise OSError('no current weekly quota reading')
     newest=max(r['resets_at'] for r in rows)
-    window=[r for r in rows if r['resets_at']>=newest-RESET_JITTER_SECONDS]
+    window=latest_quota_readings([r for r in rows if r['resets_at']>=newest-RESET_JITTER_SECONDS])
     return dict(used_percent=max(r['used_percent'] for r in window),window_minutes=10080,
                 resets_at=newest,observed_at=max(r['observed_at'] for r in window))
 
@@ -74,7 +74,8 @@ class QuotaMonitor:
                 with self.lock:
                     if (self.latest is None or candidate['resets_at']>self.latest['resets_at']+RESET_JITTER_SECONDS
                             or (candidate['resets_at']>=self.latest['resets_at']-RESET_JITTER_SECONDS
-                                and candidate['used_percent']>=self.latest['used_percent'])):
+                                and (candidate['observed_at'],candidate['used_percent'])
+                                    >=(self.latest['observed_at'],self.latest['used_percent']))):
                         self.latest=candidate
                         from .dev_agent_workspace import atomic_write,encode
                         atomic_write(self.private,'quota-event.json',encode(candidate))
@@ -96,7 +97,7 @@ class QuotaMonitor:
             candidates=[r for r in (reading,self.latest) if self._valid(r,now)]
             if candidates:
                 reset=max(r['resets_at'] for r in candidates)
-                window=[r for r in candidates if r['resets_at']>=reset-RESET_JITTER_SECONDS]
+                window=latest_quota_readings([r for r in candidates if r['resets_at']>=reset-RESET_JITTER_SECONDS])
                 used=max(r['used_percent'] for r in window)
                 observed=max(r['observed_at'] for r in window)
                 self.stopped=self.stopped or used>=self.stop_percent

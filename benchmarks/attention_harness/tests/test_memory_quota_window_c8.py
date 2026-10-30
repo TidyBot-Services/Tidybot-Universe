@@ -35,6 +35,19 @@ def test_current_window_maximum_and_ui_reader(tmp_path,weekly):
     assert read_quota(tmp_path,now=now)['resets_at']==NEW_RESET
 
 
+@pytest.mark.parametrize('weekly',['primary','secondary'])
+@pytest.mark.parametrize('latest_age',[0,3600],ids=['fresh-low','all-stale'])
+def test_reading_decreases_within_same_window(tmp_path,weekly,latest_age):
+    now=1793000000
+    # Both files are recent; observation time, rather than mtime, selects usage.
+    session(tmp_path,'older-high',63,NEW_RESET,now,age=latest_age+3600,weekly=weekly)
+    session(tmp_path,'newer-low',43,NEW_RESET,now,age=latest_age,weekly=weekly)
+    snapshot=worker.weekly_quota_snapshot(tmp_path,now=now)
+    assert snapshot==dict(used_percent=43,observed_at=now-latest_age,resets_at=NEW_RESET)
+    assert worker.weekly_quota(tmp_path,now=now)==43
+    assert worker.quota_fresh(snapshot['observed_at'],now)==(latest_age==0)
+
+
 def test_stale_or_unknown_time_cannot_select_a_window(tmp_path):
     now=1793000000
     session(tmp_path,'current',9,NEW_RESET,now)

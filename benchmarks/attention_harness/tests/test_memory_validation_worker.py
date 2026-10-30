@@ -235,6 +235,7 @@ def test_daily_baseline_and_resume_use_same_cross_session_maximum(tmp_path):
     d.quota=lambda:weekly_quota_snapshot(tmp_path,now=d.clock());state={};tick(state,d)
     assert state['day_start_quota']==60 and state['weekly_quota']==60
     quota_session(tmp_path,'existing.jsonl',[60,66],mtime=now+1)
+    d.clock=lambda:now+1  # The newer observation must not be in the future.
     state=json.loads((tmp_path/'state.json').read_bytes());tick(state,d)
     assert state['day_start_quota']==60 and '5 points' in state['status'] and d.runner.pauses==1
     d.clock=lambda:now+86400

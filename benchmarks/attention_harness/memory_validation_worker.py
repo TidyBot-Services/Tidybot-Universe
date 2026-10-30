@@ -6,7 +6,7 @@ use the existing goal ledger. A claimed or unknown job is never redispatched.
 import argparse,fcntl,hashlib,importlib,json,math,os,sqlite3,time
 from datetime import datetime
 from pathlib import Path
-from .codex_quota import current_window_readings,valid_reset,WEEKLY_READING_MAX_AGE
+from .codex_quota import current_window_readings,latest_quota_readings,valid_reset,WEEKLY_READING_MAX_AGE
 
 QUOTA_MAX_AGE = WEEKLY_READING_MAX_AGE
 UNEXPLAINED_RUN_MAX_AGE = 6 * 60 * 60
@@ -111,7 +111,7 @@ def parse_quota_setting(value,*,key):
 
 
 def weekly_quota_snapshot(home=None,*,now=None):
-    """Keep the conservative session maximum within the current weekly window.
+    """Use the newest weekly observations, allowing ten minutes of session lag.
 
     File mtime only selects recent sessions; it cannot prove a reading is fresh.
     Ephemeral calls and unrelated events must not advance the observation time.
@@ -144,7 +144,7 @@ def weekly_quota_snapshot(home=None,*,now=None):
     if not readings:raise ValueError('Codex weekly quota is unreadable')
     # Without a fresh reading, retain a stale snapshot so the existing refresh
     # gate can explain the pause. Never let a stale window freshen another one.
-    readings=current_window_readings(readings,now=now)
+    readings=latest_quota_readings(current_window_readings(readings,now=now))
     stamps=[r['observed_at'] for r in readings if r['observed_at'] is not None]
     return dict(used_percent=max(r['used_percent'] for r in readings),
                 observed_at=max(stamps) if stamps else None,

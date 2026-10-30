@@ -6,6 +6,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 WEEKLY_READING_MAX_AGE = 10 * 60
+# Concurrent sessions can report slightly lagging usage. Take a conservative
+# maximum only within ten minutes of the newest observation, even if all are stale.
+QUOTA_OBSERVATION_LAG_SECONDS = 10 * 60
+
+
+def latest_quota_readings(readings):
+    """Restrict one reset window to observations near its newest timestamp."""
+    timed=[r for r in readings if type(r.get('observed_at')) in (int,float)
+           and math.isfinite(r['observed_at'])]
+    if not timed:return readings
+    newest=max(r['observed_at'] for r in timed)
+    return [r for r in timed if r['observed_at']>=newest-QUOTA_OBSERVATION_LAG_SECONDS]
 
 
 def valid_reset(value):
@@ -74,7 +86,8 @@ def read_quota(home=None,*,newest_session=False,now=None,include_observed_at=Fal
         except (ValueError,TypeError,AttributeError,OverflowError):pass
         known.append(dict(r,observed_at=observed))
     if known:
-        result=max(current_window_readings(known,now=time.time() if now is None else now),
+        window=current_window_readings(known,now=time.time() if now is None else now)
+        result=max(latest_quota_readings(window),
                    key=lambda r:(r['used_percent'],r['observed_at'] or 0))
         if not include_observed_at:result.pop('observed_at')
     return result
