@@ -14,10 +14,25 @@ from benchmarks.attention_harness.memory_validation_provision import Provisioner
 from attention_memory_service.memory_service import MemoryService
 
 
-def build(tmp_path, monkeypatch):
+def build(tmp_path, monkeypatch, *, validation=False):
     native = SceneFixture(tmp_path)
+    if validation:
+        from attention_memory_service.dev_v2 import digest
+        source_root=tmp_path/'sources';source_root.mkdir()
+        lock=json.loads(Path(native.lock['uri']).read_bytes());renamed={}
+        for name in lock['files']:
+            target=source_root/Path(name).relative_to(native.root);target.parent.mkdir(parents=True,exist_ok=True)
+            Path(name).rename(target);renamed[name]=str(target)
+        lock.update(files={renamed[k]:v for k,v in lock['files'].items()},source_root=str(source_root),
+            source_sets={str(source_root/'openarm365_dev_v2'):[str(source_root/'openarm365_dev_v2/sdk.py')]})
+        lock['planner_lock']['path']=renamed[lock['planner_lock']['path']]
+        lock['model_sources']={renamed[k]:v for k,v in lock['model_sources'].items()}
+        native.sdk['robot_model_identity']=dict(lock['model_sources'])
+        native.sdk_sha=digest(json.dumps(native.sdk,sort_keys=True,ensure_ascii=False,allow_nan=False).encode())
+        native.lock=native.write(Path(native.lock['uri']),lock)
     native.config_overrides = dict(dev_mode='agent', budget_tier='dev', runner_boundary='dev_loop',
                                   dev_lock=dict(path=native.lock['uri'], sha256=native.lock['sha256']))
+    if validation:native.config_overrides.update(attempt_wall_seconds=1920,sdk_call_limit=320,horizon=9600)
     base = native.make('cell', failure=True)
     root = native.root/'cell'
     (root/'ledger.sqlite').unlink()
@@ -25,6 +40,7 @@ def build(tmp_path, monkeypatch):
     config = base['config']; config_ref = native.write(root/'config.json', config)
     manifest = json.loads(Path(base['descriptor']['manifest']['uri']).read_bytes())
     manifest.update(dev_mode='agent', selection={})
+    if validation:manifest['demos']={'pick':{}}
     manifest['cells'][0]['policy_id'] = 'reactive_help'
     mref = native.write(root/'manifest.json', manifest)
     with store.tx() as db:
@@ -85,7 +101,7 @@ def build(tmp_path, monkeypatch):
     assert proposal_ref
     proposal=json.loads(Path(proposal_ref['uri']).read_bytes())
     service=MemoryService(tmp_path/'service.sqlite',dev_v2_registration_roots=dict(executor=[str(native.root)],
-        validator=[str(native.validator)],source=[],contract=[str(tmp_path/'contracts')]))
+        validator=[str(native.validator)],source=[str(source_root)] if validation else [],contract=[str(tmp_path/'contracts')]))
     payload=memory_auto_import.provisional_payload(proposal,'offline-agent-origin')
     counts=memory_auto_import.run([store.path],client=service,namespace='offline-agent-origin',out=lambda value:None)
     assert counts==dict(created=1,outcomes=0,refused=0,deferred=0,planned=0)
@@ -99,10 +115,12 @@ def replay(f, task, seed, config, *, source, directory, cell, version):
     directory.mkdir(parents=True)
     bundle=deepcopy(json.loads((f.root/'v1/bundle.json').read_bytes()))
     bundle['policy_source']=f.native.write(directory/'policy.py',source)
+    bundle['policy_sha256']=bundle['policy_source']['sha256']
     bundle['config_lock']=f.native.write(directory/'config.json',config)
     bundle['config_sha256']=bundle['config_lock']['sha256']
     for label, ref in bundle['artifacts'].items():
         value=json.loads(Path(ref['uri']).read_bytes())
         if 'config_sha256' in value:value['config_sha256']=bundle['config_sha256']
+        if 'policy_sha256' in value:value['policy_sha256']=bundle['policy_sha256']
         bundle['artifacts'][label]=f.native.write(directory/(label+'.json'),value)
     return OBS,STATE,f.native.write(directory/'bundle.json',bundle)

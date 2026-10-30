@@ -101,8 +101,10 @@ class LedgerRunner:
         if len(batch['pairs'])!=5:raise DevConflict('five frozen pairs required')
         ids=[p[k] for p in batch['pairs'] for k in ('control_cell','treatment_cell')]
         if len(set(ids))!=10 or set(ids)!=set(batch['cells']):raise DevConflict('ten distinct validation cells required')
+        modes=set()
         for key,location in batch['cells'].items():
             store=DevV2Store(location['ledger']);c=store.cell(key)
+            modes.add(c.get('dev_mode','one_call'))
             if c.get('run_notes') or c.get('memory_family') or c.get('memory_authority') or (c.get('planner_features') or {}).get('memory'):raise DevConflict('validation cells must have clean Memory')
             with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
             from .dev_experiment import verify_manifest
@@ -111,6 +113,7 @@ class LedgerRunner:
             if frozen!=config or e['selection'].get('model_source')!='codex' or e['selection'].get('budget_tier')!='dev':raise DevConflict('validation cell frozen configuration differs')
             if not Path(e['artifact_dir']).resolve().is_relative_to(self.experiments_root):raise DevConflict('validation executor outside experiments root')
             store.goal_for_cell(key)  # Existing authorization only; never ensure_goal.
+        if len(modes)!=1 or (modes=={'agent'})!=(batch.get('dev_mode')=='agent'):raise DevConflict('mixed agent validation batch')
         plan=freeze_plan(batch['memory_id'],batch['origin'],{**config,'sha256':batch['config']['sha256']},batch['context'],batch['failure_signature'],batch['pairs'],policy_id=batch['policy_id'],budget=batch['budget'],dev_model=batch['dev_model'])
         self.client.record_plan(batch['memory_id'],plan);batch['plan']=plan
         receipt.parent.mkdir(parents=True,exist_ok=True);immutable(receipt,batch)
@@ -154,6 +157,18 @@ class LedgerRunner:
             with store.tx() as db:paused=bool(store.get(db,'experiments',c['experiment_id']).get('pause_requested_at'))
             if paused:store.update_cell(key,state='planned',reason='operator_paused');return
             store.start_cell_clock(key)
+            if c.get('dev_mode')=='agent':
+                if current.get('kind')=='cross_seed' or version!=1:raise DevConflict('agent validation is single-scene and single-version')
+                with store.tx() as db:experiment=store.get(db,'experiments',c['experiment_id'])
+                manifest=experiments.verify_manifest(experiment)
+                from .dev_agent_loop import run_agent_cell
+                result=run_agent_cell(store,experiment,manifest,key,owner=owner,client=self.provider,runner_factory=self.runner_factory,
+                    validation=dict(current=current,client=self.client))
+                cell=store.cell(key)
+                execution=job_for(cell,1,'execute')
+                if result.get('reason')!='operator_paused' and (not execution or execution['state']!='settled'):
+                    store.update_cell(key,state='invalid_generation',reason='agent_arm_invalid:'+str(result.get('reason')))
+                return
             record=next((v for v in c['versions'] if v['version']==version),None)
             cross=current.get('kind')=='cross_seed';probe=cross and current['stage']=='probe'
             if cross:checked(current['target']['contract'])
@@ -250,6 +265,7 @@ class LedgerRunner:
             future.result()
         if self.recover_invalid(current):return 'completed'
         c=store.cell(key)
+        if c.get('dev_mode')=='agent' and c.get('state')=='invalid_generation':return 'completed'
         if any(v['version']==version and v.get('status')=='invalid_generation' for v in c['versions']):return 'completed'
         job=job_for(c,version,'execute')
         if job and job['state']=='settled':return 'completed'
@@ -281,6 +297,9 @@ class LedgerRunner:
                   and current.get('arm') in {'control','treatment'} and current.get('arm_id')==key)
         version=attempt_version(current) if pair_arm else 1
         identity=attempt_id(current) if pair_arm else key
+        if c.get('dev_mode')=='agent' and c.get('state')=='invalid_generation':
+            from .memory_agent_validation import invalid_arm
+            return invalid_arm(self,current,store,key,c)
         record=next(v for v in c['versions'] if v['version']==version)
         if pair_arm and record.get('status')=='invalid_generation':return dict(status='invalid_generation',reason=record['validation_error'],cell=key,version=version,model_output=record['model_output'])
         with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])

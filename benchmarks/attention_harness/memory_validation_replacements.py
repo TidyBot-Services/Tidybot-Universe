@@ -32,6 +32,7 @@ def authorize_replacement(store,current):
         cells=[store.get(db,'cells',key) for key in keys]
         e=store.get(db,'experiments',cells[0]['experiment_id'])
         m=json.loads(checked(e['manifest']).read_bytes())
+        if m.get('dev_mode')=='agent':raise DevConflict('agent validation arms cannot acquire a second formal version')
         if (not m.get('validation_experiment') or 'cross_seed' in m['validation_origin']
                 or any(c['experiment_id']!=e['experiment_id'] for c in cells)
                 or current['origin']!=m['validation_origin']['source']):raise DevConflict('replacement requires original single-scene validation experiment')

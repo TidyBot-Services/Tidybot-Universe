@@ -36,14 +36,19 @@ class Executor:
         episodes=[]
         self.runner=self.runner_factory(service_source_root=None,sim_python=self.python,
             sim_source_root=None,task_source_root=None,asset_manifest=None,agent_mode=True,
-            episode_observer=episodes.append)
+            episode_observer=episodes.append,**({'memory_validation':self.memory_validation} if getattr(self,'memory_validation',None) else {}))
         seconds=min(1920.,deadline-time.monotonic())
         request=FormalRunRequest(suite='robocasa365',task_id=self.config['task_id'],seed=self.config['seed'],
             policy_code_path=directory/'policy.py',policy_sha256=hashlib.sha256(source).hexdigest(),
             config_sha256=hashlib.sha256((directory/'config.json').read_bytes()).hexdigest(),
             config_path=directory/'config.json',artifact_root=directory,overall_deadline_seconds=seconds,
             attempt_deadline_seconds=seconds,sdk_call_limit=320,**self.execution_identity)
-        result=self.runner.execute(request)
+        if getattr(self,'memory_validation',None):
+            from .gpu_meter import GpuMeter
+            meter=GpuMeter();meter.start()
+            try:result=self.runner.execute(request)
+            finally:self.gpu_measurement=meter.stop()
+        else:result=self.runner.execute(request)
         self.result=result
         if result.get('error'):
             atomic_write(directory,'controller-error.json',encode(dict(error=result['error'])))

@@ -12,13 +12,16 @@ def normalize(selection, *, validation_origin=None):
     if selection.get('dev_mode')!='agent':raise ValueError('agent_mode_required')
     if selection.get('budget_tier','dev')!='dev' or 'configuration' in selection:
         raise ValueError('agent_requires_modern_dev_tier')
-    if validation_origin is not None or any(selection.get(k) for k in
-            ('validation_experiment','positive_control','planner_features','fork')):
+    origin=validation_origin or selection.get('agent_validation')
+    if origin is not None:
+        from .memory_agent_validation import validate_options
+        validate_options(selection,origin)
+    if any(selection.get(k) for k in ('validation_experiment','positive_control','planner_features','fork')):
         raise ValueError('agent_memory_or_control_not_supported')
     if selection.get('model_source','codex')!='codex':raise ValueError('agent_requires_codex')
     if any(len(selection.get(k,[]))!=1 for k in ('tasks','seeds','policies')):
         raise ValueError('agent_single_cell_required')
-    if selection.get('mode','experiment') not in ('experiment','interactive'):raise ValueError('agent_mode_not_supported')
+    if selection.get('mode','experiment') not in (('diagnostic',) if origin else ('experiment','interactive')):raise ValueError('agent_mode_not_supported')
     if selection.get('trace_visible',True) is not True:raise ValueError('agent_requires_full_public_trace')
     result=dict(dev_mode='agent',dev_model=selection.get('dev_model',DEFAULT_MODEL),
                 eval_model=selection.get('eval_model',DEFAULT_MODEL),
@@ -29,6 +32,7 @@ def normalize(selection, *, validation_origin=None):
     if 'advisor_model' in selection:
         if selection['advisor_model'] not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
         result['advisor_model']=selection['advisor_model']
+    if origin is not None:result['agent_validation']=origin
     quota=result['quota_stop_percent']
     if type(quota) not in (int,float) or not math.isfinite(quota) or not 0<quota<=100:raise ValueError('invalid_quota_stop_percent')
     return result
@@ -37,9 +41,12 @@ def normalize(selection, *, validation_origin=None):
 def configuration(selection):
     options=normalize(selection)
     from .dev_configuration import normalize_configuration
-    clean={k:v for k,v in selection.items() if k not in FIELDS}
-    clean.update(model_source='codex',target_depth=10,target_valid_executions=10,max_versions=10,
-                 coverage='budget_limited',attempt_wall_seconds=1920,wall_limit=21600)
+    clean={k:v for k,v in selection.items() if k not in FIELDS|{'agent_validation'}}
+    clean.update(model_source='codex',target_depth=1 if options.get('agent_validation') else 10,
+                 target_valid_executions=1 if options.get('agent_validation') else 10,
+                 max_versions=1 if options.get('agent_validation') else 10,
+                 coverage='budget_limited',attempt_wall_seconds=1920)
+    if not options.get('agent_validation'):clean['wall_limit']=21600
     result=dict(normalize_configuration(clean),**options)
     if 'advisor_model' in options:
         result['advisor_proxy']=dict(result['advisor_proxy'],model=options['advisor_model'])
@@ -51,4 +58,8 @@ def configuration(selection):
 def refuse_memory(value):
     """Admission guard used before import or old validation provisioning."""
     if value.get('dev_mode')=='agent' or value.get('selection',{}).get('dev_mode')=='agent':
+        if value.get('validation_experiment') is True:
+            from .memory_agent_validation import validate_manifest
+            validate_manifest(value)
+            return
         raise ValueError('agent_memory_auto_import_and_validation_unsupported')

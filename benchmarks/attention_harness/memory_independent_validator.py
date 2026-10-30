@@ -47,7 +47,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
         bundle=read(bundle_ref);config=read(config_ref);source=sealed(source_ref,root,files).decode()
         agent=bundle.get('channel')=='dev_agent'
         if (config.get('dev_mode')=='agent') != agent:raise Refused('bundle channel differs from frozen agent mode')
-        if agent and (not origin or import_purpose!='memory_origin'):raise Refused('agent replay requires origin purpose')
+        if agent and not (origin and import_purpose=='memory_origin' or not origin and import_purpose=='memory_validation' and grant is not None and probe_input is None):raise Refused('agent replay requires origin or validation purpose')
         replay_config=config
         if source_drift is not None:
             from openarm365_dev_v2.source_policy import drift_record

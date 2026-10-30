@@ -44,7 +44,10 @@ def fatal_cause(broker, session_failures):
 
 def bootstrap(workspace, ledger, policy):
     from .dev_agent_prompts import DEV_PROMPT
-    return DEV_PROMPT+'\nHelp policy: '+policy+'. See docs/tools.md for its exact availability.\nBudgets: '+json.dumps(ledger.limits,sort_keys=True)
+    prompt=DEV_PROMPT
+    if 'trial_runs' in ledger.limits:
+        prompt=prompt.replace('10 formal versions, 40 moving executions, 300 read-only probes','1 formal version, 4 no-eval trial runs, 60 read-only probes').replace('21600 active wall seconds','1920 active wall seconds')
+    return prompt+'\nHelp policy: '+policy+'. See docs/tools.md for its exact availability.\nBudgets: '+json.dumps(ledger.limits,sort_keys=True)
 
 
 
@@ -73,6 +76,15 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
     def save():atomic_write(workspace.private,'loop.json',encode(dict(delivered=delivered,idle=idle,events=events)))
     def cut(kind,response):
         number=int(response['version_id'][1:])
+        if kind=='pre-submit' and memory and getattr(memory,'validation',None):
+            from .dev_agent_broker import BrokerInvariant
+            try:
+                envelope=memory.validation.prepare(response)
+                executor.memory_validation=envelope
+                if exporter:exporter.memory_validation=envelope
+            except Exception as exc:
+                traceback.print_exc()
+                raise BrokerInvariant('validation_dispatch_failed: '+str(exc)) from exc
         label=kind+'-v'+str(number)+('-pre-help' if kind=='post-feedback' else '')
         freeze_origin(workspace,label,metadata=dict(version_id=response['version_id'],execution_id=response.get('execution_id'),
             budgets=ledger.snapshot(),session=session.checkpoint(),request_cursor=len(broker.records)),quiesce=session.quiesce)
@@ -112,7 +124,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         elif value.get('eval',{}).get('passed') is True:
             value['message']=CONTINUE_MESSAGE
             workspace.publish('versions/'+vid+'/continue.json',dict(message=CONTINUE_MESSAGE))
-        if memory and stop is None:
+        if memory and stop is None and not getattr(memory,'validation',None):
             previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
             try:value['memory_message']=memory.open(int(vid[1:])+1,previous,**({'deliver_notes':False} if exporter else {}))
             except Exception as exc:
@@ -129,7 +141,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                     stage_provisional(exporter.store,exporter.key,record['version'],
                                       exporter.root/f"v{record['version']}",workspace,ledger)
             except Exception as exc:export_errors.append(dict(request_id=response['request_id'],error=type(exc).__name__+': '+str(exc)))
-        if exporter and response['op']=='submit' and memory and stop is None:
+        if exporter and response['op']=='submit' and memory and stop is None and not getattr(memory,'validation',None):
             vid=response['version_id']
             previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
             try:response['result']['memory_message']=memory.open(int(vid[1:])+1,previous)
@@ -165,6 +177,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         if broker.stop_reason=='operator_paused':stop='operator_paused'
         initial_help=helper.initial() if helper and hasattr(helper,'initial') else None
         prompt=bootstrap(workspace,ledger,policy) if not session.thread_id else continuation()
+        if memory and getattr(memory,'validation',None):prompt+='\nContinue from origin/policy.py and origin/public-feedback.json; work/main.py contains the failed origin policy.'
         if memory:prompt+='\n'+memory.start()
         if session.thread_id:
             prompt+=' Unseen events: '+json.dumps(events[delivered:],sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
@@ -269,7 +282,7 @@ def continuation():
     return 'Continue from the authoritative history files and work/notes.md. Inspect the latest results and budgets with devtool status.'
 
 
-def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, *, client=None, runner_factory=None, outer_deadline_epoch=None):
+def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, *, client=None, runner_factory=None, outer_deadline_epoch=None, validation=None):
     from .dev_agent_isolation import verify_runtime,codex_identity,IsolationUnavailable
     from .dev_agent_adapters import Executor,Prober
     from openarm365_dev_v2.dev_config import SIM_PYTHON
@@ -278,7 +291,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
     store.update_cell(key,state='running',owner=owner,artifact_dir=str(root),dev_mode='agent')
     ledger=None;setup_id=None
     try:
-        ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'])
+        if bool(manifest.get('validation_experiment'))!=bool(validation):raise ValueError('agent validation runtime binding required')
+        ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'],validation=validation is not None)
         ledger.resume()
         import uuid
         setup_id='setup:'+uuid.uuid4().hex
@@ -290,6 +304,9 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         if not (workspace.canonical/'task.json').exists():
             workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),config,success_condition=dev_condition)
             atomic_write(workspace.ws,'work/main.py',manifest['initial_sources'][cell['task_id']]['source'].encode())
+        if validation:
+            from .memory_agent_validation import seed
+            seed(workspace,validation['current'])
         # The planner uses dynamically bound loopback sockets. Bind a synthetic
         # socket for preflight; nothing contacts a deployed planner or UI.
         with socket.socket() as listener:
@@ -319,9 +336,9 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         from .dev_agent_memory import Memory
         from .dev_agent_export import Exporter
         memory=Memory(store,key,workspace,config,manifest['initial_sources'][cell['task_id']]['source'],
-            default=manifest['memory'],help_pricing=manifest.get('help_pricing'))
+            default=manifest['memory'],help_pricing=manifest.get('help_pricing'),validation=validation)
         exporter=Exporter(store,key,workspace,config,ledger)
-        helper=Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
+        helper=None if validation else Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
             config=config,client=advisor_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory)
         evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota,success_condition=condition,
             redact=dev_condition is None,

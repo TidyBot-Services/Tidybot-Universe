@@ -52,11 +52,12 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         from .memory_origin_evidence import OriginalStore
         return OriginalStore(store.path).planner_snapshot(cell)
     c=store.cell(cell)
+    agent_validation=c.get('dev_mode')=='agent' and c.get('validation_experiment') is True and import_purpose==PURPOSE and source is None
     if c.get('dev_mode')=='agent':
         from .dev_agent_export import exported
-        if (not exported(c,version) or (source is not None or motion_permission or import_purpose) and import_purpose != 'memory_origin'
-                or c.get('validation_experiment') or c.get('positive_control') or c.get('validation_origin')
-                or (Path(c['artifact_dir'])/f'v{version}'/'memory-validation-input.json').exists()):
+        if (not exported(c,version) or not agent_validation and ((source is not None or motion_permission or import_purpose) and import_purpose != 'memory_origin'
+                or c.get('validation_experiment') or c.get('validation_origin')
+                or (Path(c['artifact_dir'])/f'v{version}'/'memory-validation-input.json').exists()) or c.get('positive_control')):
             raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
     if import_purpose == 'memory_origin' and c.get('dev_mode') != 'agent':raise DevConflict('agent origin purpose required')
     v=next(v for v in c['versions'] if v['version']==version)
@@ -64,17 +65,20 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         packet_path=Path(c['artifact_dir'])/f'v{version}'/'memory-input.json'
         if packet_path.is_file():
             packet=json.loads(packet_path.read_bytes())
-            if packet.get('excluded_from_results') is True or any(
+            if not agent_validation and (packet.get('excluded_from_results') is True or any(
                     e.get('excluded_from_results') is True or e.get('seeded_for_tests') is True
-                    for e in packet.get('entries',[])):
+                    for e in packet.get('entries',[]))):
                 raise DevConflict('test-seeded Memory grant excluded from result import')
     with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
     config_ref={'uri':str(Path(c['artifact_dir'])/'config.json')}
     config_ref['sha256']=sha(config_ref['uri']);config=json.loads(checked(config_ref).read_bytes())
     if c.get('dev_mode')=='agent':
         manifest=json.loads(checked(e['manifest']).read_bytes())
-        if (manifest.get('validation_experiment') or manifest.get('positive_control')
-                or any(obj.get(k) for obj in (manifest.get('selection',{}),config,manifest) for k in ('validation_experiment','positive_control','validation_origin','origin_dev_lock'))):
+        if agent_validation:
+            from .dev_experiment import verify_manifest
+            verify_manifest(e)
+        if (not agent_validation and (manifest.get('validation_experiment')
+                or any(obj.get(k) for obj in (manifest.get('selection',{}),config,manifest) for k in ('validation_experiment','positive_control','validation_origin','origin_dev_lock')))):
             raise DevConflict('agent_memory_auto_import_and_validation_unsupported')
     record_ref={'uri':str(Path(c['artifact_dir'])/f'v{version}'/'version.json')}
     record_ref['sha256']=sha(record_ref['uri'])

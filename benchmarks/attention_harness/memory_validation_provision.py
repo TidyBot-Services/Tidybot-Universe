@@ -77,11 +77,17 @@ def validate_creation(selection,origin):
         seed_entry(contract,config['task_id'],target['seed'])
         config=target_config(origin);cell=dict(cell,seed=target['seed'])
     expected=dict(tasks=[cell['task_id']],seeds=[cell['seed']],policies=[cell['policy_id']],budget_tier='dev',model_source='codex',run_notes=False,memory_family=False,help_budget=0,mode='diagnostic',target_depth=1,target_valid_executions=1,max_versions=1,reproducible_reset=True,scene_contract=config.get('scene_contract'),attempt_wall_seconds=config['attempt_wall_seconds'])
+    agent=manifest.get('dev_mode')=='agent'
+    if agent:
+        from .memory_agent_validation import validate_options
+        validate_options(selection,origin)
+    if (selection.get('dev_mode')=='agent')!=agent:raise DevConflict('mixed agent validation is unsupported')
     if any(selection.get(k)!=v for k,v in expected.items()) or not config.get('scene_contract') or config.get('budget_tier')!='dev':raise DevConflict('validation requires ten clean dev arms on the frozen scene')
     if any(selection.get(k) for k in ('memory_authority','planner_features','human_proxy')) or any(selection.get(k,{}).get('enabled') for k in ('advisor_proxy','eval_agent')):raise DevConflict('validation cannot acquire Memory or extra assistance')
     from .dev_configuration import normalize_configuration,derive_cell_budget
-    budget=derive_cell_budget(normalize_configuration(selection))
+    budget=derive_cell_budget(normalize_configuration(dict(selection,agent_validation=origin) if agent else selection))
     if selection.get('cell_budget',budget)!=budget or selection.get('goal_limits',{k:count*v for k,v in budget.items()})!={k:count*v for k,v in budget.items()}:raise DevConflict('exact validation resource allocation required')
+    if agent and selection.get('wall_limit')!=count*(budget['model_seconds']+budget['execution_seconds']):raise DevConflict('exact agent validation wall allocation required')
     # The original native config is retained even if its original Dev provider was
     # PARCC. The new experiment's generation provider is independently Codex.
     from openarm365_dev_v2.dev_config import validate_dev_config,verify_lock
@@ -161,6 +167,7 @@ class Provisioner:
         if source['sha256']!=digests['origin_source'] or feedback['sha256']!=digests['origin_public_feedback'] or not matches_frozen_derivation(public,signature):raise DevConflict('Origin source, feedback or failure signature differs from the note')
         if origin['policy_id']!=cell['policy_id']:raise DevConflict('Origin policy differs from the note')
         if cell.get('dev_mode')=='agent':
+            if provenance.get('channel')!='dev_agent' or origin.get('channel')!='dev_agent' or config.get('dev_mode')!='agent':raise DevConflict('mixed agent validation is unsupported')
             from .memory_agent_origin import verify
             from .memory_origin_evidence import OriginalStore
             evidence=verify(OriginalStore(ledger),cell,source_version,manifest,config)
@@ -175,17 +182,36 @@ class Provisioner:
         from .memory_source_catalogs import manifest_sources,registration_order
         catalogs.update(manifest_sources(fd['manifest'],fd['context'],self.root,contract=config.get('scene_contract')))
         sealed=dict(manifest=fd['manifest'],config=fd['config'],source=source,cell=summary['cell'],version=summary['version'])
+        registration={}
+        if cell.get('dev_mode')=='agent' and not self.config.get('evidence_catalogs'):
+            from .memory_origin_evidence import identity
+            key,_,_=identity(self,note)
+            registration=read(dict(uri=str(self.state_root/'origins'/key/'receipt.json'),sha256=hashlib.sha256((self.state_root/'origins'/key/'receipt.json').read_bytes()).hexdigest())).get('registration',{})
+            if not registration:raise DevConflict('prepared agent origin registration required')
         return dict(sealed=sealed,config=config,feedback=feedback,signature=signature,context=fd['context'],policy_id=cell['policy_id'],catalogs=registration_order(catalogs),
+                    **({'agent_registration':registration} if registration else {}),
                     failed_execution=dict(import_id=sd['failed_execution_import_id'],catalog_id=fc,descriptor=fn),source_import=dict(import_id='source-'+hashlib.sha256((sc+sn).encode()).hexdigest()[:24],catalog_id=sc,descriptor=sn))
 
     def __call__(self,note,operation):
         if not re.fullmatch('[A-Za-z0-9_.-]{8,100}',operation):raise DevConflict('Stable validation operation id required')
         resolved=self.resolve(note)  # Also recheck originals on every retry.
         config=resolved['config'];origin=resolved['sealed']
-        if config.get('dev_mode')=='agent':raise DevConflict('agent_memory_validation_unsupported')
+        agent=config.get('dev_mode')=='agent'
+        if agent and config.get('attempt_wall_seconds')!=1920:raise DevConflict('agent_memory_validation_unsupported: exact approved arm required')
+        candidate_id='validation-'+operation
+        if agent and resolved.get('agent_registration'):
+            registration=resolved['agent_registration'];resolved['source_import']['import_id']=registration['source_import_id']
+            saved=self.state_root/operation/'agent-candidate.json'
+            if saved.exists():candidate_id=json.loads(saved.read_bytes())['memory_id']
+            else:
+                if self.client.decision(registration['memory_id']) is None and self.client.get_plan(registration['memory_id']) is None:
+                    candidate_id=registration['memory_id']
+                from .dev_v2_loop import immutable
+                immutable(saved,dict(memory_id=candidate_id))
         selection=dict(request_key='validation-'+operation,tasks=[config['task_id']],seeds=[config['seed']],policies=[resolved['policy_id']],mode='diagnostic',budget_tier='dev',model_source='codex',help_budget=0,run_notes=False,memory_family=False,target_depth=1,target_valid_executions=1,max_versions=1,reproducible_reset=True,scene_contract=config['scene_contract'],attempt_wall_seconds=config['attempt_wall_seconds'])
+        if agent:selection.update(dev_mode='agent',dev_model='gpt-6-astra')
         from .dev_configuration import normalize_configuration,derive_cell_budget
-        budget=derive_cell_budget(normalize_configuration(selection))
+        budget=derive_cell_budget(normalize_configuration(dict(selection,agent_validation=origin) if agent else selection))
         selection['wall_limit']=10*(budget['model_seconds']+budget['execution_seconds'])
         validate_creation(selection,origin)
         exp_id='devexp-'+hashlib.sha256(selection['request_key'].encode()).hexdigest()[:24]
@@ -202,11 +228,17 @@ class Provisioner:
         store=DevV2Store(ledger);experiment=create(store,self.root,selection,validation_origin=origin)
         record_experiment(self.state_root,operation,exp_id)
         config_ref=origin['config']
+        if agent:
+            from .dev_v2_loop import immutable
+            frozen=next(iter(read(experiment['manifest'])['configs'].values()))
+            for cell in experiment['cells']:
+                ref=immutable(Path(experiment['artifact_dir'])/'cells'/cell['key']/'config.json',frozen)
+                if cell==experiment['cells'][0]:config_ref=ref
         if read(experiment['manifest']).get('source_drift'):
-            path=Path(experiment['cells'][0]['artifact_dir'])/'config.json'
+            path=Path(config_ref['uri']) if agent else Path(experiment['cells'][0]['artifact_dir'])/'config.json'
             config_ref=dict(uri=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest())
         pairs=[dict(pair_id=str(i),**{a+'_cell':next(c['key'] for c in experiment['cells'] if c['validation_pair']==i and c['validation_arm']==a) for a in ('control','treatment')}) for i in range(5)]
-        return dict(experiment_id=exp_id,memory_id=note['memory_id'] if resolved.get('positive_control') else 'validation-'+operation,origin=origin['source'],origin_feedback=resolved['feedback'],config=config_ref,origin_config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model='gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],**({'positive_control':resolved['positive_control']} if resolved.get('positive_control') else {}),pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
+        return dict(experiment_id=exp_id,memory_id=note['memory_id'] if resolved.get('positive_control') else candidate_id,origin=origin['source'],origin_feedback=resolved['feedback'],config=config_ref,origin_config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model='gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],**({'positive_control':resolved['positive_control']} if resolved.get('positive_control') else {}),**({'dev_mode':'agent'} if agent else {}),pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
 
     @staticmethod
     def gpu_seconds(store,cell,version=1):

@@ -52,7 +52,8 @@ class Exporter:
         dispatched=response.get('execution_id') and response.get('execution_dispatched') is not False
         self.pending[response['request_id']] = dict(row=row,
             result=getattr(executor, 'result', None) if dispatched else None,
-            episode=getattr(executor, 'episode', None) if dispatched else None)
+            episode=getattr(executor, 'episode', None) if dispatched else None,
+            **({'gpu_measurement':getattr(executor,'gpu_measurement',None)} if self.memory_validation and self.store.cell(self.key).get('validation_experiment') else {}))
 
     def settle(self, response, memory=None):
         if response['op'] != 'submit' or response['request_id'] not in self.pending:
@@ -84,6 +85,18 @@ class Exporter:
             native = (result.get('artifacts') or {}).get('native_result')
             if native:
                 record['agent']['native_result'] = native
+        if self.memory_validation and self.store.cell(self.key).get('validation_experiment'):
+            base=self.workspace.private/'validation'
+            delivery=self.workspace.private/'memory'/f'v{number}'
+            record.update(parent_source=reference(base/'parent-source.py'),
+                origin_feedback=reference(base/'origin-feedback.json'),
+                agent_bootstrap=reference(self.workspace.private/'turns/t000001/input.json'),
+                dev_memory_exposure=reference(delivery/'dev-memory-exposure.json'))
+            job=next(j for j in self.ledger.jobs() if j['id']=='request:'+response['request_id'])
+            snap=self.ledger.snapshot()
+            record['agent_usage']=immutable(directory/'agent-usage.json',dict(schema_version='attentionbench.agent-validation-usage.v1',
+                cell=self.key,version=number,request_id=job['id'],limits=snap['limits'],wall_seconds=snap['wall_seconds'],
+                used=snap['used'],execution_usage=job.get('execution_usage')))
         from .dev_agent_workspace import read_beneath
         immutable(directory / 'policy.py', read_beneath(self.workspace.private,
             'sources/' + response['request_id'] + '.py').decode('utf-8'))
@@ -135,6 +148,11 @@ class Exporter:
             agent_request_id=job['id'], accounting='agent_ledger_mirror')
         if (result.get('artifacts') or {}).get('native_result'):
             receipt['native_result']=result['artifacts']['native_result']
+        if self.memory_validation and self.store.cell(self.key).get('validation_experiment'):
+            measured=pending.get('gpu_measurement')
+            if measured is not None:
+                receipt['gpu_measurement']=immutable(directory/'gpu-measurement.json',dict(measured,source='harness_gpu_meter',
+                    cell=self.key,version=number,bundle_sha256=bundle['sha256'],attempt_id=result['attempt_id']))
         # The request was already charged by AgentLedger. This is evidence, not
         # another dispatch/reservation against either set of run budgets.
         mirror_job(self.store, self.key, number, 'execute', job, actual, receipt)

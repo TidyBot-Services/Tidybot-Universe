@@ -13,7 +13,7 @@ class MemoryRevoked(PermissionError):
 
 
 class Memory:
-    def __init__(self, store, key, workspace, config, initial_source, *, default=None, help_pricing=None):
+    def __init__(self, store, key, workspace, config, initial_source, *, default=None, help_pricing=None, validation=None):
         self.store, self.key, self.workspace, self.config = store, key, workspace, config
         self.initial_source = initial_source
         self.default = EMPTY_MEMORY if default is None else default
@@ -25,13 +25,18 @@ class Memory:
         self.number, self.previous, self.service = None, None, None
         self.packet, self.generations = self.default, {}
         self.message = ''
+        self.validation=None
+        if validation is not None:
+            from .memory_agent_validation import Delivery
+            self.validation=Delivery(self,validation['current'],validation['client'])
 
     def open(self, number, previous, *, deliver_notes=True):
         directory = self.workspace.private / 'memory' / f'v{number}'
         directory.mkdir(parents=True, exist_ok=True)
-        packet, service = memory.load_memory(self.store, self.key, number, previous,
+        if self.validation:packet,service=self.validation.load(number,previous,directory)
+        else:packet, service = memory.load_memory(self.store, self.key, number, previous,
             self.config, self.settings, directory, self.shared)
-        if not self.settings:
+        if not self.settings and not self.validation:
             packet = self.default
         self.number, self.previous, self.packet, self.service = number, previous, packet, service
         self._binding()
@@ -69,6 +74,7 @@ class Memory:
             raise MemoryRevoked('memory_revoked') from exc
 
     def journal(self, number, source_ref, feedback_ref):
+        if self.validation:return
         directory = self.workspace.private / 'memory' / f'v{number}'
         packet = self.generations.get(number)
         if packet is None:

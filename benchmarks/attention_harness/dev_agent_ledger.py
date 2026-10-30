@@ -13,21 +13,27 @@ EXECUTION_LIMITS = dict(sdk_calls=320, control_steps=9600, wall_seconds=1920)
 
 
 class AgentLedger:
-    def __init__(self, path, cell, *, help_limit=1, clock=time.time):
+    def __init__(self, path, cell, *, help_limit=1, clock=time.time, validation=False):
         if type(help_limit) is not int or not 0 <= help_limit <= 10:
             raise ValueError('invalid_help_budget')
         self.path, self.cell, self.clock = Path(path), cell, clock
         self.limits = {**LIMITS, 'help': help_limit}
+        wall_seconds=21600
+        if validation:
+            from .memory_agent_validation import ARM_BUDGET
+            if help_limit!=0:raise ValueError('agent validation help must be zero')
+            self.limits={k:ARM_BUDGET[k] for k in (*LIMITS,'trial_runs')}
+            wall_seconds=ARM_BUDGET['active_wall_seconds']
         with self.tx() as db:
             db.execute('CREATE TABLE IF NOT EXISTS v2_agent_runs (cell TEXT PRIMARY KEY, payload TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS v2_agent_jobs (cell TEXT, id TEXT, state TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(cell,id))')
             db.execute('CREATE TABLE IF NOT EXISTS v2_agent_quota (seq INTEGER PRIMARY KEY, cell TEXT, payload TEXT NOT NULL)')
             row = db.execute('SELECT payload FROM v2_agent_runs WHERE cell=?', (cell,)).fetchone()
             if row:
-                if json.loads(row[0])['limits'] != self.limits: raise ValueError('immutable_agent_budget')
+                if json.loads(row[0])['limits'] != self.limits or json.loads(row[0])['wall_seconds']!=wall_seconds: raise ValueError('immutable_agent_budget')
             else:
                 self._put_run(db, dict(limits=self.limits, deadline=None, started_at=None,
-                    paused_at=None, paused_seconds=0, wall_seconds=21600))
+                    paused_at=None, paused_seconds=0, wall_seconds=wall_seconds))
 
     @contextmanager
     def tx(self):
@@ -186,6 +192,8 @@ class LedgerBudget:
     @property
     def deadline(self): return time.monotonic()+self.ledger.snapshot()['wall_remaining']
     def charge(self, **resources):
+        if 'trial_runs' in self.ledger.limits and resources.get('executions') and not resources.get('versions'):
+            resources=dict(resources,trial_runs=1)
         self.ledger.reserve('request:'+self.request_id,'request',
             {ALIASES.get(k,k):v for k,v in resources.items()},execution=bool(resources.get('executions')))
     def claim(self, rid): self.ledger.claim('request:'+rid)

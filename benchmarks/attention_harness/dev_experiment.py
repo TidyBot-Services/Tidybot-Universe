@@ -74,12 +74,12 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model')):raise ValueError('agent_options_require_agent_mode')
         if 'dev_mode' in selection:selection={k:v for k,v in selection.items() if k!='dev_mode'}
     if validation_origin is not None and (validation_origin.get('dev_mode')=='agent' or validation_origin.get('config',{}).get('dev_mode')=='agent'):
-        raise ValueError('agent_memory_validation_unsupported')
+        if not agent_options:raise ValueError('agent_memory_validation_unsupported')
     if validation_origin is not None:
         if isinstance(validation_origin.get('manifest'),dict):
             from .dev_v2_loop import checked
             if json.loads(checked(validation_origin['manifest']).read_bytes()).get('dev_mode')=='agent':
-                raise ValueError('agent_memory_validation_unsupported')
+                if not agent_options:raise ValueError('agent_memory_validation_unsupported')
         from .memory_validation_provision import validate_creation,arm_count,target_config,target_config_text
         validate_creation(selection,validation_origin)
     fork_record=None
@@ -319,10 +319,14 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         from .dev_agent_prompts import manifest_fields
         manifest.update(manifest_fields())
         manifest.update(agent_options,source_size_limit_bytes=131072,agent_accounting='attentionbench.agent-ledger.v1')
-        manifest['schedule']=[dict(cell=cells[0]['key'],through_version=10)]
+        manifest['schedule']=([dict(cell=c['key'],through_version=1) for c in cells] if validation_origin is not None else [dict(cell=cells[0]['key'],through_version=10)])
         manifest['model']=dict(model=agent_options['dev_model'],reasoning_effort=agent_options['dev_reasoning_effort'],provider_retries=0)
         manifest['agent_budget']=dict(formal_versions=10,moving_executions=40,read_only_probes=300,eval_runs=10,help=help_budget,
             sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=21600,model_turns=None,tokens=None)
+        if validation_origin is not None:
+            from .memory_agent_validation import ARM_BUDGET
+            manifest['agent_budget']=dict(ARM_BUDGET)
+            for c in cells:c['excluded_from_results']=True
         for config in configs.values():config['dev_mode']='agent'
         # Creation-only freeze of the Eval-only container rule (option A); old manifests have none.
         from .dev_agent_success import EVAL_RULE,for_configs
@@ -393,8 +397,11 @@ def validate_fairness(m):
         from .dev_agent_config import normalize
         from .dev_agent_prompts import manifest_fields
         if any(m.get(k)!=v for k,v in manifest_fields().items()):raise ValueError('agent_prompt_drift')
-        options=normalize(m['selection'])
-        if any(m.get(k)!=v for k,v in options.items()) or len(m['cells'])!=1 or m.get('validation_experiment'):
+        options=normalize(m['selection'],validation_origin=m.get('validation_origin'))
+        if m.get('validation_experiment'):
+            from .memory_agent_validation import validate_manifest
+            validate_manifest(m)
+        if any(m.get(k)!=v for k,v in options.items()) or bool(options.get('agent_validation'))!=bool(m.get('validation_experiment')) or (not m.get('validation_experiment') and len(m['cells'])!=1):
             raise ValueError('agent_frozen_options_differ')
         if any(c.get('dev_mode')!='agent' for c in m['configs'].values()):raise ValueError('agent_config_gate_differs')
     source=m.get('model_source','parcc')
