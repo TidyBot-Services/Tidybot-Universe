@@ -15,7 +15,7 @@ test('section follows both page themes through the shared shell tokens',()=>{
  const rule=css.match(/#automatic-checks\{[^}]*\}/)[0];
  assert.match(rule,/background:var\(--sh-panel\)/);assert.match(rule,/color:var\(--sh-ink\)/);assert.doesNotMatch(rule,/#fff|white/);
 });
-test('switched off with nothing to show is one quiet line; anything to show opens the three columns',()=>{
+test('switched off with no work hides the three columns; queued work opens them',()=>{
  const off=automaticHtml({enabled:false,status:'Off',runs_today:0});
  assert.ok(off.includes('Off'));assert.ok(!off.includes('Off · Off'));assert.ok(!off.includes('ac-grid'));
  assert.ok(automaticHtml({enabled:false,status:'Off',errors:['x']}).includes('role="alert"'));
@@ -64,6 +64,29 @@ test('cross-seed scenes, requirements, promotion and one-level demotion',()=>{
  assert.ok(!html.includes('<script>'));assert.ok(!html.includes('Back to Unvalidated'));
  const probe=automaticHtml({enabled:true,current:{title:'Cup',stage:'probe',seed:114,arm:'probe'}});assert.ok(probe.includes('probe without notes'));assert.ok(!probe.includes('pair undefined'));
  const pair=automaticHtml({enabled:true,current:{title:'Cup',seed:104,pair:2,pairs_needed:3,arm:'control'}});assert.ok(pair.includes('pair 2 of 3'));
+});
+
+test('cross-seed empty state is visible with checks on or off',()=>{
+ for(const enabled of [true,false])for(const cross_seed_enabled of [true,false]){
+  const html=automaticHtml({enabled,cross_seed_enabled,cross_seed_notes:[],skipped_seeds:[]});
+  assert.ok(html.includes(`Other seeds · ${cross_seed_enabled?'On':'Off'}`));
+  assert.ok(html.includes('No cross-seed checks'));
+ }
+ const populated=automaticHtml({cross_seed_notes:[{title:'Cup',seeds:[]}]});
+ assert.ok(!populated.includes('No cross-seed checks'));
+ const skipped=automaticHtml({skipped_seeds:[{reason:'No scene contract <seed>'}]});
+ assert.ok(skipped.includes('No cross-seed checks'));
+ assert.ok(skipped.includes('No scene contract &lt;seed&gt;'));
+});
+
+test('missing Family and cross-seed methods render visible alerts in both layouts',()=>{
+ const errors=['Family feed unavailable: memory gateway has no family_list',
+  'Cross-seed feed unavailable: memory gateway has no cross_seed_queue',
+  'Cross-seed feed unavailable: memory gateway has no cross_seed_status'];
+ for(const enabled of [true,false]){
+  const html=automaticHtml({enabled,errors});
+  for(const error of errors)assert.ok(html.includes(`<p class="ac-err" role="alert">${error}</p>`));
+ }
 });
 
 test('origin preparation shows a phase without fictional pairs or Memory exposure',()=>{

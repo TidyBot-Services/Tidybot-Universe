@@ -290,6 +290,7 @@
     const fixtures=(value.fixtures||[]).map(f=>`<li><b>${esc(f.title)}</b><strong>${esc(f.label)}</strong><p>${esc(f.guidance)}</p><p>${esc(f.statement)}</p><p>${esc(f.statement_zh)}</p><ul>${(f.user_quotes||[]).map(q=>`<li>${esc(q)}</li>`).join('')}</ul><strong>${f.revoked_at?'Revoked':'Operator preset · scene trusted + task trusted'}</strong></li>`).join('');
     const candidates=(value.candidates||[]).map(c=>`<li><b>${esc(c.title)}</b><span class="ac-tag">Model rewrite</span><small>${esc(c.label||'')}</small><p>${esc(c.guidance)}</p><details><summary>original, unchanged · ${esc(c.from_source?.title)}</summary><p>${esc(c.original_guidance)}</p><small>${esc(c.from_source?.kind)}:${esc(c.from_source?.id)} · v${esc(c.from_source?.version)} · ${esc(c.from_source?.guidance_sha256)}</small></details><small>Model receipt: ${esc(c.model_receipt?.provider)} / ${esc(c.model_receipt?.model)} · ${esc(c.model_receipt?.response_sha256)}</small><ul>${(c.scenes||[]).map(s=>`<li>Seed ${esc(s.target_seed)} · ${esc(s.role)} · ${esc(s.pairs_done)}/${esc(s.pairs_needed??"—")} pairs · ${esc(s.verdict||'Waiting')}<small>${esc(s.reason)}</small></li>`).join('')}</ul><strong>${esc(c.status==='revoked'?'Revoked':c.decision?.decision||c.status)}</strong><small>${esc(c.conditions?.evidence_strength)}</small><ul>${(c.conditions?.met||[]).map(x=>`<li>Met: ${esc(x)}</li>`).join('')}${(c.conditions?.missing||[]).map(x=>`<li>Missing: ${esc(x)}</li>`).join('')}</ul></li>`).join('');
     const events=(value.events||[]).slice(-20).map(e=>`<li>${esc(e.kind)} · ${esc(e.reason)}</li>`).join('');
+    if(!fixtures&&!candidates&&!events)return '<section class="ac-cross ac-family"><h3>Family</h3><p class="ac-empty">No family checks yet</p></section>';
     return `<section class="ac-cross ac-family"><h3>Family</h3><ul>${fixtures}${candidates}</ul><details><summary>Family notices</summary><ul>${events}</ul></details></section>`;
   }
 
@@ -307,14 +308,13 @@
   }
   function crossSeedHtml(value){
     const esc=escapeHtml,notes=value.cross_seed_notes||[],skipped=value.skipped_seeds||[];
-    if(!value.cross_seed_enabled&&!notes.length&&!skipped.length)return '';
     const roles={transfer:'Transfer',neutral:'Neutral',could_not_finish:'Could not finish'};
     const verdicts={transfer_passed:'Worked here',transfer_failed:'Did not help here',neutral_no_harm:'No harm',neutral_harm:'Harm detected',could_not_finish:'Could not finish'};
     const rows=notes.map(n=>`<li><div class="ac-top"><b>${esc(n.title)}</b>${n.task_trust?.trust_scope==='task_scoped'?'<span class="ac-tag ok">Trusted for this task</span>':''}</div>
       <table><caption>Scenes tested</caption><thead><tr><th>Seed</th><th>Scene</th><th>Pairs</th><th>Result</th></tr></thead><tbody>${(n.seeds||[]).map(s=>`<tr><td>${esc(s.target_seed)}</td><td>${esc(roles[s.role]||s.role)}</td><td>${esc(s.pairs_done??0)} of ${esc(s.pairs_needed??0)}</td><td>${esc(verdicts[s.verdict]||'Waiting for checks')}<small>${esc(s.reason||'')}</small></td></tr>`).join('')}</tbody></table>
       ${(n.task_trust?.missing||[]).length?`<small>Still needed for task trust: ${n.task_trust.missing.map(esc).join('; ')}.</small>`:''}</li>`).join('');
     const promotions=(value.events||[]).filter(e=>e.event==='promoted'&&e.trust_scope==='task_scoped').map(e=>`<p>Trusted for this task: ${esc(e.title)} — checks on other seeds passed.</p>`).join('');
-    return `<div class="ac-cross"><h3>Other seeds · ${value.cross_seed_enabled?'On':'Off'}</h3><ul>${rows||'<li class="ac-empty">Waiting for usable registered candidate seeds</li>'}</ul>${skipped.map(s=>`<p class="ac-skip">${esc(s.reason)}</p>`).join('')}${promotions}</div>`;
+    return `<div class="ac-cross"><h3>Other seeds · ${value.cross_seed_enabled?'On':'Off'}</h3><ul>${rows||'<li class="ac-empty">No cross-seed checks</li>'}</ul>${skipped.map(s=>`<p class="ac-skip">${esc(s.reason)}</p>`).join('')}${promotions}</div>`;
   }
   async function pollAutomatic(){
     const target=$('automatic-checks-body');if(!target)return;

@@ -1,0 +1,423 @@
+{
+  "cell": {
+    "key": "synthetic-monitor-cell",
+    "experiment_id": "devexp-53cbf969f72783537ce5de61",
+    "task_id": "open_cabinet",
+    "seed": 102,
+    "state": "completed",
+    "active_version": 5
+  },
+  "versions": [
+    {
+      "version": 1,
+      "valid": true
+    },
+    {
+      "version": 2,
+      "valid": true
+    },
+    {
+      "version": 3,
+      "valid": true
+    },
+    {
+      "version": 4,
+      "valid": true
+    },
+    {
+      "version": 5,
+      "valid": true
+    }
+  ],
+  "jobs": [
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:1:execute",
+        "cell": "synthetic-monitor-cell",
+        "version": 1,
+        "kind": "execute",
+        "receipt": {
+          "execution_status": "failed"
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:1:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 1,
+        "kind": "eval",
+        "settled_at": 1792471402.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:2:execute",
+        "cell": "synthetic-monitor-cell",
+        "version": 2,
+        "kind": "execute",
+        "receipt": {
+          "execution_status": "failed"
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:2:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 2,
+        "kind": "eval",
+        "settled_at": 1792471602.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:3:execute",
+        "cell": "synthetic-monitor-cell",
+        "version": 3,
+        "kind": "execute",
+        "receipt": {
+          "execution_status": "failed"
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:3:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 3,
+        "kind": "eval",
+        "settled_at": 1792471802.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:4:execute",
+        "cell": "synthetic-monitor-cell",
+        "version": 4,
+        "kind": "execute",
+        "receipt": {
+          "execution_status": "failed"
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:4:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 4,
+        "kind": "eval",
+        "settled_at": 1792472002.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:5:execute",
+        "cell": "synthetic-monitor-cell",
+        "version": 5,
+        "kind": "execute",
+        "receipt": {
+          "execution_status": "failed"
+        }
+      }
+    },
+    {
+      "state": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:5:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 5,
+        "kind": "eval",
+        "settled_at": 1792472288.534213,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "at": 1792471400.0,
+      "kind": "planner_memory_retrieved",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 1,
+        "authority": "synthetic-authority",
+        "namespace": "synthetic-monitor-tests",
+        "packet": {
+          "$artifact": "packet-1.json"
+        },
+        "seeded_for_tests": true,
+        "excluded_from_results": true,
+        "versions": []
+      }
+    },
+    {
+      "at": 1792471401.0,
+      "kind": "planner_memory_result_skipped",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 1,
+        "grants": [
+          "synthetic-grant-1"
+        ],
+        "reason": "test_seeded_excluded_from_results"
+      }
+    },
+    {
+      "at": 1792471402.0,
+      "kind": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:1:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 1,
+        "kind": "eval",
+        "settled_at": 1792471402.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "at": 1792471600.0,
+      "kind": "planner_memory_retrieved",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 2,
+        "authority": "synthetic-authority",
+        "namespace": "synthetic-monitor-tests",
+        "packet": {
+          "$artifact": "packet-2.json"
+        },
+        "seeded_for_tests": true,
+        "excluded_from_results": true,
+        "versions": [
+          {
+            "memory_id": "c2-seeded-small-steps-001",
+            "version": 1,
+            "grant_id": "synthetic-grant-2",
+            "seeded_for_tests": true,
+            "excluded_from_results": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1792471601.0,
+      "kind": "planner_memory_result_skipped",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 2,
+        "grants": [
+          "synthetic-grant-2"
+        ],
+        "reason": "test_seeded_excluded_from_results"
+      }
+    },
+    {
+      "at": 1792471602.0,
+      "kind": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:2:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 2,
+        "kind": "eval",
+        "settled_at": 1792471602.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "at": 1792471800.0,
+      "kind": "planner_memory_retrieved",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 3,
+        "authority": "synthetic-authority",
+        "namespace": "synthetic-monitor-tests",
+        "packet": {
+          "$artifact": "packet-3.json"
+        },
+        "seeded_for_tests": true,
+        "excluded_from_results": true,
+        "versions": [
+          {
+            "memory_id": "c2-seeded-small-steps-001",
+            "version": 1,
+            "grant_id": "synthetic-grant-3",
+            "seeded_for_tests": true,
+            "excluded_from_results": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1792471801.0,
+      "kind": "planner_memory_result_skipped",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 3,
+        "grants": [
+          "synthetic-grant-3"
+        ],
+        "reason": "test_seeded_excluded_from_results"
+      }
+    },
+    {
+      "at": 1792471802.0,
+      "kind": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:3:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 3,
+        "kind": "eval",
+        "settled_at": 1792471802.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "at": 1792472000.0,
+      "kind": "planner_memory_retrieved",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 4,
+        "authority": "synthetic-authority",
+        "namespace": "synthetic-monitor-tests",
+        "packet": {
+          "$artifact": "packet-4.json"
+        },
+        "seeded_for_tests": true,
+        "excluded_from_results": true,
+        "versions": [
+          {
+            "memory_id": "c2-seeded-small-steps-001",
+            "version": 1,
+            "grant_id": "synthetic-grant-4",
+            "seeded_for_tests": true,
+            "excluded_from_results": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1792472001.0,
+      "kind": "planner_memory_result_skipped",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 4,
+        "grants": [
+          "synthetic-grant-4"
+        ],
+        "reason": "test_seeded_excluded_from_results"
+      }
+    },
+    {
+      "at": 1792472002.0,
+      "kind": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:4:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 4,
+        "kind": "eval",
+        "settled_at": 1792472002.0,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    },
+    {
+      "at": 1792472286.534213,
+      "kind": "planner_memory_retrieved",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 5,
+        "authority": "synthetic-authority",
+        "namespace": "synthetic-monitor-tests",
+        "packet": {
+          "$artifact": "packet-5.json"
+        },
+        "seeded_for_tests": true,
+        "excluded_from_results": true,
+        "versions": [
+          {
+            "memory_id": "c2-seeded-small-steps-001",
+            "version": 1,
+            "grant_id": "synthetic-grant-5",
+            "seeded_for_tests": true,
+            "excluded_from_results": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1792472287.534213,
+      "kind": "planner_memory_result_skipped",
+      "payload": {
+        "cell": "synthetic-monitor-cell",
+        "version": 5,
+        "grants": [
+          "synthetic-grant-5"
+        ],
+        "reason": "test_seeded_excluded_from_results"
+      }
+    },
+    {
+      "at": 1792472288.534213,
+      "kind": "settled",
+      "payload": {
+        "job_id": "synthetic-monitor-cell:5:eval",
+        "cell": "synthetic-monitor-cell",
+        "version": 5,
+        "kind": "eval",
+        "settled_at": 1792472288.534213,
+        "receipt": {
+          "eval_review": {
+            "$artifact": "eval-review.json"
+          }
+        }
+      }
+    }
+  ]
+}
