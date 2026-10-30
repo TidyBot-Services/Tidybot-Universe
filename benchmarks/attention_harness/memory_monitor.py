@@ -60,6 +60,10 @@ def automatic_checks(root=None,gateway=None):
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('origin_errors',{}).values()]
+            for error in [*state.get('check_errors',[]),*state.get('note_errors',{}).values()]:
+                message=(str(error['memory_id'])+': ' if error.get('memory_id') else '')+safe_detail(error['reason'])
+                if message not in value['errors']:value['errors'].append(message)
+            if state.get('disk_gate'):value['disk_gate']={k:state['disk_gate'].get(k) for k in ('free_bytes','required_bytes','estimated_bytes','reserve_bytes','stage','paused')}
             for mid,control in state.get('positive_controls',{}).items():
                 worker=control.get('worker',{});decision=control.get('verdict') or {}
                 row=dict(control_id=mid,title=safe_text(control.get('title')),label='Test · not counted in results',
@@ -78,6 +82,13 @@ def automatic_checks(root=None,gateway=None):
             current=state.get('current')
             if current:
                 value['current']=dict(title=safe_text(current['title']),paused=bool(current.get('pause_requested')))
+                if current.get('dev_mode')=='agent' or current.get('channel')=='dev_agent':
+                    value['current'].update(memory_id=current.get('note_id',current.get('memory_id')),
+                        dev_model=(current.get('dev_model') or {}).get('model'),
+                        elapsed_seconds=max(0,time.time()-current['arm_started_at']) if current.get('arm_started_at') else 0,
+                        disk_used_bytes=current.get('disk_used_bytes',0),arm_disk_bytes=current.get('arm_disk_bytes',0),
+                        last_verdict=safe_text(current.get('last_verdict'),'Pending'),
+                        paused=bool(current.get('pause_requested') or current.get('gate_pause_reason') or (state.get('disk_gate') or {}).get('paused') or 'paused' in state.get('status','').lower()))
                 if current.get('discarded_pairs'):
                     value['current']['discarded_pairs']=[dict(pair=r['pair'],version=r['version'],arm=safe_text(r['arm']),reason=validation_text(r['reason'])) for r in current['discarded_pairs']]
                 if current.get('replacement_notice'):value['current']['replacement_notice']=validation_text(current['replacement_notice'])
@@ -85,8 +96,8 @@ def automatic_checks(root=None,gateway=None):
                     value['current'].update(stage='begin',paused=True)
                     if current.get('begin_error'):value['errors'].append(safe_detail(current['begin_error']))
                 elif current.get('kind')=='origin':value['current']['stage']='origin'
-                elif current.get('evaluate_cycle'):
-                    value['current'].update(stage='evaluate',paused=bool(current.get('evaluate_error')))
+                elif current.get('evaluate_cycle') or current.get('dev_mode')=='agent' and current.get('pair_index')==5 and not current.get('active'):
+                    value['current'].update(stage='evaluate',paused=bool(current.get('evaluate_error') or current.get('dev_mode')=='agent' and value['current']['paused']))
                     if current.get('evaluate_error'):value['errors'].append(safe_detail(current['evaluate_error']))
                 else:value['current'].update(pair=current['pair_index']+1,arm=current['arm'])
                 if current.get('kind')=='cross_seed':value['current'].update(seed=current['target_seed'],stage=current['stage'],pairs_needed=len(current.get('plan',{}).get('pairs',[])))

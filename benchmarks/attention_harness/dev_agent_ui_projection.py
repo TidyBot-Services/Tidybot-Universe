@@ -616,6 +616,7 @@ def compat(cell, agent, ledger_jobs):
                     resume_blocked_reason='This run has finished.' if terminal else None, current_step=None,
                     paused_since=None, paused_seconds_total=0, interrupted_by_stop=None)
     return dict(clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','task_id','seed','policy_id','mode')}),
+                **(dict(memory_visibility='validation_override',memory_visibility_label='Memory visibility override · validation') if cell.get('memory_visibility')=='validation_override' else {}),
                 dev_mode='agent', agent_policy_version=agent.get('agent_policy_version','agent-policy-v1'), artifact_dir=ROOT, versions=versions, help_intervals=intervals,
                 trailing_activity=next((i for i in activity if i['version_id'] is None), None), jobs=jobs, budget=budget, used=used,
                 ledger={'goal':goal}, lifecycle=None if terminal else {'phase':phase, 'can_stop':True},

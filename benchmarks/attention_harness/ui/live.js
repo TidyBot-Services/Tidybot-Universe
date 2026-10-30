@@ -4068,6 +4068,7 @@
     if(!snapshot.agent)return `${runSettings(snapshot)}${runOverview(snapshot)}${executionViewer(snapshot)}${requestPanel(snapshot,chosen)}${resourceDetails(snapshot)}<p class="minor" id="ab-live-message" aria-live="polite"></p>`;
     const append=(html,extra)=>{const end=html.lastIndexOf('</section>');return html.slice(0,end)+extra+html.slice(end);};
     const regions=[runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)];
+      if(snapshot.memory_visibility==='validation_override')regions[0]=append(regions[0],'<p data-memory-visibility>Memory visibility override · validation</p>');
     if(snapshot.agent){
       // Agent runs record their own models; the one-call card text above assumes gpt-6-astra (10-30).
       if(snapshot.agent.eval_model)regions[0]=regions[0].replace(/(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/,(_,a,b)=>`${a}${esc(snapshot.agent.eval_model)}${b}`);
@@ -4813,6 +4814,7 @@
     const session={...s,agent:cell.agent,locked:{...s.locked,config:{...s.locked.config,eval_agent:{enabled:true}}}};
     const snapshot=await devV2WorkspaceSnapshot(session,compat,experiment);
     snapshot.agent=cell.agent;
+    if(compat.memory_visibility==='validation_override')snapshot.memory_visibility=compat.memory_visibility;
     snapshot.task_plan.max_attempts=cell.agent.limits.formal_versions;
     snapshot.requests=[];snapshot.responses={};snapshot.response_evidence={};
     for(const interval of compat.help_intervals||[]){

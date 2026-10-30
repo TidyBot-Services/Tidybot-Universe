@@ -111,3 +111,13 @@ test('policy cards have distinct short names for self-ask, hints and planner',()
    assert.equal(api.policyShort('full_trace_aware_attention_planner',inPath),'Planner');
  }
 });
+test('validation visibility override label is limited to marked arms',async()=>{
+ const s=await snapshot(),api=apiFor(s);
+ assert.ok(!api.workspaceHTML(s,null).includes('data-memory-visibility'));
+ s.memory_visibility='validation_override';
+ assert.match(api.workspaceHTML(s,null),/data-memory-visibility>Memory visibility override · validation/);
+ const cell=structuredClone(fixture.view);
+ cell.dev_v2_compat.memory_visibility='validation_override';
+ const session={session_id:'validation',experiment_id:cell.experiment_id,key:cell.key,channel:'dev_v2',model:cell.agent.dev_model,locked:{config:{suite:'robocasa365',task_id:cell.task_id,seed:cell.seed,robot:'OpenArm365',execution_arm:'both',model_source:'codex'}}};
+ assert.equal((await apiFor().agentWorkspaceSnapshot(session,cell,{state:cell.state,selection:{dev_mode:'agent'}})).memory_visibility,'validation_override');
+});

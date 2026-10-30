@@ -34,6 +34,17 @@ class LedgerRunner:
         from .memory_validation_provision import Provisioner
         return self.origins.needed(note) if isinstance(self.provision,Provisioner) else None
 
+    def note_channel(self,note):
+        return self.client.provenance(note['memory_id']).get('channel')
+
+    def arm_directory(self,current):
+        return self._cell(current)[2]['artifact_dir']
+
+    def arm_error(self,current):
+        cell=self._cell(current)[2]
+        if cell.get('error') or cell.get('state')=='invalid_generation':
+            return str(cell.get('reason') or 'Invalid arm')+(': '+str(cell['error']) if cell.get('error') else '')
+
     def admit_seed(self,note,seed,path):
         from .memory_cross_seed import admit
         return admit(self.provision,note,seed,path)

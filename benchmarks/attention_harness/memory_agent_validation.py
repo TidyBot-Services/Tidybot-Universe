@@ -35,6 +35,15 @@ def origin_policy_version(origin):
     return version
 
 
+def origin_visibility(origin):
+    from .dev_agent_policies import memory_exposed
+    manifest=json.loads(checked(origin['manifest']).read_bytes())
+    cell=next(c for c in manifest['cells'] if c['key']==origin['cell'])
+    if origin_policy_version(origin)=='agent-policy-v2' and not memory_exposed(cell['policy_id']):
+        return 'validation_override'
+    return None
+
+
 def validate_options(selection,origin):
     if not isinstance(origin,dict) or set(origin)!={'manifest','config','source','cell','version'}:
         raise ValueError('agent_memory_or_control_not_supported')
@@ -58,6 +67,9 @@ def validate_manifest(manifest):
     origin=manifest['validation_origin'];validate_options(manifest['selection'],origin)
     version=origin_policy_version(origin)
     rows=[manifest,*manifest['configs'].values(),*manifest['cells']]
+    visibility=origin_visibility(origin)
+    if any((row.get('memory_visibility')!=visibility or ('memory_visibility' in row)!=(visibility is not None)) for row in (manifest,*manifest['cells'])) or any('memory_visibility' in row for row in manifest['configs'].values()):
+        raise ValueError('agent validation memory visibility differs from origin')
     if any(row.get('agent_policy_version','agent-policy-v1')!=version for row in rows):
         raise ValueError('agent validation policy version differs from origin')
     if any(manifest.get(k)!=v for k,v in origin_models(origin).items()):raise ValueError('agent validation models differ from origin')

@@ -222,8 +222,13 @@ class QuotaStop(Exception):
 
 
 def check_dispatch_quota(state,deps,save):
+    current=state.get('current') or {}
+    if current.get('dev_mode')=='agent':
+        from .memory_validation_disk import gate
+        reason=gate(state,deps,current)
+        if reason:raise QuotaStop(reason)
     # Provisioning or importing can take time after tick's initial gate.
-    if not quota_fresh(state.get('weekly_quota_at'),deps.clock()):
+    if (state.get('current') or {}).get('dev_mode')=='agent' or not quota_fresh(state.get('weekly_quota_at'),deps.clock()):
         reason=quota_stop(state,deps,save)
         if reason:raise QuotaStop(reason)
 
@@ -340,8 +345,16 @@ def freeze_plan(memory_id,origin,config,context,signature,pairs,*,policy_id,budg
 
 def prepare_origin(state,deps,note,save,status,*,cross_seed=False):
     """Reserve one replay run before dispatch, through the ordinary worker gates."""
-    needed=getattr(deps.runner,'origin_needed',lambda note:None)(note)
+    try:needed=getattr(deps.runner,'origin_needed',lambda note:None)(note)
+    except Exception as exc:
+        if note.get('channel')!='dev_agent':raise
+        from .notices import safe_detail
+        message='Agent origin preparation failed: '+safe_detail(str(exc) or type(exc).__name__)
+        state.setdefault('note_errors',{})[note['memory_id']]=dict(reason=message,title=note.get('title'),memory_id=note['memory_id'])
+        state.pop('pending',None);save()
+        return status(message)
     if needed is None:return None
+    if note.get('channel')=='dev_agent':needed['channel']='dev_agent'
     key=needed['origin_key']
     if key in state.get('origin_errors',{}):return status(state['origin_errors'][key]['reason'])
     if key in state.get('origin_failures',{}):return status(state['origin_failures'][key]['reason'])
@@ -371,10 +384,14 @@ def advance_origin(state,deps,reason,save,status):
         result=deps.runner.finish(current)
         if result['status']=='error':
             state.setdefault('origin_errors',{})[current['origin_key']]=dict(result,memory_id=current['memory_id'],title=current['title'])
+            if current.get('channel')=='dev_agent':
+                state.setdefault('note_errors',{})[current['memory_id']]=dict(reason=result['reason'],memory_id=current['memory_id'],title=current['title'])
+                state.pop('pending',None)
         elif result['status']!='passed':
             state.setdefault('origin_failures',{})[current['origin_key']]=result
             state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status='inconclusive',note_remains='trusted' if current.get('cross_seed') else 'provisional',decision=dict(decision='inconclusive',reason=result['reason']),origin_failure=result))
             state.pop('pending',None);state.pop('cross_pending',None)
+        if result['status']!='passed' and current.get('channel')=='dev_agent':check_error(state,current,result['reason'])
         state['current']=None;save();return status(result['reason'])
     if reason:
         if not current.get('pause_requested'):deps.runner.pause(current);current['pause_requested']=True;save()
@@ -393,6 +410,15 @@ def begin_item(pending):
                 memory_id=pending['note']['memory_id'],title=pending['note'].get('title') or 'Untitled note')
 
 
+def check_error(state,current,reason):
+    from .notices import safe_detail
+    note=current.get('note') or {}
+    entry=dict(memory_id=current.get('note_id') or current.get('memory_id') or note.get('memory_id'),reason=safe_detail(reason))
+    errors=state.setdefault('check_errors',[])
+    if not errors or errors[-1]!=entry:errors.append(entry)
+    state['check_errors']=errors[-100:]
+
+
 def begin_current(state,deps,save):
     current=state['current']
     # Persist the attempt before external effects. A process restart or an
@@ -400,6 +426,7 @@ def begin_current(state,deps,save):
     current['begin_cycle']=deps.begin_cycle;save()
     batch=deps.runner.begin(current['note'],current['operation'])
     batch.update(pair_index=0,arm='control',active=False,title=current['title'],operation=current['operation'])
+    if current['note'].get('channel')=='dev_agent':batch['note_id']=current['note']['memory_id']
     state['current']=batch;state.pop('pending',None);save()
     return batch
 
@@ -494,6 +521,23 @@ def _tick(state,deps):
     """
     def save():deps.save(state)
     def status(text):
+        item=state.get('current') or state.get('pending') or current or {}
+        note=item.get('note') or {}
+        mid=item.get('note_id') or item.get('memory_id') or note.get('memory_id')
+        agent=item.get('dev_mode')=='agent' or item.get('channel')=='dev_agent' or note.get('channel')=='dev_agent'
+        gate_pause=text.startswith(('Automatic checks paused','Another run','The frozen main matrix',
+            'Automatic checks done for today','Automatic checks waiting until tomorrow'))
+        if agent and state.get('current'):
+            if gate_pause:item['gate_pause_reason']=text
+            else:item.pop('gate_pause_reason',None)
+        if agent and gate_pause:check_error(state,item,text)
+        if item.get('dev_mode')=='agent' and item.get('active') and not item.get('dispatch_pending'):
+            from .memory_validation_disk import progress
+            try:progress(state,deps,item)
+            except Exception as exc:
+                from .notices import safe_detail
+                error=dict(memory_id=mid,reason='Disk measurement failed: '+safe_detail(str(exc)))
+                if error not in state.setdefault('check_errors',[]):state['check_errors'].append(error)
         if state.get('status')!=text:
             state.setdefault('notices',[]).append(dict(title=text,at=deps.clock()))
             state['notices']=state['notices'][-100:]
@@ -563,10 +607,21 @@ def _tick(state,deps):
                 return status('Automatic checks resuming')
             if phase=='completed':
                 # Finish/import before moving the cursor. Retrying uses immutable IDs.
+                if current.get('dev_mode')=='agent':
+                    from .notices import safe_detail
+                    error=getattr(deps.runner,'arm_error',lambda c:None)(current)
+                    if error:
+                        check_error(state,current,error)
+                        save()
+                    from .memory_validation_disk import progress
+                    progress(state,deps,current,finished=True)
                 result=deps.runner.finish(current)
+                if current.get('dev_mode')=='agent':current['last_verdict']=result.get('reason') or result.get('status')
                 if result.get('status')=='invalid_generation':
                     message=discard_pair(state,current,result);save();return status(message)
-                if result.get('status')=='refused':raise ValueError('execution evidence refused; review required')
+                if result.get('status')=='refused':
+                    detail=': '+str(result.get('reason') or 'reason unavailable') if current.get('dev_mode')=='agent' else ''
+                    raise ValueError('execution evidence refused; review required'+detail)
                 if result.get('status')=='failed':
                     # Close using the original sealed verdict; failed arms are never trials.
                     try:decision=deps.client.record_dev_v2_failed_check(**result['failed_check'])
@@ -576,6 +631,7 @@ def _tick(state,deps):
                         state.setdefault('service_gaps',[]).append(gap);state['current']=None;save()
                         return status('Automatic check failed: '+current['title']+'; service decision unavailable: '+gap['reason'])
                     outcome=decision['decision']
+                    if current.get('dev_mode')=='agent':check_error(state,current,decision['reason'])
                     state.setdefault('results',[]).append(dict(memory_id=current['memory_id'],title=current['title'],status=outcome,decision=decision,validation_failure=result,**({'discarded_pairs':current['discarded_pairs']} if current.get('discarded_pairs') else {})))
                     message=('Note rejected after check: '+current['title'] if outcome=='rejected' else decision['reason']+' — '+current['title'])
                     state['current']=None;save();return status(message)
@@ -602,6 +658,10 @@ def _tick(state,deps):
                 return status(current.get('begin_error') or 'Automatic checks paused: interrupted begin; restart or use --retry-current.')
             stop=daily_run_stop(state,deps.root,needed=10)
             if stop:return status(stop)
+            if current['note'].get('channel')=='dev_agent':
+                from .memory_validation_disk import gate
+                stop=gate(state,deps,current,batch=True)
+                if stop:return status(stop)
             current=begin_current(state,deps,save)
         if current and current['pair_index']==5:
             if current.get('evaluate_cycle')==deps.begin_cycle:
@@ -627,7 +687,10 @@ def _tick(state,deps):
         if current is None:
             queued=deps.client.validation_queue()
             closed={r['memory_id'] for r in state.get('results',[]) if r.get('origin_failure')}
+            closed.update(state.get('note_errors',{}))
             state['queue']=[n for n in queued if n['memory_id'] not in closed];save()
+            if queued and not state['queue'] and state.get('note_errors'):
+                return status(next(reversed(state['note_errors'].values()))['reason'])
             if queued and not state['queue'] and not settings(deps.root).get('cross_seed',{}).get('enabled',False):
                 return status(next(r['origin_failure']['reason'] for r in reversed(state['results']) if r.get('origin_failure')))
             if not state.get('pending') and not state['queue']:
@@ -636,12 +699,24 @@ def _tick(state,deps):
             stop=daily_run_stop(state,deps.root,needed=10)
             if stop:return status(stop)
             note=state['pending']['note'] if state.get('pending') else state['queue'][0]
+            if note.get('channel') is None and getattr(deps.runner,'note_channel',lambda n:None)(note)=='dev_agent':
+                note=dict(note,channel='dev_agent')
+            if note.get('channel')=='dev_agent':
+                from .memory_validation_disk import gate
+                stop=gate(state,deps,note,batch=True)
+                if stop:
+                    state['pending']=state.get('pending') or dict(note=note,operation=hashlib.sha256(f"{note['memory_id']}:{note['version']}:{note['uses']}".encode()).hexdigest()[:24])
+                    return status(stop)
             operation=hashlib.sha256(f"{note['memory_id']}:{note['version']}:{note['uses']}".encode()).hexdigest()[:24]
             # Persist the chosen head before candidate creation removes it from the queue.
             state['pending']=state.get('pending') or dict(note=note,operation=operation);save()
             pending=state['pending']
             preparing=prepare_origin(state,deps,pending['note'],save,status)
             if preparing is not None:return preparing
+            if pending['note'].get('channel')=='dev_agent':
+                from .memory_validation_disk import gate
+                stop=gate(state,deps,pending,batch=True)
+                if stop:return status(stop)
             state['current']=begin_item(pending);save()
             current=begin_current(state,deps,save)
         pair=current['plan']['pairs'][current['pair_index']];arm_id=pair[current['arm']+'_cell']
@@ -649,12 +724,18 @@ def _tick(state,deps):
         # consume a slot, but cannot run the same arm twice or exceed the daily cap.
         from .memory_validation_replacements import attempt_version
         count_id=arm_id if attempt_version(current)==1 else f'{arm_id}-v{attempt_version(current)}'
+        if current.get('dev_mode')=='agent':
+            from .memory_validation_disk import gate
+            stop=gate(state,deps,current)
+            if stop:return status(stop)
         counted=state.setdefault('counted',{})
         if count_id not in counted:
             stop=daily_run_stop(state,deps.root)
             if stop:return status(stop)
             counted[count_id]=day;state['runs_today']+=1
-        current.update(arm_id=arm_id,active=True,dispatch_pending=True);save()
+        current.update(arm_id=arm_id,active=True,dispatch_pending=True)
+        if current.get('dev_mode')=='agent':current.update(arm_started_at=deps.clock(),disk_sample_at=0,arm_disk_bytes=0)
+        save()
         check_dispatch_quota(state,deps,save)
         deps.runner.start(current,arm_id)
         current['dispatch_pending']=False;save()
@@ -732,6 +813,7 @@ def reopen_origin(root,memory_id,reason,*,client=None,clock=time.time):
                 finally:os.close(fd)
         state['results']=[r for r in state.get('results',[]) if not (r['memory_id']==memory_id and r.get('status')=='inconclusive' and r.get('origin_failure'))]
         for field in ('origin_failures','origin_errors'):state.get(field,{}).pop(key,None)
+        state.get('note_errors',{}).pop(memory_id,None)
         counted=state.setdefault('counted',{})
         if key in counted:counted[archive.name]=counted.pop(key)
         for field in ('pending','cross_pending'):

@@ -119,3 +119,8 @@ test('quota refresh history shows time, before and after, and plain failure',()=
  const unsafe=automaticHtml({quota_refreshes:[{at:'<script>',before_percent:'<script>',after_percent:NaN,status:'<script>'}]});
  assert.ok(!unsafe.includes('<script>'));assert.ok(unsafe.includes('status unavailable'));
 });
+test('agent automatic checks show note-specific errors and arm progress',()=>{
+ const html=automaticHtml({enabled:true,current:{title:'Cup',memory_id:'note-123',pair:3,arm:'control',dev_model:'gpt-6.1-sol',elapsed_seconds:64,disk_used_bytes:3*1024**3,last_verdict:'passed',paused:true},queue:[{title:'Queued note',memory_id:'note-789'}],errors:['note-123: paused by disk','note-456: origin evidence missing']});
+ for(const text of ['note-123','note-456','note-789','pair 3 of 5','control','gpt-6.1-sol','elapsed 64 s','disk 3.00 GiB','last verdict: passed','paused by disk','origin evidence missing'])assert.ok(html.includes(text),text);
+ assert.equal((html.match(/role="alert"/g)||[]).length,2);
+});

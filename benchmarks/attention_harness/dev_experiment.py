@@ -348,9 +348,12 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         manifest['agent_budget']=dict(formal_versions=10,moving_executions=40,read_only_probes=300,eval_runs=10,help=help_budget,
             sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=21600,model_turns=None,tokens=None)
         if validation_origin is not None:
-            from .memory_agent_validation import ARM_BUDGET
+            from .memory_agent_validation import ARM_BUDGET,origin_visibility
             manifest['agent_budget']=dict(ARM_BUDGET)
             for c in cells:c['excluded_from_results']=True
+            visibility=origin_visibility(validation_origin)
+            if visibility:
+                for row in (manifest,*cells):row['memory_visibility']=visibility
         for config in configs.values():config['dev_mode']='agent'
         if agent_v2:
             from .dev_agent_policy_freeze import freeze
