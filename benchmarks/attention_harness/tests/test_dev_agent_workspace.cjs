@@ -375,4 +375,11 @@ test('task cards summarise every run as an outcome bar with a solved count (10-3
   assert.match(html,/<span class="ab-outcome-text"><b>1<\/b> \/ 4 solved<\/span>/);
   assert.doesNotMatch(html,/op-dots/);
 });
+test('the viewed task stays a white card and the TASKS header has no icon tag (10-30)',()=>{
+  const css=fs.readFileSync(path.join(__dirname,'../ui/index.html'),'utf8');
+  const cleared=css.indexOf('#attentionbench-clear.ab-industrial .ab-sidebar nav>[data-task-group][data-viewing=true]{background:none');
+  const white=css.indexOf('#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>[data-task-group][data-viewing="true"]{background:#fff}');
+  assert.ok(cleared>=0&&white>cleared,'the white card rule must come after the equally specific industrial background:none');
+  assert.doesNotMatch(source+css,/ab-sidebar-tag/);
+});
 
