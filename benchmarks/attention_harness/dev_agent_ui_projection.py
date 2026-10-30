@@ -177,7 +177,7 @@ def attempt_story(review):
     else:
         short, failure = 'awaiting evaluation', None
     # Remove source citations before choosing the first sentence. Full Eval text
-    # remains available in the existing per-attempt details in region 03.
+    # stays in the downloadable agent report (region 03 no longer shows it, 10-30).
     plain = re.sub(r'\([^)]*(?:\.txt|\.json|\.png|e\d{6}|v\d{4})[^)]*\)', '', reason)
     plain = re.sub(r'\b(?:stdout|stderr|trace|state_log|frames)\b.*', '', plain, flags=re.I)
     plain = re.sub(r'\b(?:e\d{6,}|v\d{4,}|[a-f0-9]{32,})\b', '', plain)

@@ -12,7 +12,7 @@ const golden=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/one-call-w
 const harness=fs.readFileSync(path.join(__dirname,'test_dev_workspace.cjs'),'utf8');
 const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.indexOf("test('Current view keeps"))
   .replace('({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',
-    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages})');
+    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages,operatorTitle,taskTitle,taskDisplayName,agentTrialLegend,sidebarRunCard,sidebarTaskSummary})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
 function apiFor(snapshot=null,overrides={}) {
   const calls=[];
@@ -55,8 +55,10 @@ test('agent keeps five regions and selected-attempt evidence without duplicate a
   const {api}=apiFor(snapshot,{sessionStorage:{getItem:key=>key.startsWith('attention.history:')?snapshot.attempts[0].attempt_id:null}});
   const html=api.workspaceHTML(snapshot,null);
   for(let n=1;n<=5;n++)assert.equal((html.match(new RegExp(`class="op-number">0${n}<`,'g'))||[]).length,1);
-  for(const selector of ['data-agent-settings','data-agent-story-open','data-agent-story','data-agent-help-refusal','data-history-replay'])assert.ok(html.includes(selector),selector);
-  for(const text of ['versions 3/10','executions 4/40','probes 2/300','quota stop 90%','fatal_cause: broker_invariant','Try a smaller offset.'])assert.ok(html.includes(text),text);
+  for(const selector of ['data-agent-story-open','data-agent-story','data-agent-help-refusal','data-history-replay'])assert.ok(html.includes(selector),selector);
+  for(const text of ['stopped on a fatal error (broker_invariant)','Try a smaller offset.'])assert.ok(html.includes(text),text);
+  // 10-30: no settings/counter line in 01 and no model subtitle in 02; 05 keeps the counters.
+  assert.doesNotMatch(html,/data-agent-settings|quota stop|Codex subscription/);
   assert.doesNotMatch(html,/data-agent-version=|data-agent-secondary|data-agent-errors|v3 · Execution instruments/);
   assert.ok(!html.includes('Saved static frame'));
   assert.doesNotMatch(html,/&quot;outcome&quot;|&quot;diagnostics&quot;|data-agent-timeline|\/home\/|\/private\//);
@@ -76,7 +78,11 @@ test('one intended one-call visual change: P3 PLAN row replaces revision; every 
   // Second intended change (10-30): region headings drop their question line; 02 keeps only the model source.
   const heading=h=>h.replace(/(<\/h3><span>)[^<]*(<\/span>)/g,'$1$2');
   assert.doesNotMatch(html,/What is the robot trying to do\?|How is it going\?|where did it go wrong\?|Do I need to do anything\?|How much budget is left\?/);
-  assert.equal(heading(html.replace(expectedPlan,'')),heading(golden.html.replace(oldRevision,'')));
+  // Third intended change (10-30): the attention legend lists only the marks the run shows.
+  const legendOf=h=>(h.match(/<div class="op-attn-legend">([^]*?)<\/div>/)||[])[1]||'';
+  assert.doesNotMatch(legendOf(html),/Failed attempt|<i class="solved">|Bar under each help/);
+  const noLegend=h=>h.replace(/<div class="op-attn-legend">[^]*?<\/div>/g,'');
+  assert.equal(noLegend(heading(html.replace(expectedPlan,''))),noLegend(heading(golden.html.replace(oldRevision,''))));
   assert.match(html,/<div class="ab-history-events"[^>]*><details class="op-plan"/);
 });
 test('agent virtual references reject traversal; shared digest check rejects modified evidence',async()=>{
@@ -100,7 +106,9 @@ test('agent help uses two post-attempt boundaries, refused vs delivered, and per
   assert.deepEqual(Array.from(strip.requests,r=>r.after),[0,1]);
   assert.equal(ledger.rows[0].seconds,0);assert.equal(ledger.rows[0].effect,'no_reply');
   const html=api.workspaceHTML(snapshot,null);
-  for(const text of ['Completed on attempt 3 of 10','on attempt 3 of 10','274.8 s','corrected; recorded 1231.96 s','1 delivered and charged, 1 refused and not charged','1 of 1 delivered','not delivered'])assert.ok(html.includes(text),text);
+  for(const text of ['Completed on attempt 3 of 10','on attempt 3 of 10','274.8 s','corrected; recorded 1231.96 s','1 of 1 delivered','not delivered'])assert.ok(html.includes(text),text);
+  // 10-30: the "N delivered and charged, M refused" line is gone; corrections stay in the Human attention tooltip.
+  assert.doesNotMatch(html,/delivered and charged|refused and not charged|data-agent-attention-detail/);
   assert.match(html,/After attempt 1<\/b><small> · refused \(evaluation-derived text rejected at Dev boundary\)/);
   assert.match(html,/After attempt 2<\/b><small>Answered( in [^<]+)?<\/small>/);
   assert.ok(!html.includes('all undefined cells') && html.includes('This run has ended. The help the robot received is listed below.'));
@@ -151,6 +159,12 @@ test('r6 timeline shows request-sequence dots, short verdicts and clean selected
   assert.equal((html.match(/<circle class="op-agent-trial red"/g)||[]).length,2);
   for(const text of ['18 checks · 2 previews','23 checks · 1 preview','20 checks · 1 preview','grasp not confirmed','out of reach','solved','Trial run, kept going','Trial run stopped by a safety limit'])assert.ok(html.includes(text),text);
   assert.match(html,/op-attn-help automatic dashed/);
+  // 10-30: the legend lists only marks this run shows.
+  const legend=html.match(/<div class="op-attn-legend">([^]*?)<\/div>/)[1];
+  assert.match(legend,/<i class="automatic"><\/i>Automatic advisor/);
+  assert.doesNotMatch(legend,/Failed attempt|<i class="solved">|Person replied|Bar under each help/);
+  assert.equal(api.agentTrialLegend([]),'');
+  assert.doesNotMatch(api.agentTrialLegend([{color:'red'}]),/kept going/);
   api.selectAgentAttempt(snapshot,snapshot.attempts[1].attempt_id);
   const card=api.agentTimelineDetail(snapshot,null);
   for(const text of ['Attempt 2','Not solved · Eval fail','out of reach','Before this attempt','help not delivered','23 checks · 1 preview','gripper speed limit'])assert.ok(card.includes(text),text);
@@ -308,7 +322,57 @@ test('agent cards show each run\'s recorded Dev, Eval and Advisor models (10-30:
     const html=api.workspaceHTML(view,null);
     assert.equal(card(html,'Eval agent')[1],model);
     assert.ok(card(html,'Help strategy')[2].endsWith(`an automatic advisor answers · ${model}`),card(html,'Help strategy')[2]);
-    assert.match(html,new RegExp(`Dev ${model.replace('.','\\.')} · Eval ${model.replace('.','\\.')} · Advisor ${model.replace('.','\\.')}`));
-    if(model!=='gpt-6-astra')assert.doesNotMatch(html.slice(0,html.indexOf('data-agent-settings')),/gpt-6-astra/);
+    assert.doesNotMatch(html,/data-agent-settings|Codex subscription/);
+    if(model!=='gpt-6-astra')assert.doesNotMatch(html.slice(0,html.indexOf('data-core-region="status"')),/gpt-6-astra/);
   }
 });
+test('the launch name suffix stays in the run list but not in the headline, 01 Task or tab title (10-30)',async()=>{
+  const {snapshot}=await agentSnapshot();
+  const view={...snapshot,run:{...snapshot.run,name_suffix:'line B agent sol'}},{api}=apiFor(view);
+  assert.ok(api.taskDisplayName(view.run).endsWith(' -- line B agent sol'));
+  assert.doesNotMatch(api.taskTitle(view.run),/line B agent sol/);
+  assert.doesNotMatch(api.operatorTitle(view),/line B agent sol/i);
+  const html=api.workspaceHTML(view,null),setup=html.slice(0,html.indexOf('data-core-region="status"'));
+  assert.match(setup,/<span>Task<\/span>/);
+  assert.doesNotMatch(setup,/line B agent sol/);
+});
+test('agent cost bars sit clear of the segment caption above them (10-30)',async()=>{
+  const snapshot=await timelineSnapshot(),{api}=apiFor(snapshot,{sessionStorage:memoryStorage()});
+  const html=api.attentionEfficiency(snapshot);
+  const captions=[...html.matchAll(/<text class="op-agent-activity" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
+  const bars=[...html.matchAll(/<rect class="op-attn-cost" x="[^"]+" y="([\d.]+)" width="26" height="([\d.]+)"/g)].map(m=>({top:Number(m[1]),bottom:Number(m[1])+Number(m[2])}));
+  const labels=[...html.matchAll(/<text class="op-attn-cost-label" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
+  const height=Number(html.match(/<svg viewBox="0 0 [\d.]+ ([\d.]+)"/)[1]);
+  assert.ok(captions.length&&bars.length&&labels.length);
+  for(const bar of bars)assert.ok(bar.top-Math.max(...captions)>=8,`bar top ${bar.top} vs caption ${Math.max(...captions)}`);
+  for(const label of labels)assert.ok(label+6<=height,`cost label ${label} inside svg height ${height}`);
+});
+test('task-group run cards lead with the robot and a compact time, show only explicit renames; other lists keep the task name (10-30)',()=>{
+  const {api}=apiFor(null,{selectedDev:null,selectedRun:null,pins:new Set()});
+  const r={run_id:'v2-card',session_id:'v2-card',development:true,suite:'robocasa365',task_id:'pick_place_counter_to_sink',name_suffix:'line B agent sol',
+    robot:{model:'OpenArm365',execution_arm:'both'},created_at:1793260564,status:'completed',policy_ids:['reactive_help'],attempts_used:3,attempts_limit:10,agent:true,versions:[],jobs:[]};
+  const grouped=api.sidebarRunCard(r,true),plain=api.sidebarRunCard(r);
+  // Outcome-rail card (10-30): robot + compact time, then version bar, count, coloured strategy chip and status text.
+  assert.match(grouped,/<article [^>]*data-card="rail"/);
+  assert.match(grouped,/<strong data-run-name[^>]*>OpenArm365 · Both arms<\/strong><small class="ab-record-time">[A-Z][a-z]{2} \d{1,2} · \d{2}:\d{2}<\/small><\/button>/);
+  assert.match(grouped,/<div class="ab-run-rail-meta"><span class="ab-run-bar" title="3 of 10 formal versions used"><i style="width:30%"><\/i><\/span><span class="ab-run-rail-text">3\/10<\/span><span class="ab-run-badge" data-run-badge="strategy" data-policy="reactive_help" title="Help strategy: [^"]+"[^>]*><svg[^]*?<\/svg>[^<]+<\/span><span class="ab-run-status"[^>]*>[^<]+<\/span><\/div>/);
+  assert.doesNotMatch(grouped,/ab-run-badges|ab-run-metadata|SDK description|ab-run-label|line B agent sol<\/small>/);
+  const renamed=api.sidebarRunCard({...r,development:false,display_name:'Demo for Monday'},true);
+  assert.match(renamed,/<small class="ab-run-label" title="Demo for Monday">Demo for Monday<\/small>/);
+  assert.match(plain,/<strong data-run-name[^>]*>[^<]* -- line B agent sol<\/strong>/);
+  assert.match(plain,/<small class="ab-run-metadata">OpenArm365 · Both arms<\/small>/);
+  assert.doesNotMatch(plain,/ab-run-label|data-card=|ab-run-rail-meta/);
+  assert.match(plain,/<div class="ab-run-badges">/);
+});
+test('task cards summarise every run as an outcome bar with a solved count (10-30 sidebar 4B)',()=>{
+  const {api}=apiFor(null,{selectedDev:null,selectedRun:null,pins:new Set()});
+  const base={suite:'robocasa365',task_id:'pick_place_counter_to_sink'};
+  const rows=[{...base,run_id:'a',status:'completed',agent:true,agent_solved:true},{...base,run_id:'b',status:'failed'},{...base,run_id:'c',status:'failed'},{...base,run_id:'d',status:'needs_review',reason:'eval disagreement'}];
+  const html=api.sidebarTaskSummary(rows,null);
+  assert.match(html,/<summary class="ab-task-summary" data-outcome-summary><strong class="ab-task-title"[^>]*>Pick Place: Counter → Sink<\/strong><span class="ab-task-count"[^>]*>4<\/span>/);
+  assert.match(html,/<span class="ab-outcome-bar"><i class="success" style="width:25.0%"><\/i><i class="failed" style="width:50.0%"><\/i><i class="waiting" style="width:25.0%"><\/i><\/span>/);
+  assert.match(html,/title="1 solved · 2 failed · 1 need you"/);
+  assert.match(html,/<span class="ab-outcome-text"><b>1<\/b> \/ 4 solved<\/span>/);
+  assert.doesNotMatch(html,/op-dots/);
+});
+

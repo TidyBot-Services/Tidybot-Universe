@@ -6,9 +6,9 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/d5-agent-run.json'),'utf8'));
 const functions=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
-const render=source.slice(source.indexOf('  function agentSettingsLine('),source.indexOf('  async function agentWorkspaceSnapshot('));
+const render=source.slice(source.indexOf('  function enterAgentWorkspace('),source.indexOf('  async function agentWorkspaceSnapshot('));
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,runConfigDefaultsFromSelection,agentSettingsLine,agentActivityCaption,agentTrialChips})',{esc});
+const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,runConfigDefaultsFromSelection,agentActivityCaption,agentTrialChips})',{esc});
 const old={eval_agent:{enabled:true,model:'parcc/Qwen'},request_key:'unchanged-123',tasks:['open_cabinet'],seeds:[102],policies:['reactive_help'],mode:'experiment',help_budget:5,human_wait_seconds:300,configuration:{goal_id:'old-goal-123',experiment_budget:{executions:5},cell_budget:{executions:5},max_iterations:5,wall_seconds:21600}};
 
 test('absent mode and explicit one-call keep original body bytes and identity',()=>{
@@ -42,11 +42,10 @@ test('Run again restores agent models, old selection gains no agent defaults',()
 });
 test('agent facts fit the original workspace without raw sections',()=>{
   const activity=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/agent-timeline-r6.json'))).versions[1].before_attempt;
-  const html=api.agentSettingsLine(fixture.agent)+api.agentActivityCaption(activity)+api.agentTrialChips(activity);
-  for(const text of ['versions 3/10','executions 4/40','probes 2/300','wall 0:00/6:00','gpt-6-sol','gpt-6-astra','23 checks · 1 preview','1 trial run · gripper speed limit'])assert.ok(html.includes(text),text);
+  // 10-30: the settings/counter line was removed; activity captions remain.
+  const html=api.agentActivityCaption(activity)+api.agentTrialChips(activity);
+  for(const text of ['23 checks · 1 preview','1 trial run · gripper speed limit'])assert.ok(html.includes(text),text);
   assert.doesNotMatch(html,/<pre|\{&quot;/);
-  const fatal={...fixture.agent,fatal_cause:'broker_invariant',details:[{source:'Eval',error:'Exact timeout: <script>alert(1)</script>'}]};
-  assert.match(api.agentSettingsLine(fatal),/fatal_cause: broker_invariant/);
   assert.doesNotMatch(html,/data-agent-errors|data-agent-secondary|stdout/);
 });
 test('new controls are connected to actual launcher serialization and separate agent rendering',()=>{

@@ -7,3 +7,13 @@ for(const enabled of [true,false]) {
  assert.ok(!html.includes('<button'));
 }
 console.log('PASS: family cards, exact labels/statements, escaping, neutral-only, revocation; no switch controls');
+for(const enabled of [true,false]) {
+ const html=automaticHtml({enabled,family:{fixtures:[],candidates:[],events:[]}});
+ assert.ok(html.includes('<h3>Family</h3>'));
+ assert.ok(html.includes('No family checks yet'));
+ assert.ok(!automaticHtml({enabled,family}).includes('No family checks yet'));
+}
+const notices=familyHtml({fixtures:[],candidates:[],events:[{kind:'fixture_revoked',reason:'End <test>'}]});
+assert.ok(notices.includes('fixture_revoked · End &lt;test&gt;'));
+assert.ok(!notices.includes('No family checks yet'));
+console.log('PASS: explicit empty Family state, populated cards and notices preserved');

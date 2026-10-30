@@ -11,18 +11,18 @@ function load(name,globals={}) {
   return vm.runInNewContext(source.slice(start,end)+`\n${name}`,globals);
 }
 const common={esc:String,devV2State:()=> 'completed',devEndSummary:()=>'',policyTitle:String,policyShort:String,recordIsActive:()=>false};
-test('history labels come from the frozen config, with legacy stationary fallback',()=>{
+test('history records keep the frozen description; the sidebar cards no longer show it (10-30)',()=>{
   const navigation=load('devNavigationRecord',common);
   const badges=load('sidebarRunBadges',common);
   for(const description of ['base enabled','base stationary',undefined]) {
     const r=navigation({session_id:'v2-test',locked:{config:{dev_sdk_description:description,dev_sdk_sha256:'a'.repeat(64)}}});
-    assert.match(badges(r),new RegExp(`SDK description: ${description||'base stationary'}`));
-    assert.match(badges(r),/title="a{64}"/);
+    assert.equal(r.dev_sdk_description,description||'base stationary');
+    assert.doesNotMatch(badges(r),/SDK description|sdk-description/);
   }
   assert.doesNotMatch(badges({development:false}),/SDK description/);
 });
 test('run detail labels use the same frozen description and digest',()=>{
-  const title=load('operatorTitle',{...common,taskDisplayName:()=> 'Open cabinet',navigationRecords:()=>[],
+  const title=load('operatorTitle',{...common,taskTitle:()=> 'Open cabinet',taskDisplayName:()=> 'Open cabinet',navigationRecords:()=>[],
     relativeTime:()=>'',policyTitle:String,isTerminal:()=>false});
   for(const description of ['base enabled','base stationary',undefined]) {
     const result=title({run:{},dev_session:{locked:{config:{dev_sdk_description:description,dev_sdk_sha256:'b'.repeat(64)}}}});
