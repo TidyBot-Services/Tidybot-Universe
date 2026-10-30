@@ -116,7 +116,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         _planner_source(planner_source,budget_tier)
     planner_args={} if planner_source is None else dict(planner_source=planner_source)
     collaboration=selection.get('bimanual_collaboration','none')
-    if collaboration not in ('none','c1'):raise ValueError('bimanual_collaboration must be none or c1')
+    if collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
     task_limits(budget_tier)
     # Run notes are local metadata, also supported by the daily legacy budget
     # envelope without changing its runtime, budget or accounting rules.

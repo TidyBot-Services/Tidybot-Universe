@@ -64,7 +64,7 @@ class OpenArm365DevRunnerV2:
             policy_executor, sdk_builder = execute_agent_policy, agent_sdk
         from curobo_v2.execution_settings import from_config,receipt_fields
         execution_labels=receipt_fields(from_config(c.get('execution_settings')))
-        if c.get('bimanual_collaboration')=='c1':execution_labels['bimanual_collaboration']='c1'
+        if c.get('bimanual_collaboration') in ('c1','handoff'):execution_labels['bimanual_collaboration']=c['bimanual_collaboration']
         if c.get('budget_tier','legacy')!='dev':tier=None
         if request.task_id!=c['task_id'] or request.seed!=c['seed']:raise ValueError('Locked 365 task/seed mismatch')
         seconds,limit=self.budgets(request,c)
