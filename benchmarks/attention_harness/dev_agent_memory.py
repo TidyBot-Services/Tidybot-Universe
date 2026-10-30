@@ -45,6 +45,13 @@ class Memory:
         self.generations[number] = packet
         return self.message
 
+    def clear(self, number, previous):
+        """v2 query failure: invalidate earlier grants without re-querying Service."""
+        self.number,self.previous,self.packet,self.service=number,previous,dict(EMPTY_MEMORY),None
+        self.generations[number]=self.packet
+        self.workspace.publish(f'memory/v{number}.json',dict(memory=[]))
+        self.message=f'Memory for v{number}: memory/v{number}.json (0 notes)'
+
     def start(self):
         versions = self.store.cell(self.key).get('versions', [])
         if versions:

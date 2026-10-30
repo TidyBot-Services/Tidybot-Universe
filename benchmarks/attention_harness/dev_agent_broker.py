@@ -74,8 +74,20 @@ class FakeEvaluator:
 class Broker:
     def __init__(self, workspace, *, executor, prober, evaluator, helper=None, budget=None,
                  agent_mode=False, timeouts=None, quota=None, on_cut=None, on_version=None,
-                 on_execution=None, on_settled=None, quiesce=nullcontext, memory=None, before_step=lambda kind:True):
+                 on_execution=None, on_settled=None, quiesce=nullcontext, memory=None, before_step=lambda kind:True,
+                 agent_policy_version='agent-policy-v1'):
         if agent_mode is not True: raise ValueError('agent_mode_required')
+        if agent_policy_version not in ('agent-policy-v1','agent-policy-v2'):
+            raise ValueError('unsupported agent policy version')
+        if helper and getattr(helper,'agent_policy_version',agent_policy_version)!=agent_policy_version:
+            raise ValueError('helper policy version mismatch')
+        version_path=workspace.private/'agent-policy-version.json'
+        if version_path.exists() and json.loads(read_beneath(workspace.private,'agent-policy-version.json'))!=agent_policy_version:
+            raise ValueError('broker policy version mismatch')
+        if agent_policy_version=='agent-policy-v2':
+            if helper is None:raise ValueError('v2 helper required')
+            atomic_write(workspace.private,'agent-policy-version.json',encode(agent_policy_version))
+        self.agent_policy_version=agent_policy_version
         self.workspace = workspace
         self.quota=quota; self.stop_reason=None
         self.on_cut=on_cut; self.on_version=on_version; self.on_execution=on_execution
@@ -196,6 +208,14 @@ class Broker:
                     return reject('invalid_summary')
                 if screen_text(summary) != summary:
                     return reject('unsafe_summary')
+            if op == 'submit' and self.agent_policy_version=='agent-policy-v2' and self.helper.pending_ask:
+                response['result']=dict(self.helper.pending_ask)
+                receipt=reject('ask_required')
+                # Publish the immutable rejection before queueing help; provider work
+                # must never block the acceptance lock or revive this submission.
+                self.active='fallback:'+rid
+                self.pool.submit(self._force_pending,rid)
+                return receipt
             source = None; invalid = False; frozen = None; validation_error=None
             if hasattr(self.budget,'request_id'):self.budget.request_id=rid
             try:
@@ -265,6 +285,27 @@ class Broker:
                 try:self._publish(response)
                 except (OSError,ValueError):pass
             return dict(response)
+
+    def _force_pending(self,rid):
+        try:
+            result=self.helper.force_pending(trigger='next_submit',deadline=self.budget.deadline)
+            if result is not None:self.workspace.publish('events/fallback-'+rid+'.json',result)
+        except Exception as exc:
+            atomic_write(self.workspace.private,'errors/fallback-'+rid+'.json',encode(soft_error(exc)))
+        finally:
+            with self.lock:
+                self.active=None
+                self._regenerate_history()
+                self.workspace.regenerate()
+
+    def _metadata(self,response,*,dispatched=False):
+        prior=[r['response'] for r in self.records.values() if r['request']['op']=='submit'
+               and r['response'].get('version_id') and r['response']['sequence']<response['sequence']]
+        generation=response.get('version_id') or 'v%04d'%(len(prior)+1)
+        return dict(request_id=response['request_id'],execution_id=response.get('execution_id'),
+                    sequence=response['sequence'],op=response['op'],
+                    generation_id=generation,source_sha256=self.records[response['request_id']].get('source_sha256'),
+                    execution_dispatched=dispatched,agent_policy_version=self.agent_policy_version)
 
     def _previous_formal_sha256(self):
         rows=[r for r in self.records.values() if r['request']['op']=='submit' and r['response'].get('version_id')
@@ -397,6 +438,8 @@ class Broker:
                         raise BrokerInvariant('probe_owner_unrecoverable')
                     value = dict(probe_error=dict(error_class=type(exc).__name__, message=screen_text(str(exc))[:500]),
                                  owner_restarted=True, state_basis='reset_scene', physics_steps=0)
+                if self.agent_policy_version=='agent-policy-v2':
+                    value=dict(value,**self._metadata(response))
                 artifact = self.workspace.publish('probes/' + response['probe_id'] + '.json', value)
                 self._history('probes', dict(probe_id=response['probe_id'], artifact=artifact))
             elif op in ('submit', 'run'):
@@ -446,6 +489,11 @@ class Broker:
                                getattr(self.executor,'execution_usage',None) if errored is None else None)
                         self.budget.ledger.record_execution('request:'+rid,usage)
                     value = step('execution_artifacts', self._execution, eid, source, result)
+                    if self.agent_policy_version=='agent-policy-v2' and value is not None:
+                        metadata=self._metadata(response,dispatched=not not_dispatched)
+                        metadata['artifacts']=value['artifacts']
+                        self.workspace.publish('executions/'+eid+'/execution.json',metadata)
+                        if not not_dispatched:self.helper.register_execution(metadata)
                     if value is None:
                         value = dict(outcome=public_outcome('failed', [], error='artifacts_unavailable'), artifacts={})
                     if errored:value['execution_error']=errored
@@ -467,6 +515,9 @@ class Broker:
                             self.workspace.publish(base+'sources/'+path.name,feedback(path.read_text()).encode())
                     step('version_files', publish_version)
                     value.update(version_id=vid,execution_id=response.get('execution_id'))
+                    if self.agent_policy_version=='agent-policy-v2':
+                        value.update(sequence=response['sequence'],source_sha256=record['source_sha256'],
+                                     execution_dispatched=response.get('execution_dispatched',not invalid))
                     if invalid or memory_revoked:
                         verdict=dict(status='memory_revoked' if memory_revoked else 'not_run_invalid_submission',passed=None)
                     else:
@@ -492,7 +543,7 @@ class Broker:
                     if self.on_cut:step('cut_post_feedback', self.on_cut, 'post-feedback', response)
                     value['help'] = dict(status='not_requested')
                     step('help_file', self.workspace.publish, base + 'help.json', value['help'])
-                    step('version_history', self._history, 'versions', dict(source_sha256=record['source_sha256'],source_bytes=len(source),**value))
+                    step('version_history', self._history, 'versions', dict(value,source_sha256=record['source_sha256'],source_bytes=len(source)))
                     # Record Eval and completion before requesting any new help.
                     # A completed run terminates here, even when Eval disagrees.
                     # on_version writes the ledger version row: a ledger invariant.
