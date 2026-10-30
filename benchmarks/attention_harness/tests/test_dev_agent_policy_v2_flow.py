@@ -1,8 +1,10 @@
 """P2 integration: real broker/ledger/controller with entirely offline collaborators."""
 from contextlib import nullcontext
+import base64
 import hashlib
 import io
 import json
+import random
 import threading
 import time
 from types import SimpleNamespace
@@ -319,16 +321,81 @@ def test_request_public_identity_code_frames_and_logs(tmp_path,monkeypatch):
         assert 'e000001' in view['reasoning'] and source in view['reasoning'] and 'FORGED' not in view['reasoning']
         assert 'ValueError: grasp missed 42' in view['reasoning'] and view['frames']
         assert view['request_kind']=='targeted'
-        assert view['frames'][0]['sha256']==hashlib.sha256(__import__('base64').b64decode(view['frames'][0]['data_url'].split(',')[1])).hexdigest()
+        frame=view['frames'][0]
+        raw=(r.ws.canonical/'executions/e000001'/frame['filename']).read_bytes()
+        assert frame['sha256']==hashlib.sha256(raw).hexdigest()
+        assert frame['data_url'].startswith('data:image/jpeg;base64,')
     finally:r.close()
 
 
-def test_frame_digest_failure_is_free(tmp_path):
-    r=Rig(tmp_path,'agent_initiated_help')
+@pytest.fixture(scope='module')
+def full_hd_png():
+    # Incompressible, reproducible pixels exercise real 1080p payload sizes and RGB conversion.
+    pixels=random.Random(102).randbytes(1920*1080*3)
+    image=Image.frombytes('RGB',(1920,1080),pixels).convert('RGBA')
+    raw=io.BytesIO();image.save(raw,format='PNG')
+    return raw.getvalue()
+
+
+@pytest.mark.parametrize('targeted',[False,True],ids=['ten-frame-fallback','targeted'])
+def test_request_full_hd_jpeg_size_sha_and_selected_only(tmp_path,monkeypatch,full_hd_png,targeted):
+    r=Rig(tmp_path,'agent_initiated_help');original=r.executor.execute
+    def execute(*a,**kw):
+        result=original(*a,**kw)
+        result['trace'][0]['timestamp']=5.2
+        result['frames']=[dict(filename=f'frames/overview-{i:06d}.png',view='overview',
+            sim_seconds=i,trace_seconds=i,timestamp_basis='relative' if targeted else 'unknown',
+            data=full_hd_png) for i in range(12)]
+        return result
+    monkeypatch.setattr(r.executor,'execute',execute)
+    encoded=[];original_encode=base64.b64encode
+    def capture(raw):
+        encoded.append(raw)
+        return original_encode(raw)
     try:
-        r.call('run');path=r.ws.canonical/'executions/e000001/frames/overview-000000.png'
+        assert r.call('run')['status']=='completed'
+        with monkeypatch.context() as patch:
+            patch.setattr(base64,'b64encode',capture)
+            assert r.call('ask_help',{'question':'How can I fix this?'})['result']['delivered']
+        view=r.advisor.calls[0]
+        assert view['request_kind']==('targeted' if targeted else 'generic')
+        assert len(view['frames'])==len(encoded)==(1 if targeted else 10)
+        rows=json.loads((r.ws.canonical/'executions/e000001/frames.json').read_bytes())
+        public={row['filename']:row for row in rows}
+        assert len(public)==12
+        assert [frame['filename'] for frame in view['frames']]==(
+            [rows[5]['filename']] if targeted else [row['filename'] for row in rows[:10]])
+        for frame,raw in zip(view['frames'],encoded):
+            prefix,payload=frame['data_url'].split(',',1)
+            assert prefix=='data:image/jpeg;base64'
+            assert len(payload)<300_000
+            assert base64.b64decode(payload)==raw
+            with Image.open(io.BytesIO(raw)) as image:
+                assert image.format=='JPEG' and image.mode=='RGB'
+                assert image.size==(768,432)
+            assert frame['sha256']==public[frame['filename']]['sha256']==hashlib.sha256(full_hd_png).hexdigest()
+        assert len(encode(view))<3_000_000
+        print(f"{view['request_kind']}: PNG={len(full_hd_png)} bytes; JPEG={len(encoded[0])} bytes; "
+              f"base64={len(view['frames'][0]['data_url'].split(',',1)[1])} bytes; "
+              f"view ({len(view['frames'])} frames)={len(encode(view))} bytes")
+    finally:r.close()
+
+
+@pytest.mark.parametrize('corrupt_index',[0,1],ids=['selected','unselected'])
+def test_frame_digest_failure_is_free(tmp_path,monkeypatch,corrupt_index):
+    r=Rig(tmp_path,'agent_initiated_help')
+    original=r.executor.execute
+    def execute(*a,**kw):
+        result=original(*a,**kw)
+        result['frames'].append(dict(result['frames'][0],filename='frames/overview-000001.png',
+            sim_seconds=1,trace_seconds=1))
+        return result
+    monkeypatch.setattr(r.executor,'execute',execute)
+    try:
+        r.call('run');path=r.ws.canonical/f'executions/e000001/frames/overview-{corrupt_index:06d}.png'
         # Replace the inode instead of modifying the read-only shared public frame.
         path.unlink();path.write_bytes(b'wrong image')
+        monkeypatch.setattr(base64,'b64encode',lambda *a:pytest.fail('encoded before SHA verification'))
         result=r.call('ask_help',{'question':'Help?'})['result']
         assert result['reason']=='public_view_unavailable' and not r.advisor.calls
     finally:r.close()

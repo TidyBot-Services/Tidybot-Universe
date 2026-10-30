@@ -440,7 +440,9 @@ class HelperV2(Helper):
 def public_request_view(helper, eid, decision, *, origin=None, question=None):
     """Advisor packet from hash-verified public artifacts, without episode readers."""
     import base64
+    import io
     import math
+    from PIL import Image
     from .dev_request_view import build_request_view
     from .moment_localization import select_moments, validate_selected_moments
     metadata = helper._read_ref(helper.state['executions'][eid]['context_ref'])
@@ -455,12 +457,13 @@ def public_request_view(helper, eid, decision, *, origin=None, question=None):
     try:old = read_beneath(helper.workspace.canonical, previous, LIMIT).decode()
     except FileNotFoundError:old = helper.config.get('initial_source', '')
     diff = ''.join(difflib.unified_diff(old.splitlines(True),source.splitlines(True),fromfile='previous',tofile=eid))
-    frame_rows = json.loads(values['frames.json'] or b'[]');verified=[]
+    frame_rows = json.loads(values['frames.json'] or b'[]');verified=[];frame_bytes={}
     for frame in frame_rows:
         name = 'executions/'+eid+'/'+frame['filename']
         raw = read_beneath(helper.workspace.canonical, name, LIMIT, shared=shared_name(name))
         if digest(raw)!=frame['sha256']:raise ValueError('public frame digest mismatch')
-        verified.append(dict(frame, data_url='data:image/png;base64,'+base64.b64encode(raw).decode()))
+        verified.append(frame)
+        frame_bytes[frame['filename']] = raw
     events = [dict(row, event_id=str(row.get('event_id') or f'{eid}:{i}')) for i,row in enumerate(trace)]
     ids = [row['event_id'] for row in events if row.get('status') in ('failed','rejected','blocked')][:1]
     # Only an explicit common relative trace clock supports targeted selection.
@@ -473,6 +476,15 @@ def public_request_view(helper, eid, decision, *, origin=None, question=None):
         max_frames=helper.config['advisor_proxy']['max_selected_frames'])
     validate_selected_moments(selected, localization)
     frames = [external[m['frame_index']] for m in selected] if selected else verified[:helper.config['advisor_proxy']['max_selected_frames']]
+    # Match dev_agent_attention.request_view's v1 encoding exactly, after selection.
+    visual = []
+    for frame in frames:
+        with Image.open(io.BytesIO(frame_bytes[frame['filename']])) as image:
+            picture=image.convert('RGB')
+            if picture.width>768:picture=picture.resize((768,max(1,round(picture.height*768/picture.width))))
+            output=io.BytesIO();picture.save(output,format='JPEG',quality=80)
+        visual.append(dict(frame, data_url='data:image/jpeg;base64,'+base64.b64encode(output.getvalue()).decode()))
+    frames = visual
     tails = 'stdout:\n'+(values['stdout.txt'] or b'').decode()[-980:]+'\nstderr:\n'+(values['stderr.txt'] or b'').decode()[-980:]
     entry = helper.state['versions'].get(origin)
     if entry: evidence = helper._read_ref(entry['evidence_ref'])
