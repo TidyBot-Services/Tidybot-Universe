@@ -4,6 +4,7 @@ import io
 import json
 import time
 from pathlib import Path
+from threading import Event
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 
@@ -83,7 +84,22 @@ def until(state,deps,predicate,timeout=180):
 
 
 def test_production_worker_gates_resume_and_ten_arms(tmp_path,monkeypatch):
-    f,d,calls=production(tmp_path,monkeypatch,policy_version='agent-policy-v2',policy='trace_aware_hint_only')
+    # One formal execution per arm makes dispatch counts unambiguous; phase 3
+    # separately covers the optional no-eval trial before formal submission.
+    script=("tool('observe'); packet=json.loads(Path('memory/v1.json').read_text()); "
+        "assert Path('work/main.py').read_bytes()==Path('origin/policy.py').read_bytes(); "
+        "assert Path('origin/public-feedback.json').exists(); "
+        "Path('work/main.py').write_text(Path('work/main.py').read_text()+"
+        "('\\n# fixed\\n' if packet['memory'] else '\\n# control\\n')); tool('submit')")
+    f,d,calls=production(tmp_path,monkeypatch,policy_version='agent-policy-v2',policy='trace_aware_hint_only',script=script)
+    started,release=Event(),Event()
+    execute=f.runner.runner_factory.execute
+    def controlled_execute(self,request):
+        if not started.is_set():
+            started.set()
+            assert release.wait(180),'first arm was not released'
+        return execute(self,request)
+    monkeypatch.setattr(f.runner.runner_factory,'execute',controlled_execute)
     state={}
     try:
         with synthetic_creation(f.native):
@@ -94,26 +110,46 @@ def test_production_worker_gates_resume_and_ten_arms(tmp_path,monkeypatch):
             assert state['disk_gate']['required_bytes']==80*GIB
             monkeypatch.setattr(dev_disk,'status',lambda root:dict(dev_disk.thresholds(),free_gb=200*GIB/1e9,used_percent=1))
             until(state,d,lambda:bool((state.get('current') or {}).get('dev_mode')))
-            current=state['current'];assert current['dev_mode']=='agent'
-            until(state,d,lambda:d.runner.poll(current)=='completed')
-            first=current['arm_id']
-            # Fresh quota changed since tick admission, before dispatch of treatment.
+            assert state['current']['dev_mode']=='agent'
+            assert started.wait(30),'first arm was not dispatched'
+            assert d.runner.poll(state['current'])=='running'
+            first=state['current']['arm_id']
+            # Install the changed quota while control is running. Admission sees
+            # 1%, then the fresh check immediately before treatment sees 60%.
             reads=[0]
             def quota():
                 reads[0]+=1
                 return dict(used_percent=1 if reads[0]==1 else 60,observed_at=time.time())
             d.quota=quota
-            worker.tick(state,d)
+            release.set()
+            # Waiting on the arm itself cannot tick the worker into treatment.
+            d.runner.futures[first].result(timeout=180)
+            executions_before_stop=list(f.executions)
+            futures_before_stop=set(d.runner.futures)
+            assert len(executions_before_stop)==1
+            until(state,d,lambda:len((state.get('current') or {}).get('trials',{}))==1)
             assert 'stop at 60%' in state['status'],state
-            assert len(current['trials'])==1 and current['dispatch_pending'] and current['arm']=='treatment'
-            assert first in current['arm_measurements'] and state['agent_arm_measured_max_bytes']>0
+            assert reads[0]==2
+            assert f.executions==executions_before_stop
+            assert state['current']['dispatch_pending'] and state['current']['arm']=='treatment'
+            assert first in state['current']['arm_measurements'] and state['agent_arm_measured_max_bytes']>0
+            for _ in range(3):
+                worker.tick(state,d)
+                assert 'stop at 60%' in state['status'],state
+                assert len(state['current']['trials'])==1 and state['current']['dispatch_pending']
+                assert state['current']['arm']=='treatment'
+                assert f.executions==executions_before_stop
+                assert set(d.runner.futures)==futures_before_stop
             # Restart from persisted state while a not-yet-dispatched arm is paused.
-            state=json.loads((d.root/'state.json').read_bytes());current=state['current']
+            state=json.loads((d.root/'state.json').read_bytes())
             d.quota=lambda:dict(used_percent=1,observed_at=time.time())
             monkeypatch.setattr(dev_disk,'status',lambda root:dict(dev_disk.thresholds(),free_gb=52*GIB/1e9,used_percent=1))
-            worker.tick(state,d)
-            assert 'paused by disk' in state['status'] and len(current['trials'])==1
-            assert len(f.executions)==2
+            for _ in range(3):
+                worker.tick(state,d)
+                assert 'paused by disk' in state['status'] and len(state['current']['trials'])==1
+                assert state['current']['dispatch_pending'] and state['current']['arm']=='treatment'
+                assert f.executions==executions_before_stop
+                assert set(d.runner.futures)==futures_before_stop
             monkeypatch.setattr(dev_disk,'status',lambda root:dict(dev_disk.thresholds(),free_gb=200*GIB/1e9,used_percent=1))
             worker.tick(state,d)
             view=automatic_checks(d.root)
@@ -122,12 +158,14 @@ def test_production_worker_gates_resume_and_ten_arms(tmp_path,monkeypatch):
             assert view['current']['disk_used_bytes']>0 and view['current']['elapsed_seconds']>=0
             until(state,d,lambda:bool(state.get('results')))
         assert state['results'][0]['status']=='trusted',state
-        assert len(f.executions)==20 and len(set(f.executions))==20
+        assert len(f.executions)==10 and len(set(f.executions))==10
         assert len(f.service.list_pairs(state['results'][0]['memory_id']))==5
         assert len(state['counted'])==11  # One origin plus ten unique arms.
         assert any(path.endswith('/evaluate') for method,path in calls)
         assert all('18888' not in e for e in automatic_checks(d.root)['errors'])
-    finally:d.runner.pool.shutdown()
+    finally:
+        release.set()
+        d.runner.pool.shutdown()
 
 
 @pytest.mark.parametrize('failure',['preflight','export'])
