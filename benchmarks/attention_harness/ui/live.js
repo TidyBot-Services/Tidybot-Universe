@@ -537,7 +537,7 @@
     return `<summary class="ab-task-summary"><span class="ab-task-copy"><strong title="${esc(resolvedTask(rows[0]))}">${esc(resolvedTask(rows[0]))}</strong><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${DEBUG_VIEW?'':`<span class="op-dots" title="Latest ${recent.length} runs, newest on the right">${recent.map(r=>`<i class="op-dot ${recordTone(r)}" title="${esc(recordStatus(r))}"></i>`).join('')}</span>`}${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></span><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span></summary>`;
   }
   // Read-only strategy and attempt badges; formal runs carry no attempt count in /api/runs yet.
-  function policyShort(id,inPath){return inPath&&id==='autonomous'?'Auto':({autonomous:'Autonomous',reactive_help:'Reactive',trace_aware_hint_only:'Hint',full_trace_aware_attention_planner:'Planner',retry_k_then_ask:'Retry-K',demo_first:'Demo first',budget_matched_random_escalation:'Random'})[id]||policyTitle(id);}
+  function policyShort(id,inPath){return inPath&&id==='autonomous'?'Auto':({autonomous:'Autonomous',reactive_help:'Reactive',trace_aware_hint_only:'Hints',agent_initiated_help:'Self-ask',full_trace_aware_attention_planner:'Planner',retry_k_then_ask:'Retry-K',demo_first:'Demo first',budget_matched_random_escalation:'Random'})[id]||policyTitle(id);}
   function sidebarRunBadges(r,extra='',rail=false){
     const ids=(r.development?r.policy_ids||[]:r.attention_control?.segments?.length?r.attention_control.segments.map(s=>s.policy_id):[r.initial_policy]).filter(Boolean).filter((id,i,a)=>id!==a[i-1]);
     const icon=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -4705,22 +4705,60 @@
     const plain=content.split('\n').filter(line=>!/RuntimeError:|Traceback|(?:stdout|stderr|state_log|trace)\.(?:txt|json)/i.test(line)).join(' ').replace(/\b(?:e\d{6,}|v\d{4,}|[a-f0-9]{32,})\b/g,'').replace(/\s+/g,' ').trim();
     return plain.length>220?plain.slice(0,217).replace(/\s+\S*$/,'')+'…':plain;
   }
+  function agentPolicyText(code) {
+    const text={
+      pending_ask:'Must ask before next attempt',
+      ask_required:'Submit held: ask first (no charge)',
+      forced_fallback:'Asked automatically',
+      stuck_within_version:'The same failure repeated in this version',
+      same_failure_after_code_change:'The same failure continued after a code change',
+      unchanged_repeated_failure:'Unchanged code repeated the previous failure',
+      cause_unresolved:'The cause remains unresolved',
+      request_after_each_failure:'Help is requested after each failed attempt',
+      retry_threshold_reached:'The retry limit was reached',
+      budget_matched_random_slot:'This attempt was selected for random help',
+      trusted_memory_matches:'Saved guidance matches this situation',
+      agent_requested:'The agent asked for help',
+      eval_failed:'The attempt failed its review',
+      wall_stop:'time limit reached',
+      quota_stop:'quota limit reached',
+      quota_unavailable:'quota unavailable',
+      assistance_budget_exhausted:'help budget exhausted',
+      public_view_unavailable:'the help context is unavailable',
+      run_end:'the run ended',
+      session_failure:'the session failed',
+      fatal:'a fatal error stopped the run',
+      cancel:'the run was cancelled',
+      pause:'the run was paused',
+      next_submit:'before the next attempt'
+    };
+    return Object.hasOwn(text,code)?text[code]:String(code??'');
+  }
+  function agentPolicyCode(code) {
+    return `<span title="${esc(code)}">${esc(agentPolicyText(code))}</span>`;
+  }
+  function agentFallbackNotice(fallback) {
+    const blocked=fallback.forced_fallback_blocked,trigger=fallback.fallback_trigger;
+    const raw=blocked?`forced_fallback_blocked: ${blocked}`:`forced_fallback${trigger?' · '+trigger:''}`;
+    const text=blocked?`Automatic ask skipped: ${agentPolicyText(blocked)} (no charge)`:`Asked automatically${trigger?' · '+agentPolicyText(trigger):''}`;
+    return `<span title="${esc(raw)}">${esc(text)}</span>`;
+  }
   function agentHelpCard(help,number) {
     const delivered=help.delivered===true,content=String(help.content||''),seconds=Number(help.hint_human_seconds)||0;
     if(help.agent_policy_version==='agent-policy-v2'){
       const kind={forced:'Forced question',agent_initiated:'Agent initiated question',system_injected:'System injected hint'}[help.ask_kind]||'Help request';
       const fee=help.actual_cost_known?`${seconds.toFixed(1)} s · ${help.actual_help_count||0} help charged`:help.charged?'Cost pending settlement':'0 s · not charged';
-      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number} · ${esc(help.execution_id)}</b><span>${esc(kind)}</span><span>${delivered?'Delivered':'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${esc(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback?`<p>forced_fallback · ${esc(help.fallback_trigger||'')}</p>`:''}${help.forced_fallback_blocked?`<p>forced_fallback_blocked: ${esc(help.forced_fallback_blocked)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
+      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number}</b><small>${esc(help.execution_id)}</small><span>${esc(kind)}</span><span>${delivered?'Delivered':'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${agentPolicyCode(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback||help.forced_fallback_blocked?`<p>${agentFallbackNotice(help)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
     }
     return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
   }
   function agentPolicyHelp(snapshot) {
     const agent=snapshot.agent,rows=attentionLedger(snapshot).rows;
     const pending=agent.pending_ask,fallback=agent.forced_fallback;
-    const notices=[pending?`pending_ask · ${pending.execution_id} · ${pending.reason}`:'',
-      ...(agent.ask_required||[]).map(r=>`ask_required · ${r.id} · submit refused without charge`),
-      fallback?`forced_fallback${fallback.forced_fallback_blocked?'_blocked: '+fallback.forced_fallback_blocked:''} · ${fallback.execution_id||''}`:''].filter(Boolean);
-    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${esc(n)}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
+    const notices=[pending?`${agentPolicyCode('pending_ask')} · ${agentPolicyCode(pending.reason)} <small>${esc(pending.execution_id)}</small>`:'',
+      ...(agent.ask_required||[]).map(r=>`${agentPolicyCode('ask_required')} <small>${esc(r.id)}</small>`),
+      fallback?`${agentFallbackNotice(fallback)} <small>${esc(fallback.execution_id||'')}</small>`:''].filter(Boolean);
+    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
   }
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
