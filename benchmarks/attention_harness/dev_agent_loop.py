@@ -67,16 +67,34 @@ def trusted_completion(executor, directory, result):
 def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helper=None, quota=None,
           policy='reactive_help', completion_reader=trusted_completion, control=lambda:None,
           version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60,
-          memory=None, exporter=None, before_step=lambda kind:True):
+          memory=None, exporter=None, before_step=lambda kind:True,
+          agent_policy_version='agent-policy-v1', validation=False):
     """Injectable offline seam; production always supplies a preflighted session."""
+    if agent_policy_version not in ('agent-policy-v1','agent-policy-v2'):
+        raise ValueError('unsupported agent policy version')
+    memory_visible=True
+    if agent_policy_version=='agent-policy-v2' and not validation:
+        from .dev_agent_policies import memory_exposed
+        memory_visible=memory_exposed(policy)
     stop=None;successful={};completion_failures={};delivered=0;idle=0;broker=None;events=[];session_failures=0;export_errors=[];memory_errors=[]
     state_path=workspace.private/'loop.json'
     if state_path.exists():
         state=json.loads(state_path.read_bytes());delivered=state['delivered'];idle=state['idle'];events=state['events']
     def save():atomic_write(workspace.private,'loop.json',encode(dict(delivered=delivered,idle=idle,events=events)))
+    def finish_v2(reason):
+        if agent_policy_version!='agent-policy-v2' or not helper or not hasattr(helper,'finish'):return
+        cause=fatal_cause(broker,session_failures) if reason=='fatal_error' else None
+        trigger=('pause' if reason=='operator_paused' else 'cancel' if reason=='operator_cancel' else
+                 'session_failure' if cause=='session_failure' else 'fatal' if reason=='fatal_error' else
+                 reason if reason in ('wall_stop','quota_stop','quota_unavailable') else 'run_end')
+        deadline=time.monotonic()+ledger.snapshot()['wall_remaining']
+        if external_deadline is not None:deadline=min(deadline,time.monotonic()+max(0,external_deadline-time.time()))
+        helper.finish(reason=trigger,deadline=deadline)
+        if broker:broker._regenerate_history()
+
     def cut(kind,response):
         number=int(response['version_id'][1:])
-        if kind=='pre-submit' and memory and getattr(memory,'validation',None):
+        if kind=='pre-submit' and validation and memory:
             from .dev_agent_broker import BrokerInvariant
             try:
                 envelope=memory.validation.prepare(response)
@@ -87,7 +105,11 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                 raise BrokerInvariant('validation_dispatch_failed: '+str(exc)) from exc
         label=kind+'-v'+str(number)+('-pre-help' if kind=='post-feedback' else '')
         freeze_origin(workspace,label,metadata=dict(version_id=response['version_id'],execution_id=response.get('execution_id'),
-            budgets=ledger.snapshot(),session=session.checkpoint(),request_cursor=len(broker.records)),quiesce=session.quiesce)
+            budgets=ledger.snapshot(),session=session.checkpoint(),request_cursor=len(broker.records),
+            **(dict(agent_policy_version=agent_policy_version,policy_state_sha256=hashlib.sha256(encode(helper.state)).hexdigest(),
+                    policy_counters={k:helper.state[k] for k in ('retry_failures','cumulative_failed_versions',
+                        'trace_failed_versions','completed_execution_count','last_help_execution_count')})
+               if agent_policy_version=='agent-policy-v2' and helper else {})),quiesce=session.quiesce)
     def execution(response,directory,result):
         if response['op']=='submit':
             if result.get('memory_revoked'):return
@@ -124,7 +146,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         elif value.get('eval',{}).get('passed') is True:
             value['message']=CONTINUE_MESSAGE
             workspace.publish('versions/'+vid+'/continue.json',dict(message=CONTINUE_MESSAGE))
-        if memory and stop is None and not getattr(memory,'validation',None):
+        if memory and memory_visible and stop is None and not getattr(memory,'validation',None):
             previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
             try:value['memory_message']=memory.open(int(vid[1:])+1,previous,**({'deliver_notes':False} if exporter else {}))
             except Exception as exc:
@@ -135,13 +157,13 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             # Export is a per-version step (r6 policy): a failure is recorded on the
             # cell and in the result, never a fatal stop; import simply refuses it.
             try:
-                record=exporter.settle(response,memory)
+                record=exporter.settle(response,memory if memory_visible else None)
                 if record is not None:
                     from .dev_agent_memory import stage_provisional
                     stage_provisional(exporter.store,exporter.key,record['version'],
                                       exporter.root/f"v{record['version']}",workspace,ledger)
             except Exception as exc:export_errors.append(dict(request_id=response['request_id'],error=type(exc).__name__+': '+str(exc)))
-        if exporter and response['op']=='submit' and memory and stop is None and not getattr(memory,'validation',None):
+        if exporter and response['op']=='submit' and memory and memory_visible and stop is None and not getattr(memory,'validation',None):
             vid=response['version_id']
             previous=(workspace.private/'sources'/(response['request_id']+'.py')).read_text()
             try:response['result']['memory_message']=memory.open(int(vid[1:])+1,previous)
@@ -163,7 +185,8 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
     try:
         broker=Broker(workspace,executor=executor,prober=prober,evaluator=evaluator or FakeEvaluator(),
             agent_mode=True,helper=helper,budget=LedgerBudget(ledger),quota=quota,on_cut=cut,on_version=version,
-            on_execution=execution,on_settled=settled,quiesce=session.quiesce,memory=memory,before_step=before_step)
+            on_execution=execution,on_settled=settled,quiesce=session.quiesce,memory=memory if memory_visible else None,
+            before_step=before_step,agent_policy_version=agent_policy_version,validation=validation)
         unknown=ledger.recover()
         if broker.quarantined or unknown:raise ValueError('unresolved_agent_work')
         for path in (workspace.private/'versions').glob('*.json'):
@@ -177,8 +200,15 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         if broker.stop_reason=='operator_paused':stop='operator_paused'
         initial_help=helper.initial() if helper and hasattr(helper,'initial') else None
         prompt=bootstrap(workspace,ledger,policy) if not session.thread_id else continuation()
-        if memory and getattr(memory,'validation',None):prompt+='\nContinue from origin/policy.py and origin/public-feedback.json; work/main.py contains the failed origin policy.'
-        if memory:prompt+='\n'+memory.start()
+        if validation:prompt+='\nContinue from origin/policy.py and origin/public-feedback.json; work/main.py contains the failed origin policy.'
+        if memory and memory_visible:
+            if agent_policy_version=='agent-policy-v1':prompt+='\n'+memory.start()
+            else:
+                try:prompt+='\n'+memory.start()
+                except Exception as exc:
+                    memory_errors.append(dict(version=1,error=type(exc).__name__+': '+str(exc)))
+                    if not isinstance(exc,PermissionError) and hasattr(memory,'clear'):
+                        memory.clear(1,helper.config.get('initial_source','') if helper else '')
         if session.thread_id:
             prompt+=' Unseen events: '+json.dumps(events[delivered:],sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
             delivered=len(events);save()
@@ -237,8 +267,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             prompt=('No formal submission yet; ' if not broker.histories['versions'] else '')+'Continue the task. History files are authoritative. '
             if failure:prompt='The previous turn ended with an error: '+failure[:300]+'. '+prompt
             prompt+='Unseen events: '+json.dumps(unseen,sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
-            if memory:prompt+='\n'+memory.message
+            if memory and memory_visible:prompt+='\n'+memory.message
             workspace.publish('events/resume-t%06d.json'%(session.turn+1),dict(message=prompt));save()
+        finish_v2(stop)
         if stop=='operator_paused':ledger.pause()
         result=dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable') else 'failed',
                     reason=stop,resources=ledger.snapshot())
@@ -253,10 +284,18 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             result['error']=(cause+': %s %s %s (%s)'%(f.get('op'),f.get('request_id'),f.get('error'),f.get('detail')) if broker.quarantined
                              else cause+': '+str(failure))
         return result
+    except Exception as exc:
+        if agent_policy_version!='agent-policy-v2':raise
+        stop=('quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable' if 'quota' in str(exc) else
+              'wall_stop' if str(exc)=='wall_stop' else 'fatal_error')
+        finish_v2(stop)
+        return dict(state='failed' if stop in ('quota_stop','wall_stop') else 'needs_review',
+                    reason=stop,error=str(exc),resources=ledger.snapshot(),
+                    **(dict(fatal_cause='ledger_invariant' if 'ledger' in str(exc) else 'broker_invariant') if stop=='fatal_error' else {}))
     finally:
         session.cancel('controller_exit')
         if broker:broker.close()
-        if stop!='operator_paused' and helper and hasattr(helper,'finish'):
+        if agent_policy_version=='agent-policy-v1' and stop!='operator_paused' and helper and hasattr(helper,'finish'):
             helper.finish()
             if broker:broker._regenerate_history()
 
@@ -292,6 +331,13 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
     ledger=None;setup_id=None
     try:
         if bool(manifest.get('validation_experiment'))!=bool(validation):raise ValueError('agent validation runtime binding required')
+        if validation:
+            from .memory_agent_validation import validate_manifest
+            validate_manifest(manifest)
+        if manifest.get('agent_policy_version')=='agent-policy-v2':
+            from .dev_agent_policy_freeze import validate
+            validate(manifest)
+            if cell.get('agent_policy_version')!='agent-policy-v2':raise ValueError('agent_policy_cell_version_mismatch')
         ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'],validation=validation is not None)
         ledger.resume()
         import uuid
@@ -302,7 +348,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         # Dev also reads the public rule (10-29 step 6); earlier manifests kept it Eval-only.
         dev_condition=condition if manifest.get('success_condition_dev_visible') else None
         if not (workspace.canonical/'task.json').exists():
-            workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),config,success_condition=dev_condition)
+            workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),
+                dict(config,agent_policy_id=cell['policy_id']) if config.get('agent_policy_version')=='agent-policy-v2' else config,success_condition=dev_condition)
             atomic_write(workspace.ws,'work/main.py',manifest['initial_sources'][cell['task_id']]['source'].encode())
         if validation:
             from .memory_agent_validation import seed
@@ -338,15 +385,19 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         memory=Memory(store,key,workspace,config,manifest['initial_sources'][cell['task_id']]['source'],
             default=manifest['memory'],help_pricing=manifest.get('help_pricing'),validation=validation)
         exporter=Exporter(store,key,workspace,config,ledger)
+        agent_policy_version=config.get('agent_policy_version','agent-policy-v1')
         helper=None if validation else Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
-            config=config,client=advisor_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory)
+            config=(dict(config,initial_source=manifest['initial_sources'][cell['task_id']]['source'])
+                    if agent_policy_version=='agent-policy-v2' else config),
+            client=advisor_client(client,config),demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory,agent_policy_version=agent_policy_version)
         evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota,success_condition=condition,
             redact=dev_condition is None,
             prompt=manifest['eval_agent_prompt']+(manifest['eval_success_rule'] if condition else ''))
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory),
             prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
-            progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter,before_step=before_step)
+            progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter,before_step=before_step,
+            agent_policy_version=agent_policy_version,validation=validation is not None)
         store.update_cell(key,**{k:v for k,v in result.items() if k!='resources'},agent_resources=result['resources'],owner=None)
         print(end_line(key,result),file=sys.stderr,flush=True)
         return result

@@ -25,7 +25,7 @@ def normalize_configuration(selection):
  if selection.get('dev_mode')=='agent':
   from .dev_agent_config import configuration
   return configuration(selection)
- if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent')):raise ValueError('agent_options_require_agent_mode')
+ if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','agent_policy_version')):raise ValueError('agent_options_require_agent_mode')
  tier=selection.get('budget_tier','dev')
  validate_run_notes(selection)
  source=selection.get('model_source','parcc')

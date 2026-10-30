@@ -210,9 +210,9 @@ class Provisioner:
                 immutable(saved,dict(memory_id=candidate_id))
         selection=dict(request_key='validation-'+operation,tasks=[config['task_id']],seeds=[config['seed']],policies=[resolved['policy_id']],mode='diagnostic',budget_tier='dev',model_source='codex',help_budget=0,run_notes=False,memory_family=False,target_depth=1,target_valid_executions=1,max_versions=1,reproducible_reset=True,scene_contract=config['scene_contract'],attempt_wall_seconds=config['attempt_wall_seconds'])
         if agent:
-            from .memory_agent_validation import origin_models
+            from .memory_agent_validation import origin_models,origin_policy_version
             models=origin_models(origin)
-            selection.update(dev_mode='agent',**models)
+            selection.update(dev_mode='agent',agent_policy_version=origin_policy_version(origin),**models)
         from .dev_configuration import normalize_configuration,derive_cell_budget
         budget=derive_cell_budget(normalize_configuration(dict(selection,agent_validation=origin) if agent else selection))
         selection['wall_limit']=10*(budget['model_seconds']+budget['execution_seconds'])

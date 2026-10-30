@@ -537,7 +537,7 @@
     return `<summary class="ab-task-summary"><span class="ab-task-copy"><strong title="${esc(resolvedTask(rows[0]))}">${esc(resolvedTask(rows[0]))}</strong><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${DEBUG_VIEW?'':`<span class="op-dots" title="Latest ${recent.length} runs, newest on the right">${recent.map(r=>`<i class="op-dot ${recordTone(r)}" title="${esc(recordStatus(r))}"></i>`).join('')}</span>`}${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></span><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span></summary>`;
   }
   // Read-only strategy and attempt badges; formal runs carry no attempt count in /api/runs yet.
-  function policyShort(id,inPath){return inPath&&id==='autonomous'?'Auto':({autonomous:'Autonomous',reactive_help:'Reactive',trace_aware_hint_only:'Hint',full_trace_aware_attention_planner:'Planner',retry_k_then_ask:'Retry-K',demo_first:'Demo first',budget_matched_random_escalation:'Random'})[id]||policyTitle(id);}
+  function policyShort(id,inPath){return inPath&&id==='autonomous'?'Auto':({autonomous:'Autonomous',reactive_help:'Reactive',trace_aware_hint_only:'Hints',agent_initiated_help:'Self-ask',full_trace_aware_attention_planner:'Planner',retry_k_then_ask:'Retry-K',demo_first:'Demo first',budget_matched_random_escalation:'Random'})[id]||policyTitle(id);}
   function sidebarRunBadges(r,extra='',rail=false){
     const ids=(r.development?r.policy_ids||[]:r.attention_control?.segments?.length?r.attention_control.segments.map(s=>s.policy_id):[r.initial_policy]).filter(Boolean).filter((id,i,a)=>id!==a[i-1]);
     const icon=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -1989,6 +1989,9 @@
   function launcherDevMode(gate,requested='agent') {
     return agentOptionGate(gate)?'one_call':requested;
   }
+  function devPolicyChoices(options,mode) {
+    return mode==='agent'?(options?.agent_policies?.policies||[]).map(p=>p.policy_id):[ 'all',...(options?.policies||[])];
+  }
   function agentLaunchSelection(selection,values={}) {
     if(!values.devMode||values.devMode==='one_call')return selection;
     if(values.devMode!=='agent')throw new Error('Unknown Dev mode');
@@ -2200,6 +2203,9 @@
         form.dev_mode.querySelector('option[value="agent"]').disabled=!!reason;
         form.dev_mode.value=launcherDevMode({channel:profile?.channel,tier:options?.dev_v2?.budget_tier,policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart},requestedDevMode);
         const agent=form.dev_mode.value==='agent';
+        const policyChoices=devPolicyChoices(options?.dev_v2,agent?'agent':'one_call');
+        if(policyChoices.length && [...form.v2_policy.options].map(o=>o.value).join('|')!==policyChoices.join('|'))
+          fillOptions(form.v2_policy,policyChoices,p=>p==='all'?'All seven · frozen comparison':policyTitle(p));
         form.dev_model.disabled=!agent;form.eval_model.disabled=!agent;
         form.querySelector('[data-agent-reason]').textContent=reason||(agent?'10 正式版本 · 40 执行 · 300 只读探查 · 6 小时 · 额度 90% 停止。Eval 独立选模；原生成功结束运行。':'一次调用保留现有设置。切换 Agent 后可独立选择 Dev / Eval 模型。');
         form.querySelector('[data-dev-mode-label]').textContent=agent?'Agent':'一次调用';
@@ -3698,6 +3704,7 @@
     return provider==='advisor' || provider==='human_proxy' ? 'advisor_proxy' : provider||'unknown';
   }
   function operatorHelp(snapshot,chosen) {
+    if(snapshot.agent?.agent_policy_version==='agent-policy-v2')return agentPolicyHelp(snapshot);
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session);
     const modelReview=modelCallReview(snapshot);
     if(modelReview)return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div class="op-action"><h4>No reply needed</h4><p>${esc(modelReview.message)}</p><p>${esc(modelReview.reason)}</p></div>${operatorHelpHistory(snapshot)}</section>`;
@@ -3869,7 +3876,7 @@
     const now=Date.now()/1000, ended=isTerminal(snapshot);
     for (const row of rows) {
       row.seconds=row.responder==='human'&&row.requestedAt!=null?(row.answeredAt!=null?Math.max(0,row.answeredAt-row.requestedAt):row.state==='pending'?Math.max(0,now-row.requestedAt):0):0;
-      if(snapshot.agent)row.seconds=row.help.delivered?Number(row.help.hint_human_seconds)||0:0;
+      if(snapshot.agent)row.seconds=(row.help.charged===true||row.help.delivered)?Number(row.help.hint_human_seconds)||0:0;
       const next=attempts.find(a=>a.index===row.nextIndex);
       row.effect=row.state!=='answered'?(row.state==='pending'&&!ended?'awaiting_reply':'no_reply'):!next?(ended?'no_next':'waiting'):succeeded(next)?'fixed':next.status==='running'&&!ended?'running':'still_failed';
     }
@@ -3921,7 +3928,7 @@
     return {attempts,requests,width,natural,left,step,baseline,height:baseline+98,before:grouped.has(-1),after:endsWithHelp&&!ended,ended,endX};
   }
   function attentionFilterMatches(row,filter) {
-    return filter==='all'||filter==='human'&&(row.responder==='human'||row.help?.delivered&&row.seconds>0)||(filter==='paid'||filter==='rate')&&row.effect==='fixed';
+    return filter==='all'||filter==='human'&&(row.responder==='human'||(row.help?.delivered||row.help?.charged===true)&&row.seconds>0)||(filter==='paid'||filter==='rate')&&row.effect==='fixed';
   }
   function attentionFrontier(snapshot) {
     const policies=snapshot.comparison?.policies||[];
@@ -3969,13 +3976,13 @@
     const endX=model.endX;
     const endMark=model.ended?`<line x1="${x(model.attempts.length-1)+R}" x2="${endX-58}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/><g class="op-attn-end ${g.solved?'solved':'unsolved'}"><rect x="${endX-58}" y="${baseline-21}" width="116" height="42" rx="21"/><text class="op-attn-end-small" x="${endX}" y="${baseline-4}" text-anchor="middle">Ended</text><text x="${endX}" y="${baseline+12}" text-anchor="middle">${outcome}</text></g>`:'';
     const extra=model.after?`<line x1="${x(model.attempts.length-1)+R}" x2="${x(model.attempts.length)-14}" y1="${baseline}" y2="${baseline}" class="op-attn-connector op-attn-unreached"/><g class="op-attn-endpoint next"><circle cx="${x(model.attempts.length)}" cy="${baseline}" r="14"/><text x="${x(model.attempts.length)}" y="${baseline+44}" text-anchor="middle">Next</text></g>`:'';
-    const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human'||snapshot.agent&&r.help.delivered).map(r=>r.seconds));
+    const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human'||snapshot.agent&&(r.help.delivered||r.help.charged===true)).map(r=>r.seconds));
     const marks=model.requests.map(r=>{
       const x0=r.after<0?x(-1)+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
       const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
-      const bar=snapshot.agent?(r.help.delivered?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
-      const cost=snapshot.agent?(r.help.delivered?`${r.seconds.toFixed(1)} s`:'not delivered'):r.responder==='human'?attentionTime(r.seconds).replace(/s$/,' s'):'1 credit';
+      const bar=snapshot.agent?((r.help.delivered||r.help.charged===true)?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
+      const cost=snapshot.agent?((r.help.delivered||r.help.charged===true)?`${r.seconds.toFixed(1)} s`:'not delivered'):r.responder==='human'?attentionTime(r.seconds).replace(/s$/,' s'):'1 credit';
       const who=snapshot.agent&&r.state==='rejected'?'Refused · not delivered':r.responder==='human'?'Person replied':'Automatic advisor';
       const tip=`${tag} · ${kind[r.kind]||label(r.kind)} · ${who} · ${cost} · ${effect[r.effect][0].replace(/^[^A-Za-z]+/,'')}`;
       return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${snapshot.agent&&!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${tag}</text><rect class="op-attn-cost" x="${r.x-13}" y="${baseline+costBottom-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+costBottom+16}" text-anchor="middle">${esc(cost)}</text></g>`;
@@ -4698,9 +4705,60 @@
     const plain=content.split('\n').filter(line=>!/RuntimeError:|Traceback|(?:stdout|stderr|state_log|trace)\.(?:txt|json)/i.test(line)).join(' ').replace(/\b(?:e\d{6,}|v\d{4,}|[a-f0-9]{32,})\b/g,'').replace(/\s+/g,' ').trim();
     return plain.length>220?plain.slice(0,217).replace(/\s+\S*$/,'')+'…':plain;
   }
+  function agentPolicyText(code) {
+    const text={
+      pending_ask:'Must ask before next attempt',
+      ask_required:'Submit held: ask first (no charge)',
+      forced_fallback:'Asked automatically',
+      stuck_within_version:'The same failure repeated in this version',
+      same_failure_after_code_change:'The same failure continued after a code change',
+      unchanged_repeated_failure:'Unchanged code repeated the previous failure',
+      cause_unresolved:'The cause remains unresolved',
+      request_after_each_failure:'Help is requested after each failed attempt',
+      retry_threshold_reached:'The retry limit was reached',
+      budget_matched_random_slot:'This attempt was selected for random help',
+      trusted_memory_matches:'Saved guidance matches this situation',
+      agent_requested:'The agent asked for help',
+      eval_failed:'The attempt failed its review',
+      wall_stop:'time limit reached',
+      quota_stop:'quota limit reached',
+      quota_unavailable:'quota unavailable',
+      assistance_budget_exhausted:'help budget exhausted',
+      public_view_unavailable:'the help context is unavailable',
+      run_end:'the run ended',
+      session_failure:'the session failed',
+      fatal:'a fatal error stopped the run',
+      cancel:'the run was cancelled',
+      pause:'the run was paused',
+      next_submit:'before the next attempt'
+    };
+    return Object.hasOwn(text,code)?text[code]:String(code??'');
+  }
+  function agentPolicyCode(code) {
+    return `<span title="${esc(code)}">${esc(agentPolicyText(code))}</span>`;
+  }
+  function agentFallbackNotice(fallback) {
+    const blocked=fallback.forced_fallback_blocked,trigger=fallback.fallback_trigger;
+    const raw=blocked?`forced_fallback_blocked: ${blocked}`:`forced_fallback${trigger?' · '+trigger:''}`;
+    const text=blocked?`Automatic ask skipped: ${agentPolicyText(blocked)} (no charge)`:`Asked automatically${trigger?' · '+agentPolicyText(trigger):''}`;
+    return `<span title="${esc(raw)}">${esc(text)}</span>`;
+  }
   function agentHelpCard(help,number) {
     const delivered=help.delivered===true,content=String(help.content||''),seconds=Number(help.hint_human_seconds)||0;
+    if(help.agent_policy_version==='agent-policy-v2'){
+      const kind={forced:'Forced question',agent_initiated:'Agent initiated question',system_injected:'System injected hint'}[help.ask_kind]||'Help request';
+      const fee=help.actual_cost_known?`${seconds.toFixed(1)} s · ${help.actual_help_count||0} help charged`:help.charged?'Cost pending settlement':'0 s · not charged';
+      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number}</b><small>${esc(help.execution_id)}</small><span>${esc(kind)}</span><span>${delivered?'Delivered':'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${agentPolicyCode(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback||help.forced_fallback_blocked?`<p>${agentFallbackNotice(help)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
+    }
     return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
+  }
+  function agentPolicyHelp(snapshot) {
+    const agent=snapshot.agent,rows=attentionLedger(snapshot).rows;
+    const pending=agent.pending_ask,fallback=agent.forced_fallback;
+    const notices=[pending?`${agentPolicyCode('pending_ask')} · ${agentPolicyCode(pending.reason)} <small>${esc(pending.execution_id)}</small>`:'',
+      ...(agent.ask_required||[]).map(r=>`${agentPolicyCode('ask_required')} <small>${esc(r.id)}</small>`),
+      fallback?`${agentFallbackNotice(fallback)} <small>${esc(fallback.execution_id||'')}</small>`:''].filter(Boolean);
+    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
   }
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
@@ -4720,6 +4778,7 @@
     const work=activity=>row('Explore &amp; try',`<div class="op-agent-before">${(activity.exploration||[]).map(text=>`<span>${esc(text)}</span>`).join('')}${agentActivityCaption(activity)?`<span>${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`);
     const activities=[...versions.map(v=>v.before_attempt||{}),snapshot.dev_v2?.trailing_activity||{}];
     let flow=row('Start',`Seed ${esc(snapshot.run.seed??'not recorded')}`);
+    for(const [index,help] of rows.entries())if(help.nextIndex===0)flow+=row('Help',agentHelpCard(help.help,index+1));
     for(const version of versions){
       flow+=work(version.before_attempt||{});
       flow+=row(`<span class="op-agent-story-circle" aria-hidden="true">${version.native_success===true?'✓':'✕'}</span><b>Attempt ${version.version}</b>`,agentAttemptCard(version,false),version.native_success===true?'solved':'failed');
@@ -4758,9 +4817,9 @@
     snapshot.requests=[];snapshot.responses={};snapshot.response_evidence={};
     for(const interval of compat.help_intervals||[]){
       const help=interval.help_content,before=snapshot.attempts.find(a=>a.dev_version===interval.after_version);
-      const id=`${cell.key}:v${interval.version}:help`,responseId=help.delivered?id+':response':null;
+      const id=interval.help_id?`${cell.key}:${interval.help_id}`:`${cell.key}:v${interval.version}:help`,responseId=help.delivered?id+':response':null;
       snapshot.requests.push({request_id:id,response_id:responseId,run_id:s.session_id,attempt_id:before?.attempt_id,
-        request_type:'hint',state:help.delivered?'answered':'rejected',mode:'automatic',created_at:interval.reserved_at,
+        request_type:'hint',state:help.delivered?'answered':['pending','dispatching'].includes(help.status)?'pending':'rejected',mode:'automatic',created_at:interval.reserved_at,
         reason:(help.delivered?help.decision?.reason:help.reason)||'Recorded assistance',request_view:interval.request_view,agent_help:help});
       if(help.delivered)snapshot.responses[responseId]={response_id:responseId,request_id:id,responder:'advisor_proxy',response_type:'hint',content:help.content||'',created_at:interval.settled_at};
     }

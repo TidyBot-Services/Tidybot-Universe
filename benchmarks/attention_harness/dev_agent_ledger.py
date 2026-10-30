@@ -81,6 +81,28 @@ class AgentLedger:
             db.execute('INSERT INTO v2_agent_jobs VALUES (?,?,?,?)', (self.cell,jid,'reserved',json.dumps(value)))
             return dict(value,id=jid,state='reserved')
 
+    def release_unclaimed(self, jid):
+        """Cancel an intent only while the ledger proves it was never claimed."""
+        with self.tx() as db:
+            row=next(r for r in self._jobs(db) if r['id']==jid)
+            if row['state']!='reserved':raise ValueError('release_requires_unclaimed')
+            self._put_job(db,jid,'released',row)
+
+    def reopen_unclaimed(self, jid):
+        """New reservation epoch for a released, never-dispatched help intent."""
+        with self.tx() as db:
+            rows=self._jobs(db);row=next(r for r in rows if r['id']==jid)
+            if row['state']!='released' or row.get('claimed_at') is not None or row['kind']!='help':
+                raise ValueError('reopen_requires_unclaimed_help')
+            run=self._run(db)
+            if run['paused_at'] is not None:raise ValueError('operator_paused')
+            if run['deadline'] is not None and self.clock()>=run['deadline']:raise ValueError('wall_stop')
+            used={k:sum(r['resources'].get(k,0) for r in rows if r['state']!='released') for k in self.limits}
+            if any(used[k]+row['resources'].get(k,0)>cap for k,cap in self.limits.items()):
+                raise ValueError('budget_exhausted')
+            row.update(reserved_at=self.clock(),reservation_epoch=row.get('reservation_epoch',0)+1)
+            self._put_job(db,jid,'reserved',row)
+
     def claim(self, jid):
         with self.tx() as db:
             row = next(r for r in self._jobs(db) if r['id']==jid)

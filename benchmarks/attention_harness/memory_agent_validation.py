@@ -24,11 +24,24 @@ def origin_models(origin):
     return models
 
 
+def origin_policy_version(origin):
+    """Legacy origins have the v1 epoch; new arms never use creation defaults."""
+    if not isinstance(origin,dict) or not isinstance(origin.get('manifest'),dict):
+        raise ValueError('agent_memory_or_control_not_supported')
+    manifest=json.loads(checked(origin['manifest']).read_bytes())
+    version=manifest.get('agent_policy_version','agent-policy-v1')
+    if manifest.get('dev_mode')!='agent' or version not in ('agent-policy-v1','agent-policy-v2'):
+        raise ValueError('unsupported agent validation origin policy version')
+    return version
+
+
 def validate_options(selection,origin):
     if not isinstance(origin,dict) or set(origin)!={'manifest','config','source','cell','version'}:
         raise ValueError('agent_memory_or_control_not_supported')
     manifest=json.loads(checked(origin['manifest']).read_bytes());config=json.loads(checked(origin['config']).read_bytes())
     if manifest.get('dev_mode')!='agent' or config.get('dev_mode')!='agent':raise ValueError('mixed agent validation is unsupported')
+    if selection.get('agent_policy_version','agent-policy-v1')!=origin_policy_version(origin):
+        raise ValueError('agent validation policy version differs from origin')
     expected=dict(mode='diagnostic',help_budget=0,run_notes=False,memory_family=False,target_depth=1,
         target_valid_executions=1,max_versions=1,reproducible_reset=True,attempt_wall_seconds=1920,
         **origin_models(origin))
@@ -43,6 +56,10 @@ def validate_options(selection,origin):
 
 def validate_manifest(manifest):
     origin=manifest['validation_origin'];validate_options(manifest['selection'],origin)
+    version=origin_policy_version(origin)
+    rows=[manifest,*manifest['configs'].values(),*manifest['cells']]
+    if any(row.get('agent_policy_version','agent-policy-v1')!=version for row in rows):
+        raise ValueError('agent validation policy version differs from origin')
     if any(manifest.get(k)!=v for k,v in origin_models(origin).items()):raise ValueError('agent validation models differ from origin')
     if (manifest.get('agent_validation')!=origin or manifest.get('agent_budget')!=ARM_BUDGET
             or any(type(manifest['agent_budget'].get(k)) is not type(v) for k,v in ARM_BUDGET.items())

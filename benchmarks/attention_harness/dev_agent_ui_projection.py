@@ -99,6 +99,7 @@ def help_evidence(cell, vid):
     """An agent help boundary belongs after vid, regardless of provider status."""
     from .dev_agent_view import _read, clean
     value = public(cell, f'versions/{vid}/help.json')
+    if value and value.get('agent_policy_version')=='agent-policy-v2':return None
     if not value or value.get('status') in ('not_requested', 'not_eligible'):
         return None
     private = Path(cell['artifact_dir'])/'agent/private'
@@ -548,16 +549,18 @@ def compat(cell, agent, ledger_jobs):
     for row in versions:
         row['before_attempt'] = next((i for i in activity if i['version_id'] == row['version_id']),
                                      dict(checks=0, previews=0, trials=[]))
-    intervals = []
-    incoming = {}
-    for row in versions:
-        boundary = {key: row.get(key) for key in ('help_content', 'help', 'request_view', 'decision_content')}
-        row['after_help'] = boundary['help_content']
-        if boundary['help_content']:
-            intervals.append(dict(boundary, after_version=row['version'], version=row['version']+1))
-            incoming[row['version']+1] = boundary
-    for row in versions:
-        row.update(incoming.get(row['version'], dict(help_content=None, help=None, request_view=None, decision_content=None)))
+    v2=agent.get('agent_policy_version')=='agent-policy-v2'
+    intervals=execution_help_intervals(cell,agent,ledger_jobs) if v2 else []
+    if not v2:
+        incoming = {}
+        for row in versions:
+            boundary = {key: row.get(key) for key in ('help_content', 'help', 'request_view', 'decision_content')}
+            row['after_help'] = boundary['help_content']
+            if boundary['help_content']:
+                intervals.append(dict(boundary, after_version=row['version'], version=row['version']+1))
+                incoming[row['version']+1] = boundary
+        for row in versions:
+            row.update(incoming.get(row['version'], dict(help_content=None, help=None, request_view=None, decision_content=None)))
     by_request = {r['id']: r for r in agent['timeline']}
     by_vid = {v.get('version_id', f'v{v["version"]:04d}'): v for v in versions}
     current_vid = None
@@ -569,7 +572,15 @@ def compat(cell, agent, ledger_jobs):
             help_versions[record['id']] = current_vid
     jobs = []
     for job in ledger_jobs:
-        jid = job['id']; record = by_request.get(jid.split(':', 1)[-1], {})
+        jid = job['id']
+        if v2 and jid.startswith('help:e'):
+            interval=next((h for h in intervals if h['help_content']['help_id']==jid),None)
+            if interval:
+                jobs.append(dict(id=jid,kind='advisor',version=interval['version'],state=job['state'],
+                    reserved_at=job.get('reserved_at'),settled_at=job.get('settled_at'),
+                    reservation={},actual={},receipt={'help':interval['help']}))
+            continue
+        record = by_request.get(jid.split(':', 1)[-1], {})
         vid = record.get('version_id') or record.get('result', {}).get('version_id') or (job.get('receipt') or {}).get('version_id')
         vid = vid or help_versions.get(record.get('id'))
         if jid.startswith('help:v'):
@@ -605,7 +616,7 @@ def compat(cell, agent, ledger_jobs):
                     resume_blocked_reason='This run has finished.' if terminal else None, current_step=None,
                     paused_since=None, paused_seconds_total=0, interrupted_by_stop=None)
     return dict(clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','task_id','seed','policy_id','mode')}),
-                dev_mode='agent', artifact_dir=ROOT, versions=versions, help_intervals=intervals,
+                dev_mode='agent', agent_policy_version=agent.get('agent_policy_version','agent-policy-v1'), artifact_dir=ROOT, versions=versions, help_intervals=intervals,
                 trailing_activity=next((i for i in activity if i['version_id'] is None), None), jobs=jobs, budget=budget, used=used,
                 ledger={'goal':goal}, lifecycle=None if terminal else {'phase':phase, 'can_stop':True},
                 run_controls=controls, quota_usage=quota_usage(cell))
@@ -620,3 +631,47 @@ def quota_usage(cell):
         return None
     values = [r.get('used_percent') for r in rows if isinstance(r.get('used_percent'), (int, float))]
     return dict(before=values[0], after=values[-1]) if values else None
+
+
+def execution_help_intervals(cell, agent, ledger_jobs):
+    """One row per execution help, including practice before any formal submit."""
+    from .dev_agent_view import _read, clean
+    from .dev_request_view import display_request_view
+    private = Path(cell['artifact_dir'])/'agent/private'
+    jobs = {j['id']: j for j in ledger_jobs}
+    after_execution = {}
+    submitted = 0
+    for record in agent['timeline']:
+        if record.get('kind') == 'formal_version' and record.get('version_id'):
+            submitted = int(record['version_id'][1:])
+        if record.get('execution_id'):
+            after_execution[record['execution_id']] = submitted
+    intervals = []
+    for path in sorted((private/'public/executions').glob('e*/help.json')):
+        eid = path.parent.name
+        if not re.fullmatch(r'e\d+', eid):continue
+        value = public(cell, f'executions/{eid}/help.json')
+        if not value:continue
+        hid = 'help:'+eid
+        if value.get('help_id') != hid:raise ValueError('agent_help_identity_mismatch')
+        job = jobs.get(hid, {})
+        receipt = job.get('receipt') or {}
+        origin=value.get('origin_version_id')
+        after = int(origin[1:]) if isinstance(origin,str) and re.fullmatch(r'v\d+',origin) else after_execution.get(eid, 0)
+        delivered = value.get('delivered') is True
+        help_value = dict(value, provider='advisor', delivered=delivered, rejected=not delivered,
+                          after_version=after, reason=value.get('reason') or (value.get('decision') or {}).get('reason') or value.get('error') or value.get('status'))
+        # Never infer free from not-delivered. The ledger is the accounting fact.
+        help_value['charged'] = job.get('state') in ('claimed','unknown','settled') and job.get('resources',{}).get('help',0)>0
+        help_value['hint_human_seconds'] = receipt.get('hint_human_seconds',0) if help_value['charged'] else 0
+        help_value['actual_help_count'] = job.get('resources',{}).get('help',0) if help_value['charged'] else 0
+        help_value['actual_cost_known'] = job.get('state') == 'settled'
+        help_value['ask_kind'] = ('forced' if cell['policy_id'] in ('reactive_help','retry_k_then_ask') else
+                                  'agent_initiated' if cell['policy_id']=='agent_initiated_help' else 'system_injected')
+        raw = _read(private, f'help/{eid}/request-view.json')
+        view = clean(display_request_view(raw)) if raw else None
+        intervals.append(dict(help_content=clean(help_value), help={'uri':ROOT+f'/executions/{eid}/help.json'},
+            after_version=after, version=after+1, execution_id=eid, help_id=hid,
+            request_view=view, decision_content=clean(value.get('decision')),
+            reserved_at=job.get('reserved_at'), settled_at=job.get('settled_at')))
+    return sorted(intervals,key=lambda row:(row['reserved_at'] is None,row['reserved_at'] or 0,row['execution_id']))

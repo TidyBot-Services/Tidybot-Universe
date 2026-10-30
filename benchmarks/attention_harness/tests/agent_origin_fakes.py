@@ -14,7 +14,7 @@ from benchmarks.attention_harness.memory_validation_provision import Provisioner
 from attention_memory_service.memory_service import MemoryService
 
 
-def build(tmp_path, monkeypatch, *, validation=False, models=None):
+def build(tmp_path, monkeypatch, *, validation=False, models=None, policy_version=None, policy='reactive_help'):
     native = SceneFixture(tmp_path)
     if validation:
         from attention_memory_service.dev_v2 import digest
@@ -37,19 +37,27 @@ def build(tmp_path, monkeypatch, *, validation=False, models=None):
     root = native.root/'cell'
     (root/'ledger.sqlite').unlink()
     store = DevV2Store(root/'ledger.sqlite')
-    config = base['config']; config_ref = native.write(root/'config.json', config)
+    config = base['config']
+    if policy_version is not None:config['agent_policy_version']=policy_version
+    config_ref = native.write(root/'config.json', config)
     manifest = json.loads(Path(base['descriptor']['manifest']['uri']).read_bytes())
     manifest.update(dev_mode='agent', selection={})
     if validation:
         manifest['demos']={'pick':{}}
         manifest.update(models or dict(dev_model='gpt-6-astra',dev_reasoning_effort='high',eval_model='gpt-6.1-sol'))
-    manifest['cells'][0]['policy_id'] = 'reactive_help'
+    manifest['cells'][0]['policy_id'] = policy
+    if policy_version is not None:
+        assert validation
+        manifest['agent_policy_version']=policy_version
+        manifest['selection']['agent_policy_version']=policy_version
+        for row in (*manifest['configs'].values(),*manifest['cells']):row['agent_policy_version']=policy_version
     mref = native.write(root/'manifest.json', manifest)
     with store.tx() as db:
         db.execute('DELETE FROM v2_versions'); db.execute('DELETE FROM v2_jobs')
         store.put(db, 'experiments', 'cell', dict(manifest=mref, selection={}))
-        store.put(db, 'cells', 'cell', dict(key='cell', experiment_id='cell', dev_mode='agent', policy_id='reactive_help',
-            artifact_dir=str(root), task_id=config['task_id'], seed=config['seed']))
+        store.put(db, 'cells', 'cell', dict(key='cell', experiment_id='cell', dev_mode='agent', policy_id=policy,
+            artifact_dir=str(root), task_id=config['task_id'], seed=config['seed'],
+            **({'agent_policy_version':policy_version} if policy_version is not None else {})))
     ws = Workspace(root/'agent').prepare({'task_prompt': 'Move cup'}, config)
     ledger = AgentLedger(store.path, 'cell')
     f = SimpleNamespace(root=root, store=store, ws=ws, ledger=ledger, config=config)
@@ -81,7 +89,7 @@ def build(tmp_path, monkeypatch, *, validation=False, models=None):
         sandbox = native.write(directory/'sandbox.json', dict(run_id=binding['run_id'], attempt_id=binding['attempt_id'],
             sdk_call_budget=dict(dispatched=1), control_steps=2, elapsed_seconds=.1))
         bundle = dict(binding, schema_version='attentionbench.formal-runner-result.v1', channel='dev_agent',
-            formal_eligible=False, dev_version=n, policy_id='reactive_help', config_lock=config_ref,
+            formal_eligible=False, dev_version=n, policy_id=policy, config_lock=config_ref,
             task_id=config['task_id'], seed=config['seed'], suite='robocasa365', status='failed', native_success=False,
             native_evaluator=result, infrastructure_failure=False, outcome_unknown=False, runner_boundary='dev_loop',
             entry_lock=None, public_base_yaw_visible=False, artifact_dir=str(directory),

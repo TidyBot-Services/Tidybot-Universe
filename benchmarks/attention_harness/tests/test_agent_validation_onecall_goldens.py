@@ -36,7 +36,9 @@ def test_normal_agent_and_onecall_manifest_bytes(tmp_path,offline_dev_identity):
         db=tmp_path/('ledger-'+str(agent));store=DevV2Store(db)
         before=old.create(store,tmp_path/'runs',selection)
         raw=Path(before['manifest']['uri']).read_bytes();db.unlink()
-        after=dev_experiment.create(DevV2Store(db),tmp_path/'runs',selection)
+        # The pre-v2 agent oracle has a v1 epoch. One-call keeps the exact call.
+        after=dev_experiment.create(DevV2Store(db),tmp_path/'runs',selection,
+            **({'agent_policy_version':'agent-policy-v1'} if agent else {}))
         assert Path(after['manifest']['uri']).read_bytes()==raw
         assert old.verify_manifest(after)==dev_experiment.verify_manifest(after)
 

@@ -13,12 +13,15 @@ from benchmarks.attention_harness.memory_validation_runtime import LedgerRunner
 from benchmarks.attention_harness.dev_memory_validation import policy_input
 
 
-def fixture(tmp_path,monkeypatch,*,outcome='passed',script=None,prepared=True,models=None):
-    f=build(tmp_path,monkeypatch,validation=True,models=models)
+def fixture(tmp_path,monkeypatch,*,outcome='passed',script=None,prepared=True,models=None,policy_version=None,policy='reactive_help'):
+    f=build(tmp_path,monkeypatch,validation=True,models=models,policy_version=policy_version,policy=policy)
     f.native.records['failed']=f.native.records['cell']
     meter=lambda:SimpleNamespace(start=lambda:None,stop=lambda:dict(gpu_seconds=0.,wall_seconds=.1,samples=1))
     monkeypatch.setattr(memory_independent_validator,'GpuMeter',meter)
     monkeypatch.setattr(gpu_meter,'GpuMeter',meter)
+    from benchmarks.attention_harness import dev_agent_attention
+    def forbidden_helper(*args,**kwargs):raise AssertionError('validation arm constructed an Advisor helper')
+    monkeypatch.setattr(dev_agent_attention,'Helper',forbidden_helper)
     monkeypatch.setattr(dev_agent_isolation,'verify_runtime',lambda *a,**kw:None)
     monkeypatch.setattr(dev_agent_isolation,'codex_identity',lambda:dict(offline_fake=True))
     monkeypatch.setattr(dev_agent_loop,'QuotaMonitor',lambda *a,**kw:SimpleNamespace(check=lambda *a:None,event=lambda *a:None))

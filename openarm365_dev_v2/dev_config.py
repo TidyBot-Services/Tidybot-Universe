@@ -199,6 +199,10 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         if c['dev_mode']!='agent' or tier!='dev' or budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop':
             raise ValueError('agent requires dev tier and dev_loop boundary')
         expected['dev_mode']='agent'
+    if 'agent_policy_version' in c:
+        if c.get('dev_mode')!='agent' or c['agent_policy_version'] not in ('agent-policy-v1','agent-policy-v2'):
+            raise ValueError('agent policy version requires agent dev config')
+        expected['agent_policy_version']=c['agent_policy_version']
     if 'dev_version_history' in c:
         if type(c['dev_version_history']) is not bool or tier!='dev' or budget_boundary!='dev_loop':
             raise ValueError('version history requires dev tier and dev_loop boundary')

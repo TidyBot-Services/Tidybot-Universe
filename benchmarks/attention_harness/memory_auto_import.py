@@ -171,8 +171,20 @@ def pending(ledger):
                     raise Refused('agent_memory_auto_import_and_validation_unsupported')
                 evidence = agent_evidence(proposal)
                 with sqlite3.connect('file:' + str(Path(ledger).resolve()) + '?mode=ro', uri=True) as db:
+                    help_job = json.loads(evidence['help']['help_job'])
+                    if 'execution_job' in help_job:
+                        from .dev_agent_help_interval import check_projection
+                        live_jobs = [dict(json.loads(raw), id=jid, state=state) for jid, state, raw in db.execute(
+                            'SELECT id,state,payload FROM v2_agent_jobs WHERE cell=? ORDER BY rowid', (event['cell'],))]
+                        try:
+                            check_projection(help_job, live_jobs, proposal['help_version'],
+                                json.loads(evidence['refs']['help']), json.loads(evidence['help']['delivery']))
+                        except Exception as exc:
+                            raise Refused('evidence digest drift: agent execution help') from exc
                     for name in ('help_job', 'origin_execution', 'help_execution'):
                         sealed = json.loads(evidence['help'][name])
+                        if name == 'help_job' and 'execution_job' in sealed:
+                            sealed = sealed['execution_job']
                         row = db.execute('SELECT state,payload FROM v2_agent_jobs WHERE cell=? AND id=?',
                                          (event['cell'], sealed['id'])).fetchone()
                         if row is None or dict(json.loads(row[1]), id=sealed['id'], state=row[0]) != sealed:

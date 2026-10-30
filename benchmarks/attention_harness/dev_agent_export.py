@@ -101,8 +101,21 @@ class Exporter:
         immutable(directory / 'policy.py', read_beneath(self.workspace.private,
             'sources/' + response['request_id'] + '.py').decode('utf-8'))
         incoming = self.workspace.canonical / f'versions/v{number - 1:04d}/help.json'
-        immutable(directory / 'help.json', json.loads(incoming.read_bytes()) if incoming.is_file()
-                  else dict(status='not_requested'))
+        if help_value.get('agent_policy_version') == 'agent-policy-v2':
+            from .dev_agent_help_interval import freeze_help
+            from .memory_provisional import NotStaged
+            # Reuse the sealed interval on replay, never sample later help.
+            if not (directory / 'help.json').exists():
+                try:
+                    incoming_help = freeze_help(self.workspace, self.ledger.jobs(), number)
+                except NotStaged as exc:
+                    # Invalid/unexecuted intervals still get their D7 export;
+                    # staging reports the evidence failure through its skip event.
+                    incoming_help = dict(status='not_requested', agent_policy_version='agent-policy-v2', reason=str(exc))
+                immutable(directory / 'help.json', incoming_help)
+        else:
+            immutable(directory / 'help.json', json.loads(incoming.read_bytes()) if incoming.is_file()
+                      else dict(status='not_requested'))
         immutable(directory / 'version.json', record)
         self.store.version(self.key, record)
         memory_dir = self.workspace.private / 'memory' / f'v{number}'

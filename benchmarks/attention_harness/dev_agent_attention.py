@@ -110,14 +110,28 @@ def flat_usage(usage):
 
 
 class Helper:
+    def __new__(cls, *args, agent_policy_version='agent-policy-v1', **kwargs):
+        if agent_policy_version not in ('agent-policy-v1', 'agent-policy-v2'):
+            raise ValueError('unsupported agent policy version')
+        if cls is Helper and agent_policy_version == 'agent-policy-v2':
+            from .dev_agent_attention_v2 import HelperV2
+            return object.__new__(HelperV2)
+        return object.__new__(cls)
+
     def __init__(self, workspace, ledger, *, policy, parameters=None, config=None, client=None,
-                 demo=None, quota=None, ask_provider=None, view_builder=request_view, memory=None):
+                 demo=None, quota=None, ask_provider=None, view_builder=request_view, memory=None,
+                 agent_policy_version='agent-policy-v1'):
+        if (workspace.private/'policy-journal').exists():
+            raise ValueError('policy state version mismatch')
+        self.agent_policy_version=agent_policy_version
         self.workspace,self.ledger,self.policy=workspace,ledger,policy
         self.parameters=policy_parameters(policy,parameters)
         self.config=config or {};self.client=client;self.demo=demo;self.quota=quota
         self.ask_provider=ask_provider or advisor.ask;self.view_builder=view_builder
         self.path=workspace.private/'attention.json'
         self.state=json.loads(self.path.read_bytes()) if self.path.exists() else dict(failures=0,prior=[],current=None,intervals={})
+        if self.state.get('agent_policy_version', 'agent-policy-v1') != agent_policy_version:
+            raise ValueError('policy state version mismatch')
         self.context={}
         self.memory=memory
 

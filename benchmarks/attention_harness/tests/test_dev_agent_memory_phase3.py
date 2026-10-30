@@ -153,13 +153,14 @@ def test_non_arm_shapes_refused(tmp_path,monkeypatch,change):
     finally:f.runner.pool.shutdown()
 
 
-@pytest.mark.parametrize('result,models',[
-    pytest.param('passed',dict(dev_model='gpt-6.1-sol',dev_reasoning_effort='medium',eval_model='gpt-6-sol'),id='passed-sol'),
-    pytest.param('passed',dict(dev_model='gpt-6-astra',dev_reasoning_effort='low',eval_model='gpt-6-astra'),id='passed-astra'),
-    pytest.param('rejected',None,id='rejected'),pytest.param('inconclusive',None,id='inconclusive')])
-def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result,models):
+@pytest.mark.parametrize('result,models,policy_version,policy',[
+    pytest.param('passed',dict(dev_model='gpt-6.1-sol',dev_reasoning_effort='medium',eval_model='gpt-6-sol'),'agent-policy-v1','reactive_help',id='passed-sol'),
+    pytest.param('passed',dict(dev_model='gpt-6-astra',dev_reasoning_effort='low',eval_model='gpt-6-astra'),None,'reactive_help',id='passed-astra'),
+    pytest.param('passed',None,'agent-policy-v2','trace_aware_hint_only',id='passed-v2-hidden-memory'),
+    pytest.param('rejected',None,None,'reactive_help',id='rejected'),pytest.param('inconclusive',None,None,'reactive_help',id='inconclusive')])
+def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result,models,policy_version,policy):
     import subprocess
-    f=fixture(tmp_path,monkeypatch,outcome=result,prepared=False,models=models)
+    f=fixture(tmp_path,monkeypatch,outcome=result,prepared=False,models=models,policy_version=policy_version,policy=policy)
     outcome(f.service,f.note['memory_id'],0,ctx=dict(f.context,namespace='offline-agent-origin'))
     assert [n['memory_id'] for n in f.service.validation_queue()]==[f.note['memory_id']]
     root=f.provision.state_root
@@ -186,6 +187,12 @@ def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result,models):
         store=DevV2Store(next(iter(batch['cells'].values()))['ledger'])
         manifest=json.loads(checked(dev_experiment.snapshot(store,batch['experiment_id'])['manifest']).read_bytes())
         original=json.loads(Path(manifest['validation_origin']['manifest']['uri']).read_bytes())
+        version=original.get('agent_policy_version','agent-policy-v1')
+        assert all(row.get('agent_policy_version','agent-policy-v1')==version
+            for row in (manifest,manifest['selection'],*manifest['cells'],*manifest['configs'].values()))
+        if version=='agent-policy-v2':
+            from benchmarks.attention_harness.dev_agent_policies import memory_exposed
+            assert not memory_exposed(policy)
         for field in ('dev_model','dev_reasoning_effort','eval_model'):
             assert manifest[field]==manifest['selection'][field]==original[field]
         assert batch['dev_model']==dict(provider='codex',model=original['dev_model'])
@@ -274,3 +281,41 @@ def test_origin_model_manifest_digest_is_rechecked(tmp_path):
     ref=immutable(tmp_path/'manifest.json',dict(dev_mode='agent',dev_model='gpt-6.1-sol',dev_reasoning_effort='high',eval_model='gpt-6-astra'))
     Path(ref['uri']).chmod(0o600);Path(ref['uri']).write_text('{}')
     with pytest.raises(DevConflict,match='digest mismatch'):origin_models(dict(manifest=ref))
+
+
+@pytest.mark.parametrize('origin_version',[None,'agent-policy-v2'])
+@pytest.mark.parametrize('fault',['selection','manifest','config','cell','create'])
+def test_arm_policy_epoch_must_match_sealed_origin(tmp_path,monkeypatch,fault,origin_version):
+    from copy import deepcopy
+    from benchmarks.attention_harness.memory_agent_validation import validate_options,validate_manifest
+    f=fixture(tmp_path,monkeypatch,policy_version=origin_version)
+    wrong='agent-policy-v1' if origin_version=='agent-policy-v2' else 'agent-policy-v2'
+    try:
+        with synthetic_creation(f.native):
+            batch=f.provision(f.note,'agent-policy-epoch-001')
+            store=DevV2Store(next(iter(batch['cells'].values()))['ledger'])
+            manifest=dev_experiment.verify_manifest(dev_experiment.snapshot(store,batch['experiment_id']))
+            changed=deepcopy(manifest)
+            if fault=='create':
+                selection={k:v for k,v in manifest['selection'].items() if k in dev_experiment.ALLOWED_SELECTION_FIELDS}
+                with pytest.raises(ValueError,match='policy version differs from origin'):
+                    dev_experiment.create(store,f.native.root,dict(selection,request_key='wrong-policy-epoch',agent_policy_version=wrong),validation_origin=manifest['validation_origin'])
+                return
+            row={'selection':changed['selection'],'manifest':changed,
+                'config':next(iter(changed['configs'].values())),'cell':changed['cells'][0]}[fault]
+            row['agent_policy_version']=wrong
+            with pytest.raises(ValueError,match='policy version differs from origin'):
+                validate_manifest(changed)
+            if fault=='selection':
+                with pytest.raises(ValueError,match='policy version differs from origin'):
+                    validate_options(changed['selection'],changed['validation_origin'])
+    finally:f.runner.pool.shutdown()
+
+
+@pytest.mark.parametrize('version',['unsupported',None,[]])
+def test_origin_policy_epoch_must_be_supported(tmp_path,version):
+    from benchmarks.attention_harness.dev_v2_loop import immutable
+    from benchmarks.attention_harness.memory_agent_validation import origin_policy_version
+    ref=immutable(tmp_path/'origin.json',dict(dev_mode='agent',agent_policy_version=version))
+    with pytest.raises(ValueError,match='origin policy version'):
+        origin_policy_version(dict(manifest=ref))

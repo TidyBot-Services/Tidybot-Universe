@@ -87,6 +87,7 @@ html[data-theme="dark"] #automatic-checks{--ac-fail:#e08670}
 #automatic-checks .ac-family>ul{list-style:none;padding:0;margin:0;display:grid;gap:14px}
 #automatic-checks .ac-family>ul>li{padding:12px;border:1px solid var(--sh-line2);border-radius:8px}
 #automatic-checks .ac-family b,#automatic-checks .ac-family strong,#automatic-checks .ac-family small{display:block;margin:5px 0}
+#automatic-checks .ac-family .ac-tag{justify-self:start}
 #automatic-checks .ac-family small{color:var(--sh-mut)}
 #automatic-checks .ac-family p{white-space:pre-wrap;line-height:1.5;margin:8px 0}
 #automatic-checks .ac-family details{margin:10px 0}

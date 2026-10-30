@@ -8,7 +8,8 @@ const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/d5-agent-
 const functions=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
 const render=source.slice(source.indexOf('  function enterAgentWorkspace('),source.indexOf('  async function agentWorkspaceSnapshot('));
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,runConfigDefaultsFromSelection,agentActivityCaption,agentTrialChips})',{esc});
+const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,devPolicyChoices,runConfigDefaultsFromSelection,agentActivityCaption,agentTrialChips})',{esc});
+const fillPolicyOptions=(select,values)=>{const before=select.value;select.options=values.map(value=>({value}));select.value=values.includes(before)?before:values[0]||'';};
 const old={eval_agent:{enabled:true,model:'parcc/Qwen'},request_key:'unchanged-123',tasks:['open_cabinet'],seeds:[102],policies:['reactive_help'],mode:'experiment',help_budget:5,human_wait_seconds:300,configuration:{goal_id:'old-goal-123',experiment_budget:{executions:5},cell_budget:{executions:5},max_iterations:5,wall_seconds:21600}};
 
 test('absent mode and explicit one-call keep original body bytes and identity',()=>{
@@ -63,8 +64,8 @@ test('actual dialog gates disable unsupported mode and retain independent model 
   const nodes={};fields.querySelector=key=>nodes[key]??=( {textContent:'',hidden:false} );
   const agentOption={disabled:false};fields.dev_mode.querySelector=()=>agentOption;
   fields.dev_mode.value='agent';fields.dev_model.value='gpt-6-sol';fields.eval_model.value='gpt-6-astra';
-  fields.v2_policy.value='reactive_help';fields.v2_mode.value='interactive';
-  const context={form:fields,options:{dev_v2:{budget_tier:'dev',policies:['a','b']}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,showQuota:()=>{}};
+  fields.v2_policy.options=[];fields.v2_policy.value='reactive_help';fields.v2_mode.value='interactive';
+  const context={form:fields,options:{dev_v2:{budget_tier:'dev',policies:['a','b']}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,devPolicyChoices:api.devPolicyChoices,fillOptions:fillPolicyOptions,showQuota:()=>{}};
   vm.runInNewContext(fragment+'\nsyncAgentOptions();',context);
   assert.equal(fields.dev_mode.disabled,false);assert.equal(fields.model_source.value,'codex');assert.equal(fields.model_source.disabled,true);
   assert.equal(fields.dev_model.value,'gpt-6-sol');assert.equal(fields.eval_model.value,'gpt-6-astra');
@@ -84,9 +85,9 @@ test('fresh dev single cell defaults to Agent; Advanced one-call preserves form 
   const form=Object.fromEntries(['dev_mode','dev_model','eval_model','model_source','eval_agent_enabled','max_attempts','wall_seconds','model_seconds_minutes','v2_policy','v2_mode'].map(k=>[k,{value:''}]));
   form.querySelector=()=>({});form.dev_mode.querySelector=()=>({});
   Object.assign(form.model_source,{value:'parcc'});form.eval_agent_enabled.checked=false;form.max_attempts.value='5';form.wall_seconds.value='7200';
-  form.v2_policy.value='reactive_help';form.v2_mode.value='interactive';
+  form.v2_policy.options=[];form.v2_policy.value='reactive_help';form.v2_mode.value='interactive';
   const before=JSON.stringify([form.model_source.value,form.eval_agent_enabled.checked,form.max_attempts.value,form.wall_seconds.value]);
-  const context={form,options:{dev_v2:{budget_tier:'dev'}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,showQuota:()=>{}};
+  const context={form,options:{dev_v2:{budget_tier:'dev'}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,devPolicyChoices:api.devPolicyChoices,fillOptions:fillPolicyOptions,showQuota:()=>{}};
   vm.runInNewContext(fragment+'syncAgentOptions();',context);
   assert.equal(form.dev_mode.value,'agent');
   context.requestedDevMode='one_call';vm.runInNewContext('syncAgentOptions();',context);
