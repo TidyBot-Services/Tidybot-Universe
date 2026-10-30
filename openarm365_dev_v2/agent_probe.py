@@ -109,7 +109,9 @@ def probe(env, executor, planner, observe, request):
     op, payload = request['op'],request['payload'];validate(op,payload)
     if executor.sequence != 0 or executor.physics_steps != 0:raise ValueError('probe_owner_must_be_reset')
     base = dict(state_basis='reset_scene', physics_steps=0)
-    if executor.held or payload.get('held_object') or payload.get('attachment'):
+    held=executor.held
+    if ((any(held.values()) if getattr(executor,'bimanual_collaboration','none')=='c1' else held)
+            or payload.get('held_object') or payload.get('attachment')):
         return dict(base,unsupported_scope='held_object')
     before = state_fingerprint(env,executor)
     if op=='observe':

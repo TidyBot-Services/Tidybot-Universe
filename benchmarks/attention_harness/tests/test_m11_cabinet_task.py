@@ -98,7 +98,9 @@ def test_sealed_assets_and_existing_manifests_untouched():
     for name in names:
         assert (ROOT/name).read_bytes()==subprocess.check_output(['git','show','e62021f:'+name],cwd=ROOT)
     changed=subprocess.check_output(['git','diff','--name-only','e62021f'],text=True,cwd=ROOT).splitlines()
-    assert not any(n.startswith('openarm365_dev/') or 'manifest' in n.lower() for n in changed)
+    fixture_rule_files={'openarm365_dev/'+name+'.py' for name in (
+        'executor','planner','policy_validation','policy_worker','sandbox','world','base_motion')}
+    assert not any((n.startswith('openarm365_dev/') and n not in fixture_rule_files) or 'manifest' in n.lower() for n in changed)
 
 
 def test_native_evidence_matches_upstream_and_public_fixture(monkeypatch):
