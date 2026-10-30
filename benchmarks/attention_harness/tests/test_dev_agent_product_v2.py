@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from benchmarks.attention_harness import dev_experiment as exp
 from benchmarks.attention_harness import dev_agent_policies as policies
-from benchmarks.attention_harness.dev_agent_policy_manifest import V1,V2,source_hashes
+from benchmarks.attention_harness.dev_agent_policy_freeze import V1,V2,source_hashes
 from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.tests.c21_fixtures import base,r4_deployment,offline_dev_identity
 from benchmarks.attention_harness.tests.test_dev_agent_configuration import SELECTION

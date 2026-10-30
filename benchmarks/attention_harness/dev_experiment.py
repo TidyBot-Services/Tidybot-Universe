@@ -346,7 +346,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
             sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=21600,model_turns=None,tokens=None)
         for config in configs.values():config['dev_mode']='agent'
         if agent_v2:
-            from .dev_agent_policy_manifest import freeze
+            from .dev_agent_policy_freeze import freeze
             freeze(manifest)
         # Creation-only freeze of the Eval-only container rule (option A); old manifests have none.
         from .dev_agent_success import EVAL_RULE,for_configs
@@ -414,7 +414,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
 
 def validate_fairness(m):
     if isinstance(m,(list,tuple)):
-        from .dev_agent_policy_manifest import validate_comparison
+        from .dev_agent_policy_freeze import validate_comparison
         for manifest in m:validate_fairness(manifest)
         validate_comparison(m)
         return True
@@ -426,7 +426,7 @@ def validate_fairness(m):
         if any(m.get(k)!=v for k,v in options.items()) or len(m['cells'])!=1 or m.get('validation_experiment'):
             raise ValueError('agent_frozen_options_differ')
         if any(c.get('dev_mode')!='agent' for c in m['configs'].values()):raise ValueError('agent_config_gate_differs')
-        from .dev_agent_policy_manifest import validate
+        from .dev_agent_policy_freeze import validate
         validate(m)
     source=m.get('model_source','parcc')
     expected_model={**MODEL,'model':'gpt-6-astra','reasoning_effort':'high'} if source=='codex' else MODEL

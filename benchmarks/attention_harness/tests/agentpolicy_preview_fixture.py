@@ -8,7 +8,7 @@ from benchmarks.attention_harness.dev_ledger import DevV2Store, RESOURCES, encod
 from benchmarks.attention_harness.dev_agent_ledger import AgentLedger
 from benchmarks.attention_harness.dev_agent_workspace import Workspace, atomic_write, encode
 from benchmarks.attention_harness.dev_agent_view import projection
-from benchmarks.attention_harness.dev_agent_policy_manifest import freeze
+from benchmarks.attention_harness.dev_agent_policy_freeze import freeze
 from benchmarks.attention_harness.dev_agent_policies import normalize_parameters
 
 STAMP=1793328000

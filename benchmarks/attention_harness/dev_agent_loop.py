@@ -318,7 +318,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
     ledger=None;setup_id=None
     try:
         if manifest.get('agent_policy_version')=='agent-policy-v2':
-            from .dev_agent_policy_manifest import validate
+            from .dev_agent_policy_freeze import validate
             validate(manifest)
             if cell.get('agent_policy_version')!='agent-policy-v2':raise ValueError('agent_policy_cell_version_mismatch')
         ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'])
