@@ -209,7 +209,10 @@ class Provisioner:
                 from .dev_v2_loop import immutable
                 immutable(saved,dict(memory_id=candidate_id))
         selection=dict(request_key='validation-'+operation,tasks=[config['task_id']],seeds=[config['seed']],policies=[resolved['policy_id']],mode='diagnostic',budget_tier='dev',model_source='codex',help_budget=0,run_notes=False,memory_family=False,target_depth=1,target_valid_executions=1,max_versions=1,reproducible_reset=True,scene_contract=config['scene_contract'],attempt_wall_seconds=config['attempt_wall_seconds'])
-        if agent:selection.update(dev_mode='agent',dev_model='gpt-6-astra')
+        if agent:
+            from .memory_agent_validation import origin_models
+            models=origin_models(origin)
+            selection.update(dev_mode='agent',**models)
         from .dev_configuration import normalize_configuration,derive_cell_budget
         budget=derive_cell_budget(normalize_configuration(dict(selection,agent_validation=origin) if agent else selection))
         selection['wall_limit']=10*(budget['model_seconds']+budget['execution_seconds'])
@@ -238,7 +241,7 @@ class Provisioner:
             path=Path(config_ref['uri']) if agent else Path(experiment['cells'][0]['artifact_dir'])/'config.json'
             config_ref=dict(uri=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest())
         pairs=[dict(pair_id=str(i),**{a+'_cell':next(c['key'] for c in experiment['cells'] if c['validation_pair']==i and c['validation_arm']==a) for a in ('control','treatment')}) for i in range(5)]
-        return dict(experiment_id=exp_id,memory_id=note['memory_id'] if resolved.get('positive_control') else candidate_id,origin=origin['source'],origin_feedback=resolved['feedback'],config=config_ref,origin_config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model='gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],**({'positive_control':resolved['positive_control']} if resolved.get('positive_control') else {}),**({'dev_mode':'agent'} if agent else {}),pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
+        return dict(experiment_id=exp_id,memory_id=note['memory_id'] if resolved.get('positive_control') else candidate_id,origin=origin['source'],origin_feedback=resolved['feedback'],config=config_ref,origin_config=origin['config'],context=resolved['context'],failure_signature=resolved['signature'],policy_id=resolved['policy_id'],dev_model=dict(provider='codex',model=models['dev_model'] if agent else 'gpt-6-astra'),budget=dict(assistance_credits=0),source_catalogs=resolved['catalogs'],failed_execution=resolved['failed_execution'],source_import=resolved['source_import'],**({'positive_control':resolved['positive_control']} if resolved.get('positive_control') else {}),**(dict(dev_mode='agent',dev_reasoning_effort=models['dev_reasoning_effort'],eval_model=models['eval_model']) if agent else {}),pairs=pairs,cells={c['key']:dict(ledger=str(ledger)) for c in experiment['cells']})
 
     @staticmethod
     def gpu_seconds(store,cell,version=1):

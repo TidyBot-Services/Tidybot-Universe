@@ -68,7 +68,7 @@ class LedgerRunner:
         provenance=self.client.provenance(note['memory_id'])
         origin_sha=provenance.get('source_policy_sha256') or provenance.get('origin',{}).get('digests',{}).get('origin_source')
         if batch['origin']['sha256']!=origin_sha or batch['failure_signature']!=provenance['failure_signature']:raise DevConflict('batch differs from the note frozen origin/signature')
-        if batch['dev_model']!={'provider':'codex','model':'gpt-6-astra'}:raise DevConflict('locked Codex Dev model required')
+        if batch.get('dev_mode')!='agent' and batch['dev_model']!={'provider':'codex','model':'gpt-6-astra'}:raise DevConflict('locked Codex Dev model required')
         checked(batch['origin']);config=json.loads(checked(batch['config']).read_bytes())
         from openarm365_dev_v2.scene_contract import registered_contract_ref
         if config.get('scene_contract')!=registered_contract_ref():raise DevConflict('registered scene contract required')
@@ -109,6 +109,12 @@ class LedgerRunner:
             with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
             from .dev_experiment import verify_manifest
             manifest=verify_manifest(e)
+            if batch.get('dev_mode')=='agent':
+                from .memory_agent_validation import origin_models
+                models=origin_models(manifest['validation_origin'])
+                if (batch['dev_model']!=dict(provider='codex',model=models['dev_model'])
+                        or any(batch.get(k)!=models[k] for k in ('dev_reasoning_effort','eval_model'))):
+                    raise DevConflict('agent validation batch models differ from origin')
             frozen=manifest['configs'][f"{c['task_id']}:{c['seed']}"]
             if frozen!=config or e['selection'].get('model_source')!='codex' or e['selection'].get('budget_tier')!='dev':raise DevConflict('validation cell frozen configuration differs')
             if not Path(e['artifact_dir']).resolve().is_relative_to(self.experiments_root):raise DevConflict('validation executor outside experiments root')

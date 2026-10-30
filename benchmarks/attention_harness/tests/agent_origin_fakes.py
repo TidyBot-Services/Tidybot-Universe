@@ -14,7 +14,7 @@ from benchmarks.attention_harness.memory_validation_provision import Provisioner
 from attention_memory_service.memory_service import MemoryService
 
 
-def build(tmp_path, monkeypatch, *, validation=False):
+def build(tmp_path, monkeypatch, *, validation=False, models=None):
     native = SceneFixture(tmp_path)
     if validation:
         from attention_memory_service.dev_v2 import digest
@@ -40,7 +40,9 @@ def build(tmp_path, monkeypatch, *, validation=False):
     config = base['config']; config_ref = native.write(root/'config.json', config)
     manifest = json.loads(Path(base['descriptor']['manifest']['uri']).read_bytes())
     manifest.update(dev_mode='agent', selection={})
-    if validation:manifest['demos']={'pick':{}}
+    if validation:
+        manifest['demos']={'pick':{}}
+        manifest.update(models or dict(dev_model='gpt-6-astra',dev_reasoning_effort='high',eval_model='gpt-6.1-sol'))
     manifest['cells'][0]['policy_id'] = 'reactive_help'
     mref = native.write(root/'manifest.json', manifest)
     with store.tx() as db:

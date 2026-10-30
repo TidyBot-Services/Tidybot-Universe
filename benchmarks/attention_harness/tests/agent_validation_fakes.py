@@ -13,8 +13,8 @@ from benchmarks.attention_harness.memory_validation_runtime import LedgerRunner
 from benchmarks.attention_harness.dev_memory_validation import policy_input
 
 
-def fixture(tmp_path,monkeypatch,*,outcome='passed',script=None,prepared=True):
-    f=build(tmp_path,monkeypatch,validation=True)
+def fixture(tmp_path,monkeypatch,*,outcome='passed',script=None,prepared=True,models=None):
+    f=build(tmp_path,monkeypatch,validation=True,models=models)
     f.native.records['failed']=f.native.records['cell']
     meter=lambda:SimpleNamespace(start=lambda:None,stop=lambda:dict(gpu_seconds=0.,wall_seconds=.1,samples=1))
     monkeypatch.setattr(memory_independent_validator,'GpuMeter',meter)
@@ -31,7 +31,17 @@ def fixture(tmp_path,monkeypatch,*,outcome='passed',script=None,prepared=True):
         def getsockname(self):return ('127.0.0.1',12345)
     monkeypatch.setattr(dev_agent_loop.socket,'socket',Listener)
     script=script or ("pass" if outcome=='inconclusive' else "tool('observe'); packet=json.loads(Path('memory/v1.json').read_text()); assert Path('work/main.py').read_bytes()==Path('origin/policy.py').read_bytes(); assert Path('origin/public-feedback.json').exists(); Path('work/main.py').write_text(Path('work/main.py').read_text()+'\\n# fixed\\n' if packet['memory'] else Path('work/main.py').read_text()+'\\n# control\\n'); tool('run','--no-eval'); tool('submit')")
-    monkeypatch.setattr(dev_agent_loop,'CodexAgentSession',lambda ws,private,**kw:fake_session(SimpleNamespace(ws=ws,private=private),[script]))
+    f.model_choices=[];f.eval_choices=[]
+    def session(ws,private,**kw):
+        f.model_choices.append(kw)
+        value=fake_session(SimpleNamespace(ws=ws,private=private),[script])
+        value.model=kw['model'];value.reasoning_effort=kw['reasoning_effort']
+        return value
+    def evaluator(*a,**kw):
+        f.eval_choices.append(kw['model'])
+        return FakeEvaluator()
+    monkeypatch.setattr(dev_agent_loop,'CodexAgentSession',session)
+    monkeypatch.setattr(dev_agent_eval,'Evaluator',evaluator)
     class Owner:
         def __init__(self,**kw):self.deadline=kw['deadline'];self.stopped=False
         def start(self):return dict(scene_condition=dict(matched=True))

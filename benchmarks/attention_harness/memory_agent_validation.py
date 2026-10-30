@@ -9,6 +9,21 @@ ARM_BUDGET=dict(formal_versions=1,moving_executions=5,read_only_probes=60,eval_r
     execution_wall_seconds=1920,active_wall_seconds=1920,model_turns=None,tokens=None)
 
 
+MODEL_FIELDS=('dev_model','dev_reasoning_effort','eval_model')
+
+
+def origin_models(origin):
+    """Read explicit model choices only from the digest-checked origin manifest."""
+    from .dev_agent_config import MODELS
+    manifest=json.loads(checked(origin['manifest']).read_bytes())
+    models={k:manifest.get(k) for k in MODEL_FIELDS}
+    if (manifest.get('dev_mode')!='agent' or any(type(v) is not str for v in models.values())
+            or models['dev_model'] not in MODELS or models['eval_model'] not in MODELS
+            or models['dev_reasoning_effort'] not in ('low','medium','high')):
+        raise ValueError('unsupported agent validation origin models')
+    return models
+
+
 def validate_options(selection,origin):
     if not isinstance(origin,dict) or set(origin)!={'manifest','config','source','cell','version'}:
         raise ValueError('agent_memory_or_control_not_supported')
@@ -16,7 +31,7 @@ def validate_options(selection,origin):
     if manifest.get('dev_mode')!='agent' or config.get('dev_mode')!='agent':raise ValueError('mixed agent validation is unsupported')
     expected=dict(mode='diagnostic',help_budget=0,run_notes=False,memory_family=False,target_depth=1,
         target_valid_executions=1,max_versions=1,reproducible_reset=True,attempt_wall_seconds=1920,
-        dev_model='gpt-6-astra')
+        **origin_models(origin))
     if any(selection.get(k)!=v or type(selection.get(k)) is not type(v) for k,v in expected.items()) or config.get('attempt_wall_seconds')!=1920:
         raise ValueError('exact agent validation arm required')
     if any(selection.get(k) for k in ('memory_authority','planner_features','human_proxy','positive_control','fork')) or selection.get('advisor_proxy',{}).get('enabled') or selection.get('eval_agent',{}).get('enabled'):
@@ -28,6 +43,7 @@ def validate_options(selection,origin):
 
 def validate_manifest(manifest):
     origin=manifest['validation_origin'];validate_options(manifest['selection'],origin)
+    if any(manifest.get(k)!=v for k,v in origin_models(origin).items()):raise ValueError('agent validation models differ from origin')
     if (manifest.get('agent_validation')!=origin or manifest.get('agent_budget')!=ARM_BUDGET
             or any(type(manifest['agent_budget'].get(k)) is not type(v) for k,v in ARM_BUDGET.items())
             or manifest.get('schedule')!=[dict(cell=c['key'],through_version=1) for c in manifest['cells']]

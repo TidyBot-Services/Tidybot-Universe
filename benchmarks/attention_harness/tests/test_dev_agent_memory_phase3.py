@@ -153,10 +153,13 @@ def test_non_arm_shapes_refused(tmp_path,monkeypatch,change):
     finally:f.runner.pool.shutdown()
 
 
-@pytest.mark.parametrize('result',['passed','rejected','inconclusive'])
-def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result):
+@pytest.mark.parametrize('result,models',[
+    pytest.param('passed',dict(dev_model='gpt-6.1-sol',dev_reasoning_effort='medium',eval_model='gpt-6-sol'),id='passed-sol'),
+    pytest.param('passed',dict(dev_model='gpt-6-astra',dev_reasoning_effort='low',eval_model='gpt-6-astra'),id='passed-astra'),
+    pytest.param('rejected',None,id='rejected'),pytest.param('inconclusive',None,id='inconclusive')])
+def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result,models):
     import subprocess
-    f=fixture(tmp_path,monkeypatch,outcome=result,prepared=False)
+    f=fixture(tmp_path,monkeypatch,outcome=result,prepared=False,models=models)
     outcome(f.service,f.note['memory_id'],0,ctx=dict(f.context,namespace='offline-agent-origin'))
     assert [n['memory_id'] for n in f.service.validation_queue()]==[f.note['memory_id']]
     root=f.provision.state_root
@@ -179,6 +182,16 @@ def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result):
         assert summary['status']=={'passed':'trusted','rejected':'rejected','inconclusive':'inconclusive'}[result],state
         batch=json.loads(next(root.glob('*/batch.json')).read_bytes())
         assert batch['dev_mode']=='agent' and len(batch['cells'])==10
+        from benchmarks.attention_harness.dev_v2_loop import checked
+        store=DevV2Store(next(iter(batch['cells'].values()))['ledger'])
+        manifest=json.loads(checked(dev_experiment.snapshot(store,batch['experiment_id'])['manifest']).read_bytes())
+        original=json.loads(Path(manifest['validation_origin']['manifest']['uri']).read_bytes())
+        for field in ('dev_model','dev_reasoning_effort','eval_model'):
+            assert manifest[field]==manifest['selection'][field]==original[field]
+        assert batch['dev_model']==dict(provider='codex',model=original['dev_model'])
+        assert batch['dev_reasoning_effort']==original['dev_reasoning_effort'] and batch['eval_model']==original['eval_model']
+        assert f.model_choices==[dict(model=original['dev_model'],reasoning_effort=original['dev_reasoning_effort'])]*len(starts)
+        assert f.eval_choices==[original['eval_model']]*len(starts)
         decision=f.service.decision(batch['memory_id'])
         assert decision['decision']=={'passed':'promoted','rejected':'rejected','inconclusive':'inconclusive'}[result]
         if result!='inconclusive':
@@ -217,3 +230,47 @@ def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result):
         (tmp_path/'arm-disk.json').write_text(json.dumps(disk,indent=2))
         print('OFFLINE_ARM_DISK',result,json.dumps(disk))
     finally:f.runner.pool.shutdown()
+
+
+@pytest.mark.parametrize('field,value',[('dev_model','gpt-6-sol'),('dev_reasoning_effort','low'),('eval_model','gpt-6-astra')])
+def test_arm_and_batch_models_must_match_origin(tmp_path,monkeypatch,field,value):
+    from benchmarks.attention_harness.memory_agent_validation import validate_options,validate_manifest
+    from benchmarks.attention_harness.core.dev_store import DevConflict
+    from copy import deepcopy
+    f=fixture(tmp_path,monkeypatch)
+    try:
+        with synthetic_creation(f.native):
+            batch=f.provision(f.note,'agent-operation-001')
+            store=DevV2Store(next(iter(batch['cells'].values()))['ledger'])
+            manifest=dev_experiment.verify_manifest(dev_experiment.snapshot(store,batch['experiment_id']))
+            changed=deepcopy(manifest);changed['selection'][field]=value
+            with pytest.raises(ValueError,match='exact agent validation arm'):
+                validate_options(changed['selection'],changed['validation_origin'])
+            changed=deepcopy(manifest);changed[field]=value
+            with pytest.raises(ValueError,match='models differ from origin'):validate_manifest(changed)
+            tampered=dict(batch)
+            if field=='dev_model':tampered[field]=dict(provider='codex',model=value)
+            else:tampered[field]=value
+            monkeypatch.setattr(f.runner,'provision',lambda *a:tampered)
+            note=dict(f.note,created_at=f.service.get_memory(f.note['memory_id']).created_at)
+            with pytest.raises(DevConflict,match='batch models differ from origin'):f.runner.begin(note,'agent-operation-001')
+    finally:f.runner.pool.shutdown()
+
+
+@pytest.mark.parametrize('field,value',[(k,v) for k in ('dev_model','eval_model','dev_reasoning_effort') for v in ('unsupported',None,[])])
+def test_origin_models_must_be_explicit_and_allowed(tmp_path,field,value):
+    from benchmarks.attention_harness.dev_v2_loop import immutable
+    from benchmarks.attention_harness.memory_agent_validation import origin_models
+    manifest=dict(dev_mode='agent',dev_model='gpt-6.1-sol',dev_reasoning_effort='high',eval_model='gpt-6-astra')
+    manifest[field]=value
+    with pytest.raises(ValueError,match='unsupported agent validation origin models'):
+        origin_models(dict(manifest=immutable(tmp_path/'manifest.json',manifest)))
+
+
+def test_origin_model_manifest_digest_is_rechecked(tmp_path):
+    from benchmarks.attention_harness.dev_v2_loop import immutable
+    from benchmarks.attention_harness.memory_agent_validation import origin_models
+    from benchmarks.attention_harness.core.dev_store import DevConflict
+    ref=immutable(tmp_path/'manifest.json',dict(dev_mode='agent',dev_model='gpt-6.1-sol',dev_reasoning_effort='high',eval_model='gpt-6-astra'))
+    Path(ref['uri']).chmod(0o600);Path(ref['uri']).write_text('{}')
+    with pytest.raises(DevConflict,match='digest mismatch'):origin_models(dict(manifest=ref))
