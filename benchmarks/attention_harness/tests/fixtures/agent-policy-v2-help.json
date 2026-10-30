@@ -1,0 +1,12 @@
+{
+  "agent_policy_version": "agent-policy-v2",
+  "pending_ask": {"execution_id":"e000004","reason":"eval_failed","origin_version_id":"v0002"},
+  "ask_required": [{"id":"refused-submit","error":"ask_required"}],
+  "forced_fallback": {"execution_id":"e000004","forced_fallback_blocked":"wall_stop"},
+  "errors": [{"source":"controller","error":"DriveError: synthetic visible failure"}],
+  "help_intervals": [
+    {"help_id":"help:e000001","after_version":0,"version":1,"help_content":{"agent_policy_version":"agent-policy-v2","help_id":"help:e000001","execution_id":"e000001","after_version":0,"ask_kind":"agent_initiated","status":"delivered","delivered":true,"charged":true,"actual_cost_known":true,"actual_help_count":1,"hint_human_seconds":12,"reason":"agent_requested","content":"Use a smaller offset."}},
+    {"help_id":"help:e000002","after_version":0,"version":1,"help_content":{"agent_policy_version":"agent-policy-v2","help_id":"help:e000002","execution_id":"e000002","after_version":0,"ask_kind":"agent_initiated","status":"unavailable","delivered":false,"charged":true,"actual_cost_known":true,"actual_help_count":1,"hint_human_seconds":23,"reason":"RuntimeError"}},
+    {"help_id":"help:e000003","after_version":1,"version":2,"help_content":{"agent_policy_version":"agent-policy-v2","help_id":"help:e000003","execution_id":"e000003","after_version":1,"ask_kind":"forced","status":"delivered","delivered":true,"charged":true,"actual_cost_known":true,"actual_help_count":1,"hint_human_seconds":34,"reason":"eval_failed","forced_fallback":true,"fallback_trigger":"next_submit","content":"Try another safe approach."}}
+  ]
+}

@@ -59,6 +59,7 @@ def _link(base,label,root,name):
 
 
 def _public_name(name):
+    if re.fullmatch(r'(?:events/forced-fallback\.json|history/help\.jsonl|executions/e\d+/(?:help|execution|evidence)\.json|versions/v\d+/(?:evidence|decision)\.json)',name):return True
     if re.fullmatch(r'executions/e\d+/(?:frames\.json|frames/(?:overview|side|top|left_wrist|right_wrist)-\d+-sim-\d+\.\d+s\.png)',name):return True
     return bool(re.fullmatch(r'(?:events/demo\.json|probes/p\d+\.json|rpc/responses/[A-Za-z0-9_-]{1,64}\.json|history/(?:versions|executions|probes)\.jsonl|history/version_history\.json|versions/v\d+/(?:policy\.py|bundle\.py|bundle-map\.json|submission\.json|eval\.json|help\.json|continue\.json|sources/[A-Za-z0-9_-]+\.py)|executions/e\d+/(?:policy\.py|stdout\.txt|stderr\.txt|trace\.json|state_log\.json|result\.json|initial_observation\.json|final_observation\.json|diagnostics/planner\.json))',name))
 
@@ -117,6 +118,8 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     def error(source,value):
         if value not in (None,False,'',{},[]):errors.append(dict(source=source,error=clean(value)))
     error('controller',cell.get('error'))
+    error('controller result',(cell.get('result') or {}).get('error'))
+    error('Memory staging',cell.get('agent_memory_staging_failure'))
     if quota.get('error'):error('quota',quota['error'])
     base=f'{api}/experiments/{cell["experiment_id"]}/cells/{key}/agent/files/'
     def soft(root,name,default=None):
@@ -162,7 +165,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         error(rid,result.get('eval',{}).get('error'))
         if op=='ask_help' and result.get('status') not in (None,'delivered'):error(rid,result.get('reason') or result.get('error'))
         records.append(dict(id=rid,kind='formal_version' if op=='submit' else 'no_eval_execution' if op=='run' else 'help' if op=='ask_help' else 'probe',
-            op=op,status=response['status'],sequence=response.get('sequence'),at=job.get('reserved_at'),version_id=vid or result.get('version_id'),execution_id=eid,probe_id=pid,
+            op=op,status=response['status'],sequence=response.get('sequence'),at=job.get('reserved_at'),version_id=vid or result.get('version_id'),execution_id=eid or result.get('execution_id'),probe_id=pid,
             result=clean(result),error=clean(response.get('error')),links=links(names)))
     demo=soft(public,'events/demo.json')
     if demo is not None:
@@ -173,7 +176,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     # Controller error fields only: never return command/prompt/event/session logs.
     error_files=['settlement-error.json']+[str(p.relative_to(private)) for p in (private/'errors').glob('*.json')]
     error_files += [str(p.relative_to(private)) for p in (private/'eval').glob('v*/error.json')]
-    error_files += [str(p.relative_to(private)) for p in (private/'help').glob('v*/error.json')]
+    error_files += [str(p.relative_to(private)) for p in (private/'help').glob('[ve]*/error.json')]
     error_files += [str(p.relative_to(private)) for p in (private/'executions').glob('e*/controller-error.json')]
     for name in error_files:
         value=soft(private,name)
@@ -210,7 +213,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         if any(j['kind']=='help' for j in active):phase='help'
     # Advisor model: configured (10-29+), else the model recorded by the run's own Advisor calls,
     # else the advisor_proxy setting; runs before 10-29 used the fixed gpt-6-astra Advisor.
-    recorded=[r.get('model') for r in (soft(private,str(p.relative_to(private))) for p in sorted((private/'help').glob('v*/advisor.json')))
+    recorded=[r.get('model') for r in (soft(private,str(p.relative_to(private))) for p in sorted((private/'help').glob('[ve]*/advisor.json')))
               if isinstance(r,dict) and isinstance(r.get('model'),str)]
     advisor_model=(selection.get('advisor_model') or (recorded[-1] if recorded else None)
                    or (selection.get('advisor_proxy') or {}).get('model')
@@ -225,6 +228,12 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         advisor_model=advisor_model,
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
         history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
+    if selection.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2':
+        attention=soft(private,'attention.json',{}) or {}
+        result['agent'].update(agent_policy_version='agent-policy-v2',
+            pending_ask=clean(attention.get('pending_ask')), active_help=clean(attention.get('active_help')),
+            forced_fallback=clean(soft(public,'events/forced-fallback.json')),
+            ask_required=[r for r in records if r.get('error')=='ask_required'])
     from .dev_agent_ui_projection import compat, error_groups
     result['agent']['failure_errors'], result['agent']['details'] = error_groups(errors, records)
     result['dev_v2_compat']=compat(cell,result['agent'],jobs)

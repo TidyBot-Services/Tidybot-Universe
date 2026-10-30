@@ -119,16 +119,30 @@ def stage_provisional(store, key, version, directory, workspace, ledger):
         if version < 2:
             return None
         answer = json.loads((directory / 'help.json').read_bytes())
+        v2 = answer.get('agent_policy_version') == 'agent-policy-v2'
+        if v2:
+            from .dev_agent_help_interval import interval_help, answer_projection, job_projection
+            jobs = ledger.jobs()
+            matches = interval_help(jobs, version)
+            if len(matches) > 1:
+                raise provisional.NotStaged('multiple_helps_in_interval')
+            if not matches:
+                return None
+            raw_job = matches[0]
+            if answer != answer_projection(raw_job['receipt'], version):
+                raise provisional.NotStaged('execution_help_receipt_drift')
         if (answer.get('provider') != 'advisor' or answer.get('delivered') is not True
                 or answer.get('status') != 'delivered' or answer.get('cache_hit')
                 or answer.get('rejected')):
             return None
         vid = f'v{version - 1:04d}'
-        jobs = ledger.jobs()
-        help_job = next(j for j in jobs if j['id'] == 'help:' + vid)
+        if not v2:
+            jobs = ledger.jobs()
+        help_job = job_projection(raw_job, version) if v2 else next(j for j in jobs if j['id'] == 'help:' + vid)
+        help_identity = answer['help_execution_id'] if v2 else vid
         evidence_dir = directory / 'agent-help'
-        refs = dict(request_view=provisional._ref(workspace.private / 'help' / vid / 'request-view.json'),
-                    advisor=provisional._ref(workspace.private / 'help' / vid / 'advisor.json'),
+        refs = dict(request_view=provisional._ref(workspace.private / 'help' / help_identity / 'request-view.json'),
+                    advisor=provisional._ref(workspace.private / 'help' / help_identity / 'advisor.json'),
                     help_job=immutable(evidence_dir / 'help-job.json', help_job))
         for label, number in (('origin', version - 1), ('help', version)):
             record = json.loads((directory.parent / f'v{number}' / 'version.json').read_bytes())
@@ -148,12 +162,18 @@ def stage_provisional(store, key, version, directory, workspace, ledger):
             for path in sorted(responses.glob('*.json')):
                 value = json.loads(read_beneath(responses, path.name, 32*1024*1024))
                 if (value.get('op') == 'ask_help' and value.get('status') == 'completed'
-                        and value.get('result', {}).get('version_id') == vid
+                        and (value.get('result', {}).get('help_id') == raw_job['id'] if v2 else
+                             value.get('result', {}).get('version_id') == vid)
                         and value['result'].get('delivered') is True):
                     matches.append(path)
             if len(matches) != 1:
                 raise provisional.NotStaged('help_delivery_missing_or_ambiguous')
-            refs['delivery'] = provisional._ref(matches[0])
+            if v2:
+                from .dev_agent_help_interval import delivery_projection
+                delivery = json.loads(read_beneath(responses, matches[0].name, 32*1024*1024))
+                refs['delivery'] = immutable(evidence_dir / 'delivery.json', delivery_projection(delivery, answer))
+            else:
+                refs['delivery'] = provisional._ref(matches[0])
         evidence = immutable(directory / 'agent-help-evidence.json', dict(
             schema_version='attentionbench.agent-help-evidence.v1', channel='dev_agent',
             origin_version=version - 1, help_version=version, refs=refs))
@@ -175,6 +195,7 @@ def stage_provisional(store, key, version, directory, workspace, ledger):
         try:
             with store.tx() as db:
                 store.event(db, 'planner_memory_provisional_skipped', dict(cell=key, version=version, reason=reason[:200]))
+            store.update_cell(key, agent_memory_staging_failure=dict(version=version, reason=reason[:200]))
         except Exception:
             pass
         return None

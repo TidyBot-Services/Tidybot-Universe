@@ -135,7 +135,8 @@ class DailyDevV2:
         self.profiles=profiles;self.authorization=authorization;self.per_run_budget=per_run_budget;self.memory=memory;self.mutex=threading.Lock();self.workers={}
         self.recover()
     def options(self):
-        return {'enabled':True,'budget_tier':'dev','policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
+        from .dev_agent_policies import policy_options
+        return {'agent_policies':policy_options(),'enabled':True,'budget_tier':'dev','policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
                 'default_cell_budget':DEFAULT_CELL,'default_max_iterations':5,'registered_scene_seeds':registered_scene_seeds(),'formal_eligible':False,'continue_from_attempt':True,
                 'authorization':{'mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else self.authorization,'matrix':self.matrix(),
                 **({'memory':{k:self.memory[k] for k in ('store_id','namespace','url_sha256')}} if self.memory is not None else {}),

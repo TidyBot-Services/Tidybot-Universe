@@ -146,7 +146,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             # cell and in the result, never a fatal stop; import simply refuses it.
             try:
                 record=exporter.settle(response,memory if memory_visible else None)
-                if record is not None and memory_visible:
+                if record is not None:
                     from .dev_agent_memory import stage_provisional
                     stage_provisional(exporter.store,exporter.key,record['version'],
                                       exporter.root/f"v{record['version']}",workspace,ledger)
@@ -317,6 +317,10 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
     store.update_cell(key,state='running',owner=owner,artifact_dir=str(root),dev_mode='agent')
     ledger=None;setup_id=None
     try:
+        if manifest.get('agent_policy_version')=='agent-policy-v2':
+            from .dev_agent_policy_manifest import validate
+            validate(manifest)
+            if cell.get('agent_policy_version')!='agent-policy-v2':raise ValueError('agent_policy_cell_version_mismatch')
         ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'])
         ledger.resume()
         import uuid
@@ -327,7 +331,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         # Dev also reads the public rule (10-29 step 6); earlier manifests kept it Eval-only.
         dev_condition=condition if manifest.get('success_condition_dev_visible') else None
         if not (workspace.canonical/'task.json').exists():
-            workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),config,success_condition=dev_condition)
+            workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),
+                dict(config,agent_policy_id=cell['policy_id']) if config.get('agent_policy_version')=='agent-policy-v2' else config,success_condition=dev_condition)
             atomic_write(workspace.ws,'work/main.py',manifest['initial_sources'][cell['task_id']]['source'].encode())
         # The planner uses dynamically bound loopback sockets. Bind a synthetic
         # socket for preflight; nothing contacts a deployed planner or UI.

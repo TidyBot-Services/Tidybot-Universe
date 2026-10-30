@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
@@ -60,7 +60,7 @@ def slot_wall_seconds(manifest):
             startup_cleanup_seconds=60,eval_agent=manifest['selection'].get('eval_agent',{})))
     return worst_slot(manifest)
 
-def create(store,artifact_root,selection,*,validation_origin=None):
+def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_version=None):
     from .dev_disk import require_start
     require_start(artifact_root)
     validate_selection_fields(selection)
@@ -68,10 +68,25 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     if selection.get('dev_mode','one_call') not in ('one_call','agent'):raise ValueError('unknown_dev_mode')
     if selection.get('dev_mode')=='agent':
         from .dev_agent_config import normalize
-        agent_options=normalize(selection,validation_origin=validation_origin)
+        # Only creation defaults to v2. Readers of absent markers remain v1.
+        if 'agent_policy_version' in selection and selection['agent_policy_version'] not in ('agent-policy-v1','agent-policy-v2'):
+            raise ValueError('unsupported_agent_policy_version')
+        version=agent_policy_version if agent_policy_version is not None else selection.get('agent_policy_version')
+        if version is None:
+            # Retrying an old request key preserves its immutable creation epoch.
+            existing_id='devexp-'+hashlib.sha256(str(selection.get('request_key','')).encode()).hexdigest()[:24]
+            with store.tx() as db:
+                previous=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(existing_id,)).fetchone()
+            version=(json.loads(previous[0])['selection'].get('agent_policy_version','agent-policy-v1')
+                     if previous else 'agent-policy-v2')
+        if agent_policy_version is not None and 'agent_policy_version' in selection and selection['agent_policy_version']!=version:
+            raise ValueError('conflicting_agent_policy_version')
+        agent_options=normalize(dict(selection,agent_policy_version=version),validation_origin=validation_origin)
+        if version=='agent-policy-v1':selection={k:v for k,v in selection.items() if k!='agent_policy_version'}
         selection={**selection,**agent_options,'model_source':'codex'}
     else:
-        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model')):raise ValueError('agent_options_require_agent_mode')
+        if agent_policy_version is not None:raise ValueError('agent_options_require_agent_mode')
+        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version')):raise ValueError('agent_options_require_agent_mode')
         if 'dev_mode' in selection:selection={k:v for k,v in selection.items() if k!='dev_mode'}
     if validation_origin is not None and (validation_origin.get('dev_mode')=='agent' or validation_origin.get('config',{}).get('dev_mode')=='agent'):
         raise ValueError('agent_memory_validation_unsupported')
@@ -125,7 +140,13 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     seeds=selection.get('seeds',[101]);policies=selection.get('policies',list(POLICY_IDS))
     if not isinstance(tasks,list) or not tasks or len(tasks)>32 or len(set(tasks))!=len(tasks):raise ValueError('unique registered task list required')
     if not isinstance(seeds,list) or not seeds or len(set(seeds))!=len(seeds):raise ValueError('unique seed list required')
-    if not isinstance(policies,list) or not policies or len(set(policies))!=len(policies) or any(p not in POLICY_IDS for p in policies):raise ValueError('unique supported policy list required')
+    policy_ids=POLICY_IDS
+    parameter_reader=policy_parameters
+    agent_v2=bool(agent_options and agent_options.get('agent_policy_version')=='agent-policy-v2')
+    if agent_v2:
+        from .dev_agent_policies import AGENT_POLICY_IDS,normalize_parameters
+        policy_ids,parameter_reader=AGENT_POLICY_IDS,normalize_parameters
+    if not isinstance(policies,list) or not policies or len(set(policies))!=len(policies) or any(p not in policy_ids for p in policies):raise ValueError('unique supported policy list required')
     if mode=='interactive' and (len(tasks),len(seeds),len(policies))!=(1,1,1):raise ValueError('interactive session has one task/seed/policy')
     for t in tasks:
         for seed in seeds:validate_selection(t,seed)
@@ -138,7 +159,7 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     if type(trace_visible) is not bool:raise ValueError('trace visibility must be boolean')
     params=selection.get('policy_parameters',{})
     if not isinstance(params,dict) or set(params)-set(policies):raise ValueError('policy parameter keys differ')
-    parameters={p:policy_parameters(p,params.get(p)) for p in policies}
+    parameters={p:parameter_reader(p,params.get(p)) for p in policies}
     legacy_configuration=selection.get('configuration')
     if legacy_configuration is not None:
         if v3:raise ValueError('legacy and modern experiment configuration cannot be mixed')
@@ -324,6 +345,9 @@ def create(store,artifact_root,selection,*,validation_origin=None):
         manifest['agent_budget']=dict(formal_versions=10,moving_executions=40,read_only_probes=300,eval_runs=10,help=help_budget,
             sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=21600,model_turns=None,tokens=None)
         for config in configs.values():config['dev_mode']='agent'
+        if agent_v2:
+            from .dev_agent_policy_manifest import freeze
+            freeze(manifest)
         # Creation-only freeze of the Eval-only container rule (option A); old manifests have none.
         from .dev_agent_success import EVAL_RULE,for_configs
         conditions=for_configs(configs)
@@ -389,6 +413,11 @@ def create(store,artifact_root,selection,*,validation_origin=None):
     return snapshot(store,exp_id)
 
 def validate_fairness(m):
+    if isinstance(m,(list,tuple)):
+        from .dev_agent_policy_manifest import validate_comparison
+        for manifest in m:validate_fairness(manifest)
+        validate_comparison(m)
+        return True
     if m.get('dev_mode')=='agent':
         from .dev_agent_config import normalize
         from .dev_agent_prompts import manifest_fields
@@ -397,6 +426,8 @@ def validate_fairness(m):
         if any(m.get(k)!=v for k,v in options.items()) or len(m['cells'])!=1 or m.get('validation_experiment'):
             raise ValueError('agent_frozen_options_differ')
         if any(c.get('dev_mode')!='agent' for c in m['configs'].values()):raise ValueError('agent_config_gate_differs')
+        from .dev_agent_policy_manifest import validate
+        validate(m)
     source=m.get('model_source','parcc')
     expected_model={**MODEL,'model':'gpt-6-astra','reasoning_effort':'high'} if source=='codex' else MODEL
     if m.get('dev_mode')=='agent':expected_model=dict(model=m['dev_model'],reasoning_effort=m['dev_reasoning_effort'],provider_retries=0)
@@ -528,9 +559,10 @@ def cancel(store,exp_id):
     reconcile_waits(store,exp_id)
     return snapshot(store,exp_id)
 def switch(store,key,policy):
-    policy_parameters(policy)
     with store.tx() as db:
         c=store.get(db,'cells',key)
+        if c.get('agent_policy_version')=='agent-policy-v2':raise DevConflict('agent v2 policy is frozen; create a new run')
+        policy_parameters(policy)
         if c.get('planner_features') and policy!='full_trace_aware_attention_planner':raise DevConflict('planner feature policy is frozen')
         if c['mode']!='interactive':raise DevConflict('experiment policy is frozen')
         if c['state'] not in {'planned','running'}:raise DevConflict('session read-only')
@@ -792,7 +824,8 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
 
 def options():
     import benchmarks,openarm365_dev_v2
-    return {**task_options(),'policies':list(POLICY_IDS),'cell_budget':task_cell_budget(),'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,10],
+    from .dev_agent_policies import policy_options
+    return {**task_options(),'agent_policies':policy_options(),'policies':list(POLICY_IDS),'cell_budget':task_cell_budget(),'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,10],
         'source_canary':{'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'source_root':str(ROOT)}}
 
 def main():

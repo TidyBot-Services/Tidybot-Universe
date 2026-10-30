@@ -147,7 +147,7 @@ def fixture_run(root,offline_dev_identity,label='native_success'):
     selection=dict(request_key=request_key,tasks=['open_cabinet'],seeds=[102],policies=['reactive_help'],
         mode='interactive',dev_mode='agent',dev_model='gpt-6-sol',eval_model='gpt-6-astra',goal_key=request_key,
         name_suffix='D5 fixture · '+label)
-    exp=dev_experiment.create(store,directory/'artifacts',selection)
+    exp=dev_experiment.create(store,directory/'artifacts',selection,agent_policy_version='agent-policy-v1')
     cell=exp['cells'][0];key=cell['key'];cellroot=Path(exp['artifact_dir'])/'cells'/key
     store.update_cell(key,artifact_dir=str(cellroot),dev_mode='agent')
     ws=Workspace(cellroot/'agent').prepare(dict(task_id='open_cabinet',task_prompt='Synthetic fixture; no robot runs.'),CONFIG)

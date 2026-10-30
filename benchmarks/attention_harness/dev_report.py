@@ -136,6 +136,8 @@ def analyze_cell(c,planned,manifest_ref):
 
 def report(store,exp_id):
     e=snapshot(store,exp_id);m=read(e['manifest']);validate_fairness(m)
+    if m.get('dev_mode')=='agent' and m.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2':
+        raise ValueError(f'Agent policy v2 requires the agent report (/api/dev-v2/experiments/{exp_id}/report); one-call ledger reports are unsupported.')
     if m.get('validation_experiment'):raise ValueError('Automatic validation experiments are excluded from ordinary reports; use the Memory check result.')
     seeded=retrieved_seeded_cells(store.path)
     actual={c['key']:c for c in e['cells']};cells=[]

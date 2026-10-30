@@ -384,3 +384,44 @@ node scripts/cross_seed_ui_preview.cjs
 
 The second command writes static light/dark HTML with fake data. Neither
 command contacts live services, models or simulators.
+
+### Dev agent policy v2 (P3)
+
+New `dev_mode=agent` experiments created by `dev_experiment.create()` default to
+`agent-policy-v2`. One-call keeps its seven policies; `options().agent_policies`
+contains the eight agent policies, complete default parameters and version.
+An absent version on an existing run means v1. Retrying its request key preserves
+its original manifest. For offline legacy reproduction, pass the explicit Python
+keyword `agent_policy_version='agent-policy-v1'` to `create()` (or the same field
+in an explicit agent selection). The UI does not expose the v1 entry.
+
+Each v2 manifest seals the version at the top level, selection, execution config
+and cell, plus complete policy parameters, per-policy parameter SHA-256 and the
+source SHA-256 of `dev_agent_policies.py` and `dev_agent_attention_v2.py`.
+`verify_manifest()` and the agent cell entry check these seals; policy changes
+require a new run. `validate_fairness([manifest_a, manifest_b, ...])` additionally
+checks cross-run versions, model/scene/execution conditions, budgets, initial
+source hashes and consistency of parameters for a repeated policy id. A check
+of one manifest alone does not establish cross-run comparability.
+
+For a planned comparison, explicitly set **`help_budget=3` for every policy**.
+Individual runs continue to default to 1. There is no agent comparison preset
+in this checkout; no new preset is introduced. This recommendation is separate
+from formal/legacy benchmark presets and does not change those configurations.
+
+Operator views retain practice-run help and multiple help requests per interval,
+identified by `help:eNNNNNN`. Delivery and persisted charges are separate: a
+provider failure can consume help and human attention. Pending obligations,
+`ask_required`, fallback blocks and controller errors appear in Help & Replies.
+Agent v2 reports use the existing agent JSON report endpoint; `dev_report` rejects
+the one-call ledger interpretation of these runs.
+
+For browser review only, manually run `scripts/preview_agentpolicy.sh`. It creates
+three synthetic fixtures under `/tmp/agentpolicy-preview/` and starts this
+worktree's `ui_server` at `127.0.0.1:8779`, with every POST refused. Printed links
+open the trace-v2, agent-initiated-v2 and legacy-v1 pages. Check the creation
+policy dropdown in both modes, multiple practice help entries and their fees,
+pending/required/fallback states, visible controller errors and refresh behavior.
+The trace fixture deliberately combines display-state samples for forced asks;
+real forced asks belong to reactive/retry policies. The script has no model,
+Memory Service, simulator or live-camera connection. It is not a runtime canary.

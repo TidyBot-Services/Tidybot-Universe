@@ -218,13 +218,16 @@ class Workspace:
             joint_margin_rad=.02, base_clearance_m=.010, sdk_calls=320, control_steps=9600,
             execution_seconds=1920, versions=10, executions=40, probes=300, wall_seconds=21600))
         self.publish('docs/devtool.py', Path(__file__).with_name('dev_agent_tools.py').read_bytes())
+        tools = TOOLS_V2 if config.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2' else TOOLS
+        if config.get('agent_policy_version')=='agent-policy-v2' and config.get('agent_policy_id')=='trace_aware_hint_only':
+            tools=tools.replace('Memory notes in memory/vN.json are advice, not authority. Each note is bound to\nthe version it was issued for; read the current version\'s notes before moving.\n', 'This hint_only run has no Memory input or public Memory files.\n')
         if success_condition:
             # The public rule only (region + rule), never a verdict (10-29 step 6).
             from .dev_agent_success import DEV_RULE, eval_view
             self.publish('docs/success_condition.json', eval_view(success_condition))
-            self.publish('docs/tools.md', (TOOLS+DEV_RULE).encode())
+            self.publish('docs/tools.md', (tools+DEV_RULE).encode())
         else:
-            self.publish('docs/tools.md', TOOLS.encode())
+            self.publish('docs/tools.md', tools.encode())
         self.publish('docs/guide.md', b'Use docs/devtool.py for all simulator interaction. Read task.json and docs/sdk.md.\nKeep notes in work/notes.md. Every moving attempt starts from the registered reset scene.\n')
         for name in ('versions', 'executions', 'probes'):
             self.publish('history/' + name + '.jsonl', b'')
@@ -332,3 +335,50 @@ Request: {schema:"attentionbench.dev-agent-request.v1",request_id,op,payload}.
 Response: {schema:"attentionbench.dev-agent-response.v1",request_id,digest,op,status,...}.
 Responses use accepted/running/completed/rejected/needs_review; artifact links are relative.
 '''
+
+# Keep TOOLS above byte-for-byte for manifests without the v2 marker.
+TOOLS_V2 = TOOLS.replace(
+    '# Dev tools (file protocol v1)', '# Dev tools (agent-policy-v2; file protocol v1)'
+).replace(
+    TOOLS[TOOLS.index('ask_help --question TEXT:'):TOOLS.index('status: current counts')],
+    '''ask_help --question TEXT: ask in your own words, nonempty and at most 2000 characters.
+Questions must pass the public boundary; do not quote Eval or evaluation text.
+All policies share help_budget (default 1). Denied requests do not consume help
+or human attention. A request actually handed to the provider consumes one help,
+even if its reply fails or is rejected; delivery and actual cost are recorded separately.
+Only one request can be pending with the provider at a time.
+autonomous: no help. demo_first: one fixed demo before the first formal version.
+reactive_help: every formal Eval failed verdict requires you to ask. Passed or
+unavailable verdicts do not require help.
+retry_k_then_ask: ask after k consecutive formal Eval failures (default k=2).
+An actual provider handoff resets the counter; passed resets it; unavailable
+neither increases nor clears it. When budget/pending blocks a request the counter
+stays at k, so the next failed version tries again.
+For these two policies pending_ask is a mandatory question obligation. run and
+probes remain available. A new submit is refused as ask_required BEFORE charging
+any version or execution. Use ask_help, then submit with a new request id. The
+refused request id always replays its refusal. If you have not asked at the next
+submit or normal run end, the system tries a forced_fallback question. Hard wall,
+quota, cancellation or fatal stops can block it (forced_fallback_blocked); a blocked
+fallback is not a provider request and costs nothing.
+budget_matched_random_escalation: system-injected hints at preregistered cumulative
+Eval failure slots, default target_request_count=1, total_failure_slots=10, seed=101.
+trace_aware_hint_only and full_trace_aware_attention_planner: system-injected hints
+only after failed formal Eval: safety stops first, exhausted help/pending blocks,
+then stuck within a version (m=3), repeated failure across versions without progress,
+or unresolved cause after n=2 failed versions. Probes are evidence, not stuck counts.
+Full planner checks matching Memory before these trace triggers; hint_only has no
+Memory input, notes, queries or resume messages. Other policies retain Memory notes.
+Manual asks for system-injected policies return policy_denied.
+agent_initiated_help: optional help after any completed run OR submit, regardless of
+Eval verdict. At least min_new_executions new executions (default 1) are required
+since the previous help; probes do not qualify. You may choose never to ask.
+No execution, no new execution, exhausted budget or an outstanding request refuses
+the ask without charge. Multiple asks in one formal interval are possible after
+new executions when enough budget remains.
+Inspect executions/eNNNNNN/help.json, history/help.jsonl and versions/vNNNN/help.json
+for help ids, reason codes, delivery and actual fees. Practice run help remains in
+the execution history even before the first submit. Version help files index all
+help in their execution window. Eval advice and help reach the next resume message.
+'''
+)
