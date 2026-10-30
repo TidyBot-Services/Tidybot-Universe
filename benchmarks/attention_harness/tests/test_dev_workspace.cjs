@@ -262,7 +262,9 @@ test('OPERATOR sidebar binding tolerates omitted Jump to a record control',()=>{
  const control={remove(){},querySelectorAll(){return []}},nav={scrollTop:0,before(){}},search={value:'',addEventListener(){}};
  const sidebar={innerHTML:'',querySelectorAll(){return []},querySelector(selector){return selector==='nav'?nav:selector==='[data-run-search]'?search:selector==='[data-policy-controller]'?control:selector==='.ab-executing-runs'?{}:null;}};
  const api=rendererAPI(snap,false,{sidebar,view:{querySelector:()=>null},workspace:{querySelector:()=>null},document:{activeElement:null},runningStatus:{querySelectorAll:()=>[]},runs:[],devSessions:[],selectedDev:null,selectedRun:snap.run.run_id,sidebarQuery:'',sidebarFilter:'all',sidebarToggle:{querySelector:()=>null},sidebarMessage:'',historyNotice:null,switchRequests:new Map(),pins:new Set(),taskGroupChoices:new Map(),policyControllerElement:null});
- assert.doesNotThrow(()=>api.renderSidebar());assert.doesNotMatch(sidebar.innerHTML,/Jump to a record|id="ab-live-run"/);assert.match(sidebar.innerHTML,/Task history/);
+ assert.doesNotThrow(()=>api.renderSidebar());assert.doesNotMatch(sidebar.innerHTML,/Jump to a record|id="ab-live-run"/);
+ // 10-30 (sidebar 4B): search and filters share one control card; the "Task history" label shows only while searching.
+ assert.match(sidebar.innerHTML,/<div class="ab-sidebar-controls"><label class="ab-sidebar-search">/);assert.doesNotMatch(sidebar.innerHTML,/Task history/);
 });
 
 test('OPERATOR system failures are phrased as a system problem, never as an execution error',()=>{

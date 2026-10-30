@@ -12,7 +12,7 @@ const golden=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/one-call-w
 const harness=fs.readFileSync(path.join(__dirname,'test_dev_workspace.cjs'),'utf8');
 const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.indexOf("test('Current view keeps"))
   .replace('({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',
-    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages,operatorTitle,taskTitle,taskDisplayName,agentTrialLegend})');
+    '({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar,workspaceHTML,agentWorkspaceSnapshot,devFile,readDevEvidence,attentionLedger,attentionStripModel,attentionEfficiency,agentTimelineDetail,agentFullStory,bindAgentStory,bindAttentionEfficiency,bindHistorySelection,selectAgentAttempt,agentActivityCaption,devNavigationRecord,sidebarRunBadges,enterAgentWorkspace,agentReplayEvents,agentStripStages,operatorTitle,taskTitle,taskDisplayName,agentTrialLegend,sidebarRunCard,sidebarTaskSummary})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
 function apiFor(snapshot=null,overrides={}) {
   const calls=[];
@@ -346,5 +346,33 @@ test('agent cost bars sit clear of the segment caption above them (10-30)',async
   assert.ok(captions.length&&bars.length&&labels.length);
   for(const bar of bars)assert.ok(bar.top-Math.max(...captions)>=8,`bar top ${bar.top} vs caption ${Math.max(...captions)}`);
   for(const label of labels)assert.ok(label+6<=height,`cost label ${label} inside svg height ${height}`);
+});
+test('task-group run cards lead with the robot and a compact time, show only explicit renames; other lists keep the task name (10-30)',()=>{
+  const {api}=apiFor(null,{selectedDev:null,selectedRun:null,pins:new Set()});
+  const r={run_id:'v2-card',session_id:'v2-card',development:true,suite:'robocasa365',task_id:'pick_place_counter_to_sink',name_suffix:'line B agent sol',
+    robot:{model:'OpenArm365',execution_arm:'both'},created_at:1793260564,status:'completed',policy_ids:['reactive_help'],attempts_used:3,attempts_limit:10,agent:true,versions:[],jobs:[]};
+  const grouped=api.sidebarRunCard(r,true),plain=api.sidebarRunCard(r);
+  // Outcome-rail card (10-30): robot + compact time, then version bar, count, coloured strategy chip and status text.
+  assert.match(grouped,/<article [^>]*data-card="rail"/);
+  assert.match(grouped,/<strong data-run-name[^>]*>OpenArm365 · Both arms<\/strong><small class="ab-record-time">[A-Z][a-z]{2} \d{1,2} · \d{2}:\d{2}<\/small><\/button>/);
+  assert.match(grouped,/<div class="ab-run-rail-meta"><span class="ab-run-bar" title="3 of 10 formal versions used"><i style="width:30%"><\/i><\/span><span class="ab-run-rail-text">3\/10<\/span><span class="ab-run-badge" data-run-badge="strategy" data-policy="reactive_help" title="Help strategy: [^"]+"[^>]*><svg[^]*?<\/svg>[^<]+<\/span><span class="ab-run-status"[^>]*>[^<]+<\/span><\/div>/);
+  assert.doesNotMatch(grouped,/ab-run-badges|ab-run-metadata|SDK description|ab-run-label|line B agent sol<\/small>/);
+  const renamed=api.sidebarRunCard({...r,development:false,display_name:'Demo for Monday'},true);
+  assert.match(renamed,/<small class="ab-run-label" title="Demo for Monday">Demo for Monday<\/small>/);
+  assert.match(plain,/<strong data-run-name[^>]*>[^<]* -- line B agent sol<\/strong>/);
+  assert.match(plain,/<small class="ab-run-metadata">OpenArm365 · Both arms<\/small>/);
+  assert.doesNotMatch(plain,/ab-run-label|data-card=|ab-run-rail-meta/);
+  assert.match(plain,/<div class="ab-run-badges">/);
+});
+test('task cards summarise every run as an outcome bar with a solved count (10-30 sidebar 4B)',()=>{
+  const {api}=apiFor(null,{selectedDev:null,selectedRun:null,pins:new Set()});
+  const base={suite:'robocasa365',task_id:'pick_place_counter_to_sink'};
+  const rows=[{...base,run_id:'a',status:'completed',agent:true,agent_solved:true},{...base,run_id:'b',status:'failed'},{...base,run_id:'c',status:'failed'},{...base,run_id:'d',status:'needs_review',reason:'eval disagreement'}];
+  const html=api.sidebarTaskSummary(rows,null);
+  assert.match(html,/<summary class="ab-task-summary" data-outcome-summary><strong class="ab-task-title"[^>]*>Pick Place: Counter → Sink<\/strong><span class="ab-task-count"[^>]*>4<\/span>/);
+  assert.match(html,/<span class="ab-outcome-bar"><i class="success" style="width:25.0%"><\/i><i class="failed" style="width:50.0%"><\/i><i class="waiting" style="width:25.0%"><\/i><\/span>/);
+  assert.match(html,/title="1 solved · 2 failed · 1 need you"/);
+  assert.match(html,/<span class="ab-outcome-text"><b>1<\/b> \/ 4 solved<\/span>/);
+  assert.doesNotMatch(html,/op-dots/);
 });
 
