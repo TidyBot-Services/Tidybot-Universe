@@ -121,7 +121,7 @@ def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planne
     return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT))) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
 
 
-def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None):
+def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None,bimanual_collaboration='none'):
     if task_id=='pick_place_counter_to_cabinet' and (budget_tier!='dev' or budget_boundary!='dev_loop'):
         raise ValueError('cabinet pick/place requires dev tier and dev_loop boundary')
     if planner_source is None and budget_tier=='dev' and budget_boundary=='dev_loop':
@@ -135,10 +135,11 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
         if budget_tier!='dev' or budget_boundary!='dev_loop':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
     # The frozen constructor seals r4 only; legacy/r3 retain their exact bytes.
     return _make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
-        budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source)
+        budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source,bimanual_collaboration=bimanual_collaboration)
 
 
-def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None):
+def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None,bimanual_collaboration='none'):
+    if bimanual_collaboration not in ('none','c1'):raise ValueError('bimanual_collaboration must be none or c1')
     if task_id=='pick_place_counter_to_cabinet' and (budget_tier!='dev' or budget_boundary!='dev_loop'):
         raise ValueError('cabinet pick/place requires dev tier and dev_loop boundary')
     if task_id=='pick_place_counter_to_cabinet' and (execution_settings is None or execution_settings.profile!='r4-20261027' or planner_source is None):
@@ -177,9 +178,10 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
     c['initial_joint_targets']=initial_joints(task_id)
     if budget_tier=='dev':c['budget_tier']='dev'
     if execution_settings is not None:c['execution_settings']=execution_settings.to_dict()
+    if bimanual_collaboration=='c1':c['bimanual_collaboration']='c1'
     if planner_source is not None:c['planner_source']=dict(planner_source)
     from benchmarks.attention_harness.dev_tasks import base_description_enabled,dev_sdk_seal
-    if base_description_enabled(c):c.update(dev_sdk_seal(c))
+    if base_description_enabled(c) or bimanual_collaboration=='c1':c.update(dev_sdk_seal(c))
     return c
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
@@ -193,7 +195,10 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         if budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop' or tier!='dev':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
         if c['execution_settings'] is None:raise ValueError('execution_settings: complete execution profile block required')
         settings=from_config(c['execution_settings'])
-    expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'))
+    collaboration=c.get('bimanual_collaboration','none')
+    if collaboration not in ('none','c1'):raise ValueError('bimanual_collaboration must be none or c1')
+    expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'),bimanual_collaboration=collaboration)
+    if 'bimanual_collaboration' in c:expected['bimanual_collaboration']=collaboration
     if source=='codex':expected['model_source']='codex'
     if 'dev_mode' in c:
         if c['dev_mode']!='agent' or tier!='dev' or budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop':

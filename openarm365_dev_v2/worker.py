@@ -97,6 +97,7 @@ def main():
                     except Exception:pass
         executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,
             frame_callback=capture,held_reference_configured=c['held_reference_mode'],
+            bimanual_collaboration=c.get('bimanual_collaboration','none'),
             **({} if execution_settings is None else dict(execution_settings=execution_settings)))
         capture(0)
         def observe():
@@ -139,6 +140,7 @@ def main():
             physical_to_native=PHYSICAL_TO_NATIVE,identity=identity,rng_events=env.scene_rng_events,scene_reset_seed=c.get('scene_reset_seed'),initial_public_observation=observe(),
             execution_conditions=execution_conditions,scene_xml_sha256=hashlib.sha256(scene.encode()).hexdigest())
         reset_receipt.update(receipt_fields(execution_settings))
+        if c.get('bimanual_collaboration')=='c1':reset_receipt['bimanual_collaboration']='c1'
         if override:reset_receipt['diagnostic_budget_override']=override
         if tier:reset_receipt['dev_tier_budget']=tier
         (args.evidence/'reset_receipt.json').write_text(json.dumps(reset_receipt,indent=2)+'\n')
@@ -213,6 +215,7 @@ def main():
                 with (args.evidence/'native-errors.jsonl').open('a') as f:
                     f.write(json.dumps({'request_id':rid,'traceback':traceback.format_exc()})+'\n')
             response.update(receipt_fields(execution_settings))
+            if c.get('bimanual_collaboration')=='c1':response.update(executor.collaboration_receipt())
             if override:response['diagnostic_budget_override']=override
             if tier:response['dev_tier_budget']=tier
             receipt_cache[rid]=(canonical,response)

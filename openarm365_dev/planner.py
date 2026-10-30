@@ -173,10 +173,12 @@ class MujocoV2Planner:
             raise PlanningRejected(f"Goal joint margin {margin['minimum_joint_margin_rad']:.9g} rad below {margin['joint_margin_limit_rad']:.9g} rad")
         return margin
     def plan_joints(self,target,*,side,epoch):
+        self._attachment_side=side
         active=self.names if side=='both' else [n for n in self.names if n.startswith(f'openarm_{side}_joint')]
         return self.plan('/plan/joint',dict(target_qpos=np.asarray(target,float).tolist()),active,epoch)
     def plan_pose(self,position,orientation,*,side,epoch,grasp_search=None):
         if side not in {'left','right'}:raise ValueError('Physical side required')
+        self._attachment_side=side
         local=np.linalg.inv(mount_pose(self.env));pos=(local@np.r_[position,1])[:3]
         rot=local[:3,:3]@orientation;quat=Rotation.from_matrix(rot).as_quat()[[3,0,1,2]].tolist()
         active=[f'openarm_{side}_joint{i}' for i in range(1,8)]

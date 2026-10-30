@@ -199,7 +199,9 @@ def tracking_error_event(request_id,settle_steps,bound,names,target,current,qvel
         qvel=None if qvel is None else np.asarray(qvel).tolist())
 
 class NativeExecutor:
-    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',execution_settings=None):
+    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',execution_settings=None,bimanual_collaboration='none'):
+        if bimanual_collaboration not in ('none','c1'):raise ValueError('bimanual_collaboration must be none or c1')
+        self.bimanual_collaboration=bimanual_collaboration
         self.execution_settings=execution_settings
         self.env,self.planner=env,planner;self.evidence=Path(evidence)
         self.deadline,self.cancel_check=deadline,cancel_check;self.frame_callback=frame_callback
@@ -221,12 +223,15 @@ class NativeExecutor:
         self.gripper_limits={side:np.array([[float(joints[f'openarm_{side}_finger_joint{i}'].find('limit').get(k))
             for k in ('lower','upper','velocity')] for i in (1,2)]) for side in PHYSICAL_TO_NATIVE}
         self.moving=False;self.gripping=False;self.active_request=None
-        self.held=None;self.held_transform=None;self.grasp_counts={'left':{},'right':{}}
+        self.held={'left':None,'right':None} if bimanual_collaboration=='c1' else None
+        self.held_transform={'left':None,'right':None} if bimanual_collaboration=='c1' else None
+        self.grasp_counts={'left':{},'right':{}}
         self.held_trace_enabled=diagnostic_held_trace_enabled()
-        self.held_reference=held_reference_mode(held_reference_configured)
+        self.held_reference=({side:held_reference_mode(held_reference_configured) for side in ('left','right')}
+            if bimanual_collaboration=='c1' else held_reference_mode(held_reference_configured))
         self.held_trace_references={}
         self.contact_active={};self.contact_event_count=0;self.contact_event_overflow=0
-        self.planner.attachment_provider=lambda:self.held.copy() if self.held else None
+        self.planner.attachment_provider=lambda:self.planner_attachment()
         self.journal=self.evidence/'native-actions.jsonl';self.physics=self.evidence/'native-physics.jsonl'
         self._step2=env.sim.step2
         def step2():
@@ -238,12 +243,58 @@ class NativeExecutor:
         if not hasattr(self, '_execution_receipt'):
             refresh_execution_receipt(self)
         value = dict(value, **self._execution_receipt)
+        if getattr(self,'bimanual_collaboration','none')=='c1' and path==self.journal:
+            from copy import deepcopy
+            value=dict(value,bimanual_collaboration='c1',held_by_arm=deepcopy(self.held))
         if hasattr(self, '_drift_max') and value.get('event') in ('receipt', 'base_failure', 'base_tracking'):
             value = dict(value, base_drift=self.drift_receipt(self._drift_limits, self._drift_operation))
         diagnostic = held_envelope_receipt(getattr(self, "execution_settings", None))
         if diagnostic:value = dict(value, **diagnostic)
         with path.open('a') as f:
             f.write(json.dumps(value,sort_keys=True,allow_nan=False)+'\n');f.flush();os.fsync(f.fileno())
+
+    def held_for(self,side):
+        return self.held.get(side) if getattr(self,'bimanual_collaboration','none')=='c1' else self.held if self.held and self.held['holder']==side else None
+
+    def collaboration_receipt(self):
+        if getattr(self,'bimanual_collaboration','none')!='c1':return {}
+        from copy import deepcopy
+        return dict(bimanual_collaboration='c1',held_by_arm=deepcopy(self.held))
+
+    def touching_other_held(self,side):
+        other='right' if side=='left' else 'left';held=self.held[other]
+        if not held:return False
+        sim=self.env.sim
+        for con in sim.data.contact:
+            if con.dist>0:continue
+            for robot_geom,object_geom in ((con.geom1,con.geom2),(con.geom2,con.geom1)):
+                name=sim.model.geom_id2name(int(robot_geom)) or ''
+                if f'openarm_{side}_' in name and is_descendant(sim.model,
+                        int(sim.model.geom_bodyid[int(object_geom)]),held['target_id']):return True
+        return False
+
+    def planner_attachment(self):
+        if getattr(self,'bimanual_collaboration','none')!='c1':return self.held.copy() if self.held else None
+        side=getattr(self.planner,'_attachment_side',None)
+        if side=='both':
+            held=[value for value in self.held.values() if value]
+            if len(held)>1:raise PlanningRejected('Simultaneous motion of two held objects is not supported')
+            return held[0].copy() if held else None
+        value=self.held.get(side)
+        return value.copy() if value else None
+
+    def unheld_object_contact(self,side):
+        sim=self.env.sim;objects=set(getattr(self.env,'obj_body_id',{}).values())
+        for con in sim.data.contact:
+            if con.dist>0:continue
+            for robot_geom,object_geom in ((con.geom1,con.geom2),(con.geom2,con.geom1)):
+                name=sim.model.geom_id2name(int(robot_geom)) or ''
+                if f'openarm_{side}_' not in name:continue
+                body=int(sim.model.geom_bodyid[int(object_geom)])
+                if any(is_descendant(sim.model,body,obj) for obj in objects):
+                    held=NativeExecutor.held_for(self,side)
+                    if not held or not is_descendant(sim.model,body,held['target_id']):return True
+        return False
 
     def check_live(self):
         if self.failed:raise RuntimeError('Native executor latched after failure; reset required')
@@ -298,14 +349,18 @@ class NativeExecutor:
             for bid in set(self.grasp_counts[side])|bilateral[side]:
                 self.grasp_counts[side][bid]=self.grasp_counts[side].get(bid,0)+1 if bid in bilateral[side] else 0
         held_error=None
-        if self.held and not self.gripping:
-            side=self.held['holder'];bid=self.held['target_id']
+        held_slots=(self.held.values() if getattr(self,'bimanual_collaboration','none')=='c1' else (self.held,))
+        for held in held_slots:
+            if not held:continue
+            side=held['holder'];bid=held['target_id']
+            if self.gripping and (getattr(self,'bimanual_collaboration','none')!='c1' or side==getattr(self,'gripping_side',None)):continue
             if bid not in bilateral[side]:raise RuntimeError('Measured bilateral grasp contact lost during transport')
             relative=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
             from scipy.spatial.transform import Rotation
+            reference=self.held_transform[side] if getattr(self,'bimanual_collaboration','none')=='c1' else self.held_transform
             translation,rotation=effective_held_envelope(getattr(self, "execution_settings", None))
-            if (np.linalg.norm(relative[:3,3]-self.held_transform[:3,3])>translation or
-                    Rotation.from_matrix(relative[:3,:3]@self.held_transform[:3,:3].T).magnitude()>rotation):
+            if (np.linalg.norm(relative[:3,3]-reference[:3,3])>translation or
+                    Rotation.from_matrix(relative[:3,:3]@reference[:3,:3].T).magnitude()>rotation):
                 held_error=('Measured object/hand transform exceeds '
                             f'configured {translation*1000:g}mm/{rotation:g}rad bound'
                             if held_envelope_receipt(getattr(self, "execution_settings", None)) else
@@ -315,6 +370,7 @@ class NativeExecutor:
         exemption_enabled=exemption_mode=='movable_objects'
         movable_roots=tuple(movable_object_roots(self.env).values()) if exemption_enabled else ()
         expected_movable_contacts=[]
+        handoff_contact=False
         for con in sim.data.contact:
             g1,g2=int(con.geom1),int(con.geom2);b1,b2=int(sim.model.geom_bodyid[g1]),int(sim.model.geom_bodyid[g2])
             a=is_descendant(sim.model,b1,self.robot_root);b=is_descendant(sim.model,b2,self.robot_root)
@@ -337,14 +393,33 @@ class NativeExecutor:
                         expected_movable_contacts.append([robot_name,sim.model.geom_id2name(other_geom),float(con.dist)])
                         expected=True
                         break
-                if expected:continue
+                if expected:
+                    if getattr(self,'bimanual_collaboration','none')=='c1':
+                        held_bodies={slot['target_id']:side for side,slot in self.held.items() if slot}
+                        robot_side=next((side for side in ('left','right') if f'openarm_{side}_' in robot_name),None)
+                        if robot_side and any(robot_side!=holder and is_descendant(sim.model,other_body,bid)
+                                              for bid,holder in held_bodies.items()):
+                            handoff_contact=robot_side==getattr(self,'gripping_side',None)
+                            expected_movable_contacts.pop()
+                            contacts.append([sim.model.geom_id2name(g1),sim.model.geom_id2name(g2),float(con.dist)])
+                    continue
                 contacts.append([sim.model.geom_id2name(g1),sim.model.geom_id2name(g2),float(con.dist)])
                 continue
             robot_geom=g1 if a else g2;other_body=b2 if a else b1
             robot_name=sim.model.geom_id2name(robot_geom) or ''
-            allowed=('finger' in robot_name and
-                ((self.gripping and any(is_descendant(sim.model,other_body,obj) for obj in objects)) or
-                 (self.held and is_descendant(sim.model,other_body,self.held['target_id']))))
+            if getattr(self,'bimanual_collaboration','none')=='c1':
+                side=next((side for side in ('left','right') if f'openarm_{side}_' in robot_name),None)
+                own=NativeExecutor.held_for(self,side) if side else None
+                other=any(slot and slot['holder']!=side and is_descendant(sim.model,other_body,slot['target_id'])
+                          for slot in self.held.values())
+                if other and side==getattr(self,'gripping_side',None):handoff_contact=True
+                allowed=('finger' in robot_name and not other and
+                    ((self.gripping and any(is_descendant(sim.model,other_body,obj) for obj in objects)) or
+                     (own and is_descendant(sim.model,other_body,own['target_id']))))
+            else:
+                allowed=('finger' in robot_name and
+                    ((self.gripping and any(is_descendant(sim.model,other_body,obj) for obj in objects)) or
+                     (self.held and is_descendant(sim.model,other_body,self.held['target_id']))))
             if not allowed:contacts.append([sim.model.geom_id2name(g1),sim.model.geom_id2name(g2),float(con.dist)])
         events,dropped=bounded_contact_events(contact_transitions(self.contact_active,contact_now,self.physics_steps),self.contact_event_count)
         for event in events:self.log(self.journal,dict(request_id=self.active_request,**event))
@@ -362,7 +437,9 @@ class NativeExecutor:
         if trace_enabled:
             trace=[]
             targets={(side,bid) for side,values in bilateral.items() for bid in values}
-            if self.held:targets.add((self.held['holder'],self.held['target_id']))
+            if getattr(self,'bimanual_collaboration','none')=='c1':
+                targets.update((slot['holder'],slot['target_id']) for slot in self.held.values() if slot)
+            elif self.held:targets.add((self.held['holder'],self.held['target_id']))
             for side,bid in sorted(targets):
                 relative=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
                 reference=self.held_trace_references.setdefault((side,bid),relative.copy())
@@ -371,7 +448,9 @@ class NativeExecutor:
             if trace:row['held_trace']=trace
         self.log(self.physics,row)
         if held_error:raise RuntimeError(held_error)
-        if contacts:raise RuntimeError('Unexpected physical robot/world contact')
+        if contacts:
+            if handoff_contact and self.gripping:raise PlanningRejected('Handoff is not enabled in this profile')
+            raise RuntimeError('Unexpected physical robot/world contact')
 
     def control_step(self):
         if self.sequence>=self.env.horizon:raise RuntimeError('Native control-step budget exhausted')
@@ -428,6 +507,7 @@ class NativeExecutor:
                 from copy import deepcopy
                 receipt['support_retention']=deepcopy(response['support_retention'])
             receipt.update(receipt_fields(getattr(self,"execution_settings",None)))
+            receipt.update(NativeExecutor.collaboration_receipt(self))
             receipt.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**receipt));return receipt
         except BaseException:
@@ -465,7 +545,11 @@ class NativeExecutor:
         self.check_live()
         # Held-object transport needs its own measured attachment model. Until
         # that adapter is available this entry fails closed, never ignores it.
-        if self.any_object_contact() and not self.held:raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
+        if getattr(self,'bimanual_collaboration','none')=='c1':
+            if side=='both' and all(self.held.values()):raise PlanningRejected('Simultaneous motion of two held objects is not supported')
+            if any(self.unheld_object_contact(arm) for arm in (('left','right') if side=='both' else (side,))):
+                raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
+        elif self.any_object_contact() and not self.held:raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
         response=self.planner.plan_joints(target,side=side,epoch=self.epoch)
         return self.apply(response,request_id=request_id)
 
@@ -481,6 +565,10 @@ class NativeExecutor:
             raise RuntimeError('Uncommanded base drift exceeded 1mm/1mrad')
         world=snapshot(self.env,chassis_binding=self.planner.chassis_binding)
         held=getattr(self,'held',None)
+        if getattr(self,'bimanual_collaboration','none')=='c1':
+            occupied=[slot for slot in held.values() if slot]
+            if len(occupied)>1:raise PlanningRejected('Base motion with two held objects is not supported')
+            held=occupied[0] if occupied else None
         try: collision=check_exact_base_path(self.env,world,self.planner.chassis_binding,delta,self.base_initial,
             **({'held_body_id':held['target_id']} if held else {}),
             **({} if getattr(self,'execution_settings',None) is None else dict(execution_settings=self.execution_settings)))
@@ -547,6 +635,7 @@ class NativeExecutor:
                 raise RuntimeError('Arm joint drift during base motion exceeded 4mrad')
             self.base_hold=after.copy();self.planner.prepared.clear();self.planner.ledger.invalidate('base_moved')
             result.update(receipt_fields(getattr(self,"execution_settings",None)))
+            result.update(NativeExecutor.collaboration_receipt(self))
             result.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**result));return result
         except BaseException as exc:
@@ -581,11 +670,13 @@ class NativeExecutor:
         if (delta.shape!=(3,) or rotation.shape!=(3,) or not np.isfinite(np.r_[delta,rotation]).all()
                 or np.any(abs(delta)>.05) or np.any(abs(rotation)>.5)):
             raise ValueError('World-frame deltas limited to .05m/.5rad per coordinate')
-        if self.any_object_contact() and not self.held:raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')
+        if getattr(self,'bimanual_collaboration','none')=='c1':
+            if self.unheld_object_contact(side):raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')
+        elif self.any_object_contact() and not self.held:raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')
         if grasp_search is not None:
             if not getattr(getattr(self, 'execution_settings', None), 'grasp_heading_search', ()):
                 raise ValueError('grasp_search requires r4-20261027')
-            if self.held or dz >= 0 or self.grips[side] >= 0:
+            if (NativeExecutor.held_for(self,side) if getattr(self,'bimanual_collaboration','none')=='c1' else self.held) or dz >= 0 or self.grips[side] >= 0:
                 raise ValueError('grasp_search requires open gripper, descending motion, and no held object')
             from curobo_v2.grasp_heading import check_sdk_request
             check_sdk_request(grasp_search, getattr(self.env, 'obj_body_id', {}))
@@ -597,15 +688,23 @@ class NativeExecutor:
     def gripper(self,side,command,*,request_id):
         self.check_live()
         settings=getattr(self,"execution_settings",None)
+        reference_settings=(self.held_reference[side] if getattr(self,'bimanual_collaboration','none')=='c1'
+            else self.held_reference)
         require_attachment = settings is not None and settings.attach_after_grasp
         if side not in PHYSICAL_TO_NATIVE or command not in (-1.,1.):raise ValueError('Explicit physical gripper/command required')
-        self.active_request=request_id;self.gripping=True;self.moving=True;start=self.sequence
+        if getattr(self,'bimanual_collaboration','none')=='c1' and command>0:
+            if NativeExecutor.touching_other_held(self,side):
+                raise PlanningRejected('Handoff is not enabled in this profile')
+        self.active_request=request_id;self.gripping=True;self.gripping_side=side;self.moving=True;start=self.sequence
         self.contact_event_count=0;self.contact_event_overflow=0
         self.log(self.journal,dict(event='gripper_intent',request_id=request_id,side=side,command=command,sequence=start))
         wait_steps=0
         try:
-            if command<0 and self.held and self.held['holder']==side:
-                self.held=None;self.held_transform=None;self.planner.ledger.invalidate('release')
+            if command<0 and NativeExecutor.held_for(self,side):
+                if getattr(self,'bimanual_collaboration','none')=='c1':
+                    self.held[side]=None;self.held_transform[side]=None
+                else:self.held=None;self.held_transform=None
+                self.planner.ledger.invalidate('release')
             if command<0 and self.held_trace_enabled:
                 self.held_trace_references={key:value for key,value in self.held_trace_references.items() if key[0]!=side}
             # Native position actuators have soft limits; keep commanded endpoints
@@ -618,15 +717,21 @@ class NativeExecutor:
                 if require_attachment and not candidates:
                     raise PlanningRejected('Close did not confirm bilateral grasp; attached transport forbidden')
                 if candidates:
-                    if self.held and self.held['holder']!=side:raise RuntimeError('Dual-held transport is outside this dev profile')
+                    if getattr(self,'bimanual_collaboration','none')=='c1':
+                        other='right' if side=='left' else 'left'
+                        if self.held[other] and self.held[other]['target_id']==candidates[0]:
+                            raise PlanningRejected('Handoff is not enabled in this profile')
+                    elif self.held and self.held['holder']!=side:raise RuntimeError('Dual-held transport is outside this dev profile')
                     from .attachment import object_pose
-                    self.held=dict(holder=side,target_id=candidates[0])
+                    held=dict(holder=side,target_id=candidates[0])
+                    if getattr(self,'bimanual_collaboration','none')=='c1':self.held[side]=held
+                    else:self.held=held
                     if getattr(settings, 'carried_proxy_support_departure', None) == 'monotone':
                         # A new grasp owns a fresh record, even for the same body.
                         # The first attached request freezes its declared supports.
-                        self.held['support_retention']=dict(attach_request_id=request_id, supports=None)
+                        held['support_retention']=dict(attach_request_id=request_id, supports=None)
                     reference=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,candidates[0])
-                    if self.held_reference['mode']=='settled':
+                    if reference_settings['mode']=='settled':
                         initial_reference=reference
                         stable_count=0;max_displacement=0.;max_rotation=0.
                         for _ in range(HELD_REFERENCE_MAX_WAIT_STEPS):
@@ -647,16 +752,19 @@ class NativeExecutor:
                             max_displacement_mm=max_displacement*1000,max_rotation_deg=math.degrees(max_rotation),
                             reference=reference.tolist(),stable=stable_count>=HELD_REFERENCE_STABLE_STEPS,
                             held_reference_unstable=stable_count<HELD_REFERENCE_STABLE_STEPS))
-                    self.held_transform=reference
+                    if getattr(self,'bimanual_collaboration','none')=='c1':self.held_transform[side]=reference
+                    else:self.held_transform=reference
                     self.planner.ledger.invalidate('grasp_acquired')
             result=dict(status='completed',request_id=request_id,physical_side=side,start_sequence=start,sequence=self.sequence)
-            result.update(held_reference_wait_steps=wait_steps,held_reference=self.held_reference)
+            result.update(held_reference_wait_steps=wait_steps,held_reference=reference_settings)
             if require_attachment:
-                result.update(attach_after_grasp=True, attached_object=self.held.copy() if self.held else None)
+                attached=NativeExecutor.held_for(self,side) if getattr(self,'bimanual_collaboration','none')=='c1' else self.held
+                result.update(attach_after_grasp=True, attached_object=attached.copy() if attached else None)
                 if getattr(settings, 'carried_proxy_support_departure', None) == 'monotone':
                     from copy import deepcopy
-                    result['attached_object']=deepcopy(self.held)
+                    result['attached_object']=deepcopy(attached)
             result.update(receipt_fields(getattr(self,"execution_settings",None)))
+            result.update(NativeExecutor.collaboration_receipt(self))
             result.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
             self.log(self.journal,dict(event='receipt',**result));return result
         except BaseException:
@@ -664,7 +772,7 @@ class NativeExecutor:
         finally:
             if self.contact_event_overflow:self.log(self.journal,dict(event='movable_contact_overflow',
                 request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))
-            self.active_request=None;self.gripping=False;self.moving=False
+            self.active_request=None;self.gripping=False;self.gripping_side=None;self.moving=False
 
     def close(self):
         self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('stop')

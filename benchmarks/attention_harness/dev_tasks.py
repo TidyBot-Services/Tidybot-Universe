@@ -55,6 +55,9 @@ def dev_sdk_prompt(config=None):
     limits=dev_sdk(config)
     prompt = SDK_PROMPT.replace('At most 80 TOTAL SDK calls, 2400 control steps, 480s.',
         f"At most {limits['sdk_calls']} TOTAL SDK calls, {limits['control_steps']} control steps, {limits['attempt_seconds']}s.")
+    if (config or {}).get('bimanual_collaboration')=='c1':
+        prompt=prompt.replace('Do not attempt handoff or dual-held transport; single-arm object transport requires actual bilateral grasp.',
+            'Each arm may hold its own object at the same time (each needs its own confirmed bilateral grasp; contact loss stops motion). Do not grasp an object the other arm is holding (no handoff) and do not carry one object with both hands.')
     if base_description_enabled(config):
         prompt = prompt.replace('right_gripper, bimanual.', 'right_gripper, bimanual, base.', 1)
         prompt = prompt.replace('Base stationary.', BASE_PROMPT, 1)
@@ -86,7 +89,7 @@ def dev_sdk_seal(config):
 
 
 def verify_dev_sdk_seal(config):
-    if base_description_enabled(config) or any(k in config for k in SDK_SEAL_KEYS):
+    if base_description_enabled(config) or (config or {}).get('bimanual_collaboration')=='c1' or any(k in config for k in SDK_SEAL_KEYS):
         if {k: config.get(k) for k in SDK_SEAL_KEYS} != dev_sdk_seal(config):
             raise ValueError('Dev SDK description seal mismatch')
 @dataclass(frozen=True)
