@@ -4,7 +4,13 @@
 
 Use Linux x86_64 with an NVIDIA GPU and a working driver, Git, Python 3 with its development headers (`python3-dev` on Ubuntu; the Harness builds `evdev` from source), a C compiler (`build-essential`), `uv`, Conda, `bwrap`, enabled unprivileged user namespaces, and a Codex account with access to `gpt-6.1-sol`. Reserve roughly 50 GB for installed software and assets and **at least 60 GB free** before bootstrap. `doctor` enforces the latter. Sign in with `codex login`; install the CLI version pinned by `attentionbench.lock.json`.
 
-In Docker, run the container with `--gpus all --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined`: the agent's `bwrap` sandbox needs user namespaces and its own `/proc` (verified 10-31; `--privileged` is not needed).
+On an ordinary Linux machine no extra setup is needed beyond the list above. Docker is optional; inside Docker the agent's `bwrap` sandbox needs user namespaces and its own `/proc`, which the defaults forbid. The setup verified on 2026-11-01 (Ubuntu 22.04 host, kernel 6.8, Docker 28.3.1, NVIDIA Container Toolkit 1.19.0) keeps seccomp and AppArmor on and only adds what `bwrap` needs:
+
+1. Load the AppArmor profile once (needs root): `sudo apparmor_parser -r -W config/attentionbench/docker/attentionbench-bwrap.apparmor`. It is Docker's default profile plus `mount`, `umount`, `pivot_root` and user namespaces.
+2. Generate a GPU CDI spec without the `disable-device-node-modification` hook (needs root to install): `nvidia-ctk cdi generate --vendor attentionbench.local --class gpu --disable-hook disable-device-node-modification --output attentionbench-gpu.yaml`, then `sudo mkdir -p /etc/cdi && sudo cp attentionbench-gpu.yaml /etc/cdi/`. With `--gpus all`, or with the default CDI spec, NVIDIA mounts files over `/proc/driver/nvidia`; the kernel then refuses a new `/proc` inside a user namespace (`bwrap: Can't mount proc on /newroot/proc: Operation not permitted`).
+3. Start the container with `--device attentionbench.local/gpu=all --security-opt seccomp=config/attentionbench/docker/bwrap-seccomp.json --security-opt apparmor=attentionbench-bwrap --security-opt systempaths=unconfined`. The seccomp profile is Docker's default plus `unshare`, `clone`/`clone3` with namespace flags, `mount`, `umount2`, `pivot_root` and `setns`; `systempaths=unconfined` only removes Docker's masking of `/proc` paths. `--privileged` is not needed.
+
+`doctor` checks this with a `bwrap` namespace probe (`isolation`).
 
 ## Four commands
 
