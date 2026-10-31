@@ -60,6 +60,14 @@ def begin(executor):
             parts={},neighbourhood={},sides=set())
 
 
+def record_step(executor):
+    rate=getattr(getattr(executor,'execution_settings',None),'fixture_telemetry_hz',None)
+    if rate is None:return True
+    timestep=float(executor.env.sim.model.opt.timestep)
+    period=max(1,int(np.ceil(1./(rate*timestep))))
+    return (executor.physics_steps-1)%period==0
+
+
 def sample(executor, contacts, q):
     if not contacts:return None
     errors=np.asarray(q)-executor.goals
@@ -72,7 +80,11 @@ def sample(executor, contacts, q):
     stats=getattr(executor,'_fixture_motion',None)
     if stats is not None:
         stats['contact_steps']+=1;stats['contact_count']+=len(contacts)
-        stats['maximum_force_n']=max(stats['maximum_force_n'],max(c['force_norm_n'] for c in contacts.values()))
+        peak=max(contacts.values(),key=lambda c:c['force_norm_n'])
+        if hasattr(getattr(executor,'execution_settings',None),'fixture_telemetry_hz') and (
+                'maximum_force_contact' not in stats or peak['force_norm_n']>stats['maximum_force_n']):
+            stats['maximum_force_contact']=dict(peak,physics_step=executor.physics_steps)
+        stats['maximum_force_n']=max(stats['maximum_force_n'],peak['force_norm_n'])
         stats['maximum_joint_tracking_error_rad']=max(stats['maximum_joint_tracking_error_rad'],float(max(abs(errors))))
         if stats['first_physics_step'] is None:stats['first_physics_step']=executor.physics_steps
         stats['last_physics_step']=executor.physics_steps
@@ -82,6 +94,7 @@ def sample(executor, contacts, q):
                 if k in ('geom_id','name','fixture','pattern','part_geom_id','part_name','part_distance_m',
                     'part_kind','contact_radius_m','contact_point_distance_m')}
             stats['sides'].add(c['physical_side'])
+    if not record_step(executor):return None
     executor.log(executor.journal,row)
     return row
 
@@ -102,9 +115,10 @@ def guards(executor, base, held_base, grippers):
         executor._fixture_rehold_translation_max=max(getattr(executor,'_fixture_rehold_translation_max',0.),
             float(np.linalg.norm(np.asarray(base)[:2]-np.asarray(held_base)[:2])))
         stats['guard_record_only_steps']+=1
-        executor.log(executor.journal,dict(event='fixture_guard_sample',request_id=executor.active_request,
-            physics_step=executor.physics_steps,mode='record_only',base_drift_translation_m=translation,
-            base_drift_yaw_rad=yaw,gripper_mimic_error_m=mimic))
+        if record_step(executor):
+            executor.log(executor.journal,dict(event='fixture_guard_sample',request_id=executor.active_request,
+                physics_step=executor.physics_steps,mode='record_only',base_drift_translation_m=translation,
+                base_drift_yaw_rad=yaw,gripper_mimic_error_m=mimic))
     return contact
 
 

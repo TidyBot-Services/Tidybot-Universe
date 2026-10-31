@@ -152,9 +152,16 @@ class FixtureExecutionSettings(ExecutionSettings):
     fixture_press_contact_radius_m: float = .035
 
 
+@dataclass(frozen=True)
+class ProductFixtureExecutionSettings(FixtureExecutionSettings):
+    fixture_telemetry_hz: int = 20
+
+
 from .fixture_interaction import PROFILE as FIXTURE_PROFILE, WHITELIST_ID, WHITELIST_SHA256
 R5_FIXTURE_20261031 = FixtureExecutionSettings(FIXTURE_PROFILE, .002, .010, .003, .003, .02, .010, .10,
     True, 'monotone', _DevLocalBinding(), WHITELIST_ID, WHITELIST_SHA256)
+
+R5_PRODUCT_20261031 = ProductFixtureExecutionSettings(**{f.name:getattr(R5_FIXTURE_20261031,f.name) for f in fields(R5_FIXTURE_20261031)})
 
 
 def from_config(block):
@@ -162,7 +169,8 @@ def from_config(block):
         return LEGACY
     if not isinstance(block, Mapping):
         raise ValueError('execution_settings: expected a complete mapping')
-    profile = (R5_FIXTURE_20261031 if block.get('profile') == FIXTURE_PROFILE else
+    profile = (R5_PRODUCT_20261031 if block.get('profile') == FIXTURE_PROFILE and 'fixture_telemetry_hz' in block else
+               R5_FIXTURE_20261031 if block.get('profile') == FIXTURE_PROFILE else
                R4_20261027 if block.get('profile') == R4_20261027.profile else R3_20261025)
     names = {f.name for f in fields(profile)}
     for name in sorted(names - block.keys()):
@@ -177,7 +185,7 @@ def from_config(block):
     pin = block['planner_deployment']
     if not isinstance(pin, Mapping) or set(pin) != {'lock_path', 'sha256'}:
         raise ValueError('planner_deployment: exact lock_path and sha256 required')
-    if profile is R4_20261027 or profile is R5_FIXTURE_20261031:
+    if profile is R4_20261027 or profile in (R5_FIXTURE_20261031,R5_PRODUCT_20261031):
         for name in ('lock_path', 'sha256'):
             if type(pin[name]) is not str:
                 raise ValueError(f'planner_deployment.{name}: expected string')

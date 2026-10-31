@@ -52,7 +52,7 @@ test('agent facts fit the original workspace without raw sections',()=>{
 test('new controls are connected to actual launcher serialization and separate agent rendering',()=>{
   for(const name of ['dev_mode','dev_model','eval_model','quota_stop_percent'])assert.ok(source.includes(`name="${name}"`));
   assert.match(source,/selection=agentLaunchSelection\(selection,/);
-  assert.match(source,/function updatePreview\(\) \{\s+syncAgentOptions\(\)/);
+  assert.match(source,/function updatePreview\(\) \{\s+fixtureRunMode\([^\n]+\);\s+syncAgentOptions\(\)/);
   assert.match(source,/if\(cell.dev_mode==='agent'\)/);
   assert.match(source,/await devV2WorkspaceSnapshot\(session,compat,experiment\)/);
   assert.doesNotMatch(source,/view.innerHTML=agentRunPage/);

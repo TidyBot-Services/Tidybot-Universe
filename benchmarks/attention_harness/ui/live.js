@@ -2027,6 +2027,33 @@
       provider_tokens:200000*n, input_tokens:170000*n,output_tokens:30000*n};
     return {cell,experiment:Object.fromEntries(Object.entries(cell).map(([key,value])=>[key,value*policyCount]))};
   }
+  function fixtureTaskKey(profile) {
+    return profile.rules_profile?`${profile.task_id}@${profile.rules_profile}`:profile.task_id;
+  }
+  function fixtureRunMode(profile,mode,policy,locked=false) {
+    const fixture=profile?.rules_profile==='r5-fixture-20261031';
+    mode.disabled=fixture||locked;
+    if(fixture)mode.value='interactive';
+    for(const option of policy.options)if(option.value==='all')option.disabled=fixture;
+    if(fixture&&policy.value==='all')policy.value=[...policy.options].find(o=>o.value!=='all'&&!o.disabled)?.value||'autonomous';
+  }
+  function fixtureTaskOptions(profiles) {
+    const option=p=>`<option value="${esc(fixtureTaskKey(p))}">${esc(taskName(p.task_id))}${p.rules_profile?' · fixture rules (R5) · interactive · not compared (scene positions not verified)'+(p.held_out?' · held-out':''):''}</option>`;
+    const unique=[...new Map(profiles.map(p=>[fixtureTaskKey(p),p])).values()];
+    return unique.filter(p=>!p.rules_profile).map(option).join('')+['A','B','C','D'].map(family=>{
+      const rows=unique.filter(p=>p.family===family);
+      return rows.length?`<optgroup label="${esc(family+' · '+rows[0].family_label)} · fixture rules (R5)">${rows.map(option).join('')}</optgroup>`:'';
+    }).join('');
+  }
+  function fixtureSeedOptions(profile) {
+    return profile.seed_options.map(row=>`<option value="${row.seed}" ${row.enabled?'':'disabled'}>${esc(String(row.seed)+(row.enabled?'':' · '+row.reason))}</option>`).join('');
+  }
+  function launchCreationError(error) {
+    return `Could not create run: ${error?.message||String(error)}`;
+  }
+  function fixtureSceneNotice(config) {
+    return config?.scene_verification==='fixture_contract_only'?'<span class="op-excluded" data-scene-verification="fixture_contract_only">Scene verification: fixture rules only · scene positions not verified · interactive · not compared</span>':'';
+  }
   function runConfigSeedOptions(seeds,registered,mode,memory=false) {
     return seeds.map(seed=>({seed,unregistered:mode==='experiment'&&!registered.includes(seed),
       title:String(seed)+(!registered.includes(seed)?(mode==='experiment'?' (no scene contract · interactive only)':mode==='interactive'&&memory?' (no scene contract · Memory reference only)':''):'')}));
@@ -2042,10 +2069,10 @@
   function launchSourceProfile(source, profiles, options, preferDev) {
     if(!source)return {profile:null,reason:''};
     const isFixed=p=>['certified_v2','formal'].includes(p.channel);
-    const matching=profiles.filter(p=>p.enabled && p.suite===source.suite && p.task_id===source.task_id
+    const matching=profiles.filter(p=>p.enabled && (!source.execution_profile||source.execution_profile==='legacy'? !p.rules_profile : source.execution_profile==='r5-fixture-20261031'?p.rules_profile===source.execution_profile:!p.rules_profile) && p.suite===source.suite && p.task_id===source.task_id
       && p.robot===source.robot?.model && p.execution_arm===source.robot?.execution_arm);
     const seeded=matching.filter(p=>p.channel==='dev_v2'
-      ? (options?.dev_v2?.tasks?.find(t=>t.task_id===p.task_id)?.seeds||[p.seed]).includes(source.seed)
+      ? (p.seeds||options?.dev_v2?.tasks?.find(t=>t.task_id===p.task_id)?.seeds||[p.seed]).includes(source.seed)
       : p.seed===source.seed);
     return {profile:seeded.find(p=>isFixed(p)!==preferDev)||seeded[0]||null,
       reason:!matching.length?'The task, robot and arm combination is no longer supported.'
@@ -2163,14 +2190,21 @@
         else select.value = values.find(value => !unavailable(value)) || values[0] || '';
       }
       function taskProfiles() {
-        return devProfiles.filter(p => isFixed(p)===(form.run_type.value==='fixed') && p.suite === form.benchmark.value && p.task_id === form.task_id.value);
+        return devProfiles.filter(p => isFixed(p)===(form.run_type.value==='fixed') && p.suite === form.benchmark.value && fixtureTaskKey(p) === form.task_id.value);
       }
       function selectedProfile() {
         return taskProfiles().find(p => p.robot === form.robot_model.value && p.execution_arm === form.execution_arm.value);
       }
       function syncSeedOptions() {
         const profile=selectedProfile(),v2=profile?.channel==='dev_v2';
-        const registered=options?.dev_v2?.registered_scene_seeds||[];
+        const registered=profile?.rules_profile?profile.seeds:options?.dev_v2?.registered_scene_seeds||[];
+        if(profile?.rules_profile){
+          const previous=Number(form.seed.value);
+          form.seed.innerHTML=fixtureSeedOptions(profile);
+          form.seed.value=String(profile.seeds.includes(previous)?previous:profile.seeds[0]);
+          form.querySelector('[data-seed-note]').textContent='fixture rules (R5) · interactive · not compared (scene positions not verified) · start_state_collision seeds are disabled';
+          return;
+        }
         const seeds=v2?(options?.dev_v2?.tasks?.find(t=>t.task_id===profile.task_id)?.seeds||Array.from({length:25},(_,i)=>101+i)):[profile?.seed??101];
         const previous=Number(form.seed.value);
         form.seed.innerHTML=runConfigSeedOptions(seeds,registered,form.v2_mode.value,v2&&!!options?.dev_v2?.memory).map(row=>`<option value="${row.seed}">${esc(row.title)}</option>`).join('');
@@ -2225,9 +2259,11 @@
         form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval 只评正式提交，反馈包含判定、证据和建议；原生成功结束 run。每次 Eval 最多 15 分钟。':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention.';
       }
       function updatePreview() {
+        fixtureRunMode(selectedProfile(),form.v2_mode,form.v2_policy,!!forkStart);
         syncAgentOptions();
+        fixtureRunMode(selectedProfile(),form.v2_mode,form.v2_policy,!!forkStart);
         const profile = selectedProfile();
-        form.querySelector('[data-launch-name-preview]').textContent = `${taskName(form.task_id.value)}${form.name_suffix.value.trim()?` -- ${form.name_suffix.value.trim()}`:''}`;
+        form.querySelector('[data-launch-name-preview]').textContent = `${taskName(selectedProfile()?.task_id||form.task_id.value)}${form.name_suffix.value.trim()?` -- ${form.name_suffix.value.trim()}`:''}`;
         const iterations = Number(form.max_attempts.value);
         syncBudget();
         form.sdk_calls.value=profile?Number(profile.sdk_call_limit||0)*iterations:0;
@@ -2252,6 +2288,7 @@
         const profile = selectedProfile();
         const certified = profile?.channel === 'certified_v2';
         const v2=profile?.channel==='dev_v2';
+        fixtureRunMode(profile,form.v2_mode,form.v2_policy,!!forkStart);
         const formal=profile?.channel==='formal';
         form.classList.toggle('ab-v2-profile',v2);
         form.querySelector('[data-run-config-section="advanced"]').open=isFixed(profile||{});
@@ -2310,7 +2347,9 @@
         syncArm();
       }
       function syncBenchmark() {
-        fillOptions(form.task_id,[...new Set(devProfiles.filter(p => isFixed(p)===(form.run_type.value==='fixed') && p.suite === form.benchmark.value).map(p => p.task_id))],task => taskName(task));
+        const previous=form.task_id.value;
+        form.task_id.innerHTML=fixtureTaskOptions(devProfiles.filter(p=>isFixed(p)===(form.run_type.value==='fixed')&&p.suite===form.benchmark.value));
+        if([...form.task_id.options].some(o=>o.value===previous))form.task_id.value=previous;
         syncTask();
       }
       function syncRunType(){
@@ -2323,7 +2362,7 @@
       if (sourceProfile) {
         form.benchmark.value = sourceProfile.suite;
         syncBenchmark();
-        form.task_id.value = sourceProfile.task_id;
+        form.task_id.value = fixtureTaskKey(sourceProfile);
         syncTask();
         form.robot_model.value = sourceProfile.robot;
         syncArm();
@@ -2399,6 +2438,7 @@
               selection.fork=fork.request();
             }
           }
+          if(profile.rules_profile)selection.rules_profile=profile.rules_profile;
           selection=agentLaunchSelection(selection,{devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
@@ -2421,7 +2461,7 @@
           await refresh();
         } catch (error) {
           submitting = false;
-          form.querySelector('#ab-launch-message').textContent = profile?.channel==='dev_v2'?error.message:`Launch failed: ${DEBUG_VIEW ? error.message : plainError(error.message)}`;
+          form.querySelector('#ab-launch-message').textContent = launchCreationError(error);
           updatePreview();
         }
       });
@@ -3777,9 +3817,10 @@
     const newRun = isTerminal(snapshot) ? launchButton(snapshot, true) : '';
     const execution = snapshot.dev_session?.locked?.config?.execution_settings?.profile === 'r3-20261025' ? '<span class="op-excluded">Execution settings r3 · not comparable with earlier runs</span>' : '';
     const sdk = snapshot.dev_session ? `<span class="op-excluded" data-sdk-description title="${esc(snapshot.dev_session.locked?.config?.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(snapshot.dev_session.locked?.config?.dev_sdk_description||'base stationary')}</span>` : '';
+    const scene = fixtureSceneNotice(snapshot.dev_session?.locked?.config);
     const fork = snapshot.dev_v2_selection?.fork;
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}${sdk}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}${sdk}${scene}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {

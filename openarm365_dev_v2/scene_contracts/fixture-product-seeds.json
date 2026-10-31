@@ -1,0 +1,51 @@
+{
+  "schema": "attentionbench.fixture-product-seeds.v1",
+  "profile": "r5-fixture-20261031",
+  "exclusions": [
+    {
+      "task_id": "open_cabinet",
+      "seed": 101,
+      "reason": "start_state_collision",
+      "evidence_paths": [
+        "wt-fixture-p1/phase2d-start-1031-0138",
+        "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+    },
+    {
+      "task_id": "open_cabinet",
+      "seed": 103,
+      "reason": "start_state_collision",
+      "evidence_paths": [
+        "wt-fixture-p1/phase2d-start-1031-0138",
+        "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+    },
+    {
+      "task_id": "coffee_setup_mug",
+      "seed": 104,
+      "reason": "start_state_collision",
+      "evidence_paths": [
+        "wt-fixture-p1/phase2d-start-1031-0138",
+        "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+    },
+    {
+      "task_id": "kettle_boiling",
+      "seed": 103,
+      "reason": "start_state_collision",
+      "evidence_paths": [
+        "wt-fixture-p1/phase2d-start-1031-0138",
+        "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+    },
+    {
+      "task_id": "weigh_ingredients",
+      "seed": 103,
+      "reason": "start_state_collision",
+      "evidence_paths": [
+        "wt-fixture-p1/phase2d-start-1031-0138",
+        "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+    }
+  ]
+}

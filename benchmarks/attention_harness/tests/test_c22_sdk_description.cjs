@@ -10,7 +10,7 @@ function load(name,globals={}) {
   const end=source.indexOf('\n  function ',start+1);
   return vm.runInNewContext(source.slice(start,end)+`\n${name}`,globals);
 }
-const common={esc:String,devV2State:()=> 'completed',devEndSummary:()=>'',policyTitle:String,policyShort:String,recordIsActive:()=>false};
+const common={fixtureSceneNotice:load('fixtureSceneNotice'),esc:String,devV2State:()=> 'completed',devEndSummary:()=>'',policyTitle:String,policyShort:String,recordIsActive:()=>false};
 test('history records keep the frozen description; the sidebar cards no longer show it (10-30)',()=>{
   const navigation=load('devNavigationRecord',common);
   const badges=load('sidebarRunBadges',common);

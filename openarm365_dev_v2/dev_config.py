@@ -117,15 +117,17 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
     with path.open('x') as f:json.dump(value,f,sort_keys=True,indent=2)
     path.chmod(0o444)
     return {'path':str(path.absolute()),'sha256':sha(path)}
-def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planner_source=None,rules_profile=None):
+def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planner_source=None,rules_profile=None,fixture_telemetry_hz=None):
     """Select matching settings for a new run's identity lock and config.
 
     Frozen configs must retain their own settings, including legacy absence.
     """
+    if fixture_telemetry_hz is not None and (rules_profile!=R5_FIXTURE_20261031.profile or type(fixture_telemetry_hz) is not int or fixture_telemetry_hz!=20):raise ValueError('R5 product fixture telemetry requires 20 Hz')
     if planner_source is not None:_planner_source(planner_source,budget_tier,budget_boundary)
     if rules_profile is not None:
         if rules_profile!=R5_FIXTURE_20261031.profile or budget_tier!='dev' or budget_boundary!='dev_loop':raise ValueError('fixture profile requires dev tier and dev_loop boundary')
-        return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT)),R5_FIXTURE_20261031)
+        from curobo_v2.execution_settings import R5_PRODUCT_20261031
+        return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT)),R5_FIXTURE_20261031 if fixture_telemetry_hz is None else R5_PRODUCT_20261031)
     return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT))) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
 
 
@@ -170,6 +172,9 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
     if budget_boundary=='formal' and budget_tier!='legacy':raise ValueError('formal boundary refuses dev budget tier')
     limits=formal_task_limits() if budget_boundary=='formal' else task_limits(budget_tier)
     t=validate_selection(task_id,seed,layout_id,style_id,fixture=fixture)
+    if fixture and hasattr(execution_settings,'fixture_telemetry_hz'):
+        from benchmarks.attention_harness.dev_fixture_tasks import validate
+        validate(task_id,seed)
     identity=verify_lock(lock,expected_source_root=expected_source_root)
     if identity is not None and identity.get('planner_deployment_kind')=='dev-local':
         if planner_source is None:raise ValueError('dev-local lock requires planner_source')
@@ -197,6 +202,7 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
     if fixture:
         from .fixture_contract import contract_ref,success_ref
         c.update(scene_reset_seed=seed,fixture_scene_contract=contract_ref(task_id),fixture_success_condition=success_ref(task_id))
+        if hasattr(execution_settings,'fixture_telemetry_hz'):c['scene_verification']='fixture_contract_only'
     from benchmarks.attention_harness.dev_tasks import base_description_enabled,dev_sdk_seal
     if base_description_enabled(c) or bimanual_collaboration in ('c1','handoff'):c.update(dev_sdk_seal(c))
     return c

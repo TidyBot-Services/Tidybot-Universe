@@ -39,6 +39,11 @@ def memory_scope(config, mode):
 
     Experiments retain their existing scene gate and context failure behaviour.
     """
+    from curobo_v2.fixture_interaction import config_enabled
+    if config_enabled(config):
+        from .dev_fixture_tasks import validate_contract
+        validate_contract(config)
+        return {'level':'scene'}
     if mode == 'experiment':
         return {'level': 'scene'}
     from openarm365_dev_v2.scene_contract import registered_contract_ref, load_contract, seed_entry
@@ -67,6 +72,9 @@ def context(config, namespace, *, contract_catalog=None):
               'camera_names','camera_width','camera_height','randomize_cameras',
               'official_env','layout_id','style_id','base_mode','task_prompt','seed',
               'scene_contract','dev_lock')
+    from curobo_v2.fixture_interaction import config_enabled
+    fixture=config_enabled(config)
+    if fixture:required=tuple('fixture_scene_contract' if key=='scene_contract' else key for key in required)
     missing=[key for key in required if key not in config]
     if missing:raise ValueError('Memory context requires config fields: '+', '.join(missing))
     value = {key: config[key] for key in SCOPE if key in config and key not in {'sdk_sha256', 'namespace'}}
@@ -87,6 +95,9 @@ def context(config, namespace, *, contract_catalog=None):
         raise ValueError('Memory context requires task_prompt')
     from openarm365_dev_v2.scene_contract import registered_contract_ref
     contract=registered_contract_ref()
+    if fixture:
+        from .dev_fixture_tasks import validate_contract
+        contract=validate_contract(config)
     if contract_catalog is not None:
         # Offline importer only: an explicit, exact per-seed catalog. Ordinary
         # retrieval keeps the global registration rule unchanged.
@@ -95,7 +106,7 @@ def context(config, namespace, *, contract_catalog=None):
         if contract_catalog.get('role')!='contract' or not covers(contract_catalog,config['scene_contract']):raise ValueError('exact target contract catalog required')
         seed_entry(load_contract(config['scene_contract']),config['task_id'],config['seed'])
         contract=config['scene_contract']
-    if config.get('scene_contract')!=contract:
+    if config.get('fixture_scene_contract' if fixture else 'scene_contract')!=contract:
         raise ValueError('Memory context requires the current registered scene_contract in cell config')
     value.update(seed=config['seed'], camera_names=list(cameras), task_prompt=config['task_prompt'],
                  scene_contract_ref=contract)

@@ -49,10 +49,10 @@ class AdvisorProvider(HelpProvider):
         public_screen(text);return {'provider':'advisor','content':text,'scope':'public repair hint, no approval'}
 class DemoProvider(HelpProvider):
     provider_id='demo'
-    def freeze(self,task):
-        t=get_task(task);source=Path(t.initial_policy).read_text();public_screen(source)
+    def freeze(self,task,*,task_record=None,config=None):
+        t=get_task(task) if task_record is None else task_record;source=Path(t.initial_policy).read_text();public_screen(source)
         from openarm365_dev.policy_validation import validate_generated_policy
-        validate_generated_policy(source)
+        validate_generated_policy(source,**({} if config is None else dict(config=config)))
         return {'provider':'demo','content':source,'source':{'uri':t.initial_policy,'sha256':sha(t.initial_policy)},
                 'provenance':'public SDK documentation and task prompt; authored before new real runs; no success claim',
                 'authored_before_real_runs':__import__('datetime').datetime.fromtimestamp(Path(t.initial_policy).stat().st_mtime,__import__('datetime').timezone.utc).isoformat(),'visibility':'public task/robot-compatible bounded SDK example'}

@@ -35,8 +35,8 @@ def bind_daily_codex(selection):
     converted.update(goal_key=legacy['goal_id'],goal_limits=legacy['experiment_budget'],
         wall_limit=legacy['wall_seconds'],cell_budget=legacy['cell_budget'],
         target_depth=legacy['max_iterations'],target_valid_executions=legacy['max_iterations'],
-        max_versions=legacy['max_iterations'],coverage='budget_limited',reproducible_reset=True,
-        scene_contract=registered_contract_ref())
+        max_versions=legacy['max_iterations'],coverage='budget_limited',
+        **({} if selection.get('rules_profile')=='r5-fixture-20261031' else dict(reproducible_reset=True,scene_contract=registered_contract_ref())))
     return converted
 
 def bind_daily_run_notes(selection, previous_selection):
@@ -114,7 +114,7 @@ def _modern(selection):
         wall_limit=legacy['wall_seconds'],cell_budget=legacy['cell_budget'],
         target_depth=legacy['max_iterations'],target_valid_executions=legacy['max_iterations'],
         max_versions=legacy['max_iterations'],coverage='budget_limited',
-        reproducible_reset=True,scene_contract=registered_contract_ref())
+        **({} if selection.get('rules_profile')=='r5-fixture-20261031' else dict(reproducible_reset=True,scene_contract=registered_contract_ref())))
     converted.pop('human_wait_seconds',None)
     return converted
 
@@ -136,11 +136,13 @@ class DailyDevV2:
         self.recover()
     def options(self):
         from .dev_agent_policies import policy_options
-        return {'agent_policies':policy_options(),'enabled':True,'budget_tier':'dev','policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
+        from .dev_fixture_tasks import options as fixture_options
+        fixtures=fixture_options()
+        return {'fixture_tasks':fixtures,'agent_policies':policy_options(),'enabled':True,'budget_tier':'dev','policies':list(POLICY_IDS),'tasks':[t.public() for t in TASKS.values()],
                 'default_cell_budget':DEFAULT_CELL,'default_max_iterations':5,'registered_scene_seeds':registered_scene_seeds(),'formal_eligible':False,'continue_from_attempt':True,
                 'authorization':{'mode':'per_run_budget','deadline_epoch':None} if self.per_run_budget else self.authorization,'matrix':self.matrix(),
                 **({'memory':{k:self.memory[k] for k in ('store_id','namespace','url_sha256')}} if self.memory is not None else {}),
-                'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],control_step_limit=task_limits()['control_steps'],startup_cleanup_seconds=60*DEV_TIER_BUDGET_SCALE,wall_seconds=21600,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]}
+                'profiles':[dict(id='dev-v2-'+t.task_id,suite='robocasa365',task_id=t.task_id,seed=101,robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],control_step_limit=task_limits()['control_steps'],startup_cleanup_seconds=60*DEV_TIER_BUDGET_SCALE,wall_seconds=21600,layout_id=11,style_id=34,base_mode='stationary') for t in TASKS.values()]+[dict(id='dev-v2-r5-'+t['task_id'],suite='robocasa365',task_id=t['task_id'],seed=t['seeds'][0],robot='OpenArm365',execution_arm='both',channel='dev_v2',enabled=True,execution_target='robocasa365_sim',attempt_wall_seconds=task_limits()['attempt_seconds'],sdk_call_limit=task_limits()['sdk_calls'],control_step_limit=task_limits()['control_steps'],startup_cleanup_seconds=60*DEV_TIER_BUDGET_SCALE,wall_seconds=21600,layout_id=11,style_id=34,base_mode='commanded_motion',**{k:t[k] for k in ('rules_profile','rules_label','family','family_label','held_out','seeds','seed_options')}) for t in fixtures]}
     def matrix(self):
         rows=[]
         for p in self.profiles:
@@ -178,10 +180,13 @@ class DailyDevV2:
         if not selection.get('planner_features'):
             selection={k:v for k,v in selection.items() if k!='human_wait_seconds'}
         experiments.validate_selection_fields(selection)
+        from .dev_fixture_tasks import prepare_selection,PROFILE
+        selection=prepare_selection(selection)
+        fixture=selection.get('rules_profile')==PROFILE
         if selection.get('dev_mode')=='agent':
             from .dev_agent_config import normalize
             normalize(selection)  # Refuse legacy/formal/matrices before any conversion or writes.
-        if selection.get('mode')=='experiment':
+        if selection.get('mode')=='experiment' and not fixture:
             # Reject uncovered seeds before creating ledger files. New legacy
             # experiment manifests bind this reference to each config in create().
             from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract,seed_entry
@@ -203,8 +208,8 @@ class DailyDevV2:
             selection={**selection,'fork':dev_fork.materialize(self.root,directory,request)}
         if selection.get('dev_mode')=='agent':
             from openarm365_dev_v2.scene_contract import registered_contract_ref
-            selection={**selection,'model_source':'codex','reproducible_reset':True,
-                       'scene_contract':registered_contract_ref()}
+            selection={**selection,'model_source':'codex',
+                       **({} if fixture else dict(reproducible_reset=True,scene_contract=registered_contract_ref()))}
             selection=bind_daily_advisor(selection,directory/'selection.json')
             # D7: agent runs bind the server's Memory authority and run notes like one-call.
             selection=bind_daily_run_notes(selection,directory/'selection.json')
@@ -251,12 +256,10 @@ class DailyDevV2:
             with (directory/'creation.log').open('ab') as log:
                 result=subprocess.run([sys.executable,'-B','-m','benchmarks.attention_harness.dev_experiment','create','--store',str(path),'--artifacts',str(directory/'artifacts'),'--selection',str(request_file),'--output',str(directory/'created.json')],cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,timeout=60)
             if result.returncode:
-                if selection.get('dev_mode')=='agent':
-                    from .dev_agent_view import clean
-                    from .dev_agent_workspace import read_beneath
-                    detail=read_beneath(directory,'creation.log',32*1024*1024).decode('utf-8',errors='replace')
-                    raise DevConflict('Agent experiment materialization failed: '+clean(detail))
-                raise DevConflict('Experiment materialization failed; creation.log preserves diagnostic evidence')
+                from .dev_agent_view import clean
+                from .dev_agent_workspace import read_beneath
+                detail=read_beneath(directory,'creation.log',32*1024*1024).decode('utf-8',errors='replace')
+                raise DevConflict('Experiment materialization failed: '+clean(detail))
             e=experiments.snapshot(s,eid)
             with s.tx() as db:
                 current=s.get(db,'experiments',eid);current['disk_root']=str(self.root);s.put(db,'experiments',eid,current)

@@ -496,7 +496,7 @@ class NativeExecutor:
             gripper_qvel={side:v.tolist() for side,v in gripper_v.items()},
             tcp={side:tcp_pose(self.env,side).tolist() for side in PHYSICAL_TO_NATIVE},unexpected_contacts=contacts)
         row['bilateral_contact_objects']={side:sorted(values) for side,values in bilateral.items()}
-        if relaxed_mimic:
+        if relaxed_mimic and (not fixture_guard_contact or fixture_telemetry.record_step(self)):
             row['mimic_error_m']={side:pair[0] for side,pair in relaxed_mimic.items()}
             row['mimic_bound_m']={side:pair[1] for side,pair in relaxed_mimic.items()}
         if expected_movable_contacts:row['expected_movable_contacts']=expected_movable_contacts

@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','bimanual_collaboration'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','bimanual_collaboration','rules_profile'}|FIELDS
 def validate_selection_fields(selection):
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
@@ -64,6 +64,9 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     from .dev_disk import require_start
     require_start(artifact_root)
     validate_selection_fields(selection)
+    from .dev_fixture_tasks import prepare_selection,PROFILE,task_record,SCENE_VERIFICATION
+    selection=prepare_selection(selection)
+    fixture=selection.get('rules_profile')==PROFILE
     agent_options=None
     if selection.get('dev_mode','one_call') not in ('one_call','agent'):raise ValueError('unknown_dev_mode')
     if selection.get('dev_mode')=='agent':
@@ -154,7 +157,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     if not isinstance(policies,list) or not policies or len(set(policies))!=len(policies) or any(p not in policy_ids for p in policies):raise ValueError('unique supported policy list required')
     if mode=='interactive' and (len(tasks),len(seeds),len(policies))!=(1,1,1):raise ValueError('interactive session has one task/seed/policy')
     for t in tasks:
-        for seed in seeds:validate_selection(t,seed)
+        for seed in seeds:validate_selection(t,seed,**({'fixture':True} if fixture else {}))
     require_scene_gate(mode,selection,tasks,seeds)
     help_budget=selection.get('help_budget',1)
     # The operator may authorize up to ten requests per task; ledger credit and
@@ -179,6 +182,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         if any(legacy_configuration['cell_budget'].get(k,0)>legacy_configuration['experiment_budget'].get(k,0) for k in RESOURCES):raise ValueError('cell exceeds experiment resource budget')
     exp_id='devexp-'+hashlib.sha256(key.encode()).hexdigest()[:24]
     normalized=dict(request_key=key,tasks=tasks,seeds=seeds,policies=policies,help_budget=help_budget,mode=mode,policy_parameters=parameters,trace_visible=trace_visible)
+    if fixture:normalized['rules_profile']=PROFILE
     if planner_source is not None:normalized['planner_source']=dict(planner_source)
     if 'bimanual_collaboration' in selection:normalized['bimanual_collaboration']=collaboration
     if 'run_notes' in selection:normalized['run_notes']=selection['run_notes']
@@ -238,7 +242,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     # manifest. New legacy experiment cells need the same physical scene gate
     # as v3; interactive and diagnostic cells retain their original reset path.
     legacy_scene_ref=None
-    if legacy_configuration is not None and mode=='experiment':
+    if legacy_configuration is not None and mode=='experiment' and not fixture:
         from openarm365_dev_v2.scene_contract import registered_contract_ref,load_contract,seed_entry
         legacy_scene_ref=registered_contract_ref()
         contract=load_contract(legacy_scene_ref)
@@ -252,14 +256,15 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         from .memory_source_drift import current_identity,execution_config
         ref,source_drift=current_identity(json.loads(checked(validation_origin['config']).read_bytes()),original['identity_lock'],directory)
     else:
-        settings=new_execution_settings(budget_tier=budget_tier,**planner_args)
+        settings=new_execution_settings(budget_tier=budget_tier,**planner_args,**(dict(rules_profile=PROFILE,fixture_telemetry_hz=20) if fixture else {}))
         ref={'path':str(lock_path),'sha256':sha(lock_path)} if lock_path.exists() else make_lock(lock_path,
             **({} if settings is None else dict(execution_settings=settings)),**planner_args)
     if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])
     else:verify_lock(ref)
     configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier,execution_settings=settings,**planner_args,**({} if 'bimanual_collaboration' not in selection else dict(bimanual_collaboration=collaboration))) for t in tasks for s in seeds}
-    sources={t:{'source':Path(get_task(t).initial_policy).read_text(),'sha256':sha(get_task(t).initial_policy)} for t in tasks}
-    demos={t:original['demos'][t] for t in tasks} if validation_origin is not None else {t:DemoProvider().freeze(t) for t in tasks}
+    records={t:task_record(t) if fixture else get_task(t) for t in tasks}
+    sources={t:{'source':Path(records[t].initial_policy).read_text(),'sha256':sha(records[t].initial_policy)} for t in tasks}
+    demos={t:original['demos'][t] for t in tasks} if validation_origin is not None else {t:DemoProvider().freeze(t,**(dict(task_record=records[t],config=configs[f'{t}:{seeds[0]}']) if fixture else {})) for t in tasks}
     # All base conditions live once, outside the policy specifications.
     budget=budget if v3 else dict(task_cell_budget(budget_tier),help_credits=help_budget,help_count=help_budget,advisor_calls=min(2,help_budget))
     if legacy_configuration is not None:budget=dict(legacy_configuration['cell_budget'])
@@ -342,6 +347,8 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         # original manifest, and validation keeps its frozen origin config.
         manifest['dev_version_history']=True
         for config in configs.values():config['dev_version_history']=True
+    if fixture:
+        manifest['scene_verification']=SCENE_VERIFICATION
     if agent_options:
         from .dev_agent_prompts import manifest_fields
         manifest.update(manifest_fields())
@@ -374,6 +381,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     mref=immutable(manifest_path,manifest) if not manifest_path.exists() else {'uri':str(manifest_path),'sha256':sha(manifest_path)}
     if json.loads(manifest_path.read_bytes())!=manifest:raise DevConflict('immutable manifest conflict')
     exp=dict(experiment_id=exp_id,selection=normalized,manifest=mref,artifact_dir=str(directory),disk_root=str(Path(artifact_root).resolve()),state='planned',cancelled=False,owner=None,created_at=time.time(),formal_eligible=False)
+    if fixture:exp['scene_verification']=SCENE_VERIFICATION
     from .dev_tasks import SDK_SEAL_KEYS
     exp.update({k:metadata[k] for k in SDK_SEAL_KEYS if k in metadata})
     if validation_origin is not None:exp['validation_experiment']=True
@@ -410,6 +418,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
                     mixed_policy=False,experiment_eligible=mode=='experiment',policy_segments=[row['policy_id']],
                     budget=budget,used={k:0 for k in RESOURCES},created_at=None,formal_eligible=False)
                 if agent_options:payload['dev_mode']='agent'
+                if fixture:payload['scene_verification']=SCENE_VERIFICATION
                 if validation_origin is not None:
                     payload.update(validation_experiment=True,experiment_eligible=False,artifact_dir=str(directory/row['key']))
                     config_path=Path(payload['artifact_dir'])/'config.json';config_text=json.dumps(frozen,sort_keys=True,indent=2,ensure_ascii=False) if source_drift else target_config_text(validation_origin)
@@ -841,7 +850,8 @@ def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=Non
 def options():
     import benchmarks,openarm365_dev_v2
     from .dev_agent_policies import policy_options
-    return {**task_options(),'agent_policies':policy_options(),'policies':list(POLICY_IDS),'cell_budget':task_cell_budget(),'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,10],
+    from .dev_fixture_tasks import options as fixture_options
+    return {**task_options(),'fixture_tasks':fixture_options(),'agent_policies':policy_options(),'policies':list(POLICY_IDS),'cell_budget':task_cell_budget(),'model':MODEL,'configuration':normalize_configuration({}), 'help_budget_range':[0,10],
         'source_canary':{'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'source_root':str(ROOT)}}
 
 def main():

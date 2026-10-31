@@ -58,6 +58,7 @@ def dev_sdk(config=None):
             part_fields=['name','geom_id','frame','center','extent','axes'])}
         value['fixture_interaction']=dict(scope='task_references',contact='gripper_parts_and_local_neighbourhood',
             neighbourhood_radius_m=.01,neighbourhood_contact_point_radius_m=.01,
+            press_contact_point_radius_m=.035,planner_clearance_m=.02,
             mode='record_only',attachment='no_attachment',contact_guards='record_only_per_action',empty_close=True,
             base_rehold_after_contact=True,base_rehold_max_translation_m=.05,base_rehold_max_yaw_rad=.10,
             minimum_planned_joint_motion_rad=1e-4,planner_position_tolerance_m=.004,planner_orientation_tolerance_rad=.03)
@@ -90,12 +91,14 @@ def dev_sdk_prompt(config=None):
     if config_enabled(config):
         from curobo_v2.fixture_gripper import DESCRIPTION
         prompt += '\n'+DESCRIPTION+'.\n'
-        prompt += (' Fixture pilot: sensors.find_fixtures() takes no arguments and returns only task fixtures, '
+        prompt += (' Fixture rules (R5): sensors.find_fixtures() takes no arguments and returns only task fixtures, '
             'each with name, fixture_class, task_reference, state and interaction_parts. State includes door_open_fraction, '
             'knob_angles_rad, turned_on or water_on where supported by RoboCasa getters. Parts have name, geom_id, '
             'WORLD center and axis-aligned full extent in metres, and axes (joint, kind hinge/slide, axis_world, '
             'origin_world, joint range and position). Fingers or grippers may touch the returned interaction parts '
-            'and geoms in the same task fixture within 1 cm of a part, only at contact points within 1 cm of a part. '
+            'and geoms in the same task fixture within 1 cm of a part. Contact-point radii are 1 cm for handles/knobs '
+            'and 3.5 cm for buttons/switches. The planner keeps 2 cm clearance around retained obstacles. '
+            'Use gripper.move_to(0.006) to bring fingertips together for buttons (per-finger opening, no grasp). '
             'Other fixture surfaces, other fixtures, counters, walls and floor remain obstacles; '
             'arm links must never contact fixtures. Approach a pre-contact pose first, make physical contact, '
             'then use small move_delta translations/rotations to pull, push, turn or press along the measured '
@@ -130,7 +133,7 @@ def dev_sdk_seal(config):
     return dict(dev_sdk_sha256=hashlib.sha256(encoded(dict(contract=metadata, prompt=prompt))).hexdigest(),
         dev_sdk_prompt_sha256=hashlib.sha256(prompt.encode('utf-8')).hexdigest(),
         dev_sdk_metadata_sha256=hashlib.sha256(encoded(metadata)).hexdigest(),
-        dev_sdk_description='base enabled; fixture interaction pilot' if config_enabled(config) else 'base enabled' if base_description_enabled(config) else 'base stationary')
+        dev_sdk_description='base enabled; fixture rules (R5)' if config_enabled(config) else 'base enabled' if base_description_enabled(config) else 'base stationary')
 
 
 def verify_dev_sdk_seal(config):
