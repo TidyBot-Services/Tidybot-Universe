@@ -60,6 +60,12 @@ def automatic_checks(root=None,gateway=None):
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('origin_errors',{}).values()]
+            for event in [*state.get('origin_reopens',[]),*state.get('origin_interruptions',[])][-20:]:
+                # Operator evidence paths and identities stay in the local journal.
+                value['events'].append(dict(event=event['event'],memory_id=event['memory_id'],
+                    reason=safe_detail(event['reason']),time=event['at'],status=event['status']))
+                if event['status']=='archiving':
+                    value['errors'].append(safe_text(event['memory_id'])+': Origin recovery is incomplete; rerun the operator recovery command.')
             for error in [*state.get('check_errors',[]),*state.get('note_errors',{}).values()]:
                 message=(str(error['memory_id'])+': ' if error.get('memory_id') else '')+safe_detail(error['reason'])
                 if message not in value['errors']:value['errors'].append(message)
@@ -138,7 +144,7 @@ def automatic_checks(root=None,gateway=None):
                 if r['event']=='promoted':scopes[mid]='task_scoped' if (r.get('reason') or '').startswith('Trusted for this task:') else 'scene_scoped'
                 elif r['event']=='demoted':scopes[mid]='scene_scoped' if scopes.get(mid)=='task_scoped' else 'provisional'
                 event['trust_scope']=scopes.get(mid);events.append(event)
-            value['events']=events[-100:]
+            value['events']=(events+value['events'])[-100:]
             if cross_available:
                 for row in gateway.cross_seed_queue():cross_notes[row['memory_id']]=row
                 for mid,row in list(cross_notes.items()):

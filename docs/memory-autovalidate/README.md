@@ -44,6 +44,43 @@ cell/import IDs. Unknown claimed jobs are never redispatched. The CLI holds a
 single-worker file lock. Daily slots are conservatively reserved before generation;
 a crash before execution may consume a slot, but cannot create an extra run.
 
+### Interrupted origin recovery without a receipt
+
+After an operator has reviewed an interrupted origin replay, exit the worker so
+it releases `worker.lock`, then run:
+
+```sh
+python -m benchmarks.attention_harness.memory_validation_worker \
+  --state-dir /path/to/validation-state \
+  --abandon-interrupted-origin MEMORY_ID \
+  --reason 'Reviewed the interrupted replay; retain partial evidence and retry with fresh evidence'
+```
+
+This command requires current work to be the matching origin item, a matching
+`dispatch.json`, no `receipt.json`, normal queue eligibility, and no independent
+validator result or service candidate. It fails closed when the worker lock is
+held. Turning automatic checks Off alone does not release that lock.
+
+Before any rename, it atomically journals `origin_interrupted_abandoned` in
+`state.json` under `origin_interruptions`, including actor, UID, time, reason,
+export key, origin archive destination, partial export path and validator replay
+paths. Old dispatches lack a validator directory pointer: recovery discovers
+native replay ownership or matching sealed policy bytes conservatively and
+records empty, unattributed arms separately. These paths remain local; the Memory
+page displays the recovery event and any incomplete recovery error.
+
+Only the origin directory is renamed into `origins-archive/<key>-<stamp>`.
+Partial exports and validator replay directories remain intact and are never
+reused. Current work and matching pending work are cleared, related errors are
+cleared, and the note remains queued. The previous reservation stays counted;
+the next attempt reserves another run, gets a UUID export key and allocates a
+fresh validator `arm-` directory.
+
+If recovery crashes, rerun the same command with a nonempty reason. It resumes
+the original journal intent and preserves the original reason, whether the
+rename happened or not. The worker refuses to resume an incomplete abandonment.
+Origins with a receipt must use their existing recovery rules instead.
+
 `memory_validation_runtime.build_runtime` (also available as `from_config`)
 uses `memory_validation_provision.provision_factory` by default. The adapter reads
 queue provenance, verifies the original ledger through SQLite `mode=ro`, checks

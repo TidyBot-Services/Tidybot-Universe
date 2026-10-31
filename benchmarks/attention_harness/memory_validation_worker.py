@@ -372,6 +372,8 @@ def prepare_origin(state,deps,note,save,status,*,cross_seed=False):
 
 
 def advance_origin(state,deps,reason,save,status):
+    if any(e.get('status')=='archiving' for e in state.get('origin_interruptions',[])):
+        return status('Interrupted origin abandonment is incomplete; rerun --abandon-interrupted-origin with --reason to finish recovery.')
     current=state['current']
     if current.get('cross_seed') and not settings(deps.root).get('cross_seed',{}).get('enabled',False):reason=reason or 'Cross-seed checks are Off'
     if current.get('dispatch_pending'):
@@ -825,6 +827,83 @@ def reopen_origin(root,memory_id,reason,*,client=None,clock=time.time):
         return state['status']
 
 
+def abandon_interrupted_origin(root,memory_id,reason,*,client=None,clock=time.time):
+    """Explicitly archive an unknown origin dispatch, preserving its reservation."""
+    import getpass,re
+    from .core.dev_store import DevConflict
+    from .memory_origin_evidence import identity
+    from .memory_origin_recovery import interrupted_artifacts
+    root=Path(root).resolve()
+    if not reason or not reason.strip():raise DevConflict('A reason is required to abandon an interrupted origin.')
+    with (root/'worker.lock').open('a') as lock:
+        try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError as exc:raise DevConflict('The validation worker still holds its lock; exit that worker before abandoning an interrupted origin.') from exc
+        path=root/'state.json';state=json.loads(path.read_bytes())
+        current=state.get('current') or {}
+        if current.get('kind')!='origin' or current.get('memory_id')!=memory_id:
+            raise DevConflict('Current work must be an origin item for this memory ID.')
+        provision,config=origin_command_config(root,client);client=provision.client
+        memories=client.list_dev_v2_memories()
+        if any((r['memory_id']==memory_id and r['status']=='candidate') or r.get('from_provisional')==memory_id for r in memories):
+            raise DevConflict('This note already has a service candidate; its origin cannot be abandoned.')
+        if any(r.get('memory_id')==memory_id and not r.get('origin_failure') for r in state.get('results',[])):
+            raise DevConflict('This note already has a validation result; its origin cannot be abandoned.')
+        queue=client.validation_queue();note=next((n for n in queue if n['memory_id']==memory_id),None)
+        if note is None:raise DevConflict('This note is not eligible under the normal validation queue rules.')
+        key,original,provenance=identity(provision,note)
+        if not re.fullmatch(r'origin-[0-9a-f]{32}',key) or current.get('origin_key')!=key or current.get('note')!=original:
+            raise DevConflict('The current origin does not match this note.')
+        directory=root/'origins'/key
+        intent=next((e for e in reversed(state.get('origin_interruptions',[])) if e.get('origin_key')==key and e.get('memory_id')==memory_id and e.get('status')=='archiving'),None)
+        archived=Path(intent['archive']) if intent else None
+        if archived and (archived.parent!=root/'origins-archive' or not archived.name.startswith(key+'-') or archived.resolve()!=archived):
+            raise DevConflict('The pending origin archive path is invalid.')
+        evidence=archived if archived and archived.exists() and not directory.exists() else directory
+        if evidence.resolve()!=evidence or not evidence.is_dir():raise DevConflict('The interrupted origin directory is missing or not canonical.')
+        if (evidence/'receipt.json').exists() or (evidence/'receipt.json').is_symlink():raise DevConflict('An origin receipt exists; interrupted-origin abandonment is not allowed.')
+        if (evidence/'dispatch.json').resolve()!=evidence/'dispatch.json':raise DevConflict('The origin dispatch path is not canonical.')
+        dispatch=json.loads((evidence/'dispatch.json').read_bytes())
+        if dispatch.get('origin_key')!=key or dispatch.get('note')!=original:
+            raise DevConflict('The origin dispatch does not match this note.')
+        artifacts=interrupted_artifacts(provision,config,current,dispatch,evidence,provenance)
+        now=clock();stamp=datetime.fromtimestamp(now).astimezone().strftime('%Y%m%dT%H%M%S%f%z')
+        archive=archived or root/'origins-archive'/(key+'-'+stamp)
+        if archive.exists() and evidence!=archive:raise DevConflict('The origin archive destination already exists.')
+        if archive.parent.resolve()!=archive.parent:raise DevConflict('The origin archive directory is not canonical.')
+        event=intent or dict(event='origin_interrupted_abandoned',memory_id=memory_id,origin_key=key,
+            actor=getpass.getuser(),uid=os.getuid(),at=now,reason=reason.strip(),archive=str(archive),
+            **artifacts,run_reservation='Previous reservation remains counted; the next attempt reserves a new run.')
+        # Keep current intact until the archive and reservation transfer are saved.
+        # A crash on either side of rename resumes this same frozen intent.
+        if intent is None:
+            event['status']='archiving';state.setdefault('origin_interruptions',[]).append(event);atomic(path,state)
+        elif any(event.get(k)!=artifacts[k] for k in ('export_key','partial_export_dir')):
+            raise DevConflict('The pending interrupted origin artifacts differ.')
+        if evidence!=archive:
+            archive.parent.mkdir(parents=True,exist_ok=True);directory.rename(archive)
+        # Also fsync when resuming after rename but before its directory sync.
+        for parent in (directory.parent,archive.parent):
+            fd=os.open(parent,os.O_DIRECTORY)
+            try:os.fsync(fd)
+            finally:os.close(fd)
+        state['current']=None
+        for field in ('pending','cross_pending'):
+            item=state.get(field) or {}
+            if item.get('memory_id')==memory_id or item.get('note',{}).get('memory_id')==memory_id:state.pop(field)
+        state['results']=[r for r in state.get('results',[]) if not (r.get('memory_id')==memory_id and r.get('origin_failure'))]
+        for field in ('origin_failures','origin_errors'):state.get(field,{}).pop(key,None)
+        state.get('note_errors',{}).pop(memory_id,None)
+        state['check_errors']=[e for e in state.get('check_errors',[]) if e.get('memory_id')!=memory_id]
+        counted=state.setdefault('counted',{})
+        if key in counted:counted[archive.name]=counted.pop(key)
+        closed={r['memory_id'] for r in state['results'] if r.get('origin_failure')}
+        state['queue']=[n for n in queue if n['memory_id'] not in closed]
+        event['status']='abandoned'
+        state['status']='Interrupted origin abandoned; note queued. Previous run reservation remains counted.'
+        atomic(path,state)
+        return state['status']
+
+
 def main(argv=None,*,client=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state-dir',required=True);p.add_argument('--adapter',help='module:factory; injected authorized ledger runner and service client');p.add_argument('--once',action='store_true');p.add_argument('--interval',type=float,default=5)
     actions=p.add_mutually_exclusive_group()
@@ -835,21 +914,26 @@ def main(argv=None,*,client=None):
     actions.add_argument('--positive-control-check',metavar='SPEC')
     actions.add_argument('--check-origin',metavar='MEMORY_ID')
     actions.add_argument('--reopen-origin',metavar='MEMORY_ID')
+    actions.add_argument('--abandon-interrupted-origin',metavar='MEMORY_ID',help='archive a current origin dispatch without a receipt; requires --reason and an exited worker')
     actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin, invalid generation recovery or completed batch evaluation; does not turn checks On')
     p.add_argument('--reason')
     a=p.parse_args(argv);root=Path(a.state_dir)
     if a.positive_control_check:
         from .memory_positive_control import queue
         print(queue(root,a.positive_control_check));return 0
-    if a.reopen_origin and not (a.reason and a.reason.strip()):p.error('--reopen-origin requires --reason')
-    if a.reason and not a.reopen_origin:p.error('--reason requires --reopen-origin')
-    if a.check_origin or a.reopen_origin:
+    recovery=a.reopen_origin or a.abandon_interrupted_origin
+    if recovery and not (a.reason and a.reason.strip()):p.error('origin recovery requires --reason')
+    if a.reason and not recovery:p.error('--reason requires --reopen-origin or --abandon-interrupted-origin')
+    if a.check_origin or recovery:
         try:
-            provision,config=origin_command_config(root,client);client=provision.client
             if a.check_origin:
+                provision,config=origin_command_config(root,client);client=provision.client
                 from .memory_origin_evidence import check_origin
                 message=check_origin(provision,a.check_origin,validator_root=config['validator_root'])
-            else:message=reopen_origin(root,a.reopen_origin,a.reason,client=client)
+            elif a.abandon_interrupted_origin:message=abandon_interrupted_origin(root,a.abandon_interrupted_origin,a.reason,client=client)
+            else:
+                provision,config=origin_command_config(root,client);client=provision.client
+                message=reopen_origin(root,a.reopen_origin,a.reason,client=client)
             print(message);return 0
         except Exception as exc:
             from .notices import safe_detail
