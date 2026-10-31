@@ -135,7 +135,9 @@ def test_microwave_missing_evidence_fails_closed(bad):
 
 
 def test_mani_skill_microwave_helper_agrees():
-    path=Path('/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/lib/python3.11/site-packages/mani_skill/utils/scene_builder/robocasa/fixtures/microwave.py')
+    from benchmarks.attention_harness.legacy_paths import CODEX
+    path=CODEX/'2026-10-11/goal-curobov2-nvidia-service-1-service/work/official-env/lib/python3.11/site-packages/mani_skill/utils/scene_builder/robocasa/fixtures/microwave.py'
+    if not path.is_file():pytest.skip('author ManiSkill reference checkout unavailable')
     tree=ast.parse(path.read_text());cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='Microwave')
     helper=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='gripper_button_far')
     assert ast.literal_eval(helper.args.defaults[-1])==.15

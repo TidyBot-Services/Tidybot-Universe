@@ -183,7 +183,8 @@ def test_pin_oversize_diagnostic(tmp_path, monkeypatch):
 
 
 def test_real_origin_public_evidence_before_after(tmp_path, monkeypatch):
-    original = Path('/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-dc15f5ae1ddfba76727ce318')
+    from benchmarks.attention_harness.legacy_paths import CODEX
+    original = CODEX/'2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-dc15f5ae1ddfba76727ce318'
     if not (original/'ledger.sqlite3').exists():pytest.skip('reported origin run unavailable')
     with sqlite3.connect((original/'ledger.sqlite3').as_uri()+'?mode=ro', uri=True) as db:
         cell = json.loads(db.execute('SELECT payload FROM v2_cells').fetchone()[0])
