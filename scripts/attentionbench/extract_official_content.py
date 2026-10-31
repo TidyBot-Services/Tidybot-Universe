@@ -8,6 +8,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from curobo_v2.official_normalization import without_generator
+
 
 AUTHOR_LOCK = (Path('/home') / 'truares' / 'Documents' / 'Codex' /
                '2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/revisions/r12/runtime-lock.json')
@@ -50,6 +52,28 @@ def main():
     write(out / 'r12-distributions.json', lock['distributions'])
     write(out / 'r12-dependencies.json', deps)
     write(out / 'r12-prefix-files.json', prefix)
+    author_prefix = Path(lock['prefix'])
+    wheels = {}
+    for name, expected in prefix.items():
+        if name.endswith('/WHEEL'):
+            data = (author_prefix / name).read_bytes()
+            if hashlib.sha256(data).hexdigest() != expected:
+                raise ValueError('Author WHEEL differs from r12 lock: ' + name)
+            stripped = without_generator(data)
+            wheels[name] = hashlib.sha256(stripped if stripped is not None else data).hexdigest()
+    write(out / 'r12-wheel-normalized.json', wheels)
+    binary = (author_prefix / 'bin/python3.11').read_bytes()
+    if hashlib.sha256(binary).hexdigest() != prefix['bin/python3.11']:
+        raise ValueError('Author python binary differs from r12 lock')
+    # The author environment was cloned from this conda installation. Its ELF
+    # prefix slot retains that original path, not the clone's current prefix.
+    slot = binary[3390864:3390864 + 256]
+    embedded = slot.split(b'\0', 1)[0]
+    if (not embedded.startswith(b'/home/') or len(embedded) >= 256
+            or slot != embedded + b'\0' * (256 - len(embedded))):
+        raise ValueError('Unexpected author conda binary prefix slot')
+    write(out / 'author-paths.json', {'prefix': lock['prefix'], 'library_root': lock['library_root'],
+                                    'binary_prefix': embedded.decode('utf-8'), 'binary_prefix_slot': 256})
     encoded = json.dumps(assets, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
     if len(encoded) > 5_000_000:
         write(out / 'r12-native-assets.json', {'format': 'canonical-relative-path-sha256-v1',

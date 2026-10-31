@@ -15,6 +15,7 @@ import subprocess
 import sys
 
 from curobo_v2 import identity
+from curobo_v2 import official_normalization
 
 DEPS = ('torch', 'sapien', 'numpy', 'scipy', 'fastapi', 'uvicorn', 'yaml',
         'warp', 'setuptools_scm', 'cuda.core', 'cuda.pathfinder')
@@ -54,20 +55,27 @@ def official_differences(lock, manifests=None):
     if mismatch:
         result['distributions'] = mismatch
     prefix = Path(lock['prefix'])
-    allowed = set(read('allowed-path-files.json'))
+    allowed = read('allowed-path-files.json')
+    author_paths = read('author-paths.json')
+    wheels = read('r12-wheel-normalized.json')
+    def normalized_match(name, actual_sha, expected_sha):
+        return (allowed == [] and official_normalization.matches(
+            name, prefix / name, actual_sha, expected_sha, str(prefix), lock['library_root'],
+            author_paths, wheels) is not None)
     dependencies = {name: {'path': str(Path(item['path']).relative_to(prefix)), 'sha256': item['sha256']}
                     for name, item in lock['dependencies'].items()}
     expected = read('r12-dependencies.json')
     mismatch = {name: values for name, values in _difference(dependencies, expected).items()
                 if name not in expected or name not in dependencies
                 or dependencies[name]['path'] != expected[name]['path']
-                or dependencies[name]['path'] not in allowed}
+                or not normalized_match(dependencies[name]['path'], dependencies[name]['sha256'], expected[name]['sha256'])}
     if mismatch:
         result['dependencies'] = mismatch
     actual = identity._portable_files(lock, prefix)
     expected = read('r12-prefix-files.json')
     mismatch = {name: values for name, values in _difference(actual, expected).items()
-                if name not in allowed or name not in actual or name not in expected}
+                if name not in actual or name not in expected
+                or not normalized_match(name, actual[name], expected[name])}
     if mismatch:
         result['prefix files'] = mismatch
     native = lock['native_assets']

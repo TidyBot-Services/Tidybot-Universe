@@ -14,6 +14,8 @@ import subprocess
 import sys
 from typing import Any
 
+from . import official_normalization
+
 
 class IdentityError(RuntimeError):
     """The requested planner is not the locked, isolated V2 runtime."""
@@ -112,19 +114,37 @@ def _official_content(parent):
     dependencies = {name: {'path': str(Path(item['path']).relative_to(prefix)),
                            'sha256': item['sha256']}
                     for name, item in parent['dependencies'].items()}
-    allowed = manifest('allowed-path-files.json')
-    if not isinstance(allowed, list) or any(not isinstance(p, str) for p in allowed):
+    if manifest('allowed-path-files.json') != []:
         return False
+    author_paths = manifest('author-paths.json')
+    wheel_hashes = manifest('r12-wheel-normalized.json')
+    expected_prefix = manifest('r12-prefix-files.json')
+    if (not isinstance(author_paths, dict)
+            or set(author_paths) != {'prefix', 'library_root', 'binary_prefix', 'binary_prefix_slot'}
+            or any(not isinstance(author_paths[key], str) or not author_paths[key].startswith('/')
+                   for key in ('prefix', 'library_root', 'binary_prefix'))
+            or type(author_paths['binary_prefix_slot']) is not int
+            or not isinstance(wheel_hashes, dict)
+            or set(wheel_hashes) != {name for name in expected_prefix if name.endswith('/WHEEL')}
+            or any(not isinstance(value, str) or len(value) != 64
+                   or any(c not in '0123456789abcdef' for c in value)
+                   for value in wheel_hashes.values())):
+        return False
+    def portable_match(name, local_sha, expected_sha):
+        return official_normalization.matches(name, prefix / name, local_sha, expected_sha,
+                                              str(prefix), parent['library_root'], author_paths,
+                                              wheel_hashes) is not None
     expected_deps = manifest('r12-dependencies.json')
     if (set(dependencies) != set(expected_deps)
             or any(actual['path'] != expected_deps[name]['path']
-                   or actual['sha256'] != expected_deps[name]['sha256']
-                   and actual['path'] not in allowed for name, actual in dependencies.items())):
+                   or (actual['sha256'] != expected_deps[name]['sha256']
+                       and not portable_match(actual['path'], actual['sha256'], expected_deps[name]['sha256']))
+                   for name, actual in dependencies.items())):
         return False
     actual_prefix = _portable_files(parent, prefix)
-    expected_prefix = manifest('r12-prefix-files.json')
     if (set(actual_prefix) != set(expected_prefix)
-            or any(actual_prefix[name] != expected_prefix[name] and name not in allowed
+            or any(actual_prefix[name] != expected_prefix[name]
+                   and not portable_match(name, actual_prefix[name], expected_prefix[name])
                    for name in actual_prefix)):
         return False
     native = parent['native_assets']

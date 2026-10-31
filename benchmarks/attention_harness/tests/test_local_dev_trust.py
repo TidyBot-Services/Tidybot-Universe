@@ -1,11 +1,14 @@
 """Local trust accepts only a content-matched, path-bound development chain."""
 import copy
+import hashlib
 import json
 from pathlib import Path
+import shutil
 
 import pytest
 
 from curobo_v2 import identity as auth
+from curobo_v2 import official_normalization as normalization
 
 
 def write(path, value):
@@ -63,6 +66,9 @@ def chain(tmp_path, monkeypatch):
     write(official_manifests / 'r12-prefix-files.json', {'numpy/__init__.py': auth.digest(dep)})
     write(official_manifests / 'r12-native-assets.json', {'robot.dat': auth.digest(asset)})
     write(official_manifests / 'allowed-path-files.json', [])
+    write(official_manifests / 'author-paths.json', {'prefix': str(prefix), 'library_root': str(official),
+                                                    'binary_prefix': str(prefix), 'binary_prefix_slot': 256})
+    write(official_manifests / 'r12-wheel-normalized.json', {})
     registry = tmp_path / 'local-dev-trust.json'
     data = {'schema': 'attentionbench.curobo-v2.local-dev-trust.v1',
             'official_commit': auth.OFFICIAL_COMMIT,
@@ -251,3 +257,91 @@ def test_real_author_locks_keep_paths_and_digests():
     for path in snapshots:
         lock, sha = auth.load_lock(path, tier='dev', boundary='dev_loop')
         assert sha == auth.digest(path) and 'trust_source' not in lock
+
+
+AUTHOR_ENV = Path(json.loads((auth.OFFICIAL_MANIFESTS / 'author-paths.json').read_bytes())['prefix'])
+COLLAB_ENV = Path(__file__).resolve().parents[5] / 'diagnostics/collab-repro/l2/ws/envs/curobo-env'
+COLLAB_LIBRARY = '/home/collab/aws/repos/curobo'
+
+
+@pytest.mark.parametrize('name', [
+    'lib/python3.11/site-packages/Farama_Notifications-0.0.4.dist-info/RECORD',
+    'lib/python3.11/site-packages/nvidia_curobo-0.8.0.post1.dev43.dist-info/WHEEL',
+    'lib/python3.11/site-packages/toppra-0.6.3.dist-info/WHEEL',
+    'lib/python3.11/site-packages/__editable___nvidia_curobo_0_8_0_post1_dev43_finder.py',
+    'lib/python3.1/site-packages/__editable___nvidia_curobo_0_8_0_post1_dev43_finder.py',
+    'lib/python3.11/site-packages/nvidia_curobo-0.8.0.post1.dev43.dist-info/direct_url.json',
+])
+def test_real_normalized_pair_and_mutations(tmp_path, name):
+    if not (AUTHOR_ENV / name).is_file() or not (COLLAB_ENV / name).is_file():
+        pytest.skip('read-only real environment pair is absent')
+    manifests = auth.OFFICIAL_MANIFESTS
+    paths = json.loads((manifests / 'author-paths.json').read_bytes())
+    wheels = json.loads((manifests / 'r12-wheel-normalized.json').read_bytes())
+    path = tmp_path / name
+    path.parent.mkdir(parents=True)
+    shutil.copyfile(COLLAB_ENV / name, path)
+    author_sha = auth.digest(AUTHOR_ENV / name)
+    def check():
+        return normalization.matches(name, path, auth.digest(path), author_sha,
+                                     '/home/collab/aws/envs/curobo-env', COLLAB_LIBRARY,
+                                     paths, wheels)
+    assert check() == normalization.rule_for(name)
+    original = path.read_bytes()
+    if name.endswith('/RECORD'):
+        path.write_bytes(original + b'other/file,sha256=abc,3\r\n')
+        assert check() is None
+        path.write_bytes(original.replace(b'Farama_Notifications-0.0.4.dist-info/REQUESTED',
+                                          b'other-1.0.dist-info/REQUESTED'))
+        assert check() is None
+    elif name.endswith('/WHEEL'):
+        path.write_bytes(original.replace(b'Root-Is-Purelib: true', b'Root-Is-Purelib: false')
+                         if b'Root-Is-Purelib: true' in original
+                         else original.replace(b'Root-Is-Purelib: false', b'Root-Is-Purelib: true'))
+        assert check() is None
+    elif name.endswith('_finder.py'):
+        path.write_bytes(original + b'\nraise RuntimeError("extra")\n')
+        assert check() is None
+    else:
+        path.write_bytes(original + b' ')
+        assert check() is None
+
+
+def test_synthetic_conda_binary_slot_and_other_byte(tmp_path):
+    paths = json.loads((auth.OFFICIAL_MANIFESTS / 'author-paths.json').read_bytes())
+    local = '/home/collab/aws/envs/curobo-env'
+    size = paths['binary_prefix_slot']
+    author_slot = paths['binary_prefix'].encode() + b'\0' * (size - len(paths['binary_prefix']))
+    local_slot = local.encode() + b'\0' * (size - len(local))
+    author = b'ELF\0header' + author_slot + b'\0tail'
+    path = tmp_path / 'python3.11'
+    path.write_bytes(b'ELF\0header' + local_slot + b'\0tail')
+    expected = hashlib.sha256(author).hexdigest()
+    def check():
+        return normalization.matches('bin/python3.11', path, auth.digest(path), expected,
+                                     local, COLLAB_LIBRARY, paths, {})
+    assert check() == 'binary-prefix'
+    path.write_bytes(path.read_bytes().replace(b'tail', b'fail'))
+    assert check() is None
+
+
+def test_official_content_binds_normalized_record_to_local_lock(chain):
+    parent = json.loads(chain['parent'].read_bytes())
+    prefix = Path(parent['prefix'])
+    name = 'lib/python3.11/site-packages/example-1.dist-info/RECORD'
+    path = prefix / name
+    path.parent.mkdir(parents=True)
+    author = b'example-1.dist-info/RECORD,,\r\n'
+    requested = b'example-1.dist-info/REQUESTED' + normalization.EMPTY_REQUESTED + b'\r\n'
+    path.write_bytes(author + requested)
+    parent['files'][str(path)] = auth.digest(path)
+    manifests = auth.OFFICIAL_MANIFESTS
+    inventory = json.loads((manifests / 'r12-prefix-files.json').read_bytes())
+    inventory[name] = hashlib.sha256(author).hexdigest()
+    write(manifests / 'r12-prefix-files.json', inventory)
+    assert auth._official_content(parent) is True
+    path.write_bytes(path.read_bytes() + b'extra,,\r\n')
+    assert auth._official_content(parent) is False
+    path.write_bytes(author + requested)
+    parent['files'][str(path)] = '0' * 64
+    assert auth._official_content(parent) is False

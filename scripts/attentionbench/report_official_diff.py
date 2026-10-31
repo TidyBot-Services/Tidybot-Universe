@@ -11,20 +11,29 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from curobo_v2 import official_normalization
+
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def file_differences(category, root, names, expected, workspace_bytes):
+def file_differences(category, root, names, expected, workspace_bytes, *, author_paths=None,
+                     wheels=None, local_library=None):
     rows = []
     for name in sorted(set(names) | set(expected)):
         path = root / name
         actual = sha(path) if path.is_file() else None
         if actual != expected.get(name):
+            rule = (official_normalization.matches(name, path, actual, expected.get(name),
+                    str(root), str(local_library), author_paths, wheels)
+                    if category == 'prefix' and author_paths is not None and actual and expected.get(name)
+                    else None)
             rows.append({'category': category, 'file': name, 'path': str(path), 'actual_sha256': actual,
                          'expected_sha256': expected.get(name),
-                         'contains_workspace_path': path.is_file() and workspace_bytes in path.read_bytes()})
+                         'contains_workspace_path': path.is_file() and workspace_bytes in path.read_bytes(),
+                         'normalization_rule': rule})
     return rows
 
 
@@ -36,6 +45,8 @@ def report(library, manifests, workspace):
     source_names = [n for n in subprocess.check_output(['git', '-C', str(library), 'ls-files', '-z']).decode().split('\0') if n]
     expected_source = read('curobo-78fd485-source.json')
     expected_prefix = read('r12-prefix-files.json')
+    author_paths = read('author-paths.json')
+    wheels = read('r12-wheel-normalized.json')
     prefix_names = set(expected_prefix)
     actual_dependencies = {}
     for name in ('torch', 'sapien', 'numpy', 'scipy', 'fastapi', 'uvicorn', 'yaml',
@@ -62,7 +73,8 @@ def report(library, manifests, workspace):
     for category, root, names, expected in (
             ('source', library, set(source_names) | set(expected_source), expected_source),
             ('prefix', prefix, prefix_names, expected_prefix)):
-        rows.extend(file_differences(category, root, names, expected, workspace_bytes))
+        rows.extend(file_differences(category, root, names, expected, workspace_bytes,
+                                    author_paths=author_paths, wheels=wheels, local_library=library))
     for name, expected in sorted(read('r12-dependencies.json').items()):
         actual = actual_dependencies.get(name)
         if actual != expected:
@@ -73,7 +85,11 @@ def report(library, manifests, workspace):
                          'expected_sha256': expected['sha256'],
                          'contains_workspace_path': bool(path and path.is_file() and workspace_bytes in path.read_bytes())})
     expected_distributions = read('r12-distributions.json')
+    from collections import Counter
+    counts = Counter(row['normalization_rule'] for row in rows if row.get('normalization_rule'))
     print(json.dumps({'schema': 'attentionbench.official-diff.v1', 'files': rows,
+                      'accepted_by_rule': dict(sorted(counts.items())),
+                      'remaining_files': sum(not row.get('normalization_rule') for row in rows),
                       'distributions': {name: {'actual': distributions.get(name), 'expected': expected_distributions.get(name)}
                           for name in sorted(distributions.keys() | expected_distributions.keys())
                           if distributions.get(name) != expected_distributions.get(name)}},
