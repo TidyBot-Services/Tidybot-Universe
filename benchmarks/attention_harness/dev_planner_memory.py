@@ -129,8 +129,9 @@ def client_for(settings):
     key = os.getenv('ATTENTION_MEMORY_API_KEY')
     if not key:
         raise PermissionError('ATTENTION_MEMORY_API_KEY unavailable; no Memory exposure')
-    # The Memory list read takes ~19 s on the current store (2026-10-28); 5 s stopped runs before v1.
-    return MemoryServiceClient(settings['base_url'], api_key=key, timeout=60)
+    # Memory list reads take ~50 s (2026-10-31) due to svc import re-verification;
+    # the root-cause fix is tracked separately.
+    return MemoryServiceClient(settings['base_url'], api_key=key, timeout=180)
 
 
 class Note:
