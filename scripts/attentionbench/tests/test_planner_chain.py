@@ -8,6 +8,7 @@ import pytest
 from benchmarks.attention_harness.tests.test_local_dev_trust import chain
 from curobo_v2 import identity
 from scripts.attentionbench import build_d05, build_planner_chain as planner
+from scripts.attentionbench.report_official_diff import file_differences
 from scripts.attentionbench.register_local_dev_trust import register
 from scripts import build_d06
 
@@ -87,29 +88,72 @@ def test_tampered_official_source_names_file(chain):
     assert 'official-content check failed' in str(failure.value)
 
 
-def test_proof_uses_owned_service_boundary(tmp_path, monkeypatch):
-    import sys
-    import types
-    project = tmp_path / 'project'
-    config = project / 'config/openarm_fixed.yml'
-    config.parent.mkdir(parents=True)
-    config.write_text('service:\n  joint_names: [one, two]\nrobot_cfg:\n  kinematics:\n    cspace:\n      joint_names: [one, two]\n      default_joint_position: [0.1, 0.2]\n')
-    lock = tmp_path / 'd06/runtime-lock.json'
-    write(lock, {'project_root': str(project)})
+def test_proof_runs_isolated_built_python_without_approval(tmp_path, monkeypatch):
     calls = []
-    class FakeService:
-        def __init__(self, **kwargs):
-            calls.append(kwargs)
-        def __enter__(self):
-            return self
-        def __exit__(self, *args):
-            pass
-        def call(self, path, body):
-            calls.append((path, body))
-            return {'status': 'success'}
-    monkeypatch.setitem(sys.modules, 'curobo_v2.session', types.SimpleNamespace(V2Service=FakeService))
     out = tmp_path / 'proof.json'
-    planner.proof(lock, out)
-    assert calls[0]['tier'] == 'dev' and calls[0]['boundary'] == 'dev_loop'
-    assert [item[0] for item in calls[1:]] == ['/world/cuboids', '/plan/joint', '/plan/joint']
-    assert json.loads(out.read_text())['passed'] is True
+    requests = tmp_path / 'requests.json'
+    requests.write_text('{}')
+    def fake_run(argv, **kwargs):
+        calls.append(argv)
+        write(out, {'passed': True, 'request_set_sha256': identity.digest(requests),
+                    'result_sha256': 'b' * 64})
+        return SimpleNamespace(returncode=0, stderr='', stdout='')
+    monkeypatch.setattr(planner.subprocess, 'run', fake_run)
+    planner.proof(tmp_path / 'env/bin/python', tmp_path / 'repos/curobo',
+                  tmp_path / 'd06/runtime-lock.json', out, requests)
+    argv = calls[0]
+    assert argv[1:3] == ['-B', '-I']
+    assert argv[3].endswith('/planner_proof.py')
+    assert '--lock' in argv and '--library' in argv
+    body = Path(argv[3]).read_text().split('def run(')[1]
+    assert 'V2Service(' not in body
+    assert 'identity.load_lock(' not in body
+
+
+def test_proof_rejects_wrong_request_hash(tmp_path, monkeypatch):
+    out = tmp_path / 'proof.json'
+    def fake_run(argv, **kwargs):
+        write(out, {'passed': True, 'request_set_sha256': 'a' * 64,
+                    'result_sha256': 'b' * 64})
+        return SimpleNamespace(returncode=0, stderr='', stdout='')
+    monkeypatch.setattr(planner.subprocess, 'run', fake_run)
+    with pytest.raises(ValueError, match='different request set'):
+        planner.proof('python', 'curobo', 'lock', out)
+
+
+def test_official_diff_reports_exact_bytes_and_workspace_path(tmp_path):
+    root = tmp_path / 'prefix'
+    root.mkdir()
+    (root / 'direct_url.json').write_text(str(tmp_path) + '/repos/curobo')
+    (root / 'stable.txt').write_text('stable')
+    expected = {'direct_url.json': '0' * 64, 'stable.txt': identity.digest(root / 'stable.txt'),
+                'missing.txt': '1' * 64}
+    rows = file_differences('prefix', root, expected, expected, str(tmp_path).encode())
+    assert [(row['file'], row['contains_workspace_path']) for row in rows] == [
+        ('direct_url.json', True), ('missing.txt', False)]
+    assert rows[0]['actual_sha256'] == identity.digest(root / 'direct_url.json')
+
+
+def test_default_project_assembly_uses_pinned_sources(tmp_path, monkeypatch):
+    names = ['config/openarm_fixed.yml', 'config/openarm-model/robot.urdf',
+             'curobo_v2/__init__.py',
+             'curobo_v2/service/curobo_service/assets/franka_tidyverse.yml',
+             'native-task-source/robocasa_tasks/__init__.py',
+             'native-task-source/robocasa_tasks/.git/HEAD']
+    inventory = tmp_path / 'inventory.json'; write(inventory, names)
+    omissions = tmp_path / 'omissions.json'; write(omissions, {names[-1]: 'Git administrative data'})
+    monkeypatch.setattr(planner, 'PROJECT_FILES', inventory)
+    monkeypatch.setattr(planner, 'PROJECT_OMISSIONS', omissions)
+    native = tmp_path / 'native'; native.mkdir()
+    (native / '__init__.py').write_text('pinned source')
+    def fake_check_output(argv, **kwargs):
+        return planner.NATIVE_COMMIT + '\n' if 'rev-parse' in argv else ''
+    monkeypatch.setattr(planner.subprocess, 'check_output', fake_check_output)
+    library = tmp_path / 'curobo'; library.mkdir()
+    project = tmp_path / 'deployment/runtime/project'
+    planner.project_snapshot(planner.REPO, project, library=library, native_source=native)
+    assert (project / names[4]).read_text() == 'pinned source'
+    assert not (project / names[-1]).exists()
+    assert str(project) in (project / 'config/openarm_fixed.yml').read_text()
+    assert (project / 'config/openarm-model/robot.urdf').read_bytes() == (
+        planner.REPO / 'openarm_phase0_recheck/model/compat_v6/robot.urdf').read_bytes()

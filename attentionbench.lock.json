@@ -45,6 +45,10 @@
       "commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
       "url": "https://github.com/NVlabs/curobo.git"
     },
+    "robocasa_tasks": {
+      "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+      "url": "https://github.com/TidyBot-Services/maniskill-robocasa-tasks.git"
+    },
     "robocasa": {
       "commit": "456174f62b89b8fca99eaaf33949c29fec9cfc2a",
       "url": "https://github.com/robocasa/robocasa.git"

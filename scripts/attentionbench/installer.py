@@ -150,7 +150,7 @@ def write_paths(ws: Path) -> None:
 def bootstrap(args) -> int:
     ws = Path(args.workspace).expanduser().resolve()
     lock = data()
-    plan = ['layout', 'repos: attentionbench, robocasa365_sim, attention_memory_service, robocasa, robosuite, curobo',
+    plan = ['layout', 'repos: attentionbench, robocasa365_sim, attention_memory_service, robocasa, robosuite, curobo, robocasa_tasks',
             'ui-venv: Python 3.10 and pinned harness requirements', 'assets: official registry archives and 123577 SHA256 checks',
             'sim-env: Python 3.11 simulator installer', 'curobo-env: conda and pinned pip environment in planner chain',
             'planner: official cuRobo env/assets/lock, d05/d06, proof, local trust, dev-local', 'paths: all template keys',
@@ -163,7 +163,8 @@ def bootstrap(args) -> int:
         (ws / rel).mkdir(parents=True, exist_ok=True)
     repo_dirs = {'attentionbench': 'repos/attentionbench', 'robocasa365_sim': 'repos/robocasa365_sim',
                  'attention_memory_service': 'repos/attention_memory_service', 'robocasa': 'sim/robocasa',
-                 'robosuite': 'sim/robosuite', 'curobo': 'repos/curobo'}
+                 'robosuite': 'sim/robosuite', 'curobo': 'repos/curobo',
+                 'robocasa_tasks': 'repos/robocasa_tasks'}
     for name, pin in lock['repos'].items():
         stamped(ws, 'repo-' + name, pin, args.update,
                 lambda name=name, pin=pin: clone(ws, name, repo_dirs[name], pin, args.update))

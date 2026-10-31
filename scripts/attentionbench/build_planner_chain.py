@@ -11,7 +11,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import time
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
@@ -21,6 +20,9 @@ from scripts.attentionbench.installer import StepError, command, data, digest
 
 REQUESTS = Path(__file__).with_name('planner-proof-requests.json')
 PROJECT_FILES = Path(__file__).with_name('r12-project-files.json')
+PROJECT_OMISSIONS = Path(__file__).with_name('r12-project-omissions.json')
+NATIVE_COMMIT = 'b18bbf1585c42e370ae45ababdddad700cc2c71d'
+AUTHOR_PROJECT_ROOT = '/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/revisions/r12/runtime/project'
 
 
 def stamp(ws, step, inputs, outputs, action):
@@ -46,32 +48,62 @@ def stamp(ws, step, inputs, outputs, action):
     path.write_text(json.dumps({'input_sha256': key}, indent=2) + '\n')
 
 
-def project_snapshot(source, project):
+def project_snapshot(source, project, *, library=None, native_source=None):
     names = json.loads(PROJECT_FILES.read_text())
-    missing = [name for name in names if not (source / name).is_file()]
+    assembled = source.resolve() == REPO.resolve()
+    omitted = set(json.loads(PROJECT_OMISSIONS.read_text())) if assembled else set()
+    if not omitted <= set(names):
+        raise ValueError('Project omission list contains unknown r12 entries')
+    names = [name for name in names if name not in omitted]
+    if assembled:
+        if library is None or native_source is None:
+            raise ValueError('Default project assembly requires built cuRobo and pinned native task source')
+        native_source = Path(native_source)
+        actual = subprocess.check_output(['git', '-C', str(native_source), 'rev-parse', 'HEAD'], text=True).strip()
+        if actual != NATIVE_COMMIT or subprocess.check_output(
+                ['git', '-C', str(native_source), 'status', '--porcelain', '--untracked-files=no'], text=True).strip():
+            raise ValueError('native task source is not the clean pinned commit ' + NATIVE_COMMIT)
+    def input_file(name):
+        if not assembled:
+            return source / name
+        if name == 'config/openarm_fixed.yml':
+            return Path(__file__).with_name('openarm_fixed.template.yml')
+        if name.startswith('config/openarm-model/'):
+            return source / 'openarm_phase0_recheck/model/compat_v6' / name.removeprefix('config/openarm-model/')
+        if name.startswith('config/openarm_description/'):
+            return source / 'openarm_phase0_recheck/model' / name.removeprefix('config/')
+        if name.startswith('native-task-source/robocasa_tasks/'):
+            return native_source / name.removeprefix('native-task-source/robocasa_tasks/')
+        mesh = 'curobo_v2/service/curobo_service/assets/robot/franka_description/meshes/'
+        if name.startswith(mesh) and not (source / name).is_file():
+            return Path(library) / 'curobo/content/assets/robot/franka_description/meshes' / name.removeprefix(mesh)
+        return source / name
+    missing = [name for name in names if not input_file(name).is_file()]
     if missing:
         raise ValueError(f'project source lacks {len(missing)} r12 files: ' + ', '.join(missing[:15]))
     if project.exists():
         raise ValueError('Project snapshot exists without stamp: ' + str(project))
     for name in names:
-        src, dst = source / name, project / name
-        if src.is_symlink() or not src.resolve().is_relative_to(source.resolve()):
+        src, dst = input_file(name), project / name
+        if src.is_symlink() or not any(src.resolve().is_relative_to(root.resolve()) for root in
+                    (source, Path(library) if library else source, native_source if native_source else source)):
             raise ValueError('Linked project source: ' + name)
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
     # The two robot YAMLs in the r12 snapshot contain its deployment root.
     # Relocate those active paths before the first lock, exactly as the d05/d06
     # builders relocate their parent deployment paths.
-    if source.parts[-2:] == ('runtime', 'project'):
-        old_root = str(source.parent.parent).encode()
-        new_root = str(project.parent.parent).encode()
+    if assembled or source.parts[-2:] == ('runtime', 'project'):
+        old_root = (AUTHOR_PROJECT_ROOT if assembled else str(source.parent.parent)).encode()
+        new_root = (str(project) if assembled else str(project.parent.parent)).encode()
         for name in ('config/openarm_fixed.yml',
                      'curobo_v2/service/curobo_service/assets/franka_tidyverse.yml'):
             target = project / name
             raw = target.read_bytes()
-            if old_root not in raw:
+            marker = b'@PROJECT_ROOT@' if assembled and name == 'config/openarm_fixed.yml' else old_root
+            if marker not in raw:
                 raise ValueError('Project source lacks relocatable r12 root: ' + name)
-            target.write_bytes(raw.replace(old_root, new_root))
+            target.write_bytes(raw.replace(marker, new_root))
 
 
 def native_assets(source, dest, report):
@@ -125,36 +157,14 @@ def host_libraries():
     return result
 
 
-def proof(d06_lock, output, requests=REQUESTS):
-    import yaml
-    from curobo_v2.session import V2Service
-    spec = json.loads(Path(requests).read_bytes())
-    lock = json.loads(Path(d06_lock).read_bytes())
-    config = Path(lock['project_root']) / spec['robot_config']
-    doc = yaml.safe_load(config.read_text())
-    names = doc['service']['joint_names']
-    cspace = doc['robot_cfg']['kinematics']['cspace']
-    values = dict(zip(cspace['joint_names'], cspace['default_joint_position']))
-    q = [float(values[name]) for name in names]
-    evidence = output.parent / 'proof-evidence'
-    results = []
-    with V2Service(lock_path=d06_lock, robot_config=config, evidence=evidence,
-                   deadline=time.monotonic() + 600, tier='dev', boundary='dev_loop') as client:
-        world = {'env_id': spec['env_id'], **spec['world']}
-        client.call('/world/cuboids', world)
-        for item in spec['plans']:
-            target = q.copy()
-            target[item['joint_index']] += item['delta_rad']
-            request = {'env_id': spec['env_id'], 'current_q': q, 'target_qpos': target,
-                       'joint_names': names}
-            result = client.call('/plan/joint', request)
-            if result.get('status') != 'success':
-                raise ValueError('plan request did not succeed: ' + str(result.get('reason')))
-            results.append({'request': request, 'result': result})
-    raw = json.dumps(results, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps({'passed': True, 'request_set_sha256': digest(Path(requests)),
-                                  'result_sha256': hashlib.sha256(raw).hexdigest()}, indent=2) + '\n')
+def proof(python, library, d06_lock, output, requests=REQUESTS):
+    """Run local planning evidence in the built Python, without lock approval."""
+    command('planner:proof', [str(python), '-B', '-I',
+            str(Path(__file__).with_name('planner_proof.py')), '--library', str(library),
+            '--lock', str(d06_lock), '--requests', str(requests), '--output', str(output)])
+    result = json.loads(Path(output).read_bytes())
+    if result.get('passed') is not True or result.get('request_set_sha256') != digest(Path(requests)):
+        raise ValueError('Standalone planner proof failed or used a different request set')
 
 
 def check_parent(parent_data):
@@ -173,7 +183,7 @@ def build(args):
                      'assets: native digest and local project snapshot',
                      'official: r12 schema and official-content checks',
                      'd05: pinned adapter sources', 'd06: current checkout adapter differences',
-                     'proof: two owned dev-tier plans', 'registry: local 0444 trust',
+                     'proof: two isolated local adapter plans', 'registry: local 0444 trust',
                      'snapshot: dev-local materialization'):
             print(step)
         return
@@ -206,9 +216,21 @@ def build(args):
                 path.chmod(path.stat().st_mode & ~0o222)
     stamp(ws, 'env', {'spec': digest(spec), 'requirements': digest(req), 'commit': lock['repos']['curobo']['commit']},
           [prefix / 'bin/python'], make_env)
+    if getattr(args, 'report_official_diff', False):
+        cmd = [str(prefix / 'bin/python'), '-B', '-I', str(Path(__file__).with_name('report_official_diff.py')),
+               '--library', str(library), '--manifests', str(identity.OFFICIAL_MANIFESTS), '--workspace', str(ws)]
+        result = subprocess.run(cmd, text=True, capture_output=True)
+        if result.returncode:
+            raise StepError('planner:official-diff', result.stderr.strip(), 'Inspect the built environment and manifest paths.')
+        print(result.stdout, end='')
+        return
     source = Path(args.project_from).resolve() if args.project_from else REPO
-    stamp(ws, 'project', {'source': str(source), 'inventory': digest(PROJECT_FILES)}, [project],
-          lambda: project_snapshot(source, project))
+    native_source = ws / 'repos/robocasa_tasks'
+    stamp(ws, 'project', {'source': str(source), 'inventory': digest(PROJECT_FILES),
+          'native_commit': NATIVE_COMMIT if source == REPO else None,
+          'robot_template': digest(Path(__file__).with_name('openarm_fixed.template.yml')) if source == REPO else None,
+          'omissions': digest(PROJECT_OMISSIONS) if source == REPO else None}, [project],
+          lambda: project_snapshot(source, project, library=library, native_source=native_source))
     asset_source = Path(args.native_assets_from).resolve() if args.native_assets_from else ws / 'data/robocasa365/assets'
     stamp(ws, 'native-assets', {'source': str(asset_source), 'manifest': digest(identity.OFFICIAL_MANIFESTS / 'r12-native-assets.json')},
           [report], lambda: native_assets(asset_source, native, report))
@@ -240,7 +262,7 @@ def build(args):
     if not identity._derived_from_parent(d06_data, parent_data):
         raise StepError('planner:d06', 'derived lock changes official or external identity', 'Rebuild d06 from the verified d05 and checkout.')
     stamp(ws, 'proof', {'d06': d06_sha, 'requests': digest(REQUESTS)}, [proof_path],
-          lambda: proof(d06 / 'runtime-lock.json', proof_path))
+          lambda: proof(prefix / 'bin/python', library, d06 / 'runtime-lock.json', proof_path))
     def register():
         from scripts.attentionbench.register_local_dev_trust import register as register_trust
         register_trust(parent_lock, d05 / 'runtime-lock.json', d06 / 'runtime-lock.json', snapshot, proof_path)
@@ -260,6 +282,8 @@ def main():
     parser.add_argument('--project-from', help='complete r12 runtime/project input tree; defaults to this checkout')
     parser.add_argument('--native-assets-from', help='complete native asset source tree; defaults to workspace data assets')
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--report-official-diff', action='store_true',
+                        help='build the cuRobo env, print exact official manifest byte differences, then stop')
     args = parser.parse_args()
     try:
         build(args)

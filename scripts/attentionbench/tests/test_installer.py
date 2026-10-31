@@ -19,7 +19,11 @@ spec.loader.exec_module(installer)
 def test_lock_schema_and_inputs():
     lock = installer.data()
     assert lock['schema'] == 'attentionbench.installer.v1'
-    assert set(lock['repos']) == {'attentionbench', 'robocasa365_sim', 'attention_memory_service', 'robocasa', 'robosuite', 'curobo'}
+    assert set(lock['repos']) == {'attentionbench', 'robocasa365_sim', 'attention_memory_service',
+                                  'robocasa', 'robosuite', 'curobo', 'robocasa_tasks'}
+    assert lock['repos']['robocasa_tasks'] == {
+        'commit': 'b18bbf1585c42e370ae45ababdddad700cc2c71d',
+        'url': 'https://github.com/TidyBot-Services/maniskill-robocasa-tasks.git'}
     assert all(len(v['commit']) == 40 for v in lock['repos'].values())
     assert lock['python'] == {'ui': '3.10', 'sim': '3.11', 'curobo': '3.11'}
     assert lock['codex'] == {'version': 'codex-cli 0.165.0', 'model': 'gpt-6.1-sol'}
