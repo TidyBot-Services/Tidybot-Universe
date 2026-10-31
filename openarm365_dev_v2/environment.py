@@ -15,13 +15,14 @@ import numpy as np
 
 PHYSICAL_TO_NATIVE = {'left': 'right', 'right': 'left'}
 
-def initial_joints(task_id):
+def initial_joints(task_id, *, fixture=False):
     from benchmarks.attention_harness.dev_tasks import get_task
     get_task(task_id)
     # Dev-only alias: never add a key to the sealed robot parameter record.
     root=Path(__file__).resolve().parents[1]/'openarm365'
     env_name=get_task(task_id).official_env
-    if task_id=='pick_place_counter_to_cabinet':env_name='PickPlaceCounterToSink'
+    from curobo_v2.fixture_interaction import PILOT_TASKS
+    if task_id in PILOT_TASKS and (fixture or task_id!='open_cabinet'):env_name='PickPlaceCounterToSink'
     p=copy.deepcopy(json.loads((root/'configs/robot_parameters_v1.json').read_text())[env_name])
     p=copy.deepcopy(p)
     # The old OSC reset settled joint5 slightly outside its original lower limit.
@@ -53,11 +54,11 @@ def controller_config():
     return c
 
 @contextmanager
-def pose(task_id):
+def pose(task_id, *, fixture=False):
     from openarm365.robot import OpenArm365, _model_construction_lock
     with _model_construction_lock:
         old=OpenArm365.initial_pose_override
-        p=initial_joints(task_id)
+        p=initial_joints(task_id,fixture=fixture)
         OpenArm365.initial_pose_override=p['left']+p['right']
         try: yield
         finally: OpenArm365.initial_pose_override=old
@@ -115,20 +116,22 @@ def rng_epoch(seed,env=None):
         with deterministic_counter_regions():yield calls
     finally:np.random.default_rng=factory
 
-def create_env(env_name, **kw):
+def create_env(env_name, *, fixture_profile=None, **kw):
     import robocasa, robosuite
     from openarm365 import robot  # Register the accepted physical MJCF.
     from benchmarks.attention_harness.dev_tasks import TASKS,EXPLICIT_TASKS,validate_selection
     task=next((t for t in (*TASKS.values(), *EXPLICIT_TASKS.values()) if t.official_env==env_name),None)
     if task is None or kw.get('robots')!='OpenArm365':raise ValueError('unregistered robot/task')
-    validate_selection(task.task_id,kw.get('seed'))
+    from curobo_v2.fixture_interaction import PROFILE
+    fixture=fixture_profile==PROFILE
+    validate_selection(task.task_id,kw.get('seed'),fixture=fixture)
     if kw.get('layout_and_style_ids')!=[(11,34)]:raise ValueError('unregistered scene')
     epoch=kw.pop('scene_reset_seed',None)
     np.random.seed(kw['seed']);random.seed(kw['seed'])
     kw.pop('split',None)
     kw['camera_names']=['robot0_agentview_left','gripper0_right_eye_in_hand']
     from contextlib import nullcontext
-    with pose(task.task_id), (rng_epoch(epoch) if epoch is not None else nullcontext()) as construction_rng_calls:
+    with pose(task.task_id,fixture=fixture), (rng_epoch(epoch) if epoch is not None else nullcontext()) as construction_rng_calls:
         env=robosuite.make(env_name=env_name,controller_configs=controller_config(),
             has_renderer=False,has_offscreen_renderer=True,ignore_done=True,
             use_object_obs=True,use_camera_obs=True,initialization_noise=None,**kw)
@@ -143,7 +146,7 @@ def create_env(env_name, **kw):
         if env.robots[0] is not None:
             for native in ('left','right'):
                 env.robots[0].composite_controller.part_controllers[native].input_type='delta'
-        with pose(task.task_id), (rng_epoch(epoch,env) if epoch is not None else nullcontext()) as reset_rng_calls: result=reset(*args,**kwargs)
+        with pose(task.task_id,fixture=fixture), (rng_epoch(epoch,env) if epoch is not None else nullcontext()) as reset_rng_calls: result=reset(*args,**kwargs)
         env.scene_rng_events.extend(reset_rng_calls or [])
         activate_absolute()
         return result

@@ -36,7 +36,7 @@ def wait(root, request_id, timeout, digest=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('op', choices=['submit', 'run', 'observe', 'find_objects',
+    parser.add_argument('op', choices=['submit', 'run', 'observe', 'find_objects', 'find_fixtures',
         'ik_check', 'plan_dry_run', 'ask_help', 'status', 'wait'])
     parser.add_argument('id', nargs='?')
     parser.add_argument('--entry'); parser.add_argument('--reason', default='')

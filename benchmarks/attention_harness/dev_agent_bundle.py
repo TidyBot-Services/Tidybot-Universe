@@ -15,7 +15,7 @@ class Bundle:
     source_map: dict
 
 
-def bundle(workspace, entry=None):
+def bundle(workspace, entry=None, *, config=None):
     try:
         manifest_bytes=read_beneath(workspace,'work/submission.json',16384)
         manifest=json.loads(manifest_bytes)
@@ -108,7 +108,7 @@ def bundle(workspace, entry=None):
     if len(script)>SOURCE_LIMIT: raise ValueError('bundle_oversize')
     from openarm365_dev_v2.agent_policy import validate_source
     from benchmarks.attention_harness.robocasa_native.policy_sandbox import GeneratedPolicyError
-    try:validate_source(script.decode())
+    try:validate_source(script.decode(),config=config)
     except GeneratedPolicyError as exc:raise ValueError('invalid_policy:'+str(exc)) from exc
     return Bundle(script,sources,dict(entry=main,order=order,lines=mapping,
         manifest=manifest,manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),

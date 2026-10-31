@@ -5,7 +5,7 @@ from benchmarks.attention_harness.dev_tasks import get_task,validate_selection
 from benchmarks.attention_harness.robocasa365.config import EXPECTED
 from openarm365_dev.config import LOCK,LOCK_SHA
 from .diag_budget import task_limits,formal_task_limits,case_wall_seconds,check_tier
-from curobo_v2.execution_settings import R3_20261025,R4_20261027,from_config
+from curobo_v2.execution_settings import R3_20261025,R4_20261027,R5_FIXTURE_20261031,from_config
 from curobo_v2.ik_path_jump import MAX_DIAGNOSTIC_JOINT_JUMP
 DEFAULT_CONTACT_EXEMPT_OBJECTS='movable_objects'
 DEFAULT_PLANNER_MODE='ik_path'
@@ -69,11 +69,11 @@ def _planner_source(value, tier='dev', boundary='dev_loop'):
     return value
 
 
-def _source_settings(source):
+def _source_settings(source,profile=R4_20261027):
     from dataclasses import replace
     from curobo_v2.dev_local import materialize
     snapshot=materialize(_planner_source(source)['source_root'])
-    return from_config(replace(R4_20261027,planner_deployment={k:snapshot[k] for k in ('lock_path','sha256')}).to_dict())
+    return from_config(replace(profile,planner_deployment={k:snapshot[k] for k in ('lock_path','sha256')}).to_dict())
 
 
 def make_lock(path, *, execution_settings=None, planner_source=None):
@@ -94,6 +94,11 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
     if execution_settings is not None and receipt_fields(execution_settings).get('deployment_kind')=='dev-local':
         files.append(ROOT/'openarm365_dev_v2/prompts/pick_place_counter_to_cabinet.json')
         files.append(ROOT/'benchmarks/attention_harness/robocasa365/tasks.py')
+        from curobo_v2.fixture_interaction import enabled,PILOT_TASKS
+        if enabled(execution_settings):
+            from .fixture_contract import resource_paths
+            files.extend(resource_paths())
+            files.extend(ROOT/'openarm365_dev_v2/prompts'/(tid+'.json') for tid in PILOT_TASKS if tid not in ('open_cabinet','pick_place_counter_to_cabinet'))
     files.append(ROOT/'benchmarks/attention_harness/v2_evaluator.py')
     files.append(ROOT/'benchmarks/attention_harness/daily_dev_v2.py')
     for name in ['core/policies.py','core/assessment.py','core/models.py','core/trace.py','core/dev_store.py','formal_runner_boundary.py','policy_input.py','parcc_client.py','dev_attention.py','ui_server.py','ui/live.js','ui/index.html','ui_history.py','ui_observability.py','ui_media.py','robocasa_native/policy_sandbox.py','robocasa365/recording.py','robocasa365/human_camera.py']:
@@ -112,12 +117,15 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
     with path.open('x') as f:json.dump(value,f,sort_keys=True,indent=2)
     path.chmod(0o444)
     return {'path':str(path.absolute()),'sha256':sha(path)}
-def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planner_source=None):
+def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planner_source=None,rules_profile=None):
     """Select matching settings for a new run's identity lock and config.
 
     Frozen configs must retain their own settings, including legacy absence.
     """
     if planner_source is not None:_planner_source(planner_source,budget_tier,budget_boundary)
+    if rules_profile is not None:
+        if rules_profile!=R5_FIXTURE_20261031.profile or budget_tier!='dev' or budget_boundary!='dev_loop':raise ValueError('fixture profile requires dev tier and dev_loop boundary')
+        return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT)),R5_FIXTURE_20261031)
     return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT))) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
 
 
@@ -140,9 +148,15 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
 
 def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None,bimanual_collaboration='none'):
     if bimanual_collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
+    from curobo_v2.fixture_interaction import enabled,PILOT_TASKS
+    fixture=enabled(execution_settings)
+    if fixture and (task_id not in PILOT_TASKS or budget_tier!='dev' or budget_boundary!='dev_loop' or planner_source is None):
+        raise ValueError('fixture profile requires a pilot task and dev-local dev_loop settings')
+    if task_id in PILOT_TASKS and task_id not in ('open_cabinet','pick_place_counter_to_cabinet') and not fixture:
+        raise ValueError('fixture pilot task requires r5-fixture-20261031')
     if task_id=='pick_place_counter_to_cabinet' and (budget_tier!='dev' or budget_boundary!='dev_loop'):
         raise ValueError('cabinet pick/place requires dev tier and dev_loop boundary')
-    if task_id=='pick_place_counter_to_cabinet' and (execution_settings is None or execution_settings.profile!='r4-20261027' or planner_source is None):
+    if task_id=='pick_place_counter_to_cabinet' and (execution_settings is None or execution_settings.profile not in ('r4-20261027','r5-fixture-20261031') or planner_source is None):
         raise ValueError('cabinet pick/place requires r4 dev-local execution settings')
     if planner_source is not None:
         _planner_source(planner_source,budget_tier,budget_boundary)
@@ -155,7 +169,7 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
     check_tier(budget_tier)
     if budget_boundary=='formal' and budget_tier!='legacy':raise ValueError('formal boundary refuses dev budget tier')
     limits=formal_task_limits() if budget_boundary=='formal' else task_limits(budget_tier)
-    t=validate_selection(task_id,seed,layout_id,style_id)
+    t=validate_selection(task_id,seed,layout_id,style_id,fixture=fixture)
     identity=verify_lock(lock,expected_source_root=expected_source_root)
     if identity is not None and identity.get('planner_deployment_kind')=='dev-local':
         if planner_source is None:raise ValueError('dev-local lock requires planner_source')
@@ -175,11 +189,14 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
        planner_mode=DEFAULT_PLANNER_MODE,ik_candidates=DEFAULT_IK_CANDIDATES,
        ik_max_joint_jump=DEFAULT_IK_MAX_JOINT_JUMP)
     from .environment import initial_joints
-    c['initial_joint_targets']=initial_joints(task_id)
+    c['initial_joint_targets']=initial_joints(task_id,fixture=True) if fixture else initial_joints(task_id)
     if budget_tier=='dev':c['budget_tier']='dev'
     if execution_settings is not None:c['execution_settings']=execution_settings.to_dict()
     if bimanual_collaboration in ('c1','handoff'):c['bimanual_collaboration']=bimanual_collaboration
     if planner_source is not None:c['planner_source']=dict(planner_source)
+    if fixture:
+        from .fixture_contract import contract_ref,success_ref
+        c.update(scene_reset_seed=seed,fixture_scene_contract=contract_ref(task_id),fixture_success_condition=success_ref(task_id))
     from benchmarks.attention_harness.dev_tasks import base_description_enabled,dev_sdk_seal
     if base_description_enabled(c) or bimanual_collaboration in ('c1','handoff'):c.update(dev_sdk_seal(c))
     return c

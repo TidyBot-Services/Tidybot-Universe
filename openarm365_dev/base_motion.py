@@ -29,8 +29,10 @@ class BasePathRejected(PlanningRejected):
         self.collision_check = collision_check
 
 
-def guard_base_and_arms(base, held_base, arm, start_arm=None, *, execution_settings=None):
+def guard_base_and_arms(base, held_base, arm, start_arm=None, *, execution_settings=None, fixture_contact=False):
     if start_arm is None:
+        from curobo_v2.fixture_interaction import enabled
+        if fixture_contact and enabled(execution_settings):return
         limits = base_drift_limits(execution_settings)
         if limits is not None:
             measured = base_drift(base, held_base)

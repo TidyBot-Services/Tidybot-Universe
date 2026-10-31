@@ -1,0 +1,5 @@
+{
+  "task_id": "prepare_coffee",
+  "official_env": "PrepareCoffee",
+  "task_prompt": "Take a mug from the cabinet, place it under the coffee machine dispenser, and start the machine."
+}

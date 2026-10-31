@@ -1,0 +1,134 @@
+{
+  "layout_id": 11,
+  "measured_scene_fingerprints": false,
+  "profile": "r5-fixture-20261031",
+  "reproducible_reset": true,
+  "schema": "attentionbench.fixture-reset-contract.v1",
+  "style_id": 34,
+  "tasks": {
+    "arrange_tea": {
+      "classes": [
+        "HingeCabinet",
+        "SingleCabinet"
+      ],
+      "reference": "cab",
+      "reset_rule": "native_reset",
+      "seeds": [
+        104,
+        105,
+        106
+      ]
+    },
+    "categorize_condiments": {
+      "classes": [
+        "HingeCabinet",
+        "SingleCabinet"
+      ],
+      "reference": "cab",
+      "reset_rule": "native_reset",
+      "seeds": [
+        102,
+        103,
+        105
+      ]
+    },
+    "close_blender_lid": {
+      "classes": [
+        "Blender"
+      ],
+      "reference": "blender",
+      "reset_rule": "native_reset",
+      "seeds": [
+        101,
+        102,
+        103
+      ]
+    },
+    "coffee_setup_mug": {
+      "classes": [
+        "CoffeeMachine"
+      ],
+      "reference": "coffee_machine",
+      "reset_rule": "native_reset",
+      "seeds": [
+        101,
+        103,
+        104
+      ]
+    },
+    "heat_kebab_sandwich": {
+      "classes": [
+        "ToasterOven"
+      ],
+      "reference": "toaster_oven",
+      "reset_rule": "native_reset",
+      "seeds": [
+        103,
+        105,
+        106
+      ]
+    },
+    "kettle_boiling": {
+      "classes": [
+        "Stove"
+      ],
+      "reference": "stove",
+      "reset_rule": "native_reset",
+      "seeds": [
+        101,
+        102,
+        103
+      ]
+    },
+    "open_stand_mixer_head": {
+      "classes": [
+        "StandMixer"
+      ],
+      "reference": "stand_mixer",
+      "reset_rule": "native_reset",
+      "seeds": [
+        101,
+        102,
+        103
+      ]
+    },
+    "pick_place_counter_to_cabinet": {
+      "classes": [
+        "HingeCabinet",
+        "SingleCabinet"
+      ],
+      "reference": "cab",
+      "reset_rule": "native_reset",
+      "seeds": [
+        101,
+        102,
+        107
+      ]
+    },
+    "prepare_coffee": {
+      "classes": [
+        "CoffeeMachine"
+      ],
+      "reference": "coffee_machine",
+      "reset_rule": "native_reset",
+      "seeds": [
+        102,
+        103,
+        104
+      ]
+    },
+    "weigh_ingredients": {
+      "classes": [
+        "HingeCabinet",
+        "SingleCabinet"
+      ],
+      "reference": "cab",
+      "reset_rule": "native_reset",
+      "seeds": [
+        101,
+        102,
+        103
+      ]
+    }
+  }
+}

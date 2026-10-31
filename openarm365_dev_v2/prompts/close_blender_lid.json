@@ -1,0 +1,5 @@
+{
+  "task_id": "close_blender_lid",
+  "official_env": "CloseBlenderLid",
+  "task_prompt": "Place the blender lid securely on the blender."
+}

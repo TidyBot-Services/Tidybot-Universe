@@ -165,6 +165,10 @@ def execute_formal_policy(
     if type(max_sdk_calls) is not int or not 1 <= max_sdk_calls <= call_ceiling:
         raise ValueError("formal SDK call limit exceeds the robot-specific ceiling")
     validate_generated_policy(code,config=source_config)
+    from .policy_validation import operations
+    from curobo_v2.fixture_interaction import config_enabled,PROFILE
+    allowed=operations(source_config)
+    profile_fields={'fixture_profile':PROFILE} if config_enabled(source_config) else {}
     worker = Path(__file__).with_name("policy_worker.py").resolve()
     stderr_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
@@ -181,7 +185,7 @@ def execute_formal_policy(
         selector = selectors.DefaultSelector()
         selector.register(process.stdout, selectors.EVENT_READ)
         process.stdin.write(
-            (json.dumps({"code": code, "context": _json_safe(context)}) + "\n").encode()
+            (json.dumps({"code": code, "context": _json_safe(context), **profile_fields}) + "\n").encode()
         )
         process.stdin.flush()
         buffer = bytearray()
@@ -225,7 +229,7 @@ def execute_formal_policy(
                         error = str(message.get("error", "policy failed"))[:1000]
                         break
                     group, operation = message.get("group"), message.get("operation")
-                    if kind != "call" or operation not in _OPERATIONS.get(group, ()):
+                    if kind != "call" or operation not in allowed.get(group, ()):
                         error = "policy worker sent unauthorized SDK RPC"
                         break
                     try: calls = _meter_sdk_call(calls, max_sdk_calls)

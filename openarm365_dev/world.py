@@ -45,10 +45,15 @@ def movable_object_roots(env):
         if joints==[0]:result[name]=bid
     return result
 
-def snapshot(env, *, chassis_binding=None, exempt_body_ids=None, attached_body_id=None):
+def snapshot(env, *, chassis_binding=None, exempt_body_ids=None, attached_body_id=None, execution_settings=None):
     sim=env.sim;m=sim.model;root=m.body_name2id('robot0_openarm_body_link0')
     transform=np.linalg.inv(mount_pose(env));cuboids=[];inventory=[];excluded=[]
     requested=set(exempt_body_ids or ());exempted=[];full_cuboids=[];full_inventory=[]
+    from curobo_v2.fixture_interaction import enabled,interaction_geoms,neighbourhood_geoms,WHITELIST_ID,WHITELIST_SHA256,NEIGHBOURHOOD_M
+    fixture_mode=enabled(execution_settings)
+    parts=interaction_geoms(env,execution_settings) if fixture_mode else {}
+    neighbours=neighbourhood_geoms(env,execution_settings,parts) if fixture_mode else {}
+    before_parts=[];exempted_parts=[];exempted_neighbours=[];split_neighbours=[];kept_neighbours=[]
     if requested and (not requested<=set(movable_object_roots(env).values())):
         raise WorldError('Collision exemption includes a nonmovable or unregistered body')
     if attached_body_id is not None and attached_body_id not in requested:
@@ -80,7 +85,23 @@ def snapshot(env, *, chassis_binding=None, exempt_body_ids=None, attached_body_i
         if any(is_descendant(m,bid,obj) for obj in requested if obj!=attached_body_id):
             exempted.append({'name':box['name'],'geom_id':gid,'body_name':item['body_name'],
                 'reason':'registered movable object arm-planning contact exemption'})
-        else:cuboids.append(box);inventory.append(item)
+        else:
+            before_parts.append(box)
+            if gid in parts:exempted_parts.append(parts[gid])
+            elif gid in neighbours:
+                from curobo_v2.fixture_world import neighbourhood_window
+                replacements,audit=neighbourhood_window(env,gid,neighbours[gid],execution_settings)
+                if replacements is None:
+                    cuboids.append(box);inventory.append(item);kept_neighbours.append(audit)
+                elif audit['action']=='dropped_whole':exempted_neighbours.append(audit)
+                else:
+                    boxes=[]
+                    for index,replacement in enumerate(replacements):
+                        new=transformed_box(box['name']+f':fixture-window:{index}',replacement['center_local_m'],
+                            replacement['half_size'],pose,transform)
+                        boxes.append(dict(replacement,**new));cuboids.append(new);inventory.append(dict(item,name=new['name']))
+                    split_neighbours.append(dict(audit,replacement_boxes=boxes))
+            else:cuboids.append(box);inventory.append(item)
     if not cuboids or len(cuboids)>4096:raise WorldError('Collision world empty or exceeds authenticated endpoint bounds')
     if chassis_binding and sum(x['name']==chassis_binding['native_geom'] for x in excluded)!=1:
         raise WorldError('Authenticated chassis shape missing or ambiguous')
@@ -95,4 +116,12 @@ def snapshot(env, *, chassis_binding=None, exempt_body_ids=None, attached_body_i
             complete_shape_count_unexempted=len(full_cuboids),
             world_sha256_unexempted=hashlib.sha256(json.dumps(full_identity,sort_keys=True,allow_nan=False).encode()).hexdigest(),
             unexempted_inventory=full_inventory,unexempted_cuboids=full_cuboids)
+    if fixture_mode:
+        before={'cuboids':before_parts,'planner_from_world':transform.tolist()}
+        result['fixture_contact_exemption']=dict(whitelist_id=WHITELIST_ID,whitelist_sha256=WHITELIST_SHA256,
+            scope='task_references',parts=exempted_parts,neighbourhood=exempted_neighbours,neighbourhood_radius_m=NEIGHBOURHOOD_M,
+            neighbourhood_dropped_whole=exempted_neighbours,neighbourhood_split=split_neighbours,
+            neighbourhood_kept_whole=kept_neighbours,
+            world_sha256_before=hashlib.sha256(json.dumps(before,sort_keys=True,allow_nan=False).encode()).hexdigest(),
+            world_sha256_after=result['world_sha256'])
     return result

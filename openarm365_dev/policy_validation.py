@@ -12,7 +12,17 @@ OPERATIONS = {
 }
 
 
+def operations(config=None):
+    from curobo_v2.fixture_interaction import config_enabled
+    if not config_enabled(config):return OPERATIONS
+    return {**OPERATIONS,'sensors':OPERATIONS['sensors'] | {'find_fixtures'},
+        **{g:OPERATIONS[g] | {'move_to'} for g in ('left_gripper','right_gripper')}}
+
+
 class Validator(ast.NodeVisitor):
+    def __init__(self,config=None):
+        self.operations=operations(config)
+
     def visit_ClassDef(self, node):
         raise GeneratedPolicyError("class definitions forbidden")
 
@@ -40,7 +50,7 @@ class Validator(ast.NodeVisitor):
         if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_NAMES:
             raise GeneratedPolicyError("forbidden call")
         if isinstance(node.func, ast.Attribute) and node.func.attr not in set().union(
-            *OPERATIONS.values(), {"get", "keys", "items", "values"}
+            *self.operations.values(), {"get", "keys", "items", "values"}
         ):
             raise GeneratedPolicyError("forbidden method")
         self.generic_visit(node)
@@ -52,6 +62,6 @@ def validate_generated_policy(code, *, config=None, manifest=None):
     if len(code.encode()) > limit:
         raise GeneratedPolicyError("policy exceeds 20KB" if config is None else "policy exceeds source size limit")
     tree = ast.parse(code)
-    Validator().visit(tree)
+    Validator(config).visit(tree)
     if not any(isinstance(n, ast.ImportFrom) for n in tree.body):
         raise GeneratedPolicyError("SDK import required")

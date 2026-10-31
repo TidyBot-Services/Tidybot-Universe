@@ -46,11 +46,13 @@ def probe_offset(dx, dy, dyaw):
     return steps,[v/steps for v in values]
 
 
-def validate(op, payload):
+def validate(op, payload, *, config=None):
     def vector(value, n):
         if not isinstance(value, list) or len(value) != n or any(type(v) not in (int,float) or not math.isfinite(v) for v in value):
             raise ValueError('finite_vector_required')
-    if op not in ('observe', 'find_objects', 'ik_check', 'plan_dry_run'): raise ValueError('unsupported_probe')
+    from curobo_v2.fixture_interaction import config_enabled
+    if op not in ('observe', 'find_objects', 'ik_check', 'plan_dry_run') and not (op=='find_fixtures' and config_enabled(config)): raise ValueError('unsupported_probe')
+    if op=='find_fixtures' and payload:raise ValueError('find_fixtures takes no arguments')
     if 'base_offset' in payload:
         offset=payload['base_offset']
         if op not in ('ik_check','plan_dry_run') or not isinstance(offset,dict) or set(offset)!={'dx','dy','dyaw'}:
@@ -106,7 +108,9 @@ def probe(env, executor, planner, observe, request):
     from benchmarks.attention_harness.dev_agent_diagnostics import project_planner_result
     from .agent_rejection import RecoverablePlanRejection
     from openarm365_dev.base_motion import BasePathRejected
-    op, payload = request['op'],request['payload'];validate(op,payload)
+    settings=getattr(executor,'execution_settings',None)
+    op, payload = request['op'],request['payload'];validate(op,payload,config=(
+        {'execution_settings':{'profile':getattr(settings,'profile',None)}}))
     if executor.sequence != 0 or executor.physics_steps != 0:raise ValueError('probe_owner_must_be_reset')
     base = dict(state_basis='reset_scene', physics_steps=0)
     held=executor.held
@@ -114,6 +118,11 @@ def probe(env, executor, planner, observe, request):
             or payload.get('held_object') or payload.get('attachment')):
         return dict(base,unsupported_scope='held_object')
     before = state_fingerprint(env,executor)
+    if op=='find_fixtures':
+        from curobo_v2.fixture_interaction import find_fixtures
+        result=dict(base,fixtures=find_fixtures(env,settings))
+        if state_fingerprint(env,executor)!=before:raise RuntimeError('probe_mutated_scene')
+        return result
     if op=='observe':
         value=observe()
         return dict(base,observation=value['robot'],perception=value['perception'])

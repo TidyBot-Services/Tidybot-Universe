@@ -41,12 +41,19 @@ def main():
         from openarm365_dev.planner import MujocoV2Planner
         from openarm365_dev.executor import NativeExecutor
         from curobo_v2.execution_settings import from_config,receipt_fields
+        from curobo_v2.fixture_telemetry import FixtureContactBaseDisplacementRejected
         from openarm365_dev.policy_validation import OPERATIONS
         from openarm365.environment import validate_physical_model,configure_display_camera
         from .diag_budget import diagnostic_budget,dev_tier_budget
         override=diagnostic_budget()
         c=validate_config(json.loads(args.config.read_bytes()));args.evidence.mkdir(parents=True,exist_ok=True)
         execution_settings=from_config(c.get('execution_settings'))
+        from curobo_v2.fixture_interaction import enabled as fixture_enabled,find_fixtures
+        from openarm365_dev.policy_validation import operations
+        allowed_operations=operations(c)
+        if fixture_enabled(execution_settings):
+            from .fixture_contract import configure_camera,camera_target
+            def configure_display_camera(env):configure_camera(env,c)
         if args.agent_mode:
             if c.get('budget_tier') != 'dev' or c['runner_boundary'] != 'dev_loop':
                 raise ValueError('agent requires dev tier')
@@ -60,9 +67,14 @@ def main():
             'robosuite':'/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite'},
             '/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json').verify_identity()
         env=create_env(c['official_env'],robots='OpenArm365',seed=c['seed'],obj_instance_split=c['obj_instance_split'],
+            **({'fixture_profile':execution_settings.profile} if fixture_enabled(execution_settings) else {}),
             layout_and_style_ids=[(c['layout_id'],c['style_id'])],camera_widths=128,camera_heights=128,randomize_cameras=False,
             generative_textures=None,control_freq=c['control_freq'],horizon=c['horizon'],**({'scene_reset_seed':c['scene_reset_seed']} if 'scene_reset_seed' in c else {}))
         env.reset();validate_physical_model(env);configure_display_camera(env)
+        fixture_condition=None
+        if fixture_enabled(execution_settings):
+            from .fixture_contract import validate_reset
+            fixture_condition=validate_reset(env,c,execution_settings)
         planner=MujocoV2Planner(env,evidence=args.evidence/'planner',deadline=args.deadline,cancel_check=stop.is_set,
             contact_exempt_objects=c['contact_exempt_objects'],planner_mode=c.get('planner_mode','plan'),
             ik_candidates=c.get('ik_candidates'),ik_max_joint_jump=c.get('ik_max_joint_jump'),
@@ -78,7 +90,7 @@ def main():
         extra=None
         try:
             from .extra_views import ExtraViews,look_target
-            extra=ExtraViews(env,args.evidence,context,episode,look_target(env))
+            extra=ExtraViews(env,args.evidence,context,episode,camera_target(env,c) if fixture_enabled(execution_settings) else look_target(env))
         except Exception:extra=None
         def capture(sequence):
             capture_human_view(recorder,env,episode,sequence)
@@ -142,6 +154,7 @@ def main():
         reset_receipt.update(receipt_fields(execution_settings))
         if c.get('bimanual_collaboration') in ('c1','handoff'):reset_receipt['bimanual_collaboration']=c['bimanual_collaboration']
         if c.get('bimanual_collaboration')=='handoff':reset_receipt.update(executor.collaboration_receipt())
+        if fixture_condition:reset_receipt['fixture_scene_condition']=fixture_condition
         if override:reset_receipt['diagnostic_budget_override']=override
         if tier:reset_receipt['dev_tier_budget']=tier
         (args.evidence/'reset_receipt.json').write_text(json.dumps(reset_receipt,indent=2)+'\n')
@@ -161,21 +174,28 @@ def main():
                 send(payload);continue
             group,operation=request['group'],request['operation']
             public=group!='owner'
-            if public and operation not in OPERATIONS.get(group,()):raise ValueError('Unauthorized native SDK operation')
+            if public and operation not in allowed_operations.get(group,()):raise ValueError('Unauthorized native SDK operation')
             before=executor.sequence
+            before_physics=executor.physics_steps
             if args.agent_mode:
                 from .agent_probe import state_fingerprint
                 before_state=state_fingerprint(env, executor)
             try:
-                value=None
+                value=None;empty_close=None
                 if group=='owner':
                     if operation=='observe':value=observe()
+                    elif operation=='gripper_move_to' and fixture_enabled(execution_settings):
+                        value=executor.gripper_move_to(*request['args'],**request['kwargs'],request_id=rid)
+                    elif operation=='find_fixtures' and fixture_enabled(execution_settings):
+                        if request['args'] or request['kwargs']:raise ValueError('find_fixtures takes no arguments')
+                        value=find_fixtures(env,execution_settings)
                     elif operation=='agent_probe' and args.agent_mode:
                         from .agent_probe import probe
                         value=probe(env, executor, planner, observe, request['kwargs'])
                     elif operation=='reset':
                         if c.get('scene_contract'):raise ValueError('matrix reset requires a new metered execution')
                         env.reset();validate_physical_model(env);configure_display_camera(env)
+                        if fixture_enabled(execution_settings):validate_reset(env,c,execution_settings)
                         value={'initial_observation':observe(),'scene_state':capture_state(env),'rng_events':list(env.scene_rng_events)}
                     elif operation=='evaluate':
                         # Separate owner-only evidence, never a public SDK return.
@@ -185,6 +205,9 @@ def main():
                 elif group=='sensors':
                     obs=observe()
                     if operation=='get_observation':value=obs['robot']
+                    elif operation=='find_fixtures':
+                        if request['args'] or request['kwargs']:raise ValueError('find_fixtures takes no arguments')
+                        value=find_fixtures(env,execution_settings)
                     else:value=[{'name':n[:-4],'position':p,'frame':'world'} for n,p in obs['perception']['values'].items() if n.endswith('_pos')]
                 elif group in {'left_arm','right_arm'}:
                     side=group.split('_')[0]
@@ -195,8 +218,12 @@ def main():
                 elif group=='base':
                     executor.base_move(*request['args'],**request['kwargs'],request_id=rid)
                 elif group in {'left_gripper','right_gripper'}:
-                    if request['args'] or request['kwargs']:raise ValueError('Gripper open/close takes no arguments')
-                    executor.gripper(group.split('_')[0],-1. if operation=='open' else 1.,request_id=rid)
+                    if operation=='move_to' and fixture_enabled(execution_settings):
+                        value=executor.gripper_move_to(group.split('_')[0],*request['args'],**request['kwargs'],request_id=rid)
+                    else:
+                        if request['args'] or request['kwargs']:raise ValueError('Gripper open/close takes no arguments')
+                        gripper_receipt=executor.gripper(group.split('_')[0],-1. if operation=='open' else 1.,request_id=rid)
+                        if fixture_enabled(execution_settings):empty_close=gripper_receipt['empty_close']
                 elif group=='bimanual':
                     if len(request['args'])!=1 or request['kwargs']:raise ValueError('bimanual.move_joints requires one full 14-joint vector')
                     target=np.asarray(request['args'][0],float)
@@ -204,10 +231,16 @@ def main():
                     executor.move_joints(target,side='both',request_id=rid)
                 response={'kind':'response','request_id':rid,'ok':True,'value':value,
                     'sequence':executor.sequence,'start_sequence':before}
+                if empty_close is not None:response['empty_close']=empty_close
             except Exception as exc:
+                from curobo_v2.fixture_gripper import GripperWidthRejected
                 response={'kind':'response','request_id':rid,'ok':False,
                     'error':f'{type(exc).__name__}: {exc}'[:1200],'sequence':executor.sequence,'start_sequence':before}
-                if (args.agent_mode and isinstance(exc, RecoverablePlanRejection)
+                if (fixture_enabled(execution_settings) and isinstance(exc, (FixtureContactBaseDisplacementRejected,GripperWidthRejected))
+                        and not executor.failed):
+                    response.update(ok=True,value=exc.public())
+                    response.pop('error',None)
+                elif (args.agent_mode and isinstance(exc, RecoverablePlanRejection)
                         and executor.sequence == before and not executor.failed
                         and state_fingerprint(env, executor) == before_state):
                     response.update(ok=True, value=exc.public())
@@ -217,6 +250,9 @@ def main():
                     f.write(json.dumps({'request_id':rid,'traceback':traceback.format_exc()})+'\n')
             response.update(receipt_fields(execution_settings))
             if c.get('bimanual_collaboration') in ('c1','handoff'):response.update(executor.collaboration_receipt())
+            if fixture_enabled(execution_settings) and public and group!='sensors':
+                from curobo_v2.fixture_telemetry import receipt as fixture_receipt
+                response.update(fixture_receipt(executor,after_physics_step=before_physics))
             if override:response['diagnostic_budget_override']=override
             if tier:response['dev_tier_budget']=tier
             receipt_cache[rid]=(canonical,response)

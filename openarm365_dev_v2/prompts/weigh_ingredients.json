@@ -1,0 +1,5 @@
+{
+  "task_id": "weigh_ingredients",
+  "official_env": "WeighIngredients",
+  "task_prompt": "Take the food from the cabinet, place it on the scale, and close the cabinet doors."
+}

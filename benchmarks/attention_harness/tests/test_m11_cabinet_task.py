@@ -91,7 +91,8 @@ def test_configs_and_sink_bytes_unchanged(monkeypatch,r4_deployment):
 
 def test_sealed_assets_and_existing_manifests_untouched():
     # Git byte comparison of tracked configuration/manifest/contract records only.
-    names=subprocess.check_output(['git','ls-files','openarm365/configs','openarm365_dev_v2/scene_contracts',
+    # Compare the original sealed inventory; R5 adds separately pinned contracts.
+    names=subprocess.check_output(['git','ls-tree','-r','--name-only','e62021f','--','openarm365/configs','openarm365_dev_v2/scene_contracts',
                                    'openarm365_dev_v2/policies/pick_place_counter_to_sink.py',
                                    'benchmarks/attention_harness/robocasa365/config.py'],text=True,cwd=ROOT).splitlines()
     assert names

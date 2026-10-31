@@ -7,6 +7,7 @@ Stdout is a line-delimited RPC channel, never a policy print destination.
 from __future__ import annotations
 
 import json
+import math
 import resource
 import sys
 import types
@@ -29,14 +30,18 @@ def send(value):
 
 
 class Proxy:
-    def __init__(self, group):
+    def __init__(self, group, operations=None):
         self.group = group
+        self.operations = OPERATIONS[group] if operations is None else operations
 
     def __getattr__(self, operation):
-        if operation not in OPERATIONS[self.group]:
+        if operation not in self.operations:
             raise AttributeError(operation)
 
         def call(*args, **kwargs):
+            if operation=='move_to':
+                def wire(v):return repr(v) if type(v) is float and not math.isfinite(v) else v
+                args=tuple(wire(v) for v in args);kwargs={k:wire(v) for k,v in kwargs.items()}
             send(
                 {
                     "kind": "call",
@@ -69,9 +74,13 @@ def main():
     request = json.loads(sys.stdin.readline())
     code = request["code"]
     context = request["context"]
+    allowed = {**OPERATIONS}
+    if request.get('fixture_profile') == 'r5-fixture-20261031':
+        allowed['sensors'] = OPERATIONS['sensors'] | {'find_fixtures'}
+        for group in ('left_gripper','right_gripper'):allowed[group] = OPERATIONS[group] | {'move_to'}
     module = types.ModuleType("robot_sdk")
     for group in OPERATIONS:
-        setattr(module, group, Proxy(group))
+        setattr(module, group, Proxy(group, allowed[group]))
 
     def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
         if name == "robot_sdk" and level == 0:

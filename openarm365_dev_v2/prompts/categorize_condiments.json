@@ -1,0 +1,5 @@
+{
+  "task_id": "categorize_condiments",
+  "official_env": "CategorizeCondiments",
+  "task_prompt": "Place each condiment in the cabinet beside condiments of the same category."
+}

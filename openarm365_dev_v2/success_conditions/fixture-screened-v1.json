@@ -1,0 +1,17 @@
+{
+  "authority": "env._check_success() in native owner only",
+  "profile": "r5-fixture-20261031",
+  "schema": "attentionbench.fixture-success-condition.v1",
+  "tasks": {
+    "arrange_tea": "ArrangeTea._check_success()",
+    "categorize_condiments": "CategorizeCondiments._check_success()",
+    "close_blender_lid": "CloseBlenderLid._check_success()",
+    "coffee_setup_mug": "CoffeeSetupMug._check_success()",
+    "heat_kebab_sandwich": "HeatKebabSandwich._check_success()",
+    "kettle_boiling": "KettleBoiling._check_success()",
+    "open_stand_mixer_head": "OpenStandMixerHead._check_success()",
+    "pick_place_counter_to_cabinet": "PickPlaceCounterToCabinet._check_success()",
+    "prepare_coffee": "PrepareCoffee._check_success()",
+    "weigh_ingredients": "WeighIngredients._check_success()"
+  }
+}
