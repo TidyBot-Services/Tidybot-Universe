@@ -1,3 +1,17 @@
+<!-- summary-20261022-31 -->
+## 10-22 至 10-31 汇总：agent 模式、Memory M-6～M-11、dev-local 规划器（工程通过，非正式验收）
+
+**口径**：本段是 10-22 以后各条线的索引，按合并提交列出；细节在各提交信息和作者工作区的方案/报告里。所有结果均为开发档（dev tier，`formal_eligible=false`）。10-21 以后本文件和 `docs/attentionbench_progress.md` 未逐日更新，本段补齐。
+
+- **运行控制（10-22）**：Dev 输入上限 150000 字节（`474b90c`）；cuRobo 单次规划上限 8 s→180 s（`4710650`）；完成但未解决的 attempt 不再算成功（`215221c`）；明暗主题、封面页（`6446321`、`f8605fc`）。
+- **Memory**：所有策略读 Memory、临时提案与离线自动导入（`07d71c5`）；所有模式接入 Memory（`0eaeabb`）；run notes M-6（`2aabacc`）；run⊂scene⊂task⊂family 分层 M-7（`9b5a811`）；自动验证 M-8（`de709e6`）；跨 seed 验证 worker M-10（`3344c6f`，10-27 收尾 `d64f8e4`）；第二个抓放任务与家族信任 M-11（`1de875c`、`98f4d94`）。M-10 正向对照为 would_fail，没有跨 seed 生效的证据。
+- **场景与规划器**：放宽抓取设置（`0232c43`）；r3/r4 执行设置作为冻结的 dev 配置块（`7de13c8`、`1b74aae`、`e62021f`）；dev-local 规划器：在 deployment-06 之上做内容寻址快照，只用于开发档（`b553472`）。
+- **其他运行能力**：从任一 attempt 继续/fork（`11866b7`）；统一外壳与状态词汇（`d29647f`、`a3e1791`）。
+- **agent 模式（10-28～10-31）**：Dev agent 在 bwrap 沙箱中工作（`b0b3b4e`、`31fd2a5`、`bfd1e3c`、`bc523bb`）；Codex CLI 固定 0.165.0、Dev/Eval 默认 `gpt-6.1-sol`（`83c0d85`）；帧去重与低磁盘暂停（`dc11d35`、`6b5f4cb`）；agent-policy v2 与 agent Memory 阶段 1–4（`89d9875`、`0cd33a4`、`09300cf`、`e1bf9fd`）；周额度读数修正（`7cac54b`）。10-30 一次真实 agent 运行原生成功（0 次求助）。10-31 阶段 5 端到端运行 `devexp-dc15f5ae…` 被操作者取消。
+- **未做**：七方法比较、held-out、正式实验；agent 模式下"强制求助"只有离线证明；在作者以外的机器上运行（见下条）。
+- **协作者可复现（10-31 开始）**：分支已推到 GitHub；方案 `PLAN-collaborator-reproducible-20261031` 与验收包 `ACCEPT-collaborator-reproducible-20261031`（作者工作区 `docs/`）。P1：修 README/项目指南死链（指向已删分支 `feature/attention-native-robosuite`）并更新内容。
+<!-- /summary-20261022-31 -->
+
 <!-- ui-run-evidence-20261019 -->
 ## 2026-10-19：8769 界面真实运行打通（seed 102，免费模型）
 
