@@ -1,67 +1,69 @@
 {
-  "assets": {
-    "installation_lock": "repos/robocasa365_sim/assets-installation-lock.json",
-    "installation_lock_sha256": "33513950134b7589971bc74ec46436e033d4d87f851485c0b8640aa7664f0aad",
-    "installed_manifest": "repos/robocasa365_sim/assets-installed-manifest.json",
-    "installed_manifest_sha256": "6ba5a9d08f036b3a729eb3bc769f7b8ab2714ec1de94c5a9b72dbc1915199a01",
-    "runtime_manifest": "repos/robocasa365_sim/assets-manifest.json",
-    "runtime_manifest_sha256": "0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330"
+ "assets": {
+  "installation_lock": "repos/robocasa365_sim/assets-installation-lock.json",
+  "installation_lock_sha256": "33513950134b7589971bc74ec46436e033d4d87f851485c0b8640aa7664f0aad",
+  "installed_manifest": "repos/robocasa365_sim/assets-installed-manifest.json",
+  "installed_manifest_sha256": "6ba5a9d08f036b3a729eb3bc769f7b8ab2714ec1de94c5a9b72dbc1915199a01",
+  "runtime_manifest": "repos/robocasa365_sim/assets-manifest.json",
+  "runtime_manifest_sha256": "0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330"
+ },
+ "codex": {
+  "model": "gpt-6.1-sol",
+  "version": "codex-cli 0.165.0"
+ },
+ "curobo_env": {
+  "conda_explicit": "config/attentionbench/curobo-env/conda-explicit.txt",
+  "conda_explicit_sha256": "eeddc03544f47854333e46cfbd45616036a9dc04563f1b6b9a57e74dd46a2a77",
+  "native_assets": "planner uses project robot/config assets; full ManiSkill scene_datasets only required for native scene path",
+  "pip_requirements": "config/attentionbench/curobo-env/pip-requirements.txt",
+  "pip_requirements_sha256": "f42a7af84c4b094ea7f38226e388cbe0119f99e3959e9a81e9bfbc92f3074c72"
+ },
+ "planner_author_provenance": {
+  "d05_parent_d04_lock_sha256": "6e289e0db4025f47e629fb807b963ca384af3f3543a406696a64912b600d000e",
+  "d05_source_commit": "1f0ee6d3f472b5c95b4ee4a4a68570b03857a9e5",
+  "d06_official_parent_lock_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
+  "d06_parent_d05_lock_sha256": "0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0",
+  "local_trust": "P5 pending",
+  "profile": "r3-20261025"
+ },
+ "python": {
+  "curobo": "3.11",
+  "sim": "3.11",
+  "ui": "3.10"
+ },
+ "repos": {
+  "attention_memory_service": {
+   "branch": "attentionbench/baseline-20261015",
+   "commit": "93878815caa28b54f4947403d0f0bf00fb287f71",
+   "url": "https://github.com/TidyBot-Services/attention_memory_service.git"
   },
-  "codex": {
-    "model": "gpt-6.1-sol",
-    "version": "codex-cli 0.165.0"
+  "attentionbench": {
+   "branch": "attentionbench/baseline-20261015",
+   "commit": "self",
+   "note": "this checkout; clone it to <workspace>/repos/attentionbench and run bootstrap from there",
+   "url": "https://github.com/TidyBot-Services/Tidybot-Universe.git"
   },
-  "curobo_env": {
-    "conda_explicit": "config/attentionbench/curobo-env/conda-explicit.txt",
-    "conda_explicit_sha256": "eeddc03544f47854333e46cfbd45616036a9dc04563f1b6b9a57e74dd46a2a77",
-    "native_assets": "planner uses project robot/config assets; full ManiSkill scene_datasets only required for native scene path",
-    "pip_requirements": "config/attentionbench/curobo-env/pip-requirements.txt",
-    "pip_requirements_sha256": "f42a7af84c4b094ea7f38226e388cbe0119f99e3959e9a81e9bfbc92f3074c72"
+  "curobo": {
+   "commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
+   "url": "https://github.com/NVlabs/curobo.git"
   },
-  "planner_author_provenance": {
-    "d05_parent_d04_lock_sha256": "6e289e0db4025f47e629fb807b963ca384af3f3543a406696a64912b600d000e",
-    "d05_source_commit": "1f0ee6d3f472b5c95b4ee4a4a68570b03857a9e5",
-    "d06_official_parent_lock_sha256": "207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c",
-    "d06_parent_d05_lock_sha256": "0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0",
-    "local_trust": "P5 pending",
-    "profile": "r3-20261025"
+  "robocasa": {
+   "commit": "456174f62b89b8fca99eaaf33949c29fec9cfc2a",
+   "url": "https://github.com/robocasa/robocasa.git"
   },
-  "python": {
-    "curobo": "3.11",
-    "sim": "3.11",
-    "ui": "3.10"
+  "robocasa365_sim": {
+   "branch": "feature/robocasa365-phase1",
+   "commit": "3fe0cfdaf0d9f80e6c1d211335693c05937f6e81",
+   "url": "https://github.com/TidyBot-Services/robocasa365_sim.git"
   },
-  "repos": {
-    "attention_memory_service": {
-      "branch": "attentionbench/baseline-20261015",
-      "commit": "93878815caa28b54f4947403d0f0bf00fb287f71",
-      "url": "https://github.com/TidyBot-Services/attention_memory_service.git"
-    },
-    "attentionbench": {
-      "commit": "90a1071c6c5550f9d04a37993b682ae820c7dc56",
-      "url": "https://github.com/TidyBot-Services/Tidybot-Universe.git"
-    },
-    "curobo": {
-      "commit": "78fd485fa82d9b9a063fb4985e371814587e666a",
-      "url": "https://github.com/NVlabs/curobo.git"
-    },
-    "robocasa_tasks": {
-      "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
-      "url": "https://github.com/TidyBot-Services/maniskill-robocasa-tasks.git"
-    },
-    "robocasa": {
-      "commit": "456174f62b89b8fca99eaaf33949c29fec9cfc2a",
-      "url": "https://github.com/robocasa/robocasa.git"
-    },
-    "robocasa365_sim": {
-      "branch": "feature/robocasa365-phase1",
-      "commit": "3fe0cfdaf0d9f80e6c1d211335693c05937f6e81",
-      "url": "https://github.com/TidyBot-Services/robocasa365_sim.git"
-    },
-    "robosuite": {
-      "commit": "5ce6643f3092639d08f7b0f90ed1c6a84f50552c",
-      "url": "https://github.com/ARISE-Initiative/robosuite.git"
-    }
+  "robocasa_tasks": {
+   "commit": "b18bbf1585c42e370ae45ababdddad700cc2c71d",
+   "url": "https://github.com/TidyBot-Services/maniskill-robocasa-tasks.git"
   },
-  "schema": "attentionbench.installer.v1"
+  "robosuite": {
+   "commit": "5ce6643f3092639d08f7b0f90ed1c6a84f50552c",
+   "url": "https://github.com/ARISE-Initiative/robosuite.git"
+  }
+ },
+ "schema": "attentionbench.installer.v1"
 }

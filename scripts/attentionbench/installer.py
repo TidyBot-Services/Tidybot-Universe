@@ -165,7 +165,13 @@ def bootstrap(args) -> int:
                  'attention_memory_service': 'repos/attention_memory_service', 'robocasa': 'sim/robocasa',
                  'robosuite': 'sim/robosuite', 'curobo': 'repos/curobo',
                  'robocasa_tasks': 'repos/robocasa_tasks'}
+    if REPO != (ws / 'repos/attentionbench').resolve():
+        raise StepError('repos', f'this checkout is {REPO}, not {ws}/repos/attentionbench',
+                        f'Clone Tidybot-Universe into {ws}/repos/attentionbench (no symlink) and run bootstrap from there.')
+    head = subprocess.run(['git', '-C', str(REPO), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
     for name, pin in lock['repos'].items():
+        if name == 'attentionbench':
+            continue
         stamped(ws, 'repo-' + name, pin, args.update,
                 lambda name=name, pin=pin: clone(ws, name, repo_dirs[name], pin, args.update))
     runtime_manifest = ws / lock['assets']['runtime_manifest']
@@ -176,7 +182,7 @@ def bootstrap(args) -> int:
                             'TIDYBOT_ATTENTION_PYTHON': lock['python']['ui'],
                             'TIDYBOT_MEMORY_SERVICE_SOURCE': str(ws / 'repos/attention_memory_service')}
         command('ui-venv', ['bash', str(ws / 'repos/attentionbench/benchmarks/attention_harness/setup_env.sh')], env=env)
-    stamped(ws, 'ui-venv', {'python': lock['python']['ui'], 'repo': lock['repos']['attentionbench'], 'memory': lock['repos']['attention_memory_service']}, args.update, ui)
+    stamped(ws, 'ui-venv', {'python': lock['python']['ui'], 'repo': head, 'memory': lock['repos']['attention_memory_service']}, args.update, ui)
     try:
         source = Path(args.assets_from).expanduser().resolve() if args.assets_from else download_assets(ws, lock)
     except StepError:

@@ -4,11 +4,15 @@
 
 Use Linux x86_64 with an NVIDIA GPU and a working driver, Git, Python 3, `uv`, Conda, `bwrap`, enabled unprivileged user namespaces, and a Codex account with access to `gpt-6.1-sol`. Reserve roughly 50 GB for installed software and assets and **at least 60 GB free** before bootstrap. `doctor` enforces the latter. Sign in with `codex login`; install the CLI version pinned by `attentionbench.lock.json`.
 
+In Docker, run the container with `--gpus all --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined`: the agent's `bwrap` sandbox needs user namespaces and its own `/proc` (verified 10-31; `--privileged` is not needed).
+
 ## Four commands
 
-From this repository:
+Clone this repository **into the workspace** (a real directory, not a symlink), then run from it:
 
 ```bash
+git clone -b attentionbench/baseline-20261015 https://github.com/TidyBot-Services/Tidybot-Universe.git /absolute/attentionbench-workspace/repos/attentionbench
+cd /absolute/attentionbench-workspace/repos/attentionbench
 scripts/attentionbench/bootstrap.sh --workspace /absolute/attentionbench-workspace
 scripts/attentionbench/doctor.sh --workspace /absolute/attentionbench-workspace
 scripts/attentionbench/start.sh --workspace /absolute/attentionbench-workspace

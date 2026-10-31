@@ -24,7 +24,8 @@ def test_lock_schema_and_inputs():
     assert lock['repos']['robocasa_tasks'] == {
         'commit': 'b18bbf1585c42e370ae45ababdddad700cc2c71d',
         'url': 'https://github.com/TidyBot-Services/maniskill-robocasa-tasks.git'}
-    assert all(len(v['commit']) == 40 for v in lock['repos'].values())
+    assert lock['repos']['attentionbench']['commit'] == 'self'
+    assert all(len(v['commit']) == 40 for k, v in lock['repos'].items() if k != 'attentionbench')
     assert lock['python'] == {'ui': '3.10', 'sim': '3.11', 'curobo': '3.11'}
     assert lock['codex'] == {'version': 'codex-cli 0.165.0', 'model': 'gpt-6.1-sol'}
     for name in ('conda_explicit', 'pip_requirements'):
@@ -85,6 +86,8 @@ def test_keys_created_private_and_not_printed(tmp_path, monkeypatch, capsys):
     # Exercise the bootstrap through its last local initialization stage with
     # network and installer commands replaced by inert fixtures.
     ws = tmp_path / 'workspace'
+    (ws / 'repos/attentionbench').mkdir(parents=True)
+    monkeypatch.setattr(installer, 'REPO', (ws / 'repos/attentionbench').resolve())
     monkeypatch.setattr(installer, 'stamped', lambda ws, step, inputs, update, action: None)
     monkeypatch.setattr(installer, 'digest', lambda *a: installer.data()['assets']['runtime_manifest_sha256'])
     monkeypatch.setattr(installer, 'download_assets', lambda ws, lock: ws / 'assets')
@@ -101,6 +104,8 @@ def test_keys_created_private_and_not_printed(tmp_path, monkeypatch, capsys):
 
 
 def test_bootstrap_invokes_planner_chain(tmp_path, monkeypatch):
+    (tmp_path / 'workspace/repos/attentionbench').mkdir(parents=True)
+    monkeypatch.setattr(installer, 'REPO', (tmp_path / 'workspace/repos/attentionbench').resolve())
     monkeypatch.setattr(installer, 'stamped', lambda *a: None)
     monkeypatch.setattr(installer, 'digest', lambda *a: installer.data()['assets']['runtime_manifest_sha256'])
     monkeypatch.setattr(installer, 'download_assets', lambda ws, lock: ws / 'assets')
