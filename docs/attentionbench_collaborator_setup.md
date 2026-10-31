@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Use Linux x86_64 with an NVIDIA GPU and a working driver, Git, Python 3, `uv`, Conda, `bwrap`, enabled unprivileged user namespaces, and a Codex account with access to `gpt-6.1-sol`. Reserve roughly 50 GB for installed software and assets and **at least 60 GB free** before bootstrap. `doctor` enforces the latter. Sign in with `codex login`; install the CLI version pinned by `attentionbench.lock.json`.
+Use Linux x86_64 with an NVIDIA GPU and a working driver, Git, Python 3 with its development headers (`python3-dev` on Ubuntu; the Harness builds `evdev` from source), a C compiler (`build-essential`), `uv`, Conda, `bwrap`, enabled unprivileged user namespaces, and a Codex account with access to `gpt-6.1-sol`. Reserve roughly 50 GB for installed software and assets and **at least 60 GB free** before bootstrap. `doctor` enforces the latter. Sign in with `codex login`; install the CLI version pinned by `attentionbench.lock.json`.
 
 In Docker, run the container with `--gpus all --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined`: the agent's `bwrap` sandbox needs user namespaces and its own `/proc` (verified 10-31; `--privileged` is not needed).
 
