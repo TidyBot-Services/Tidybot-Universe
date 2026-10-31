@@ -215,6 +215,8 @@ def build(args):
         # for the five test packages (their INSTALLER/REQUESTED and launcher scripts come from
         # uv), and the editable cuRobo built with the env's own setuptools (no build isolation).
         command('planner:env', [str(prefix / 'bin/python'), '-m', 'pip', 'install', '--no-deps', '-r', str(req)], cwd=REPO)
+        # toppra has no binary wheel on PyPI; install the author's build (sha256 checked above).
+        command('planner:env', [str(prefix / 'bin/python'), '-m', 'pip', 'install', '--no-deps', str(wheel)], cwd=REPO)
         command('planner:env', ['uv', 'pip', 'install', '--python', str(prefix / 'bin/python'), '--no-deps', '-r', str(uv_req)], cwd=REPO)
         command('planner:env', [str(prefix / 'bin/python'), '-m', 'pip', 'install', '--no-deps', '--no-build-isolation', '-e', str(library)])
         status = subprocess.check_output(['git', '-C', str(library), 'status', '--porcelain'], text=True).strip()

@@ -131,9 +131,6 @@ svg.path==7.0
 sympy==1.14.0
 tabulate==0.10.0
 tifffile==2026.3.3
---find-links ./config/attentionbench/curobo-env/wheels/toppra-0.6.3-cp311-cp311-linux_x86_64.whl
---only-binary=toppra
-toppra==0.6.3 --hash=sha256:8f4e99665a78a7823263b7fbe0315375f0f6df872d0ee214625ebd289721b765
 torch==2.10.0
 tqdm==4.67.3
 traitlets==5.14.3

@@ -16,7 +16,7 @@
   "conda_explicit_sha256": "eeddc03544f47854333e46cfbd45616036a9dc04563f1b6b9a57e74dd46a2a77",
   "native_assets": "planner uses project robot/config assets; full ManiSkill scene_datasets only required for native scene path",
   "pip_requirements": "config/attentionbench/curobo-env/pip-requirements.txt",
-  "pip_requirements_sha256": "15ae397e901070817e633b62a3baa13856d11f1cf8c11840f3697d42a430ac90",
+  "pip_requirements_sha256": "c5fc3e0a0d49623dbe5f9d082cd51c24f69ffed681cb0aa75229be075abb0558",
   "toppra_wheel": "config/attentionbench/curobo-env/wheels/toppra-0.6.3-cp311-cp311-linux_x86_64.whl",
   "toppra_wheel_sha256": "8f4e99665a78a7823263b7fbe0315375f0f6df872d0ee214625ebd289721b765",
   "uv_requirements": "config/attentionbench/curobo-env/uv-requirements.txt",
