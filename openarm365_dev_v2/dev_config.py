@@ -136,7 +136,26 @@ def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planne
     return _source_settings(planner_source or dict(kind='dev-local',source_root=str(ROOT))) if budget_boundary=='dev_loop' and budget_tier=='dev' else None
 
 
-def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None,bimanual_collaboration='none'):
+def validate_test_fixture(spec):
+    if not isinstance(spec,dict) or spec.get('test_fixture') is not True or set(spec)-{'test_fixture','label','base_delta','object_poses'}:
+        raise ValueError('test_fixture requires true and only fixture initial-state fields')
+    if 'label' in spec and (not isinstance(spec['label'],str) or not spec['label'].strip()):raise ValueError('test_fixture label must be nonempty text')
+    delta=spec.get('base_delta',{})
+    if not isinstance(delta,dict) or set(delta)-{'forward','side'}:raise ValueError('test_fixture base_delta axes must be forward and side')
+    for value in delta.values():
+        if type(value) not in (int,float) or not math.isfinite(value) or abs(value)>1.:raise ValueError('test_fixture base_delta exceeds 1.0 m')
+    poses=spec.get('object_poses',{})
+    if not isinstance(poses,dict) or len(poses)>4:raise ValueError('test_fixture object_poses allows at most 4 objects')
+    for name,pose in poses.items():
+        if not isinstance(name,str) or not name or not isinstance(pose,list) or len(pose)!=7 or any(type(v) not in (int,float) or not math.isfinite(v) for v in pose):
+            raise ValueError('test_fixture object pose must be seven finite numbers')
+        if abs(math.sqrt(sum(v*v for v in pose[3:]))-1.)>1e-6:raise ValueError('test_fixture quaternion must be normalised')
+    return spec
+
+def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None,bimanual_collaboration='none',test_fixture=None):
+    if test_fixture is not None:
+        if budget_boundary!='dev_loop' or budget_tier!='dev':raise ValueError('test_fixture requires dev_loop boundary and dev tier')
+        validate_test_fixture(test_fixture)
     if task_id=='pick_place_counter_to_cabinet' and (budget_tier!='dev' or budget_boundary!='dev_loop'):
         raise ValueError('cabinet pick/place requires dev tier and dev_loop boundary')
     if planner_source is None and budget_tier=='dev' and budget_boundary=='dev_loop':
@@ -149,8 +168,10 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
         settings=from_config(settings.to_dict())
         if budget_tier!='dev' or budget_boundary!='dev_loop':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
     # The frozen constructor seals r4 only; legacy/r3 retain their exact bytes.
-    return _make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
+    c=_make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
         budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source,bimanual_collaboration=bimanual_collaboration)
+    if test_fixture is not None:c['test_fixture']=copy.deepcopy(test_fixture)
+    return c
 
 
 def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None,bimanual_collaboration='none'):
@@ -214,6 +235,13 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
     tier=c.get('budget_tier','legacy')
+    if 'test_fixture' in c:
+        # R5's fixture profile seals its own scene-reset seed; that is not the
+        # product's reproducible-reset selection or an experiment scene contract.
+        r5=c.get('execution_settings',{}).get('profile')==R5_FIXTURE_20261031.profile
+        if budget_boundary!='dev_loop' or c.get('runner_boundary')!='dev_loop' or tier!='dev' or c.get('mode')=='experiment' or ('scene_reset_seed' in c and not r5) or 'scene_contract' in c or c.get('reproducible_reset'):
+            raise ValueError('test_fixture requires dev_loop/dev without experiment or reproducible reset')
+        validate_test_fixture(c['test_fixture'])
     source=c.get('model_source','parcc')
     if source not in ('parcc','codex') or (source=='codex' and (tier!='dev' or budget_boundary=='formal')):raise ValueError('Codex model source requires dev tier')
     if 'planner_source' in c:_planner_source(c['planner_source'],tier,budget_boundary)
@@ -226,6 +254,7 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
     collaboration=c.get('bimanual_collaboration','none')
     if collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
     expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'),bimanual_collaboration=collaboration)
+    if 'test_fixture' in c:expected['test_fixture']=copy.deepcopy(c['test_fixture'])
     if 'bimanual_collaboration' in c:expected['bimanual_collaboration']=collaboration
     if source=='codex':expected['model_source']='codex'
     if 'dev_mode' in c:

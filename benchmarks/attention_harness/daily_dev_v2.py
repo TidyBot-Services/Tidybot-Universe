@@ -177,6 +177,8 @@ class DailyDevV2:
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('explicit selection and start required')
         selection=body['selection']
         if not isinstance(selection,dict):raise ValueError('bounded explicit experiment selection required')
+        if 'test_fixture' in selection or isinstance(selection.get('config'),dict) and 'test_fixture' in selection['config']:
+            raise ValueError('product run creation rejects test_fixture')
         if not selection.get('planner_features'):
             selection={k:v for k,v in selection.items() if k!='human_wait_seconds'}
         experiments.validate_selection_fields(selection)

@@ -18,6 +18,7 @@ MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
 ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','bimanual_collaboration','rules_profile'}|FIELDS
 def validate_selection_fields(selection):
+    if isinstance(selection,dict) and 'test_fixture' in selection:raise ValueError('product run creation rejects test_fixture')
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
 def validate_help_budget(help_budget):
     if type(help_budget) is not int or not 0<=help_budget<=10:raise ValueError('help budget must be 0–10')
@@ -262,6 +263,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])
     else:verify_lock(ref)
     configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier,execution_settings=settings,**planner_args,**({} if 'bimanual_collaboration' not in selection else dict(bimanual_collaboration=collaboration))) for t in tasks for s in seeds}
+    if any('test_fixture' in config for config in configs.values()):raise ValueError('product run creation rejects test_fixture')
     records={t:task_record(t) if fixture else get_task(t) for t in tasks}
     sources={t:{'source':Path(records[t].initial_policy).read_text(),'sha256':sha(records[t].initial_policy)} for t in tasks}
     demos={t:original['demos'][t] for t in tasks} if validation_origin is not None else {t:DemoProvider().freeze(t,**(dict(task_record=records[t],config=configs[f'{t}:{seeds[0]}']) if fixture else {})) for t in tasks}

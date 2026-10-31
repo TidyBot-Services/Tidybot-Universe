@@ -34,6 +34,8 @@ class FamilyProvisioner(Provisioner):
         record_experiment(self.state_root,key,eid)
         cell=experiment['cells'][0]
         config=read(experiment['manifest'])['configs'][f'{task.task_id}:{seed}']
+        from .memory_fixture_guard import fixture_reason
+        if fixture_reason(config):raise DevConflict('test_fixture_receipt_excluded_from_memory')
         # Every origin reference becomes transitive executor evidence when the
         # probe (and later its arms) is imported. Keep it with its owning cell,
         # including baselines supplied from outside any registered catalog.
@@ -58,5 +60,7 @@ class FamilyProvisioner(Provisioner):
         if pairs is None:return self.target_origin(note,target['seed'],target['contract'])
         probe=self.client.read('probe-'+str(target['seed']))
         e=probe['execution'];config=read(e['config'])
+        from .memory_fixture_guard import fixture_reason
+        if fixture_reason(config):raise DevConflict('test_fixture_receipt_excluded_from_memory')
         return dict(sealed=dict(manifest=e['manifest'],config=e['config'],source=e['source'],cell=e['cell'],version=e['version']),
                     context=e['context'],config=config,feedback=e['public_feedback'],signature=self.client.provenance(note['memory_id'])['failure_signature'],policy_id='full_trace_aware_attention_planner')

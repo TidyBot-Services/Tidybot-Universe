@@ -76,6 +76,10 @@ def main():
         if fixture_enabled(execution_settings):
             from .fixture_contract import validate_reset
             fixture_condition=validate_reset(env,c,execution_settings)
+        test_fixture_receipt=None
+        if 'test_fixture' in c:
+            from .test_fixture import apply_test_fixture
+            test_fixture_receipt=apply_test_fixture(env,c['test_fixture'])
         planner=MujocoV2Planner(env,evidence=args.evidence/'planner',deadline=args.deadline,cancel_check=stop.is_set,
             contact_exempt_objects=c['contact_exempt_objects'],planner_mode=c.get('planner_mode','plan'),
             ik_candidates=c.get('ik_candidates'),ik_max_joint_jump=c.get('ik_max_joint_jump'),
@@ -155,6 +159,7 @@ def main():
             physical_to_native=PHYSICAL_TO_NATIVE,identity=identity,rng_events=env.scene_rng_events,scene_reset_seed=c.get('scene_reset_seed'),initial_public_observation=observe(),
             execution_conditions=execution_conditions,scene_xml_sha256=hashlib.sha256(scene.encode()).hexdigest())
         reset_receipt.update(receipt_fields(execution_settings))
+        if test_fixture_receipt is not None:reset_receipt['test_fixture']=test_fixture_receipt
         if c.get('bimanual_collaboration') in ('c1','handoff'):reset_receipt['bimanual_collaboration']=c['bimanual_collaboration']
         if c.get('bimanual_collaboration')=='handoff':reset_receipt.update(executor.collaboration_receipt())
         if fixture_condition:reset_receipt['fixture_scene_condition']=fixture_condition
@@ -199,6 +204,7 @@ def main():
                         if c.get('scene_contract'):raise ValueError('matrix reset requires a new metered execution')
                         env.reset();validate_physical_model(env);configure_display_camera(env)
                         if fixture_enabled(execution_settings):validate_reset(env,c,execution_settings)
+                        if 'test_fixture' in c:apply_test_fixture(env,c['test_fixture'])
                         value={'initial_observation':observe(),'scene_state':capture_state(env),'rng_events':list(env.scene_rng_events)}
                     elif operation=='evaluate':
                         # Separate owner-only evidence, never a public SDK return.

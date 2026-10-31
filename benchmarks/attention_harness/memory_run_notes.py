@@ -57,6 +57,10 @@ def create(store, key, version, directory):
         help_path = directory / 'help.json'
         if cell.get('run_notes') is not True or not help_path.is_file():
             return None
+        from .memory_fixture_guard import fixture_reason
+        config_path=directory.parent / 'config.json'
+        if config_path.is_file() and fixture_reason(json.loads(config_path.read_bytes())):
+            raise NotStaged('test_fixture_receipt_excluded_from_memory')
         answer = json.loads(help_path.read_bytes())
         if version < 2:
             raise NotStaged('version_before_2')

@@ -126,6 +126,8 @@ def stage(store, key, version, directory, *, agent_help_evidence=None):
     from .dev_planner_memory import memory_scope
     cell = store.cell(key)
     config = json.loads((directory.parent / 'config.json').read_bytes())
+    from .memory_fixture_guard import fixture_reason
+    if fixture_reason(config):raise NotStaged('test_fixture_receipt_excluded_from_memory')
     if memory_scope(config, cell.get('mode', 'experiment'))['level'] != 'scene':
         raise NotStaged('no_scene_contract')
     origin_dir = directory.parent / f'v{version - 1}'

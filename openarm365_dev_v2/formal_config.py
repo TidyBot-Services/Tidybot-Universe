@@ -67,6 +67,7 @@ def reject_dev_local(c):
 
 
 def validate_formal_config(c, *, expected_source_root=None):
+    if isinstance(c,dict) and 'test_fixture' in c:raise ValueError('formal boundary rejects test_fixture')
     if not isinstance(c, dict) or c.get('schema_version') != SCHEMA:
         raise ValueError('OpenArm365 formal configuration required')
     reject_dev_local(c)

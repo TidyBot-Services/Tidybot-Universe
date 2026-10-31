@@ -71,6 +71,8 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     with store.tx() as db:e=store.get(db,'experiments',c['experiment_id'])
     config_ref={'uri':str(Path(c['artifact_dir'])/'config.json')}
     config_ref['sha256']=sha(config_ref['uri']);config=json.loads(checked(config_ref).read_bytes())
+    from .memory_fixture_guard import refuse_import
+    refuse_import(store,cell,version,config)
     if c.get('dev_mode')=='agent':
         manifest=json.loads(checked(e['manifest']).read_bytes())
         if agent_validation:
@@ -116,6 +118,7 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         descriptor.update(execute_job_id=j['job_id'])
         if 'model' in jobs:descriptor['model_job_id']=jobs['model']['job_id']
         bundle=json.loads(checked(j['receipt']['bundle']).read_bytes());episode=Path(bundle['artifact_dir'])
+        refuse_import(store,cell,version,config,episode,bundle)
         if import_purpose is not None:descriptor['import_purpose']=import_purpose
         scope=binding(cell,version,checked(v['source']).read_text(),config)
         if c.get('dev_mode')=='agent':
