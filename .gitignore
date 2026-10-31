@@ -272,3 +272,7 @@ skill-agent-setup/claude-code/docs/
 !/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/body/collision/body_link0_symp.stl
 !/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/body/visual/body_link0.dae
 !/openarm_phase0_recheck/model/NOTICE.md
+!/openarm_phase0_recheck/model/compat_v6/openarm_left_link5.stl
+!/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link3_symp.stl
+!/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link4_symp.stl
+!/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link5_symp.stl

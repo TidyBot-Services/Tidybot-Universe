@@ -1,0 +1,281 @@
+{
+  "frozen_at_utc": "2026-10-08T15:28:42.555531+00:00",
+  "deadline_utc": "2026-10-08T16:16:16Z",
+  "api_version": "openarm-http/1.0",
+  "bind": "127.0.0.1",
+  "engine": "SAPIEN 3.0.3 / PhysX CPU, Vulkan llvmpipe; no engine change",
+  "model_version": "compat_v6",
+  "model_urdf_sha256": "ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456",
+  "implementation_lock_sha256": "5dcfff0b75e71508b8841d57825e54309841bbc0042d12094daf5dd459131911",
+  "phase0_gate_sha256": "62871516239b133e0e9c5d9be2c9d0117f83083429cc190ce5ff715704f27de4",
+  "phase0_config_sha256": "b229ee08e2fd46959447101ca7aec618f5e9bcc4ddf249b52ec95c38d8918cbb",
+  "rig_source_sha256": "a4c6304f39fce642a053e3ee648e2af67a089f1a511b524e92b40d0e35183398",
+  "python": "3.11.15",
+  "dependencies": {
+    "sapien": "3.0.3",
+    "mani_skill": "3.0.0b22",
+    "numpy": "1.26.4",
+    "torch": "2.10.0",
+    "trimesh": "4.11.3",
+    "Pillow": "12.1.1"
+  },
+  "physics": {
+    "dt": 0.004166666666666667,
+    "gravity": [
+      0,
+      0,
+      -9.81
+    ],
+    "solver_position_iterations": 32,
+    "solver_velocity_iterations": 8,
+    "root_fixed": true,
+    "gravity_compensation": true,
+    "self_collision": true,
+    "extra_disabled_pairs": [],
+    "automatic_exception": "PhysX immediate parent-child articulation links; list every pair in model_audit.json"
+  },
+  "controller": {
+    "arm_stiffness": 300,
+    "arm_damping": 30,
+    "finger_stiffness": 2000,
+    "finger_damping": 50,
+    "mode": "force",
+    "effort_limit": "official URDF limits",
+    "target_slew_arm_rad_s": 0.5,
+    "target_slew_finger_m_s": 0.02,
+    "mimic": "native SAPIEN loader fixed tendon; follower has zero drive stiffness, validate actual relation"
+  },
+  "initial": {
+    "left": [
+      -0.4,
+      -0.8,
+      0,
+      0.8,
+      0,
+      0,
+      0
+    ],
+    "right": [
+      0.4,
+      0.8,
+      0,
+      0.8,
+      0,
+      0,
+      0
+    ],
+    "left_gripper": 0.02,
+    "right_gripper": 0.02,
+    "root_pose": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  "camera": {
+    "width": 640,
+    "height": 480,
+    "fovy_rad": 1.0471975511965976,
+    "near_m": 0.05,
+    "far_m": 5.0,
+    "position": [
+      2.0,
+      0.0,
+      1.0
+    ],
+    "look_at": [
+      0,
+      0,
+      0.7
+    ],
+    "calibration_box_center": [
+      0.4,
+      0,
+      1.0
+    ],
+    "calibration_box_half_size": [
+      0.05,
+      0.15,
+      0.15
+    ],
+    "known_points": "front face grid, at least 5 points",
+    "min_foreground_fraction": 0.01,
+    "rgb_range": [
+      0,
+      1
+    ],
+    "depth": "-Position.z in OpenGL camera, meters; background masked by Position.w<1; optical frame x right,y down,z forward; SAPIEN x forward,y left,z up",
+    "fallback": "same SAPIEN renderer through Mesa Vulkan software permitted; changing engine or robot structure requires report first"
+  },
+  "tolerances": {
+    "arm_position_rad": 0.03,
+    "finger_position_m": 0.001,
+    "arm_final_velocity_rad_s": 0.05,
+    "finger_final_velocity_m_s": 0.005,
+    "held_arm_position_rad": 0.01,
+    "held_finger_position_m": 0.0005,
+    "mimic_error_m": 0.001,
+    "arm_limit_slack_rad": 0.001,
+    "finger_limit_slack_m": 0.0001,
+    "repeat_arm_position_rad": 0.002,
+    "repeat_finger_position_m": 0.0002,
+    "root_pose_abs": 1e-06,
+    "fk_position_m": 1e-05,
+    "fk_rotation_matrix_abs": 1e-05,
+    "axis_norm_abs": 1e-06,
+    "camera_depth_m": 0.01,
+    "camera_world_point_m": 0.015,
+    "camera_pixel_reprojection_px": 1.5,
+    "mesh_bbox_abs_m": 1e-05,
+    "mass_relative": 1e-05,
+    "inertia_relative": 0.0001
+  },
+  "actions": [
+    {
+      "name": "settle",
+      "steps": 480
+    },
+    {
+      "name": "left_only",
+      "steps": 720,
+      "left": [
+        -0.65,
+        -1.0,
+        0.2,
+        1.05,
+        0.15,
+        0.1,
+        -0.15
+      ]
+    },
+    {
+      "name": "right_only",
+      "steps": 720,
+      "right": [
+        0.65,
+        1.0,
+        -0.2,
+        1.05,
+        -0.15,
+        -0.1,
+        0.15
+      ]
+    },
+    {
+      "name": "left_gripper",
+      "steps": 720,
+      "left_gripper": 0.005
+    },
+    {
+      "name": "right_gripper",
+      "steps": 720,
+      "right_gripper": 0.04
+    },
+    {
+      "name": "joint_target",
+      "steps": 720,
+      "left": [
+        -0.3,
+        -0.65,
+        -0.15,
+        0.7,
+        -0.1,
+        -0.1,
+        0.1
+      ],
+      "right": [
+        0.3,
+        0.65,
+        0.15,
+        0.7,
+        0.1,
+        0.1,
+        -0.1
+      ],
+      "left_gripper": 0.035,
+      "right_gripper": 0.01
+    }
+  ],
+  "interface": {
+    "GET /health": "ready/error, API and model version, actual DOF counts, PID and physical step counters",
+    "GET /model": "actual loaded joint order, joint types, dimensions, axis/limits, effort and mimic relationships",
+    "GET /state": "left/right arm qpos/qvel/goal/drive target and independent left/right gripper driver/follower in meters; actual full 18-DOF vectors; epoch and current action",
+    "POST /reset": "empty object; priority barrier cancels old actions and stale queued targets; reinitializes model state, epoch increases; counters record actual steps",
+    "POST /actions": "nonempty subset left[7], right[7], left_gripper scalar, right_gripper scalar; optional epoch; radians for arms, meters per finger travel for grippers; unspecified side keeps previous GOAL; slew limits inherited; immediate 202 then asynchronous actual physics for 720 steps",
+    "GET /actions/{id}": "queued/running/completed/failed/stopped/canceled_reset/superseded; epochs, targets, actual steps and errors",
+    "POST /stop": "empty object; priority barrier cancels current and pre-barrier queued actions; goal/drive target becomes current bounded qpos, physics continues holding; epoch increases",
+    "GET /observation": "application/x-npz; RGB float32 [0,1], depth_m float32 optical Z meters, valid_depth mask, K, camera matrices, raw Position/Segmentation, frame step/epoch",
+    "GET /collisions": "actual current contact bodies/points/normals/negative separation/impulses; no global self collision disable"
+  },
+  "request_policy": {
+    "strict_json": true,
+    "reject_nonfinite": true,
+    "reject_boolean_numbers": true,
+    "reject_out_of_bounds": true,
+    "reject_wrong_dimension": true,
+    "reject_unknown_fields": true,
+    "error_schema": "{error:{code,message},epoch}",
+    "invalid_http_status": 400,
+    "stale_epoch_http_status": 409,
+    "unknown_action_http_status": 404,
+    "server_error_http_status": 503,
+    "max_body_bytes": 65536,
+    "handler_timeout_seconds": 10
+  },
+  "execution": {
+    "step_dt_seconds": 0.004166666666666667,
+    "cadence": "240 Hz wall-clock target; no realtime throughput claim",
+    "action_steps": 720,
+    "completion": "after actual 720 steps require arm/finger convergence AND final velocities within original Phase 0 tolerances; otherwise failed",
+    "stop_reset": "responses only after simulation thread commits barrier; previous epoch cannot modify later targets",
+    "threading": "HTTP handler threads enqueue; single simulation thread owns SAPIEN",
+    "observation_physics_consistency": "single-owner capture at stated step; queries do not set qpos",
+    "lifecycle": "supervisor owns process group; TERM wait 5s then KILL; startup 30s; each client run timeout 180s; SIGTERM graceful shutdown"
+  },
+  "tests": {
+    "independent_service_starts": 3,
+    "independent_resets_min_per_start": 1,
+    "physical_steps_min_per_start": 200,
+    "baseline_sequence": "480 settle then original five 720-step commands, >=4080 actual steps per start",
+    "per_start_required": [
+      "health/model actual DOF",
+      "reset",
+      "left arm only convergence/right hold",
+      "right arm only convergence/left hold",
+      "left gripper only/right hold",
+      "right gripper only/left hold",
+      "joint target",
+      "mimic every reported phase and full trajectory",
+      "RGB-D/K/pose with 5 known points per observation",
+      "collision known overlap and separated control via real simulation startup probes + HTTP reporting",
+      "invalid finite/bounds/dimension requests leave epoch/goal/action unchanged",
+      "stop in executing action then 240-step hold and no old command",
+      "reset in executing action cancels old epoch then 240-step hold"
+    ],
+    "lifecycle_extra": [
+      "unhandled native-process exception injection and reap",
+      "supervisor timeout with process-group reap",
+      "normal TERM reap"
+    ],
+    "client": "real urllib HTTP to independently spawned local service, no mocks",
+    "freeze_rule": "No tolerance/count/action relaxation; preserve failures and fully rerun after fixes"
+  },
+  "evidence_root": "evidence/",
+  "scope_excludes": [
+    "Panda",
+    "SDK",
+    "formal Runner",
+    "M1-M6 conclusions",
+    "frozen experimental packages",
+    "AttentionBench integration",
+    "Advisor/Memory",
+    "collaborative tasks",
+    "base",
+    "hardware",
+    "Phase 2"
+  ]
+}
