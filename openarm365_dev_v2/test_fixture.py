@@ -53,6 +53,7 @@ def apply_test_fixture(env, spec):
         action[start:end] = sim.data.qpos[ctrl.qpos_index]
     for _ in range(SETTLE_STEPS):
         env.step(action)
+    sim.forward()  # mj_step leaves body poses one integration behind qpos; the planner's FK alignment reads both
     base_after = np.asarray(sim.data.qpos[base_indices], dtype=float).copy()
     base_drift = np.abs(base_after-base_target)
     objects = {}
