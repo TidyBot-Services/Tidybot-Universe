@@ -24,7 +24,8 @@ def run(library, lock_path, requests, output):
     if library != Path(lock['library_root']).resolve():
         raise ValueError('Official cuRobo source differs from the d06 lock')
     sys.path.insert(0, str(project))
-    sys.path.insert(0, str(library))
+    # cuRobo is found through its editable install, as in the real service. Putting the checkout on
+    # sys.path would also expose its build-time egg-info as a second nvidia-curobo distribution.
     import curobo
     if Path(curobo.__file__).resolve() != library / 'curobo/__init__.py':
         raise ValueError('Official cuRobo import resolved outside the built checkout')
