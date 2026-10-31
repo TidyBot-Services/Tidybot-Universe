@@ -278,8 +278,26 @@ def test_registered_serialization_unchanged(base,monkeypatch,tmp_path,profile):
     d=config_environment(base,monkeypatch);prior=baseline('openarm365_dev_v2/dev_config.py')
     for name in ('ROOT','SIM_PYTHON','ASSETS','LOCK','LOCK_SHA','ROBocasa','ROBOSUITE','model_sources','sha'):setattr(prior,name,getattr(d,name))
     paths=[tmp_path/'before.json',tmp_path/'after.json']
+    verifier_path=d.ROOT/'benchmarks/attention_harness/memory_agent_validation.py'
+    verifier_path.parent.mkdir(parents=True,exist_ok=True)
+    verifier_path.write_bytes((Path(__file__).resolve().parents[3]/verifier_path.relative_to(d.ROOT)).read_bytes())
     prior.make_lock(paths[0],execution_settings=old);d.make_lock(paths[1],execution_settings=new)
-    assert paths[0].read_bytes()==paths[1].read_bytes()
+    before_raw,after_raw=(p.read_bytes() for p in paths)
+    before_lock,after_lock=json.loads(before_raw),json.loads(after_raw)
+    verifier=str(verifier_path.absolute())
+    assert verifier not in before_lock['files']
+    assert set(after_lock['files'])-set(before_lock['files'])=={verifier}
+    assert after_raw==json.dumps(after_lock,sort_keys=True,indent=2).encode()
+    assert after_lock['files'].pop(verifier)==hashlib.sha256(Path(verifier).read_bytes()).hexdigest()
+    for folder,names in after_lock['source_sets'].items():
+        if Path(verifier).is_relative_to(Path(folder)):
+            assert verifier not in before_lock['source_sets'][folder]
+            assert names.count(verifier)==1
+            names.remove(verifier)
+        else:
+            assert verifier not in names
+    assert before_lock==after_lock
+    assert before_raw==json.dumps(after_lock,sort_keys=True,indent=2).encode()
     ref={'path':'fixture','sha256':'fixture'}
     prior.verify_lock=lambda *a,**kw:None;monkeypatch.setattr(d,'verify_lock',prior.verify_lock)
     kw={} if profile else {'budget_tier':'legacy'}
