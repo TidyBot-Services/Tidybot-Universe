@@ -10,6 +10,9 @@ import uuid
 
 SOURCE_LIMIT = 128 * 1024
 REQUEST_LIMIT = 64 * 1024
+# Dev-tier physics logs already reach 62 MiB at 9,600 control steps. Allow
+# substantial headroom for logs/recordings, but bound per-file hashing work.
+PUBLIC_EVIDENCE_LIMIT = 1024 * 1024 * 1024
 DIRS = ('docs', 'history', 'versions', 'executions', 'probes', 'events',
         'rpc/requests', 'rpc/responses', 'work', 'scratch')
 # Frames are stored once: canonical, ws and Eval share one 0444 inode. This is safe
@@ -74,6 +77,42 @@ def read_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
                     or (before.st_mtime_ns, before.st_ctime_ns) != (after.st_mtime_ns, after.st_ctime_ns)):
                 raise ValueError('file_changed_or_oversize')
             return bytes(data)
+        finally: os.close(fd)
+    finally: os.close(parent)
+
+
+def digest_beneath(root, name, limit=PUBLIC_EVIDENCE_LIMIT, *, shared=False):
+    """SHA-256 with read_beneath's safety rules and constant-size read buffers.
+
+    The 1 GiB default is for trusted Dev-tier public execution evidence, not
+    authored source or requests. Oversize files have a distinct diagnostic.
+    """
+    components = parts(name)
+    parent = directory(root, components[:-1])
+    try:
+        fd = os.open(components[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        try:
+            before = os.fstat(fd)
+            linked = shared and not before.st_mode & 0o222
+            if not stat.S_ISREG(before.st_mode) or (before.st_nlink != 1 and not linked):
+                raise ValueError('unsafe_file')
+            if before.st_size > limit:
+                raise ValueError(f'oversize_file:{name}:{before.st_size}')
+            digest = hashlib.sha256()
+            size = 0
+            while size <= limit:
+                chunk = os.read(fd, min(65536, limit + 1 - size))
+                if not chunk: break
+                size += len(chunk)
+                digest.update(chunk)
+            after = os.fstat(fd)
+            if (before.st_size != size or after.st_size != size
+                    or (after.st_nlink != 1 and not (shared and not after.st_mode & 0o222))
+                    or (before.st_mtime_ns, before.st_ctime_ns) != (after.st_mtime_ns, after.st_ctime_ns)):
+                raise ValueError('file_changed_or_oversize')
+            if size > limit:
+                raise ValueError(f'oversize_file:{name}:{size}')
+            return digest.hexdigest()
         finally: os.close(fd)
     finally: os.close(parent)
 

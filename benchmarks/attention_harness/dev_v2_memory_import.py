@@ -5,7 +5,6 @@ invent an independent verdict, register catalogs, promote, or edit an authority.
 The operator provisions the resulting catalog before authenticated HTTP import.
 """
 import argparse
-import hashlib
 import json
 import os
 import sqlite3
@@ -161,13 +160,19 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     descriptor_ref=immutable(out/'descriptor.json',descriptor)
     files={};symlinks={};visited=set()
     def pin(path,expected=None):
-        p=Path(path)
+        p=Path(path);actual=None;public_state=False
         if not p.is_absolute():
             if c.get('dev_mode')!='agent':raise ValueError('only original absolute evidence paths are pinned')
-            from .dev_agent_workspace import read_beneath
+            from .dev_agent_workspace import digest_beneath
             base=Path(c['artifact_dir'])/'agent/private/public'
-            data=read_beneath(base,str(p),32*1024*1024,shared=True)
-            if hashlib.sha256(data).hexdigest()!=expected:raise DevConflict('agent public evidence digest drift')
+            actual=digest_beneath(base,str(p),shared=True)
+            if actual!=expected:raise DevConflict('agent public evidence digest drift')
+            # Broker._execution publishes numeric physics samples here, not a
+            # reference container (dev_agent_adapters.Executor). Do not re-read
+            # the large log into memory while walking metadata references.
+            public_state=(len(p.parts)==3 and p.parts[0]=='executions'
+                and p.parts[1].startswith('e') and p.parts[1][1:].isdigit()
+                and p.parts[2]=='state_log.json')
             p=base/p
         # This registered contract is sealed in a source or separate contract
         # catalog. Only exact locked source files may use source catalogs.
@@ -201,14 +206,14 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
                     if sha(p)!=expected:raise DevConflict('source evidence digest drift: '+str(p))
                     return
         if not p.is_relative_to(root) or not p.resolve().is_relative_to(root):raise ValueError('catalog root must contain only explicitly pinned evidence: '+str(p))
-        actual=sha(p)
+        if actual is None:actual=sha(p)
         if expected and actual!=expected:raise DevConflict('source evidence digest drift: '+str(p))
         files[str(p.relative_to(root))]=actual
         if any(q.is_symlink() for q in (*p.parents,p)):
             symlinks[str(p.relative_to(root))]=str(p.resolve().relative_to(root));pin(p.resolve(),actual)
         if p in visited:return
         visited.add(p)
-        if p.suffix=='.json':walk(json.loads(p.read_bytes()))
+        if p.suffix=='.json' and not public_state:walk(json.loads(p.read_bytes()))
     def walk(value):
         if isinstance(value,dict):
             if 'sha256' in value and ('uri' in value or 'path' in value):pin(value.get('uri',value.get('path')),value['sha256'])
