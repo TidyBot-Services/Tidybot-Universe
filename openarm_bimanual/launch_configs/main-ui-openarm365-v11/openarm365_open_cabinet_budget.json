@@ -1,0 +1,17 @@
+{
+  "approved_config_sha256s": [
+    "afed9ab69a28641c3325c22c6925d3cbdd6c5d1b8f4aac4210a84a1374b41b10"
+  ],
+  "approved_policy_sha256": "f40d94a888a37a91753f44be86ef865e53eefa4eac58fe219d002b44aaa09ad5",
+  "assistance_credits": 0,
+  "attempt_wall_seconds": 420,
+  "formal_eligible": false,
+  "human_deadline_seconds": 30,
+  "max_attempts": 1,
+  "overall_deadline_seconds": 540,
+  "schema_version": "attentionbench.openarm365-run-budget.v1",
+  "suite": "robocasa365",
+  "task_id": "open_cabinet",
+  "token_limit": 0,
+  "whole_case_wall_seconds": 540
+}

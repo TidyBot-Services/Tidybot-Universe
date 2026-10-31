@@ -1,0 +1,41 @@
+{
+  "asset_manifest_sha256": "0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330",
+  "attempt_wall_seconds": 120,
+  "camera_height": 128,
+  "camera_names": [
+    "robot0_agentview_left",
+    "robot0_eye_in_hand"
+  ],
+  "camera_width": 128,
+  "control_freq": 20,
+  "controller": "HYBRID_MOBILE_BASE",
+  "formal_eligible": false,
+  "generative_textures": null,
+  "horizon": 100,
+  "layout_id": 11,
+  "obj_instance_split": "pretrain",
+  "object_set_id": "robocasa365:pretrain:0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330",
+  "official_env": "PickPlaceCounterToSink",
+  "perception_mode": "sim_gt",
+  "randomize_cameras": false,
+  "robocasa_commit": "456174f62b89b8fca99eaaf33949c29fec9cfc2a",
+  "robosuite_commit": "5ce6643f3092639d08f7b0f90ed1c6a84f50552c",
+  "robot": "PandaOmron",
+  "safety_limits": {
+    "max_arm_delta_m": 0.05,
+    "max_arm_rotation_rad": 0.5,
+    "max_normalized_command": 1.0,
+    "max_observed_base_step_m": 0.1,
+    "max_observed_eef_step_m": 0.25
+  },
+  "scene_id": "robocasa365:layout11:style34",
+  "schema_version": "attentionbench.robocasa365-config.v1",
+  "sdk_call_limit": 40,
+  "seed": 101,
+  "split": null,
+  "style_id": 34,
+  "suite": "robocasa365",
+  "task_id": "pick_place_counter_to_sink",
+  "task_prompt": "Pick the object from the counter and place it in the sink.",
+  "whole_case_wall_seconds": 300
+}

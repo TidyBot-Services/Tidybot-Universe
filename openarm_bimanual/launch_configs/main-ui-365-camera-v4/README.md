@@ -1,0 +1,25 @@
+# Primary daily UI: RoboCasa365 public RGB camera
+
+Both approved RoboCasa365 tasks now publish a run/attempt-bound RGB preview from the executor's existing, identity- and receipt-verified public observations. No extra Service requests, simulator steps, control calls, owner/public credentials, or camera/model changes are introduced. Frames retain the approved native 128×128 resolution. MuJoCo bottom-up image rows are corrected for display; historical PNG files and their hashes are unchanged.
+
+Preview packets are atomic and latest-only. Repeated observations with the same physical sequence retain their original capture age. The UI reads the local packet without contacting the authenticated Service. Capture errors are recorded separately from policy/native results; execution end/cancel/deadline ends the preview before process cleanup. Initial/final evidence remains available; this change does not add continuous video or reconstruct missing footage.
+
+Historical RoboCasa365 runs without a station file can show their existing latest-attempt final (or initial) PNG in Current view after Advisor visibility and content SHA checks. The UI labels it as a saved static frame. It never borrows an earlier attempt or another run, modifies an old run, or claims that a saved frame is live.
+
+Source identities for the other 11 task/robot profiles are refreshed in independent bindings and source-only configuration/DAG clones, including the existing sidebar presentation changes. Models, physics, control, task policy, safety thresholds and old approved packages remain unchanged. The existing daily budget remains **10 attempts / 9 assistance credits / 8000 tokens / human 30s / attempt 120s / whole-case 300s**, with the same v2 budget SHA. This is engineering work (`formal_eligible=false`).
+
+Red/green tests, full regressions, preserved original run, independent real simulator smoke runs, live/ended HTTP preview evidence and cleanup receipts are under `outputs/robocasa365-camera-20261010/`. Real smoke runs execute the original approved SDK policy; native task outcomes are reported independently and are not task capability acceptance.
+
+# Primary daily UI: 10 attempts and 9 assistance credits
+
+New run → Benchmark → RoboCasa365 publishes both existing tasks with **Maximum attempts 1–10, default 10** and **Assistance credits 0–9, default 9**. UI limits, backend admission, CLI entry snapshots and Runner scheduling share the approved v2 run budget. A tenth assistance credit or eleventh attempt is rejected before dispatch. Earlier manifests keep their limits: Phase 1 without a manifest remains 2 attempts / 1 credit; v1 remains 10 attempts / 1 credit. Historical budgets are never rewritten.
+
+Other limits remain unchanged: 8,000 tokens, 30 seconds per human reply, 120 seconds per attempt and 300 seconds for the whole case. These are upper bounds; success, stop, deadline and resource exhaustion can end a run earlier. Nine credits permit help before the nine retries; policy decisions and available time determine actual use. Increasing credits does not change submission/adoption semantics or guarantee task success.
+
+Random escalation has a SHA-approved preregistration for every selectable attempts/credits pair (100 pairs). `total_failure_slots = attempts - 1` and `target_request_count = min(credits, attempts - 1)`, with seed 101. All plans are validated at catalog load, the selected bytes are rechecked at launch, and their digest is locked into the entry. A zero-credit selection registers zero help requests. No plan changes after seeing outcomes. Retry K remains k=1.
+
+The new v2 budget is bound to the original two simulator configurations and approved SDK policy, copied into the CLI entry snapshot, and recorded by digest in launch, entry lock and scheduler configuration. The independent simulator environment, physics/controller/model/task/safety parameters and approved action policy are unchanged. The other 11 task/robot choices receive fresh source identities and source-only configuration/DAG clones where needed; original packages, configurations, graphs, bindings and historical evidence remain intact. The mutable daily pointer selects this catalog and retains its prior pointer as provenance.
+
+This is an engineering budget update (`formal_eligible=false`). Tests use explicit runner/Advisor fixtures to verify 10 attempts and 9 help opportunities; those are not physical task executions or human replies. No new native task success or formal experimental acceptance is claimed. Red/green, full regressions, history/preservation checks and actual browser evidence are in `outputs/robocasa365-help9-20261010/`.
+
+The v4 source identities include the concurrently completed Policy controller sidebar styling. v3 remains archived as a candidate whose source hashes drifted during validation. The two RoboCasa365 simulator/policy/budget profiles are otherwise identical; real preview probes used those same approved identities.

@@ -1,5 +1,4 @@
 """Read-only cross-epoch diagnostic identity; ordinary execution stays strict."""
-from benchmarks.attention_harness.workspace_paths import get
 import json,subprocess,os,shutil
 from pathlib import Path
 import pytest
@@ -21,11 +20,10 @@ def original_epoch(tmp_path_factory):
   destination=main/source.relative_to(ROOT)
   if not destination.exists():destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,destination)
  from openarm365_dev_v2.dev_config import model_sources
- native=get('repo.native_tree')
  for source in model_sources():
   source=Path(source)
-  if source.is_relative_to(native):
-   destination=main/source.relative_to(native);destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,destination)
+  if source.is_relative_to(ROOT):
+   destination=main/source.relative_to(ROOT);destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,destination)
 
  # The original diagnostic epoch predates r3 and retains its legacy lock.
  code='from openarm365_dev_v2.dev_config import make_lock,make_dev_config;import json,sys;from pathlib import Path;p=Path(sys.argv[1]);ref=make_lock(p/"lock.json");(p/"config.json").write_text(json.dumps(make_dev_config("open_cabinet",101,ref,budget_tier="legacy")))'

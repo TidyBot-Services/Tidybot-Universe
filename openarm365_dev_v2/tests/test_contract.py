@@ -1,4 +1,3 @@
-from benchmarks.attention_harness.workspace_paths import get_str
 import copy,json
 import hashlib
 from pathlib import Path
@@ -53,18 +52,12 @@ def test_tampering(lock,key,value):
 def test_incomplete_registration():
     with pytest.raises(ValueError):dev_tasks.register_dev_task({})
     with pytest.raises(ValueError):dev_tasks.register_dev_task(dev_tasks.DevTask('open_cabinet','wrong','x','none'))
-def test_old_freeze_unchanged():
+def test_legacy_config_rejects_refrozen_model():
     from openarm365_dev.config import validate_config,make_config
-    from benchmarks.attention_harness.dev_openarm_profile import lock_profile
     validate_config(make_config())
-    # Historical frozen profile contains main-tree absolute integration paths;
-    # its read-only regression runs there, not through a runtime fallback.
-    import subprocess,os
-    tree=get_str('repo.native_tree')
-    env=dict(os.environ,PYTHONPATH=tree,PYTHONDONTWRITEBYTECODE='1')
-    result=subprocess.check_output([str(dev_config.SIM_PYTHON),'-B','-c',
-        "from benchmarks.attention_harness.dev_openarm_profile import lock_profile;print(lock_profile()['config_sha256'])"],cwd=tree,env=env,text=True)
-    assert result.strip()=='27e7bd9156e10a359d255ab6dca5c827fe18a68bcaad452ca3a2a1d94a47ff42' 
+    old=dev_config.ROOT/'openarm365_dev/configs/dev_counter_sink_seed101.json'
+    with pytest.raises(ValueError,match='frozen configuration mismatch'):
+        validate_config(json.loads(old.read_text()))
 def test_owner_launch(tmp_path):
     from openarm365_dev_v2.owner import NativeOwnerV2
     owner=NativeOwnerV2(python='python',config=tmp_path/'config',evidence=tmp_path,deadline=100,cancel_check=lambda:False)
@@ -87,13 +80,15 @@ def test_transitive_native_model_identity(lock):
 
 def test_native_model_copy_tampering_rejected(tmp_path):
     from openarm365_dev_v2.dev_config import model_sources,sha
-    original_root=tmp_path/'original';copy_root=tmp_path/'copy';relative=Path('openarm365/model/robot.xml')
-    original=original_root/relative;copied=copy_root/relative
-    for p in [original,copied]:p.parent.mkdir(parents=True,exist_ok=True);p.write_text('unchanged model')
-    identity=tmp_path/'identity.json';identity.write_text(json.dumps({'sources':{str(original):sha(original)}}))
-    assert len(model_sources(identity,original_root,copy_root))==2
+    relative=Path('openarm365/model/robot.xml');copied=tmp_path/relative
+    copied.parent.mkdir(parents=True,exist_ok=True);copied.write_text('unchanged model')
+    identity=tmp_path/'identity.json';identity.write_text(json.dumps({'sources':{relative.as_posix():sha(copied)}}))
+    assert model_sources(identity,runtime_root=tmp_path)=={str(copied):sha(copied)}
+    identity.write_text(json.dumps({'sources':{str(copied):sha(copied)}}))
+    with pytest.raises(ValueError,match='repository-relative'):model_sources(identity,runtime_root=tmp_path)
+    identity.write_text(json.dumps({'sources':{relative.as_posix():sha(copied)}}))
     copied.write_text('tampered geometry')
-    with pytest.raises(ValueError,match='native robot model identity drift'):model_sources(identity,original_root,copy_root)
+    with pytest.raises(ValueError,match='native robot model identity drift'):model_sources(identity,runtime_root=tmp_path)
 
 
 @pytest.fixture(autouse=True)

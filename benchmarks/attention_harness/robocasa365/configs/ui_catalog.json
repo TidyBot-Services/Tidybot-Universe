@@ -1,0 +1,43 @@
+{
+  "schema_version": "attentionbench.robocasa365-dev-catalog.v1",
+  "profiles": [
+    {
+      "id": "robocasa365-pick_place_counter_to_sink-dev101",
+      "suite": "robocasa365",
+      "task": "pick_place_counter_to_sink",
+      "execution_target": "robocasa365_sim",
+      "code": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/policy_smoke.py",
+      "approved_policy_sha256": "654032d40d9c2bda7e3c0b2d7dc935a30e6a91940cece7e57a6827e1140dca46",
+      "config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/pick_place_counter_to_sink_seed101.json",
+      "approved_config_sha256": "fa7a1e515b7c45ee9c72e4c5bc931b22d4b278b6718b69fa3b2838ec3db6dfb6",
+      "service_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/robocasa365_sim",
+      "sim_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa",
+      "task_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite",
+      "sim_python": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python",
+      "asset_manifest": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json",
+      "demo_prior": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/pick_place_counter_to_sink_demo.json",
+      "approved_demo_sha256": "36c8b73658b01183e559a46774d5309ba9f9a26e2ec204a109081fb291478636",
+      "random_policy_config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/random_prereg.json",
+      "approved_random_policy_config_sha256": "db1b2460a8de0fc4639e57b5de4b03aba8417f5f0a1141614936b1c3c6579303"
+    },
+    {
+      "id": "robocasa365-open_cabinet-dev101",
+      "suite": "robocasa365",
+      "task": "open_cabinet",
+      "execution_target": "robocasa365_sim",
+      "code": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/policy_smoke.py",
+      "approved_policy_sha256": "654032d40d9c2bda7e3c0b2d7dc935a30e6a91940cece7e57a6827e1140dca46",
+      "config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/open_cabinet_seed101.json",
+      "approved_config_sha256": "a422d3b569ecffa9ff8b786379c9d4a95a67ca79697e5a385e0f769bde34c989",
+      "service_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/robocasa365_sim",
+      "sim_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa",
+      "task_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite",
+      "sim_python": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python",
+      "asset_manifest": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json",
+      "demo_prior": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/open_cabinet_demo.json",
+      "approved_demo_sha256": "735dea0e090cef6a0ffa5d1ef2a78a518ec176b3357008c9ace77fd479cfc51a",
+      "random_policy_config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/random_prereg.json",
+      "approved_random_policy_config_sha256": "db1b2460a8de0fc4639e57b5de4b03aba8417f5f0a1141614936b1c3c6579303"
+    }
+  ]
+}

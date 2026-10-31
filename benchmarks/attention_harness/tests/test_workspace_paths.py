@@ -80,14 +80,13 @@ def test_author_registry_reproduces_previous_values(tmp_path, monkeypatch):
         'sim.robocasa_root': codex/'2026-10-09/new-chat/work/upstream/robocasa',
         'sim.robosuite_root': codex/'2026-10-09/new-chat/work/upstream/robosuite',
         'sim.assets_manifest': codex/'2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json',
-        'sim.configs_dir': codex/'2026-10-09/new-chat/outputs/robocasa365/configs',
+        'sim.configs_dir': workspace/'development/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/configs',
         'sim.delivery_root': codex/'2026-10-09/new-chat/outputs/robocasa365',
         'sim.legacy_python': home/'miniconda3/envs/maniskill/bin/python',
         'sim.legacy_bin': home/'miniconda3/envs/maniskill/bin',
         'sim.legacy_tasks': home/'文档/Tidybot-Universe/sims/robocasa_tasks',
         'sim.dev_robot_config': codex/'2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/config/openarm_fixed.yml',
         'sim.dev_assets_dir': codex/'2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/curobo_v2/service/curobo_service/assets',
-        'repo.native_tree': desktop/'Tidybot-Universe-attention-native',
         'memory.service_root': desktop/'attention_memory_service',
         'memory.m3_root': workspace/'development/memory-m3',
         'memory.m3_keys': workspace/'development/memory-m3/keys.env',
@@ -96,7 +95,6 @@ def test_author_registry_reproduces_previous_values(tmp_path, monkeypatch):
         'ui.dev_root': codex/'2026-10-11/new-chat-2/outputs/openarm-dev-integration',
         'ui.dev_local_root': codex/'2026-10-11/new-chat-2/outputs/openarm-dev-integration/dev-local',
         'ui.dev_v2_root': codex/'2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments',
-        'ui.run_catalog': codex/'2026-10-12/new-chat-2/outputs/daily-v2-33/catalog.json',
         'ui.store': codex/'2026-10-06/docs-live-human-ui-validation-plan/work/mac-ui-debug-20261006-154731/attention.sqlite3',
         'ui.artifact_root': codex/'2026-10-06/docs-live-human-ui-validation-plan/work/mac-ui-debug-20261006-154731/artifacts',
         'ui.serve_daily': codex/'2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/serve_daily.py',
@@ -119,3 +117,4 @@ def test_author_registry_reproduces_previous_values(tmp_path, monkeypatch):
     assert template['_comment'] and set(template['paths']) == set(expected)
     for key, old in expected.items():
         assert workspace_paths.get_str(key) == str(old), key
+    workspace_paths.clear_cache()

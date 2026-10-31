@@ -10,8 +10,6 @@
   {"path": "openarm365_dev/config.py", "reason": "planner trust boundary, P5 (needs review): LOCK and LOCK_SHA"},
   {"path": "openarm_bimanual/v2_adapter/identity.py", "reason": "planner trust boundary, P5 (needs review)"},
   {"path": "openarm_bimanual/v2_adapter/bimanual_contract.py", "reason": "planner trust boundary, P5 (needs review)"},
-  {"path": "openarm365_dev_v2/dev_config.py", "reason": "model identity declared root, P3 (refreeze): NATIVE_TREE only"},
-  {"path": "openarm365_dev/owner.py", "reason": "model identity declared root, P3 (refreeze)"},
   {"path": "openarm365_dev/planner.py", "reason": "pinned by openarm365_dev/configs/dev_counter_sink_seed101.json"},
   {"path": "openarm365/config.py", "reason": "pinned by openarm365/configs/open_cabinet.json and pick_place_counter_to_sink.json"},
   {"path": "openarm365_dev/worker.py", "reason": "pinned by openarm365_dev/configs/dev_counter_sink_seed101.json"},

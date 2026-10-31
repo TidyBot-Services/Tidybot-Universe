@@ -1,0 +1,26 @@
+{
+  "definition_version": "guidance-v1.1-dev-2026-10-01",
+  "entries": [
+    {
+      "attentionbench": {
+        "approved_config_sha256": "cc7ca3b70bbc8e1293a23a8550ff90879b1399712a11036e2822b4695daadee4",
+        "approved_generated_policy": true,
+        "approved_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+        "formal_config_file": "benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/configs/robosuite_cube_lift_seed101.json",
+        "generated_policy_file": "benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robosuite_cube_lift/policy.py",
+        "runner_boundary": "formal",
+        "seed": 101,
+        "suite": "robosuite",
+        "task": "cube_lift"
+      },
+      "dependencies": [],
+      "description": "\u6267\u884c\u5df2\u6279\u51c6\u7684\u5b8c\u6574 Public SDK \u7b56\u7565\u3002\u5185\u90e8\u51fd\u6570\u548c SDK \u52a8\u4f5c\u6ca1\u6709\u72ec\u7acb Skill DAG \u8c03\u5ea6\u5b9a\u4e49\u6216\u5b50\u6280\u80fd\u4e8b\u4ef6\uff1b\u672c\u56fe\u4ec5\u8bb0\u5f55\u6574\u4f53\u4efb\u52a1\u8282\u70b9\u3002",
+      "display_name": "\u7acb\u65b9\u4f53\u62ac\u5347",
+      "name": "cube-lift-guidance-v1-1",
+      "status": "done"
+    }
+  ],
+  "formal_eligible": false,
+  "graph_id": "robosuite-cube_lift-guidance-v1-1",
+  "task_env": "attentionbench-engineering"
+}

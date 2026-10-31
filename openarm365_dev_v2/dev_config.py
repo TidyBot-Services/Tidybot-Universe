@@ -20,21 +20,17 @@ ROBocasa=lazy('sim.robocasa_root')
 ROBOSUITE=lazy('sim.robosuite_root')
 ASSETS=lazy('sim.assets_manifest')
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
-NATIVE_TREE=Path('/home/truares/桌面/Tidybot-Universe-attention-native')
-def model_sources(identity_path=None,declared_root=NATIVE_TREE,runtime_root=ROOT):
+def model_sources(identity_path=None,runtime_root=ROOT):
     identity_path=Path(identity_path or ROOT/'openarm365/model/identity.json')
+    runtime_root=Path(runtime_root).resolve()
     identity=json.loads(identity_path.read_bytes());files={}
     for original,expected in identity['sources'].items():
-        original=Path(original)
-        candidates=[original]
-        if original.is_relative_to(declared_root):
-            # Native XML loads from the copy, while its frozen mesh references
-            # still point at the preserved original paths. Verify BOTH views.
-            copied=runtime_root/original.relative_to(declared_root)
-            if copied!=original:candidates.append(copied)
-        for path in candidates:
-            if not path.is_file() or sha(path)!=expected:raise ValueError('native robot model identity drift: '+str(path))
-            files[str(path.absolute())]=expected
+        source=Path(original)
+        if source.is_absolute() or '..' in source.parts:
+            raise ValueError('native robot model identity requires repository-relative paths')
+        path=runtime_root/source
+        if not path.is_file() or sha(path)!=expected:raise ValueError('native robot model identity drift: '+str(path))
+        files[str(path.absolute())]=expected
     if not files:raise ValueError('complete native robot identity required')
     return files
 def verify_lock(ref,*,expected_source_root=None):

@@ -1,0 +1,26 @@
+{
+  "definition_version": "main-ui-openarm365-v14",
+  "entries": [
+    {
+      "attentionbench": {
+        "approved_config_sha256": "afed9ab69a28641c3325c22c6925d3cbdd6c5d1b8f4aac4210a84a1374b41b10",
+        "approved_generated_policy": true,
+        "approved_policy_sha256": "0bfdc44d26109ba7a43b3ce6cad5e9e3405e12592ef9e847070716824c20a537",
+        "formal_config_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_open_cabinet.json",
+        "generated_policy_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v14/openarm365_open_cabinet.py",
+        "runner_boundary": "formal",
+        "seed": 101,
+        "suite": "robocasa365",
+        "task": "open_cabinet"
+      },
+      "dependencies": [],
+      "description": "Deterministic physical handle approach, closure and hinge-arc pull. Current run 26067c51119f fails the physical handle-motion guard after 220 steps; native_success=false. Experimental task, not accepted.",
+      "display_name": "open_cabinet",
+      "name": "openarm365-open-cabinet-dev101",
+      "status": "in_progress"
+    }
+  ],
+  "formal_eligible": false,
+  "graph_id": "openarm365-open-cabinet-dev101",
+  "task_env": "attentionbench-engineering"
+}

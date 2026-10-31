@@ -1,0 +1,17 @@
+{
+  "schema_version": "attentionbench.public-demo.v1",
+  "suite": "robocasa365",
+  "task_id": "pick_place_counter_to_sink",
+  "approval": {
+    "id": "robocasa365-phase1-frozen-control-demo",
+    "approved_by": "operator-authorized engineering acceptance; fixed scripted control example"
+  },
+  "assets": [
+    {
+      "kind": "action_trajectory",
+      "path": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/pick_place_counter_to_sink_demo_actions.json",
+      "sha256": "9dbafc26d374d39c216ddc306087671f8e6cba69e997781b80ff1910c9b0bad7",
+      "source": "public_sdk"
+    }
+  ]
+}

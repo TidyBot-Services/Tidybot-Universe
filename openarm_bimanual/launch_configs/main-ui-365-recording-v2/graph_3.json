@@ -1,0 +1,26 @@
+{
+  "definition_version": "attention-control-v1.8",
+  "entries": [
+    {
+      "attentionbench": {
+        "approved_config_sha256": "9718f6112f20186fa924cb470f0f590b336d669f589d8047b8fb7f8283be8732",
+        "approved_generated_policy": true,
+        "approved_policy_sha256": "1746a6d97dba999be6f567a2983e82f98723f1293d3f271a9bb5ce259f18d960",
+        "formal_config_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v2/config_3.json",
+        "generated_policy_file": "openarm_robocasa/policies/counter_to_sink.py",
+        "runner_boundary": "formal",
+        "seed": 101,
+        "suite": "robocasa",
+        "task": "counter_to_sink"
+      },
+      "dependencies": [],
+      "description": "One SDK-only task node. Actual physical execution and unchanged native verdict are persisted separately. Left sink seed101 full UI/Runner native success is evidenced; right task capability remains unaccepted.",
+      "display_name": "Move to the sink with OpenArm (left)",
+      "name": "openarm-counter-to-sink-left",
+      "status": "in_progress"
+    }
+  ],
+  "formal_eligible": false,
+  "graph_id": "openarm-counter-to-sink-left",
+  "task_env": "attentionbench-engineering"
+}

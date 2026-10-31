@@ -1,0 +1,80 @@
+{
+  "entries": [
+    {
+      "dependencies": [],
+      "description": "Observed physical SDK receipts; task verdict is separate",
+      "display_name": "Left pickup",
+      "name": "left_pickup",
+      "participating_arms": [
+        "left"
+      ],
+      "status": "implemented"
+    },
+    {
+      "dependencies": [
+        "left_pickup"
+      ],
+      "description": "Observed physical SDK receipts; task verdict is separate",
+      "display_name": "Right acquisition",
+      "name": "right_acquire",
+      "participating_arms": [
+        "right"
+      ],
+      "status": "implemented"
+    },
+    {
+      "dependencies": [
+        "right_acquire"
+      ],
+      "description": "Observed physical SDK receipts; task verdict is separate",
+      "display_name": "Physical handoff",
+      "name": "physical_handoff",
+      "participating_arms": [
+        "left",
+        "right"
+      ],
+      "status": "implemented"
+    },
+    {
+      "dependencies": [
+        "physical_handoff"
+      ],
+      "description": "Observed physical SDK receipts; task verdict is separate",
+      "display_name": "Receiver transport",
+      "name": "right_transport",
+      "participating_arms": [
+        "right"
+      ],
+      "status": "implemented"
+    },
+    {
+      "dependencies": [
+        "right_transport"
+      ],
+      "description": "Observed physical SDK receipts; task verdict is separate",
+      "display_name": "Sink release",
+      "name": "sink_release",
+      "participating_arms": [
+        "right"
+      ],
+      "status": "implemented"
+    },
+    {
+      "attentionbench": {
+        "approved_config_sha256": "12104a47c1f1f3c0cd49de4a6e83c4e8f0b2dec0f987306a61769d33d00e34a1",
+        "approved_policy_sha256": "3f1f09a1a6472638988112f9b28cd6286b3469de8389f46df53abf774e911087",
+        "formal_config_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_10.json",
+        "suite": "robocasa",
+        "task": "counter_to_sink"
+      },
+      "dependencies": [
+        "sink_release"
+      ],
+      "description": "Complete native task with genuine physical handoff",
+      "display_name": "Dual-arm counter to sink",
+      "name": "counter_to_sink_bimanual_handoff",
+      "status": "implemented"
+    }
+  ],
+  "graph_id": "openarm-bimanual-stage-one-final-1"
+}

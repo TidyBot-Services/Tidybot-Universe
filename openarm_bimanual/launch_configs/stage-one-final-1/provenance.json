@@ -1,0 +1,78 @@
+{
+  "cloned_profiles": [
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-0",
+      "policy_unchanged": true,
+      "source_config_sha256": "cc7ca3b70bbc8e1293a23a8550ff90879b1399712a11036e2822b4695daadee4",
+      "source_graph_sha256": "d29ed360d7aa2d5c5a185f0dfed9e7038d12a03910635d67c992ddd16d43c2b2",
+      "source_profile": "attention-control-v1.8-0"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-1",
+      "policy_unchanged": true,
+      "source_config_sha256": "76bc9bc29d38ce7fe9a71e367bee4108523ca42ede02d3e7e1e4195e1c5a85b8",
+      "source_graph_sha256": "62fc2e26aa741a9c570b5f0fa2648cf9ea8938b6a66e8822c43e6c25f17215d2",
+      "source_profile": "attention-control-v1.8-1"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-2",
+      "policy_unchanged": true,
+      "source_config_sha256": "14be01cc1df21e719cdd51b2c0ba21e1ebe8cdfd75a31ef5a585725e3d0aa632",
+      "source_graph_sha256": "d57cbf662b0ad7c19ef4f133cad5bf50007014c26ae41248c78e4aa581771ea6",
+      "source_profile": "attention-control-v1.8-2"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-3",
+      "policy_unchanged": true,
+      "source_config_sha256": "3cc62a3f28083e5979b81431fb4f5efb24fb23674a18b927de5922c283617483",
+      "source_graph_sha256": "998b40a4ae506b02db4cd5262941368a96b7df51c243f303c1d21cdac681c69e",
+      "source_profile": "attention-control-v1.8-3"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-4",
+      "policy_unchanged": true,
+      "source_config_sha256": "c08c185f37b06f9279904570a06c47c5b9157d7d20d7e272a55d4063fbcd2c25",
+      "source_graph_sha256": "d46476c528831609bcdd49cde38ca5d01a3a09b09fcc66db32abc93bc430491d",
+      "source_profile": "attention-control-v1.8-4"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-5",
+      "policy_unchanged": true,
+      "source_config_sha256": "cc7ca3b70bbc8e1293a23a8550ff90879b1399712a11036e2822b4695daadee4",
+      "source_graph_sha256": "cae52c80bdf6f5cb32e759533b5a3fcf23e205a668843bfccdfc97e7291abec8",
+      "source_profile": "live-human-robosuite-cube-lift-seed101-guidance-v1-1-1080p"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-6",
+      "policy_unchanged": true,
+      "source_config_sha256": "42eabef568bd5b16f62fe17f3a78b6e56037cb7204d50f5062e98fe9b08a28de",
+      "source_graph_sha256": "814b174abf94932724b5880c9d8d8097a684cac2edd903fe37b66dbe90277901",
+      "source_profile": "live-human-robocasa-counter-to-sink-seed101-guidance-v1-1"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-7",
+      "policy_unchanged": true,
+      "source_config_sha256": "6abe32992c9f38a098775d92c32172a90920abbfebe67bcee98d87a9be480563",
+      "source_graph_sha256": "8ee9e41b7d6ad8f08dae91f1fe5137a6361ac8d83a5948fc3fa4e69c16831545",
+      "source_profile": "live-human-robocasa-counter-to-sink-seed101-openarm-mobile-left-candidate5"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-8",
+      "policy_unchanged": true,
+      "source_config_sha256": "d141713cb8ff862c0113ec3d6190a620414b568164412540c454a783e8c5d097",
+      "source_graph_sha256": "e49895d08a4cacbabd2c3901fc213cc2e6764c99b804903116399bef85a43198",
+      "source_profile": "live-human-robocasa-counter-to-sink-seed101-openarm-left-v6"
+    },
+    {
+      "new_profile": "openarm-bimanual-stage-one-final-1-compat-9",
+      "policy_unchanged": true,
+      "source_config_sha256": "86476ff981539f839c561e089f7a3de8b82e33e69082228ae45679c8b7dc532e",
+      "source_graph_sha256": "e519fe5495bf0c409c7ca0fe00061f452d0d7be5fb9b2dfc965df3e641836211",
+      "source_profile": "live-human-robocasa-counter-to-sink-seed101-openarm-right-v6"
+    }
+  ],
+  "legacy_files_written": [],
+  "new_bimanual_profile": "openarm-bimanual-stage-one-final-1-both-handoff",
+  "source_catalog": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/attention_policy_switch/v1.8/catalog.json",
+  "source_catalog_sha256": "a6aef0079715c64548b566f6caad6506341a4bc547ba752b4d9410227d97c3b8"
+}

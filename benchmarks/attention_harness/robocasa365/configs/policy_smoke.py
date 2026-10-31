@@ -1,0 +1,12 @@
+from robot_sdk import sensors, arm, gripper, base, torso
+obs = sensors.get_observation()
+objects = sensors.find_objects()
+attention = context.get("attention_input", {})
+guidance = attention.get("advisor_guidance", "")
+print("RoboCasa365 actual policy; Advisor guidance consumed:", guidance)
+arm.move_delta(0.0, 0.0, 0.002 if guidance else 0.001)
+gripper.open(settle_steps=2)
+gripper.close(settle_steps=2)
+torso.move_normalized([0.01])
+base.move_normalized([0.01, 0.0, 0.0])
+base.move_normalized([0.0, 0.0, 0.0])

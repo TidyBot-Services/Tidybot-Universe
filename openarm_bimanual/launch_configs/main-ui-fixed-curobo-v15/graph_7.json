@@ -1,0 +1,26 @@
+{
+  "definition_version": "openarm-mobile-candidate5-2026-10-09",
+  "entries": [
+    {
+      "attentionbench": {
+        "approved_config_sha256": "1226216dd813349399b3582983dff090e4914b4642d71c3d3706cda1d4853e2b",
+        "approved_generated_policy": true,
+        "approved_policy_sha256": "de68d0397eb561181ed18ce54e18402f8faa7d914dba3f60cab80c59b6f28431",
+        "formal_config_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-fixed-curobo-v15/config_7.json",
+        "generated_policy_file": "openarm_mobile/policies/counter_to_sink_mobile_v1.py",
+        "runner_boundary": "formal",
+        "seed": 101,
+        "suite": "robocasa",
+        "task": "counter_to_sink"
+      },
+      "dependencies": [],
+      "description": "Independent native joint-driven chassis and unchanged seed101 task evaluation, with three native 1080p display cameras. Engineering acceptance; no formal multi-seed claim.",
+      "display_name": "Move to the sink with mobile OpenArm (left)",
+      "name": "openarm-mobile-counter-to-sink-left",
+      "status": "in_progress"
+    }
+  ],
+  "formal_eligible": false,
+  "graph_id": "openarm-mobile-counter-to-sink-left",
+  "task_env": "attentionbench-engineering"
+}

@@ -16,7 +16,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.47225" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/model/source/tidyverse_base/base_vis.stl" />
+        <mesh filename="source/tidyverse_base/base_vis.stl" />
       </geometry>
       <material name="base_material">
         <color rgba="0.7 0.7 0.7 1" />
@@ -70,13 +70,13 @@
     <visual name="openarm_body_link0_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/body/visual/body_link0.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/body/visual/body_link0.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_body_link0_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/body/collision/body_link0_symp.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/body/collision/body_link0_symp.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -95,13 +95,13 @@
     <visual name="openarm_left_link0_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link0_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link0_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_link0_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link0.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link0.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -115,13 +115,13 @@
     <visual name="openarm_left_link1_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 0.0 -0.0625" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link1_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link1_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_link1_collision">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 0.0 -0.0625" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link1.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link1.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -142,13 +142,13 @@
     <visual name="openarm_left_link2_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0301 0.0 -0.1225" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link2_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link2_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_link2_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0301 0.0 -0.1225" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link2.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link2.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -169,7 +169,7 @@
     <visual name="openarm_left_link3_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link3.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link3.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -180,385 +180,385 @@
   <collision name="openarm_left_link3_collision_part0">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part000.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part000.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part1">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part001.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part001.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part2">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part002.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part002.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part3">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part003.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part003.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part4">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part004.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part004.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part5">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part005.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part005.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part6">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part006.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part006.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part7">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part007.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part007.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part8">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part008.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part008.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part9">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part009.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part009.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part10">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part010.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part010.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part11">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part011.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part011.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part12">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part012.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part012.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part13">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part013.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part013.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part14">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part014.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part014.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part15">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part015.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part015.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part16">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part016.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part016.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part17">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part017.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part017.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part18">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part018.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part018.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part19">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part019.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part019.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part20">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part020.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part020.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part21">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part021.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part021.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part22">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part022.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part022.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part23">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part023.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part023.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part24">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part024.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part024.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part25">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part025.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part025.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part26">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part026.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part026.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part27">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part027.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part027.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part28">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part028.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part028.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part29">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part029.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part029.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part30">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part030.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part030.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part31">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part031.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part031.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part32">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part032.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part032.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part33">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part033.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part033.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part34">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part034.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part034.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part35">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part035.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part035.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part36">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part036.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part036.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part37">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part037.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part037.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part38">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part038.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part038.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part39">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part039.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part039.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part40">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part040.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part040.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part41">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part041.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part041.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part42">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part042.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part042.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part43">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part043.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part043.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part44">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part044.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part044.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part45">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part045.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part045.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part46">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part046.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part046.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part47">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part047.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part047.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part48">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part048.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part048.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part49">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part049.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part049.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part50">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part050.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part050.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part51">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part051.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part051.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part52">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part052.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part052.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part53">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part053.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part053.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part54">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part054.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part054.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part55">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part055.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part055.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part56">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part056.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part056.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part57">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part057.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part057.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part58">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part058.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part058.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part59">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part059.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part059.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part60">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part060.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part060.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part61">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part061.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part061.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part62">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part062.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part062.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link3_collision_part63">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part063.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link3_part063.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision></link>
@@ -573,7 +573,7 @@
     <visual name="openarm_left_link4_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link4.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link4.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -584,49 +584,49 @@
   <collision name="openarm_left_link4_collision_part0">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part000.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part000.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link4_collision_part1">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part001.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part001.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link4_collision_part2">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part002.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part002.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link4_collision_part3">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part003.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part003.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link4_collision_part4">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part004.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part004.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link4_collision_part5">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part005.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part005.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link4_collision_part6">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part006.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part006.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link4_collision_part7">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part007.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link4_part007.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision></link>
@@ -641,7 +641,7 @@
     <visual name="openarm_left_link5_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -652,49 +652,49 @@
   <collision name="openarm_left_link5_collision_part0">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part000.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part000.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link5_collision_part1">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part001.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part001.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link5_collision_part2">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part002.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part002.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link5_collision_part3">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part003.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part003.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link5_collision_part4">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part004.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part004.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link5_collision_part5">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part005.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part005.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link5_collision_part6">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part006.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part006.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_left_link5_collision_part7">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part007.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link5_part007.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision></link>
@@ -709,13 +709,13 @@
     <visual name="openarm_left_link6_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0375 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link6_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link6_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_link6_collision">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0375 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link6.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link6.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -736,13 +736,13 @@
     <visual name="openarm_left_link7_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link7_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link7_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_link7_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_link7.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_link7.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -768,13 +768,13 @@
     <visual name="openarm_right_link0_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link0.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link0.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_link0_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link0_symp.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link0_symp.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -788,13 +788,13 @@
     <visual name="openarm_right_link1_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 0.0 -0.0625" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link1.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link1.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_link1_collision">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 0.0 -0.0625" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link1_symp.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link1_symp.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -815,13 +815,13 @@
     <visual name="openarm_right_link2_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0301 0.0 -0.1225" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link2.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link2.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_link2_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0301 0.0 -0.1225" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link2_symp.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link2_symp.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -842,7 +842,7 @@
     <visual name="openarm_right_link3_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link3.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link3.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -853,385 +853,385 @@
   <collision name="openarm_right_link3_collision_part0">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part000.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part000.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part1">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part001.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part001.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part2">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part002.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part002.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part3">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part003.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part003.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part4">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part004.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part004.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part5">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part005.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part005.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part6">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part006.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part006.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part7">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part007.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part007.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part8">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part008.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part008.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part9">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part009.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part009.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part10">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part010.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part010.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part11">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part011.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part011.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part12">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part012.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part012.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part13">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part013.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part013.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part14">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part014.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part014.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part15">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part015.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part015.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part16">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part016.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part016.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part17">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part017.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part017.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part18">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part018.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part018.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part19">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part019.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part019.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part20">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part020.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part020.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part21">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part021.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part021.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part22">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part022.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part022.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part23">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part023.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part023.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part24">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part024.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part024.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part25">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part025.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part025.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part26">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part026.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part026.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part27">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part027.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part027.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part28">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part028.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part028.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part29">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part029.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part029.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part30">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part030.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part030.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part31">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part031.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part031.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part32">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part032.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part032.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part33">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part033.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part033.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part34">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part034.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part034.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part35">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part035.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part035.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part36">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part036.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part036.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part37">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part037.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part037.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part38">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part038.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part038.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part39">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part039.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part039.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part40">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part040.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part040.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part41">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part041.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part041.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part42">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part042.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part042.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part43">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part043.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part043.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part44">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part044.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part044.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part45">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part045.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part045.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part46">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part046.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part046.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part47">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part047.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part047.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part48">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part048.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part048.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part49">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part049.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part049.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part50">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part050.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part050.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part51">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part051.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part051.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part52">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part052.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part052.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part53">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part053.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part053.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part54">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part054.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part054.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part55">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part055.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part055.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part56">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part056.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part056.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part57">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part057.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part057.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part58">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part058.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part058.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part59">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part059.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part059.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part60">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part060.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part060.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part61">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part061.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part061.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part62">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part062.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part062.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link3_collision_part63">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.18875" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part063.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link3_part063.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision></link>
@@ -1246,7 +1246,7 @@
     <visual name="openarm_right_link4_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link4.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link4.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -1257,49 +1257,49 @@
   <collision name="openarm_right_link4_collision_part0">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part000.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part000.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link4_collision_part1">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part001.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part001.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link4_collision_part2">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part002.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part002.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link4_collision_part3">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part003.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part003.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link4_collision_part4">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part004.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part004.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link4_collision_part5">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part005.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part005.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link4_collision_part6">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part006.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part006.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link4_collision_part7">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0315 -0.3425" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part007.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link4_part007.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision></link>
@@ -1314,7 +1314,7 @@
     <visual name="openarm_right_link5_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link5.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link5.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -1325,49 +1325,49 @@
   <collision name="openarm_right_link5_collision_part0">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part000.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part000.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link5_collision_part1">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part001.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part001.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link5_collision_part2">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part002.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part002.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link5_collision_part3">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part003.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part003.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link5_collision_part4">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part004.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part004.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link5_collision_part5">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part005.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part005.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link5_collision_part6">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part006.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part006.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision><collision name="openarm_right_link5_collision_part7">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0 -0.0 -0.438" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part007.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_link5_part007.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision></link>
@@ -1382,13 +1382,13 @@
     <visual name="openarm_right_link6_visual">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0375 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link6.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link6.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_link6_collision">
       <origin rpy="0.0 0.0 0.0" xyz="-0.0375 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link6_symp.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link6_symp.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -1409,13 +1409,13 @@
     <visual name="openarm_right_link7_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link7.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link7.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_link7_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 -0.5585" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link7_symp.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link7_symp.stl" scale="0.001 0.001 0.001" />
         
       </geometry>
     </collision>
@@ -1436,13 +1436,13 @@
     <visual name="openarm_left_hand_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/hand.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/hand.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_hand_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl" scale="0.001 0.001 0.001" />
       </geometry>
     </collision>
     <inertial>
@@ -1466,13 +1466,13 @@
     <visual name="openarm_left_left_finger_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/finger.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/finger.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_left_finger_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl" scale="0.001 0.001 0.001" />
       </geometry>
     </collision>
     <inertial>
@@ -1485,13 +1485,13 @@
     <visual name="openarm_left_right_finger_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_right_finger_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_right_finger_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_left_right_finger_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_right_finger.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_left_right_finger.stl" scale="0.001 0.001 0.001" />
       </geometry>
     </collision>
     <inertial>
@@ -1520,13 +1520,13 @@
     <visual name="openarm_right_hand_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/hand.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/hand.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_hand_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl" scale="0.001 0.001 0.001" />
       </geometry>
     </collision>
     <inertial>
@@ -1550,13 +1550,13 @@
     <visual name="openarm_right_left_finger_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/finger.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/visual/finger.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_left_finger_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl" scale="0.001 0.001 0.001" />
       </geometry>
     </collision>
     <inertial>
@@ -1569,13 +1569,13 @@
     <visual name="openarm_right_right_finger_visual">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_right_finger_visual.dae" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_right_finger_visual.dae" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <collision name="openarm_right_right_finger_collision">
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.05 -0.661001" />
       <geometry>
-        <mesh filename="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_right_right_finger.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../openarm_phase0_recheck/model/compat_v6/openarm_right_right_finger.stl" scale="0.001 0.001 0.001" />
       </geometry>
     </collision>
     <inertial>

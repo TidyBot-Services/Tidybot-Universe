@@ -1,0 +1,26 @@
+{
+  "definition_version": "main-ui-openarm365-v11",
+  "entries": [
+    {
+      "attentionbench": {
+        "approved_config_sha256": "afed9ab69a28641c3325c22c6925d3cbdd6c5d1b8f4aac4210a84a1374b41b10",
+        "approved_generated_policy": true,
+        "approved_policy_sha256": "f40d94a888a37a91753f44be86ef865e53eefa4eac58fe219d002b44aaa09ad5",
+        "formal_config_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_open_cabinet.json",
+        "generated_policy_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_open_cabinet.py",
+        "runner_boundary": "formal",
+        "seed": 101,
+        "suite": "robocasa365",
+        "task": "open_cabinet"
+      },
+      "dependencies": [],
+      "description": "Full deterministic SDK physical task policy; cabinet remains experimental after failed handle capture. Native evaluation is unchanged and reported separately.",
+      "display_name": "open_cabinet",
+      "name": "openarm365-open-cabinet-dev101",
+      "status": "in_progress"
+    }
+  ],
+  "formal_eligible": false,
+  "graph_id": "openarm365-open-cabinet-dev101",
+  "task_env": "attentionbench-engineering"
+}

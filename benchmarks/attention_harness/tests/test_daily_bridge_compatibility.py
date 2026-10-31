@@ -69,8 +69,8 @@ def request(server, path, body=None, token=None, human=None, headers=None):
     return status, payload, result_headers
 
 
-def test_original_host_argv_parses_without_opening_host_resources(monkeypatch):
-    # Frozen argv from C/host-pre-switch.json; parsing stops before any host IO.
+def test_host_argv_without_catalog_parses_without_opening_host_resources(monkeypatch):
+    # Parsing stops before any host IO; Dev v2 does not require a run catalog.
     argv = [get_str('ui.daily_python'),
      '-B',
      '-u',
@@ -79,8 +79,6 @@ def test_original_host_argv_parses_without_opening_host_resources(monkeypatch):
      get_str('ui.store'),
      '--artifact-root',
      get_str('ui.artifact_root'),
-     '--run-catalog',
-     get_str('ui.run_catalog'),
      '--host',
      '127.0.0.1',
      '--port',

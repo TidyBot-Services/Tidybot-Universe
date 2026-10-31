@@ -1,0 +1,1164 @@
+{
+  "formal_eligible": false,
+  "profiles": [
+    {
+      "approved_config_sha256": "cc7ca3b70bbc8e1293a23a8550ff90879b1399712a11036e2822b4695daadee4",
+      "approved_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_0.json",
+      "attention_control_binding_sha256": "c51bf060e05b4b691db8de9211cb5416cabd7cb4231093ff5152e8ef899b0a12",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robosuite_cube_lift/policy.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-0/config.json",
+      "execution_target": "robosuite_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-0",
+      "service_source_root": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-0/graph.json",
+      "skill_graph_sha256": "d29ed360d7aa2d5c5a185f0dfed9e7038d12a03910635d67c992ddd16d43c2b2",
+      "skill_root": "cube-lift-guidance-v1-1",
+      "suite": "robosuite",
+      "task": "cube_lift"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5",
+      "approved_config_sha256": "76bc9bc29d38ce7fe9a71e367bee4108523ca42ede02d3e7e1e4195e1c5a85b8",
+      "approved_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_1.json",
+      "attention_control_binding_sha256": "77098bf34191a5817896f3a9ca581f871862335cbfaceae5c102649666cd5847",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robocasa_counter_to_sink/policy.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-1/config.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-1",
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/maniskill_sim-attention-guard-v5",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-1/graph.json",
+      "skill_graph_sha256": "62fc2e26aa741a9c570b5f0fa2648cf9ea8938b6a66e8822c43e6c25f17215d2",
+      "skill_root": "counter-to-sink-guidance-v1-1",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "949787b035fc1b1db1c18ed84094373730a57ffbaa00ff6d52a2cf92c07f138a",
+      "approved_policy_sha256": "de68d0397eb561181ed18ce54e18402f8faa7d914dba3f60cab80c59b6f28431",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_2.json",
+      "attention_control_binding_sha256": "2c36ed0f54cd3b74564f0412c0071f47dd4f6b189c532610437e1f3cec12e60d",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/policies/counter_to_sink_mobile_v1.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_2.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-2",
+      "robot": {
+        "execution_arm": "left",
+        "model": "OpenArm"
+      },
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/graph_2.json",
+      "skill_graph_sha256": "dd34216cd77b5f032cde37245f37260ad2b6d0f2a9e0ca4dab1efeffdce5ef3f",
+      "skill_root": "openarm-mobile-counter-to-sink-left",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "db991c36be6620394099b3eaff2e444785254c57eb9f15c977cccd46d8010d3b",
+      "approved_policy_sha256": "1746a6d97dba999be6f567a2983e82f98723f1293d3f271a9bb5ce259f18d960",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_3.json",
+      "attention_control_binding_sha256": "b33da95115416f9da0c065feea0c70000352f496700c41fd48e4eddd656d014b",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_robocasa/policies/counter_to_sink.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_3.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-3",
+      "robot": {
+        "execution_arm": "left",
+        "model": "OpenArm"
+      },
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/graph_3.json",
+      "skill_graph_sha256": "057ff97dd90fca720e32441ec056b03c667790dd296dcdb45897907063f91f9a",
+      "skill_root": "openarm-counter-to-sink-left",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "e77ec8a41d95708f93dc31ce47262a9b1dc40919aeaaa2e8773d5a9f87c593db",
+      "approved_policy_sha256": "1746a6d97dba999be6f567a2983e82f98723f1293d3f271a9bb5ce259f18d960",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_4.json",
+      "attention_control_binding_sha256": "03e60a2a1041b0e6f9a684cd1ed53838a997af2e4cc8b849812741859665ed2a",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_robocasa/policies/counter_to_sink.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_4.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-4",
+      "robot": {
+        "execution_arm": "right",
+        "model": "OpenArm"
+      },
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/graph_4.json",
+      "skill_graph_sha256": "c15566f13c57ea32e971901a55ecf3313d01b5cd9cb6c6dc8cc93bcdf87be411",
+      "skill_root": "openarm-counter-to-sink-right",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "approved_config_sha256": "cc7ca3b70bbc8e1293a23a8550ff90879b1399712a11036e2822b4695daadee4",
+      "approved_policy_sha256": "405f752968f73e0e0541b5a51e0cb201069f07c2dcfb3f26a5d0cb45deb767f2",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_5.json",
+      "attention_control_binding_sha256": "595ca3be94bc85fae864ca120a485e6d925e7b2b0e0e19a3649fe1d4743f0b5a",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robosuite_cube_lift/policy.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-5/config.json",
+      "execution_target": "robosuite_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-5",
+      "service_source_root": "/home/truares/桌面/robosuite_sim-depth-recovery-engineering",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-5/graph.json",
+      "skill_graph_sha256": "aab0176bd95559938fe0bfa8535e64f2809e60e000d4fa7a68316bd3ebd93c04",
+      "skill_root": "cube-lift-guidance-v1-1",
+      "suite": "robosuite",
+      "task": "cube_lift"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/文档/Tidybot-Universe/agent_server-attention-rejection-v5",
+      "approved_config_sha256": "76bc9bc29d38ce7fe9a71e367bee4108523ca42ede02d3e7e1e4195e1c5a85b8",
+      "approved_policy_sha256": "c016bed6d2a85eb2cd1a972299a2f38394a63780fc537f4b19e83991a6c015d7",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_6.json",
+      "attention_control_binding_sha256": "624b07a5ed22a62b5c1bd6803311509dc72a614dffd76c6db329d6d91a4fdb89",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/review_packages/seven_primary_guidance_v1_1_dev_2026-10-01/base/robocasa_counter_to_sink/policy.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-6/config.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-6",
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/maniskill_sim-attention-guard-v5",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/compat-6/graph.json",
+      "skill_graph_sha256": "b60a8a4434b3922b4a02dc9581e9db3e49598b3eaf9a7d88c241273463098207",
+      "skill_root": "counter-to-sink-guidance-v1-1",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "50b40a0f27a4f20c8b5ee88b9a5a72df7421709522b65804ce820f0471cb2e3c",
+      "approved_policy_sha256": "de68d0397eb561181ed18ce54e18402f8faa7d914dba3f60cab80c59b6f28431",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_7.json",
+      "attention_control_binding_sha256": "adc87db5f6e84fdc6d0ee876c4ab1c0ea8fe77e7bdd38e936cd1451cc030db3a",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/policies/counter_to_sink_mobile_v1.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_7.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-7",
+      "robot": {
+        "execution_arm": "left",
+        "model": "OpenArm"
+      },
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/graph_7.json",
+      "skill_graph_sha256": "9442ac2c567c3b6a0f3e73e3573281919c62db052e3cb3ce85922a33f13ad54b",
+      "skill_root": "openarm-mobile-counter-to-sink-left",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "9761ff1b2de52ab8a146e4905b277b540fd49b49b5c6de5ffbc1a7c803b46b18",
+      "approved_policy_sha256": "1746a6d97dba999be6f567a2983e82f98723f1293d3f271a9bb5ce259f18d960",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_8.json",
+      "attention_control_binding_sha256": "3298f852529c56dd0f8637ec2387a2f74f15d7b22e5c0524c28dd98e61d33fc2",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_robocasa/policies/counter_to_sink.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_8.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-8",
+      "robot": {
+        "execution_arm": "left",
+        "model": "OpenArm"
+      },
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/graph_8.json",
+      "skill_graph_sha256": "3117028efbf0597044b68c4022d77aa405bd47d7c0e682c34975bf9357029106",
+      "skill_root": "openarm-counter-to-sink-left",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "610fd0a48399f10c0054ecb11ad4f8598b7fd45b957d00cf3db59fbcad3c212f",
+      "approved_policy_sha256": "1746a6d97dba999be6f567a2983e82f98723f1293d3f271a9bb5ce259f18d960",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_9.json",
+      "attention_control_binding_sha256": "10442f44d34c0ec25869cb719079653be7da15c258ba094f3c1548bc676285e4",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_robocasa/policies/counter_to_sink.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_9.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-compat-9",
+      "robot": {
+        "execution_arm": "right",
+        "model": "OpenArm"
+      },
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/graph_9.json",
+      "skill_graph_sha256": "4b21dc2ad8d82859a5b682b6701b89aa881be13a897dff95e04e7b34858ff031",
+      "skill_root": "openarm-counter-to-sink-right",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "agent_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "agent_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "approved_config_sha256": "12104a47c1f1f3c0cd49de4a6e83c4e8f0b2dec0f987306a61769d33d00e34a1",
+      "approved_policy_sha256": "3f1f09a1a6472638988112f9b28cd6286b3469de8389f46df53abf774e911087",
+      "attention_control_binding": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/binding_10.json",
+      "attention_control_binding_sha256": "c30b30ffc002ef9e2ae7f10d41e46a6ae6056aa9a7d29fad752fba7813f3e977",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/stage-one-final-1/both/policy.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/config_10.json",
+      "execution_target": "robocasa_sim",
+      "id": "openarm-bimanual-stage-one-final-1-both-handoff",
+      "sim_python": "/home/truares/miniconda3/envs/maniskill/bin/python",
+      "sim_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v12/graph_10.json",
+      "skill_graph_sha256": "d23445e3ebcd570091881ea02a7badde6ca0798ff4808d1ec9d4bd1f5d90847b",
+      "skill_root": "counter_to_sink_bimanual_handoff",
+      "suite": "robocasa",
+      "task": "counter_to_sink",
+      "task_source_root": "/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks"
+    },
+    {
+      "approved_config_sha256": "fa7a1e515b7c45ee9c72e4c5bc931b22d4b278b6718b69fa3b2838ec3db6dfb6",
+      "approved_demo_sha256": "36c8b73658b01183e559a46774d5309ba9f9a26e2ec204a109081fb291478636",
+      "approved_policy_sha256": "654032d40d9c2bda7e3c0b2d7dc935a30e6a91940cece7e57a6827e1140dca46",
+      "approved_random_policy_config_sha256": "db1b2460a8de0fc4639e57b5de4b03aba8417f5f0a1141614936b1c3c6579303",
+      "approved_retry_policy_config_sha256": "6a021504b02dc18c0b6bf8dfebdbdca579f0ab4d75eccb09ceeae89880a007ad",
+      "approved_run_budget_sha256": "0bee25c33b6b13c37a819094b2255345a65a77b5a72a468b2aa253c63d8b4c3e",
+      "asset_manifest": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json",
+      "code": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/policy_smoke.py",
+      "config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/pick_place_counter_to_sink_seed101.json",
+      "demo_prior": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/pick_place_counter_to_sink_demo.json",
+      "execution_target": "robocasa365_sim",
+      "id": "robocasa365-pick_place_counter_to_sink-dev101",
+      "random_policy_config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/random_prereg.json",
+      "random_policy_configs_by_budget": {
+        "10:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_0.json",
+          "sha256": "3e9a618dde6b24fc0819356ffa094311364e59f4bf565194a71d25689b5bf4dd"
+        },
+        "10:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_1.json",
+          "sha256": "f8b0d61f661cec7b00156362291ae2a94f50af94f42970cbe97eb54a99c69fd0"
+        },
+        "10:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_2.json",
+          "sha256": "b208f4e47f0ac3179faf8bd04c510c6a46f7b42a83bd0b5cdcd2c5d4d6644439"
+        },
+        "10:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_3.json",
+          "sha256": "da5399d3b6160306506d450c1430ed5ba8f3ac081c9fa6c0b35cb842ce3864ec"
+        },
+        "10:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_4.json",
+          "sha256": "2abb2c2d0f55c1337002b668945a6e0d53469abf26298bfd5c3deecd0da70bea"
+        },
+        "10:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_5.json",
+          "sha256": "de667ebc1fa66506ef851a47052763270b3e2392fc6c25cba3bbc2dbba831340"
+        },
+        "10:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_6.json",
+          "sha256": "8b929425ceb35128579feb1f7f41599117fe1d678d56b1f01e15c2ff82a1a0c4"
+        },
+        "10:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_7.json",
+          "sha256": "1d90e91205013868f4ef390f9fb35aa13f5c3479521f25e1b494f0e0b8622f9b"
+        },
+        "10:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_8.json",
+          "sha256": "e019a09caf01f726abacc3a48744565e9d8dbaa02eea7baa07959aedf00cfb8f"
+        },
+        "10:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_9.json",
+          "sha256": "f296ca6e012025e800a2b10070612d47284d4bef571f075ea936e1ff8397ab85"
+        },
+        "1:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_0.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_1.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_2.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_3.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_4.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_5.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_6.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_7.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_8.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_9.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "2:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_0.json",
+          "sha256": "a3a48781a379252de0c8585d1293a2531a0761cec50174c0ba3169f6a73722c3"
+        },
+        "2:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_1.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_2.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_3.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_4.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_5.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_6.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_7.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_8.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_9.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "3:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_0.json",
+          "sha256": "d35c032c984fef35ffc44adb85eaccd98413def640a07ff55996e2313f2b4bbe"
+        },
+        "3:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_1.json",
+          "sha256": "21d310c83e410bfc89f04b38eaca01730404ed19461761a360e123a716dc63ce"
+        },
+        "3:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_2.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_3.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_4.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_5.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_6.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_7.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_8.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_9.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "4:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_0.json",
+          "sha256": "c1ece52d753ef5ecaae2a6440f08b6ff9449a195d2b440ece0877e36670babb0"
+        },
+        "4:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_1.json",
+          "sha256": "938c2bc9897deb24e572d3e201e23724f0ad33801d3655b8ab758944ac3475cd"
+        },
+        "4:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_2.json",
+          "sha256": "4605e4d5da579242559bea4b467f09efe7471be01af6a7102a46e094bee4014a"
+        },
+        "4:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_3.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_4.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_5.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_6.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_7.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_8.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_9.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "5:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_0.json",
+          "sha256": "e7bec96fcfaa85c77ca725c2486a2177f6022d5c81a0345dfab41b05ab403695"
+        },
+        "5:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_1.json",
+          "sha256": "6f98ea0aa4674b775afbd24645186797e923748551c1f817e03552dc106da0c2"
+        },
+        "5:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_2.json",
+          "sha256": "8f4726482b5e32889e0f381d1e032f2ba48d7e9492276f2518ec9be3a288e100"
+        },
+        "5:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_3.json",
+          "sha256": "496a9d9c0ce23686dbc51c740be9e2da90bf8818524eb58d901bbbfecf7beb08"
+        },
+        "5:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_4.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_5.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_6.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_7.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_8.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_9.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "6:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_0.json",
+          "sha256": "c3d515601531a091e4b316b092e35e2de59d0e0ee95560fddcf8262cf6812eb7"
+        },
+        "6:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_1.json",
+          "sha256": "0436a6af82cef41ef9e1f8b30365176fc52635109f2493fbc590012d640b96a4"
+        },
+        "6:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_2.json",
+          "sha256": "be1b664f63df4659b0bd701312b0dc1bb6eb532f3b169941f5151439582389d2"
+        },
+        "6:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_3.json",
+          "sha256": "13dd3d1bcf4932215d91a5c38f415eb49662bf729ba0fdffd9ac3857f2c1fc87"
+        },
+        "6:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_4.json",
+          "sha256": "ebaeca46ad3e1b7a4294a839811dcb208b8a5c4daf92397a032d7a57795ad087"
+        },
+        "6:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_5.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_6.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_7.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_8.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_9.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "7:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_0.json",
+          "sha256": "ce238c06d8115b8dafe6cf3f2791277c1828cb2f2020e3ca81f6099ff50bcf10"
+        },
+        "7:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_1.json",
+          "sha256": "3cb75cc082a41898a712aff5c1ad70961355a0b60db3f953c68c81e5fb48cc44"
+        },
+        "7:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_2.json",
+          "sha256": "4771e7f58a0fb4d3dd65eaaafe18a09d3b90c91846252275d197f36a68ad3a34"
+        },
+        "7:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_3.json",
+          "sha256": "f886a4b71628607e497031f7baf0538b6e83b43e964f05045b677feee3a133e3"
+        },
+        "7:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_4.json",
+          "sha256": "f4639362eb7010ea5cb649cad6ec2b00613b7075c99f5b4f65978b28317f35f9"
+        },
+        "7:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_5.json",
+          "sha256": "4acbeee6e51040eaac783c32cc47ad1bc8a483d0f70bbed8278715495ef0f7be"
+        },
+        "7:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_6.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "7:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_7.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "7:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_8.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "7:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_9.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "8:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_0.json",
+          "sha256": "f074918f4af962f468d584b4074201fba816abd489e0adf893c0cb8157310eba"
+        },
+        "8:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_1.json",
+          "sha256": "1fee2bafe2676c93d36d79b197cbfb6f3a1af4b53f5c3e5d9432c95c5ed482db"
+        },
+        "8:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_2.json",
+          "sha256": "69e1d321447251ce7228dfc3d104f4f24ccb76da408409f5eb2e8c13612a57ae"
+        },
+        "8:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_3.json",
+          "sha256": "adc8d5ada8ac3c1c6ed7bffe3f2e1eea36b61213307f583d0c8cef4cb748c064"
+        },
+        "8:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_4.json",
+          "sha256": "915b97557c8e11ac0e7f2e6bafc45aca2d00a4fd7464ff53dde2404e5064d0df"
+        },
+        "8:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_5.json",
+          "sha256": "43b430824b9a00133af5850e243f7b88b0e8bcd19cd9f1f0f501ffd080e6db11"
+        },
+        "8:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_6.json",
+          "sha256": "44bb74de6f04f900d311489184e50a7ad503acb548169a85a6d3ac420d533760"
+        },
+        "8:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_7.json",
+          "sha256": "e87d5bf9f8e078425a449d407243a7ae9cfde6a970649878a24d0dd82b1720b9"
+        },
+        "8:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_8.json",
+          "sha256": "e87d5bf9f8e078425a449d407243a7ae9cfde6a970649878a24d0dd82b1720b9"
+        },
+        "8:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_9.json",
+          "sha256": "e87d5bf9f8e078425a449d407243a7ae9cfde6a970649878a24d0dd82b1720b9"
+        },
+        "9:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_0.json",
+          "sha256": "598c9d5527641c717095b5ae61e78bb2578e675203d094a45a1815e97e7b4207"
+        },
+        "9:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_1.json",
+          "sha256": "fc4b17b70c52958dea0130686f4491a935f2502ddf65182c7eda6902045c7469"
+        },
+        "9:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_2.json",
+          "sha256": "fd865e4e641557d0d07b403de3109eeaba9a584220df654cfa9fcc28b4e338d0"
+        },
+        "9:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_3.json",
+          "sha256": "86dc6db9f874f340b7ed50d8499a0927423bd3c11b70a9c210d1ef5e2f9b0f1c"
+        },
+        "9:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_4.json",
+          "sha256": "7f971c8168cd3c5db74e5339904b1ee02b6b48e129ce23eca1e5b0bb72bf039f"
+        },
+        "9:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_5.json",
+          "sha256": "2ab2eb523088fd1582788521d2d0c76950aa3c73367d6b90936dc67dfd9107fd"
+        },
+        "9:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_6.json",
+          "sha256": "09be49514fc32100dc9f3b073b5a105a9213814b63ffb181185c6f2f98fef7d0"
+        },
+        "9:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_7.json",
+          "sha256": "019332b90ee40bf0fa6c36f4069736b89db818e9ff18d76e3dbb1d6836bca2ae"
+        },
+        "9:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_8.json",
+          "sha256": "6170a39e3854a3fbc89374491772f485bd15db3f5cd235e5eb2a6ad9ce6dd89a"
+        },
+        "9:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_9.json",
+          "sha256": "6170a39e3854a3fbc89374491772f485bd15db3f5cd235e5eb2a6ad9ce6dd89a"
+        }
+      },
+      "retry_policy_config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/retry_k.json",
+      "robot": {
+        "execution_arm": "right",
+        "model": "PandaOmron"
+      },
+      "run_budget": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/run_budget.json",
+      "service_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/display_service",
+      "sim_python": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python",
+      "sim_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/skill_graphs/main_ui_with_robocasa365_v1/pick_place_counter_to_sink.json",
+      "skill_graph_sha256": "b7341526a0928a54f38bf9208248b43bbebd1d3799d5de6edfe9a5e11ff52289",
+      "skill_root": "robocasa365-pick-place-counter-to-sink-dev101",
+      "suite": "robocasa365",
+      "task": "pick_place_counter_to_sink",
+      "task_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite"
+    },
+    {
+      "approved_config_sha256": "a422d3b569ecffa9ff8b786379c9d4a95a67ca79697e5a385e0f769bde34c989",
+      "approved_demo_sha256": "735dea0e090cef6a0ffa5d1ef2a78a518ec176b3357008c9ace77fd479cfc51a",
+      "approved_policy_sha256": "654032d40d9c2bda7e3c0b2d7dc935a30e6a91940cece7e57a6827e1140dca46",
+      "approved_random_policy_config_sha256": "db1b2460a8de0fc4639e57b5de4b03aba8417f5f0a1141614936b1c3c6579303",
+      "approved_retry_policy_config_sha256": "6a021504b02dc18c0b6bf8dfebdbdca579f0ab4d75eccb09ceeae89880a007ad",
+      "approved_run_budget_sha256": "0bee25c33b6b13c37a819094b2255345a65a77b5a72a468b2aa253c63d8b4c3e",
+      "asset_manifest": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json",
+      "code": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/policy_smoke.py",
+      "config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/open_cabinet_seed101.json",
+      "demo_prior": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/open_cabinet_demo.json",
+      "execution_target": "robocasa365_sim",
+      "id": "robocasa365-open_cabinet-dev101",
+      "random_policy_config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/random_prereg.json",
+      "random_policy_configs_by_budget": {
+        "10:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_0.json",
+          "sha256": "3e9a618dde6b24fc0819356ffa094311364e59f4bf565194a71d25689b5bf4dd"
+        },
+        "10:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_1.json",
+          "sha256": "f8b0d61f661cec7b00156362291ae2a94f50af94f42970cbe97eb54a99c69fd0"
+        },
+        "10:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_2.json",
+          "sha256": "b208f4e47f0ac3179faf8bd04c510c6a46f7b42a83bd0b5cdcd2c5d4d6644439"
+        },
+        "10:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_3.json",
+          "sha256": "da5399d3b6160306506d450c1430ed5ba8f3ac081c9fa6c0b35cb842ce3864ec"
+        },
+        "10:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_4.json",
+          "sha256": "2abb2c2d0f55c1337002b668945a6e0d53469abf26298bfd5c3deecd0da70bea"
+        },
+        "10:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_5.json",
+          "sha256": "de667ebc1fa66506ef851a47052763270b3e2392fc6c25cba3bbc2dbba831340"
+        },
+        "10:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_6.json",
+          "sha256": "8b929425ceb35128579feb1f7f41599117fe1d678d56b1f01e15c2ff82a1a0c4"
+        },
+        "10:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_7.json",
+          "sha256": "1d90e91205013868f4ef390f9fb35aa13f5c3479521f25e1b494f0e0b8622f9b"
+        },
+        "10:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_8.json",
+          "sha256": "e019a09caf01f726abacc3a48744565e9d8dbaa02eea7baa07959aedf00cfb8f"
+        },
+        "10:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_10_credits_9.json",
+          "sha256": "f296ca6e012025e800a2b10070612d47284d4bef571f075ea936e1ff8397ab85"
+        },
+        "1:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_0.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_1.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_2.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_3.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_4.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_5.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_6.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_7.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_8.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "1:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_1_credits_9.json",
+          "sha256": "05ab6deed6aace23c328a7427e71fe3b2c920ba1df3758eb32739124c2abefea"
+        },
+        "2:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_0.json",
+          "sha256": "a3a48781a379252de0c8585d1293a2531a0761cec50174c0ba3169f6a73722c3"
+        },
+        "2:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_1.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_2.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_3.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_4.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_5.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_6.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_7.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_8.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "2:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_2_credits_9.json",
+          "sha256": "1be4551285851a7c33c2eb75448666c01b481d7b00dcfc6ce1e10dc7676a7c3c"
+        },
+        "3:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_0.json",
+          "sha256": "d35c032c984fef35ffc44adb85eaccd98413def640a07ff55996e2313f2b4bbe"
+        },
+        "3:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_1.json",
+          "sha256": "21d310c83e410bfc89f04b38eaca01730404ed19461761a360e123a716dc63ce"
+        },
+        "3:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_2.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_3.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_4.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_5.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_6.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_7.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_8.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "3:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_3_credits_9.json",
+          "sha256": "903c736c298482ee36596c9c46b9c96fae22233960e2b2b2d6b0e45c982432e3"
+        },
+        "4:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_0.json",
+          "sha256": "c1ece52d753ef5ecaae2a6440f08b6ff9449a195d2b440ece0877e36670babb0"
+        },
+        "4:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_1.json",
+          "sha256": "938c2bc9897deb24e572d3e201e23724f0ad33801d3655b8ab758944ac3475cd"
+        },
+        "4:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_2.json",
+          "sha256": "4605e4d5da579242559bea4b467f09efe7471be01af6a7102a46e094bee4014a"
+        },
+        "4:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_3.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_4.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_5.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_6.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_7.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_8.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "4:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_4_credits_9.json",
+          "sha256": "18443390ab94350f0c1b8e24d511aee2fcf125f0e6b7020a2a2b031b08ac8427"
+        },
+        "5:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_0.json",
+          "sha256": "e7bec96fcfaa85c77ca725c2486a2177f6022d5c81a0345dfab41b05ab403695"
+        },
+        "5:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_1.json",
+          "sha256": "6f98ea0aa4674b775afbd24645186797e923748551c1f817e03552dc106da0c2"
+        },
+        "5:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_2.json",
+          "sha256": "8f4726482b5e32889e0f381d1e032f2ba48d7e9492276f2518ec9be3a288e100"
+        },
+        "5:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_3.json",
+          "sha256": "496a9d9c0ce23686dbc51c740be9e2da90bf8818524eb58d901bbbfecf7beb08"
+        },
+        "5:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_4.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_5.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_6.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_7.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_8.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "5:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_5_credits_9.json",
+          "sha256": "aeda3a167d0e4d34456b949d2c2ffb634e2bec24db5bcbbb1ff79b5d6449b966"
+        },
+        "6:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_0.json",
+          "sha256": "c3d515601531a091e4b316b092e35e2de59d0e0ee95560fddcf8262cf6812eb7"
+        },
+        "6:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_1.json",
+          "sha256": "0436a6af82cef41ef9e1f8b30365176fc52635109f2493fbc590012d640b96a4"
+        },
+        "6:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_2.json",
+          "sha256": "be1b664f63df4659b0bd701312b0dc1bb6eb532f3b169941f5151439582389d2"
+        },
+        "6:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_3.json",
+          "sha256": "13dd3d1bcf4932215d91a5c38f415eb49662bf729ba0fdffd9ac3857f2c1fc87"
+        },
+        "6:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_4.json",
+          "sha256": "ebaeca46ad3e1b7a4294a839811dcb208b8a5c4daf92397a032d7a57795ad087"
+        },
+        "6:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_5.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_6.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_7.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_8.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "6:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_6_credits_9.json",
+          "sha256": "f99eb42ff1395f069ee03222dfd248fdc38f916598fbc55ce3aeb6f745d8691a"
+        },
+        "7:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_0.json",
+          "sha256": "ce238c06d8115b8dafe6cf3f2791277c1828cb2f2020e3ca81f6099ff50bcf10"
+        },
+        "7:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_1.json",
+          "sha256": "3cb75cc082a41898a712aff5c1ad70961355a0b60db3f953c68c81e5fb48cc44"
+        },
+        "7:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_2.json",
+          "sha256": "4771e7f58a0fb4d3dd65eaaafe18a09d3b90c91846252275d197f36a68ad3a34"
+        },
+        "7:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_3.json",
+          "sha256": "f886a4b71628607e497031f7baf0538b6e83b43e964f05045b677feee3a133e3"
+        },
+        "7:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_4.json",
+          "sha256": "f4639362eb7010ea5cb649cad6ec2b00613b7075c99f5b4f65978b28317f35f9"
+        },
+        "7:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_5.json",
+          "sha256": "4acbeee6e51040eaac783c32cc47ad1bc8a483d0f70bbed8278715495ef0f7be"
+        },
+        "7:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_6.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "7:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_7.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "7:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_8.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "7:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_7_credits_9.json",
+          "sha256": "329e6b97c6c81bde5a10a77bc057e8a06219a7589681a844205ec5a319e0c845"
+        },
+        "8:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_0.json",
+          "sha256": "f074918f4af962f468d584b4074201fba816abd489e0adf893c0cb8157310eba"
+        },
+        "8:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_1.json",
+          "sha256": "1fee2bafe2676c93d36d79b197cbfb6f3a1af4b53f5c3e5d9432c95c5ed482db"
+        },
+        "8:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_2.json",
+          "sha256": "69e1d321447251ce7228dfc3d104f4f24ccb76da408409f5eb2e8c13612a57ae"
+        },
+        "8:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_3.json",
+          "sha256": "adc8d5ada8ac3c1c6ed7bffe3f2e1eea36b61213307f583d0c8cef4cb748c064"
+        },
+        "8:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_4.json",
+          "sha256": "915b97557c8e11ac0e7f2e6bafc45aca2d00a4fd7464ff53dde2404e5064d0df"
+        },
+        "8:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_5.json",
+          "sha256": "43b430824b9a00133af5850e243f7b88b0e8bcd19cd9f1f0f501ffd080e6db11"
+        },
+        "8:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_6.json",
+          "sha256": "44bb74de6f04f900d311489184e50a7ad503acb548169a85a6d3ac420d533760"
+        },
+        "8:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_7.json",
+          "sha256": "e87d5bf9f8e078425a449d407243a7ae9cfde6a970649878a24d0dd82b1720b9"
+        },
+        "8:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_8.json",
+          "sha256": "e87d5bf9f8e078425a449d407243a7ae9cfde6a970649878a24d0dd82b1720b9"
+        },
+        "8:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_8_credits_9.json",
+          "sha256": "e87d5bf9f8e078425a449d407243a7ae9cfde6a970649878a24d0dd82b1720b9"
+        },
+        "9:0": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_0.json",
+          "sha256": "598c9d5527641c717095b5ae61e78bb2578e675203d094a45a1815e97e7b4207"
+        },
+        "9:1": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_1.json",
+          "sha256": "fc4b17b70c52958dea0130686f4491a935f2502ddf65182c7eda6902045c7469"
+        },
+        "9:2": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_2.json",
+          "sha256": "fd865e4e641557d0d07b403de3109eeaba9a584220df654cfa9fcc28b4e338d0"
+        },
+        "9:3": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_3.json",
+          "sha256": "86dc6db9f874f340b7ed50d8499a0927423bd3c11b70a9c210d1ef5e2f9b0f1c"
+        },
+        "9:4": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_4.json",
+          "sha256": "7f971c8168cd3c5db74e5339904b1ee02b6b48e129ce23eca1e5b0bb72bf039f"
+        },
+        "9:5": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_5.json",
+          "sha256": "2ab2eb523088fd1582788521d2d0c76950aa3c73367d6b90936dc67dfd9107fd"
+        },
+        "9:6": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_6.json",
+          "sha256": "09be49514fc32100dc9f3b073b5a105a9213814b63ffb181185c6f2f98fef7d0"
+        },
+        "9:7": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_7.json",
+          "sha256": "019332b90ee40bf0fa6c36f4069736b89db818e9ff18d76e3dbb1d6836bca2ae"
+        },
+        "9:8": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_8.json",
+          "sha256": "6170a39e3854a3fbc89374491772f485bd15db3f5cd235e5eb2a6ad9ce6dd89a"
+        },
+        "9:9": {
+          "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/random_attempts_9_credits_9.json",
+          "sha256": "6170a39e3854a3fbc89374491772f485bd15db3f5cd235e5eb2a6ad9ce6dd89a"
+        }
+      },
+      "retry_policy_config": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/retry_k.json",
+      "robot": {
+        "execution_arm": "right",
+        "model": "PandaOmron"
+      },
+      "run_budget": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-365-recording-v7/run_budget.json",
+      "service_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/display_service",
+      "sim_python": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python",
+      "sim_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness/protocol/v2/skill_graphs/main_ui_with_robocasa365_v1/open_cabinet.json",
+      "skill_graph_sha256": "7fba59d7b15b08b1d06dea421889f77b2cd2fca9b569d07b312af1115f1aef76",
+      "skill_root": "robocasa365-open-cabinet-dev101",
+      "suite": "robocasa365",
+      "task": "open_cabinet",
+      "task_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite"
+    },
+    {
+      "approved_config_sha256": "0c90ad531a33f6eca2db708cce0480454da782c8e114fb3e3325cc0e5c99d950",
+      "approved_policy_sha256": "2166450be3f10301e5c23cf5edaac3aed668deb8f479b407c1101fe6c7ecfa40",
+      "approved_run_budget_sha256": "b8b2f661221bce23ec345f7dd03fd6cc4f418ce96efc7b161d3b15ebf61fa78b",
+      "asset_manifest": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json",
+      "base_capability": "Mobile · joint driven",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_pick_place_counter_to_sink.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_pick_place_counter_to_sink.json",
+      "execution_target": "robocasa365_sim",
+      "id": "openarm365-pick-place-counter-to-sink-dev101",
+      "robot": {
+        "execution_arm": "right",
+        "model": "PandaOmron"
+      },
+      "run_budget": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_pick_place_counter_to_sink_budget.json",
+      "service_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365/service",
+      "sim_python": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365/service/python",
+      "sim_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_pick_place_counter_to_sink_graph.json",
+      "skill_graph_sha256": "a54a8969bff6dbe6f6bdecebc0edb25b9663d428af8e0d24727344729321496f",
+      "skill_root": "openarm365-pick-place-counter-to-sink-dev101",
+      "suite": "robocasa365",
+      "task": "pick_place_counter_to_sink",
+      "task_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite"
+    },
+    {
+      "approved_config_sha256": "afed9ab69a28641c3325c22c6925d3cbdd6c5d1b8f4aac4210a84a1374b41b10",
+      "approved_policy_sha256": "f40d94a888a37a91753f44be86ef865e53eefa4eac58fe219d002b44aaa09ad5",
+      "approved_run_budget_sha256": "43b459dffe2a550471f346ba1020dcb9ff47e8153a4d2bec6bee220cb4df4e1d",
+      "asset_manifest": "/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json",
+      "base_capability": "Mobile · joint driven",
+      "code": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_open_cabinet.py",
+      "config": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_open_cabinet.json",
+      "execution_target": "robocasa365_sim",
+      "id": "openarm365-open-cabinet-dev101",
+      "robot": {
+        "execution_arm": "right",
+        "model": "PandaOmron"
+      },
+      "run_budget": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_open_cabinet_budget.json",
+      "service_source_root": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365/service",
+      "sim_python": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm365/service/python",
+      "sim_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa",
+      "skill_graph_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_open_cabinet_graph.json",
+      "skill_graph_sha256": "cfa4c0fd22339474e12056cfd9e0833c1634d5e6cf49e5a6457ee2e8a365189d",
+      "skill_root": "openarm365-open-cabinet-dev101",
+      "suite": "robocasa365",
+      "task": "open_cabinet",
+      "task_source_root": "/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite"
+    }
+  ],
+  "require_skill_graph": true,
+  "schema_version": "attentionbench.ui-run-catalog.v1",
+  "scope": "Preserve all 13 prior robot/task entries and execution semantics. Add genuine OpenArm365 physical left arm, independent full-task deterministic seed101/layout11/style34/hashseed0 configuration and budgets. Counter-to-sink SDK native-success evidence c9870b34148f; open-cabinet experimental: native failure at handle capture. No formal benchmark, training, all-365 or hardware claim. History list reads full trace events once per request; native outcomes and hashed artifacts unchanged.",
+  "source_catalogs": [
+    {
+      "path": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/catalog.json",
+      "sha256": "2c60f27582fb36118434f01196f0ab181b7c3cebefb4f27d3ea3e92d8a7cd636"
+    }
+  ]
+}

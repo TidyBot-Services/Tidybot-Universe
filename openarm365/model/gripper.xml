@@ -2,9 +2,9 @@
 <mujoco model="OpenArmGripper365">
   <compiler angle="radian" />
   <asset>
-    <mesh name="openarm_left_hand_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl" scale="0.001 0.001 0.001" />
-    <mesh name="openarm_left_right_finger_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/compat_v6/openarm_left_right_finger.stl" scale="0.001 0.001 0.001" />
-    <mesh name="openarm_left_left_finger_mesh0" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_hand_mesh0" file="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_right_finger_mesh0" file="../../openarm_phase0_recheck/model/compat_v6/openarm_left_right_finger.stl" scale="0.001 0.001 0.001" />
+    <mesh name="openarm_left_left_finger_mesh0" file="../../openarm_phase0_recheck/model/openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl" scale="0.001 0.001 0.001" />
   </asset>
   <worldbody>
     <body name="hand">

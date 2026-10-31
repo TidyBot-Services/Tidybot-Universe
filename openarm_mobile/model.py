@@ -5,6 +5,7 @@ wheel traction dynamics are not part of that source model. Motion is produced
 by force-limited joints, with mass/inertia and chassis collision geometry.
 """
 from pathlib import Path
+import os
 import copy
 import hashlib
 import json
@@ -14,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = Path(__file__).parent / 'model/source/tidyverse.urdf'
 ARM = ROOT / 'openarm_phase0_recheck/model/compat_v6/robot.urdf'
 OUTPUT = Path(__file__).parent / 'model/mobile_openarm.urdf'
+def output_path(path):
+    return Path(os.path.relpath(path, OUTPUT.parent)).as_posix()
 
 
 def digest(path):
@@ -32,7 +35,7 @@ def build_model():
             if name == 'base_x_joint':
                 node.find('parent').set('link', 'world')
             for mesh in node.findall('.//mesh'):
-                mesh.set('filename', str((BASE.parent / mesh.get('filename')).resolve()))
+                mesh.set('filename', output_path((BASE.parent / mesh.get('filename')).resolve()))
             root.append(node)
     for node in arm:
         if node.tag == 'link' and node.get('name') == 'world':
@@ -42,7 +45,7 @@ def build_model():
             node.find('parent').set('link', 'base_link')
             node.find('origin').set('xyz', '0 0 0.6')
         for mesh in node.findall('.//mesh'):
-            mesh.set('filename', str((ARM.parent / mesh.get('filename')).resolve()))
+            mesh.set('filename', output_path((ARM.parent / mesh.get('filename')).resolve()))
         root.append(node)
     data = ET.tostring(root, encoding='utf-8', xml_declaration=True)
     if not OUTPUT.exists() or OUTPUT.read_bytes() != data:
@@ -52,7 +55,7 @@ def build_model():
     if source_srdf.exists():
         target = OUTPUT.with_suffix('.srdf')
         if not target.exists(): target.write_bytes(source_srdf.read_bytes())
-    identity = {'path': str(OUTPUT), 'sha256': digest(OUTPUT),
+    identity = {'path': OUTPUT.relative_to(ROOT).as_posix(), 'sha256': digest(OUTPUT),
         'source_sha256': digest(BASE), 'arm_sha256': digest(ARM),
         'base_source': 'https://github.com/TidyBot-Services/maniskill-tidyverse',
         'base_source_revision': 'fbbac3a0e105001f46a0a63b61ebda51ac771980',
@@ -66,3 +69,7 @@ def build_model():
     manifest=OUTPUT.parent/'identity.json'
     manifest.write_text(json.dumps(identity,indent=2)+'\n')
     return identity
+
+
+if __name__ == '__main__':
+    build_model()

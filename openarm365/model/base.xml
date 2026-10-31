@@ -2,7 +2,7 @@
 <mujoco model="TidyverseBase365">
   <compiler angle="radian" />
   <asset>
-    <mesh name="base_visual" file="/home/truares/桌面/Tidybot-Universe-attention-native/openarm_mobile/model/source/tidyverse_base/base_vis.stl" />
+    <mesh name="base_visual" file="../../openarm_mobile/model/source/tidyverse_base/base_vis.stl" />
   </asset>
   <worldbody>
     <body name="base">

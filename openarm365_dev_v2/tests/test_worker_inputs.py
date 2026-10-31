@@ -7,6 +7,14 @@ from openarm365_dev_v2.tests.test_scene_contract import diagnostic,FakeOwner
 from benchmarks.attention_harness.dev_experiment import verify_manifest
 from benchmarks.attention_harness.dev_scene_diag import prepare_worker_inputs,reset_group,validate_recording_context
 
+@pytest.fixture(scope='module', autouse=True)
+def writable_dev_local_root(tmp_path_factory):
+ from curobo_v2 import dev_local
+ original=dev_local.DEV_LOCAL_ROOT
+ dev_local.DEV_LOCAL_ROOT=tmp_path_factory.mktemp('worker-dev-local')
+ yield
+ dev_local.DEV_LOCAL_ROOT=original
+
 def inputs(tmp_path):
  s,e,b=diagnostic(tmp_path);cfg=verify_manifest(e)['configs']['open_cabinet:101']
  return s,e,cfg

@@ -1,0 +1,26 @@
+{
+  "definition_version": "main-ui-openarm365-v11",
+  "entries": [
+    {
+      "attentionbench": {
+        "approved_config_sha256": "0c90ad531a33f6eca2db708cce0480454da782c8e114fb3e3325cc0e5c99d950",
+        "approved_generated_policy": true,
+        "approved_policy_sha256": "2166450be3f10301e5c23cf5edaac3aed668deb8f479b407c1101fe6c7ecfa40",
+        "formal_config_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_pick_place_counter_to_sink.json",
+        "generated_policy_file": "/home/truares/桌面/Tidybot-Universe-attention-native/openarm_bimanual/launch_configs/main-ui-openarm365-v11/openarm365_pick_place_counter_to_sink.py",
+        "runner_boundary": "formal",
+        "seed": 101,
+        "suite": "robocasa365",
+        "task": "pick_place_counter_to_sink"
+      },
+      "dependencies": [],
+      "description": "Full deterministic SDK physical task policy; cabinet remains experimental after failed handle capture. Native evaluation is unchanged and reported separately.",
+      "display_name": "pick_place_counter_to_sink",
+      "name": "openarm365-pick-place-counter-to-sink-dev101",
+      "status": "in_progress"
+    }
+  ],
+  "formal_eligible": false,
+  "graph_id": "openarm365-pick-place-counter-to-sink-dev101",
+  "task_env": "attentionbench-engineering"
+}

@@ -5,12 +5,16 @@ limits. MuJoCo uses convex mesh contacts. Display uses the same pinned collision
 meshes (DAE visual materials are not used). No object or task code is converted.
 """
 from pathlib import Path
+import os
 import xml.etree.ElementTree as E
 import hashlib, json
 import numpy as np
 from scipy.spatial.transform import Rotation
 ROOT=Path(__file__).resolve().parent
 REPO=ROOT.parent
+MODEL_DIR=ROOT/'model'
+def model_path(path): return Path(os.path.relpath(path, MODEL_DIR)).as_posix()
+def source_key(path): return path.relative_to(REPO).as_posix()
 URDF=REPO/'openarm_phase0_recheck/model/compat_v6/robot.urdf'
 BASE=REPO/'openarm_mobile/model/source/tidyverse.urdf'
 
@@ -23,7 +27,7 @@ def build_model():
     src=E.parse(URDF).getroot(); links={n.get('name'):n for n in src.findall('link')}
     children={}
     for j in src.findall('joint'): children.setdefault(j.find('parent').get('link'),[]).append(j)
-    used={str(URDF):hashlib.sha256(URDF.read_bytes()).hexdigest(),str(BASE):hashlib.sha256(BASE.read_bytes()).hexdigest()}
+    used={source_key(URDF):hashlib.sha256(URDF.read_bytes()).hexdigest(),source_key(BASE):hashlib.sha256(BASE.read_bytes()).hexdigest()}
     def document(name):
         r=E.Element('mujoco',model=name); E.SubElement(r,'compiler',angle='radian');
         for tag in ['asset','worldbody','actuator','sensor','contact','equality']: E.SubElement(r,tag)
@@ -36,8 +40,8 @@ def build_model():
             rot=Rotation.from_euler('xyz',np.fromstring(inertia.find('origin').get('rpy','0 0 0'),sep=' ')).as_matrix(); mat=rot@mat@rot.T
             E.SubElement(b,'inertial',pos=inertia.find('origin').get('xyz','0 0 0'),mass=inertia.find('mass').get('value'),fullinertia=s([mat[0,0],mat[1,1],mat[2,2],mat[0,1],mat[0,2],mat[1,2]]))
         for i,c in enumerate(link.findall('collision')):
-            mesh=c.find('geometry/mesh'); path=(URDF.parent/mesh.get('filename')).resolve(); used[str(path)]=hashlib.sha256(path.read_bytes()).hexdigest(); meshname=name+'_mesh'+str(i)
-            E.SubElement(doc.find('asset'),'mesh',name=meshname,file=str(path),scale=mesh.get('scale','1 1 1'))
+            mesh=c.find('geometry/mesh'); path=(URDF.parent/mesh.get('filename')).resolve(); used[source_key(path)]=hashlib.sha256(path.read_bytes()).hexdigest(); meshname=name+'_mesh'+str(i)
+            E.SubElement(doc.find('asset'),'mesh',name=meshname,file=model_path(path),scale=mesh.get('scale','1 1 1'))
             geo=dict(name=name+'_collision'+str(i),type='mesh',mesh=meshname,**transform(c.find('origin')))
             E.SubElement(b,'geom',**geo,group='0',friction='1 0.005 0.0001',condim='4')
             geo['name']=name+'_visual'+str(i);E.SubElement(b,'geom',**geo,group='1',contype='0',conaffinity='0',rgba='.65 .67 .69 1')
@@ -89,8 +93,8 @@ def build_model():
         E.SubElement(base.find('actuator'),'velocity',name='actuator_mobile_'+name,joint='joint_mobile_'+name,kv='1000',ctrllimited='true',ctrlrange=s([-speed,speed]),forcelimited='true',forcerange=s([-eff,eff]))
     E.SubElement(b,'inertial',pos='-.198 0 .2',mass='50',diaginertia='1 1 .5')
     E.SubElement(b,'geom',name='chassis_collision',type='box',pos='-.198 0 .309',size=s(np.array([.733,.523,.606])/2),group='0')
-    mesh=REPO/'openarm_mobile/model/source/tidyverse_base/base_vis.stl';used[str(mesh)]=hashlib.sha256(mesh.read_bytes()).hexdigest()
-    E.SubElement(base.find('asset'),'mesh',name='base_visual',file=str(mesh))
+    mesh=REPO/'openarm_mobile/model/source/tidyverse_base/base_vis.stl';used[source_key(mesh)]=hashlib.sha256(mesh.read_bytes()).hexdigest()
+    E.SubElement(base.find('asset'),'mesh',name='base_visual',file=model_path(mesh))
     E.SubElement(b,'geom',type='mesh',mesh='base_visual',pos='0 0 .47225',contype='0',conaffinity='0',group='1',rgba='.5 .5 .5 1')
     support=E.SubElement(b,'body',name='support');E.SubElement(support,'site',name='center',size='.005',rgba='0 0 0 0')
     # Preserve the existing SRDF exceptions; never disable global collision.
@@ -104,7 +108,7 @@ def build_model():
             body_node[:]=sorted(list(body_node),key=lambda n:0 if n.tag=='joint' else 1)
     ROOT.joinpath('model').mkdir(exist_ok=True)
     for name,doc in [('robot',robot),('gripper',grip),('base',base)]:
-        E.indent(doc);path=ROOT/'model'/f'{name}.xml';path.write_bytes(E.tostring(doc,encoding='utf-8',xml_declaration=True)); used[str(path)]=hashlib.sha256(path.read_bytes()).hexdigest()
+        E.indent(doc);path=ROOT/'model'/f'{name}.xml';path.write_bytes(E.tostring(doc,encoding='utf-8',xml_declaration=True)); used[source_key(path)]=hashlib.sha256(path.read_bytes()).hexdigest()
     import copy
     rightgrip=copy.deepcopy(grip)
     for node in rightgrip.iter():
@@ -117,9 +121,9 @@ def build_model():
     for meshnode in rightgrip.find('asset'):
         linkname=meshnode.get('name').rsplit('_mesh',1)[0]
         meshsrc=links[linkname].find('collision/geometry/mesh')
-        meshpath=(URDF.parent/meshsrc.get('filename')).resolve(); used[str(meshpath)]=hashlib.sha256(meshpath.read_bytes()).hexdigest()
-        meshnode.set('file',str(meshpath))
-    rightpath=ROOT/'model/gripper_right.xml';rightpath.write_bytes(E.tostring(rightgrip,encoding='utf-8',xml_declaration=True));used[str(rightpath)]=hashlib.sha256(rightpath.read_bytes()).hexdigest()
+        meshpath=(URDF.parent/meshsrc.get('filename')).resolve(); used[source_key(meshpath)]=hashlib.sha256(meshpath.read_bytes()).hexdigest()
+        meshnode.set('file',model_path(meshpath))
+    rightpath=ROOT/'model/gripper_right.xml';rightpath.write_bytes(E.tostring(rightgrip,encoding='utf-8',xml_declaration=True));used[source_key(rightpath)]=hashlib.sha256(rightpath.read_bytes()).hexdigest()
     (ROOT/'model/identity.json').write_text(json.dumps({'sources':used,'collision':'MuJoCo convex hull of original collision meshes; same dimensions','mount_height_m':.6,'gripper_tcp_hand_m':[0,0,.0835]},indent=2)+'\n')
     return used
 if __name__=='__main__': build_model()

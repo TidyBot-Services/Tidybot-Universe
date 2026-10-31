@@ -1,6 +1,6 @@
 {
-  "path": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native/openarm_mobile/model/mobile_openarm.urdf",
-  "sha256": "222d67c5b7199fb107b94029b5d8756db1b3ed4eecdc7bb2b32648e30281726d",
+  "path": "openarm_mobile/model/mobile_openarm.urdf",
+  "sha256": "e1840c3a646553ee755311efdd6dd7bb6992b00578f6acbcc0eaff18b52d4262",
   "source_sha256": "c7d1ce0a08359077ffe9230621074ec57a906974ec55c952d130496cbdcba072",
   "arm_sha256": "ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456",
   "base_source": "https://github.com/TidyBot-Services/maniskill-tidyverse",

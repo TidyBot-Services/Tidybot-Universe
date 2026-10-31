@@ -1,0 +1,34 @@
+OpenArm v1.0 bimanual URDF
+
+Official source: https://github.com/enactic/openarm_description
+Source commit: c10304158f917579491b02682e02f903b948d74d
+Official instructions: https://docs.openarm.dev/api-reference/description/
+Xacro input: openarm_description/assets/robot/openarm_v1.0/urdf/openarm_v10.urdf.xacro
+Explicit argument: arm_type:=v10
+Official defaults: bimanual=true, parallel_link grippers, ros2_control=false
+Generation tool: xacro 2.1.1
+
+openarm_v10_bimanual.urdf:
+  Official Xacro output with package:// mesh references.
+  ROS consumers must have the openarm_description package discoverable.
+
+openarm_v10_bimanual_local.urdf:
+  Same robot with absolute local paths for mesh files.
+  Regenerate this copy after moving the output directory.
+
+This machine has no ROS 2 installation. A local ament resource index and
+the official ament_index_python library resolve the original package
+lookups. The official Xacro files and robot parameters are unmodified.
+
+Regenerate from this directory: bash ./generate.sh
+
+Validation passed:
+  URDF parser and connected tree rooted at world.
+  26 links, 25 joints, 16 independent movable joints.
+  Seven revolute joints per arm and one independent gripper per arm.
+  Joint limits, axes, mimic targets, and finite joint transforms.
+  46 mesh references to 22 existing, nonempty STL/DAE mesh files.
+  STL triangle data and DAE geometry arrays.
+  Both URDF files have identical parsed XML apart from mesh paths.
+
+No simulator or real robot execution was performed.

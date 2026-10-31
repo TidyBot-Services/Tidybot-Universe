@@ -19,7 +19,7 @@ class NativeOwner:
             and not any(s in k.upper() for s in ('KEY','TOKEN','SECRET','PASSWORD'))}
         project=Path(__file__).resolve().parent.parent
         env.update(PYTHONDONTWRITEBYTECODE='1',PYTHONHASHSEED='0',MUJOCO_GL='egl',
-            PYTHONPATH=str(project)+os.pathsep+'/home/truares/桌面/Tidybot-Universe-attention-native',
+            PYTHONPATH=str(project),
             XDG_CACHE_HOME=str(self.evidence/'cache'),NUMBA_CACHE_DIR=str(self.evidence/'numba-cache'))
         self.log=(self.evidence/'native-service.log').open('ab')
         self.process=subprocess.Popen([self.python,'-B','-u','-m','openarm365_dev.worker',

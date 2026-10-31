@@ -1,0 +1,16 @@
+{
+  "approved_config_sha256s": [
+    "fa7a1e515b7c45ee9c72e4c5bc931b22d4b278b6718b69fa3b2838ec3db6dfb6",
+    "a422d3b569ecffa9ff8b786379c9d4a95a67ca79697e5a385e0f769bde34c989"
+  ],
+  "approved_policy_sha256": "654032d40d9c2bda7e3c0b2d7dc935a30e6a91940cece7e57a6827e1140dca46",
+  "assistance_credits": 1,
+  "attempt_wall_seconds": 120,
+  "formal_eligible": false,
+  "human_deadline_seconds": 30,
+  "max_attempts": 10,
+  "schema_version": "attentionbench.robocasa365-run-budget.v1",
+  "suite": "robocasa365",
+  "token_limit": 8000,
+  "whole_case_wall_seconds": 300
+}

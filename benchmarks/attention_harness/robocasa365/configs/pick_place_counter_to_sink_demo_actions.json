@@ -1,0 +1,23 @@
+{
+  "source": "public_sdk",
+  "steps": [
+    {
+      "operation": "sdk.sensors.get_observation",
+      "arguments": {}
+    },
+    {
+      "operation": "sdk.arm.move_delta",
+      "arguments": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "dz": 0.001
+      }
+    },
+    {
+      "operation": "sdk.gripper.open",
+      "arguments": {
+        "settle_steps": 2
+      }
+    }
+  ]
+}
