@@ -8,11 +8,30 @@
 
 ## AttentionBench research entry
 
-For AttentionBench, use the `feature/attention-native-robosuite` branch rather
-than the default branch. Start with the [project guide](docs/attentionbench_project_guide.md)
-for the research question, system modules, exact Service repositories, current
-evidence and reproduction limits. See [module progress](docs/attentionbench_progress.md)
-for the full history.
+AttentionBench studies when a robot should ask a human for help, and how help can
+become reusable experience, trading task success against human attention.
+
+**The research code lives on the `attentionbench/baseline-20261015` branch, not on
+the default branch.**
+
+- Browse: <https://github.com/TidyBot-Services/Tidybot-Universe/tree/attentionbench/baseline-20261015>
+- Download ZIP: <https://github.com/TidyBot-Services/Tidybot-Universe/archive/refs/heads/attentionbench/baseline-20261015.zip>
+- Clone: `git clone -b attentionbench/baseline-20261015 https://github.com/TidyBot-Services/Tidybot-Universe.git`
+
+Current scope (2026-10-31): RoboCasa365 kitchen tasks with the OpenArm365 robot
+(`pick_place_counter_to_sink` and others), an "agent mode" where a Codex agent writes
+and revises the robot policy, a self-evaluator (Eval), a simulated human helper
+(AdvisorProxy), and a Memory service that turns help into validated, reusable notes.
+
+**Reproduction status:** the code is complete on the branch, but running it on another
+machine is not yet possible: the RoboCasa365 simulator package, task configs, OpenArm
+meshes and the cuRobo planner deployment are still being moved out of the author's
+machine (work in progress, see the [collaborator plan](docs/attentionbench_project_guide.md#run-it-yourself)).
+
+Start with the [project guide](docs/attentionbench_project_guide.md) for the research
+question, system modules, Service repositories and current evidence. See
+[module progress](docs/attentionbench_progress.md) and [STATUS.md](STATUS.md) for the
+full history.
 
 ## The Bet
 

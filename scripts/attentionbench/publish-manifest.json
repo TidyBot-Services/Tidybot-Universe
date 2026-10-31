@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Tidybot-Universe",
+    "path": "$ATTENTIONBENCH_DEV/Tidybot-Universe-attention-native",
+    "remote": "origin",
+    "branch": "attentionbench/baseline-20261015"
+  },
+  {
+    "name": "attention_memory_service",
+    "path": "$ATTENTIONBENCH_DEV/attention_memory_service",
+    "remote": "origin",
+    "branch": "attentionbench/baseline-20261015"
+  }
+]
