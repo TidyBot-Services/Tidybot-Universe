@@ -135,7 +135,8 @@ def test_contact_only_logs_slip_and_only_contact_loss_is_fatal(monkeypatch):
     slips=[row for path,row in rows if path=='journal' and row['event']=='held_slip_beyond_envelope']
     assert len(slips)==1 and slips[0]['slip_mm']==pytest.approx(50) and slips[0]['side']=='left'
     monkeypatch.setattr(attachment,'bilateral_contacts',lambda env:{'left':set(),'right':set()})
-    with pytest.raises(RuntimeError,match='Measured bilateral grasp contact lost during transport'):
+    monkeypatch.setattr(ex,'holder_object_contact',lambda env,side,bid:False)
+    with pytest.raises(RuntimeError,match='Held object left the hand'):
         obj.monitor()
 
 
@@ -143,3 +144,28 @@ def test_contact_only_receipt_label(monkeypatch):
     obj,_,_=transport(monkeypatch,per_motion=False,contact_only=True)
     ex.refresh_execution_receipt(obj)
     assert obj._execution_receipt['held_reference']=='contact_only'
+
+
+def test_contact_only_drop_means_left_the_hand(monkeypatch):
+    obj,rows,pose=transport(monkeypatch,per_motion=False,contact_only=True)
+    ex.NativeExecutor.move_joints(obj,np.zeros(1),side='left',request_id='m0')  # records the grasp reference
+    obj.active_request='m1'
+    monkeypatch.setattr(attachment,'bilateral_contacts',lambda env:{'left':set(),'right':set()})
+    touching=[True]
+    monkeypatch.setattr(ex,'holder_object_contact',lambda env,side,bid:touching[0])
+    pose[0][0,3]=.03  # one finger off, 30 mm in the hand: still held, journaled once
+    obj.monitor();obj.monitor()
+    partial=[row for path,row in rows if path=='journal' and row['event']=='held_contact_partial']
+    assert len(partial)==1 and partial[0]['moved_in_hand_mm']==pytest.approx(30)
+    pose[0][0,3]=.06  # moved more than 5 cm in the hand: dropped
+    with pytest.raises(RuntimeError,match='Held object left the hand'):obj.monitor()
+    pose[0][0,3]=.01;touching[0]=False  # no hand contact at all: dropped
+    with pytest.raises(RuntimeError,match='Held object left the hand'):obj.monitor()
+
+
+def test_without_contact_only_partial_contact_is_still_fatal(monkeypatch):
+    obj,_,_=transport(monkeypatch,per_motion=True)
+    ex.NativeExecutor.move_joints(obj,np.zeros(1),side='left',request_id='m0')
+    monkeypatch.setattr(attachment,'bilateral_contacts',lambda env:{'left':set(),'right':set()})
+    monkeypatch.setattr(ex,'holder_object_contact',lambda env,side,bid:True)
+    with pytest.raises(RuntimeError,match='Measured bilateral grasp contact lost during transport'):obj.monitor()

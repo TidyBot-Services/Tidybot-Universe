@@ -205,6 +205,19 @@ def tracking_error_event(request_id,settle_steps,bound,names,target,current,qvel
         max_error_joint=names[maximum],target=np.asarray(target).tolist(),current_state=np.asarray(current).tolist(),
         qvel=None if qvel is None else np.asarray(qvel).tolist())
 
+def holder_object_contact(env,side,bid):
+    """Any penetrating contact between the holder's hand/fingers and the object (test-fixture drop test)."""
+    sim=env.sim;m=sim.model
+    for con in sim.data.contact:
+        if con.dist>0:continue
+        for rg,og in ((int(con.geom1),int(con.geom2)),(int(con.geom2),int(con.geom1))):
+            if f'openarm_{side}_' in (m.geom_id2name(rg) or '') and is_descendant(m,int(m.geom_bodyid[og]),bid):return True
+    return False
+
+
+DROP_DISPLACEMENT_M=.05
+
+
 class NativeExecutor:
     def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,held_contact_only=False,execution_settings=None,bimanual_collaboration='none'):
         if bimanual_collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
@@ -267,6 +280,28 @@ class NativeExecutor:
     def held_for(self,side):
         return self.held.get(side) if getattr(self,'bimanual_collaboration','none') in ('c1','handoff') else self.held if self.held and self.held['holder']==side else None
 
+    def drop_message(self):
+        return ('Held object left the hand (no hand contact, or moved more than 5 cm in the hand)'
+                if getattr(self,'held_contact_only',False) else 'Measured bilateral grasp contact lost during transport')
+
+    def held_in_hand(self,side,bid,bilateral,request_id=None):
+        """Bilateral contact, or (test fixture contact_only) the object has not left the hand: some hand/finger
+        contact remains and it moved < 5 cm in the hand since grasp. Partial holds are journaled once per request."""
+        if bid in bilateral[side]:return True
+        if not getattr(self,'held_contact_only',False):return False
+        from .attachment import object_pose
+        grasp=getattr(self,'_grasp_reference',{}).get((side,bid))
+        relative=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
+        moved=None if grasp is None else float(np.linalg.norm(relative[:3,3]-grasp[:3,3]))
+        touching=holder_object_contact(self.env,side,bid)
+        if not touching or (moved is not None and moved>DROP_DISPLACEMENT_M):return False
+        key=(request_id or getattr(self,'active_request',None),side)
+        if getattr(self,'_partial_logged',None)!=key:
+            self._partial_logged=key
+            self.log(self.journal,dict(event='held_contact_partial',request_id=key[0],side=side,
+                moved_in_hand_mm=None if moved is None else moved*1000))
+        return True
+
     def rebase_held_references(self,request_id):
         if not getattr(self,'held_reference_per_motion',False):return
         from .attachment import bilateral_contacts,object_pose
@@ -276,7 +311,11 @@ class NativeExecutor:
         for held in slots:
             if not held:continue
             side=held['holder'];bid=held['target_id']
-            if bid not in bilateral[side]:raise RuntimeError('Measured bilateral grasp contact lost during transport')
+            if not hasattr(self,'_grasp_reference'):self._grasp_reference={}
+            if (side,bid) not in self._grasp_reference:
+                first=(self.held_transform[side] if self.bimanual_collaboration in ('c1','handoff') else self.held_transform)
+                if first is not None:self._grasp_reference[(side,bid)]=np.array(first,float)
+            if not NativeExecutor.held_in_hand(self,side,bid,bilateral,request_id):raise RuntimeError(NativeExecutor.drop_message(self))
             current=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
             previous=(self.held_transform[side] if self.bimanual_collaboration in ('c1','handoff')
                 else self.held_transform)
@@ -439,7 +478,7 @@ class NativeExecutor:
             if not held:continue
             side=held['holder'];bid=held['target_id']
             if self.gripping and (getattr(self,'bimanual_collaboration','none') not in ('c1','handoff') or side==getattr(self,'gripping_side',None)):continue
-            if bid not in bilateral[side]:raise RuntimeError('Measured bilateral grasp contact lost during transport')
+            if not NativeExecutor.held_in_hand(self,side,bid,bilateral):raise RuntimeError(NativeExecutor.drop_message(self))
             relative=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
             from scipy.spatial.transform import Rotation
             reference=self.held_transform[side] if getattr(self,'bimanual_collaboration','none') in ('c1','handoff') else self.held_transform
@@ -849,7 +888,7 @@ class NativeExecutor:
             current=np.linalg.inv(tcp_pose(self.env,other))@object_pose(self.env,self.held[other]['target_id']) if reference is not None else None
             translation,rotation=effective_held_envelope(settings)
             if (self.moving or self.gripping or self.held_transform[other] is None or
-                    self.held[other]['target_id'] not in bilateral_contacts(self.env)[other] or
+                    not NativeExecutor.held_in_hand(self,other,self.held[other]['target_id'],bilateral_contacts(self.env),request_id) or
                     (not getattr(self,'held_contact_only',False) and (
                     np.linalg.norm(current[:3,3]-reference[:3,3])>translation or
                     Rotation.from_matrix(current[:3,:3]@reference[:3,:3].T).magnitude()>rotation))):
@@ -910,7 +949,7 @@ class NativeExecutor:
                 if candidates:
                     if handoff_mode and self.held[other] and self.held[other]['target_id']==candidates[0]:
                         from .attachment import bilateral_contacts
-                        if self.held_transform[other] is None or self.held[other]['target_id'] not in bilateral_contacts(self.env)[other]:
+                        if self.held_transform[other] is None or not NativeExecutor.held_in_hand(self,other,self.held[other]['target_id'],bilateral_contacts(self.env),request_id):
                             raise RuntimeError('Handoff donor holding was lost during receiver close')
                         handoff_begin=True
                     if getattr(self,'bimanual_collaboration','none')=='c1':
