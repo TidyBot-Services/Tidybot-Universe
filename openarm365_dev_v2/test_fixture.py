@@ -18,6 +18,10 @@ def apply_test_fixture(env, spec):
     base_indices = robot._ref_base_joint_pos_indexes
     base_before = np.asarray(sim.data.qpos[base_indices], dtype=float).copy()
     base_target = base_before.copy()
+    if 'base_qpos' in spec:
+        base_target[0], base_target[1] = spec['base_qpos']['forward'], spec['base_qpos']['side']
+        if np.any(np.abs(base_target[:2]-base_before[:2]) > 1.):
+            raise RuntimeError('test_fixture base_qpos is more than 1.0 m from the reset base: ' + repr((base_target[:2]-base_before[:2]).tolist()))
     base_target[0] += spec.get('base_delta', {}).get('forward', 0)
     base_target[1] += spec.get('base_delta', {}).get('side', 0)
     sim.data.qpos[base_indices] = base_target

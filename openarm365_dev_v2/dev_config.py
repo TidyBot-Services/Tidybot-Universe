@@ -137,7 +137,7 @@ def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planne
 
 
 def validate_test_fixture(spec):
-    if not isinstance(spec,dict) or spec.get('test_fixture') is not True or set(spec)-{'test_fixture','label','base_delta','object_poses','held_reference'}:
+    if not isinstance(spec,dict) or spec.get('test_fixture') is not True or set(spec)-{'test_fixture','label','base_delta','base_qpos','object_poses','held_reference'}:
         raise ValueError('test_fixture requires true and only fixture initial-state fields')
     if 'held_reference' in spec and spec['held_reference']!='per_motion':
         raise ValueError('test_fixture held_reference must be per_motion')
@@ -146,6 +146,11 @@ def validate_test_fixture(spec):
     if not isinstance(delta,dict) or set(delta)-{'forward','side'}:raise ValueError('test_fixture base_delta axes must be forward and side')
     for value in delta.values():
         if type(value) not in (int,float) or not math.isfinite(value) or abs(value)>1.:raise ValueError('test_fixture base_delta exceeds 1.0 m')
+    if 'base_qpos' in spec:  # absolute base joint position: the reset base is randomised when no scene reset seed is allowed
+        absolute=spec['base_qpos']
+        if 'base_delta' in spec:raise ValueError('test_fixture takes base_delta or base_qpos, not both')
+        if not isinstance(absolute,dict) or set(absolute)!={'forward','side'} or any(type(v) not in (int,float) or not math.isfinite(v) for v in absolute.values()):
+            raise ValueError('test_fixture base_qpos needs finite forward and side')
     poses=spec.get('object_poses',{})
     if not isinstance(poses,dict) or len(poses)>4:raise ValueError('test_fixture object_poses allows at most 4 objects')
     for name,pose in poses.items():

@@ -65,9 +65,13 @@ def test_r5_fixture_config_and_legacy_bytes(monkeypatch, settings):
     {'base_delta': {'side': float('nan')}},
     {'object_poses': {'obj': [0, 0, 0, 2, 0, 0, 0]}},
     {'object_poses': {str(i): [0, 0, 0, 1, 0, 0, 0] for i in range(5)}},
+    {'base_qpos': {'forward': .3, 'side': .1}},  # together with base_delta
+    {'base_delta': None, 'base_qpos': {'forward': .3}},
+    {'base_delta': None, 'base_qpos': {'forward': .3, 'side': float('inf')}},
 ])
 def test_invalid_spec(change):
-    with pytest.raises(ValueError, match='test_fixture'):cfg.validate_test_fixture(dict(SPEC, **change))
+    spec={k: v for k, v in dict(SPEC, **change).items() if v is not None}
+    with pytest.raises((ValueError, TypeError), match='test_fixture'):cfg.validate_test_fixture(spec)
 
 
 @pytest.mark.parametrize('value', [None, 'fixed', 'settled', 'PER_MOTION', True, 1, {}])
@@ -168,3 +172,15 @@ def test_product_api_rejects_before_creation(monkeypatch,tmp_path):
     with pytest.raises(ValueError,match='product run creation rejects test_fixture'):
         daily.create({'selection':{'test_fixture':SPEC},'start':False})
     assert list(tmp_path.iterdir())==[]
+
+
+def test_absolute_base_qpos_is_independent_of_the_reset_base():
+    spec={k: v for k, v in SPEC.items() if k!='base_delta'}
+    spec['base_qpos']={'forward': .4, 'side': -.3}
+    assert cfg.validate_test_fixture(spec) is spec
+    env=FakeEnv();env.sim.data.qpos[:2]=[.1,.2]
+    receipt=apply_test_fixture(env,spec)
+    np.testing.assert_allclose(env.sim.data.qpos[:2],[.4,-.3])
+    assert receipt['base_qpos']['before'][:2]==[.1,.2] and receipt['base_qpos']['requested'][:2]==[.4,-.3]
+    far=FakeEnv();far.sim.data.qpos[:2]=[1.5,0]
+    with pytest.raises(RuntimeError, match='test_fixture base_qpos is more than 1.0 m'):apply_test_fixture(far,spec)
