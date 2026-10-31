@@ -5,16 +5,25 @@ import json
 from pathlib import Path
 import threading
 import time
+from dataclasses import dataclass
+from .formal_runner_boundary import FormalRunRequest
 from .dev_agent_workspace import atomic_write, encode
 from .dev_agent_diagnostics import project_planner_result, public_observation
 
 
+@dataclass(frozen=True)
+class AgentValidationRunRequest(FormalRunRequest):
+    worker_arm: dict | None = None
+    agent_configuration: dict | None = None
+
+
 class Executor:
-    def __init__(self, config, *, sim_python, runner_factory=None):
+    def __init__(self, config, *, sim_python, runner_factory=None, validation_arm=None, agent_configuration=None):
         from openarm365_dev_v2.runner import OpenArm365DevRunnerV2
         if config.get('budget_tier')!='dev' or config.get('runner_boundary')!='dev_loop':raise ValueError('dev_tier_required')
         self.config=config;self.python=sim_python;self.runner_factory=runner_factory or OpenArm365DevRunnerV2
         self.runner=None;self.running=False
+        self.validation_arm=validation_arm;self.agent_configuration=agent_configuration
         self.execution_identity = dict(run_id='run:agent', attempt_id='attempt:agent:0')
 
     def bind_execution(self, cell, version, execution_id):
@@ -34,16 +43,19 @@ class Executor:
         self.result=None;self.episode=None;self.execution_usage=None;self.native_result_ref=None
         atomic_write(directory,'policy.py',source);atomic_write(directory,'config.json',encode(self.config))
         episodes=[]
+        validation=getattr(self,'memory_validation',None) is not None
         self.runner=self.runner_factory(service_source_root=None,sim_python=self.python,
             sim_source_root=None,task_source_root=None,asset_manifest=None,agent_mode=True,
-            episode_observer=episodes.append,**({'memory_validation':self.memory_validation} if getattr(self,'memory_validation',None) else {}))
+            episode_observer=episodes.append,**({'memory_validation':self.memory_validation} if validation else {}))
         seconds=min(1920.,deadline-time.monotonic())
-        request=FormalRunRequest(suite='robocasa365',task_id=self.config['task_id'],seed=self.config['seed'],
+        request_type=AgentValidationRunRequest if validation else FormalRunRequest
+        request=request_type(suite='robocasa365',task_id=self.config['task_id'],seed=self.config['seed'],
             policy_code_path=directory/'policy.py',policy_sha256=hashlib.sha256(source).hexdigest(),
             config_sha256=hashlib.sha256((directory/'config.json').read_bytes()).hexdigest(),
             config_path=directory/'config.json',artifact_root=directory,overall_deadline_seconds=seconds,
-            attempt_deadline_seconds=seconds,sdk_call_limit=320,**self.execution_identity)
-        if getattr(self,'memory_validation',None):
+            attempt_deadline_seconds=seconds,sdk_call_limit=320,**self.execution_identity,
+            **(dict(worker_arm=self.validation_arm,agent_configuration=self.agent_configuration) if validation else {}))
+        if validation:
             from .gpu_meter import GpuMeter
             meter=GpuMeter();meter.start()
             try:result=self.runner.execute(request)

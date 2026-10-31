@@ -57,8 +57,14 @@ class OpenArm365DevRunnerV2:
         agent = getattr(self, 'agent_mode', False)
         policy_executor, sdk_builder = execute_formal_policy, build_sdk
         if agent:
-            if self.runner_boundary != 'dev_loop' or c.get('budget_tier') != 'dev' or self.memory_validation:
+            if self.runner_boundary != 'dev_loop' or c.get('budget_tier') != 'dev':
+                if self.memory_validation is not None:
+                    item='runner_boundary' if self.runner_boundary!='dev_loop' else 'budget_tier'
+                    raise ValueError('agent validation envelope mismatch: '+item)
                 raise ValueError('agent requires dev tier without Memory validation')
+            if self.memory_validation is not None:
+                from benchmarks.attention_harness.memory_agent_validation import verify_runner_envelope
+                verify_runner_envelope(self.memory_validation,request,c)
             from .agent_sandbox import execute_agent_policy
             from .agent_sdk import build_sdk as agent_sdk
             policy_executor, sdk_builder = execute_agent_policy, agent_sdk

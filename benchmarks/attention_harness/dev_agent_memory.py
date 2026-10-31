@@ -28,7 +28,7 @@ class Memory:
         self.validation=None
         if validation is not None:
             from .memory_agent_validation import Delivery
-            self.validation=Delivery(self,validation['current'],validation['client'])
+            self.validation=Delivery(self,validation['current'],validation['client'],arm_record=validation['arm_record'])
 
     def open(self, number, previous, *, deliver_notes=True):
         directory = self.workspace.private / 'memory' / f'v{number}'

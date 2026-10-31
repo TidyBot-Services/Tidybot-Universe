@@ -89,6 +89,7 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
     for folder in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']:
         files.extend(p for p in (ROOT/folder).rglob('*.py') if '__pycache__' not in p.parts)
     files.extend(p for p in (ROOT/'benchmarks/attention_harness').glob('dev*.py'))
+    files.append(ROOT/'benchmarks/attention_harness/memory_agent_validation.py')
     # Cabinet resources belong only to the opt-in dev-local identity.
     from curobo_v2.execution_settings import receipt_fields
     if execution_settings is not None and receipt_fields(execution_settings).get('deployment_kind')=='dev-local':

@@ -160,7 +160,19 @@ def test_non_arm_shapes_refused(tmp_path,monkeypatch,change):
     pytest.param('rejected',None,None,'reactive_help',id='rejected'),pytest.param('inconclusive',None,None,'reactive_help',id='inconclusive')])
 def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result,models,policy_version,policy):
     import subprocess
-    f=fixture(tmp_path,monkeypatch,outcome=result,prepared=False,models=models,policy_version=policy_version,policy=policy)
+    real_runner=result=='passed' and policy_version=='agent-policy-v1'
+    from benchmarks.attention_harness.tests.agent_validation_runner_fakes import install,SCRIPT
+    f=fixture(tmp_path,monkeypatch,outcome=result,prepared=False,models=models,policy_version=policy_version,policy=policy,
+        script=SCRIPT.replace("tool('submit')","tool('run','--no-eval'); tool('submit')") if real_runner else None)
+    if real_runner:
+        synthetic=f.runner.runner_factory
+        install(f,monkeypatch)
+        real=f.runner.runner_factory
+        # Keep the original synthetic failure signature in controls. The real
+        # agent sandbox reports fatal_sdk_error for fatal native RPC errors;
+        # that is deliberately different from the old one-call-style fixture.
+        # All five treatment formal arms exercise the real runner and worker.
+        f.runner.runner_factory=lambda **kw:(real if kw.get('memory_validation',{}).get('guidance') else synthetic)(**kw)
     outcome(f.service,f.note['memory_id'],0,ctx=dict(f.context,namespace='offline-agent-origin'))
     assert [n['memory_id'] for n in f.service.validation_queue()]==[f.note['memory_id']]
     root=f.provision.state_root
@@ -204,6 +216,9 @@ def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result,models,policy_
         if result!='inconclusive':
             assert len(starts)==10 and len(f.service.list_pairs(batch['memory_id']))==5
             assert len(f.executions)==20 and len(set(f.executions))==20
+            if real_runner:
+                from openarm365_dev_v2.runner import OpenArm365DevRunnerV2
+                assert len(f.real_requests)==5 and all(type(r) is OpenArm365DevRunnerV2 for r in f.real_requests)
             assert f.service.get_memory(f.note['memory_id']).status.value=='disabled'
             if result=='passed':
                 retrieved=f.service.v2.retrieve(dict(f.context,namespace='offline-agent-origin'),now=time.time())

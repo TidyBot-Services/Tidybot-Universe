@@ -39,6 +39,8 @@ def current_source_lock(origin):
         for name in names:
             if source_file(origin,name):current['files'][name]=hashlib.sha256(Path(name).read_bytes()).hexdigest()
     harness=Path(origin['source_root'])/'benchmarks/attention_harness'
+    verifier=harness/'memory_agent_validation.py'
+    if verifier.is_file():current['files'][str(verifier)]=hashlib.sha256(verifier.read_bytes()).hexdigest()
     for name in list(harness.glob('dev*.py'))+list((harness/'dev_ui').glob('*')):
         if name.is_file() and source_file(origin,str(name)):current['files'][str(name)]=hashlib.sha256(name.read_bytes()).hexdigest()
     for name in list(current['files']):

@@ -32,7 +32,7 @@ def build(tmp_path, monkeypatch, *, validation=False, models=None, policy_versio
         native.lock=native.write(Path(native.lock['uri']),lock)
     native.config_overrides = dict(dev_mode='agent', budget_tier='dev', runner_boundary='dev_loop',
                                   dev_lock=dict(path=native.lock['uri'], sha256=native.lock['sha256']))
-    if validation:native.config_overrides.update(attempt_wall_seconds=1920,sdk_call_limit=320,horizon=9600)
+    if validation:native.config_overrides.update(attempt_wall_seconds=1920,sdk_call_limit=320,horizon=9600,safety_limits={})
     base = native.make('cell', failure=True)
     root = native.root/'cell'
     (root/'ledger.sqlite').unlink()

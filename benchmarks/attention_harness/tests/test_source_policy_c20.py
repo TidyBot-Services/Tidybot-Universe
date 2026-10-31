@@ -95,7 +95,7 @@ def test_dev_imports_and_policy_validation_without_service(tmp_path):
             'policy_input.py', 'parcc_client.py', 'dev_attention.py', 'ui_server.py',
             'ui/live.js', 'ui/index.html', 'ui_history.py', 'ui_observability.py',
             'ui_media.py', 'robocasa_native/policy_sandbox.py', 'robocasa365/recording.py',
-            'robocasa365/human_camera.py', 'dev_failure_rules.json',
+            'robocasa365/human_camera.py', 'dev_failure_rules.json', 'memory_agent_validation.py',
         ):
             path = harness / name
             path.parent.mkdir(parents=True, exist_ok=True)

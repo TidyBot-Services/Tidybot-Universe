@@ -133,6 +133,9 @@ class LedgerRunner:
         if len(modes)!=1 or (modes=={'agent'})!=(batch.get('dev_mode')=='agent'):raise DevConflict('mixed agent validation batch')
         plan=freeze_plan(batch['memory_id'],batch['origin'],{**config,'sha256':batch['config']['sha256']},batch['context'],batch['failure_signature'],batch['pairs'],policy_id=batch['policy_id'],budget=batch['budget'],dev_model=batch['dev_model'])
         self.client.record_plan(batch['memory_id'],plan);batch['plan']=plan
+        if batch.get('dev_mode')=='agent':
+            from .memory_agent_validation import seal_worker_arms
+            batch['agent_arm_records']=seal_worker_arms(batch,note['memory_id'],receipt.parent/'arms')
         receipt.parent.mkdir(parents=True,exist_ok=True);immutable(receipt,batch)
         return batch
 
@@ -180,7 +183,7 @@ class LedgerRunner:
                 manifest=experiments.verify_manifest(experiment)
                 from .dev_agent_loop import run_agent_cell
                 result=run_agent_cell(store,experiment,manifest,key,owner=owner,client=self.provider,runner_factory=self.runner_factory,
-                    validation=dict(current=current,client=self.client))
+                    validation=dict(current=current,client=self.client,arm_record=current['agent_arm_records'][key]))
                 cell=store.cell(key)
                 execution=job_for(cell,1,'execute')
                 if result.get('reason')!='operator_paused' and (not execution or execution['state']!='settled'):

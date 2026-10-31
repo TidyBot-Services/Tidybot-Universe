@@ -393,7 +393,12 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota,success_condition=condition,
             redact=dev_condition is None,
             prompt=manifest['eval_agent_prompt']+(manifest['eval_success_rule'] if condition else ''))
-        result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory),
+        execution_options={}
+        if validation:
+            execution_options=dict(validation_arm=validation['arm_record'],agent_configuration=dict(
+                dev_model=session.model,dev_reasoning_effort=session.reasoning_effort,
+                eval_model=evaluator.model,agent_policy_version=agent_policy_version))
+        result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory,**execution_options),
             prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
             progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter,before_step=before_step,

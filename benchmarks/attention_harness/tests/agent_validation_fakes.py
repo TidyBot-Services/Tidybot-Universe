@@ -42,7 +42,7 @@ def fixture(tmp_path,monkeypatch,*,outcome='passed',script=None,prepared=True,mo
         return value
     def evaluator(*a,**kw):
         f.eval_choices.append(kw['model'])
-        return FakeEvaluator()
+        value=FakeEvaluator();value.model=kw['model'];return value
     monkeypatch.setattr(dev_agent_loop,'CodexAgentSession',session)
     monkeypatch.setattr(dev_agent_eval,'Evaluator',evaluator)
     class Owner:
