@@ -234,9 +234,15 @@ def bootstrap(args) -> int:
     for rel in ('data/daily-experiments', 'data/robocasa365', 'deployments/openarm-dev-integration/dev-local'):
         (ws / rel).mkdir(parents=True, exist_ok=True)
     if not args.skip_planner:
-        from scripts.attentionbench.build_planner_chain import build as build_planner_chain
-        build_planner_chain(argparse.Namespace(workspace=str(ws), project_from=getattr(args, 'planner_project_from', None),
-                          native_assets_from=getattr(args, 'planner_native_assets_from', None), dry_run=False))
+        # The chain imports the Harness (numpy, robosuite adapter), so it runs in the UI venv,
+        # not in the bare system Python that starts bootstrap.
+        argv = [str(ws / 'envs/ui/bin/python'), str(REPO / 'scripts/attentionbench/build_planner_chain.py'),
+                '--workspace', str(ws)]
+        if getattr(args, 'planner_project_from', None):
+            argv += ['--project-from', str(args.planner_project_from)]
+        if getattr(args, 'planner_native_assets_from', None):
+            argv += ['--native-assets-from', str(args.planner_native_assets_from)]
+        command('planner', argv, cwd=REPO, env=os.environ | {'PYTHONPATH': str(REPO)})
     print(f'Bootstrap complete{" without planner" if args.skip_planner else ""}: {ws}')
     return 0
 

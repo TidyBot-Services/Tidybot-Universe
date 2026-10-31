@@ -111,11 +111,12 @@ def test_bootstrap_invokes_planner_chain(tmp_path, monkeypatch):
     monkeypatch.setattr(installer, 'digest', lambda *a: installer.data()['assets']['runtime_manifest_sha256'])
     monkeypatch.setattr(installer, 'download_assets', lambda ws, lock: ws / 'assets')
     monkeypatch.setattr(installer, 'verify_assets', lambda *a: [])
-    monkeypatch.setattr(installer, 'command', lambda *a, **kw: None)
-    from scripts.attentionbench import build_planner_chain
     called = []
-    monkeypatch.setattr(build_planner_chain, 'build', lambda args: called.append(args))
+    monkeypatch.setattr(installer, 'command', lambda step, argv, **kw: called.append((step, argv)))
     args = SimpleNamespace(workspace=str(tmp_path / 'workspace'), assets_from=None, update=False, skip_planner=False, dry_run=False)
     assert installer.bootstrap(args) == 0
-    assert len(called) == 1
-    assert called[0].workspace == str(tmp_path / 'workspace')
+    planner = [argv for step, argv in called if step == 'planner']
+    assert len(planner) == 1
+    assert planner[0][0] == str(tmp_path / 'workspace/envs/ui/bin/python')
+    assert planner[0][1].endswith('scripts/attentionbench/build_planner_chain.py')
+    assert planner[0][2:4] == ['--workspace', str(tmp_path / 'workspace')]
