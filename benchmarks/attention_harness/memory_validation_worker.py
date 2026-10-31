@@ -546,6 +546,8 @@ def _tick(state,deps):
         state['status']=text;save();return state
     current=state.get('current')
     try:
+        if any(e.get('status')=='retrying' for e in state.get('origin_registration_retries',[])):
+            return status('Origin registration retry is incomplete; rerun --retry-origin-registration with --reason to finish recovery.')
         if not getattr(deps,'begin_cycle',None):
             import uuid
             deps.begin_cycle=uuid.uuid4().hex
@@ -904,6 +906,11 @@ def abandon_interrupted_origin(root,memory_id,reason,*,client=None,clock=time.ti
         return state['status']
 
 
+def retry_origin_registration(root,memory_id,reason,*,client=None,clock=time.time):
+    from .memory_origin_registration import retry_origin_registration as retry
+    return retry(root,memory_id,reason,client=client,clock=clock)
+
+
 def main(argv=None,*,client=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state-dir',required=True);p.add_argument('--adapter',help='module:factory; injected authorized ledger runner and service client');p.add_argument('--once',action='store_true');p.add_argument('--interval',type=float,default=5)
     actions=p.add_mutually_exclusive_group()
@@ -915,15 +922,16 @@ def main(argv=None,*,client=None):
     actions.add_argument('--check-origin',metavar='MEMORY_ID')
     actions.add_argument('--reopen-origin',metavar='MEMORY_ID')
     actions.add_argument('--abandon-interrupted-origin',metavar='MEMORY_ID',help='archive a current origin dispatch without a receipt; requires --reason and an exited worker')
+    actions.add_argument('--retry-origin-registration',metavar='MEMORY_ID',help='retry registration of a sealed passed origin without replay; requires --reason and an exited worker')
     actions.add_argument('--retry-current',action='store_true',help='request one retry of interrupted begin, invalid generation recovery or completed batch evaluation; does not turn checks On')
     p.add_argument('--reason')
     a=p.parse_args(argv);root=Path(a.state_dir)
     if a.positive_control_check:
         from .memory_positive_control import queue
         print(queue(root,a.positive_control_check));return 0
-    recovery=a.reopen_origin or a.abandon_interrupted_origin
+    recovery=a.reopen_origin or a.abandon_interrupted_origin or a.retry_origin_registration
     if recovery and not (a.reason and a.reason.strip()):p.error('origin recovery requires --reason')
-    if a.reason and not recovery:p.error('--reason requires --reopen-origin or --abandon-interrupted-origin')
+    if a.reason and not recovery:p.error('--reason requires --reopen-origin, --abandon-interrupted-origin or --retry-origin-registration')
     if a.check_origin or recovery:
         try:
             if a.check_origin:
@@ -931,6 +939,7 @@ def main(argv=None,*,client=None):
                 from .memory_origin_evidence import check_origin
                 message=check_origin(provision,a.check_origin,validator_root=config['validator_root'])
             elif a.abandon_interrupted_origin:message=abandon_interrupted_origin(root,a.abandon_interrupted_origin,a.reason,client=client)
+            elif a.retry_origin_registration:message=retry_origin_registration(root,a.retry_origin_registration,a.reason,client=client)
             else:
                 provision,config=origin_command_config(root,client);client=provision.client
                 message=reopen_origin(root,a.reopen_origin,a.reason,client=client)

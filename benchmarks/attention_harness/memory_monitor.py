@@ -60,11 +60,11 @@ def automatic_checks(root=None,gateway=None):
             value['notices']=[dict(title=safe_text(n['title']),at=n['at']) for n in state.get('notices',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('service_gaps',[])[-20:]]
             value['errors'] += [safe_text(g['title'])+': '+safe_detail(g['reason']) for g in state.get('origin_errors',{}).values()]
-            for event in [*state.get('origin_reopens',[]),*state.get('origin_interruptions',[])][-20:]:
+            for event in [*state.get('origin_reopens',[]),*state.get('origin_interruptions',[]),*state.get('origin_registration_retries',[])][-20:]:
                 # Operator evidence paths and identities stay in the local journal.
                 value['events'].append(dict(event=event['event'],memory_id=event['memory_id'],
                     reason=safe_detail(event['reason']),time=event['at'],status=event['status']))
-                if event['status']=='archiving':
+                if event['status'] in ('archiving','retrying'):
                     value['errors'].append(safe_text(event['memory_id'])+': Origin recovery is incomplete; rerun the operator recovery command.')
             for error in [*state.get('check_errors',[]),*state.get('note_errors',{}).values()]:
                 message=(str(error['memory_id'])+': ' if error.get('memory_id') else '')+safe_detail(error['reason'])

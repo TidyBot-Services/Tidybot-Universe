@@ -271,7 +271,7 @@
     const limit=value.daily_run_limit===undefined?20:value.daily_run_limit;
     const meter=limit===null?'':`<span class="ac-meter"><i style="width:${Math.min(100,runs/limit*100)}%"></i></span>`;
     const head=`<div class="ac-head">${pill}<span class="ac-what">Each used note gets 5 paired runs on the same scene, once without it and once with it.</span><span class="ac-runs">${meter}<span>Runs today: ${esc(value.runs_today??0)}${limit===null?'':` of ${esc(limit)}`}${quota}</span></span></div>`;
-    const recoveries=(value.events||[]).filter(e=>['origin_reopened','origin_interrupted_abandoned'].includes(e.event)).map(e=>`<p class="ac-skip">${e.status==='archiving'?'Origin recovery incomplete':e.event==='origin_reopened'?'Origin reopened':'Interrupted origin abandoned'} · Note ${esc(e.memory_id)} · ${esc(e.reason)}. Previous run reservation remains counted.</p>`).join('');
+    const recoveries=(value.events||[]).filter(e=>['origin_reopened','origin_interrupted_abandoned','origin_registration_retried'].includes(e.event)).map(e=>`<p class="ac-skip">${['archiving','retrying'].includes(e.status)?'Origin recovery incomplete':e.event==='origin_reopened'?'Origin reopened':e.event==='origin_registration_retried'?'Origin registration retried':'Interrupted origin abandoned'} · Note ${esc(e.memory_id)} · ${esc(e.reason)}. Previous run reservation remains counted.</p>`).join('');
     const errors=(value.errors||[]).map(e=>`<p class="ac-err" role="alert">${esc(e)}</p>`).join('')+recoveries;
     const queue=value.queue||[],results=value.results||[],demoted=(value.events||[]).filter(n=>n.event==='demoted');
     const ignored=(value.ignored_stale_runs||[]).map(r=>`<p class="ac-skip">Skipped stale run: ${esc(r.id)} · ${esc(r.reason)}</p>`).join('');

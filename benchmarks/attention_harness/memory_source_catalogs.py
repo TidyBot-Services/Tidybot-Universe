@@ -66,6 +66,29 @@ def registration_order(catalogs):
     return ordered
 
 
+def verify_catalogs(catalogs):
+    """Recheck every sealed file and explicit source hop before using catalogs."""
+    for cid,catalog in catalogs.items():
+        root=Path(catalog['root'])
+        if not root.is_absolute() or root.resolve()!=root:
+            raise DevConflict('Origin catalog root is not canonical')
+        for name,digest in catalog['files'].items():
+            relative=Path(name)
+            if relative.is_absolute() or '..' in relative.parts:
+                raise DevConflict('Origin catalog path escapes its root')
+            if name in catalog.get('links',{}):
+                verify_source_link(catalogs,cid,name,digest);continue
+            path=root/relative
+            resolved=path.resolve()
+            if not resolved.is_relative_to(root):raise DevConflict('Origin catalog path escapes its root')
+            if resolved!=path:
+                target=str(resolved.relative_to(root))
+                if catalog.get('symlinks',{}).get(name)!=target or catalog['files'].get(target)!=digest:
+                    raise DevConflict('Origin catalog symlink needs an explicit sealed target')
+            checked(dict(uri=str(path),sha256=digest))
+    return registration_order(catalogs)
+
+
 def source_catalogs(lock_ref,context,executor_root,*,contract=None,config=None):
     lock=json.loads(checked(dict(uri=lock_ref.get('uri',lock_ref.get('path')),sha256=lock_ref['sha256'])).read_bytes())
     if lock.get('schema')!='attentionbench.dev-identity-lock.v2' or lock.get('formal_eligible') is not False or not lock.get('source_sets'):raise DevConflict('complete original identity lock required')

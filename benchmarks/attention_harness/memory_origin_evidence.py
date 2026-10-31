@@ -261,11 +261,35 @@ class OriginPreparation:
 
     def finish(self,current):return json.loads((self.directory(current)/'receipt.json').read_bytes())
 
+    def post_validation(self,current,found,result,catalog,d,sources,export,*,before_register=None,write=None):
+        """Finish sealed validation without invoking the independent validator."""
+        from .memory_source_catalogs import registration_order
+        write=write or immutable
+        directory=self.directory(current);key=current['origin_key'];c=found['cell'];p=found['provenance']
+        reused=found.get('reused_execution')
+        refs={};registration=None
+        if result['status']!='refused':
+            catalogs={**sources,(reused['catalog_id'] if reused else key+'-executor'):catalog,key+'-validator':result['catalog']}
+            if p.get('channel')!='positive_control':
+                source,sd=export('source',p['origin']['help_version'],source=source_prerequisites(found),failure_signature=p['failure_signature'],**(dict(import_purpose='memory_origin') if c.get('dev_mode')=='agent' else {}))
+                catalogs[key+'-source']=source
+            if c.get('dev_mode')=='agent' and result['status']=='passed':
+                from .memory_agent_origin import register
+                if before_register:before_register(catalogs,d,sd)
+                registration=register(self.provision,found,catalogs,d,sd)
+            catalogs=registration_order(catalogs)
+            for cid,value in catalogs.items():refs[cid]=write(directory/(cid+'.json'),value)
+        reason='Origin evidence prepared' if result['status']=='passed' else 'Could not finish the check: origin '+('validation refused: '+result.get('reason','unknown reason') if result['status']=='refused' else 'independent checks failed: '+', '.join(k for k,v in result['checks'].items() if not v))
+        receipt=dict(status=result['status'],reason=reason,catalogs=refs,validation=write(directory/'validation.json',result),origin_key=key,note=current['note'])
+        if registration is not None:receipt['registration']=registration
+        receipt.update({k:found[k] for k in ('provider_identity','provider_identities','feedback_projection') if k in found})
+        if 'gpu_measurement' in result:receipt['gpu_measurement']=result['gpu_measurement']
+        return receipt
+
     def run(self,current):
         directory=self.directory(current);key=current['origin_key'];runner=self.runner
         try:
-            found=locate(self.provision,current['note']);store=found['store'];c=found['cell'];v=found['version'];p=found['provenance'];config=found['config']
-            from .memory_source_catalogs import registration_order
+            found=locate(self.provision,current['note']);store=found['store'];c=found['cell'];v=found['version']
             from .dev_v2_memory_import import prepare
             ctx,sources=export_context(self.provision,found)
             output=self.provision.root/'memory-origin-imports'/current.get('export_key',key)
@@ -284,22 +308,7 @@ class OriginPreparation:
                 self.events[key].wait();self.phases[key]='running'
             result=validate_origin(self.provision,found,catalog,d,validator_root=runner.validator_root,replay=runner.replay,before_replay=before_replay)
             immutable(directory/'validation.json',result)
-            refs={};registration=None
-            if result['status']!='refused':
-                catalogs={**sources,(reused['catalog_id'] if reused else key+'-executor'):catalog,key+'-validator':result['catalog']}
-                if p.get('channel')!='positive_control':
-                    source,sd=export('source',p['origin']['help_version'],source=source_prerequisites(found),failure_signature=p['failure_signature'],**(dict(import_purpose='memory_origin') if c.get('dev_mode')=='agent' else {}))
-                    catalogs[key+'-source']=source
-                if c.get('dev_mode')=='agent' and result['status']=='passed':
-                    from .memory_agent_origin import register
-                    registration=register(self.provision,found,catalogs,d,sd)
-                catalogs=registration_order(catalogs)
-                for cid,value in catalogs.items():refs[cid]=immutable(directory/(cid+'.json'),value)
-            reason='Origin evidence prepared' if result['status']=='passed' else 'Could not finish the check: origin '+('validation refused: '+result.get('reason','unknown reason') if result['status']=='refused' else 'independent checks failed: '+', '.join(k for k,v in result['checks'].items() if not v))
-            receipt=dict(status=result['status'],reason=reason,catalogs=refs,validation=immutable(directory/'validation.json',result),origin_key=key,note=current['note'])
-            if registration is not None:receipt['registration']=registration
-            receipt.update({k:found[k] for k in ('provider_identity','provider_identities','feedback_projection') if k in found})
-            if 'gpu_measurement' in result:receipt['gpu_measurement']=result['gpu_measurement']
+            receipt=self.post_validation(current,found,result,catalog,d,sources,export)
         except Exception as exc:
             from .notices import safe_detail
             refused=isinstance(exc,DevConflict)
