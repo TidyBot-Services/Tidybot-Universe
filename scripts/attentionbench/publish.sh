@@ -2,7 +2,7 @@
 set -euo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-manifest="$script_dir/publish-manifest.json"
+manifest="$script_dir/publish-repos.json"
 push=false
 
 fail() {
