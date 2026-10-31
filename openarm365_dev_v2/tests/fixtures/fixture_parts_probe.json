@@ -1,0 +1,1003 @@
+{
+ "CloseBlenderLid": {
+  "seed": 101,
+  "objects": [],
+  "fixtures": {
+   "blender": {
+    "type": "Blender",
+    "name": "blender_main_group",
+    "parts": {
+     "power_button_main": 1,
+     "pitcher_handle_#": 2,
+     "knob_speed_main": 1,
+     "auxiliary_main_group_handle_main": 1
+    },
+    "int_regions": {
+     "int": [
+      0.889,
+      -0.525,
+      1.183
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "OpenCabinet": {
+  "seed": 101,
+  "objects": [
+   "door_obj",
+   "distr_counter_1",
+   "distr_counter_2",
+   "distr_counter_3"
+  ],
+  "fixtures": {
+   "fxtr": {
+    "type": "HingeCabinet",
+    "name": "cab_1_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      0.952,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      0.952,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      0.952,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "OpenDrawer": {
+  "seed": 101,
+  "objects": [
+   "drawer_obj",
+   "distr_counter_1",
+   "distr_counter_2"
+  ],
+  "fixtures": {
+   "drawer": {
+    "type": "Drawer",
+    "name": "stack_3_main_group_2",
+    "parts": {
+     "door_g#": 2,
+     "door_reg_main": 1,
+     "door_handle_g#": 4,
+     "door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "int": [
+      2.684,
+      -0.443,
+      0.77
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "OpenStandMixerHead": {
+  "seed": 101,
+  "objects": [],
+  "fixtures": {
+   "stand_mixer": {
+    "type": "StandMixer",
+    "name": "stand_mixer_left_group",
+    "parts": {
+     "button_head_lock_main": 1,
+     "knob_speed_main": 1
+    },
+    "int_regions": {
+     "bowl": [
+      0.492,
+      -1.188,
+      1.049
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "PickPlaceCounterToCabinet": {
+  "seed": 101,
+  "objects": [
+   "obj",
+   "distr_counter",
+   "distr_cab"
+  ],
+  "fixtures": {
+   "cab": {
+    "type": "HingeCabinet",
+    "name": "cab_3_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      2.842,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      2.842,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      2.842,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "PickPlaceDrawerToCounter": {
+  "seed": 101,
+  "objects": [
+   "obj",
+   "distr"
+  ],
+  "fixtures": {
+   "drawer": {
+    "type": "Drawer",
+    "name": "stack_3_main_group_2",
+    "parts": {
+     "door_g#": 2,
+     "door_reg_main": 1,
+     "door_handle_g#": 4,
+     "door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "int": [
+      2.684,
+      -0.743,
+      0.77
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "PickPlaceToasterToCounter": {
+  "seed": 105,
+  "objects": [
+   "obj",
+   "plate"
+  ],
+  "fixtures": {
+   "toaster": {
+    "type": "Toaster",
+    "name": "toaster_main_group",
+    "parts": {
+     "sideL_button_cancel_main": 1,
+     "sideL_knob_doneness_main": 1,
+     "sideL_lever_handle": 1,
+     "sideR_button_cancel_main": 1,
+     "sideR_knob_doneness_main": 1,
+     "sideR_lever_handle": 1
+    },
+    "int_regions": {
+     "sideL_slotL": [
+      1.263,
+      -0.259,
+      1.096
+     ],
+     "sideL_slotR": [
+      1.332,
+      -0.259,
+      1.096
+     ],
+     "sideR_slotL": [
+      1.412,
+      -0.259,
+      1.096
+     ],
+     "sideR_slotR": [
+      1.481,
+      -0.259,
+      1.096
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "SlideDishwasherRack": {
+  "seed": 101,
+  "objects": [],
+  "fixtures": {
+   "dishwasher": {
+    "type": "Dishwasher",
+    "name": "dishwasher_left_group",
+    "parts": {
+     "door_handle_#": 2,
+     "door_handle_main": 1,
+     "door_main": 1,
+     "reg_rack#": 2
+    },
+    "int_regions": {
+     "rack0": [
+      0.412,
+      -2.741,
+      0.263
+     ],
+     "rack1": [
+      0.412,
+      -2.741,
+      0.501
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "TurnOffStove": {
+  "seed": 101,
+  "objects": [
+   "cookware"
+  ],
+  "fixtures": {
+   "stove": {
+    "type": "Stove",
+    "name": "stove_1_main_group",
+    "parts": {
+     "door_main": 1,
+     "door_handle_main": 1,
+     "knob_front_left_main": 1,
+     "knob_front_right_main": 1,
+     "knob_rear_left_main": 1,
+     "knob_rear_right_main": 1,
+     "knob_temp_main": 1,
+     "knob_time_main": 1,
+     "reg_rack#": 2
+    },
+    "int_regions": {
+     "int": [
+      2.019,
+      -0.475,
+      0.3
+     ]
+    },
+    "sites": [
+     "burner_on_rear_right",
+     "burner_on_front_right",
+     "burner_on_front_left",
+     "burner_on_rear_left",
+     "burner_on_rear_right_place_site",
+     "burner_on_front_right_place_site",
+     "burner_on_front_left_place_site",
+     "burner_on_rear_left_place_site"
+    ]
+   }
+  }
+ },
+ "TurnOnElectricKettle": {
+  "seed": 101,
+  "objects": [],
+  "fixtures": {
+   "electric_kettle": {
+    "type": "ElectricKettle",
+    "name": "electric_kettle_main_group",
+    "parts": {
+     "handle_#": 3,
+     "handle_main": 1,
+     "button_lid_main": 1,
+     "lid_main": 1,
+     "lid_#": 4,
+     "switch_main": 1
+    },
+    "int_regions": {},
+    "sites": []
+   }
+  }
+ },
+ "TurnOnMicrowave": {
+  "seed": 101,
+  "objects": [
+   "obj",
+   "obj_container"
+  ],
+  "fixtures": {
+   "microwave": {
+    "type": "Microwave",
+    "name": "microwave_main_group",
+    "parts": {
+     "stop_button": 1,
+     "start_button": 1,
+     "door_handle_main": 1,
+     "door_main": 1
+    },
+    "int_regions": {
+     "tray": [
+      1.975,
+      -0.308,
+      1.516
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "TurnOnSinkFaucet": {
+  "seed": 101,
+  "objects": [
+   "distr_counter_0",
+   "distr_counter_1",
+   "distr_counter_2",
+   "distr_sink"
+  ],
+  "fixtures": {
+   "sink": {
+    "type": "Sink",
+    "name": "sink_left_group",
+    "parts": {
+     "handle_main": 1,
+     "spout_main": 1
+    },
+    "int_regions": {
+     "basin": [
+      0.425,
+      -1.835,
+      0.76
+     ]
+    },
+    "sites": [
+     "water"
+    ]
+   }
+  }
+ },
+ "RinseSinkBasin": {
+  "seed": 101,
+  "objects": [
+   "plate"
+  ],
+  "fixtures": {
+   "sink": {
+    "type": "Sink",
+    "name": "sink_left_group",
+    "parts": {
+     "handle_main": 1,
+     "spout_main": 1
+    },
+    "int_regions": {
+     "basin": [
+      0.425,
+      -1.835,
+      0.76
+     ]
+    },
+    "sites": [
+     "water"
+    ]
+   }
+  }
+ },
+ "WashLettuce": {
+  "seed": 101,
+  "objects": [
+   "lettuce",
+   "lettuce_container"
+  ],
+  "fixtures": {
+   "sink": {
+    "type": "Sink",
+    "name": "sink_left_group",
+    "parts": {
+     "handle_main": 1,
+     "spout_main": 1
+    },
+    "int_regions": {
+     "basin": [
+      0.425,
+      -1.835,
+      0.76
+     ]
+    },
+    "sites": [
+     "water"
+    ]
+   }
+  }
+ },
+ "CategorizeCondiments": {
+  "seed": 101,
+  "objects": [
+   "obj1",
+   "obj2",
+   "cab_obj1",
+   "cab_obj2",
+   "distr_counter1"
+  ],
+  "fixtures": {
+   "cab": {
+    "type": "HingeCabinet",
+    "name": "cab_1_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      0.952,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      0.952,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      0.952,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "HeatKebabSandwich": {
+  "seed": 101,
+  "objects": [
+   "plate",
+   "kebab",
+   "baguette"
+  ],
+  "fixtures": {
+   "toaster_oven": {
+    "type": "ToasterOven",
+    "name": "toaster_oven_main_group",
+    "parts": {
+     "door_main": 1,
+     "door_handle_main": 1,
+     "knob_doneness_main": 1,
+     "knob_function_main": 1,
+     "knob_temp_main": 1,
+     "knob_time_main": 1,
+     "reg_rack#": 1
+    },
+    "int_regions": {
+     "rack0": [
+      3.341,
+      -0.264,
+      1.116
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "PanTransfer": {
+  "seed": 103,
+  "objects": [
+   "vegetable",
+   "vegetable_container",
+   "plate",
+   "dstr_dining"
+  ],
+  "fixtures": {
+   "stove": {
+    "type": "Stove",
+    "name": "stove_1_main_group",
+    "parts": {
+     "door_main": 1,
+     "door_handle_main": 1,
+     "knob_front_left_main": 1,
+     "knob_front_right_main": 1,
+     "knob_rear_left_main": 1,
+     "knob_rear_right_main": 1,
+     "knob_temp_main": 1,
+     "knob_time_main": 1,
+     "reg_rack#": 2
+    },
+    "int_regions": {
+     "int": [
+      2.019,
+      -0.475,
+      0.3
+     ]
+    },
+    "sites": [
+     "burner_on_rear_right",
+     "burner_on_front_right",
+     "burner_on_front_left",
+     "burner_on_rear_left",
+     "burner_on_rear_right_place_site",
+     "burner_on_front_right_place_site",
+     "burner_on_front_left_place_site",
+     "burner_on_rear_left_place_site"
+    ]
+   }
+  }
+ },
+ "WashFruitColander": {
+  "seed": 101,
+  "objects": [
+   "fruit0",
+   "fruit1",
+   "colander"
+  ],
+  "fixtures": {
+   "sink": {
+    "type": "Sink",
+    "name": "sink_left_group",
+    "parts": {
+     "handle_main": 1,
+     "spout_main": 1
+    },
+    "int_regions": {
+     "basin": [
+      0.425,
+      -1.835,
+      0.76
+     ]
+    },
+    "sites": [
+     "water"
+    ]
+   }
+  }
+ },
+ "WeighIngredients": {
+  "seed": 101,
+  "objects": [
+   "obj",
+   "obj_distractor",
+   "digital_scale"
+  ],
+  "fixtures": {
+   "cab": {
+    "type": "HingeCabinet",
+    "name": "cab_1_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      0.952,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      0.952,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      0.952,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "CoffeeSetupMug": {
+  "seed": 101,
+  "objects": [
+   "obj"
+  ],
+  "fixtures": {
+   "coffee_machine": {
+    "type": "CoffeeMachine",
+    "name": "coffee_machine_left_group",
+    "parts": {
+     "start_button_#": 2
+    },
+    "int_regions": {},
+    "sites": [
+     "receptacle_place_site"
+    ]
+   }
+  }
+ },
+ "KettleBoiling": {
+  "seed": 101,
+  "objects": [
+   "obj",
+   "stove_distr"
+  ],
+  "fixtures": {
+   "stove": {
+    "type": "Stove",
+    "name": "stove_1_main_group",
+    "parts": {
+     "door_main": 1,
+     "door_handle_main": 1,
+     "knob_front_left_main": 1,
+     "knob_front_right_main": 1,
+     "knob_rear_left_main": 1,
+     "knob_rear_right_main": 1,
+     "knob_temp_main": 1,
+     "knob_time_main": 1,
+     "reg_rack#": 2
+    },
+    "int_regions": {
+     "int": [
+      2.019,
+      -0.475,
+      0.3
+     ]
+    },
+    "sites": [
+     "burner_on_rear_right",
+     "burner_on_front_right",
+     "burner_on_front_left",
+     "burner_on_rear_left",
+     "burner_on_rear_right_place_site",
+     "burner_on_front_right_place_site",
+     "burner_on_front_left_place_site",
+     "burner_on_rear_left_place_site"
+    ]
+   }
+  }
+ },
+ "LoadDishwasher": {
+  "seed": 101,
+  "objects": [
+   "dish0",
+   "dish1"
+  ],
+  "fixtures": {
+   "dishwasher": {
+    "type": "Dishwasher",
+    "name": "dishwasher_left_group",
+    "parts": {
+     "door_handle_#": 2,
+     "door_handle_main": 1,
+     "door_main": 1,
+     "reg_rack#": 2
+    },
+    "int_regions": {
+     "rack0": [
+      0.412,
+      -2.741,
+      0.263
+     ],
+     "rack1": [
+      0.412,
+      -2.741,
+      0.501
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "PreSoakPan": {
+  "seed": 101,
+  "objects": [
+   "obj1",
+   "obj2"
+  ],
+  "fixtures": {
+   "sink": {
+    "type": "Sink",
+    "name": "sink_left_group",
+    "parts": {
+     "handle_main": 1,
+     "spout_main": 1
+    },
+    "int_regions": {
+     "basin": [
+      0.425,
+      -1.835,
+      0.76
+     ]
+    },
+    "sites": [
+     "water"
+    ]
+   }
+  }
+ },
+ "PrepareCoffee": {
+  "seed": 101,
+  "objects": [
+   "obj",
+   "distr_cab"
+  ],
+  "fixtures": {
+   "coffee_machine": {
+    "type": "CoffeeMachine",
+    "name": "coffee_machine_left_group",
+    "parts": {
+     "start_button_#": 2
+    },
+    "int_regions": {},
+    "sites": [
+     "receptacle_place_site"
+    ]
+   },
+   "cab": {
+    "type": "HingeCabinet",
+    "name": "cab_1_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      0.952,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      0.952,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      0.952,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "SearingMeat": {
+  "seed": 101,
+  "objects": [
+   "pan",
+   "meat",
+   "meat_container"
+  ],
+  "fixtures": {
+   "stove": {
+    "type": "Stove",
+    "name": "stove_1_main_group",
+    "parts": {
+     "door_main": 1,
+     "door_handle_main": 1,
+     "knob_front_left_main": 1,
+     "knob_front_right_main": 1,
+     "knob_rear_left_main": 1,
+     "knob_rear_right_main": 1,
+     "knob_temp_main": 1,
+     "knob_time_main": 1,
+     "reg_rack#": 2
+    },
+    "int_regions": {
+     "int": [
+      2.019,
+      -0.475,
+      0.3
+     ]
+    },
+    "sites": [
+     "burner_on_rear_right",
+     "burner_on_front_right",
+     "burner_on_front_left",
+     "burner_on_rear_left",
+     "burner_on_rear_right_place_site",
+     "burner_on_front_right_place_site",
+     "burner_on_front_left_place_site",
+     "burner_on_rear_left_place_site"
+    ]
+   },
+   "cab": {
+    "type": "HingeCabinet",
+    "name": "cab_1_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      0.952,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      0.952,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      0.952,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "StackBowlsCabinet": {
+  "seed": 102,
+  "objects": [
+   "bowl1",
+   "bowl2"
+  ],
+  "fixtures": {
+   "cabinet": {
+    "type": "HingeCabinet",
+    "name": "cab_3_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      2.842,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      2.842,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      2.842,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "ArrangeTea": {
+  "seed": 102,
+  "objects": [
+   "obj",
+   "obj2",
+   "container"
+  ],
+  "fixtures": {
+   "cab": {
+    "type": "HingeCabinet",
+    "name": "cab_3_main_group",
+    "parts": {
+     "left_door_g#": 2,
+     "left_door_reg_main": 1,
+     "left_door_handle_g#": 4,
+     "left_door_handle_reg_main": 1,
+     "right_door_g#": 2,
+     "right_door_reg_main": 1,
+     "right_door_handle_g#": 4,
+     "right_door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "level0": [
+      2.842,
+      -0.285,
+      1.477
+     ],
+     "level1": [
+      2.842,
+      -0.277,
+      1.773
+     ],
+     "level2": [
+      2.842,
+      -0.277,
+      2.07
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "CuttingToolSelection": {
+  "seed": 101,
+  "objects": [
+   "peeler",
+   "knife",
+   "distr",
+   "food",
+   "food_container"
+  ],
+  "fixtures": {
+   "drawer": {
+    "type": "Drawer",
+    "name": "stack_3_main_group_2",
+    "parts": {
+     "door_g#": 2,
+     "door_reg_main": 1,
+     "door_handle_g#": 4,
+     "door_handle_reg_main": 1
+    },
+    "int_regions": {
+     "int": [
+      2.684,
+      -0.725,
+      0.77
+     ]
+    },
+    "sites": []
+   }
+  }
+ },
+ "WaffleReheat": {
+  "seed": 101,
+  "objects": [
+   "waffle",
+   "waffle_container"
+  ],
+  "fixtures": {
+   "microwave": {
+    "type": "Microwave",
+    "name": "microwave_main_group",
+    "parts": {
+     "stop_button": 1,
+     "start_button": 1,
+     "door_handle_main": 1,
+     "door_main": 1
+    },
+    "int_regions": {
+     "tray": [
+      1.975,
+      -0.308,
+      1.516
+     ]
+    },
+    "sites": []
+   }
+  }
+ }
+}

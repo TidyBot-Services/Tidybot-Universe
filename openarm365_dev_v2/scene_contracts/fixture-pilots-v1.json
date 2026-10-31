@@ -1,0 +1,70 @@
+{
+  "layout_id": 11,
+  "measured_scene_fingerprints": false,
+  "profile": "r5-fixture-20261031",
+  "reproducible_reset": true,
+  "schema": "attentionbench.fixture-reset-contract.v1",
+  "seeds": [
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125
+  ],
+  "style_id": 34,
+  "tasks": {
+    "open_cabinet": {
+      "classes": [
+        "HingeCabinet",
+        "SingleCabinet"
+      ],
+      "reference": "fxtr",
+      "required_part": "door_handle_g",
+      "reset_rule": "doors_closed"
+    },
+    "open_drawer": {
+      "classes": [
+        "Drawer"
+      ],
+      "reference": "drawer",
+      "required_part": "door_handle_g",
+      "reset_rule": "doors_closed"
+    },
+    "turn_off_stove": {
+      "classes": [
+        "Stove"
+      ],
+      "reference": "stove",
+      "required_part": "knob_{selected_knob}_main",
+      "reset_rule": "selected_burner_on"
+    },
+    "turn_on_microwave": {
+      "classes": [
+        "Microwave"
+      ],
+      "reference": "microwave",
+      "required_part": "start_button",
+      "reset_rule": "turned_on_false"
+    }
+  }
+}

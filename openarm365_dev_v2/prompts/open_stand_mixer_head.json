@@ -1,0 +1,5 @@
+{
+  "task_id": "open_stand_mixer_head",
+  "official_env": "OpenStandMixerHead",
+  "task_prompt": "Unlock and open the stand mixer head."
+}

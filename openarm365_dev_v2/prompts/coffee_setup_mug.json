@@ -1,0 +1,5 @@
+{
+  "task_id": "coffee_setup_mug",
+  "official_env": "CoffeeSetupMug",
+  "task_prompt": "Place the mug under the coffee machine dispenser."
+}

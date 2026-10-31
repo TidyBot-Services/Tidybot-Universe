@@ -137,12 +137,33 @@ R4_20261027 = R4ExecutionSettings('r4-20261027', .002, .010, .003, .003, .02, .0
                                 True, 'monotone', _DevLocalBinding())
 
 
+@dataclass(frozen=True)
+class FixtureExecutionSettings(ExecutionSettings):
+    fixture_whitelist_id: str = 'robocasa-interaction-parts-v1'
+    fixture_whitelist_sha256: str = ''
+    fixture_scope: str = 'task_references'
+    fixture_contact_mode: str = 'record_only'
+    fixture_attachment: str = 'no_attachment'
+    fixture_contact_base_rehold_max_translation_m: float = .05
+    fixture_contact_base_rehold_max_yaw_rad: float = .10
+    fixture_neighbourhood_window_m: float = .01
+    fixture_press_window_m: float = .035
+    fixture_contact_radius_m: float = .01
+    fixture_press_contact_radius_m: float = .035
+
+
+from .fixture_interaction import PROFILE as FIXTURE_PROFILE, WHITELIST_ID, WHITELIST_SHA256
+R5_FIXTURE_20261031 = FixtureExecutionSettings(FIXTURE_PROFILE, .002, .010, .003, .003, .02, .010, .10,
+    True, 'monotone', _DevLocalBinding(), WHITELIST_ID, WHITELIST_SHA256)
+
+
 def from_config(block):
     if block is None:
         return LEGACY
     if not isinstance(block, Mapping):
         raise ValueError('execution_settings: expected a complete mapping')
-    profile = R4_20261027 if block.get('profile') == R4_20261027.profile else R3_20261025
+    profile = (R5_FIXTURE_20261031 if block.get('profile') == FIXTURE_PROFILE else
+               R4_20261027 if block.get('profile') == R4_20261027.profile else R3_20261025)
     names = {f.name for f in fields(profile)}
     for name in sorted(names - block.keys()):
         raise ValueError(f'{name}: missing field')
@@ -156,7 +177,7 @@ def from_config(block):
     pin = block['planner_deployment']
     if not isinstance(pin, Mapping) or set(pin) != {'lock_path', 'sha256'}:
         raise ValueError('planner_deployment: exact lock_path and sha256 required')
-    if profile is R4_20261027:
+    if profile is R4_20261027 or profile is R5_FIXTURE_20261031:
         for name in ('lock_path', 'sha256'):
             if type(pin[name]) is not str:
                 raise ValueError(f'planner_deployment.{name}: expected string')
@@ -225,6 +246,8 @@ def receipt_fields(settings=LEGACY, *, include_legacy=False):
                     planner_lock_sha256=D05_SHA) if include_legacy else {}
     value = dict(execution_profile=settings.profile, execution_settings_source='config',
                  planner_lock_sha256=settings.planner_deployment['sha256'])
+    if settings.profile == FIXTURE_PROFILE:
+        value.update({f.name:getattr(settings,f.name) for f in fields(settings) if f.name.startswith('fixture_')})
     if settings.planner_deployment['lock_path'] != D06_LOCK:
         from .identity import load_lock
         from .dev_local import is_dev_local

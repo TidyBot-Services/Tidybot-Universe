@@ -63,6 +63,9 @@ class OpenArm365DevRunnerV2:
             from .agent_sdk import build_sdk as agent_sdk
             policy_executor, sdk_builder = execute_agent_policy, agent_sdk
         from curobo_v2.execution_settings import from_config,receipt_fields
+        from curobo_v2.fixture_interaction import config_enabled
+        if config_enabled(c) and not agent:
+            from .fixture_sdk import build_sdk as sdk_builder
         execution_labels=receipt_fields(from_config(c.get('execution_settings')))
         if c.get('bimanual_collaboration') in ('c1','handoff'):execution_labels['bimanual_collaboration']=c['bimanual_collaboration']
         if c.get('budget_tier','legacy')!='dev':tier=None
@@ -96,7 +99,7 @@ class OpenArm365DevRunnerV2:
             if condition and not condition['matched']:
                 status='condition_invalid';error='scene_contract_mismatch';native={'evaluated':False,'native_success':False,'reason':error}
             else:
-                outcome=policy_executor(code=request.policy_code_path.read_text(),sdk=sdk_builder(owner,event),
+                outcome=policy_executor(code=request.policy_code_path.read_text(),sdk=sdk_builder(owner,event,**({'config':c} if config_enabled(c) else {})),
                     **({'source_config':c} if self.runner_boundary=='dev_loop' and c.get('budget_tier')=='dev' else {}),
                     context=self.policy_context(request,c,ready,validation_public,episode),
                     deadline=deadline,stderr_path=episode/'policy-stderr.txt',cancel_check=self.cancel_event.is_set,max_sdk_calls=limit)

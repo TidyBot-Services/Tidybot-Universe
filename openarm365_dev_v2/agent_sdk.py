@@ -1,11 +1,14 @@
 """Agent event wrapper. Rejections are values, fatal RPC failures still raise."""
 from types import SimpleNamespace
-from openarm365_dev.policy_validation import OPERATIONS
+from openarm365_dev.policy_validation import OPERATIONS,operations
 
 
-def build_sdk(owner, record_event):
+def build_sdk(owner, record_event, *, config=None):
     def method(group, operation):
         def call(*args, **kwargs):
+            if operation=='move_to':
+                from curobo_v2.fixture_gripper import wire_width
+                args=tuple(wire_width(v) for v in args);kwargs={k:wire_width(v) for k,v in kwargs.items()}
             event = dict(source=group, operation=operation, arguments=dict(args=list(args), kwargs=kwargs))
             try:
                 value = owner.rpc(group, operation, args, kwargs)
@@ -21,4 +24,4 @@ def build_sdk(owner, record_event):
                 event.update(status='failed', error={'type': type(exc).__name__, 'message': str(exc)[:1200]})
                 record_event(event); raise
         return call
-    return SimpleNamespace(**{g: SimpleNamespace(**{op: method(g, op) for op in ops}) for g, ops in OPERATIONS.items()})
+    return SimpleNamespace(**{g: SimpleNamespace(**{op: method(g, op) for op in ops}) for g, ops in operations(config).items()})

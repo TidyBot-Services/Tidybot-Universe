@@ -1,0 +1,4 @@
+{
+  "task_id": "turn_off_stove",
+  "task_prompt": "Turn off the active burner of the stove."
+}

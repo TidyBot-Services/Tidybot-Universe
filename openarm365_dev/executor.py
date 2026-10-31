@@ -14,6 +14,8 @@ from .base_motion import (BASE_SETTLE_CONSECUTIVE_STEPS, BASE_SETTLE_MAX_STEPS,
                           base_is_stationary, check_exact_base_path, base_joint_delta,
                           validate_delta, guard_base_and_arms)
 from .base_motion import base_drift_limits, base_drift
+from curobo_v2.fixture_interaction import enabled as fixture_enabled,fixture_contacts
+from curobo_v2 import fixture_telemetry
 
 
 def refresh_execution_receipt(executor):
@@ -358,15 +360,19 @@ class NativeExecutor:
         trace_enabled=getattr(self,'held_trace_enabled',False)
         sim=self.env.sim;r=self.env.robots[0];q=self.planner.state()
         v=np.asarray(sim.data.qvel[r._ref_arm_joint_vel_indexes],float)
+        fixture_now=fixture_contacts(self.env,getattr(self,'execution_settings',None),self.robot_root)
+        fixture_pairs={(c['robot_geom_id'],c['geom_id'],c['contact_index']) for c in fixture_now.values()}
+        fixture_sample=fixture_telemetry.sample(self,fixture_now,q)
         if np.any(q<self.limits[:,0]) or np.any(q>self.limits[:,1]):raise RuntimeError('Measured native joint limit exceeded')
         if np.any(abs(v)>np.array([self.max_speed[n] for n in self.planner.names])):
             raise RuntimeError('Measured native joint velocity exceeded URDF limit')
         base=sim.data.qpos[r._ref_base_joint_pos_indexes]
         if hasattr(self, '_drift_max'):
             self.record_drift_sample()
-        guard_base_and_arms(base,self.base_hold,q,self.base_arm_start if self.base_moving else None,
-            execution_settings=getattr(self,"execution_settings",None))
         gripper_q={side:np.asarray(sim.data.qpos[r._ref_gripper_joint_pos_indexes[native]],float) for side,native in PHYSICAL_TO_NATIVE.items()}
+        fixture_guard_contact=fixture_telemetry.guards(self,base,self.base_hold,gripper_q)
+        guard_base_and_arms(base,self.base_hold,q,self.base_arm_start if self.base_moving else None,
+            execution_settings=getattr(self,"execution_settings",None),fixture_contact=fixture_guard_contact)
         gripper_v={side:np.array([sim.data.qvel[sim.model.get_joint_qvel_addr(name)] for name in r.gripper[native].joints])
             for side,native in PHYSICAL_TO_NATIVE.items()}
         chassis_name=self.planner.chassis_binding.get('native_geom','')
@@ -378,6 +384,9 @@ class NativeExecutor:
             if np.any(values<lim[:,0]) or np.any(values>lim[:,1]) or np.any(abs(gripper_v[side])>lim[:,2]):
                 raise RuntimeError('Measured native gripper position/velocity exceeds original URDF limit')
             mimic_bound=gripper_mimic_contact_bound(side,exemption_mode,contact_now)
+            if fixture_guard_contact:
+                relaxed_mimic[side]=(float(abs(values[0]-values[1])),None)
+                continue
             if mimic_bound==.001:
                 if abs(values[0]-values[1])>.001:raise RuntimeError('Measured gripper mimic error exceeds original 1mm bound')
             else:
@@ -389,6 +398,9 @@ class NativeExecutor:
         bilateral=bilateral_contacts(self.env)
         if getattr(self,'bimanual_collaboration','none')=='handoff' and getattr(self,'handoff',None) and self.handoff['phase']=='shared':
             NativeExecutor.handoff_shared(self,fatal=True)
+        if fixture_enabled(getattr(self,'execution_settings',None)):
+            movable=set(movable_object_roots(self.env).values())
+            bilateral={side:values & movable for side,values in bilateral.items()}
         for side in PHYSICAL_TO_NATIVE:
             for bid in set(self.grasp_counts[side])|bilateral[side]:
                 self.grasp_counts[side][bid]=self.grasp_counts[side].get(bid,0)+1 if bid in bilateral[side] else 0
@@ -421,7 +433,7 @@ class NativeExecutor:
         movable_roots=tuple(movable_object_roots(self.env).values()) if exemption_enabled else ()
         expected_movable_contacts=[]
         handoff_contact=False
-        for con in sim.data.contact:
+        for contact_index,con in enumerate(sim.data.contact):
             g1,g2=int(con.geom1),int(con.geom2);b1,b2=int(sim.model.geom_bodyid[g1]),int(sim.model.geom_bodyid[g2])
             a=is_descendant(sim.model,b1,self.robot_root);b=is_descendant(sim.model,b2,self.robot_root)
             chassis1=exemption_enabled and sim.model.geom_id2name(g1)==chassis_name
@@ -434,6 +446,7 @@ class NativeExecutor:
                     any(f'openarm_{s}_' in n1 and f'openarm_{s}_' in n2 for s in ('left','right')))
                 if opposing_fingers:continue
                 contacts.append([n1,n2,float(con.dist)]);continue
+            if (g1,g2,contact_index) in fixture_pairs or (g2,g1,contact_index) in fixture_pairs:continue
             if exemption_enabled:
                 expected=False
                 for robot_geom,other_geom,robot_body,other_body in ((g1,g2,b1,b2),(g2,g1,b2,b1)):
@@ -487,6 +500,11 @@ class NativeExecutor:
             row['mimic_error_m']={side:pair[0] for side,pair in relaxed_mimic.items()}
             row['mimic_bound_m']={side:pair[1] for side,pair in relaxed_mimic.items()}
         if expected_movable_contacts:row['expected_movable_contacts']=expected_movable_contacts
+        if fixture_sample:
+            row['fixture_contacts']=fixture_sample['contacts']
+            row['fixture_part_contacts']=fixture_sample['part_contacts']
+            row['fixture_neighbourhood_contacts']=fixture_sample['neighbourhood_contacts']
+            row['joint_tracking_error_rad']=fixture_sample['joint_tracking_error_rad']
         if trace_enabled:
             trace=[]
             targets={(side,bid) for side,values in bilateral.items() for bid in values}
@@ -535,21 +553,27 @@ class NativeExecutor:
                 audit['physical_monitor_allows_movable_contacts']=True
             self.log(self.journal,audit)
         self.contact_event_count=0;self.contact_event_overflow=0
+        fixture_telemetry.begin(self)
+        if response.get('fixture_contact_exemption'):
+            self.log(self.journal,dict(event='fixture_contact_exemption',request_id=request_id,**response['fixture_contact_exemption']))
         self.moving=True
         try:
             for target in samples[1:]:self.goals=target.copy();self.control_step()
             for _ in range(settle_steps):self.control_step()
             current=self.planner.state()
             error=float(np.max(abs(current-samples[-1])))
-            if error>bound:
+            fixture_contact=(fixture_enabled(getattr(self,'execution_settings',None)) and
+                getattr(self,'_fixture_motion',{}).get('contact_steps',0)>0)
+            if error>bound or fixture_contact:
                 try:
                     r=self.env.robots[0]
                     qvel=np.asarray(self.env.sim.data.qvel[r._ref_arm_joint_vel_indexes],float)
                     if not np.all(np.isfinite(qvel)):qvel=None
                 except (AttributeError,IndexError,KeyError,TypeError):qvel=None
-                self.log(self.journal,tracking_error_event(request_id,settle_steps,bound,
-                    self.planner.names,samples[-1],current,qvel))
-                raise RuntimeError('Native joint tracking exceeds 4mrad endpoint bound')
+                event=tracking_error_event(request_id,settle_steps,bound,self.planner.names,samples[-1],current,qvel)
+                if fixture_contact:event.update(fixture_contact=True,mode='record_only',endpoint_bound_enforced=False)
+                self.log(self.journal,event)
+                if not fixture_contact:raise RuntimeError('Native joint tracking exceeds 4mrad endpoint bound')
             receipt=dict(status='completed',request_id=request_id,epoch=self.epoch,start_sequence=start,
                 sequence=self.sequence,physics_steps=self.physics_steps,before_qpos=before.tolist(),
                 after_qpos=self.planner.state().tolist(),maximum_endpoint_joint_error_rad=error)
@@ -562,7 +586,15 @@ class NativeExecutor:
             receipt.update(receipt_fields(getattr(self,"execution_settings",None)))
             receipt.update(NativeExecutor.collaboration_receipt(self))
             receipt.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
+            fixture_telemetry.rehold(self)
+            receipt.update(fixture_telemetry.receipt(self))
+            if fixture_enabled(getattr(self,'execution_settings',None)):
+                receipt['fixture_pilot'].update(endpoint_bound_enforced=not fixture_contact,
+                    endpoint_joint_errors_rad=dict(zip(self.planner.names,(current-samples[-1]).tolist())))
+                if response.get('fixture_contact_exemption'):receipt['fixture_contact_exemption']=response['fixture_contact_exemption']
             self.log(self.journal,dict(event='receipt',**receipt));return receipt
+        except fixture_telemetry.FixtureContactBaseDisplacementRejected:
+            raise
         except BaseException:
             self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('native_failure');raise
         finally:
@@ -640,6 +672,7 @@ class NativeExecutor:
             delta_body=delta.tolist(),collision_check=collision,arm_before_qpos=arm_before.tolist()))
         self.base_moving=True;self.moving=True;self.base_command=np.zeros(3)
         self.contact_event_count=0;self.contact_event_overflow=0
+        fixture_telemetry.begin(self)
         started=time.monotonic()
         settle_start=None;settle_steps=0
         try:
@@ -692,6 +725,7 @@ class NativeExecutor:
             result.update(receipt_fields(getattr(self,"execution_settings",None)))
             result.update(NativeExecutor.collaboration_receipt(self))
             result.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
+            result.update(fixture_telemetry.receipt(self))
             self.log(self.journal,dict(event='receipt',**result));return result
         except BaseException as exc:
             after=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
@@ -711,6 +745,7 @@ class NativeExecutor:
 
     def any_object_contact(self):
         sim=self.env.sim;objects=set(getattr(self.env,'obj_body_id',{}).values())
+        if fixture_enabled(getattr(self,'execution_settings',None)):objects=set(movable_object_roots(self.env).values())
         for con in sim.data.contact:
             if con.dist>0:continue
             bodies=[int(sim.model.geom_bodyid[g]) for g in (con.geom1,con.geom2)]
@@ -737,7 +772,16 @@ class NativeExecutor:
             from curobo_v2.grasp_heading import check_sdk_request
             check_sdk_request(grasp_search, getattr(self.env, 'obj_body_id', {}))
         current=tcp_pose(self.env,side)
+        before=self.planner.state().copy() if fixture_enabled(getattr(self,'execution_settings',None)) else None
         response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch,**({} if grasp_search is None else dict(grasp_search=grasp_search)))
+        if before is not None and np.any(np.r_[delta,rotation]!=0):
+            trajectory=np.asarray(response['trajectory'],float)
+            maximum=float(np.max(abs(trajectory-before)))
+            if maximum<=1e-4:
+                self.planner.ledger.invalidate('motion_below_planner_tolerance')
+                diagnostics=dict(max_joint_step_rad=maximum,position_tolerance=.004,orientation_tolerance=.03)
+                if hasattr(self,'reject'):self.reject('motion_below_planner_tolerance',diagnostics)
+                raise PlanningRejected('motion_below_planner_tolerance')
         return self.apply(response,request_id=request_id)
 
     @record_base_drift
@@ -775,8 +819,9 @@ class NativeExecutor:
                 raise PlanningRejected('Handoff is not enabled in this profile')
         self.active_request=request_id;self.gripping=True;self.gripping_side=side;self.moving=True;start=self.sequence
         self.contact_event_count=0;self.contact_event_overflow=0
+        fixture_telemetry.begin(self)
         self.log(self.journal,dict(event='gripper_intent',request_id=request_id,side=side,command=command,sequence=start))
-        wait_steps=0
+        wait_steps=0;empty_close=False
         try:
             if command<0 and NativeExecutor.held_for(self,side) and not (donor_release or receiver_cancel):
                 if getattr(self,'bimanual_collaboration','none') in ('c1','handoff'):
@@ -812,8 +857,15 @@ class NativeExecutor:
                 if handoff_mode and self.held[other] and NativeExecutor.touching_other_held(self,side) and not candidates:
                     handoff_begin=True
                 if handoff_begin and candidates!=[self.held[other]['target_id']]:
+                    # This handoff refusal is recoverable. Fixture contact may
+                    # have moved the base before the receiver failed to grasp.
+                    fixture_telemetry.rehold(self)
                     raise PlanningRejected('Handoff receiver did not confirm a bilateral grasp')
-                if require_attachment and not candidates:
+                fixture_grasp=(fixture_enabled(settings) and side in getattr(self,'_fixture_motion',{}).get('sides',()))
+                empty_close=(fixture_enabled(settings) and not candidates and not fixture_grasp
+                    and not (any(self.held.values()) if getattr(self,'bimanual_collaboration','none') in ('c1','handoff') else self.held)
+                    and not self.any_object_contact())
+                if require_attachment and not candidates and not fixture_grasp and not empty_close:
                     raise PlanningRejected('Close did not confirm bilateral grasp; attached transport forbidden')
                 if candidates:
                     if handoff_mode and self.held[other] and self.held[other]['target_id']==candidates[0]:
@@ -864,6 +916,7 @@ class NativeExecutor:
                         self.handoff=dict(id=uuid.uuid4().hex,donor=other,receiver=side,target_id=candidates[0],
                             phase='shared',begin_request_id=request_id)
             result=dict(status='completed',request_id=request_id,physical_side=side,start_sequence=start,sequence=self.sequence)
+            if fixture_enabled(settings):result['empty_close']=empty_close
             result.update(held_reference_wait_steps=wait_steps,held_reference=reference_settings)
             if require_attachment:
                 attached=NativeExecutor.held_for(self,side) if getattr(self,'bimanual_collaboration','none') in ('c1','handoff') else self.held
@@ -875,7 +928,11 @@ class NativeExecutor:
             result.update(NativeExecutor.collaboration_receipt(self))
             if donor_release:result.update(handoff_completed=True,ownership=self.handoff['receiver'])
             result.update(held_envelope_receipt(getattr(self, "execution_settings", None)))
+            fixture_telemetry.rehold(self)
+            result.update(fixture_telemetry.receipt(self))
             self.log(self.journal,dict(event='receipt',**result));return result
+        except fixture_telemetry.FixtureContactBaseDisplacementRejected:
+            raise
         except BaseException as exc:
             if not (handoff_begin and isinstance(exc,PlanningRejected) and
                     str(exc)=='Handoff receiver did not confirm a bilateral grasp'):
@@ -883,6 +940,55 @@ class NativeExecutor:
             if donor_release and isinstance(exc,RuntimeError) and 'bilateral grasp contact lost' in str(exc):
                 raise RuntimeError('Receiver independent holding not confirmed') from exc
             raise
+        finally:
+            if self.contact_event_overflow:self.log(self.journal,dict(event='movable_contact_overflow',
+                request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))
+            self.active_request=None;self.gripping=False;self.gripping_side=None;self.moving=False
+
+    @record_base_drift
+    def gripper_move_to(self,side,width_m,*,request_id):
+        from curobo_v2.fixture_gripper import MIN_WIDTH_M,OPEN_WIDTH_M,WIDTH_TOLERANCE_M,GripperWidthRejected
+        self.check_live()
+        if not fixture_enabled(getattr(self,'execution_settings',None)) or side not in PHYSICAL_TO_NATIVE:
+            raise ValueError('R5 physical gripper required')
+        start=self.sequence;settle_steps=0
+        numeric=type(width_m) in (int,float) and -1e308<=width_m<=1e308 and math.isfinite(width_m)
+        target=float(width_m) if numeric else repr(width_m)[:120]
+        native=PHYSICAL_TO_NATIVE[side]
+        def measurements():
+            return np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_gripper_joint_pos_indexes[native]],float)
+        def fields():
+            return dict(command='move_to',physical_side=side,target_width_m=target,
+                measured_finger_positions_m=measurements().tolist(),settle_steps=settle_steps)
+        def reject(reason):
+            exc=GripperWidthRejected(reason,fields())
+            self.log(self.journal,dict(event='receipt',status='rejected',request_id=request_id,
+                start_sequence=start,sequence=self.sequence,**fields(),**exc.public()))
+            raise exc
+        if not numeric or not MIN_WIDTH_M<=width_m<=OPEN_WIDTH_M:reject('gripper_width_out_of_range')
+        if NativeExecutor.held_for(self,side):reject('gripper_width_while_holding')
+        self.active_request=request_id;self.gripping=True;self.gripping_side=side;self.moving=True
+        self.contact_event_count=0;self.contact_event_overflow=0
+        fixture_telemetry.begin(self)
+        self.log(self.journal,dict(event='gripper_intent',request_id=request_id,sequence=start,**fields()))
+        try:
+            self.grips[side]=1-2*float(width_m)/.044
+            self.planner.prepared.clear();self.planner.ledger.invalidate('gripper_width_changed')
+            for _ in range(20):
+                self.control_step();settle_steps+=1
+            measured=measurements()
+            if not np.isfinite(measured).all() or np.any(abs(measured-width_m)>WIDTH_TOLERANCE_M):
+                reject('gripper_width_not_reached')
+            result=dict(status='completed',request_id=request_id,start_sequence=start,sequence=self.sequence,**fields())
+            result.update(receipt_fields(self.execution_settings))
+            result.update(NativeExecutor.collaboration_receipt(self))
+            result.update(held_envelope_receipt(self.execution_settings))
+            fixture_telemetry.rehold(self);result.update(fixture_telemetry.receipt(self))
+            self.log(self.journal,dict(event='receipt',**result));return result
+        except (GripperWidthRejected,fixture_telemetry.FixtureContactBaseDisplacementRejected):
+            raise
+        except BaseException:
+            self.failed=True;self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('gripper_failure');raise
         finally:
             if self.contact_event_overflow:self.log(self.journal,dict(event='movable_contact_overflow',
                 request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))

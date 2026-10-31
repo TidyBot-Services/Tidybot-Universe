@@ -104,10 +104,9 @@ class Prober:
         # so the warm owner survives between probes (10-28 real run).
         self.spawner=concurrent.futures.ThreadPoolExecutor(max_workers=1,thread_name_prefix='probe-owner-spawn')
 
-    @staticmethod
-    def validate(op,payload):
+    def validate(self,op,payload):
         from openarm365_dev_v2.agent_probe import validate
-        validate(op,payload)
+        validate(op,payload,config=getattr(self,'config',None))
 
     def probe(self,op,payload,*,deadline):
         self.validate(op,payload);self.start_failed=False
@@ -137,7 +136,10 @@ class Prober:
 
 
 class FakeProber:
-    validate=staticmethod(Prober.validate)
+    @staticmethod
+    def validate(op,payload):
+        from openarm365_dev_v2.agent_probe import validate
+        validate(op,payload)
     def __init__(self):self.calls=0;self.steps=0
     def probe(self,op,payload,*,deadline):
         self.calls+=1

@@ -1,0 +1,5 @@
+{
+  "task_id": "heat_kebab_sandwich",
+  "official_env": "HeatKebabSandwich",
+  "task_prompt": "Place the kebab and bread in the toaster oven, close the door, and set the timer."
+}

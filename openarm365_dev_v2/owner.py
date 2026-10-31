@@ -6,6 +6,18 @@ class NativeOwnerV2(NativeOwner):
     def __init__(self,*args,source_root=None,agent_mode=False,**kwargs):
         super().__init__(*args,**kwargs);self.source_root=Path(source_root) if source_root is not None else None
         self.startup_response=None;self.agent_mode=agent_mode
+    def rpc(self,group,operation,args=(),kwargs=None,*,request_id=None):
+        if group in ('left_gripper','right_gripper') and operation=='move_to' and self.config.is_file():
+            from curobo_v2.fixture_interaction import config_enabled
+            if config_enabled(json.loads(self.config.read_bytes())):
+                from curobo_v2.fixture_gripper import wire_width
+                return super().rpc('owner','gripper_move_to',(group.split('_')[0],*(wire_width(v) for v in args)),
+                    {k:wire_width(v) for k,v in (kwargs or {}).items()},request_id=request_id)
+        if group=='sensors' and operation=='find_fixtures' and self.config.is_file():
+            from curobo_v2.fixture_interaction import config_enabled
+            if config_enabled(json.loads(self.config.read_bytes())):
+                return super().rpc('owner','find_fixtures',args,kwargs,request_id=request_id)
+        return super().rpc(group,operation,args,kwargs,request_id=request_id)
     def stop(self,reason='normal_cleanup'):
         from .live_retention import prune_live
         try:return super().stop(reason)

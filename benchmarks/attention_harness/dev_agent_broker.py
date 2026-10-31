@@ -20,8 +20,8 @@ from .dev_agent_feedback import public_outcome
 from .dev_agent_eval import feedback, unavailable
 
 SCHEMA = 'attentionbench.dev-agent-request.v1'
-OPS = {'submit', 'run', 'observe', 'find_objects', 'ik_check', 'plan_dry_run', 'ask_help', 'status'}
-PROBES = {'observe', 'find_objects', 'ik_check', 'plan_dry_run'}
+OPS = {'submit', 'run', 'observe', 'find_objects', 'find_fixtures', 'ik_check', 'plan_dry_run', 'ask_help', 'status'}
+PROBES = {'observe', 'find_objects', 'find_fixtures', 'ik_check', 'plan_dry_run'}
 TIMEOUTS = dict(validation=5., observe=10., find_objects=10., ik_check=240.,
                 plan_dry_run=240., run=1920., submit=1920., evaluate=900., ask_help=120.,
                 # A cold probe owner builds the simulator scene first (~55 s measured).
@@ -98,6 +98,7 @@ class Broker:
         self.helper, self.budget = (None if validation else helper or Helper()), budget or Budget()
         self.validation=validation
         self.timeouts = {**TIMEOUTS, **(timeouts or {})}
+        self.timeouts.setdefault('find_fixtures',self.timeouts['find_objects'])
         self.lock = threading.RLock(); self.closing = threading.Event()
         self.records = {}; self.active = None; self.quarantined = False; self.failure = None; self.owner_start_failures = 0; self.step_errors = []
         self.histories = {k: [] for k in ('versions', 'executions', 'probes')}
@@ -227,7 +228,9 @@ class Broker:
                         return reject('invalid_entry')
                     try:
                         from .dev_agent_bundle import bundle
-                        with self.quiesce():frozen=bundle(self.workspace.ws,entry)
+                        from curobo_v2.fixture_interaction import config_enabled
+                        config=getattr(self.workspace,'fixture_config',None)
+                        with self.quiesce():frozen=bundle(self.workspace.ws,entry,**({'config':config} if config_enabled(config) else {}))
                         source=frozen.script
                     except (ValueError, SyntaxError, UnicodeError, OSError) as exc:
                         invalid=True;validation_error=screen_text(str(exc))

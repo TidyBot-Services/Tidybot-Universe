@@ -1,0 +1,11 @@
+{
+  "authority": "env._check_success() in native owner only",
+  "profile": "r5-fixture-20261031",
+  "schema": "attentionbench.fixture-success-condition.v1",
+  "tasks": {
+    "open_cabinet": "fxtr.is_open(env), upstream default th=0.90",
+    "open_drawer": "all fractions from drawer.get_door_state(env) >= 0.95",
+    "turn_off_stove": "not stove.is_burner_on(env, burner_loc=env.knob)",
+    "turn_on_microwave": "microwave.get_state()[turned_on] and microwave.gripper_button_far(env, button=start_button)"
+  }
+}

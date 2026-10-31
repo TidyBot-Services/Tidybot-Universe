@@ -6,7 +6,7 @@ import selectors
 import subprocess
 import time
 from openarm365_dev.sandbox import _bwrap_prefix, _json_safe, _meter_sdk_call, FormalPolicyOutcome
-from openarm365_dev.policy_validation import OPERATIONS
+from openarm365_dev.policy_validation import OPERATIONS,operations
 from .agent_policy import validate_source
 
 OUTPUT_LIMIT = 16 * 1024 * 1024
@@ -15,7 +15,10 @@ OUTPUT_LIMIT = 16 * 1024 * 1024
 def execute_agent_policy(*, code, sdk, context, deadline, stderr_path, cancel_check=None,
                          max_sdk_calls=320, source_config=None, memory_limit_mb=512,
                          unsafe_test_transport=False):
-    validate_source(code)
+    validate_source(code,config=source_config)
+    allowed=operations(source_config)
+    from curobo_v2.fixture_interaction import config_enabled,PROFILE
+    profile_fields={'fixture_profile':PROFILE} if config_enabled(source_config) else {}
     if not 0 < max_sdk_calls <= 320: raise ValueError('agent SDK limit')
     if memory_limit_mb != 512: raise ValueError('agent memory limit')
     worker = Path(__file__).with_name('agent_policy_worker.py')
@@ -36,7 +39,7 @@ def execute_agent_policy(*, code, sdk, context, deadline, stderr_path, cancel_ch
             selector = selectors.DefaultSelector(); selector.register(protocol_read, selectors.EVENT_READ)
             buffer = bytearray()
             try:
-                process.stdin.write((json.dumps(dict(code=code, context=_json_safe(context))) + '\n').encode()); process.stdin.flush()
+                process.stdin.write((json.dumps(dict(code=code, context=_json_safe(context),**profile_fields)) + '\n').encode()); process.stdin.flush()
                 while status != 'completed' and error is None:
                     if cancel_check and cancel_check(): status='cancelled'; error='cancelled'; break
                     if time.monotonic() >= deadline: status='timeout'; error='deadline'; break
@@ -56,7 +59,7 @@ def execute_agent_policy(*, code, sdk, context, deadline, stderr_path, cancel_ch
                         if kind == 'done': status='completed'; break
                         if kind == 'error': error='policy_error'; break
                         group, op = message.get('group'), message.get('operation')
-                        if kind != 'call' or op not in OPERATIONS.get(group, ()):
+                        if kind != 'call' or op not in allowed.get(group, ()):
                             error='unauthorized_rpc'; break
                         try:
                             calls = _meter_sdk_call(calls, max_sdk_calls)

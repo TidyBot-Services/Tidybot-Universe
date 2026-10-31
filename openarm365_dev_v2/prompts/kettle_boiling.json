@@ -1,0 +1,5 @@
+{
+  "task_id": "kettle_boiling",
+  "official_env": "KettleBoiling",
+  "task_prompt": "Place the kettle on a stove burner and turn that burner on."
+}

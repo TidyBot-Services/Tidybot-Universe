@@ -1,0 +1,5 @@
+{
+  "task_id": "arrange_tea",
+  "official_env": "ArrangeTea",
+  "task_prompt": "Place the kettle and a cup from the cabinet on the tray, then close the cabinet doors."
+}

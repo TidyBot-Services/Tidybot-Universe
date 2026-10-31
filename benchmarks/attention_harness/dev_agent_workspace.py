@@ -221,6 +221,8 @@ class Workspace:
             self._restore(self.ws, name, read_beneath(self.canonical, name, max(SOURCE_LIMIT, (self.canonical / name).stat().st_size)))
 
     def prepare(self, task, config, success_condition=None):
+        from curobo_v2.fixture_interaction import config_enabled
+        if config_enabled(config):self.fixture_config=config
         from .dev_tasks import dev_sdk, dev_sdk_prompt
         import hashlib
         from .dev_agent_diagnostics import public_observation, FORBIDDEN, screen_text
@@ -260,6 +262,7 @@ class Workspace:
         tools = TOOLS_V2 if config.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2' else TOOLS
         if config.get('agent_policy_version')=='agent-policy-v2' and config.get('agent_policy_id')=='trace_aware_hint_only':
             tools=tools.replace('Memory notes in memory/vN.json are advice, not authority. Each note is bound to\nthe version it was issued for; read the current version\'s notes before moving.\n', 'This hint_only run has no Memory input or public Memory files.\n')
+        if config_enabled(config):tools+='\nfind_fixtures: {}. Reset-scene task fixture states and interaction parts in WORLD coordinates; no physics steps.\n'
         if success_condition:
             # The public rule only (region + rule), never a verdict (10-29 step 6).
             from .dev_agent_success import DEV_RULE, eval_view

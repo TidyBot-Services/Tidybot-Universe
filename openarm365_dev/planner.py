@@ -66,14 +66,16 @@ class MujocoV2Planner:
         except BaseException:
             self.failed=True;self.ledger.invalidate('planner_failure');self.owner.close('planner_failure');raise
     def world_snapshot(self):
+        from curobo_v2.fixture_interaction import enabled
+        fixture_args=({'execution_settings':self.execution_settings} if enabled(getattr(self,'execution_settings',None)) else {})
         if self.contact_exemption_mode=='none':
-            return snapshot(self.env,chassis_binding=self.chassis_binding)
+            return snapshot(self.env,chassis_binding=self.chassis_binding,**fixture_args)
         from .world import movable_object_roots
         roots=movable_object_roots(self.env)
         held=self.attachment_provider()
         attached=held['target_id'] if held else getattr(self, '_heading_world_target', None)
         return snapshot(self.env,chassis_binding=self.chassis_binding,
-            exempt_body_ids=set(roots.values()),attached_body_id=attached)
+            exempt_body_ids=set(roots.values()),attached_body_id=attached,**fixture_args)
     def upload(self):
         world=self.world_snapshot();self.sequence+=1
         (self.evidence/f'world-{self.sequence:04d}.json').write_text(json.dumps(world,indent=2)+'\n')
@@ -91,6 +93,8 @@ class MujocoV2Planner:
                 exempted_geom_count=world.get('exempted_geom_count',0),world_sha256=world['world_sha256'],
                 world_sha256_unexempted=world.get('world_sha256_unexempted',world['world_sha256']))
             receipt={**receipt,'contact_exemption':audit}
+        if 'fixture_contact_exemption' in world:
+            receipt={**receipt,'fixture_contact_exemption':world['fixture_contact_exemption']}
         return world,receipt
     def prepare(self, active):
         def op():
@@ -161,6 +165,7 @@ class MujocoV2Planner:
                 identity=self.client.identity,attachment=attachment)
             response.update(plan_id=pid,epoch=epoch,world_receipt=receipt)
             if 'contact_exemption' in receipt:response['contact_exemption']=receipt['contact_exemption']
+            if 'fixture_contact_exemption' in receipt:response['fixture_contact_exemption']=receipt['fixture_contact_exemption']
             (self.evidence/f'trajectory-{self.sequence:04d}.json').write_text(json.dumps(response,indent=2)+'\n')
             return response
         return self.guard(op)
