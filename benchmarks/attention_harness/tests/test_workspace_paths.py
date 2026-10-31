@@ -114,7 +114,7 @@ def test_author_registry_reproduces_previous_values(tmp_path, monkeypatch):
     assert set(data['paths']) == set(expected)
     template = json.loads((root/'config/attentionbench/paths.template.json').read_text())
     assert template['schema'] == data['schema']
-    assert template['_comment'] and set(template['paths']) == set(expected)
+    assert template['_comment'] and set(template['paths']) == set(expected) | {'planner.local_dev_trust'}
     for key, old in expected.items():
         assert workspace_paths.get_str(key) == str(old), key
     workspace_paths.clear_cache()

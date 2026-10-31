@@ -2,15 +2,15 @@
   "_comment": "Copy to <workspace>/paths.json and set each value for this machine. Relative values are joined to the workspace root.",
   "schema": "attentionbench.paths.v1",
   "paths": {
-    "sim.python": "envs/robocasa365/bin/python",
-    "sim.robocasa_root": "sim/robocasa",
-    "sim.robosuite_root": "sim/robosuite",
-    "sim.assets_manifest": "data/robocasa365/assets-manifest.json",
-    "sim.configs_dir": "repos/Tidybot-Universe/benchmarks/attention_harness/robocasa365/configs",
+    "sim.python": "sim/runtime/venv/bin/python",
+    "sim.robocasa_root": "sim/runtime/robocasa",
+    "sim.robosuite_root": "sim/runtime/robosuite",
+    "sim.assets_manifest": "repos/robocasa365_sim/assets-manifest.json",
+    "sim.configs_dir": "repos/attentionbench/benchmarks/attention_harness/robocasa365/configs",
     "sim.delivery_root": "data/robocasa365",
-    "sim.legacy_python": "envs/maniskill/bin/python",
-    "sim.legacy_bin": "envs/maniskill/bin",
-    "sim.legacy_tasks": "sim/robocasa_tasks",
+    "sim.legacy_python": "sim/runtime/venv/bin/python",
+    "sim.legacy_bin": "sim/runtime/venv/bin",
+    "sim.legacy_tasks": "repos/robocasa_tasks",
     "sim.dev_robot_config": "deployments/dev05/runtime/project/config/openarm_fixed.yml",
     "sim.dev_assets_dir": "deployments/dev05/runtime/project/curobo_v2/service/curobo_service/assets",
     "memory.service_root": "repos/attention_memory_service",
@@ -25,7 +25,7 @@
     "ui.artifact_root": "data/ui/artifacts",
     "ui.serve_daily": "repos/attentionbench/serve_daily.py",
     "ui.daily_python": "envs/ui/bin/python",
-    "ui.robocasa_python": "envs/robocasa-ui/bin/python",
+    "ui.robocasa_python": "sim/runtime/venv/bin/python",
     "deployments.dev05_root": "deployments/dev05",
     "deployments.dev06_root": "deployments/dev06",
     "deployments.dev05_lock": "deployments/dev05/runtime-lock.json",
@@ -36,6 +36,6 @@
     "test.real_eval": "data/test-evidence/d4/real-eval",
     "test.real_session": "data/test-evidence/d2/real-session",
     "test.dev_v2_db": "data/dev-v2.sqlite",
-    "test.native_robot_config": "repos/Tidybot-Universe-attention-native/openarm_robocasa/configs/robot_parameters_v2.json"
+    "test.native_robot_config": "repos/attentionbench/openarm_robocasa/configs/robot_parameters_v2.json"
   }
 }

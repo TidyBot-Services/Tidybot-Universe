@@ -39,6 +39,65 @@ def test_relative_paths_cover_template(tmp_path):
     expected = json.loads(installer.TEMPLATE.read_text())['paths']
     assert set(paths) == set(expected)
     assert all(not Path(value).is_absolute() and '..' not in Path(value).parts for value in paths.values())
+    config = tmp_path / paths['sim.configs_dir'] / 'pick_place_counter_to_sink_seed101.json'
+    assert config.relative_to(tmp_path).parts[:2] == ('repos', 'attentionbench')
+    assert (ROOT / config.relative_to(tmp_path).relative_to('repos/attentionbench')).is_file()
+
+
+def test_doctor_path_policy_covers_template():
+    policy = json.loads(installer.DOCTOR_PATHS.read_text())['paths']
+    template = json.loads(installer.TEMPLATE.read_text())['paths']
+    assert set(policy) == set(template)
+    assert all(type(row['required']) is bool and (row['required'] or row['reason']) for row in policy.values())
+
+
+def test_template_matches_collaborator_layout():
+    from scripts.attentionbench.write_author_paths import PATHS
+    template = json.loads(installer.TEMPLATE.read_text())['paths']
+    assert {key: row[2] for key, row in PATHS.items()} == {
+        key: value for key, value in template.items() if key != 'planner.local_dev_trust'}
+
+
+def test_doctor_required_missing_fails_optional_missing_skips(tmp_path, monkeypatch, capsys):
+    installer.write_paths(tmp_path)
+    paths_file = tmp_path / 'paths.json'
+    paths = json.loads(paths_file.read_text())
+    paths['paths']['sim.configs_dir'] = 'repos/attentionbench/missing-configs'
+    paths['paths'].pop('ui.serve_daily')
+    paths_file.write_text(json.dumps(paths))
+    original_check = installer._check
+    def pass_non_path(results, name, ok, reason, fix):
+        original_check(results, name, ok if name.startswith('path:') else True, reason, fix)
+    monkeypatch.setattr(installer, '_check', pass_non_path)
+    monkeypatch.setattr(installer.shutil, 'which', lambda name: None)
+    monkeypatch.setattr(installer, 'verify_assets', lambda *a: [])
+    monkeypatch.setattr(installer, 'digest', lambda *a: '')
+    class FreeSocket:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def connect_ex(self, *a): return 1
+    monkeypatch.setattr(installer.socket, 'socket', lambda: FreeSocket())
+    assert installer.doctor(SimpleNamespace(workspace=str(tmp_path), json=True)) == 1
+    rows = {row['check']: row for row in json.loads(capsys.readouterr().out)}
+    assert rows['path:sim.configs_dir']['status'] == 'FAIL'
+    assert rows['path:ui.serve_daily']['status'] == 'SKIP'
+    assert rows['path:ui.serve_daily']['reason'].startswith('optional (')
+    for key, value in paths['paths'].items():
+        if key == 'sim.configs_dir':
+            continue
+        target = tmp_path / value
+        target.mkdir(parents=True, exist_ok=True)
+    assert installer.doctor(SimpleNamespace(workspace=str(tmp_path), json=True)) == 1
+    # The missing required key remains a failure even if every other path exists.
+    capsys.readouterr()
+    required = tmp_path / paths['paths']['sim.configs_dir']
+    required.mkdir(parents=True)
+    assert installer.doctor(SimpleNamespace(workspace=str(tmp_path), json=True)) == 0
+    rows = {row['check']: row for row in json.loads(capsys.readouterr().out)}
+    assert rows['path:sim.configs_dir']['status'] == 'PASS'
+    assert rows['path:ui.serve_daily']['status'] == 'SKIP'
+    assert installer.doctor(SimpleNamespace(workspace=str(tmp_path), json=False)) == 0
+    assert 'SKIP path:ui.serve_daily: optional (' in capsys.readouterr().out
 
 
 def test_dry_run_touches_nothing(tmp_path):

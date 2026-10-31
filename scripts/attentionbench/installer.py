@@ -20,6 +20,7 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 LOCK = REPO / 'attentionbench.lock.json'
 TEMPLATE = REPO / 'config/attentionbench/paths.template.json'
+DOCTOR_PATHS = REPO / 'config/attentionbench/doctor-paths.json'
 TRUST_MESSAGE = 'local planner chain or protected dev trust registry is missing'
 
 
@@ -134,16 +135,6 @@ def download_assets(ws: Path, lock: dict) -> Path:
 
 def write_paths(ws: Path) -> None:
     paths = json.loads(TEMPLATE.read_text())['paths']
-    paths.update({'sim.python': 'sim/runtime/venv/bin/python',
-                  'sim.robocasa_root': 'sim/runtime/robocasa',
-                  'sim.robosuite_root': 'sim/runtime/robosuite',
-                  'sim.assets_manifest': 'repos/robocasa365_sim/assets-manifest.json',
-                  'sim.legacy_python': 'sim/runtime/venv/bin/python',
-                  'sim.legacy_bin': 'sim/runtime/venv/bin',
-                  'sim.legacy_tasks': 'sim/runtime/robocasa',
-                  'ui.daily_python': 'envs/ui/bin/python',
-                  'ui.robocasa_python': 'sim/runtime/venv/bin/python',
-                  'test.native_robot_config': 'repos/attentionbench/openarm_robocasa/configs/robot_parameters_v2.json'})
     (ws / 'paths.json').write_text(json.dumps({'schema': 'attentionbench.paths.v1', 'paths': paths}, indent=2) + '\n')
 
 
@@ -251,6 +242,27 @@ def _check(results: list, name: str, ok: bool | None, reason: str, fix: str) -> 
     results.append({'check': name, 'status': 'SKIP' if ok is None else ('PASS' if ok else 'FAIL'), 'reason': reason, 'fix': fix})
 
 
+def check_doctor_paths(results: list, ws: Path, paths: dict) -> None:
+    template = json.loads(TEMPLATE.read_text())['paths']
+    policy = json.loads(DOCTOR_PATHS.read_text())['paths']
+    if set(policy) != set(template):
+        raise StepError('doctor', 'doctor path policy does not cover the template exactly',
+                        'Update config/attentionbench/doctor-paths.json with every template key.')
+    for key, entry in policy.items():
+        if type(entry.get('required')) is not bool or (not entry['required'] and not entry.get('reason')):
+            raise StepError('doctor', f'invalid path policy for {key}', 'Fix doctor-paths.json.')
+        value = paths.get(key)
+        safe = isinstance(value, str) and bool(value) and not Path(value).is_absolute() and '..' not in Path(value).parts
+        if value is not None and not safe:
+            _check(results, 'path:' + key, False, f'invalid relative path key {key}', 'Correct this paths.json entry.')
+        elif safe and (ws / value).exists():
+            _check(results, 'path:' + key, True, value, '')
+        elif entry['required']:
+            _check(results, 'path:' + key, False, f'missing or nonexistent path key {key}', 'Run bootstrap or correct this relative paths.json entry.')
+        else:
+            _check(results, 'path:' + key, None, f'optional ({entry["reason"]})', '')
+
+
 def doctor(args) -> int:
     lock = data(); ws = Path(args.workspace or os.environ.get('ATTENTIONBENCH_WORKSPACE', Path.cwd())).expanduser().resolve()
     results = []
@@ -274,11 +286,7 @@ def doctor(args) -> int:
         paths = json.loads(registry.read_text())['paths']
     except (OSError, ValueError, KeyError):
         paths = {}
-    template = json.loads(TEMPLATE.read_text())['paths']
-    for key in template:
-        value = paths.get(key)
-        valid = isinstance(value, str) and bool(value) and not Path(value).is_absolute() and '..' not in Path(value).parts and (ws / value).exists()
-        _check(results, 'path:' + key, valid, value if valid else f'missing or nonexistent path key {key}', 'Run bootstrap or correct this relative paths.json entry.')
+    check_doctor_paths(results, ws, paths)
     runtime_manifest = ws / lock['assets']['runtime_manifest']
     runtime_ok = runtime_manifest.is_file() and digest(runtime_manifest) == lock['assets']['runtime_manifest_sha256']
     _check(results, 'runtime-asset-manifest', runtime_ok, 'SHA256 matches lock' if runtime_ok else 'runtime asset manifest SHA256 mismatch or missing', 'Restore the pinned simulator checkout.')
@@ -321,7 +329,8 @@ def doctor(args) -> int:
         print(json.dumps(results, indent=2))
     else:
         for row in results:
-            print(f'{row["status"]} {row["check"]}: {row["reason"]}; fix: {row["fix"]}')
+            fix = f'; fix: {row["fix"]}' if row['fix'] else ''
+            print(f'{row["status"]} {row["check"]}: {row["reason"]}{fix}')
     return int(any(row['status'] == 'FAIL' for row in results))
 
 

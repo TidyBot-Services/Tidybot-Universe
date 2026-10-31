@@ -13,15 +13,15 @@ WORKSPACE = DESKTOP / 'AttentionBench-Workspace'
 # Each path is deliberately retained in its old location on the author machine.
 # The third field is the portable collaborator layout used by the template.
 PATHS = {
-    'sim.python': ('codex', '2026-10-09/new-chat/work/service_env/bin/python', 'envs/robocasa365/bin/python'),
-    'sim.robocasa_root': ('codex', '2026-10-09/new-chat/work/upstream/robocasa', 'sim/robocasa'),
-    'sim.robosuite_root': ('codex', '2026-10-09/new-chat/work/upstream/robosuite', 'sim/robosuite'),
-    'sim.assets_manifest': ('codex', '2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json', 'data/robocasa365/assets-manifest.json'),
-    'sim.configs_dir': ('workspace', 'development/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/configs', 'repos/Tidybot-Universe/benchmarks/attention_harness/robocasa365/configs'),
+    'sim.python': ('codex', '2026-10-09/new-chat/work/service_env/bin/python', 'sim/runtime/venv/bin/python'),
+    'sim.robocasa_root': ('codex', '2026-10-09/new-chat/work/upstream/robocasa', 'sim/runtime/robocasa'),
+    'sim.robosuite_root': ('codex', '2026-10-09/new-chat/work/upstream/robosuite', 'sim/runtime/robosuite'),
+    'sim.assets_manifest': ('codex', '2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json', 'repos/robocasa365_sim/assets-manifest.json'),
+    'sim.configs_dir': ('workspace', 'development/Tidybot-Universe-attention-native/benchmarks/attention_harness/robocasa365/configs', 'repos/attentionbench/benchmarks/attention_harness/robocasa365/configs'),
     'sim.delivery_root': ('codex', '2026-10-09/new-chat/outputs/robocasa365', 'data/robocasa365'),
-    'sim.legacy_python': ('home', 'miniconda3/envs/maniskill/bin/python', 'envs/maniskill/bin/python'),
-    'sim.legacy_bin': ('home', 'miniconda3/envs/maniskill/bin', 'envs/maniskill/bin'),
-    'sim.legacy_tasks': ('home', '文档/Tidybot-Universe/sims/robocasa_tasks', 'sim/robocasa_tasks'),
+    'sim.legacy_python': ('home', 'miniconda3/envs/maniskill/bin/python', 'sim/runtime/venv/bin/python'),
+    'sim.legacy_bin': ('home', 'miniconda3/envs/maniskill/bin', 'sim/runtime/venv/bin'),
+    'sim.legacy_tasks': ('home', '文档/Tidybot-Universe/sims/robocasa_tasks', 'repos/robocasa_tasks'),
     'sim.dev_robot_config': ('codex', '2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/config/openarm_fixed.yml', 'deployments/dev05/runtime/project/config/openarm_fixed.yml'),
     'sim.dev_assets_dir': ('codex', '2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/curobo_v2/service/curobo_service/assets', 'deployments/dev05/runtime/project/curobo_v2/service/curobo_service/assets'),
     'memory.service_root': ('desktop', 'attention_memory_service', 'repos/attention_memory_service'),
@@ -36,7 +36,7 @@ PATHS = {
     'ui.artifact_root': ('codex', '2026-10-06/docs-live-human-ui-validation-plan/work/mac-ui-debug-20261006-154731/artifacts', 'data/ui/artifacts'),
     'ui.serve_daily': ('codex', '2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/serve_daily.py', 'repos/attentionbench/serve_daily.py'),
     'ui.daily_python': ('home', '.cache/tidybot-attention/venv/bin/python', 'envs/ui/bin/python'),
-    'ui.robocasa_python': ('desktop', 'attentionbench-week2-clean-venv/bin/python', 'envs/robocasa-ui/bin/python'),
+    'ui.robocasa_python': ('desktop', 'attentionbench-week2-clean-venv/bin/python', 'sim/runtime/venv/bin/python'),
     'deployments.dev05_root': ('codex', '2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05', 'deployments/dev05'),
     'deployments.dev06_root': ('codex', '2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-06', 'deployments/dev06'),
     'deployments.dev05_lock': ('codex', '2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime-lock.json', 'deployments/dev05/runtime-lock.json'),
@@ -46,7 +46,7 @@ PATHS = {
     'test.real_eval': ('home', '下载/dev-agent/test-evidence/d4/real-eval', 'data/test-evidence/d4/real-eval'),
     'test.real_session': ('home', '下载/dev-agent/test-evidence/d2/real-session', 'data/test-evidence/d2/real-session'),
     'test.dev_v2_db': ('codex', '2026-10-14/new-chat/work/dev-v2.sqlite', 'data/dev-v2.sqlite'),
-    'test.native_robot_config': ('desktop', 'Tidybot-Universe-attention-native/openarm_robocasa/configs/robot_parameters_v2.json', 'repos/Tidybot-Universe-attention-native/openarm_robocasa/configs/robot_parameters_v2.json'),
+    'test.native_robot_config': ('desktop', 'Tidybot-Universe-attention-native/openarm_robocasa/configs/robot_parameters_v2.json', 'repos/attentionbench/openarm_robocasa/configs/robot_parameters_v2.json'),
 }
 
 
