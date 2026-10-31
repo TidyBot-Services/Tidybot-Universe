@@ -116,6 +116,8 @@ def retry_origin_registration(root,memory_id,reason,*,client=None,clock=time.tim
         if any(e['status']=='retrying' and e['memory_id']!=memory_id for e in events):
             raise DevConflict('Another origin registration retry is incomplete.')
         event=next((e for e in reversed(events) if e['memory_id']==memory_id),None)
+        if event and event['status'] not in ('retrying','failed','registered'):
+            raise DevConflict('Only a failed origin registration retry can start a fresh attempt.')
         if event and event['status']=='registered':
             receipt=read(event['passed_receipt'])
             if receipt.get('status')!='passed' or receipt.get('validation')!=event['validation']:
@@ -221,24 +223,45 @@ def retry_origin_registration(root,memory_id,reason,*,client=None,clock=time.tim
                 prepare(found['store'],found['cell']['key'],version,ctx['namespace'],out,provision.root,source_catalogs=sources,**kwargs)
             catalog,d,_=exported(out,sources)
             return catalog,d
-        if event['executor_catalog']:
-            catalog=read(event['executor_catalog']);verify_catalogs({**sources,key+'-executor':catalog})
-            execution_dir=Path(event['executor_catalog']['uri']).parent
-            catalog,d,_=exported(execution_dir,sources)
-        else:
-            catalog,d=export('execution',found['version']['version'],motion_permission='dev_tier_sim_motion',
-                import_purpose='memory_origin' if found['cell'].get('dev_mode')=='agent' else 'memory_validation')
-        if event.get('registration_catalogs'):
-            verify_catalogs({cid:read(ref) for cid,ref in event['registration_catalogs'].items()})
         def before_register(catalogs,execution,source):
             verify_catalogs(catalogs)
             refs={cid:durable_immutable(archive/'registration-catalogs'/(cid+'.json'),value) for cid,value in catalogs.items()}
             if event.get('registration_catalogs') and event['registration_catalogs']!=refs:
                 raise DevConflict('The journaled registration catalogs differ.')
             event['registration_catalogs']=refs;worker.atomic(path,state)
-        preparation=origin.OriginPreparation(SimpleNamespace(provision=provision))
-        final=preparation.post_validation(dict(origin_key=key,note=original),found,result,catalog,d,sources,export,
-            before_register=before_register,write=durable_immutable)
+        try:
+            if event['executor_catalog']:
+                catalog=read(event['executor_catalog']);verify_catalogs({**sources,key+'-executor':catalog})
+                execution_dir=Path(event['executor_catalog']['uri']).parent
+                catalog,d,_=exported(execution_dir,sources)
+            else:
+                catalog,d=export('execution',found['version']['version'],motion_permission='dev_tier_sim_motion',
+                    import_purpose='memory_origin' if found['cell'].get('dev_mode')=='agent' else 'memory_validation')
+            if event.get('registration_catalogs'):
+                verify_catalogs({cid:read(ref) for cid,ref in event['registration_catalogs'].items()})
+            preparation=origin.OriginPreparation(SimpleNamespace(provision=provision))
+            final=preparation.post_validation(dict(origin_key=key,note=original),found,result,catalog,d,sources,export,
+                before_register=before_register,write=durable_immutable)
+        except Exception as exc:
+            from .memory_auto_import import Redactor
+            from .notices import safe_detail
+            redact=Redactor([getattr(client,name,None) for name in ('api_key','importer_key','operator_key')])
+            message='Origin registration retry failed: '+safe_detail(redact(str(exc) or type(exc).__name__))
+            failure=dict(status='error',reason=message,validation=event['validation'],catalogs={},
+                origin_key=key,note=original,run_reservation='counted')
+            # Publish the failure before unblocking the worker. The archived
+            # receipt and exports remain evidence of the previous attempt.
+            event['failed_receipt']=durable_immutable(receipt_path,failure)
+            event.update(status='failed',failure_reason=message,failed_at=clock())
+            title=note.get('title') or 'Untitled note'
+            state.setdefault('origin_errors',{})[key]=dict(failure,memory_id=memory_id,title=title)
+            state.setdefault('note_errors',{})[memory_id]=dict(reason=message,memory_id=memory_id,title=title)
+            state['current']=None
+            state.pop('pending',None)
+            state['queue']=[n for n in queue if n['memory_id'] not in state['note_errors']]
+            state['status']=message
+            worker.atomic(path,state)
+            raise DevConflict(message) from exc
         durable_immutable(receipt_path,final)
         event['passed_receipt']=seal(receipt_path)
         state['current']=None

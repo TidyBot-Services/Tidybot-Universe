@@ -19,6 +19,10 @@ from benchmarks.attention_harness.tests.agent_origin_fakes import build, replay
 from benchmarks.attention_harness.tests.autovalidate_fakes import outcome, synthetic_creation
 
 
+class RetryInterrupted(BaseException):
+    """Simulate process death, which cannot execute failure cleanup."""
+
+
 def snapshot(root):
     return {str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file() and p.name!='worker.lock'}
 
@@ -66,6 +70,110 @@ def failed(tmp_path,monkeypatch):
 
 def retry(x,reason='Reviewed post-validation export failure'):
     return worker.retry_origin_registration(x.root,x.f.note['memory_id'],reason,client=x.f.service)
+
+
+@pytest.mark.parametrize('error',[RuntimeError,DevConflict,OSError])
+def test_registration_failure_closes_and_next_tick_selects_another_note(failed,monkeypatch,error):
+    from benchmarks.attention_harness import memory_agent_origin
+    from benchmarks.attention_harness.tests.test_memory_validation_worker import deps
+    x=failed;before=snapshot(x.directory);source=snapshot(x.export/'source')
+    # A persisted pending item must not bypass note_errors on the next tick.
+    x.state['pending']=dict(note=x.f.service.validation_queue()[0],operation='old-operation')
+    worker.atomic(x.root/'state.json',x.state)
+    register=Mock(side_effect=error('SDK source file set drift: /private/evidence token=private-token'))
+    monkeypatch.setattr(memory_agent_origin,'register',register)
+    with pytest.raises(DevConflict,match='Origin registration retry failed: SDK source file set drift'):
+        worker.retry_origin_registration(x.root,x.f.note['memory_id'],'Reviewed',client=x.f.service,clock=lambda:1234)
+    state=json.loads((x.root/'state.json').read_bytes());event=state['origin_registration_retries'][0]
+    receipt=json.loads((x.directory/'receipt.json').read_bytes());message=receipt['reason']
+    assert receipt==dict(status='error',reason=message,validation=x.receipt['validation'],catalogs={},
+        origin_key=x.current['origin_key'],note=x.current['note'],run_reservation='counted')
+    assert '/private' not in message and 'private-token' not in message
+    assert event['status']=='failed' and event['failure_reason']==message and event['failed_at']==1234
+    assert event['reason']=='Reviewed' and event['failed_receipt']==seal(x.directory/'receipt.json')
+    assert state['note_errors'][x.f.note['memory_id']]==dict(reason=message,
+        memory_id=x.f.note['memory_id'],title=x.current['title'])
+    assert state['origin_errors'][x.current['origin_key']]['reason']==message
+    assert state['current'] is None and 'pending' not in state
+    assert state['runs_today']==1 and state['counted']==x.state['counted']
+    archive=Path(event['archive'])
+    assert (archive/'receipt.json').read_bytes()==before['receipt.json'] and snapshot(archive/'source')==source
+    assert (x.directory/'validation.json').read_bytes()==before['validation.json']
+    assert not any('recovery is incomplete' in e for e in automatic_checks(x.root)['errors'])
+    d=deps(x.root);later=d.client.validation_queue()[1]
+    d.client.validation_queue=lambda:[x.f.note,later]
+    worker.set_enabled(x.root,True)
+    worker.tick(state,d);worker.tick(state,d)
+    assert d.runner.begun==['later'] and state['current']['memory_id']=='later'
+    assert [n['memory_id'] for n in state['queue']]==['later']
+    register.assert_called_once()
+    x.no_replay.assert_not_called();x.replay_mock.assert_not_called()
+
+
+def test_live_retrying_without_receipt_closes_on_explicit_rerun(failed,monkeypatch):
+    from benchmarks.attention_harness import memory_agent_origin
+    x=failed
+    with monkeypatch.context() as m:
+        m.setattr(memory_agent_origin,'register',Mock(side_effect=RetryInterrupted()))
+        with pytest.raises(RetryInterrupted):retry(x,'Original intent')
+    state=json.loads((x.root/'state.json').read_bytes());event=state['origin_registration_retries'][0]
+    assert event['status']=='retrying' and not (x.directory/'receipt.json').exists()
+    archive=Path(event['archive']);before=snapshot(archive)
+    register=Mock(side_effect=RuntimeError('SDK source file set drift'))
+    monkeypatch.setattr(memory_agent_origin,'register',register)
+    worker.tick(state,SimpleNamespace(root=x.root,clock=lambda:1234,save=lambda s:worker.atomic(x.root/'state.json',s)))
+    assert 'registration retry is incomplete' in state['status']
+    assert worker.main(['--state-dir',str(x.root),'--retry-origin-registration',x.f.note['memory_id'],
+        '--reason','Close the failed live intent'],client=x.f.service)==1
+    state=json.loads((x.root/'state.json').read_bytes());events=state['origin_registration_retries']
+    assert len(events)==1 and events[0]['status']=='failed' and events[0]['reason']=='Original intent'
+    assert json.loads((x.directory/'receipt.json').read_bytes())['status']=='error'
+    assert x.f.note['memory_id'] in state['note_errors'] and state['current'] is None
+    assert snapshot(archive)==before and state['runs_today']==1
+    register.assert_called_once()
+    x.no_replay.assert_not_called();x.replay_mock.assert_not_called()
+
+
+def close_failed_retry(x,monkeypatch):
+    from benchmarks.attention_harness import memory_agent_origin
+    with monkeypatch.context() as m:
+        m.setattr(memory_agent_origin,'register',Mock(side_effect=RuntimeError('SDK source file set drift')))
+        with pytest.raises(DevConflict,match='Origin registration retry failed'):retry(x)
+    return json.loads((x.root/'state.json').read_bytes())
+
+
+def test_explicit_retry_from_failed_creates_fresh_journal(failed,monkeypatch):
+    x=failed;state=close_failed_retry(x,monkeypatch);first=state['origin_registration_retries'][0]
+    archive=Path(first['archive']);before=snapshot(archive);receipt=(x.directory/'receipt.json').read_bytes()
+    retry(x,'Explicit retry after review')
+    state=json.loads((x.root/'state.json').read_bytes());events=state['origin_registration_retries']
+    assert len(events)==2 and events[0]==first and events[1]['status']=='registered'
+    assert events[1]['reason']=='Explicit retry after review' and events[1]['archive']!=first['archive']
+    assert (Path(events[1]['archive'])/'receipt.json').read_bytes()==receipt and snapshot(archive)==before
+    assert events[1]['export_keys']!=first['export_keys']
+    assert not state['note_errors'] and state['runs_today']==1 and state['counted']==x.state['counted']
+    x.no_replay.assert_not_called();x.replay_mock.assert_not_called()
+
+
+@pytest.mark.parametrize('fault',['validation_seal','candidate','result','different_current','missing_reason','lock'])
+def test_failed_retry_still_enforces_preconditions(failed,monkeypatch,fault):
+    x=failed;state=close_failed_retry(x,monkeypatch);reason='Explicit reviewed retry'
+    if fault=='validation_seal':
+        receipt=json.loads((x.directory/'receipt.json').read_bytes());receipt['validation']['sha256']='0'*64
+        worker.atomic(x.directory/'receipt.json',receipt)
+    elif fault=='candidate':
+        rows=x.f.service.list_dev_v2_memories()+[dict(memory_id='another',status='candidate',from_provisional=x.f.note['memory_id'])]
+        monkeypatch.setattr(x.f.service,'list_dev_v2_memories',lambda:rows)
+    elif fault=='result':state['results']=[dict(memory_id=x.f.note['memory_id'],status='inconclusive')]
+    elif fault=='different_current':state['current']=dict(kind='begin')
+    elif fault=='missing_reason':reason=' '
+    worker.atomic(x.root/'state.json',state)
+    before=snapshot(x.root);history=snapshot(x.f.native.root)
+    with (x.root/'worker.lock').open('a') as lock:
+        if fault=='lock':fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        with pytest.raises(DevConflict):retry(x,reason)
+    assert snapshot(x.root)==before and snapshot(x.f.native.root)==history
+    x.no_replay.assert_not_called();x.replay_mock.assert_not_called()
 
 
 def test_retry_archives_registers_and_preserves_validation_without_replay(failed):
@@ -158,14 +266,14 @@ def test_cli_requires_reason(failed,reason):
 def test_crash_recovery_resumes_same_journal(failed,monkeypatch,point):
     x=failed;real_rename=Path.rename;real_atomic=worker.atomic;real_prepare=exporter.prepare
     def crash_rename(path,target):
-        if path==x.directory/'receipt.json' and point=='before_receipt':raise OSError('Controlled crash')
+        if path==x.directory/'receipt.json' and point=='before_receipt':raise RetryInterrupted('Controlled crash')
         result=real_rename(path,target)
         if (path==x.directory/'receipt.json' and point=='after_receipt') or (path==x.export/'source' and point=='after_source'):
-            raise OSError('Controlled crash')
+            raise RetryInterrupted('Controlled crash')
         return result
     def crash_save(path,value):
         if path==x.root/'state.json' and value.get('origin_registration_retries',[{}])[-1].get('status')=='registered':
-            raise OSError('Controlled crash')
+            raise RetryInterrupted('Controlled crash')
         return real_atomic(path,value)
     def crash_prepare(*args,**kwargs):
         if kwargs.get('source'):
@@ -173,7 +281,7 @@ def test_crash_recovery_resumes_same_journal(failed,monkeypatch,point):
             if point=='during_source_catalog':
                 real_prepare(*args,**kwargs);(out/'catalog.json').chmod(0o644);(out/'catalog.json').write_text('{')
             else:out.mkdir(parents=True);(out/'partial.txt').write_text('retry interrupted')
-            raise OSError('Controlled crash')
+            raise RetryInterrupted('Controlled crash')
         return real_prepare(*args,**kwargs)
     from benchmarks.attention_harness import memory_agent_origin
     from benchmarks.attention_harness import memory_origin_registration as recovery
@@ -181,19 +289,19 @@ def test_crash_recovery_resumes_same_journal(failed,monkeypatch,point):
     def crash_replace(source,target):
         if (point=='before_passed_receipt' and Path(target)==x.directory/'receipt.json'
                 or point=='during_catalogs' and Path(target)==x.directory/(x.current['origin_key']+'-executor.json')):
-            raise OSError('Controlled crash')
+            raise RetryInterrupted('Controlled crash')
         return real_replace(source,target)
     real_register=memory_agent_origin.register
     def crash_register(*args,**kwargs):
         real_register(*args,**kwargs)
-        raise OSError('Controlled crash')
+        raise RetryInterrupted('Controlled crash')
     with monkeypatch.context() as m:
         m.setattr(Path,'rename',crash_rename)
         if point=='after_passed_receipt':m.setattr(worker,'atomic',crash_save)
         elif point=='after_register':m.setattr(memory_agent_origin,'register',crash_register)
         elif point in ('during_source','during_source_catalog'):m.setattr(exporter,'prepare',crash_prepare)
         elif point in ('before_passed_receipt','during_catalogs'):m.setattr(recovery.os,'replace',crash_replace)
-        with pytest.raises(OSError,match='Controlled crash'):retry(x,'Original reason')
+        with pytest.raises(RetryInterrupted,match='Controlled crash'):retry(x,'Original reason')
     state=json.loads((x.root/'state.json').read_bytes());event=state['origin_registration_retries'][0]
     assert event['status']=='retrying' and event['reason']=='Original reason'
     assert any('recovery is incomplete' in e for e in automatic_checks(x.root)['errors'])
