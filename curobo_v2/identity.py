@@ -118,22 +118,30 @@ def _official_content(parent):
         return False
     author_paths = manifest('author-paths.json')
     wheel_hashes = manifest('r12-wheel-normalized.json')
+    record_hashes = manifest('r12-record-normalized.json')
+    author_shebangs = manifest('r12-bin-shebangs.json')
     expected_prefix = manifest('r12-prefix-files.json')
     if (not isinstance(author_paths, dict)
-            or set(author_paths) != {'prefix', 'library_root', 'binary_prefix', 'binary_prefix_slot'}
+            or set(author_paths) != {'prefix', 'library_root', 'binary_prefix', 'binary_prefix_slot', 'script_prefix'}
             or any(not isinstance(author_paths[key], str) or not author_paths[key].startswith('/')
-                   for key in ('prefix', 'library_root', 'binary_prefix'))
+                   for key in ('prefix', 'library_root', 'binary_prefix', 'script_prefix'))
             or type(author_paths['binary_prefix_slot']) is not int
             or not isinstance(wheel_hashes, dict)
             or set(wheel_hashes) != {name for name in expected_prefix if name.endswith('/WHEEL')}
+            or set(record_hashes) != {name for name in expected_prefix if name.endswith('/RECORD')}
+            or not isinstance(author_shebangs, dict)
+            or any(not isinstance(key, str) or '/' in key or not isinstance(value, str)
+                   or value not in ('#!' + author_paths['script_prefix'] + '/bin/python',
+                                    '#!' + author_paths['script_prefix'] + '/bin/python3.11')
+                   for key, value in author_shebangs.items())
             or any(not isinstance(value, str) or len(value) != 64
                    or any(c not in '0123456789abcdef' for c in value)
-                   for value in wheel_hashes.values())):
+                   for value in (*wheel_hashes.values(), *record_hashes.values()))):
         return False
     def portable_match(name, local_sha, expected_sha):
         return official_normalization.matches(name, prefix / name, local_sha, expected_sha,
                                               str(prefix), parent['library_root'], author_paths,
-                                              wheel_hashes) is not None
+                                              wheel_hashes, record_hashes, author_shebangs) is not None
     expected_deps = manifest('r12-dependencies.json')
     if (set(dependencies) != set(expected_deps)
             or any(actual['path'] != expected_deps[name]['path']

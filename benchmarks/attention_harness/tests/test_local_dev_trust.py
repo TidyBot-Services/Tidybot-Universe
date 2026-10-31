@@ -1,5 +1,6 @@
 """Local trust accepts only a content-matched, path-bound development chain."""
 import copy
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -67,8 +68,11 @@ def chain(tmp_path, monkeypatch):
     write(official_manifests / 'r12-native-assets.json', {'robot.dat': auth.digest(asset)})
     write(official_manifests / 'allowed-path-files.json', [])
     write(official_manifests / 'author-paths.json', {'prefix': str(prefix), 'library_root': str(official),
-                                                    'binary_prefix': str(prefix), 'binary_prefix_slot': 256})
+                                                    'binary_prefix': str(prefix), 'binary_prefix_slot': 256,
+                                                    'script_prefix': str(prefix)})
     write(official_manifests / 'r12-wheel-normalized.json', {})
+    write(official_manifests / 'r12-record-normalized.json', {})
+    write(official_manifests / 'r12-bin-shebangs.json', {})
     registry = tmp_path / 'local-dev-trust.json'
     data = {'schema': 'attentionbench.curobo-v2.local-dev-trust.v1',
             'official_commit': auth.OFFICIAL_COMMIT,
@@ -266,6 +270,8 @@ COLLAB_LIBRARY = '/home/collab/aws/repos/curobo'
 
 @pytest.mark.parametrize('name', [
     'lib/python3.11/site-packages/Farama_Notifications-0.0.4.dist-info/RECORD',
+    'lib/python3.11/site-packages/numpy-1.26.4.dist-info/RECORD',
+    'lib/python3.11/site-packages/charset_normalizer-3.4.6.dist-info/RECORD',
     'lib/python3.11/site-packages/nvidia_curobo-0.8.0.post1.dev43.dist-info/WHEEL',
     'lib/python3.11/site-packages/toppra-0.6.3.dist-info/WHEEL',
     'lib/python3.11/site-packages/__editable___nvidia_curobo_0_8_0_post1_dev43_finder.py',
@@ -278,22 +284,47 @@ def test_real_normalized_pair_and_mutations(tmp_path, name):
     manifests = auth.OFFICIAL_MANIFESTS
     paths = json.loads((manifests / 'author-paths.json').read_bytes())
     wheels = json.loads((manifests / 'r12-wheel-normalized.json').read_bytes())
+    records = json.loads((manifests / 'r12-record-normalized.json').read_bytes())
+    shebangs = json.loads((manifests / 'r12-bin-shebangs.json').read_bytes())
     path = tmp_path / name
     path.parent.mkdir(parents=True)
     shutil.copyfile(COLLAB_ENV / name, path)
+    if name.endswith('/RECORD'):
+        for row in path.read_bytes().splitlines():
+            if row.startswith(b'../../../bin/'):
+                script = row.split(b',', 1)[0].decode().removeprefix('../../../bin/')
+                target = tmp_path / 'bin' / script
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(COLLAB_ENV / 'bin' / script, target)
     author_sha = auth.digest(AUTHOR_ENV / name)
     def check():
         return normalization.matches(name, path, auth.digest(path), author_sha,
                                      '/home/collab/aws/envs/curobo-env', COLLAB_LIBRARY,
-                                     paths, wheels)
+                                     paths, wheels, records, shebangs)
     assert check() == normalization.rule_for(name)
     original = path.read_bytes()
     if name.endswith('/RECORD'):
         path.write_bytes(original + b'other/file,sha256=abc,3\r\n')
         assert check() is None
-        path.write_bytes(original.replace(b'Farama_Notifications-0.0.4.dist-info/REQUESTED',
+        path.write_bytes(original.replace(Path(name).parent.name.encode() + b'/REQUESTED',
                                           b'other-1.0.dist-info/REQUESTED'))
         assert check() is None
+        if b'.py,sha256=' in original:
+            path.write_bytes(original.replace(b'.py,sha256=', b'.py,sha256=X', 1))
+            assert check() is None
+        if b'../../../bin/' in original:
+            path.write_bytes(original.replace(b'../../../bin/', b'../../../bin/changed-', 1))
+            assert check() is None
+            row = next(line for line in original.splitlines(keepends=True)
+                       if line.startswith(b'../../../bin/'))
+            script = row.split(b',', 1)[0].decode().removeprefix('../../../bin/')
+            script_path = tmp_path / 'bin' / script
+            altered = script_path.read_bytes() + b'\nraise RuntimeError("changed body")\n'
+            script_path.write_bytes(altered)
+            digest = base64.urlsafe_b64encode(hashlib.sha256(altered).digest()).rstrip(b'=')
+            replacement = row.split(b',', 1)[0] + b',sha256=' + digest + b',' + str(len(altered)).encode() + b'\r\n'
+            path.write_bytes(original.replace(row, replacement))
+            assert check() is None
     elif name.endswith('/WHEEL'):
         path.write_bytes(original.replace(b'Root-Is-Purelib: true', b'Root-Is-Purelib: false')
                          if b'Root-Is-Purelib: true' in original
@@ -339,6 +370,7 @@ def test_official_content_binds_normalized_record_to_local_lock(chain):
     inventory = json.loads((manifests / 'r12-prefix-files.json').read_bytes())
     inventory[name] = hashlib.sha256(author).hexdigest()
     write(manifests / 'r12-prefix-files.json', inventory)
+    write(manifests / 'r12-record-normalized.json', {name: hashlib.sha256(author).hexdigest()})
     assert auth._official_content(parent) is True
     path.write_bytes(path.read_bytes() + b'extra,,\r\n')
     assert auth._official_content(parent) is False

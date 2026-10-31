@@ -44,7 +44,6 @@ idna==3.11
 ImageIO==2.37.3
 imageio-ffmpeg==0.6.0
 importlib_resources==6.5.2
-iniconfig==2.3.1
 ipython==9.10.0
 ipython_pygments_lexers==1.1.1
 jedi==0.19.2
@@ -88,11 +87,9 @@ nvidia-nvjitlink-cu12==12.8.93
 nvidia-nvshmem-cu12==3.4.5
 nvidia-nvtx-cu12==12.8.90
 opencv-python==4.11.0.86
-packaging==26.3
 parso==0.8.6
 pexpect==4.9.0
 pillow==12.1.1
-pluggy==1.6.0
 prompt_toolkit==3.0.52
 psutil==7.2.2
 ptyprocess==0.7.0
@@ -104,11 +101,9 @@ pydantic==2.12.5
 pydantic-settings==2.13.1
 pydantic_core==2.41.5
 pyglet==1.5.31
-Pygments==2.21.0
 PyJWT==2.12.1
 pyparsing==3.3.2
 pyperclip==1.11.0
-pytest==9.1.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-multipart==0.0.24
@@ -136,7 +131,9 @@ svg.path==7.0
 sympy==1.14.0
 tabulate==0.10.0
 tifffile==2026.3.3
-toppra==0.6.3
+--find-links ./config/attentionbench/curobo-env/wheels/toppra-0.6.3-cp311-cp311-linux_x86_64.whl
+--only-binary=toppra
+toppra==0.6.3 --hash=sha256:8f4e99665a78a7823263b7fbe0315375f0f6df872d0ee214625ebd289721b765
 torch==2.10.0
 tqdm==4.67.3
 traitlets==5.14.3

@@ -8,7 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from curobo_v2.official_normalization import without_generator
+from curobo_v2.official_normalization import without_generator, normalized_record
 
 
 AUTHOR_LOCK = (Path('/home') / 'truares' / 'Documents' / 'Codex' /
@@ -54,7 +54,16 @@ def main():
     write(out / 'r12-prefix-files.json', prefix)
     author_prefix = Path(lock['prefix'])
     wheels = {}
+    records = {}
     for name, expected in prefix.items():
+        if name.endswith('/RECORD'):
+            data = (author_prefix / name).read_bytes()
+            if hashlib.sha256(data).hexdigest() != expected:
+                raise ValueError('Author RECORD differs from r12 lock: ' + name)
+            normalized = normalized_record(data, Path(name).parent.name)
+            if normalized is None:
+                raise ValueError('Malformed author RECORD: ' + name)
+            records[name] = hashlib.sha256(normalized).hexdigest()
         if name.endswith('/WHEEL'):
             data = (author_prefix / name).read_bytes()
             if hashlib.sha256(data).hexdigest() != expected:
@@ -62,6 +71,7 @@ def main():
             stripped = without_generator(data)
             wheels[name] = hashlib.sha256(stripped if stripped is not None else data).hexdigest()
     write(out / 'r12-wheel-normalized.json', wheels)
+    write(out / 'r12-record-normalized.json', records)
     binary = (author_prefix / 'bin/python3.11').read_bytes()
     if hashlib.sha256(binary).hexdigest() != prefix['bin/python3.11']:
         raise ValueError('Author python binary differs from r12 lock')
@@ -72,8 +82,12 @@ def main():
     if (not embedded.startswith(b'/home/') or len(embedded) >= 256
             or slot != embedded + b'\0' * (256 - len(embedded))):
         raise ValueError('Unexpected author conda binary prefix slot')
+    existing_paths = json.loads((out / 'author-paths.json').read_bytes())
+    if not isinstance(existing_paths.get('script_prefix'), str):
+        raise ValueError('Original RECORD script prefix must be established separately')
     write(out / 'author-paths.json', {'prefix': lock['prefix'], 'library_root': lock['library_root'],
-                                    'binary_prefix': embedded.decode('utf-8'), 'binary_prefix_slot': 256})
+                                    'binary_prefix': embedded.decode('utf-8'), 'binary_prefix_slot': 256,
+                                    'script_prefix': existing_paths['script_prefix']})
     encoded = json.dumps(assets, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
     if len(encoded) > 5_000_000:
         write(out / 'r12-native-assets.json', {'format': 'canonical-relative-path-sha256-v1',

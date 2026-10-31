@@ -30,6 +30,7 @@ def test_lock_schema_and_inputs():
     assert lock['codex'] == {'version': 'codex-cli 0.165.0', 'model': 'gpt-6.1-sol'}
     for name in ('conda_explicit', 'pip_requirements'):
         assert installer.digest(ROOT / lock['curobo_env'][name]) == lock['curobo_env'][name + '_sha256']
+    assert installer.digest(ROOT / lock['curobo_env']['toppra_wheel']) == lock['curobo_env']['toppra_wheel_sha256']
 
 
 def test_relative_paths_cover_template(tmp_path):

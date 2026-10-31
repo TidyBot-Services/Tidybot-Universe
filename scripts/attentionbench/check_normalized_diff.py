@@ -17,6 +17,8 @@ def check(diff: Path, env: Path, local_prefix: str, local_library: str, manifest
     rows = json.loads(raw[raw.index('{'):])['files']
     author_paths = json.loads((manifests / 'author-paths.json').read_bytes())
     wheels = json.loads((manifests / 'r12-wheel-normalized.json').read_bytes())
+    records = json.loads((manifests / 'r12-record-normalized.json').read_bytes())
+    shebangs = json.loads((manifests / 'r12-bin-shebangs.json').read_bytes())
     expected_files = json.loads((manifests / 'r12-prefix-files.json').read_bytes())
     counts = Counter()
     failed = []
@@ -29,7 +31,7 @@ def check(diff: Path, env: Path, local_prefix: str, local_library: str, manifest
         seen.add(row['file'])
         rule = official_normalization.matches(
             row['file'], env / row['file'], row['actual_sha256'], row['expected_sha256'],
-            local_prefix, local_library, author_paths, wheels)
+            local_prefix, local_library, author_paths, wheels, records, shebangs)
         if rule is None:
             failed.append(row['file'])
         else:

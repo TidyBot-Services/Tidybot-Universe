@@ -200,21 +200,31 @@ def build(args):
     snapshot = ws / 'deployments/openarm-dev-integration/dev-local'
     spec = REPO / lock['curobo_env']['conda_explicit']
     req = REPO / lock['curobo_env']['pip_requirements']
-    if digest(spec) != lock['curobo_env']['conda_explicit_sha256'] or digest(req) != lock['curobo_env']['pip_requirements_sha256']:
+    uv_req = REPO / lock['curobo_env']['uv_requirements']
+    wheel = REPO / lock['curobo_env']['toppra_wheel']
+    if (digest(spec) != lock['curobo_env']['conda_explicit_sha256']
+            or digest(req) != lock['curobo_env']['pip_requirements_sha256']
+            or digest(uv_req) != lock['curobo_env']['uv_requirements_sha256']
+            or not wheel.is_file() or digest(wheel) != lock['curobo_env']['toppra_wheel_sha256']):
         raise StepError('planner:env', 'committed environment spec or requirements digest differs', 'Restore committed installer inputs.')
     def make_env():
         if prefix.exists():
             raise ValueError('unstamped cuRobo environment exists: ' + str(prefix))
         command('planner:env', ['conda', 'create', '--yes', '--prefix', str(prefix), '--file', str(spec)])
-        command('planner:env', [str(prefix / 'bin/python'), '-m', 'pip', 'install', '-r', str(req)])
-        command('planner:env', [str(prefix / 'bin/python'), '-m', 'pip', 'install', '--no-deps', '-e', str(library)])
+        # Same installers as the author env: pip for the pinned set (no resolver additions), uv
+        # for the five test packages (their INSTALLER/REQUESTED and launcher scripts come from
+        # uv), and the editable cuRobo built with the env's own setuptools (no build isolation).
+        command('planner:env', [str(prefix / 'bin/python'), '-m', 'pip', 'install', '--no-deps', '-r', str(req)], cwd=REPO)
+        command('planner:env', ['uv', 'pip', 'install', '--python', str(prefix / 'bin/python'), '--no-deps', '-r', str(uv_req)], cwd=REPO)
+        command('planner:env', [str(prefix / 'bin/python'), '-m', 'pip', 'install', '--no-deps', '--no-build-isolation', '-e', str(library)])
         status = subprocess.check_output(['git', '-C', str(library), 'status', '--porcelain'], text=True).strip()
         if status:
             raise ValueError('cuRobo checkout is dirty after editable install: ' + status)
         for path in library.rglob('*'):
             if path.is_file() and not path.is_symlink():
                 path.chmod(path.stat().st_mode & ~0o222)
-    stamp(ws, 'env', {'spec': digest(spec), 'requirements': digest(req), 'commit': lock['repos']['curobo']['commit']},
+    stamp(ws, 'env', {'spec': digest(spec), 'requirements': digest(req), 'uv_requirements': digest(uv_req),
+                      'toppra_wheel': digest(wheel), 'commit': lock['repos']['curobo']['commit']},
           [prefix / 'bin/python'], make_env)
     if getattr(args, 'report_official_diff', False):
         cmd = [str(prefix / 'bin/python'), '-B', '-I', str(Path(__file__).with_name('report_official_diff.py')),

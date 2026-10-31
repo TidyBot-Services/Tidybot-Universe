@@ -58,10 +58,12 @@ def official_differences(lock, manifests=None):
     allowed = read('allowed-path-files.json')
     author_paths = read('author-paths.json')
     wheels = read('r12-wheel-normalized.json')
+    records = read('r12-record-normalized.json')
+    shebangs = read('r12-bin-shebangs.json')
     def normalized_match(name, actual_sha, expected_sha):
         return (allowed == [] and official_normalization.matches(
             name, prefix / name, actual_sha, expected_sha, str(prefix), lock['library_root'],
-            author_paths, wheels) is not None)
+            author_paths, wheels, records, shebangs) is not None)
     dependencies = {name: {'path': str(Path(item['path']).relative_to(prefix)), 'sha256': item['sha256']}
                     for name, item in lock['dependencies'].items()}
     expected = read('r12-dependencies.json')

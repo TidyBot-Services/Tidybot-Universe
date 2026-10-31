@@ -20,14 +20,14 @@ def sha(path):
 
 
 def file_differences(category, root, names, expected, workspace_bytes, *, author_paths=None,
-                     wheels=None, local_library=None):
+                     wheels=None, records=None, shebangs=None, local_library=None):
     rows = []
     for name in sorted(set(names) | set(expected)):
         path = root / name
         actual = sha(path) if path.is_file() else None
         if actual != expected.get(name):
             rule = (official_normalization.matches(name, path, actual, expected.get(name),
-                    str(root), str(local_library), author_paths, wheels)
+                    str(root), str(local_library), author_paths, wheels, records, shebangs)
                     if category == 'prefix' and author_paths is not None and actual and expected.get(name)
                     else None)
             rows.append({'category': category, 'file': name, 'path': str(path), 'actual_sha256': actual,
@@ -47,6 +47,8 @@ def report(library, manifests, workspace):
     expected_prefix = read('r12-prefix-files.json')
     author_paths = read('author-paths.json')
     wheels = read('r12-wheel-normalized.json')
+    records = read('r12-record-normalized.json')
+    shebangs = read('r12-bin-shebangs.json')
     prefix_names = set(expected_prefix)
     actual_dependencies = {}
     for name in ('torch', 'sapien', 'numpy', 'scipy', 'fastapi', 'uvicorn', 'yaml',
@@ -74,7 +76,8 @@ def report(library, manifests, workspace):
             ('source', library, set(source_names) | set(expected_source), expected_source),
             ('prefix', prefix, prefix_names, expected_prefix)):
         rows.extend(file_differences(category, root, names, expected, workspace_bytes,
-                                    author_paths=author_paths, wheels=wheels, local_library=library))
+                                    author_paths=author_paths, wheels=wheels, records=records,
+                                    shebangs=shebangs, local_library=library))
     for name, expected in sorted(read('r12-dependencies.json').items()):
         actual = actual_dependencies.get(name)
         if actual != expected:

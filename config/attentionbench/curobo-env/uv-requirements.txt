@@ -1,0 +1,6 @@
+# Installed with uv, as in the author env (INSTALLER=uv, REQUESTED).
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.6.0
+Pygments==2.21.0
+pytest==9.1.1
