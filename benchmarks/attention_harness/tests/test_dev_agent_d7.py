@@ -391,9 +391,13 @@ def test_uniform_probe_and_motion_shapes(monkeypatch):
     events = []; sdk = build_sdk(fake, events.append)
     assert sdk.sensors.get_observation() == value['observation']
     assert sdk.left_arm.move_delta(0, 0, .01) == dict(ok=True, rejected=False)
-    # The old SDK module is byte-identical to the committed baseline.
+    # P3 removed the author-machine PYTHONPATH append; SDK behavior stays the same.
     path = Path('openarm365_dev/owner.py')
-    assert path.read_bytes() == subprocess.check_output(['git', 'show', '0c395d4:' + str(path)])
+    baseline = subprocess.check_output(['git', 'show', '0c395d4:' + str(path)])
+    old_line, = (line for line in baseline.splitlines(keepends=True)
+                 if b'PYTHONPATH=str(project)+' in line)
+    expected = baseline.replace(old_line, old_line.split(b'PYTHONPATH=')[0] + b'PYTHONPATH=str(project),\n')
+    assert path.read_bytes() == expected
     assert one_call(fake, lambda e: None).left_arm.move_delta(0, 0, .01) is None
 
 

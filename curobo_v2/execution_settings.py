@@ -46,7 +46,7 @@ def _deployment_pin():
     try:
         return dev06_pin()
     except (OSError, KeyError, TypeError, ValueError) as exc:
-        raise ValueError('planner_deployment: build and register deployment-06 first') from exc
+        raise ValueError('planner_deployment: exactly one registered deployment-06 required; build and register deployment-06 first') from exc
 
 
 @dataclass(frozen=True)
@@ -250,19 +250,21 @@ def receipt_fields(settings=LEGACY, *, include_legacy=False):
                  planner_lock_sha256=settings.planner_deployment['sha256'])
     if settings.profile == FIXTURE_PROFILE:
         value.update({f.name:getattr(settings,f.name) for f in fields(settings) if f.name.startswith('fixture_')})
-    if settings.planner_deployment['lock_path'] != D06_LOCK:
-        from .identity import load_lock
-        from .dev_local import is_dev_local
-        path = settings.planner_deployment['lock_path']
-        if is_dev_local(json.loads(Path(path).read_bytes())):
-            lock, actual = load_lock(path, tier='dev', boundary='dev_loop')
-            if actual != settings.planner_deployment['sha256']:raise ValueError('planner_deployment.sha256: mismatch')
-            value.update(deployment_kind='dev-local', formal_eligible=False)
-    from .identity import load_lock
     path = settings.planner_deployment['lock_path']
-    lock, _ = load_lock(path, tier='dev', boundary='dev_loop')
-    if lock.get('trust_source') == 'local-dev-registry':
-        value.update(trust_source='local-dev-registry', formal_eligible=False)
-        if lock.get('provenance', {}).get('deployment_kind') == 'dev-local':
-            value['deployment_kind'] = 'dev-local'
+    if path != D06_LOCK:
+        from .identity import load_lock, _local_registry
+        from .dev_local import is_dev_local
+        raw_lock = json.loads(Path(path).read_bytes())
+        local = _local_registry()
+        local_d06 = (local or {}).get('chain', {}).get('d06', {})
+        local_pin = (local_d06.get('lock_path') == path and
+                     local_d06.get('sha256') == settings.planner_deployment['sha256'])
+        if is_dev_local(raw_lock) or local_pin:
+            lock, actual = load_lock(path, tier='dev', boundary='dev_loop')
+            if actual != settings.planner_deployment['sha256']:
+                raise ValueError('planner_deployment.sha256: mismatch')
+            if is_dev_local(lock):
+                value.update(deployment_kind='dev-local', formal_eligible=False)
+            if lock.get('trust_source') == 'local-dev-registry':
+                value.update(trust_source='local-dev-registry', formal_eligible=False)
     return value

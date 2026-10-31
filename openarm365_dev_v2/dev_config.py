@@ -20,15 +20,18 @@ ROBocasa=lazy('sim.robocasa_root')
 ROBOSUITE=lazy('sim.robosuite_root')
 ASSETS=lazy('sim.assets_manifest')
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
-def model_sources(identity_path=None,runtime_root=ROOT):
+def model_sources(identity_path=None,runtime_root=None,*,allow_legacy_absolute=False):
     identity_path=Path(identity_path or ROOT/'openarm365/model/identity.json')
-    runtime_root=Path(runtime_root).resolve()
+    runtime_root=Path(runtime_root or ROOT).resolve()
     identity=json.loads(identity_path.read_bytes());files={}
     for original,expected in identity['sources'].items():
         source=Path(original)
-        if source.is_absolute() or '..' in source.parts:
+        if ('..' in source.parts or (source.is_absolute() and
+                (not allow_legacy_absolute or not source.is_relative_to(runtime_root)))):
             raise ValueError('native robot model identity requires repository-relative paths')
-        path=runtime_root/source
+        path=source if source.is_absolute() else runtime_root/source
+        if not path.resolve().is_relative_to(runtime_root):
+            raise ValueError('native robot model identity escapes the source root')
         if not path.is_file() or sha(path)!=expected:raise ValueError('native robot model identity drift: '+str(path))
         files[str(path.absolute())]=expected
     if not files:raise ValueError('complete native robot identity required')
@@ -43,7 +46,8 @@ def verify_lock(ref,*,expected_source_root=None):
     for folder,expected in lock.get('source_sets',{}).items():
         actual=sorted(str(p.absolute()) for p in Path(folder).rglob('*.py') if '__pycache__' not in p.parts)
         if actual!=expected:raise ValueError('source file set drift: '+folder)
-    models=model_sources(identity_path=expected_root/'openarm365/model/identity.json',runtime_root=expected_root)
+    models=model_sources(identity_path=expected_root/'openarm365/model/identity.json',runtime_root=expected_root,
+                         allow_legacy_absolute=expected_root.resolve()!=ROOT.resolve())
     if lock.get('model_sources')!=models or any(lock['files'].get(k)!=v for k,v in models.items()):raise ValueError('transitive robot model lock incomplete/drifted')
     for name,digest in lock['files'].items():
         if sha(name)!=digest:raise ValueError('resource source drift: '+name)

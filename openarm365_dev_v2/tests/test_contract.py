@@ -52,8 +52,13 @@ def test_tampering(lock,key,value):
 def test_incomplete_registration():
     with pytest.raises(ValueError):dev_tasks.register_dev_task({})
     with pytest.raises(ValueError):dev_tasks.register_dev_task(dev_tasks.DevTask('open_cabinet','wrong','x','none'))
-def test_legacy_config_rejects_refrozen_model():
+def test_legacy_config_rejects_refrozen_model(monkeypatch):
     from openarm365_dev.config import validate_config,make_config
+    from curobo_v2 import identity
+    # The autouse R4 fixture installs a synthetic registry. This case checks
+    # the historical author pin, so use the repository registry for it.
+    monkeypatch.setattr(identity, 'DEPLOYMENT_REGISTRY', Path(identity.__file__).with_name('trusted_deployments.json'))
+    monkeypatch.setattr(identity, '_registry_digest', None)
     validate_config(make_config())
     old=dev_config.ROOT/'openarm365_dev/configs/dev_counter_sink_seed101.json'
     with pytest.raises(ValueError,match='frozen configuration mismatch'):

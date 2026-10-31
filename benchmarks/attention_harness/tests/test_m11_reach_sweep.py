@@ -392,7 +392,7 @@ from pathlib import Path
 root, out = map(Path, sys.argv[1:])
 frozen = out/'frozen'
 (frozen/'curobo_v2').mkdir(parents=True)
-for name in ('__init__.py', 'identity.py', 'dev_local.py'):
+for name in ('__init__.py', 'identity.py', 'dev_local.py', 'official_normalization.py', 'local_dev_trust.py'):
     shutil.copyfile(root/'curobo_v2'/name, frozen/'curobo_v2'/name)
 sys.path.insert(0, str(frozen))
 from curobo_v2 import identity as trust, dev_local

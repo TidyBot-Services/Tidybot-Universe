@@ -18,8 +18,11 @@ def dev05_pin():
     from openarm365_dev import config
     entries = _repository_entries()
     author = entries.get(config.LOCK_SHA)
-    if isinstance(author, dict) and author.get('lock_path') == str(config.LOCK):
-        return {'lock_path': str(config.LOCK), 'sha256': config.LOCK_SHA}
+    if author is not None:
+        if not isinstance(author, dict) or author.get('lock_path') != str(config.LOCK):
+            raise ValueError('Invalid registered development-05 lock')
+        if config.LOCK.is_file():
+            return {'lock_path': str(config.LOCK), 'sha256': config.LOCK_SHA}
     local = identity._local_registry()
     if local is None:
         raise ValueError('No authenticated development-05 lock')
@@ -31,14 +34,6 @@ def dev05_pin():
 
 def dev06_pin():
     from . import identity, execution_settings as es
-    local = identity._local_registry()
-    if local is not None:
-        try:
-            lock, sha, path = identity._local_entry(local, 'chain', 'd06')
-            if identity._locally_trusted_dev(lock, sha, path, 'dev', 'dev_loop'):
-                return {'lock_path': str(path), 'sha256': sha}
-        except (OSError, ValueError, KeyError, TypeError):
-            pass
     entries = _repository_entries()
     matches = [(sha, entry) for sha, entry in entries.items()
                if isinstance(entry, dict) and entry.get('profile') == es.PROFILE
@@ -47,12 +42,14 @@ def dev06_pin():
         sha, entry = matches[0]
         if entry.get('lock_path') != es.D06_LOCK or entry.get('derived_from_sha256') != es.D05_SHA:
             raise ValueError('Only registered deployment-06 derived from deployment-05 is accepted')
-        _, actual = identity.load_lock(es.D06_LOCK, tier='dev', boundary='dev_loop')
-        if actual != sha:
-            raise ValueError('Registered deployment-06 digest mismatch')
-        return {'lock_path': es.D06_LOCK, 'sha256': sha}
-    if matches:
+        if Path(es.D06_LOCK).is_file():
+            _, actual = identity.load_lock(es.D06_LOCK, tier='dev', boundary='dev_loop')
+            if actual != sha:
+                raise ValueError('Registered deployment-06 digest mismatch')
+            return {'lock_path': es.D06_LOCK, 'sha256': sha}
+    if len(matches) > 1:
         raise ValueError('Exactly one registered deployment-06 required')
+    local = identity._local_registry()
     if local is None:
         raise ValueError('No authenticated development-06 lock')
     lock, sha, path = identity._local_entry(local, 'chain', 'd06')

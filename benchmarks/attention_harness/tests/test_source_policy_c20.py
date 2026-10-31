@@ -109,7 +109,8 @@ def test_dev_imports_and_policy_validation_without_service(tmp_path):
         identity = root / 'openarm365/model/identity.json'
         identity.parent.mkdir()
         resource = root / 'resource.txt'
-        identity.write_text(json.dumps({'sources': {str(resource): dc.sha(resource)}}))
+        # P3 identities describe the same checked file relative to the source root.
+        identity.write_text(json.dumps({'sources': {resource.relative_to(root).as_posix(): dc.sha(resource)}}))
         with patch.multiple(dc, ROOT=root, LOCK=root/'planner.json',
                             LOCK_SHA=dc.sha(root/'planner.json'), SIM_PYTHON=root/'python.txt',
                             ASSETS=root/'assets-manifest.json', ROBocasa=root/'robocasa',

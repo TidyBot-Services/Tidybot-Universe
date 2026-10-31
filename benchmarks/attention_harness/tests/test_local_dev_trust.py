@@ -107,6 +107,28 @@ def test_valid_chain_and_author_pin_unchanged(chain):
     assert labels['formal_eligible'] is False
 
 
+def test_missing_author_files_use_authenticated_local_chain(chain, monkeypatch):
+    from curobo_v2 import execution_settings as es, local_dev_trust
+    from openarm365_dev import config
+    author05 = chain['tmp'] / 'absent-author-d05.json'
+    author06 = chain['tmp'] / 'absent-author-d06.json'
+    monkeypatch.setattr(config, 'LOCK', author05)
+    monkeypatch.setattr(config, 'LOCK_SHA', 'c' * 64)
+    monkeypatch.setattr(es, 'D05_SHA', 'c' * 64)
+    monkeypatch.setattr(es, 'D06_LOCK', str(author06))
+    write(auth.DEPLOYMENT_REGISTRY, {
+        'c' * 64: {'lock_path': str(author05)},
+        'd' * 64: {'lock_path': str(author06), 'profile': es.PROFILE,
+                   'allowed_tiers': ['dev'], 'derived_from_sha256': 'c' * 64},
+    })
+    assert local_dev_trust.dev05_pin() == chain['data']['chain']['d05']
+    assert local_dev_trust.dev06_pin() == {k: chain['data']['chain']['d06'][k]
+                                           for k in ('lock_path', 'sha256')}
+    author06.write_text('{}')
+    with pytest.raises(auth.IdentityError):
+        local_dev_trust.dev06_pin()  # Present but altered author evidence cannot fall back.
+
+
 def test_builder_verifies_before_writing_readonly_registry(chain):
     from scripts.attentionbench.register_local_dev_trust import register
     path = chain['registry']

@@ -35,7 +35,7 @@ def _local_registry_path():
     try:
         from benchmarks.attention_harness.workspace_paths import get
         return get('planner.local_dev_trust')
-    except (OSError, ValueError, RuntimeError, KeyError):
+    except (ImportError, OSError, ValueError, RuntimeError, KeyError):
         return None
 
 

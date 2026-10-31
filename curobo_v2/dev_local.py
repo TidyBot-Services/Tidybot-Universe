@@ -19,6 +19,10 @@ sha = identity.digest
 
 def _snapshot_root():
     """Keep the author's registered snapshot path; use local root for local d06."""
+    # A repository-registered deployment needs no collaborator policy. This
+    # also keeps isolated owner copies independent of the settings module.
+    if identity._local_registry() is None:
+        return DEV_LOCAL_ROOT
     from .local_dev_trust import dev06_pin
     from .execution_settings import D06_LOCK
     try:
