@@ -3,7 +3,8 @@ from pathlib import Path
 from benchmarks.attention_harness.dev_failure_analysis import classify
 
 def test_historical_real_samples():
- db=sqlite3.connect('file:/home/truares/Documents/Codex/2026-10-14/new-chat/work/dev-v2.sqlite?mode=ro',uri=True)
+ from benchmarks.attention_harness.workspace_paths import get_str
+ db=sqlite3.connect('file:'+get_str('test.dev_v2_db')+'?mode=ro',uri=True)
  samples=[]
  for key,p in db.execute("SELECT id,payload FROM v2_cells WHERE exp='devexp-4274c67ebf659455e3f48163'"):
   c=json.loads(p)

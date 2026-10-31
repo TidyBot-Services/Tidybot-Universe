@@ -8,7 +8,6 @@ The existing experiment root is inspected read-only for a ground-truth check.
 """
 
 from __future__ import annotations
-
 import argparse
 import json
 import os
@@ -21,8 +20,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from benchmarks.attention_harness.workspace_paths import lazy
+
 HERE = Path(__file__).resolve().parent
-DEFAULT_KEYS = Path('/home/truares/桌面/AttentionBench-Workspace/development/memory-m3/keys.env')
+DEFAULT_KEYS = lazy('memory.m3_keys')
 DROP_IN = Path.home() / '.config/systemd/user/attentionbench-8769.service.d/override.conf'
 MEMORY_ENV = Path.home() / '.config/attentionbench-8769/memory-online.env'
 ACTOR = 'claude-offline-operator (authorized by the user)'

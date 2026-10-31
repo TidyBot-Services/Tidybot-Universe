@@ -2,6 +2,7 @@
 
 These are engineering fixtures, never human approval, paid model or native runs.
 """
+from benchmarks.attention_harness.workspace_paths import get_str
 import copy
 import hashlib
 import io
@@ -70,16 +71,16 @@ def request(server, path, body=None, token=None, human=None, headers=None):
 
 def test_original_host_argv_parses_without_opening_host_resources(monkeypatch):
     # Frozen argv from C/host-pre-switch.json; parsing stops before any host IO.
-    argv = ['/home/truares/.cache/tidybot-attention/venv/bin/python',
+    argv = [get_str('ui.daily_python'),
      '-B',
      '-u',
-     '/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/serve_daily.py',
+     get_str('ui.serve_daily'),
      '--store',
-     '/home/truares/Documents/Codex/2026-10-06/docs-live-human-ui-validation-plan/work/mac-ui-debug-20261006-154731/attention.sqlite3',
+     get_str('ui.store'),
      '--artifact-root',
-     '/home/truares/Documents/Codex/2026-10-06/docs-live-human-ui-validation-plan/work/mac-ui-debug-20261006-154731/artifacts',
+     get_str('ui.artifact_root'),
      '--run-catalog',
-     '/home/truares/Documents/Codex/2026-10-12/new-chat-2/outputs/daily-v2-33/catalog.json',
+     get_str('ui.run_catalog'),
      '--host',
      '127.0.0.1',
      '--port',
@@ -89,7 +90,7 @@ def test_original_host_argv_parses_without_opening_host_resources(monkeypatch):
      '--camera-name',
      'agentview',
      '--dev-v2-root',
-     '/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments',
+     get_str('ui.dev_v2_root'),
      '--dev-v2-per-run-budget']
     parsed = []
     parse = ui_server.argparse.ArgumentParser.parse_args

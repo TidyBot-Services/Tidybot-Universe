@@ -92,7 +92,7 @@ def test_diagnostics_projection():
         selected_candidate=1,solver_diagnostics={'position_error':[.1],'token':'SECRET'},
         validation={'exact_geometry':{'collision_free':False,'contacts':[{'bodies':['cup','left_hand'],'path':'/home/private'}]}},
         world_revision=1,nonce='SECRET',robot={'install':'/home/hidden'},native_success=True,reward=1,
-        reason='/home/truares/secret',contacts=[],timing={'total_time':1}))
+        reason='/tmp/attentionbench-secret',contacts=[],timing={'total_time':1}))
     text=json.dumps(value)
     assert not FORBIDDEN.search(text)
     assert 'cup' in text and 'openarm_left_joint1' in text and 'token' not in text

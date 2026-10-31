@@ -7,6 +7,7 @@ must not be rewritten. ``resolve`` answers "where is that now?" at read time:
 
 * a path that exists is returned unchanged, so nothing changes where nothing moved;
 * a missing ``/home/truares/桌面/<name>/...`` is looked up in the workspace;
+* a missing legacy Codex path is looked up through ``move`` rows only;
 * stored strings are never edited, and every fallback is logged once.
 
 The lookup uses the workspace's own ``path-map.tsv`` (rows marked ``move``) when it
@@ -22,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 DESKTOP = Path("/home/truares/桌面")
+CODEX = DESKTOP.parent / 'Documents' / 'Codex'
 WORKSPACE_ENV = "ATTENTIONBENCH_WORKSPACE"
 # Workspace folders searched, in order, when the path map has no exact entry.
 SEARCH = ("development", "experiments", "environments", "openarm", "diagnostics",
@@ -74,10 +76,16 @@ def resolve(path: str | os.PathLike[str]) -> Path:
         return original
     try:
         relative = original.relative_to(DESKTOP)
+        desktop = True
     except ValueError:
-        return original
+        try:
+            original.relative_to(CODEX)
+            relative = None
+            desktop = False
+        except ValueError:
+            return original
     root = workspace_root()
-    if root is None or not relative.parts:
+    if root is None or (desktop and not relative.parts):
         return original
     found = None
     for old, new in _moves(str(root)):
@@ -89,7 +97,7 @@ def resolve(path: str | os.PathLike[str]) -> Path:
         if candidate.exists():
             found = candidate
             break
-    if found is None:
+    if found is None and desktop:
         for folder in SEARCH:
             candidate = root / folder / relative
             if candidate.exists():

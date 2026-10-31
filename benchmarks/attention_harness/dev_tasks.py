@@ -1,4 +1,5 @@
 """Single public task/robot/SDK contract for the new Dev channel."""
+from benchmarks.attention_harness.workspace_paths import get
 from dataclasses import dataclass
 from pathlib import Path
 import hashlib
@@ -158,21 +159,24 @@ class DevTask:
         return ('You are the AttentionBench Dev policy author. Return ONLY JSON with source (complete Python source) and reason (changes based on public feedback). Make a real bounded attempt for this task: '+self.task_prompt+' Use only supplied public task/configuration/observations/actions/errors. Task scoring is not provided. '+dev_sdk_prompt(config))
 TASKS={}  # Default workbench and matrix catalog.
 EXPLICIT_TASKS={}  # Available only when selected by task ID.
-def register_dev_task(task, *, explicit_only=False):
-    if not isinstance(task,DevTask) or task.robot!="OpenArm365" or task.execution_arm!="both":raise ValueError("complete dual-arm task contract required")
-    if official_task(task.task_id).official_env!=task.official_env:raise ValueError("official task mismatch")
-    # Existing frozen task prompt is cross-checked, never changed.
-    import json
-    frozen=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs')/(task.task_id+'_seed101.json')
+from curobo_v2.fixture_interaction import PILOT_TASKS,PROFILE
+def _verify_frozen_prompt(task):
     if task.task_id == 'pick_place_counter_to_cabinet':
         frozen=ROOT/'openarm365_dev_v2/prompts/pick_place_counter_to_cabinet.json'
         if hashlib.sha256(frozen.read_bytes()).hexdigest() != 'a1ed2b3eb6bb70edeafe30315ee5a6a68190421d9ed09956fa44711a05ae3c22':
             raise ValueError('dev frozen public prompt digest mismatch')
-    from curobo_v2.fixture_interaction import PILOT_TASKS,PROFILE
-    if task.task_id in PILOT_TASKS and task.task_id not in ('open_cabinet','pick_place_counter_to_cabinet'):
+    elif task.task_id in PILOT_TASKS and task.task_id!='open_cabinet':
         from openarm365_dev_v2.fixture_contract import prompt_ref
         frozen=prompt_ref(task.task_id)
+    else:
+        frozen=get('sim.configs_dir')/(task.task_id+'_seed101.json')
     if json.loads(frozen.read_bytes())['task_prompt']!=task.task_prompt:raise ValueError("frozen public prompt mismatch")
+
+def register_dev_task(task, *, explicit_only=False, verify_frozen=True):
+    if not isinstance(task,DevTask) or task.robot!="OpenArm365" or task.execution_arm!="both":raise ValueError("complete dual-arm task contract required")
+    if official_task(task.task_id).official_env!=task.official_env:raise ValueError("official task mismatch")
+    # Existing frozen task prompt is cross-checked, never changed.
+    if verify_frozen:_verify_frozen_prompt(task)
     if not task.seeds or any(type(s) is not int or s not in SEEDS for s in task.seeds):raise ValueError("development seeds required")
     if task.initial_policy:validate_generated_policy(Path(task.initial_policy).read_text(),config=(
         {'execution_settings':{'profile':PROFILE}} if task.task_id in PILOT_TASKS and task.task_id!='open_cabinet' else None))
@@ -180,9 +184,10 @@ def register_dev_task(task, *, explicit_only=False):
     (EXPLICIT_TASKS if explicit_only else TASKS)[task.task_id]=task
     return task
 def get_task(task_id):
-    if task_id in EXPLICIT_TASKS:return EXPLICIT_TASKS[task_id]
+    if task_id in EXPLICIT_TASKS:
+        task=EXPLICIT_TASKS[task_id];_verify_frozen_prompt(task);return task
     if task_id not in TASKS:raise ValueError("unregistered Dev task")
-    return TASKS[task_id]
+    task=TASKS[task_id];_verify_frozen_prompt(task);return task
 def validate_selection(task_id,seed,layout_id=11,style_id=34,*,fixture=False):
     t=FIXTURE_TASKS[task_id] if fixture else get_task(task_id)
     if type(seed) is int and seed in HELD_OUT_SEEDS:raise ValueError("held-out seed is not available to development experiments")
@@ -190,7 +195,7 @@ def validate_selection(task_id,seed,layout_id=11,style_id=34,*,fixture=False):
     if type(layout_id) is not int or type(style_id) is not int or (layout_id,style_id)!=(11,34):raise ValueError("unregistered scene")
     return t
 for tid,env,prompt in [('pick_place_counter_to_sink','PickPlaceCounterToSink','Pick the object from the counter and place it in the sink.'),('open_cabinet','OpenCabinet','Open the cabinet door.'),('pick_place_counter_to_cabinet','PickPlaceCounterToCabinet','Pick the object from the counter and place it in the cabinet.')]:
-    register_dev_task(DevTask(tid,env,prompt,str(ROOT/'openarm365_dev_v2/policies'/ (tid+'.py'))), explicit_only=tid=='pick_place_counter_to_cabinet')
+    register_dev_task(DevTask(tid,env,prompt,str(ROOT/'openarm365_dev_v2/policies'/ (tid+'.py'))), explicit_only=tid=='pick_place_counter_to_cabinet', verify_frozen=False)
 for tid,env,prompt in [('turn_on_microwave','TurnOnMicrowave','Press the start button on the microwave.'),
     ('turn_off_stove','TurnOffStove','Turn off the active burner of the stove.'),('open_drawer','OpenDrawer','Open the drawer.')]:
     register_dev_task(DevTask(tid,env,prompt,str(ROOT/'openarm365_dev_v2/policies'/ (tid+'.py'))),explicit_only=True)
@@ -201,6 +206,7 @@ for tid,env,prompt in [('open_cabinet', 'OpenCabinet', 'Open the cabinet door.')
     FIXTURE_TASKS[tid]=task
     if tid not in TASKS and tid not in EXPLICIT_TASKS:register_dev_task(task,explicit_only=True)
 def options():
+    for task in TASKS.values():_verify_frozen_prompt(task)
     return {'tasks':[t.public() for t in TASKS.values()], 'robot':'OpenArm365','execution_arm':'both',
             'disabled_profiles':[{'robot':'PandaOmron','enabled':False,'reason':'No authenticated V2 owner'}],
             'formal_eligible':False}

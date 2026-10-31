@@ -1,4 +1,5 @@
 """Recording-based AI opinions from public evidence only; never task scoring."""
+from benchmarks.attention_harness.workspace_paths import lazy
 import ast
 import base64
 import hashlib
@@ -25,7 +26,7 @@ PROBE_TOKENS, VISION_TOKENS, TEXT_TOKENS = 64, 4096, 1024
 WORST_CASE_SECONDS = PROBE_SECONDS + VISION_SECONDS + TEXT_SECONDS  # reserved in the ledger per review
 # Same credential source as the Dev agent and the Advisor (dev_v2_loop.provider_call): environment first,
 # then the runtime key file. The key is never logged or written to an artifact.
-KEY_FILE = Path('/home/truares/.litellm-key')
+KEY_FILE = lazy('litellm.key_file')
 
 
 def credential():

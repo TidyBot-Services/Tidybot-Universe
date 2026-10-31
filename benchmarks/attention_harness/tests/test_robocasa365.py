@@ -1,4 +1,5 @@
 """Targeted engineering fixtures. Real Service evidence lives separately in delivery."""
+from benchmarks.attention_harness.workspace_paths import lazy
 
 import hashlib, json, threading, time
 from pathlib import Path
@@ -36,7 +37,7 @@ from benchmarks.attention_harness.core.advisor import AdvisorTransportReply
 from benchmarks.attention_harness.core.models import MemoryStatus
 from test_formal_attention_chain import FakeFormalRunner
 
-DELIVERY = Path("/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365")
+DELIVERY = lazy('sim.delivery_root')
 
 
 def sha(p):

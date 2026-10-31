@@ -13,12 +13,13 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from benchmarks.attention_harness.workspace_paths import lazy
 from curobo_v2.dev_local import source_names, source_manifest, checked_source
 
 REPO = Path(__file__).resolve().parents[1]
-ROOT = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration')
-PARENT = ROOT / 'deployment-05'
-DEFAULT_OUT = ROOT / 'deployment-06'
+ROOT = lazy('ui.dev_root')
+PARENT = lazy('deployments.dev05_root')
+DEFAULT_OUT = lazy('deployments.dev06_root')
 PARENT_SHA = '0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0'
 OFFICIAL_SHA = '207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c'
 OFFICIAL_COMMIT = '78fd485fa82d9b9a063fb4985e371814587e666a'

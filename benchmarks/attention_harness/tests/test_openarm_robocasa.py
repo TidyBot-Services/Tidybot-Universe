@@ -1,4 +1,5 @@
 """Robot identity must be selected once and must never fall back to Panda."""
+from benchmarks.attention_harness.workspace_paths import get_str
 from dataclasses import FrozenInstanceError
 
 import pytest
@@ -354,7 +355,7 @@ def _openarm_request(tmp_path):
     value.update(schema_version='attentionbench.robocasa-openarm-formal-config.v1',
        robot={'model':'OpenArm','execution_arm':'left'},model_sha256='ae5f37c7f0c509df81d01229c13f0f624d619e253542cedfb0008aaa6d827456',
        robot_parameters={'path':str(params),'sha256':hashlib.sha256(params.read_bytes()).hexdigest()},
-       task_source=old['task_source']|{'root':'/home/truares/文档/Tidybot-Universe/sims/robocasa_tasks'},
+       task_source=old['task_source']|{'root':get_str('sim.legacy_tasks')},
        service_files={f:hashlib.sha256((root/f).read_bytes()).hexdigest() for f in _REQUIRED_SOURCE})
     value['camera_names']=['base_camera']
     code=tmp_path/'policy.py';code.write_text('def policy(robot_sdk, context):\n    return {}\n')

@@ -1,4 +1,5 @@
 """Private pipe-owned native process. Policy code never enters this process."""
+from benchmarks.attention_harness.workspace_paths import get_str
 import argparse,ctypes,json,os,signal,sys,threading,time,traceback,uuid,hashlib
 from pathlib import Path
 
@@ -63,9 +64,9 @@ def main():
         tier=dev_tier_budget() if c['runner_boundary']=='dev_loop' and c.get('budget_tier','legacy')=='dev' else None
         if override and c['runner_boundary']!='dev_loop':raise ValueError('diagnostic budget cannot enter formal worker')
         identity=OfficialEnvironmentIdentity({
-            'robocasa':'/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa',
-            'robosuite':'/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite'},
-            '/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json').verify_identity()
+            'robocasa':get_str('sim.robocasa_root'),
+            'robosuite':get_str('sim.robosuite_root')},
+            get_str('sim.assets_manifest')).verify_identity()
         env=create_env(c['official_env'],robots='OpenArm365',seed=c['seed'],obj_instance_split=c['obj_instance_split'],
             **({'fixture_profile':execution_settings.profile} if fixture_enabled(execution_settings) else {}),
             layout_and_style_ids=[(c['layout_id'],c['style_id'])],camera_widths=128,camera_heights=128,randomize_cameras=False,

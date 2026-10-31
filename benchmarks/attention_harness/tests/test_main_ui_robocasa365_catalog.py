@@ -1,5 +1,6 @@
 """Published main UI catalog contract; no real robot runs are started here."""
 from __future__ import annotations
+from benchmarks.attention_harness.workspace_paths import lazy
 
 import hashlib
 import json
@@ -16,7 +17,7 @@ from benchmarks.attention_harness.ui_launch import load_catalog, launch_formal_r
 ROOT = Path(__file__).resolve().parents[3]
 MAIN = ROOT / "benchmarks/attention_harness/protocol/v2/skill_graphs/main_ui_with_robocasa365_v1/catalog.json"
 ORIGINAL = ROOT / "openarm_bimanual/launch_configs/stage-one-final-1/catalog.json"
-DELIVERY = Path("/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365")
+DELIVERY = lazy('sim.delivery_root')
 TASKS = ("pick_place_counter_to_sink", "open_cabinet")
 GRAPH_KEYS = {"skill_graph_file", "skill_graph_sha256", "skill_root"}
 

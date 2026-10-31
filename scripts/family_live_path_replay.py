@@ -18,6 +18,9 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from benchmarks.attention_harness.workspace_paths import get
+
 
 def read(path):
     return json.loads(Path(path).read_bytes())
@@ -338,7 +341,7 @@ def run_pairs(runner, batch, old_bundle, old_episode, provider, step):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    base = Path('/home/truares/桌面/AttentionBench-Workspace/development/memory-m3')
+    base = get('memory.m3_root')
     p.add_argument('--state', type=Path, default=base / 'validation-state')
     p.add_argument('--service-db', type=Path, default=base / 'store.sqlite3')
     p.add_argument('--candidate', default='family-aabd247c42d9073faacff69dcecccf7d')

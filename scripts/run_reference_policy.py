@@ -16,12 +16,13 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from benchmarks.attention_harness.workspace_paths import lazy
 
 TASK = 'pick_place_counter_to_sink'
 SEEDS = (102, 104, 107, 114)
 CABINET_TASK = 'pick_place_counter_to_cabinet'
 PLACEMENT_FIELDS = {TASK: 'object_in_sink', CABINET_TASK: 'object_in_cabinet'}
-CONTRACT = Path('/home/truares/桌面/AttentionBench-Workspace/experiments/scene-contracts/scene-contract-r3-104-107-114.json')
+CONTRACT = lazy('scene.contract')
 REASON = 'reference policy (simulator truth constants, diagnostic only)'
 
 

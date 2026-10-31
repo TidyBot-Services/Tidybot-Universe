@@ -1,3 +1,4 @@
+from benchmarks.attention_harness.workspace_paths import get_str
 import copy,json
 import hashlib
 from pathlib import Path
@@ -59,7 +60,7 @@ def test_old_freeze_unchanged():
     # Historical frozen profile contains main-tree absolute integration paths;
     # its read-only regression runs there, not through a runtime fallback.
     import subprocess,os
-    tree='/home/truares/桌面/Tidybot-Universe-attention-native'
+    tree=get_str('repo.native_tree')
     env=dict(os.environ,PYTHONPATH=tree,PYTHONDONTWRITEBYTECODE='1')
     result=subprocess.check_output([str(dev_config.SIM_PYTHON),'-B','-c',
         "from benchmarks.attention_harness.dev_openarm_profile import lock_profile;print(lock_profile()['config_sha256'])"],cwd=tree,env=env,text=True)

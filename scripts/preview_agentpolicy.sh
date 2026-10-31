@@ -3,10 +3,10 @@
 set -euo pipefail
 WORKTREE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 PREVIEW_ROOT=/tmp/agentpolicy-preview
-PREVIEW_PYTHON=${PREVIEW_PYTHON:-/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python}
 cd -- "$WORKTREE"
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONPATH="$WORKTREE${PYTHONPATH:+:$PYTHONPATH}"
+PREVIEW_PYTHON=${PREVIEW_PYTHON:-$(python3 -c 'from benchmarks.attention_harness.workspace_paths import get_str; print(get_str("sim.python"))')}
 # The generator writes only this dedicated synthetic directory; it never creates runs.
 "$PREVIEW_PYTHON" - "$PREVIEW_ROOT" <<'PY'
 import json,sys

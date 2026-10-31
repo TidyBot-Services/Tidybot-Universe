@@ -1,4 +1,5 @@
 """Synthetic source-link checks; real interpreter is hashed, never executed."""
+from benchmarks.attention_harness.workspace_paths import get, lazy
 import inspect,json
 from pathlib import Path
 import pytest
@@ -8,7 +9,7 @@ from benchmarks.attention_harness.memory_source_catalogs import source_catalogs,
 from benchmarks.attention_harness.memory_validation_provision import Provisioner
 from benchmarks.attention_harness.tests.autovalidate_fakes import context,SceneFixture,sync_request,API,IMPORTER
 
-REAL=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python')
+REAL=lazy('sim.python')
 
 
 def two_hops(tmp_path):
@@ -52,7 +53,7 @@ def test_real_historical_interpreter_builds_two_source_catalogs(tmp_path):
     assert REAL.is_symlink(), 'historical interpreter alias unavailable'
     executor,lock=lock_for(tmp_path,REAL);before=Path(lock['uri']).read_bytes()
     catalogs=source_catalogs(lock,context(),executor)
-    target=Path('/home/truares/miniconda3/envs/maniskill/bin')
+    target=get('sim.legacy_bin')
     assert {c['root'] for c in catalogs.values()}=={str(REAL.parent),str(target)}
     by_root={c['root']:(cid,c) for cid,c in catalogs.items()};tid,tc=by_root[str(target)]
     assert set(tc['files'])=={'python','python3.11'}

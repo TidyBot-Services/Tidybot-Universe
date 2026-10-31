@@ -2,7 +2,7 @@
 set -euo pipefail
 task_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd -- "$task_root"
-task_python="${ATTENTION_UI_PYTHON:-/home/truares/桌面/attentionbench-week2-clean-venv/bin/python}"
+task_python="${ATTENTION_UI_PYTHON:-$(python3 -c 'from benchmarks.attention_harness.workspace_paths import get_str; print(get_str("ui.robocasa_python"))')}"
 task_port="${ATTENTION_UI_PORT:-8795}"
 task_store="${ATTENTION_UI_STORE:-outputs/openarm-ui/attention.sqlite3}"
 task_artifacts="${ATTENTION_UI_ARTIFACTS:-outputs/openarm-ui/runs}"

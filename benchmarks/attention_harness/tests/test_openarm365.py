@@ -1,4 +1,5 @@
 """OpenArm365 robot integration contracts; physical runs are separate evidence."""
+from benchmarks.attention_harness.workspace_paths import get
 import json
 from pathlib import Path
 import numpy as np
@@ -19,7 +20,7 @@ def test_config_accepts_independent_full_task_budget():
 
 def test_legacy_frozen_config_unchanged():
     from benchmarks.attention_harness.robocasa365.config import validate_config as validate
-    path=Path("/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/pick_place_counter_to_sink_seed101.json")
+    path=get('sim.configs_dir') / 'pick_place_counter_to_sink_seed101.json'
     c=json.loads(path.read_text()); assert validate(c)==c
     c["horizon"]=2000
     with pytest.raises(ValueError): validate(c)

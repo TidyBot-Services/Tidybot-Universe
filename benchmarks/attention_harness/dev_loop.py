@@ -5,6 +5,7 @@ approval records. Native evaluation is saved for UI, never used in model inputs,
 diagnosis, branching, stopping or version selection.
 """
 from __future__ import annotations
+from benchmarks.attention_harness.workspace_paths import get
 import argparse
 import difflib
 import hashlib
@@ -404,7 +405,7 @@ def run_session(store,sid,*,client=None,runner_factory=None):
                 immutable(directory/'provider-response.json',{'http_status':status,'request_id':headers.get('x-request-id'),'body':wire[-1]})
             if client is None:
                 key=os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
-                credential=Path('/home/truares/.litellm-key')
+                credential=get('litellm.key_file')
                 if not key and credential.is_file():key=credential.read_text().strip()
                 provider=ParccClient(api_key=key,max_attempts=1,timeout_seconds=min(120,s['remaining']['wall_seconds']),response_observer=observed)
             else:

@@ -3,6 +3,7 @@
 D2_REAL_SESSION=1 python -m pytest -s -q .../test_dev_agent_real_session.py
 Must run outside the enclosing Codex sandbox. Keep default CODEX_HOME for auth.
 """
+from benchmarks.attention_harness.workspace_paths import get_str
 import json
 import os
 from pathlib import Path
@@ -24,7 +25,7 @@ def test_real_two_turn_resume_isolation(tmp_path):
     ws=Workspace(tmp_path/'agent').prepare({'task_prompt':'Exercise the fake observation tool and persistent notes.'},CONFIG)
     outside=tmp_path/'outside.txt';secret='OUTSIDE-'+secrets.token_hex(16);outside.write_text(secret)
     recall='SESSION-'+secrets.token_hex(8)
-    evidence=Path(os.environ.get('D2_SESSION_EVIDENCE','/home/truares/下载/dev-agent/test-evidence/d2/real-session'))
+    evidence=Path(os.environ.get('D2_SESSION_EVIDENCE') or get_str('test.real_session'))
     evidence.mkdir(parents=True,exist_ok=True)
     b=None;thread=None;stop=threading.Event();session=None
     try:

@@ -1,4 +1,5 @@
 """Offline run-note lifecycle: local evidence, immutable delivery and no Service writes."""
+from benchmarks.attention_harness.workspace_paths import get
 import hashlib
 import io
 import json
@@ -316,7 +317,7 @@ def test_generation_persists_local_ids_and_execution_records_observations(tmp_pa
 
 def test_offline_replay_recorded_run(tmp_path, capsys):
     """M-6 replay: read only the saved public feedback and hints; no paid work."""
-    source = Path('/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-4a6bb2d8387428ca4f32b849/artifacts/devexp-4a6bb2d8387428ca4f32b849/cells/fdd6e0fd2d1326ccce276502403e4520d2aaa8a721b474ddce8dcbd1770c37c2')
+    source = get('ui.dev_v2_root') / 'devexp-4a6bb2d8387428ca4f32b849/artifacts/devexp-4a6bb2d8387428ca4f32b849/cells/fdd6e0fd2d1326ccce276502403e4520d2aaa8a721b474ddce8dcbd1770c37c2'
     if not source.is_dir():
         pytest.skip('recorded run unavailable on this machine')
     store, cell, _, _, root = make(tmp_path,'reactive_help',run_notes=True)

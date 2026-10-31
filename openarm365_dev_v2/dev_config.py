@@ -1,4 +1,5 @@
 """New development conditions and immutable resource lock, separate from v1 freeze."""
+from benchmarks.attention_harness.workspace_paths import lazy
 import copy,hashlib,json,math
 from pathlib import Path
 from benchmarks.attention_harness.dev_tasks import get_task,validate_selection
@@ -14,10 +15,10 @@ DEFAULT_IK_MAX_JOINT_JUMP=1.0
 PLANNER_CONFIG_KEYS=('planner_mode','ik_candidates','ik_max_joint_jump')
 SCHEMA='attentionbench.openarm365-dual-dev-config.v2'
 ROOT=Path(__file__).resolve().parents[1]
-SIM_PYTHON=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/work/service_env/bin/python')
-ROBocasa=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa')
-ROBOSUITE=ROBocasa.parent/'robosuite'
-ASSETS=Path('/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json')
+SIM_PYTHON=lazy('sim.python')
+ROBocasa=lazy('sim.robocasa_root')
+ROBOSUITE=lazy('sim.robosuite_root')
+ASSETS=lazy('sim.assets_manifest')
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 NATIVE_TREE=Path('/home/truares/桌面/Tidybot-Universe-attention-native')
 def model_sources(identity_path=None,declared_root=NATIVE_TREE,runtime_root=ROOT):
@@ -106,7 +107,7 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
         files.append(ROOT/'benchmarks/attention_harness'/name)
     files.extend(p for p in (ROOT/'benchmarks/attention_harness/dev_ui').glob('*') if p.is_file())
     files.append(ROOT/'benchmarks/attention_harness/dev_failure_rules.json')
-    files.extend([planner_path,SIM_PYTHON,ASSETS,ASSETS.with_name('assets-installation-lock.json'),ASSETS.with_name('assets-installed-manifest.json'),ROOT/'openarm365/configs/robot_parameters_v1.json',ROOT/'openarm365/model/identity.json'])
+    files.extend([planner_path,Path(SIM_PYTHON),Path(ASSETS),ASSETS.with_name('assets-installation-lock.json'),ASSETS.with_name('assets-installed-manifest.json'),ROOT/'openarm365/configs/robot_parameters_v1.json',ROOT/'openarm365/model/identity.json'])
     for folder in [ROBocasa/'robocasa',ROBOSUITE/'robosuite']:
         files.extend(p for p in folder.rglob('*.py') if '__pycache__' not in p.parts)
     models=model_sources();files.extend(Path(p) for p in models)

@@ -3,10 +3,11 @@
 No physical code is copied into the main environment. A private-prefix worker
 verifies and imports the original baseline, and owns only its own subprocesses.
 """
+from benchmarks.attention_harness.workspace_paths import lazy
 from pathlib import Path
 import hashlib,json,os,re,subprocess,threading,time,uuid
 
-BASELINE=Path('/home/truares/Documents/Codex/2026-10-11/openarm-curobo-integration')
+BASELINE=lazy('ui.fixed_root')
 ACTIVE={'starting','ready','planning','executing','stopping','finalizing'}
 SCENES={'obstacles':'fixed_obstacles_v1.json','shared':'fixed_shared_bar_v3.json',
         'contact_loss':'fixed_contact_loss_v1.json','timeout':'fixed_timeout_fault_v1.json','planning_rejected':'fixed_obstacles_v1.json'}

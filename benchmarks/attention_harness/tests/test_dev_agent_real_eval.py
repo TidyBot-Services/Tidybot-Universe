@@ -3,6 +3,7 @@
 D4_REAL_EVAL=1 python -m pytest -p no:cacheprovider -s -q <this file>
 Run outside the enclosing Codex sandbox; preserves the production high effort.
 """
+from benchmarks.attention_harness.workspace_paths import get_str
 import json
 import os
 from pathlib import Path
@@ -31,7 +32,7 @@ def test_real_eval_failure_and_workspace_isolation(tmp_path):
         'Use view_image to inspect both supplied frames. Finish with the required JSON object.')
     model=os.environ.get('D4_EVAL_MODEL','gpt-6.1-sol')
     ev=Evaluator(ws,prompt=prompt,model=model)
-    evidence=Path(os.environ.get('D4_EVAL_EVIDENCE','/home/truares/下载/dev-agent/test-evidence/d4/real-eval'))
+    evidence=Path(os.environ.get('D4_EVAL_EVIDENCE') or get_str('test.real_eval'))
     evidence.mkdir(parents=True,exist_ok=True)
     try:
         value=ev.evaluate(execution,deadline=time.monotonic()+900)

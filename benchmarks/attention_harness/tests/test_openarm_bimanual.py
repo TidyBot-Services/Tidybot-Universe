@@ -1,4 +1,5 @@
 """Dual-arm task contract: saved red before any implementation."""
+from benchmarks.attention_harness.workspace_paths import get_str
 import importlib
 from pathlib import Path
 import pytest
@@ -102,7 +103,7 @@ def test_run_registers_bimanual_mobile_base_before_first_action():
 def test_explicit_bimanual_components(component):
     if component == 'service':
         import subprocess,sys,os
-        result=subprocess.run(['/home/truares/miniconda3/envs/maniskill/bin/python','-B','-c','import openarm_bimanual.service'],capture_output=True,text=True)
+        result=subprocess.run([get_str('sim.legacy_python'),'-B','-c','import openarm_bimanual.service'],capture_output=True,text=True)
         assert result.returncode == 0, result.stderr
     else:
         importlib.import_module('openarm_bimanual.' + component)

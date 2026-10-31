@@ -1,3 +1,4 @@
+from benchmarks.attention_harness.workspace_paths import get
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -106,7 +107,7 @@ def test_real_data_offline_origin_copy(tmp_path,monkeypatch):
     from benchmarks.attention_harness import dev_agent_memory, memory_auto_import
     from benchmarks.attention_harness.memory_validation_provision import Provisioner
     from attention_memory_service.memory_service import MemoryService
-    original=Path('/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-2656176e6fa79c9bbee569bf')
+    original=get('ui.dev_v2_root') / 'devexp-2656176e6fa79c9bbee569bf'
     if not (original/'ledger.sqlite3').exists():pytest.skip('historical run unavailable')
     root=tmp_path/'experiments'/'historical';root.mkdir(parents=True)
     ledger=root/'ledger.sqlite3'

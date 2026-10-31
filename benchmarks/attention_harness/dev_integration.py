@@ -1,4 +1,5 @@
 """Supervisor entry for this existing goal. No approval or budget reset command."""
+from benchmarks.attention_harness.workspace_paths import get
 import argparse
 import copy
 from contextlib import contextmanager
@@ -32,7 +33,8 @@ GOAL_KEY='full-planner-threefeatures-20261015'
 GOAL_ID=hashlib.sha256(('goal|'+GOAL_KEY).encode()).hexdigest()[:32]
 LEDGER=OUT/'real-integration-ledger.sqlite'
 STATE=OUT/'main-integration/host'
-SERVICE=resolve(Path('/home/truares/桌面/attention_memory_service'))
+def service_root():
+    return resolve(get('memory.service_root'))
 
 
 def load_private(path):
@@ -55,17 +57,18 @@ def epoch():
     # alone, identify this dirty source. No environment or credentials are copied.
     files=list((ROOT/'benchmarks/attention_harness').glob('dev*.py'))
     files += [ROOT/p for p in ('benchmarks/attention_harness/ui_server.py','benchmarks/attention_harness/ui/live.js','benchmarks/attention_harness/ui/index.html','openarm365_dev_v2/dev_config.py','openarm365_dev_v2/runner.py')]
-    manifest=json.loads((SERVICE/'outputs/full-planner-threefeatures-20261015/changes/manifest.json').read_bytes())
+    service=service_root()
+    manifest=json.loads((service/'outputs/full-planner-threefeatures-20261015/changes/manifest.json').read_bytes())
     service_files={}
     for r in manifest:
         name=r.get('relative_path') or r.get('path')
-        p=Path(name) if Path(name).is_absolute() else SERVICE/name
+        p=Path(name) if Path(name).is_absolute() else service/name
         actual=sha(resolve(p))
         if actual!=r['after_sha256']:raise ValueError('Service final contract bytes drifted: '+str(p))
         service_files[str(p)]=actual
     return dict(schema='attentionbench.main-integration-epoch.v1',goal_id=GOAL_ID,ledger=str(LEDGER),
         main_head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
-        main_files={str(p):sha(p) for p in sorted(files)},service_head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=SERVICE,text=True).strip(),service_files=service_files,
+        main_files={str(p):sha(p) for p in sorted(files)},service_head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=service,text=True).strip(),service_files=service_files,
         permissions=dict(online='exact trusted retrieve/grant/recheck/use only',motion='specific external human decision required',
             offline_import='separate importer process',native='no keys/tokens; unchanged safety',formal_eligible=False))
 

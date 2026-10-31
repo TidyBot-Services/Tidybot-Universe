@@ -1,4 +1,5 @@
 """Create a new full daily catalog without rewriting prior approved resources."""
+from benchmarks.attention_harness.workspace_paths import get_str
 from pathlib import Path
 import argparse
 import copy
@@ -74,8 +75,8 @@ def freeze_resources(version, source_catalog):
     graph_path,graph_sha=write_new(directory/'both/graph.json',{'graph_id':f'openarm-bimanual-{version}','entries':entries})
     profile={'id':f'openarm-bimanual-{version}-both-handoff','suite':'robocasa','task':'counter_to_sink',
         'execution_target':'robocasa_sim','sim_source_root':str(ROOT),'agent_source_root':str(ROOT),
-        'task_source_root':template['task_source']['root'],'sim_python':'/home/truares/miniconda3/envs/maniskill/bin/python',
-        'agent_python':'/home/truares/miniconda3/envs/maniskill/bin/python','code':str(frozen_policy),
+        'task_source_root':template['task_source']['root'],'sim_python':get_str('sim.legacy_python'),
+        'agent_python':get_str('sim.legacy_python'),'code':str(frozen_policy),
         'approved_policy_sha256':policy_sha,'config':config_path,'approved_config_sha256':config_sha,
         'skill_graph_file':graph_path,'skill_graph_sha256':graph_sha,'skill_root':root}
     profiles.append(profile)

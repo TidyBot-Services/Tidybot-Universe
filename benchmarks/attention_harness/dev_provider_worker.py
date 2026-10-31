@@ -1,4 +1,5 @@
 """One provider request in a cancellable process. Only free PARCC reachability retries."""
+from benchmarks.attention_harness.workspace_paths import get
 import argparse
 import json
 import os
@@ -45,7 +46,7 @@ def main():
             client = CodexClient(timeout_seconds=seconds, response_observer=observed)
         else:
             key = os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
-            path = Path('/home/truares/.litellm-key')
+            path = get('litellm.key_file')
             if not key and path.is_file():
                 key = path.read_text().strip()
             def retried(row):

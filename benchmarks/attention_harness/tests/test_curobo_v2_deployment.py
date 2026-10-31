@@ -1,4 +1,5 @@
 """Migration negatives must fail before a legacy process or planner can run."""
+from benchmarks.attention_harness.workspace_paths import get
 import importlib
 import json
 from pathlib import Path
@@ -104,13 +105,13 @@ def test_adapter_registry_cannot_relabel_official_or_environment_identity(tmp_pa
 def test_declared_parameters_cannot_silently_select_worker_defaults(tmp_path):
     with pytest.raises(IdentityError,match='parameters'):
         deployment.fixed_owner(tmp_path/'owner',task='counter_to_sink',seed=101,arm='left',deadline=1e12,
-            parameters_path=Path('/home/truares/桌面/Tidybot-Universe-attention-native/openarm_robocasa/configs/robot_parameters_v2.json'))
+            parameters_path=get('test.native_robot_config'))
 
 
 @pytest.mark.parametrize('failure',['group','action','speed','held_target','missing_joint','planner_group','missing_planner'])
 def test_v2_cleanup_requires_measured_hold_and_gone_process_group(failure):
     from benchmarks.attention_harness.service_recovery import service_stop_confirmed
-    stop=json.loads(Path('/home/truares/Documents/Codex/2026-10-12/goal-curobov2-robocasa-robocasa365-v2-only/outputs/main-fixed-task-01/owned/native_stop.json').read_text())
+    stop=json.loads(get('deployments.main_native_stop').read_text())
     stop.update(mechanism='authenticated_v2_native_process_group',process_group_gone=True,
                 planner_process_groups=[{'confirmed':True,'reaped':True,'process_group_gone':True}],
                 robot={'model':'OpenArm','execution_arm':'left'})

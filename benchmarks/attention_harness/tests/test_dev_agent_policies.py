@@ -1,4 +1,5 @@
 """P1 decision tables, public evidence, and pre-v2 compatibility oracles."""
+from benchmarks.attention_harness.workspace_paths import get
 import builtins
 import hashlib
 import json
@@ -556,5 +557,5 @@ def test_core_and_dev_help_golden_unchanged():
     root = Path(__file__).resolve().parents[1] / "protocol/v2/review_packages"
     for folder in ("seven_primary_dev_2026-09-29", "seven_primary_guidance_v1_1_dev_2026-10-01"):
         assert json.loads((root / folder / "retry_k.json").read_text())["k"] == 2
-    delivery = Path("/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/configs/retry_k.json")
+    delivery = get('sim.configs_dir') / 'retry_k.json'
     assert json.loads(delivery.read_text()) == {"k": 1}

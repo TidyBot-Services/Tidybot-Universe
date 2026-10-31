@@ -1,4 +1,5 @@
 """Read-only cross-epoch diagnostic identity; ordinary execution stays strict."""
+from benchmarks.attention_harness.workspace_paths import get
 import json,subprocess,os,shutil
 from pathlib import Path
 import pytest
@@ -20,7 +21,7 @@ def original_epoch(tmp_path_factory):
   destination=main/source.relative_to(ROOT)
   if not destination.exists():destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,destination)
  from openarm365_dev_v2.dev_config import model_sources
- native=Path('/home/truares/桌面/Tidybot-Universe-attention-native')
+ native=get('repo.native_tree')
  for source in model_sources():
   source=Path(source)
   if source.is_relative_to(native):

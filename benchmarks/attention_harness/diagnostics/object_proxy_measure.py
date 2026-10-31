@@ -1,5 +1,6 @@
 """Read-only development-seed MuJoCo geometry measurement; no policy or physics steps."""
 from __future__ import annotations
+from benchmarks.attention_harness.workspace_paths import get_str, lazy
 
 import argparse
 import copy
@@ -15,8 +16,8 @@ from scipy.optimize import minimize
 from scipy.spatial import ConvexHull
 from scipy.spatial.transform import Rotation
 
-DEFAULT_ROBOT_CONFIG = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/config/openarm_fixed.yml')
-DEFAULT_ASSETS = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime/project/curobo_v2/service/curobo_service/assets')
+DEFAULT_ROBOT_CONFIG = lazy('sim.dev_robot_config')
+DEFAULT_ASSETS = lazy('sim.dev_assets_dir')
 
 
 def hull_volume(points):
@@ -491,9 +492,9 @@ def reset_diagnostic_fixture(seed, out, robot_config, *, task='PickPlaceCounterT
         cache = (out/directory).resolve(); cache.mkdir(parents=True, exist_ok=True)
         os.environ[variable] = str(cache)
     identity = OfficialEnvironmentIdentity({
-        'robocasa': '/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa',
-        'robosuite': '/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite'},
-        '/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json').verify_identity()
+        'robocasa': get_str('sim.robocasa_root'),
+        'robosuite': get_str('sim.robosuite_root')},
+        get_str('sim.assets_manifest')).verify_identity()
     env = create_env(task, robots='OpenArm365', seed=seed,
                      obj_instance_split='pretrain', layout_and_style_ids=[(11, 34)],
                      camera_widths=128, camera_heights=128, randomize_cameras=False,
@@ -818,9 +819,9 @@ def main(argv=None):
     from openarm365_dev.identity import OfficialEnvironmentIdentity
     from openarm365_dev_v2.environment import create_env
     identity = OfficialEnvironmentIdentity({
-        'robocasa': '/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robocasa',
-        'robosuite': '/home/truares/Documents/Codex/2026-10-09/new-chat/work/upstream/robosuite'},
-        '/home/truares/Documents/Codex/2026-10-09/new-chat/outputs/robocasa365/assets-manifest.json').verify_identity()
+        'robocasa': get_str('sim.robocasa_root'),
+        'robosuite': get_str('sim.robosuite_root')},
+        get_str('sim.assets_manifest')).verify_identity()
     env = create_env(args.task, robots='OpenArm365', seed=args.seed,
                      obj_instance_split='pretrain', layout_and_style_ids=[(11, 34)],
                      camera_widths=128, camera_heights=128, randomize_cameras=False,

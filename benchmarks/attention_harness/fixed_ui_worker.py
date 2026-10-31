@@ -1,9 +1,10 @@
 """Private-prefix, single-use lifecycle and SDK runner for main UI fixed scenes."""
+from benchmarks.attention_harness.workspace_paths import get, lazy
 raise RuntimeError('V2-only: historical modified solver/executor entry retired; use authenticated main deployment. No fallback.')
 from pathlib import Path
 import hashlib,json,os,signal,socket,subprocess,sys,threading,time,traceback,urllib.request,urllib.error,uuid
-ROOT=Path('/home/truares/Documents/Codex/2026-10-11/openarm-curobo-integration')
-SOURCE=Path(__file__).parent if '__file__' in globals() else Path('/home/truares/桌面/Tidybot-Universe-attention-native/benchmarks/attention_harness')
+ROOT=lazy('ui.fixed_root')
+SOURCE=Path(__file__).parent if '__file__' in globals() else get('repo.native_tree') / 'benchmarks/attention_harness'
 # -c loader deliberately keeps the UI checkout out of sys.path. All physical
 # dependencies and accepted source resolve from the immutable isolated baseline.
 sys.path[:]=[p for p in sys.path if not p or Path(p).resolve().is_relative_to(ROOT)]

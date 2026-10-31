@@ -1,4 +1,5 @@
 """Model→contained native execution→public feedback→full-source revision."""
+from benchmarks.attention_harness.workspace_paths import get
 import difflib,json,math,os,re,threading,time,inspect,subprocess,sys,signal
 from pathlib import Path
 from .dev_loop import immutable as write_immutable,sha,public_feedback,numbers,process_identity,validation_diagnostic
@@ -104,7 +105,7 @@ def provider_call(store,key,version,kind,messages,owner,directory,client=None):
     elif client is None:
         credential=os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
         if not credential:
-            path=Path('/home/truares/.litellm-key')
+            path=get('litellm.key_file')
             if path.is_file():credential=path.read_text().strip()
         provider=ParccClient(api_key=credential,max_attempts=retry_limit,timeout_seconds=min(seconds,store.goal_for_cell(key)['wall_remaining']),stream=True)
     else:provider=client
@@ -551,7 +552,7 @@ def proxy_client(client,config=None,model=None):
         return CodexClient(timeout_seconds=90)
     credential=os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
     if not credential:
-        path=Path('/home/truares/.litellm-key')
+        path=get('litellm.key_file')
         if path.is_file():credential=path.read_text().strip()
     return ParccClient(api_key=credential,max_attempts=5 if (config or {}).get('budget_tier')=='dev' and model in FREE_MODELS else 1,timeout_seconds=90,stream=True)
 

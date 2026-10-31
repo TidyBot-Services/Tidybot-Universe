@@ -1,4 +1,5 @@
 """D7.1 offline evidence, interval selection and in-process importer acceptance."""
+from benchmarks.attention_harness.workspace_paths import get
 import json
 import sqlite3
 from pathlib import Path
@@ -313,7 +314,7 @@ def test_real_data_offline_copy(tmp_path, monkeypatch):
     import shutil
     from benchmarks.attention_harness.dev_ledger import DevV2Store
     from benchmarks.attention_harness.dev_agent_ledger import AgentLedger
-    source = Path('/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments/devexp-2656176e6fa79c9bbee569bf')
+    source = get('ui.dev_v2_root') / 'devexp-2656176e6fa79c9bbee569bf'
     if not (source / 'ledger.sqlite3').is_file(): pytest.skip('optional historical run unavailable')
     copied = tmp_path / 'ledger.sqlite3'
     with sqlite3.connect('file:' + str(source / 'ledger.sqlite3') + '?mode=ro', uri=True) as src, sqlite3.connect(copied) as dst:
