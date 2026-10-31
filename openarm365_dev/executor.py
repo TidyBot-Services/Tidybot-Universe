@@ -21,6 +21,8 @@ from curobo_v2 import fixture_telemetry
 def refresh_execution_receipt(executor):
     try:
         executor._execution_receipt = receipt_fields(getattr(executor, "execution_settings", None))
+        if getattr(executor,'held_reference_per_motion',False):
+            executor._execution_receipt['held_reference']='per_motion'
     except BaseException:
         executor.failed = True
         raise
@@ -202,9 +204,10 @@ def tracking_error_event(request_id,settle_steps,bound,names,target,current,qvel
         qvel=None if qvel is None else np.asarray(qvel).tolist())
 
 class NativeExecutor:
-    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',execution_settings=None,bimanual_collaboration='none'):
+    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,execution_settings=None,bimanual_collaboration='none'):
         if bimanual_collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
         self.bimanual_collaboration=bimanual_collaboration
+        self.held_reference_per_motion=held_reference_per_motion
         self.execution_settings=execution_settings
         self.env,self.planner=env,planner;self.evidence=Path(evidence)
         self.deadline,self.cancel_check=deadline,cancel_check;self.frame_callback=frame_callback
@@ -260,6 +263,29 @@ class NativeExecutor:
 
     def held_for(self,side):
         return self.held.get(side) if getattr(self,'bimanual_collaboration','none') in ('c1','handoff') else self.held if self.held and self.held['holder']==side else None
+
+    def rebase_held_references(self,request_id):
+        if not getattr(self,'held_reference_per_motion',False):return
+        from .attachment import bilateral_contacts,object_pose
+        from scipy.spatial.transform import Rotation
+        bilateral=bilateral_contacts(self.env)
+        slots=(self.held.values() if self.bimanual_collaboration in ('c1','handoff') else (self.held,))
+        for held in slots:
+            if not held:continue
+            side=held['holder'];bid=held['target_id']
+            if bid not in bilateral[side]:raise RuntimeError('Measured bilateral grasp contact lost during transport')
+            current=np.linalg.inv(tcp_pose(self.env,side))@object_pose(self.env,bid)
+            previous=(self.held_transform[side] if self.bimanual_collaboration in ('c1','handoff')
+                else self.held_transform)
+            if previous is None:raise RuntimeError('Held object reference missing during transport')
+            displacement=float(np.linalg.norm(current[:3,3]-previous[:3,3]))*1000
+            rotation=math.degrees(float(Rotation.from_matrix(current[:3,:3]@previous[:3,:3].T).magnitude()))
+            if self.bimanual_collaboration in ('c1','handoff'):self.held_transform[side]=current
+            else:self.held_transform=current
+            self.log(self.journal,dict(event='held_reference_rebase',request_id=request_id,side=side,
+                displacement_mm=displacement,rotation_deg=rotation))
+        # The ordinary planning path uploads the current world and builds the
+        # attachment from the measured TCP/object pose on this request.
 
     def collaboration_receipt(self):
         if getattr(self,'bimanual_collaboration','none') not in ('c1','handoff'):return {}
@@ -636,6 +662,7 @@ class NativeExecutor:
             if any(self.unheld_object_contact(arm) for arm in (('left','right') if side=='both' else (side,))):
                 raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
         elif self.any_object_contact() and not self.held:raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
+        NativeExecutor.rebase_held_references(self,request_id)
         response=self.planner.plan_joints(target,side=side,epoch=self.epoch)
         return self.apply(response,request_id=request_id)
 
@@ -644,6 +671,7 @@ class NativeExecutor:
         self.check_live()
         NativeExecutor.handoff_motion_gate(self)
         delta=validate_delta(dx,dy,dyaw)
+        NativeExecutor.rebase_held_references(self,request_id)
         from .world import snapshot
         before=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
         if base_drift_limits(getattr(self,"execution_settings",None)) is not None:
@@ -771,6 +799,7 @@ class NativeExecutor:
                 raise ValueError('grasp_search requires open gripper, descending motion, and no held object')
             from curobo_v2.grasp_heading import check_sdk_request
             check_sdk_request(grasp_search, getattr(self.env, 'obj_body_id', {}))
+        NativeExecutor.rebase_held_references(self,request_id)
         current=tcp_pose(self.env,side)
         before=self.planner.state().copy() if fixture_enabled(getattr(self,'execution_settings',None)) else None
         response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch,**({} if grasp_search is None else dict(grasp_search=grasp_search)))

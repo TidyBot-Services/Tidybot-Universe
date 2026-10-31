@@ -32,6 +32,13 @@ def test_config_roundtrip_and_exclusions(monkeypatch):
     assert cfg.validate_dev_config(bare) is bare and json.dumps(bare).encode() == frozen
     c = cfg.make_dev_config(*args, test_fixture=SPEC)
     assert cfg.validate_dev_config(c) is c and c['test_fixture'] == SPEC
+    per_motion=cfg.make_dev_config(*args,test_fixture=dict(SPEC,held_reference='per_motion'))
+    assert cfg.validate_dev_config(per_motion) is per_motion
+    assert per_motion['test_fixture']['held_reference']=='per_motion'
+    with pytest.raises(ValueError,match='formal boundary rejects test_fixture'):
+        formal_config.validate_formal_config(dict(per_motion,schema_version=formal_config.SCHEMA,runner_boundary='formal'))
+    with pytest.raises(ValueError,match='Dev configuration mismatch'):
+        cfg.validate_dev_config(dict(bare,held_reference='per_motion'))
     with pytest.raises(ValueError, match='test_fixture'):
         cfg.make_dev_config(*args, test_fixture=SPEC, budget_boundary='formal', budget_tier='legacy')
     formal = dict(c, schema_version=formal_config.SCHEMA, runner_boundary='formal')
@@ -61,6 +68,36 @@ def test_r5_fixture_config_and_legacy_bytes(monkeypatch, settings):
 ])
 def test_invalid_spec(change):
     with pytest.raises(ValueError, match='test_fixture'):cfg.validate_test_fixture(dict(SPEC, **change))
+
+
+@pytest.mark.parametrize('value', [None, 'fixed', 'settled', 'PER_MOTION', True, 1, {}])
+def test_held_reference_accepts_only_per_motion(value):
+    with pytest.raises(ValueError, match='test_fixture held_reference'):
+        cfg.validate_test_fixture(dict(SPEC, held_reference=value))
+    assert cfg.validate_test_fixture(dict(SPEC, held_reference='per_motion'))['held_reference']=='per_motion'
+
+
+def test_held_reference_cannot_escape_fixture(monkeypatch, tmp_path):
+    monkeypatch.setattr(cfg, 'verify_lock', lambda *a, **kw: None)
+    from benchmarks.attention_harness import dev_disk
+    monkeypatch.setattr(dev_disk,'require_start',lambda *_:None)
+    daily=DailyDevV2.__new__(DailyDevV2);daily.root=tmp_path
+    spec=dict(SPEC, held_reference='per_motion')
+    with pytest.raises(ValueError,match='product run creation rejects test_fixture'):
+        daily.create({'selection':{'test_fixture':spec},'start':False})
+    with pytest.raises(ValueError,match='test_fixture'):
+        validate_selection_fields({'test_fixture':spec})
+    (tmp_path/'result.json').write_text(json.dumps({'test_fixture':spec}))
+    class Store:
+        def __init__(self):self.events=[]
+        def tx(self):
+            from contextlib import nullcontext
+            return nullcontext(None)
+        def event(self,db,kind,value):self.events.append((kind,value))
+    store=Store()
+    with pytest.raises(Exception,match=REASON):refuse_import(store,'cell',2,episode=tmp_path)
+    assert store.events[0][0]=='planner_memory_offline_skipped'
+    assert list(tmp_path.iterdir())==[tmp_path/'result.json']
 
 
 class FakeEnv:

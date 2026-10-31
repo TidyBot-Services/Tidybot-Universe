@@ -114,6 +114,7 @@ def main():
                     except Exception:pass
         executor=NativeExecutor(env,planner,evidence=args.evidence,deadline=args.deadline,cancel_check=stop.is_set,
             frame_callback=capture,held_reference_configured=c['held_reference_mode'],
+            held_reference_per_motion=c.get('test_fixture',{}).get('held_reference')=='per_motion',
             bimanual_collaboration=c.get('bimanual_collaboration','none'),
             **({} if execution_settings is None else dict(execution_settings=execution_settings)))
         capture(0)
