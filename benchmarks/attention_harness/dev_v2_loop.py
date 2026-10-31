@@ -269,7 +269,7 @@ def feedback_for(cell):
             else:break
     return feedback,source,failures,prior
 
-def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None,*,validation_memory=False,version_history=None):
+def model_messages(config,previous,feedback,attention,remaining,trace_visible=True,source_size_limit_bytes=None,*,validation_memory=False,version_history=None,success_condition=None):
     from .eval_agent import visible_review
     if validation_memory:
         if set(attention)!={'memory'} or not isinstance(attention['memory'],list) or len(attention['memory'])>1 or any(set(e)!={'content'} or not isinstance(e['content'],str) for e in attention['memory']):raise DevConflict('clean validation Memory required')
@@ -285,6 +285,9 @@ def model_messages(config,previous,feedback,attention,remaining,trace_visible=Tr
     if 'eval_review' in f:f['eval_review']=visible_review(f['eval_review'],dev=True)
     if not trace_visible:f.pop('action_trace',None)
     packet={'locked_task':public_cfg,'previous_complete_source':previous,'public_feedback':f,'attention_control':attention,'remaining_budget':remaining}
+    if success_condition:
+        from .dev_agent_success import eval_view
+        packet['success_condition']=eval_view(success_condition)
     if source_size_limit_bytes:packet['source_size_limit_bytes']=source_size_limit_bytes
     from .dev_version_history import enabled,bounded
     if not validation_memory and enabled(config) and version_history is not None:
@@ -559,7 +562,7 @@ def proxy_retry_events(provider,store,key,version,kind):
         provider.retry_observer=retried
     return provider
 
-def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailable=False):
+def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailable=False,success_condition=None):
     """Automatic, non-attention Eval after a settled execution."""
     from . import eval_agent as eva
     from .v2_evaluator import build_eval_evidence
@@ -570,6 +573,9 @@ def eval_answer(store,key,version,config,owner,artifact,client,*,allow_unavailab
     if not execution or execution['state']!='settled':raise DevConflict('Eval needs a settled execution')
     bundle=json.loads(checked(execution['receipt']['bundle']).read_bytes())
     evidence=build_eval_evidence(bundle['artifact_dir'],config)
+    if success_condition:
+        from .dev_agent_success import eval_view
+        evidence['success_condition']=eval_view(success_condition)
     bound=len(json.dumps({k:v for k,v in evidence.items() if k!='frames'},ensure_ascii=False).encode())+len(evidence['frames'])*eva.FRAME_TOKEN_BOUND+4096
     seconds=120
     reservation={'eval_calls':1,'provider_tokens':bound+eva.MAX_TOKENS,'input_tokens':bound,'output_tokens':eva.MAX_TOKENS,'model_seconds':seconds}
@@ -785,6 +791,10 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
     from .dev_experiment import verify_manifest
     cell=store.cell(key);root=Path(exp['artifact_dir'])/'cells'/key;root.mkdir(parents=True,exist_ok=True)
     config=m['configs'][f"{cell['task_id']}:{cell['seed']}"];source=m['initial_sources'][cell['task_id']]['source']
+    condition=m.get('success_conditions',{}).get(f"{cell['task_id']}:{cell['seed']}") if config.get('execution_settings',{}).get('profile')=='r5-fixture-20261031' else None
+    if condition:
+        from .dev_agent_success import eval_view
+        immutable(root/'docs/success_condition.json',eval_view(condition))
     created=cell.get('created_at') or time.time()
     store.update_cell(key,state='running',owner=owner,created_at=created,artifact_dir=str(root),initial_source=source)
     if not (root/'config.json').exists():immutable(root/'config.json',config)
@@ -812,7 +822,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                 if job['state']!='settled':raise DevConflict('unsettled execution never redispatched')
             if last and last['valid'] and job_for(store.cell(key),last['version'],'execute') and job_for(store.cell(key),last['version'],'execute')['state']=='settled' and not job_for(store.cell(key),last['version'],'eval') and config.get('eval_agent',{}).get('enabled'):
                 eval_answer(store,key,last['version'],config,owner,root/f"v{last['version']}"/'eval-review.json',client,
-                    allow_unavailable=m['selection']['mode'] in ('interactive','diagnostic'));continue
+                    allow_unavailable=m['selection']['mode'] in ('interactive','diagnostic'),success_condition=condition);continue
             if last and last['valid'] and config.get('eval_agent',{}).get('enabled'):
                 eval_job=job_for(store.cell(key),last['version'],'eval')
                 if eval_job and eval_job['state']!='settled':raise DevConflict('unsettled Eval cannot be bypassed')
@@ -850,7 +860,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
                     remaining[resource]=max(0,cell['budget'][resource]-sum(j['reservation'].get(resource,0) for j in store.cell(key)['jobs'] if j['state']=='settled'))
             from .dev_version_history import enabled,build
             history=build(cell,trace_visible=m['trace_visible']) if m.get('dev_version_history') is True and enabled(config) and not m.get('validation_experiment') else None
-            messages=model_messages(config,previous,feedback,packet,remaining,m['trace_visible'],m.get('source_size_limit_bytes'),version_history=history)
+            messages=model_messages(config,previous,feedback,packet,remaining,m['trace_visible'],m.get('source_size_limit_bytes'),version_history=history,success_condition=condition)
             projection_ref=None
             if cell.get('runtime'):
                 messages,projection=project_messages(messages,cell['runtime']['max_input_bytes_per_request'])

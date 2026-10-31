@@ -131,8 +131,10 @@ def main():
                     name=env.sim.model.geom_id2name(gid) or ''
                     if name.startswith(env.fxtr.name) and 'handle' in name:
                         values[name+'_pos']=env.sim.data.geom_xpos[gid].tolist()
-            return dict(episode_id=episode,sequence=executor.sequence,robot=robot,images={},
+            result=dict(episode_id=episode,sequence=executor.sequence,robot=robot,images={},
                 perception={'source':'official_public_sim_gt','values':values})
+            if fixture_enabled(execution_settings):result['fixtures']=find_fixtures(env,execution_settings)
+            return result
         from .scene_contract import capture_state,validate
         scene_state=capture_state(env)
         condition=validate(c['scene_contract'],c['task_id'],scene_state,c['seed']) if 'scene_contract' in c else None

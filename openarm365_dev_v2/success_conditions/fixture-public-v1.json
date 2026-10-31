@@ -1,0 +1,1131 @@
+{
+  "schema": "attentionbench.success-condition.fixture.v1",
+  "tasks": {
+    "arrange_tea": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/composite/brewing/arrange_tea.py",
+          "line": 92,
+          "source_sha256": "9fb6373cfdff7ae205efccb5bd1b4ffb89374da7db9ce89af3e623ae3de2c1bf",
+          "symbol": "ArrangeTea._check_success"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 587,
+          "source_sha256": "5ef72e40bc6190e17a3a5d23a2644310a7499756aa07aeb1314bedb9800e5bae",
+          "symbol": "check_obj_in_receptacle"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 723,
+          "source_sha256": "7b1014f46114ac544693b5042b568347986a7a4f0be2488099f583438d2883ac",
+          "symbol": "Fixture.is_closed"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 660,
+          "source_sha256": "c6d4d119749af11839c1e4d9fb181b4247a96f557384ce8ca0fc6848e50aae36",
+          "symbol": "Fixture.get_joint_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 580,
+          "source_sha256": "0dd42e6bc5e025bda5912d85dbd393de708ce0cc975dd3d6084f8ef3318e5235",
+          "symbol": "normalize_joint_value"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 645,
+          "source_sha256": "c04ba86bc6d3f64b71bdd4859aff1357c31a6a14cf89aa1c8adee8d483fe311a",
+          "symbol": "gripper_obj_far"
+        },
+        {
+          "file": "robosuite/environments/base.py",
+          "line": 681,
+          "source_sha256": "10b093aa5f77576f12359418b46b387bc1a658df952d36c9c43baab63e7a2df9",
+          "symbol": "MujocoEnv.check_contact"
+        },
+        {
+          "file": "robosuite/utils/sim_utils.py",
+          "line": 8,
+          "source_sha256": "4fa91519e6e34b021c44a2091971da8ebc7fc357c219a66e3c906e8fc02da00a",
+          "symbol": "check_contact"
+        }
+      ],
+      "predicates": [
+        {
+          "id": "obj_contact_container",
+          "kind": "contact",
+          "object": "obj",
+          "observable": false,
+          "reason": "Exact instantaneous object-to-receptacle contact pairs are not published.",
+          "receptacle": "container"
+        },
+        {
+          "id": "obj_within_container",
+          "kind": "receptacle_xy_distance",
+          "object": "obj",
+          "observable": false,
+          "op": "<",
+          "reason": "The receptacle horizontal radius is not published; no numeric radius is inferred.",
+          "receptacle": "container",
+          "threshold": {
+            "factor": 0.7,
+            "public_quantity": "receptacle.horizontal_radius_m",
+            "value_m": null
+          }
+        },
+        {
+          "id": "obj2_contact_container",
+          "kind": "contact",
+          "object": "obj2",
+          "observable": false,
+          "reason": "Exact instantaneous object-to-receptacle contact pairs are not published.",
+          "receptacle": "container"
+        },
+        {
+          "id": "obj2_within_container",
+          "kind": "receptacle_xy_distance",
+          "object": "obj2",
+          "observable": false,
+          "op": "<",
+          "reason": "The receptacle horizontal radius is not published; no numeric radius is inferred.",
+          "receptacle": "container",
+          "threshold": {
+            "factor": 0.7,
+            "public_quantity": "receptacle.horizontal_radius_m",
+            "value_m": null
+          }
+        },
+        {
+          "field": "joint_open_fraction",
+          "fixture": "cab",
+          "id": "joint_open_fraction",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": "<=",
+          "quantifier": "all",
+          "value": 0.005
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj"
+          },
+          "threshold_m": 0.25
+        }
+      ],
+      "task_rule": "Both mug and kettle contact the tray within 0.7 times its horizontal radius in XY (strict); all cabinet door joints are <=0.005; physical left gripper is more than 0.25 m from obj (the mug)."
+    },
+    "categorize_condiments": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/composite/arranging_condiments/categorize_condiments.py",
+          "line": 121,
+          "source_sha256": "7075f60a93e0dde65c05f7f1ab883ab0a0d013505856db8ea33b543aecb9a5cd",
+          "symbol": "CategorizeCondiments._check_success"
+        },
+        {
+          "file": "robocasa/environments/kitchen/composite/arranging_condiments/categorize_condiments.py",
+          "line": 112,
+          "source_sha256": "23da45720a818afd8b84fe049396f35498db2f59ec3fe7aa6ec12ac6c3a10c56",
+          "symbol": "CategorizeCondiments._xy_dist"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 14,
+          "source_sha256": "867df87941099245e833745346defb3993beac645bde85b2abb6b6fd5b0baa5c",
+          "symbol": "obj_inside_of"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 576,
+          "source_sha256": "09490a33d1f7a861c0b7314c6e07b9cf4ac3647437b4881ab94e7d32fd815740",
+          "symbol": "Fixture.get_int_sites"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 645,
+          "source_sha256": "c04ba86bc6d3f64b71bdd4859aff1357c31a6a14cf89aa1c8adee8d483fe311a",
+          "symbol": "gripper_obj_far"
+        },
+        {
+          "file": "robocasa/models/objects/objects.py",
+          "line": 405,
+          "source_sha256": "0ba65d28e6bd41995982a0bb365aa1f2d70ce32ae0f7cdd05ccf00f3cd244ce1",
+          "symbol": "MJCFObject.get_bbox_points"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 233,
+          "source_sha256": "51871104def9f7277d60d4b1943dd26670431f95aa77ceda8b7662b13ee7d7d0",
+          "symbol": "Fixture.get_reset_region_names"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 164,
+          "source_sha256": "6f6c020dc5222c0833beed0147ed7d111eccdbc4755ed251b1754829c8b27860",
+          "symbol": "get_pos_after_rel_offset"
+        }
+      ],
+      "predicates": [
+        {
+          "container": "cab",
+          "id": "obj1_inside_cab",
+          "kind": "object_in_region",
+          "object": "obj1",
+          "observable": false,
+          "partial_check": false,
+          "points": "all_8_bbox_corners",
+          "projection_padding": 0.05,
+          "reason": "Cabinet interior sites, object orientation and eight bounding-box corners are not published; the object centre alone is insufficient.",
+          "region": "cab_interior",
+          "rule": "For at least one interior box, each corner projection on each axis must lie in [dot(axis,p0)-0.05, dot(axis,p_axis)+0.05], inclusive. Padding is in projection units, not metres."
+        },
+        {
+          "container": "cab",
+          "id": "obj2_inside_cab",
+          "kind": "object_in_region",
+          "object": "obj2",
+          "observable": false,
+          "partial_check": false,
+          "points": "all_8_bbox_corners",
+          "projection_padding": 0.05,
+          "reason": "Cabinet interior sites, object orientation and eight bounding-box corners are not published; the object centre alone is insufficient.",
+          "region": "cab_interior",
+          "rule": "For at least one interior box, each corner projection on each axis must lie in [dot(axis,p0)-0.05, dot(axis,p_axis)+0.05], inclusive. Padding is in projection units, not metres."
+        },
+        {
+          "id": "obj1_near_match",
+          "kind": "xy_distance",
+          "objects": [
+            "obj1",
+            "cab_obj1"
+          ],
+          "observable": true,
+          "op": "<=",
+          "threshold_m": 0.15
+        },
+        {
+          "id": "obj2_near_match",
+          "kind": "xy_distance",
+          "objects": [
+            "obj2",
+            "cab_obj2"
+          ],
+          "observable": true,
+          "op": "<=",
+          "threshold_m": 0.15
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj1",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj1"
+          },
+          "threshold_m": 0.25
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj2",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj2"
+          },
+          "threshold_m": 0.25
+        }
+      ],
+      "regions": {
+        "cab_interior": {
+          "container": {
+            "task_reference": "cab"
+          },
+          "observable": false,
+          "reason": "No measured interior geometry is available offline.",
+          "region": {
+            "interior_sites_world_m": null,
+            "projection_ranges": null
+          }
+        }
+      },
+      "task_rule": "Both objects fit a cabinet interior box; bottle/shaker XY distances to their matching cabinet objects are at most 0.15 m; physical left gripper distance from each moved object exceeds 0.25 m."
+    },
+    "close_blender_lid": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_blender.py",
+          "line": 85,
+          "source_sha256": "15d4f2dd2d685072857642496254441d14272d4e3d7a40a87ed5fa11b8f27e43",
+          "symbol": "CloseBlenderLid._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/blender.py",
+          "line": 64,
+          "source_sha256": "62f86c018aa01a511203799eddff6b713dbb8ce26146ec5861f7da76dd1a16c1",
+          "symbol": "Blender.get_state"
+        },
+        {
+          "file": "robocasa/models/fixtures/blender.py",
+          "line": 36,
+          "source_sha256": "0180b606a031d38301452c7eee571d92fe64c8c7e2d7a7f26263b485143441de",
+          "symbol": "Blender.update_state"
+        },
+        {
+          "file": "robocasa/models/fixtures/blender.py",
+          "line": 31,
+          "source_sha256": "69d40246a47a8c49a627291f9076998fa1ddd3b041a106074705c6cce106be76",
+          "symbol": "Blender.get_curr_lid_pos"
+        },
+        {
+          "file": "robocasa/models/fixtures/blender.py",
+          "line": 26,
+          "source_sha256": "b844346977ae48c26c4bbe1750ae0c24d325e883bb0b39b2b8a3335f2b13d549",
+          "symbol": "Blender.get_lid_closed_pos"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 612,
+          "source_sha256": "59f146b4be66dc8262c8b4ef479583bae36e5fc4718eed69fa55b3075454fcf2",
+          "symbol": "check_fxtr_upright"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 164,
+          "source_sha256": "6f6c020dc5222c0833beed0147ed7d111eccdbc4755ed251b1754829c8b27860",
+          "symbol": "get_pos_after_rel_offset"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 655,
+          "source_sha256": "732c40f61e6239f29c9c5ce5449313d76075ff7ca064d59c3c72756922429455",
+          "symbol": "gripper_fxtr_far"
+        },
+        {
+          "file": "robocasa/models/fixtures/blender.py",
+          "symbol": "Blender._BLENDER_LID_POS_THRESH",
+          "value": 0.04
+        }
+      ],
+      "predicates": [
+        {
+          "definition": {
+            "abs_roll_pitch_deg": {
+              "op": "<",
+              "value": 7
+            },
+            "origin_distance_m": {
+              "op": "<",
+              "value": 0.04
+            }
+          },
+          "field": "lid_on_blender",
+          "fixture": "blender",
+          "id": "lid_on_blender",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": "==",
+          "quantifier": "one",
+          "value": true
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_blender_lid_main",
+          "kind": "gripper_distance",
+          "observable": false,
+          "op": ">",
+          "reason": "The exact body origin of the auxiliary blender lid is absent from public object/interaction-part positions; a handle or bounding-box centre is not that origin.",
+          "target": {
+            "kind": "body",
+            "name": "blender_lid_main"
+          },
+          "threshold_m": 0.15
+        }
+      ],
+      "task_rule": "The blender lid is seated (origin distance <0.04 m and absolute roll/pitch <7 degrees) and the physical left gripper is more than 0.15 m from the lid body origin."
+    },
+    "coffee_setup_mug": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_coffee.py",
+          "line": 92,
+          "source_sha256": "81bbcfe6563231574b1f782f3e45d0a67a87f3c8d4553c0a0b6836909911de52",
+          "symbol": "PickPlaceCoffee._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/coffee_machine.py",
+          "line": 95,
+          "source_sha256": "1df3501450a0c5dec635ff999ce1a71a3fc43f11bb5d15eb0a62876aca215fc2",
+          "symbol": "CoffeeMachine.check_receptacle_placement_for_pouring"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 645,
+          "source_sha256": "c04ba86bc6d3f64b71bdd4859aff1357c31a6a14cf89aa1c8adee8d483fe311a",
+          "symbol": "gripper_obj_far"
+        }
+      ],
+      "predicates": [
+        {
+          "abs_z_distance_m": {
+            "op": "<",
+            "value": 0.1
+          },
+          "fixture": "coffee_machine",
+          "id": "mug_at_pour_site",
+          "kind": "pour_alignment",
+          "object": "obj",
+          "observable": false,
+          "reason": "The coffee-machine receptacle placement site WORLD position is not published.",
+          "site": "receptacle_place_site",
+          "xy_distance_m": {
+            "op": "<",
+            "value": 0.04
+          }
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj"
+          },
+          "threshold_m": 0.25
+        }
+      ],
+      "task_rule": "The mug is within 0.04 m in XY and 0.10 m in Z of the pour site (strict), with the physical left gripper more than 0.25 m from the mug."
+    },
+    "heat_kebab_sandwich": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/composite/preparing_sandwiches/heat_kebab_sandwich.py",
+          "line": 94,
+          "source_sha256": "ce513c75a5c6455bb6fbf45829318097680cbf6ce2e39699ca773984e06fc094",
+          "symbol": "HeatKebabSandwich._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/toaster_oven.py",
+          "line": 254,
+          "source_sha256": "e51405d615ef7fe63cad503a9b9a6840e6e1a8bae4da8b49d4b84896a1103073",
+          "symbol": "ToasterOven.check_rack_contact"
+        },
+        {
+          "file": "robocasa/models/fixtures/toaster_oven.py",
+          "line": 44,
+          "source_sha256": "648970348002196844024e898953c26957d0876c5493a54a0647d0a9c5e7a6ca",
+          "symbol": "ToasterOven._get_joint_prefix"
+        },
+        {
+          "file": "robocasa/models/fixtures/toaster_oven.py",
+          "line": 315,
+          "source_sha256": "07c5609c4b31c86d87700be04b84847bbb734090dec4f8dec18e4f47a777ff07",
+          "symbol": "ToasterOven.get_state"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 712,
+          "source_sha256": "646aba6e397f36d86b429cc8c4d69b3d0e5a1e90b333d64a98b1ad6d486e28a4",
+          "symbol": "Fixture.is_open"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 660,
+          "source_sha256": "c6d4d119749af11839c1e4d9fb181b4247a96f557384ce8ca0fc6848e50aae36",
+          "symbol": "Fixture.get_joint_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 580,
+          "source_sha256": "0dd42e6bc5e025bda5912d85dbd393de708ce0cc975dd3d6084f8ef3318e5235",
+          "symbol": "normalize_joint_value"
+        },
+        {
+          "file": "robosuite/environments/base.py",
+          "line": 681,
+          "source_sha256": "10b093aa5f77576f12359418b46b387bc1a658df952d36c9c43baab63e7a2df9",
+          "symbol": "MujocoEnv.check_contact"
+        },
+        {
+          "file": "robosuite/utils/sim_utils.py",
+          "line": 8,
+          "source_sha256": "4fa91519e6e34b021c44a2091971da8ebc7fc357c219a66e3c906e8fc02da00a",
+          "symbol": "check_contact"
+        }
+      ],
+      "predicates": [
+        {
+          "fallback_level": 0,
+          "fixture": "toaster_oven",
+          "id": "baguette_rack_contact",
+          "kind": "rack_contact",
+          "levels": [
+            0,
+            1
+          ],
+          "object": "baguette",
+          "observable": false,
+          "reason": "Exact instantaneous object/fixture contact pairs are absent from the public observation; proximity and frames cannot prove contact."
+        },
+        {
+          "fallback_level": 0,
+          "fixture": "toaster_oven",
+          "id": "kebab_rack_contact",
+          "kind": "rack_contact",
+          "levels": [
+            0,
+            1
+          ],
+          "object": "kebab",
+          "observable": false,
+          "reason": "Exact instantaneous object/fixture contact pairs are absent from the public observation; proximity and frames cannot prove contact."
+        },
+        {
+          "field": "joint_open_fraction",
+          "fixture": "toaster_oven",
+          "id": "door_not_open",
+          "kind": "not_all_joints",
+          "observable": true,
+          "op": ">=",
+          "value": 0.9
+        },
+        {
+          "field": "time",
+          "fixture": "toaster_oven",
+          "id": "time",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": ">=",
+          "quantifier": "one",
+          "value": 0.1
+        }
+      ],
+      "task_rule": "Baguette and kebab each touch rack/tray level 0 or 1 (fallback to level 0); not all door joints are at least 0.90 open; timer fraction is at least 0.1."
+    },
+    "kettle_boiling": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/composite/brewing/kettle_boiling.py",
+          "line": 77,
+          "source_sha256": "90c6eada25face9c401bfbfb6328c27c490f5c3f3422120c60524aa575efbbc6",
+          "symbol": "KettleBoiling._check_success"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 623,
+          "source_sha256": "4dff636b79eb1610673c314d006fc3eafd9e22b9765d6a80644181e42af8ebcc",
+          "symbol": "check_obj_fixture_contact"
+        },
+        {
+          "file": "robocasa/models/fixtures/stove.py",
+          "line": 185,
+          "source_sha256": "24244f25c2a5c243dbc618aec78c39feee3fefe22d561a8dabb37a5f52b99380",
+          "symbol": "Stove.is_burner_on"
+        },
+        {
+          "file": "robocasa/models/fixtures/stove.py",
+          "line": 152,
+          "source_sha256": "c18417f89c92f316df8cde807acf7bd717cfe289433390c5d945865a0b475f0d",
+          "symbol": "Stove.get_knobs_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 645,
+          "source_sha256": "c04ba86bc6d3f64b71bdd4859aff1357c31a6a14cf89aa1c8adee8d483fe311a",
+          "symbol": "gripper_obj_far"
+        },
+        {
+          "file": "robosuite/environments/base.py",
+          "line": 681,
+          "source_sha256": "10b093aa5f77576f12359418b46b387bc1a658df952d36c9c43baab63e7a2df9",
+          "symbol": "MujocoEnv.check_contact"
+        },
+        {
+          "file": "robosuite/utils/sim_utils.py",
+          "line": 8,
+          "source_sha256": "4fa91519e6e34b021c44a2091971da8ebc7fc357c219a66e3c906e8fc02da00a",
+          "symbol": "check_contact"
+        }
+      ],
+      "predicates": [
+        {
+          "fixture": "stove",
+          "id": "kettle_stove_contact",
+          "kind": "contact",
+          "object": "obj",
+          "observable": false,
+          "reason": "Exact instantaneous object/fixture contact pairs are absent from the public observation; proximity and frames cannot prove contact."
+        },
+        {
+          "burner_on_interval_rad": [
+            0.35,
+            "2*pi - 0.35"
+          ],
+          "fixture": "stove",
+          "id": "kettle_on_live_burner",
+          "interval_inclusive": true,
+          "kind": "burner_alignment",
+          "object": "obj",
+          "observable": false,
+          "quantifier": "any_available_burner",
+          "reason": "The burner site WORLD positions and site-to-knob availability map are not published.",
+          "xy_distance_m": {
+            "op": "<",
+            "value": 0.15
+          }
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj"
+          },
+          "threshold_m": 0.25
+        }
+      ],
+      "task_rule": "The kettle contacts the stove and is within 0.15 m XY (strict) of an available live burner, with the physical left gripper more than 0.25 m from it."
+    },
+    "open_cabinet": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_doors.py",
+          "line": 62,
+          "source_sha256": "ad93ae14a3cc91964fe36d1d56fd4feaec164f21ee0f0be29641cddb2d96b20a",
+          "symbol": "ManipulateDoor._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 712,
+          "source_sha256": "646aba6e397f36d86b429cc8c4d69b3d0e5a1e90b333d64a98b1ad6d486e28a4",
+          "symbol": "Fixture.is_open"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 660,
+          "source_sha256": "c6d4d119749af11839c1e4d9fb181b4247a96f557384ce8ca0fc6848e50aae36",
+          "symbol": "Fixture.get_joint_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 580,
+          "source_sha256": "0dd42e6bc5e025bda5912d85dbd393de708ce0cc975dd3d6084f8ef3318e5235",
+          "symbol": "normalize_joint_value"
+        }
+      ],
+      "predicates": [
+        {
+          "field": "joint_open_fraction",
+          "fixture": "fxtr",
+          "id": "joint_open_fraction",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": ">=",
+          "quantifier": "all",
+          "value": 0.9
+        }
+      ],
+      "task_rule": "Every cabinet door joint is open to at least 0.90 of its range."
+    },
+    "open_drawer": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_drawer.py",
+          "line": 172,
+          "source_sha256": "718c4bb0a71318f864ae7ccb9dcc21babd35606525c4955bcc18f506d9720dfe",
+          "symbol": "ManipulateDrawer._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/cabinets.py",
+          "line": 1061,
+          "source_sha256": "32b1442bbdc88a251ffee5ccad8d219d87529769a7483ddeed6b82f3361a8c53",
+          "symbol": "Drawer.get_door_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 580,
+          "source_sha256": "0dd42e6bc5e025bda5912d85dbd393de708ce0cc975dd3d6084f8ef3318e5235",
+          "symbol": "normalize_joint_value"
+        }
+      ],
+      "predicates": [
+        {
+          "field": "door_open_fraction",
+          "fixture": "drawer",
+          "id": "door_open_fraction",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": ">=",
+          "quantifier": "all",
+          "value": 0.95
+        }
+      ],
+      "task_rule": "Every drawer door fraction is at least 0.95."
+    },
+    "open_stand_mixer_head": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_stand_mixer.py",
+          "line": 26,
+          "source_sha256": "5920911643d3728579414292f6c71b7bb360ea210c52f8ff92ea8ca0ea877222",
+          "symbol": "OpenStandMixerHead._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/stand_mixer.py",
+          "line": 128,
+          "source_sha256": "ca5b46f1662b17160dc3cbc464858b4fa12a491cc51e950e8eb829bf4baca7a0",
+          "symbol": "StandMixer.get_state"
+        },
+        {
+          "file": "robocasa/models/fixtures/stand_mixer.py",
+          "line": 75,
+          "source_sha256": "a81d10e329b25c7c60c1b863db4f2ae0da547a8ff8fa3bd1b3bd1e9f95fdd810",
+          "symbol": "StandMixer.update_state"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 660,
+          "source_sha256": "c6d4d119749af11839c1e4d9fb181b4247a96f557384ce8ca0fc6848e50aae36",
+          "symbol": "Fixture.get_joint_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 580,
+          "source_sha256": "0dd42e6bc5e025bda5912d85dbd393de708ce0cc975dd3d6084f8ef3318e5235",
+          "symbol": "normalize_joint_value"
+        }
+      ],
+      "predicates": [
+        {
+          "field": "head",
+          "fixture": "stand_mixer",
+          "id": "head",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": ">",
+          "quantifier": "one",
+          "value": 0.99
+        }
+      ],
+      "task_rule": "The stand mixer head fraction is strictly greater than 0.99."
+    },
+    "pick_place_counter_to_cabinet": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_pick_place.py",
+          "line": 127,
+          "source_sha256": "e3b98b6988b3b1a5e4eb9091468458e708cd315d7b41d289dde17b796c0f53df",
+          "symbol": "PickPlaceCounterToCabinet._check_success"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 14,
+          "source_sha256": "867df87941099245e833745346defb3993beac645bde85b2abb6b6fd5b0baa5c",
+          "symbol": "obj_inside_of"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 576,
+          "source_sha256": "09490a33d1f7a861c0b7314c6e07b9cf4ac3647437b4881ab94e7d32fd815740",
+          "symbol": "Fixture.get_int_sites"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 645,
+          "source_sha256": "c04ba86bc6d3f64b71bdd4859aff1357c31a6a14cf89aa1c8adee8d483fe311a",
+          "symbol": "gripper_obj_far"
+        },
+        {
+          "file": "robocasa/models/objects/objects.py",
+          "line": 405,
+          "source_sha256": "0ba65d28e6bd41995982a0bb365aa1f2d70ce32ae0f7cdd05ccf00f3cd244ce1",
+          "symbol": "MJCFObject.get_bbox_points"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 233,
+          "source_sha256": "51871104def9f7277d60d4b1943dd26670431f95aa77ceda8b7662b13ee7d7d0",
+          "symbol": "Fixture.get_reset_region_names"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 164,
+          "source_sha256": "6f6c020dc5222c0833beed0147ed7d111eccdbc4755ed251b1754829c8b27860",
+          "symbol": "get_pos_after_rel_offset"
+        }
+      ],
+      "predicates": [
+        {
+          "container": "cab",
+          "id": "obj_inside_cab",
+          "kind": "object_in_region",
+          "object": "obj",
+          "observable": false,
+          "partial_check": false,
+          "points": "all_8_bbox_corners",
+          "projection_padding": 0.05,
+          "reason": "Cabinet interior sites, object orientation and eight bounding-box corners are not published; the object centre alone is insufficient.",
+          "region": "cab_interior",
+          "rule": "For at least one interior box, each corner projection on each axis must lie in [dot(axis,p0)-0.05, dot(axis,p_axis)+0.05], inclusive. Padding is in projection units, not metres."
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj"
+          },
+          "threshold_m": 0.25
+        }
+      ],
+      "regions": {
+        "cab_interior": {
+          "container": {
+            "task_reference": "cab"
+          },
+          "observable": false,
+          "reason": "No measured interior geometry is available offline.",
+          "region": {
+            "interior_sites_world_m": null,
+            "projection_ranges": null
+          }
+        }
+      },
+      "task_rule": "All eight object bounding-box corners fit one cabinet interior box with projection padding 0.05, and the physical left gripper is more than 0.25 m from the object."
+    },
+    "prepare_coffee": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/composite/brewing/prepare_coffee.py",
+          "line": 80,
+          "source_sha256": "fdb4993a65a3d86cdda68feebf54668824b379929f7177c8324b6400e3da2125",
+          "symbol": "PrepareCoffee._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/coffee_machine.py",
+          "line": 95,
+          "source_sha256": "1df3501450a0c5dec635ff999ce1a71a3fc43f11bb5d15eb0a62876aca215fc2",
+          "symbol": "CoffeeMachine.check_receptacle_placement_for_pouring"
+        },
+        {
+          "file": "robocasa/models/fixtures/coffee_machine.py",
+          "line": 117,
+          "source_sha256": "d73df0d4a136fb968f7ad362e62bd65f8dfad7d118722cbe4fabcf10676bd5a1",
+          "symbol": "CoffeeMachine.gripper_button_far"
+        },
+        {
+          "file": "robocasa/models/fixtures/coffee_machine.py",
+          "line": 59,
+          "source_sha256": "b36403cbc2e31bb0efd21159148ae101448ed0cb0349204eee22bf009bbedea7",
+          "symbol": "CoffeeMachine.get_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 645,
+          "source_sha256": "c04ba86bc6d3f64b71bdd4859aff1357c31a6a14cf89aa1c8adee8d483fe311a",
+          "symbol": "gripper_obj_far"
+        }
+      ],
+      "predicates": [
+        {
+          "abs_z_distance_m": {
+            "op": "<",
+            "value": 0.1
+          },
+          "fixture": "coffee_machine",
+          "id": "mug_at_pour_site",
+          "kind": "pour_alignment",
+          "object": "obj",
+          "observable": false,
+          "reason": "The coffee-machine receptacle placement site WORLD position is not published.",
+          "site": "receptacle_place_site",
+          "xy_distance_m": {
+            "op": "<",
+            "value": 0.04
+          }
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj"
+          },
+          "threshold_m": 0.25
+        },
+        {
+          "field": "turned_on",
+          "fixture": "coffee_machine",
+          "id": "turned_on",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": "==",
+          "quantifier": "one",
+          "value": true
+        },
+        {
+          "fixture": "coffee_machine",
+          "grippers": [
+            "left"
+          ],
+          "id": "far_start_buttons",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "quantifier": "all",
+          "target": {
+            "kind": "parts",
+            "name": "start_button_*"
+          },
+          "threshold_m": 0.15
+        }
+      ],
+      "task_rule": "The mug satisfies pour-site alignment, the machine is on, the physical left gripper is more than 0.25 m from the mug and more than 0.15 m from every start button."
+    },
+    "turn_off_stove": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_stove.py",
+          "line": 105,
+          "source_sha256": "b3a4d83186ff9a63316e792795cde7745e239999197d53244fdd941474b2836d",
+          "symbol": "ManipulateStoveKnob._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/stove.py",
+          "line": 185,
+          "source_sha256": "24244f25c2a5c243dbc618aec78c39feee3fefe22d561a8dabb37a5f52b99380",
+          "symbol": "Stove.is_burner_on"
+        },
+        {
+          "file": "robocasa/models/fixtures/stove.py",
+          "line": 152,
+          "source_sha256": "c18417f89c92f316df8cde807acf7bd717cfe289433390c5d945865a0b475f0d",
+          "symbol": "Stove.get_knobs_state"
+        }
+      ],
+      "predicates": [
+        {
+          "angle_modulo": "2*pi",
+          "field": "knob_angles_rad",
+          "fixture": "stove",
+          "id": "selected_burner_off",
+          "kind": "knob_off",
+          "observable": true,
+          "on_interval_inclusive": true,
+          "on_interval_rad": [
+            0.35,
+            "2*pi - 0.35"
+          ],
+          "selection": "selected_knob"
+        }
+      ],
+      "task_rule": "The selected burner knob is outside the inclusive on interval [0.35, 2*pi - 0.35] radians after modulo 2*pi."
+    },
+    "turn_on_microwave": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/atomic/kitchen_microwave.py",
+          "line": 64,
+          "source_sha256": "9df4123d2c7b37a6e4b360d714bb87f6831a52b01c1a4344c898c79f8b5028f0",
+          "symbol": "MicrowavePressButton._check_success"
+        },
+        {
+          "file": "robocasa/models/fixtures/microwave.py",
+          "line": 41,
+          "source_sha256": "27c48d6c9ef7ec22939d90168165ac9583b7726ef08f3d145b93980358a9b3eb",
+          "symbol": "Microwave.get_state"
+        },
+        {
+          "file": "robocasa/models/fixtures/microwave.py",
+          "line": 92,
+          "source_sha256": "f2ff9b8bc8a856b791f0bfdcfcf210c05cfea0ce1a5c79dfa7a4d81bd9a31dca",
+          "symbol": "Microwave.gripper_button_far"
+        }
+      ],
+      "predicates": [
+        {
+          "field": "turned_on",
+          "fixture": "microwave",
+          "id": "turned_on",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": "==",
+          "quantifier": "one",
+          "value": true
+        },
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_microwave:start_button",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "part",
+            "name": "microwave:start_button"
+          },
+          "threshold_m": 0.15
+        }
+      ],
+      "task_rule": "The microwave is on and the physical left gripper is more than 0.15 m from the start-button geometry origin."
+    },
+    "weigh_ingredients": {
+      "derivation": [
+        {
+          "file": "robocasa/environments/kitchen/composite/measuring_ingredients/weigh_ingredients.py",
+          "line": 79,
+          "source_sha256": "dc93d5428eb6426f3c747a6fba5381c5a7897078b7ae574226900580d8f83b06",
+          "symbol": "WeighIngredients._check_success"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 587,
+          "source_sha256": "5ef72e40bc6190e17a3a5d23a2644310a7499756aa07aeb1314bedb9800e5bae",
+          "symbol": "check_obj_in_receptacle"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 604,
+          "source_sha256": "6e6e99551d2c18986085e4b701103da27e464f673540b3a21a164d17141ae280",
+          "symbol": "check_obj_upright"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 723,
+          "source_sha256": "7b1014f46114ac544693b5042b568347986a7a4f0be2488099f583438d2883ac",
+          "symbol": "Fixture.is_closed"
+        },
+        {
+          "file": "robocasa/models/fixtures/fixture.py",
+          "line": 660,
+          "source_sha256": "c6d4d119749af11839c1e4d9fb181b4247a96f557384ce8ca0fc6848e50aae36",
+          "symbol": "Fixture.get_joint_state"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 580,
+          "source_sha256": "0dd42e6bc5e025bda5912d85dbd393de708ce0cc975dd3d6084f8ef3318e5235",
+          "symbol": "normalize_joint_value"
+        },
+        {
+          "file": "robocasa/utils/object_utils.py",
+          "line": 645,
+          "source_sha256": "c04ba86bc6d3f64b71bdd4859aff1357c31a6a14cf89aa1c8adee8d483fe311a",
+          "symbol": "gripper_obj_far"
+        },
+        {
+          "file": "robosuite/environments/base.py",
+          "line": 681,
+          "source_sha256": "10b093aa5f77576f12359418b46b387bc1a658df952d36c9c43baab63e7a2df9",
+          "symbol": "MujocoEnv.check_contact"
+        },
+        {
+          "file": "robosuite/utils/sim_utils.py",
+          "line": 8,
+          "source_sha256": "4fa91519e6e34b021c44a2091971da8ebc7fc357c219a66e3c906e8fc02da00a",
+          "symbol": "check_contact"
+        }
+      ],
+      "predicates": [
+        {
+          "grippers": [
+            "left"
+          ],
+          "id": "far_obj",
+          "kind": "gripper_distance",
+          "observable": true,
+          "op": ">",
+          "target": {
+            "kind": "object",
+            "name": "obj"
+          },
+          "threshold_m": 0.25
+        },
+        {
+          "id": "obj_contact_digital_scale",
+          "kind": "contact",
+          "object": "obj",
+          "observable": false,
+          "reason": "Exact instantaneous object-to-receptacle contact pairs are not published.",
+          "receptacle": "digital_scale"
+        },
+        {
+          "id": "obj_within_digital_scale",
+          "kind": "receptacle_xy_distance",
+          "object": "obj",
+          "observable": false,
+          "op": "<",
+          "reason": "The receptacle horizontal radius is not published; no numeric radius is inferred.",
+          "receptacle": "digital_scale",
+          "threshold": {
+            "factor": 0.7,
+            "public_quantity": "receptacle.horizontal_radius_m",
+            "value_m": null
+          }
+        },
+        {
+          "abs_roll_pitch_deg": {
+            "op": "<",
+            "value": 15
+          },
+          "euler_order": "xyz",
+          "id": "object_upright",
+          "kind": "upright",
+          "object": "obj",
+          "observable": false,
+          "reason": "Object WORLD quaternion is not published."
+        },
+        {
+          "field": "joint_open_fraction",
+          "fixture": "cab",
+          "id": "joint_open_fraction",
+          "kind": "fixture_state",
+          "observable": true,
+          "op": "<=",
+          "quantifier": "all",
+          "value": 0.005
+        }
+      ],
+      "task_rule": "The object contacts the digital scale within 0.7 times its horizontal radius in XY (strict); absolute roll and pitch are each <15 degrees; all cabinet door joints are <=0.005; physical left gripper distance exceeds 0.25 m."
+    }
+  }
+}

@@ -57,6 +57,8 @@ def ranges(points):
 
 def check(condition, final_observation):
     """Offline rule (tests and proofs). Returns numbers, never a native field."""
+    from . import dev_fixture_success as fixture
+    if condition.get('schema') == fixture.SCHEMA:return fixture.check(condition, final_observation)
     values = final_observation['perception']['values']
     obj = values['obj_pos']
     p0, px, py, pz = condition['region']['interior_sites_world_m']
@@ -92,13 +94,17 @@ def for_configs(configs):
     """Creation-time freeze: {'task:seed': condition} for every config that has one."""
     result = {}
     for key, config in configs.items():
-        value = load(config['task_id'], config['seed'])
+        from curobo_v2.fixture_interaction import config_enabled
+        from . import dev_fixture_success as fixture
+        value = (fixture.load if config_enabled(config) else load)(config['task_id'], config['seed'])
         if value: result[key] = value
     return result
 
 
 def eval_view(condition):
     """What the Eval workspace receives: rule, region, reference, public fields."""
+    from . import dev_fixture_success as fixture
+    if condition.get('schema') == fixture.SCHEMA:return fixture.eval_view(condition)
     return {k: condition[k] for k in ('schema', 'task_id', 'seed', 'task_rule', 'container', 'region', 'rule',
                                       'public_fields', 'sha256')}
 

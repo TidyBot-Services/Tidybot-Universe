@@ -134,6 +134,9 @@ def ask(evidence, config, client, *, cache_dir=None):
     for attempt in range(1,config['max_attempts']+1):
         try:
             messages=vision.evaluator_messages(evidence);messages[0]={'role':'system','content':SYSTEM_V2 if config['prompt_version']==OLD_PROMPT_VERSION else SYSTEM_V3}
+            if evidence.get('success_condition',{}).get('schema')=='attentionbench.success-condition.fixture.v1':
+                from .dev_fixture_success import EVAL_RULE
+                messages[0]['content']+=EVAL_RULE
             response=vision._call(client,config['attempt_timeout_seconds'],model=config['model'],messages=messages,max_tokens=MAX_TOKENS,temperature=0,**({'reasoning_effort':config['reasoning_effort']} if config.get('model_source')=='codex' else {}))
             usage={k:response.usage[k] for k in ('total_tokens','prompt_tokens','completion_tokens') if type(response.usage.get(k)) is int and response.usage[k]>=0}
             if config.get('model_source')=='codex':usage=dict(response.usage)

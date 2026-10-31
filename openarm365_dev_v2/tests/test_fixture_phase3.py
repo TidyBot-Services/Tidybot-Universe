@@ -63,6 +63,9 @@ def test_every_product_config(tmp_path,monkeypatch,identity,task,seed,mode,path)
     else:
         store=DevV2Store(tmp_path/'db');e=exp.create(store,tmp_path/'runs',request)
     m=exp.verify_manifest(e);c=m['configs'][f'{task}:{seed}']
+    from benchmarks.attention_harness import dev_fixture_success as success
+    assert m['success_conditions'][f'{task}:{seed}']==success.load(task,seed)
+    assert m['success_condition_dev_visible'] is True and m['eval_success_rule']==success.EVAL_RULE
     assert dc.validate_dev_config(c) is c
     assert c['execution_settings']['profile']==fi.PROFILE
     assert c['execution_settings']['fixture_telemetry_hz']==20

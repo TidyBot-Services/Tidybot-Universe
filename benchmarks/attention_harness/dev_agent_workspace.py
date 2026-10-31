@@ -266,6 +266,8 @@ class Workspace:
         if success_condition:
             # The public rule only (region + rule), never a verdict (10-29 step 6).
             from .dev_agent_success import DEV_RULE, eval_view
+            if success_condition.get('schema')=='attentionbench.success-condition.fixture.v1':
+                from .dev_fixture_success import DEV_RULE
             self.publish('docs/success_condition.json', eval_view(success_condition))
             self.publish('docs/tools.md', (tools+DEV_RULE).encode())
         else:

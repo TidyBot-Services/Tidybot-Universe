@@ -172,6 +172,8 @@ def fixture_state(env, f):
     if hasattr(f,'get_door_state'):state['door_open_fraction']=f.get_door_state(env)
     elif hasattr(f,'door_joint_names') and f.door_joint_names:
         state['door_open_fraction']=f.get_joint_state(env,f.door_joint_names)
+    if hasattr(f,'get_joint_state') and getattr(f,'door_joint_names',None):
+        state['joint_open_fraction']=f.get_joint_state(env,f.door_joint_names)
     if cls=='Stove':state['knob_angles_rad']=f.get_knobs_state(env)
     elif cls=='Sink':state.update(f.get_handle_state(env))
     elif cls in ('Microwave','CoffeeMachine','Blender','ToasterOven','Oven'):state.update(f.get_state())
@@ -195,6 +197,7 @@ def find_fixtures(env, settings):
             if part['fixture']!=name:continue
             center,half=shape_box(m,gid);rotation=np.asarray(d.geom_xmat[gid]).reshape(3,3)
             rows.append(dict(name=part['name'],geom_id=gid,frame='world',
+                position=np.asarray(d.geom_xpos[gid],float).tolist(),
                 center=(rotation@center+d.geom_xpos[gid]).tolist(),
                 extent=(2*np.abs(rotation)@half).tolist(),axes=part_axes(env,gid)))
         result.append(dict(name=name,fixture_class=fixture_class(f),task_reference=ref,frame='world',

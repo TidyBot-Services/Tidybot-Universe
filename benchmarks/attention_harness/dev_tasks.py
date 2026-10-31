@@ -91,10 +91,12 @@ def dev_sdk_prompt(config=None):
     if config_enabled(config):
         from curobo_v2.fixture_gripper import DESCRIPTION
         prompt += '\n'+DESCRIPTION+'.\n'
+        from .dev_fixture_success import DEV_RULE
+        prompt += DEV_RULE
         prompt += (' Fixture rules (R5): sensors.find_fixtures() takes no arguments and returns only task fixtures, '
-            'each with name, fixture_class, task_reference, state and interaction_parts. State includes door_open_fraction, '
+            'each with name, fixture_class, task_reference, state and interaction_parts. State includes door_open_fraction, joint_open_fraction, '
             'knob_angles_rad, turned_on or water_on where supported by RoboCasa getters. Parts have name, geom_id, '
-            'WORLD center and axis-aligned full extent in metres, and axes (joint, kind hinge/slide, axis_world, '
+            'WORLD position (geometry origin), center and axis-aligned full extent in metres, and axes (joint, kind hinge/slide, axis_world, '
             'origin_world, joint range and position). Fingers or grippers may touch the returned interaction parts '
             'and geoms in the same task fixture within 1 cm of a part. Contact-point radii are 1 cm for handles/knobs '
             'and 3.5 cm for buttons/switches. The planner keeps 2 cm clearance around retained obstacles. '

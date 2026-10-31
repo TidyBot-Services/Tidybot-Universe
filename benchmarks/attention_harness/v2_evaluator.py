@@ -175,6 +175,9 @@ def build_eval_evidence(execution_dir, config):
                 obs = json.loads(path.read_bytes())
                 value = {'robot': {k: numbers(v) for k, v in obs['robot'].items()},
                          'objects': {k: numbers(v) for k, v in obs['perception']['values'].items()}}
+                if config.get('execution_settings',{}).get('profile')=='r5-fixture-20261031' and 'fixtures' in obs:
+                    from .dev_agent_diagnostics import public_observation
+                    value['fixtures']=public_observation(obs['fixtures'])
                 key = name.replace('_public_observation.json', '_observation')
             else:
                 value = path.read_text(errors='replace')
