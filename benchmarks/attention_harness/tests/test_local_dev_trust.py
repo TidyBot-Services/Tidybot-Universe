@@ -69,7 +69,7 @@ def chain(tmp_path, monkeypatch):
     write(official_manifests / 'allowed-path-files.json', [])
     write(official_manifests / 'author-paths.json', {'prefix': str(prefix), 'library_root': str(official),
                                                     'binary_prefix': str(prefix), 'binary_prefix_slot': 256,
-                                                    'script_prefix': str(prefix)})
+                                                    'script_prefix': str(prefix), 'origin_prefix': str(prefix)})
     write(official_manifests / 'r12-wheel-normalized.json', {})
     write(official_manifests / 'r12-record-normalized.json', {})
     write(official_manifests / 'r12-bin-shebangs.json', {})
@@ -272,6 +272,9 @@ COLLAB_LIBRARY = '/home/collab/aws/repos/curobo'
     'lib/python3.11/site-packages/Farama_Notifications-0.0.4.dist-info/RECORD',
     'lib/python3.11/site-packages/numpy-1.26.4.dist-info/RECORD',
     'lib/python3.11/site-packages/charset_normalizer-3.4.6.dist-info/RECORD',
+    'lib/python3.11/site-packages/pygments-2.21.0.dist-info/RECORD',
+    'lib/python3.11/site-packages/pytest-9.1.1.dist-info/RECORD',
+    'lib/python3.11/site-packages/nvidia_curobo-0.8.0.post1.dev43.dist-info/RECORD',
     'lib/python3.11/site-packages/nvidia_curobo-0.8.0.post1.dev43.dist-info/WHEEL',
     'lib/python3.11/site-packages/toppra-0.6.3.dist-info/WHEEL',
     'lib/python3.11/site-packages/__editable___nvidia_curobo_0_8_0_post1_dev43_finder.py',
@@ -291,6 +294,12 @@ def test_real_normalized_pair_and_mutations(tmp_path, name):
     shutil.copyfile(COLLAB_ENV / name, path)
     if name.endswith('/RECORD'):
         for row in path.read_bytes().splitlines():
+            item = row.split(b',', 1)[0].decode()
+            full_name = str(Path(name).parent.parent / item)
+            if normalization.rule_for(full_name) == 'text-path':
+                target = tmp_path / full_name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(COLLAB_ENV / full_name, target)
             if row.startswith(b'../../../bin/'):
                 script = row.split(b',', 1)[0].decode().removeprefix('../../../bin/')
                 target = tmp_path / 'bin' / script
@@ -324,6 +333,18 @@ def test_real_normalized_pair_and_mutations(tmp_path, name):
             digest = base64.urlsafe_b64encode(hashlib.sha256(altered).digest()).rstrip(b'=')
             replacement = row.split(b',', 1)[0] + b',sha256=' + digest + b',' + str(len(altered)).encode() + b'\r\n'
             path.write_bytes(original.replace(row, replacement))
+            assert check() is None
+        text_row = next((row for row in original.splitlines(keepends=True)
+                         if normalization.rule_for(str(Path(name).parent.parent /
+                             row.split(b',', 1)[0].decode())) == 'text-path'), None)
+        if text_row is not None:
+            item = text_row.split(b',', 1)[0]
+            target = tmp_path / str(Path(name).parent.parent / item.decode())
+            altered = target.read_bytes() + b'\nchanged body\n'
+            target.write_bytes(altered)
+            digest = base64.urlsafe_b64encode(hashlib.sha256(altered).digest()).rstrip(b'=')
+            replacement = item + b',sha256=' + digest + b',' + str(len(altered)).encode() + b'\r\n'
+            path.write_bytes(original.replace(text_row, replacement))
             assert check() is None
     elif name.endswith('/WHEEL'):
         path.write_bytes(original.replace(b'Root-Is-Purelib: true', b'Root-Is-Purelib: false')

@@ -122,9 +122,9 @@ def _official_content(parent):
     author_shebangs = manifest('r12-bin-shebangs.json')
     expected_prefix = manifest('r12-prefix-files.json')
     if (not isinstance(author_paths, dict)
-            or set(author_paths) != {'prefix', 'library_root', 'binary_prefix', 'binary_prefix_slot', 'script_prefix'}
+            or set(author_paths) != {'prefix', 'library_root', 'binary_prefix', 'binary_prefix_slot', 'script_prefix', 'origin_prefix'}
             or any(not isinstance(author_paths[key], str) or not author_paths[key].startswith('/')
-                   for key in ('prefix', 'library_root', 'binary_prefix', 'script_prefix'))
+                   for key in ('prefix', 'library_root', 'binary_prefix', 'script_prefix', 'origin_prefix'))
             or type(author_paths['binary_prefix_slot']) is not int
             or not isinstance(wheel_hashes, dict)
             or set(wheel_hashes) != {name for name in expected_prefix if name.endswith('/WHEEL')}

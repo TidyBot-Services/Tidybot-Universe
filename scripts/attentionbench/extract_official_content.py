@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import shlex
 
 from curobo_v2.official_normalization import without_generator, normalized_record
 
@@ -26,6 +27,24 @@ def write(path, value):
     path.write_text(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False) + '\n')
 
 
+def clone_origin(history: Path) -> str:
+    origins = []
+    for line in history.read_text().splitlines():
+        if not line.startswith('# cmd: '):
+            continue
+        command = shlex.split(line.removeprefix('# cmd: '))
+        if '--clone' not in command:
+            continue
+        if (len(command) < 2 or Path(command[0]).name != 'conda' or command[1] != 'create'
+                or command.count('--clone') != 1 or command.index('--clone') + 1 >= len(command)
+                or not Path(command[command.index('--clone') + 1]).is_absolute()):
+            raise ValueError('Malformed conda clone line in ' + str(history))
+        origins.append(command[command.index('--clone') + 1])
+    if len(origins) != 1:
+        raise ValueError('Expected exactly one conda clone origin in ' + str(history))
+    return origins[0]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--lock', type=Path, default=AUTHOR_LOCK)
@@ -35,6 +54,8 @@ def main():
     if args.lock == AUTHOR_LOCK and hashlib.sha256(raw).hexdigest() != '207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a24238128399c':
         raise ValueError('Author r12 lock digest changed')
     lock = json.loads(raw)
+    author_prefix = Path(lock['prefix'])
+    origin_prefix = clone_origin(author_prefix / 'conda-meta/history')
     out = args.output
     out.mkdir(parents=True, exist_ok=True)
     source = relative_files(lock['files'], lock['library_root'])
@@ -52,7 +73,6 @@ def main():
     write(out / 'r12-distributions.json', lock['distributions'])
     write(out / 'r12-dependencies.json', deps)
     write(out / 'r12-prefix-files.json', prefix)
-    author_prefix = Path(lock['prefix'])
     wheels = {}
     records = {}
     for name, expected in prefix.items():
@@ -87,7 +107,8 @@ def main():
         raise ValueError('Original RECORD script prefix must be established separately')
     write(out / 'author-paths.json', {'prefix': lock['prefix'], 'library_root': lock['library_root'],
                                     'binary_prefix': embedded.decode('utf-8'), 'binary_prefix_slot': 256,
-                                    'script_prefix': existing_paths['script_prefix']})
+                                    'script_prefix': existing_paths['script_prefix'],
+                                    'origin_prefix': origin_prefix})
     encoded = json.dumps(assets, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
     if len(encoded) > 5_000_000:
         write(out / 'r12-native-assets.json', {'format': 'canonical-relative-path-sha256-v1',

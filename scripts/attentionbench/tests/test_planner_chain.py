@@ -9,6 +9,7 @@ from benchmarks.attention_harness.tests.test_local_dev_trust import chain
 from curobo_v2 import identity
 from scripts.attentionbench import build_d05, build_planner_chain as planner
 from scripts.attentionbench.report_official_diff import file_differences
+from scripts.attentionbench.extract_official_content import clone_origin
 from scripts.attentionbench.register_local_dev_trust import register
 from scripts import build_d06
 
@@ -17,6 +18,19 @@ def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, sort_keys=True, indent=2) + '\n')
     return identity.digest(path)
+
+
+def test_clone_origin_requires_one_conda_clone(tmp_path):
+    history = tmp_path / 'history'
+    history.write_text('==> 2026-10-11 <==\n# cmd: /opt/conda/bin/conda create --prefix /tmp/env --clone /opt/source --offline\n')
+    assert clone_origin(history) == '/opt/source'
+    history.write_text('# cmd: /opt/conda/bin/conda create --prefix /tmp/env --offline\n')
+    with pytest.raises(ValueError, match='exactly one'):
+        clone_origin(history)
+    history.write_text('# cmd: /opt/conda/bin/conda create --clone /opt/one\n'
+                       '# cmd: /opt/conda/bin/conda create --clone /opt/two\n')
+    with pytest.raises(ValueError, match='exactly one'):
+        clone_origin(history)
 
 
 def test_argument_plumbing_and_dry_run(tmp_path, capsys):

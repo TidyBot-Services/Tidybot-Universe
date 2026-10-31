@@ -51,15 +51,29 @@ def record_path(line: bytes) -> str | None:
     return row[0] if len(row) == 3 and row[0] else None
 
 
+def normalized_text_path(data: bytes, local_prefix: str, local_library: str,
+                         author_paths: dict) -> bytes | None:
+    pairs = ((local_prefix, author_paths.get('prefix')),
+             (local_library, author_paths.get('library_root')))
+    if any(not isinstance(a, str) or not isinstance(b, str) or not a or not b
+           for a, b in pairs):
+        return None
+    changed = False
+    for old, new in pairs:
+        if old.encode() in data:
+            data = data.replace(old.encode(), new.encode())
+            changed = True
+    return data if changed else None
+
+
 def normalized_record(data: bytes, package: str, local_prefix: str | None = None,
                       author_prefix: str | None = None,
                       script_root: Path | None = None,
-                      author_shebangs: dict | None = None) -> bytes | None:
-    """Strip only cache rows and this package's empty REQUESTED row.
-
-    When prefixes are supplied, bind every changed bin row to the actual local
-    script bytes before substituting the digest of its relocated contents.
-    """
+                      author_shebangs: dict | None = None,
+                      record_name: str | None = None,
+                      local_library: str | None = None,
+                      author_paths: dict | None = None) -> bytes | None:
+    """Normalize approved RECORD rows after binding changed hashes to local files."""
     requested = (package + '/REQUESTED').encode() + EMPTY_REQUESTED
     output = []
     requested_count = 0
@@ -73,6 +87,27 @@ def normalized_record(data: bytes, package: str, local_prefix: str | None = None
             continue
         if path.endswith('.pyc'):
             continue
+        if local_prefix is not None and record_name is not None:
+            full_name = str(Path(record_name).parent.parent / path)
+            if rule_for(full_name) == 'text-path':
+                fields = body.rsplit(b',', 2)
+                if (len(fields) != 3 or fields[0] != path.encode()
+                        or not RECORD_HASH.fullmatch(fields[1]) or not fields[2].isdigit()
+                        or script_root is None or author_paths is None):
+                    return None
+                target = script_root / full_name
+                if not target.is_file() or target.is_symlink():
+                    return None
+                content = target.read_bytes()
+                digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b'=')
+                if fields[1] != b'sha256=' + digest or int(fields[2]) != len(content):
+                    return None
+                relocated = normalized_text_path(content, local_prefix, local_library, author_paths)
+                if relocated is None:
+                    return None
+                digest = base64.urlsafe_b64encode(hashlib.sha256(relocated).digest()).rstrip(b'=')
+                body = fields[0] + b',sha256=' + digest + b',' + str(len(relocated)).encode()
+                line = body + (b'\r\n' if line.endswith(b'\r\n') else b'\n')
         if path.startswith('../../../bin/') and local_prefix is not None:
             script = path.removeprefix('../../../bin/')
             if (not script or '/' in script or script in ('.', '..')
@@ -97,6 +132,12 @@ def normalized_record(data: bytes, package: str, local_prefix: str | None = None
                 return None
             old_line, sep, rest = content.partition(b'\n')
             author_line = (author_shebangs or {}).get(script)
+            if (author_line is None and author_paths is not None
+                    and author_prefix == author_paths.get('origin_prefix')
+                    and old_line in (b'#!' + local_prefix.encode() + b'/bin/python',
+                                     b'#!' + local_prefix.encode() + b'/bin/python3.11')):
+                suffix = old_line.removeprefix(b'#!' + local_prefix.encode())
+                author_line = '#!' + author_prefix + suffix.decode()
             if (not sep or not old_line.startswith(b'#!' + local_prefix.encode() + b'/bin/python')
                     or old_line not in (b'#!' + local_prefix.encode() + b'/bin/python',
                                         b'#!' + local_prefix.encode() + b'/bin/python3.11')
@@ -118,13 +159,24 @@ def normalized(name: str, data: bytes, local_prefix: str, local_library: str,
                author_paths: dict, wheel_hashes: dict,
                record_hashes: dict | None = None,
                script_root: Path | None = None,
-               author_shebangs: dict | None = None) -> tuple[str, str] | None:
+               author_shebangs: dict | None = None,
+               record_script_prefix: str | None = None) -> tuple[str, str] | None:
     """Return (rule, normalized digest), or reject an inapplicable/invalid rule."""
     rule = rule_for(name)
     if rule == 'record-requested':
+        script_prefix = record_script_prefix or author_paths.get('script_prefix')
+        shebangs = author_shebangs
+        if record_script_prefix is not None:
+            original = author_paths.get('script_prefix')
+            if (not isinstance(original, str) or not isinstance(record_script_prefix, str)
+                    or not record_script_prefix.startswith('/') or not isinstance(shebangs, dict)):
+                return None
+            shebangs = {key: value.replace('#!' + original + '/bin/python',
+                                           '#!' + record_script_prefix + '/bin/python', 1)
+                        for key, value in shebangs.items()}
         result = normalized_record(data, Path(name).parent.name, local_prefix,
-                                   author_paths.get('script_prefix'), script_root,
-                                   author_shebangs)
+                                   script_prefix, script_root, shebangs,
+                                   name, local_library, author_paths)
         return (rule, sha(result)) if result is not None else None
     if rule == 'wheel-generator':
         without = without_generator(data)
@@ -132,17 +184,8 @@ def normalized(name: str, data: bytes, local_prefix: str, local_library: str,
             return None
         return rule, sha(without)
     if rule == 'text-path':
-        pairs = ((local_prefix, author_paths['prefix']),
-                 (local_library, author_paths['library_root']))
-        if any(not isinstance(a, str) or not isinstance(b, str) or not a or not b for a, b in pairs):
-            return None
-        changed = False
-        for old, new in pairs:
-            old_bytes = old.encode()
-            if old_bytes in data:
-                data = data.replace(old_bytes, new.encode())
-                changed = True
-        return (rule, sha(data)) if changed else None
+        relocated = normalized_text_path(data, local_prefix, local_library, author_paths)
+        return (rule, sha(relocated)) if relocated is not None else None
     if rule == 'binary-prefix':
         old = local_prefix.encode()
         new = author_paths['binary_prefix'].encode()
@@ -173,10 +216,19 @@ def matches(name: str, path: Path, local_sha: str, expected_sha: str,
     root = path.parents[len(parts) - 1]
     result = normalized(name, data, local_prefix, local_library, author_paths,
                         wheel_hashes, record_hashes, root, author_shebangs)
-    if result is None:
-        return None
-    rule, digest = result
-    if rule == 'wheel-generator':
-        return rule if wheel_hashes.get(name) == digest else None
+    rule = rule_for(name)
+    if result is not None and rule == 'wheel-generator':
+        return rule if wheel_hashes.get(name) == result[1] else None
     wanted = (record_hashes or {}).get(name, expected_sha) if rule == 'record-requested' else expected_sha
-    return rule if digest == wanted else None
+    if result == (rule, wanted):
+        return rule
+    if rule == 'record-requested':
+        origin = author_paths.get('origin_prefix')
+        if not isinstance(origin, str) or not origin.startswith('/'):
+            return None
+        alternate = normalized(name, data, local_prefix, local_library, author_paths,
+                               wheel_hashes, record_hashes, root, author_shebangs,
+                               record_script_prefix=origin)
+        if alternate == (rule, wanted):
+            return rule
+    return None
