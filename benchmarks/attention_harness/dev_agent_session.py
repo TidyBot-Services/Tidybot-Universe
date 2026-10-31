@@ -10,6 +10,7 @@ import signal
 import subprocess
 import threading
 from .dev_agent_workspace import atomic_write, encode
+from .dev_agent_parcc_bridge import PARCC_DEV_MODELS, ParccBridge, provider_args
 
 
 class SessionError(RuntimeError): pass
@@ -33,7 +34,7 @@ class CodexAgentSession(AgentSession):
         self.workspace,self.private=Path(workspace),Path(private)
         self.model,self.reasoning_effort=model,reasoning_effort
         self.command_factory=command_factory or controller_command
-        self.process=None;self.thread_id=None;self.turn=0;self.usage='unknown';self.cancelled=None
+        self.process=None;self.thread_id=None;self.turn=0;self.usage='unknown';self.cancelled=None;self.bridge=None
         self.state_path=self.private/'session.json'
         if self.state_path.exists():
             state=json.loads(self.state_path.read_bytes())
@@ -46,6 +47,10 @@ class CodexAgentSession(AgentSession):
         # are accepted by resume itself in 0.155.1. cwd always binds ws.
         command=list(self.command_factory(self.workspace,'-'))
         i=command.index('-m');command[i+1]=self.model
+        if self.model in PARCC_DEV_MODELS:
+            # Same Codex harness; only the provider changes (loopback bridge, key stays in the bridge).
+            if self.bridge is None:self.bridge=ParccBridge(self.private/'parcc-bridge')
+            command[i:i]=provider_args(self.bridge.base_url)
         i=next(i for i,v in enumerate(command) if v.startswith('model_reasoning_effort='))
         command[i]='model_reasoning_effort='+json.dumps(self.reasoning_effort)
         if resumed:

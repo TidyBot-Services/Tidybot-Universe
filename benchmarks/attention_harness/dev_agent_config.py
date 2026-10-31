@@ -6,6 +6,8 @@ MODELS={'gpt-6.1-sol','gpt-6-astra','gpt-6-sol'}
 DEFAULT_MODEL='gpt-6.1-sol'
 # AdvisorProxy on agent runs (10-29). Absent in older selections, which keep the fixed one-call Advisor.
 ADVISOR_MODELS={'gpt-6-astra','gpt-6.1-sol'}
+# Dev only (10-31, line GL): PARCC GLM through the loopback Responses bridge. Eval/Advisor stay Codex.
+DEV_MODELS=MODELS|{'parcc/GLM'}
 
 
 def normalize(selection, *, validation_origin=None):
@@ -30,7 +32,7 @@ def normalize(selection, *, validation_origin=None):
     version=selection.get('agent_policy_version','agent-policy-v1')
     if version not in ('agent-policy-v1','agent-policy-v2'):raise ValueError('unsupported_agent_policy_version')
     if version=='agent-policy-v2':result['agent_policy_version']=version
-    if result['dev_model'] not in MODELS or result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
+    if result['dev_model'] not in DEV_MODELS or result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
     if result['dev_reasoning_effort'] not in ('low','medium','high'):raise ValueError('unsupported_agent_effort')
     if 'advisor_model' in selection:
         if selection['advisor_model'] not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
