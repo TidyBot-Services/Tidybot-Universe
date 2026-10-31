@@ -101,6 +101,10 @@ def test_sealed_assets_and_existing_manifests_untouched():
     changed=subprocess.check_output(['git','diff','--name-only','e62021f'],text=True,cwd=ROOT).splitlines()
     fixture_rule_files={'openarm365_dev/'+name+'.py' for name in (
         'executor','planner','policy_validation','policy_worker','sandbox','world','base_motion')}
+    # Collaborator-reproducible (10-31, approved plan): owner.py drops the author's absolute
+    # PYTHONPATH entry (P3); config.py resolves the d05 pin repository-first, then the local
+    # dev trust registry (P5 spec). The author's resolved config is unchanged.
+    fixture_rule_files|={'openarm365_dev/config.py','openarm365_dev/owner.py'}
     assert not any((n.startswith('openarm365_dev/') and n not in fixture_rule_files) or 'manifest' in n.lower() for n in changed)
 
 

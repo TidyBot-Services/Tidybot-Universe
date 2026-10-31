@@ -1,5 +1,6 @@
 """Read-only cross-epoch diagnostic identity; ordinary execution stays strict."""
 import json,subprocess,os,shutil
+from benchmarks.attention_harness.legacy_paths import workspace_root
 from pathlib import Path
 import pytest
 from openarm365_dev_v2.dev_config import SIM_PYTHON,ROOT,verify_lock,validate_dev_config
@@ -27,7 +28,7 @@ def original_epoch(tmp_path_factory):
 
  # The original diagnostic epoch predates r3 and retains its legacy lock.
  code='from openarm365_dev_v2.dev_config import make_lock,make_dev_config;import json,sys;from pathlib import Path;p=Path(sys.argv[1]);ref=make_lock(p/"lock.json");(p/"config.json").write_text(json.dumps(make_dev_config("open_cabinet",101,ref,budget_tier="legacy")))'
- subprocess.run([str(SIM_PYTHON),'-B','-c',code,str(directory)],cwd=main,env=dict(os.environ,PYTHONPATH=str(main)),check=True,capture_output=True)
+ subprocess.run([str(SIM_PYTHON),'-B','-c',code,str(directory)],cwd=main,env=dict(os.environ,PYTHONPATH=str(main),ATTENTIONBENCH_WORKSPACE=str(workspace_root())),check=True,capture_output=True)
  return main,json.loads((directory/'config.json').read_text())
 
 def test_original_diagnostic_lock_remains_verified(original_epoch):
