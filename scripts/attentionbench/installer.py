@@ -16,9 +16,11 @@ import urllib.request
 import zipfile
 
 REPO = Path(__file__).resolve().parents[2]
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 LOCK = REPO / 'attentionbench.lock.json'
 TEMPLATE = REPO / 'config/attentionbench/paths.template.json'
-TRUST_MESSAGE = 'planner trust registration needs P5 (identity.py local dev trust), not implemented yet'
+TRUST_MESSAGE = 'local planner chain or protected dev trust registry is missing'
 
 
 class StepError(RuntimeError):
@@ -150,8 +152,8 @@ def bootstrap(args) -> int:
     lock = data()
     plan = ['layout', 'repos: attentionbench, robocasa365_sim, attention_memory_service, robocasa, robosuite, curobo',
             'ui-venv: Python 3.10 and pinned harness requirements', 'assets: official registry archives and 123577 SHA256 checks',
-            'sim-env: Python 3.11 simulator installer', 'curobo-env: conda explicit spec, pip pins, official source',
-            'planner: local d05/d06/dev-local chain and P5 trust gate', 'paths: all template keys',
+            'sim-env: Python 3.11 simulator installer', 'curobo-env: conda and pinned pip environment in planner chain',
+            'planner: official cuRobo env/assets/lock, d05/d06, proof, local trust, dev-local', 'paths: all template keys',
             'stores: UI, Memory, random 0600 keys.env']
     if args.dry_run:
         for line in plan:
@@ -196,19 +198,6 @@ def bootstrap(args) -> int:
         command('sim-env', [sys.executable, str(ws / 'repos/robocasa365_sim/install.py'), '--runtime-root', str(runtime), '--asset-source', str(source)])
         command('sim-env', ['uv', 'pip', 'install', '--python', str(runtime / 'venv/bin/python'), '--no-deps', '-e', str(ws / 'repos/attention_memory_service')])
     stamped(ws, 'sim-env', {'repos': [lock['repos'][x] for x in ('robocasa365_sim', 'robocasa', 'robosuite')], 'assets': lock['assets']}, args.update, sim)
-    def curobo():
-        spec = REPO / lock['curobo_env']['conda_explicit']
-        req = REPO / lock['curobo_env']['pip_requirements']
-        if digest(spec) != lock['curobo_env']['conda_explicit_sha256'] or digest(req) != lock['curobo_env']['pip_requirements_sha256']:
-            raise StepError('curobo-env', 'committed environment files differ from lock', 'Restore the pinned installer files.')
-        prefix = ws / 'envs/curobo'
-        if prefix.exists() and args.update:
-            shutil.rmtree(prefix)
-        command('curobo-env', ['conda', 'create', '--yes', '--prefix', str(prefix), '--file', str(spec)])
-        py = str(prefix / 'bin/python')
-        command('curobo-env', [py, '-m', 'pip', 'install', '-r', str(req)])
-        command('curobo-env', [py, '-m', 'pip', 'install', '--no-deps', '-e', str(ws / 'repos/curobo')])
-    stamped(ws, 'curobo-env', {'python': lock['python']['curobo'], 'repo': lock['repos']['curobo'], 'env': lock['curobo_env']}, args.update, curobo)
     write_paths(ws)
     store = ws / 'data/ui/attention.sqlite3'
     artifacts = ws / 'data/ui/artifacts'
@@ -238,8 +227,10 @@ def bootstrap(args) -> int:
     for rel in ('data/daily-experiments', 'data/robocasa365', 'deployments/openarm-dev-integration/dev-local'):
         (ws / rel).mkdir(parents=True, exist_ok=True)
     if not args.skip_planner:
-        raise StepError('planner-trust', TRUST_MESSAGE, 'Wait for reviewed P5; use --skip-planner to prepare the remaining workspace.')
-    print(f'Bootstrap complete without planner trust: {ws}')
+        from scripts.attentionbench.build_planner_chain import build as build_planner_chain
+        build_planner_chain(argparse.Namespace(workspace=str(ws), project_from=getattr(args, 'planner_project_from', None),
+                          native_assets_from=getattr(args, 'planner_native_assets_from', None), dry_run=False))
+    print(f'Bootstrap complete{" without planner" if args.skip_planner else ""}: {ws}')
     return 0
 
 
@@ -250,7 +241,7 @@ def _check(results: list, name: str, ok: bool | None, reason: str, fix: str) -> 
 def doctor(args) -> int:
     lock = data(); ws = Path(args.workspace or os.environ.get('ATTENTIONBENCH_WORKSPACE', Path.cwd())).expanduser().resolve()
     results = []
-    py = ws / 'envs/curobo/bin/python'
+    py = ws / 'envs/curobo-env/bin/python'
     probe = subprocess.run([str(py), '-c', 'import torch; print(torch.cuda.is_available())'], capture_output=True, text=True) if py.is_file() else None
     gpu_ok = bool(probe and probe.returncode == 0 and probe.stdout.strip() == 'True')
     _check(results, 'gpu', gpu_ok, 'torch CUDA available' if gpu_ok else 'GPU/driver not visible to cuRobo torch', 'Install a compatible NVIDIA driver and cuRobo env; verify torch.cuda.is_available().')
@@ -297,7 +288,7 @@ def doctor(args) -> int:
     except (OSError, ValueError):
         trusted = {}
     trusted_ok = p5 and trusted.get('schema') == 'attentionbench.curobo-v2.local-dev-trust.v1' and not trust.is_symlink() and not (trust.stat().st_mode & 0o022)
-    _check(results, 'planner-trust', trusted_ok, str(trust) if trusted_ok else TRUST_MESSAGE, 'Wait for reviewed P5 local dev trust implementation and regenerate the local trust record.')
+    _check(results, 'planner-trust', trusted_ok, str(trust) if trusted_ok else TRUST_MESSAGE, 'Run bootstrap without --skip-planner to build and register the local chain.')
     for port in (8769, 8878):
         with socket.socket() as sock:
             free = sock.connect_ex(('127.0.0.1', port)) != 0
@@ -324,7 +315,7 @@ def doctor(args) -> int:
 def main() -> int:
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest='command', required=True)
-    b = sub.add_parser('bootstrap'); b.add_argument('--workspace', required=True); b.add_argument('--assets-from'); b.add_argument('--update', action='store_true'); b.add_argument('--skip-planner', action='store_true'); b.add_argument('--dry-run', action='store_true')
+    b = sub.add_parser('bootstrap'); b.add_argument('--workspace', required=True); b.add_argument('--assets-from'); b.add_argument('--update', action='store_true'); b.add_argument('--skip-planner', action='store_true'); b.add_argument('--dry-run', action='store_true'); b.add_argument('--planner-project-from'); b.add_argument('--planner-native-assets-from')
     d = sub.add_parser('doctor'); d.add_argument('--workspace'); d.add_argument('--json', action='store_true')
     args = p.parse_args()
     try:

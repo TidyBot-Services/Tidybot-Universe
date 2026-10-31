@@ -49,7 +49,7 @@ def verify_manifest(repo, manifest):
 
 
 def build(out=DEFAULT_OUT, *, parent=PARENT, repo=REPO, manifest=None,
-          expected_parent_sha=PARENT_SHA):
+          expected_parent_sha=PARENT_SHA, expected_official_sha=OFFICIAL_SHA):
     out, parent, repo = Path(out).absolute(), Path(parent).resolve(), Path(repo).resolve()
     if out.exists() or out.is_symlink():
         raise FileExistsError('Refusing existing destination: ' + str(out))
@@ -61,7 +61,7 @@ def build(out=DEFAULT_OUT, *, parent=PARENT, repo=REPO, manifest=None,
     base = json.loads(lock_path.read_bytes())
     if (base['schema'] != 'attentionbench.curobo-v2.runtime.v1' or base['generation'] != 2
             or base['library_revision'] != OFFICIAL_COMMIT
-            or base['provenance']['parent_lock_sha256'] != OFFICIAL_SHA):
+            or base['provenance']['parent_lock_sha256'] != expected_official_sha):
         raise ValueError('Unexpected official parent identity')
     old_project = Path(base['project_root'])
     if old_project != parent / 'runtime/project':
@@ -127,7 +127,7 @@ def build(out=DEFAULT_OUT, *, parent=PARENT, repo=REPO, manifest=None,
                            for p in base['task_sources']}
     lock['provenance'] = dict(adapter_revision='deployment-06', profile='r3-20261025',
         base_adapter_lock_sha256=expected_parent_sha, parent_adapter_lock_path=str(lock_path),
-        parent_adapter_lock_sha256=expected_parent_sha, parent_lock_sha256=OFFICIAL_SHA,
+        parent_adapter_lock_sha256=expected_parent_sha, parent_lock_sha256=expected_official_sha,
         parent_lock_path=base['provenance']['parent_lock_path'],
         official_provenance=base['provenance']['official_provenance'],
         source_manifest=manifest, relocated_project_files=list(RELOCATED_YAMLS), changed_project_files=changed)
@@ -138,7 +138,7 @@ def build(out=DEFAULT_OUT, *, parent=PARENT, repo=REPO, manifest=None,
     write_json(out / 'adapter-changes.json', changes)
     write_json(out / 'runtime-lock.json', lock)
     registration = {sha(out / 'runtime-lock.json'): dict(lock_path=str(out / 'runtime-lock.json'),
-        official_commit=OFFICIAL_COMMIT, parent_sha256=OFFICIAL_SHA, derived_from_sha256=expected_parent_sha,
+        official_commit=OFFICIAL_COMMIT, parent_sha256=expected_official_sha, derived_from_sha256=expected_parent_sha,
         adapter_changes=str(out / 'adapter-changes.json'), adapter_changes_sha256=sha(out / 'adapter-changes.json'),
         allowed_tiers=['dev'], profile='r3-20261025')}
     write_json(out / 'registration.json', registration)
@@ -207,6 +207,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=DEFAULT_OUT)
     parser.add_argument('--source-manifest', type=Path)
+    parser.add_argument('--parent', type=Path, default=PARENT)
+    parser.add_argument('--repo', type=Path, default=REPO)
+    parser.add_argument('--expected-parent-sha', default=PARENT_SHA)
+    parser.add_argument('--expected-official-sha', default=OFFICIAL_SHA)
     parser.add_argument('--register', action='store_true')
     parser.add_argument('--verify-against', type=Path)
     args = parser.parse_args()
@@ -217,7 +221,9 @@ def main():
         result = register(out)
     else:
         manifest = None if args.source_manifest is None else json.loads(args.source_manifest.read_bytes())
-        result = build(out, manifest=manifest)
+        result = build(out, parent=args.parent, repo=args.repo, manifest=manifest,
+                       expected_parent_sha=args.expected_parent_sha,
+                       expected_official_sha=args.expected_official_sha)
     print(json.dumps(result, indent=2))
 
 

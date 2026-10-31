@@ -1,0 +1,10 @@
+{
+  "schema": "attentionbench.planner-proof-requests.v1",
+  "robot_config": "config/openarm_fixed.yml",
+  "env_id": "planner-chain-proof",
+  "world": {"cuboids": []},
+  "plans": [
+    {"joint_index": 0, "delta_rad": 0.02},
+    {"joint_index": 1, "delta_rad": -0.02}
+  ]
+}

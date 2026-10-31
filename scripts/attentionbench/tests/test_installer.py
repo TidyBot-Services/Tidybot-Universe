@@ -96,12 +96,16 @@ def test_keys_created_private_and_not_printed(tmp_path, monkeypatch, capsys):
     assert not any(value in output for value in values)
 
 
-def test_planner_trust_gate_is_explicit(tmp_path, monkeypatch):
+def test_bootstrap_invokes_planner_chain(tmp_path, monkeypatch):
     monkeypatch.setattr(installer, 'stamped', lambda *a: None)
     monkeypatch.setattr(installer, 'digest', lambda *a: installer.data()['assets']['runtime_manifest_sha256'])
     monkeypatch.setattr(installer, 'download_assets', lambda ws, lock: ws / 'assets')
     monkeypatch.setattr(installer, 'verify_assets', lambda *a: [])
     monkeypatch.setattr(installer, 'command', lambda *a, **kw: None)
+    from scripts.attentionbench import build_planner_chain
+    called = []
+    monkeypatch.setattr(build_planner_chain, 'build', lambda args: called.append(args))
     args = SimpleNamespace(workspace=str(tmp_path / 'workspace'), assets_from=None, update=False, skip_planner=False, dry_run=False)
-    with pytest.raises(installer.StepError, match='planner trust registration needs P5'):
-        installer.bootstrap(args)
+    assert installer.bootstrap(args) == 0
+    assert len(called) == 1
+    assert called[0].workspace == str(tmp_path / 'workspace')
