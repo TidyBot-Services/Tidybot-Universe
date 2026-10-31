@@ -46,6 +46,9 @@ def make_formal_config(task_id, seed, lock, *, attempt_wall_seconds, whole_case_
 
 
 def reject_dev_local(c):
+    if (c.get('trust_source') == 'local-dev-registry'
+            or c.get('provenance', {}).get('trust_source') == 'local-dev-registry'):
+        raise ValueError('formal boundary rejects local dev registry trust')
     if ('planner_source' in c or c.get('deployment_kind')=='dev-local'
             or c.get('planner_deployment_kind')=='dev-local'
             or c.get('provenance',{}).get('deployment_kind')=='dev-local'):
@@ -57,7 +60,9 @@ def reject_dev_local(c):
     for path in (pin.get('lock_path'),ref.get('path'),c.get('planner_lock',{}).get('path')):
         if path is not None and Path(path).is_file():
             value=json.loads(Path(path).read_bytes())
-            if value.get('planner_deployment_kind')=='dev-local' or value.get('provenance',{}).get('deployment_kind')=='dev-local':
+            if (value.get('trust_source') == 'local-dev-registry'
+                    or value.get('planner_deployment_kind')=='dev-local'
+                    or value.get('provenance',{}).get('deployment_kind')=='dev-local'):
                 raise ValueError('formal boundary rejects dev-local lock')
 
 

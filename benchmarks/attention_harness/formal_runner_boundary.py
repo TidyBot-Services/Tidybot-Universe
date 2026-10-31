@@ -60,6 +60,8 @@ class FormalRunRequest:
             raise ValueError("invalid formal entry digest")
         if self.entry_lock is not None:
             lock = dict(self.entry_lock)
+            if lock.get('trust_source') == 'local-dev-registry':
+                raise ValueError('local dev registry cannot enter formal boundary')
             digest = lock.pop("sha256", None)
             actual = hashlib.sha256(json.dumps(lock, sort_keys=True, ensure_ascii=False,
                 separators=(",", ":")).encode("utf-8")).hexdigest()
@@ -98,6 +100,16 @@ class FormalRunRequest:
                 raise ValueError("formal config source is missing")
             if hashlib.sha256(self.config_path.read_bytes()).hexdigest() != self.config_sha256:
                 raise ValueError("formal config source differs from approved digest")
+            try:
+                candidate = json.loads(self.config_path.read_bytes())
+            except (UnicodeError, ValueError):
+                candidate = None
+            if (isinstance(candidate, dict)
+                    and (candidate.get('trust_source') == 'local-dev-registry'
+                         or any(isinstance(candidate.get(name), dict)
+                                and candidate[name].get('trust_source') == 'local-dev-registry'
+                                for name in ('dev_lock', 'planner_lock')))):
+                raise ValueError('local dev registry cannot enter formal boundary')
             if self.entry_lock is not None and self.suite == 'robocasa365':
                 config=json.loads(self.config_path.read_bytes())
                 from openarm365_dev_v2.formal_config import reject_dev_local
@@ -120,6 +132,8 @@ def run_with_formal_boundary(
     if runner is None or runner.suite != request.suite:
         raise RuntimeError("no suite-matched formal runner registered")
     result = runner.execute(request)
+    if isinstance(result, dict) and result.get('trust_source') == 'local-dev-registry':
+        raise RuntimeError('local dev registry cannot enter formal comparison')
     if request.entry_lock is not None and result.get('deployment_kind')=='dev-local':raise RuntimeError('dev-local execution cannot enter formal comparison')
     if request.entry_lock is not None and (result.get('dev_tier_budget') or result.get('diagnostic_budget_override')):
         raise RuntimeError('scaled development execution cannot enter formal comparison')

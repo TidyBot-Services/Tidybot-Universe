@@ -110,7 +110,10 @@ def make_lock(path, *, execution_settings=None, planner_source=None):
     value={'model_sources':models,'schema':'attentionbench.dev-identity-lock.v2','source_root':str(ROOT),'source_sets':{str(ROOT/f):sorted(str(p.absolute()) for p in (ROOT/f).rglob('*.py') if '__pycache__' not in p.parts) for f in ['openarm365_dev_v2','openarm365_dev','openarm365','curobo_v2']},'files':{str(p.absolute()):sha(p) for p in sorted(set(files))},'planner_lock':{'path':str(planner_path),'sha256':planner_sha},'sim_python':str(SIM_PYTHON),'sim_source_root':str(ROBocasa),'task_source_root':str(ROBOSUITE),'asset_manifest':str(ASSETS),'formal_eligible':False}
     if execution_settings is not None:
         from curobo_v2.execution_settings import receipt_fields
-        if receipt_fields(execution_settings).get('deployment_kind')=='dev-local':value['planner_deployment_kind']='dev-local'
+        labels = receipt_fields(execution_settings)
+        if labels.get('deployment_kind')=='dev-local':value['planner_deployment_kind']='dev-local'
+        if labels.get('trust_source') == 'local-dev-registry':
+            value['trust_source'] = 'local-dev-registry'
     path.parent.mkdir(parents=True,exist_ok=True)
     with path.open('x') as f:json.dump(value,f,sort_keys=True,indent=2)
     path.chmod(0o444)

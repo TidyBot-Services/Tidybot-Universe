@@ -8,7 +8,7 @@ from .identity import IdentityError,digest
 
 def preserve_runtime(lock_path,lock,directory):
     directory=Path(directory);raw=Path(lock_path).read_bytes()
-    if json.loads(raw)!=lock:raise IdentityError('Runtime lock changed before evidence capture')
+    if json.loads(raw)!={k: v for k, v in lock.items() if k != 'trust_source'}:raise IdentityError('Runtime lock changed before evidence capture')
     (directory/'runtime-lock.json').write_bytes(raw)
     root=Path(lock['project_root'])
     archive=directory/'runtime-project-source.zip'
@@ -20,7 +20,10 @@ def preserve_runtime(lock_path,lock,directory):
                 if hashlib.sha256(data).hexdigest()!=expected:
                     raise IdentityError('Source changed during runtime evidence capture: '+name)
                 output.writestr(str(path.relative_to(root)),data)
+    labels = ({'trust_source': 'local-dev-registry', 'formal_eligible': False,
+               'deployment_kind': 'dev-local'} if lock.get('trust_source') == 'local-dev-registry' else {})
     (directory/'runtime-evidence.json').write_text(json.dumps(dict(
         lock_sha256=hashlib.sha256(raw).hexdigest(),project_source_sha256=digest(archive),
         project_root=str(root),library_revision=lock['library_revision'],
-        assets='Complete immutable assets and dependencies bound by runtime-lock.json; project Python/config source archived'),indent=2)+'\n')
+        assets='Complete immutable assets and dependencies bound by runtime-lock.json; project Python/config source archived',
+        **labels),indent=2)+'\n')

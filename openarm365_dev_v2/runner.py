@@ -177,6 +177,8 @@ class OpenArm365DevRunnerV2:
                 'deadline_enforced':True,'action_cancellation_verified':cleanup['leader_reaped'] and cleanup['process_group_gone'] and cleanup['planner_process_groups_gone']},
             artifact_dir=str(episode.resolve()),artifacts=artifacts,recording=recording,scene_condition=ready.get('scene_condition') if attested else None)
         if execution_labels.get('deployment_kind')=='dev-local':result.update(deployment_kind='dev-local',planner_lock_sha256=execution_labels['planner_lock_sha256'])
+        if execution_labels.get('trust_source') == 'local-dev-registry':
+            result.update(trust_source='local-dev-registry', deployment_kind='dev-local', formal_eligible=False)
         if override:result['diagnostic_budget_override']=override
         if tier:result['dev_tier_budget']=tier
         write(episode/'result.json',result);return result

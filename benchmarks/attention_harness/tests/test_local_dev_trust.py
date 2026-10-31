@@ -1,0 +1,253 @@
+"""Local trust accepts only a content-matched, path-bound development chain."""
+import copy
+import json
+from pathlib import Path
+
+import pytest
+
+from curobo_v2 import identity as auth
+
+
+def write(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, sort_keys=True))
+    return auth.digest(path)
+
+
+@pytest.fixture
+def chain(tmp_path, monkeypatch):
+    official = tmp_path / 'official'; official.mkdir()
+    source = official / 'curobo/__init__.py'; source.parent.mkdir(); source.write_text('official\n')
+    prefix = tmp_path / 'prefix'; prefix.mkdir()
+    dep = prefix / 'numpy/__init__.py'; dep.parent.mkdir(); dep.write_text('numpy\n')
+    host = tmp_path / 'libcuda.so'; host.write_text('cuda')
+    libc = tmp_path / 'libc.so.6'; libc.write_text('libc')
+    assets = tmp_path / 'assets'; assets.mkdir()
+    asset = assets / 'robot.dat'; asset.write_text('robot')
+    manifest = tmp_path / 'native.json'
+    native = {'files': [{'relative': 'robot.dat', 'sha256': auth.digest(asset)}]}
+    write(manifest, native)
+    project = tmp_path / 'parent/runtime/project'; project.mkdir(parents=True)
+    project_file = project / 'adapter.py'; project_file.write_text('parent')
+    outside = {str(p): auth.digest(p) for p in (source, dep, manifest)}
+    parent = dict(schema='attentionbench.curobo-v2.runtime.v1', generation=2,
+        official_only=True, library_revision=auth.OFFICIAL_COMMIT, library_base=auth.OFFICIAL_COMMIT,
+        library_root=str(official), prefix=str(prefix), python=str(prefix / 'bin/python'),
+        project_root=str(project), service_root=str(project), assets_root=str(project),
+        files={**outside, str(project_file): auth.digest(project_file)},
+        dependencies={'numpy': {'path': str(dep), 'sha256': auth.digest(dep)}},
+        distributions={'numpy': '1'}, distribution_version='1', module_version='1',
+        robot_configs={}, task_sources={}, provenance={},
+        native_assets={'manifest': str(manifest), 'manifest_sha256': auth.digest(manifest)},
+        native_host_dependencies={str(host): auth.digest(host), str(libc): auth.digest(libc)})
+    parent_path = tmp_path / 'parent/runtime-lock.json'; parent_sha = write(parent_path, parent)
+    locks = {}
+    for name in ('d05', 'd06'):
+        path = tmp_path / name / 'runtime-lock.json'
+        local_project = path.parent / 'runtime/project'; local_project.mkdir(parents=True)
+        local_file = local_project / 'adapter.py'; local_file.write_text(name)
+        lock = copy.deepcopy(parent)
+        lock.update(project_root=str(local_project), service_root=str(local_project), assets_root=str(local_project),
+                    files={**outside, str(local_file): auth.digest(local_file)},
+                    provenance={'parent_lock_path': str(parent_path), 'parent_lock_sha256': parent_sha,
+                                'adapter_revision': 'deployment-06' if name == 'd06' else 'deployment-05'})
+        locks[name] = (path, lock)
+    d05_path, d05 = locks['d05']; d05_sha = write(d05_path, d05)
+    d06_path, d06 = locks['d06']; d06['provenance']['parent_adapter_lock_sha256'] = d05_sha
+    d06['provenance']['parent_adapter_lock_path'] = str(d05_path)
+    d06_sha = write(d06_path, d06)
+    official_manifests = tmp_path / 'manifests'; official_manifests.mkdir()
+    write(official_manifests / 'curobo-78fd485-source.json', {'curobo/__init__.py': auth.digest(source)})
+    write(official_manifests / 'r12-distributions.json', {'numpy': '1'})
+    write(official_manifests / 'r12-dependencies.json', {'numpy': {'path': 'numpy/__init__.py', 'sha256': auth.digest(dep)}})
+    write(official_manifests / 'r12-prefix-files.json', {'numpy/__init__.py': auth.digest(dep)})
+    write(official_manifests / 'r12-native-assets.json', {'robot.dat': auth.digest(asset)})
+    write(official_manifests / 'allowed-path-files.json', [])
+    registry = tmp_path / 'local-dev-trust.json'
+    data = {'schema': 'attentionbench.curobo-v2.local-dev-trust.v1',
+            'official_commit': auth.OFFICIAL_COMMIT,
+            'official_parent': {'lock_path': str(parent_path), 'sha256': parent_sha},
+            'chain': {'d05': {'lock_path': str(d05_path), 'sha256': d05_sha},
+                      'd06': {'lock_path': str(d06_path), 'sha256': d06_sha,
+                              'derived_from_sha256': d05_sha, 'profile': 'r3-20261025'}},
+            'dev_local_root': str(tmp_path / 'snapshots'),
+            'build_proof': {'request_set_sha256': 'a'*64, 'result_sha256': 'b'*64, 'passed': True}}
+    write(registry, data); registry.chmod(0o444)
+    repo = tmp_path / 'repository.json'; write(repo, {})
+    monkeypatch.setattr(auth, 'DEPLOYMENT_REGISTRY', repo)
+    monkeypatch.setattr(auth, 'OFFICIAL_MANIFESTS', official_manifests)
+    monkeypatch.setattr(auth, '_local_registry_path', lambda: registry)
+    monkeypatch.setattr(auth, '_local_registry_digest', None)
+    monkeypatch.setattr(auth, '_registry_digest', None)
+    return dict(registry=registry, data=data, source=source, host=host,
+                d05=(d05_path, d05), d06=(d06_path, d06), parent=parent_path, tmp=tmp_path)
+
+
+def accepted(chain):
+    return auth.load_lock(chain['d06'][0], tier='dev', boundary='dev_loop')
+
+
+def test_valid_chain_and_author_pin_unchanged(chain):
+    lock, sha = accepted(chain)
+    assert lock['trust_source'] == 'local-dev-registry'
+    assert sha == chain['data']['chain']['d06']['sha256']
+    from curobo_v2.execution_settings import R3_20261025, receipt_fields
+    labels = receipt_fields(R3_20261025)
+    assert labels['trust_source'] == 'local-dev-registry'
+    assert labels['formal_eligible'] is False
+
+
+def test_builder_verifies_before_writing_readonly_registry(chain):
+    from scripts.attentionbench.register_local_dev_trust import register
+    path = chain['registry']
+    path.unlink()
+    proof = chain['tmp'] / 'proof.json'
+    write(proof, {'request_set_sha256': 'a'*64, 'result_sha256': 'b'*64, 'passed': False})
+    with pytest.raises(ValueError, match='failed local identity'):
+        register(chain['parent'], chain['d05'][0], chain['d06'][0], chain['data']['dev_local_root'], proof)
+    assert not path.exists()
+    write(proof, {'request_set_sha256': 'a'*64, 'result_sha256': 'b'*64, 'passed': True})
+    assert register(chain['parent'], chain['d05'][0], chain['d06'][0], chain['data']['dev_local_root'], proof) == path
+    assert path.stat().st_mode & 0o777 == 0o444
+    assert accepted(chain)[0]['trust_source'] == 'local-dev-registry'
+
+
+def test_local_dev_snapshot_inherits_tag_and_stays_dev_only(chain):
+    from curobo_v2.dev_local import _key
+    base_path, base = chain['d06']
+    base_sha = auth.digest(base_path)
+    source_manifest = {'adapter.py': 'a'*64}
+    key = _key(base_sha, source_manifest)
+    out = Path(chain['data']['dev_local_root']) / key
+    project = out / 'runtime/project'; project.mkdir(parents=True)
+    adapter = project / 'adapter.py'; adapter.write_text('snapshot')
+    snapshot = copy.deepcopy(base)
+    snapshot['project_root'] = str(project)
+    snapshot['service_root'] = str(project)
+    snapshot['assets_root'] = str(project)
+    snapshot['files'] = {name: sha for name, sha in base['files'].items()
+                         if not Path(name).is_relative_to(base['project_root'])}
+    snapshot['files'][str(adapter)] = auth.digest(adapter)
+    snapshot['provenance'] = {'deployment_kind': 'dev-local', 'formal_eligible': False,
+        'snapshot_key': key, 'source_manifest': source_manifest,
+        'base_deployment_lock_path': str(base_path), 'base_deployment_lock_sha256': base_sha}
+    path = out / 'runtime-lock.json'; write(path, snapshot)
+    result, _ = auth.load_lock(path, tier='dev', boundary='dev_loop')
+    assert result['trust_source'] == 'local-dev-registry'
+    assert result['provenance']['deployment_kind'] == 'dev-local'
+    from curobo_v2.evidence import preserve_runtime
+    evidence = chain['tmp'] / 'evidence'; evidence.mkdir()
+    preserve_runtime(path, result, evidence)
+    assert json.loads((evidence / 'runtime-evidence.json').read_bytes())['trust_source'] == 'local-dev-registry'
+    with pytest.raises(auth.IdentityError, match='Unapproved'):
+        auth.load_lock(path, tier='formal', boundary='formal')
+
+
+@pytest.mark.parametrize('tier,boundary', [('formal','formal'), ('dev','formal'), ('dev','dev'), (None,None)])
+def test_only_dev_loop(chain, tier, boundary):
+    with pytest.raises(auth.IdentityError, match='Unapproved'):
+        auth.load_lock(chain['d06'][0], tier=tier, boundary=boundary)
+
+
+def test_source_mutation_rejected(chain):
+    chain['source'].write_text('changed')
+    with pytest.raises(auth.IdentityError, match='Unapproved'): accepted(chain)
+
+
+@pytest.mark.parametrize('change', ['new_package', 'version'])
+def test_distributions_rejected(chain, change):
+    parent = json.loads(chain['parent'].read_bytes())
+    if change == 'new_package': parent['distributions']['other'] = '1'
+    else: parent['distributions']['numpy'] = '2'
+    assert auth._official_content(parent) is False
+    path, lock = chain['d06']
+    if change == 'new_package': lock['distributions']['other'] = '1'
+    else: lock['distributions']['numpy'] = '2'
+    write(path, lock)
+    chain['data']['chain']['d06']['sha256'] = auth.digest(path)
+    chain['registry'].chmod(0o644); write(chain['registry'], chain['data']); chain['registry'].chmod(0o444)
+    with pytest.raises(auth.IdentityError, match='Unapproved'): accepted(chain)
+
+
+@pytest.mark.parametrize('change', ['writable', 'symlink', 'midprocess'])
+def test_registry_integrity(chain, change):
+    accepted(chain)
+    path = chain['registry']
+    if change == 'writable': path.chmod(0o664)
+    elif change == 'symlink':
+        path.rename(path.with_suffix('.real'))
+        path.symlink_to(path.with_suffix('.real'))
+    else:
+        path.chmod(0o644); chain['data']['created_at'] = 'changed'; write(path, chain['data']); path.chmod(0o444)
+    with pytest.raises(auth.IdentityError, match='changed' if change == 'midprocess' else 'Unapproved'):
+        accepted(chain)
+
+
+def test_derived_outside_change_and_unregistered_path(chain):
+    path, lock = chain['d06']
+    outside = next(iter(lock['files']))
+    lock['files'][outside] = '0'*64
+    write(path, lock)
+    chain['data']['chain']['d06']['sha256'] = auth.digest(path)
+    chain['registry'].chmod(0o644); write(chain['registry'], chain['data']); chain['registry'].chmod(0o444)
+    with pytest.raises(auth.IdentityError, match='Unapproved'): accepted(chain)
+    original = chain['d05'][0]
+    moved = chain['tmp'] / 'other.json'; moved.write_bytes(original.read_bytes())
+    with pytest.raises(auth.IdentityError, match='Unapproved'):
+        auth.load_lock(moved, tier='dev', boundary='dev_loop')
+
+
+def test_host_dependency_drift_keeps_runtime_error(chain, monkeypatch):
+    lock, _ = accepted(chain)
+    monkeypatch.setattr(auth.sys, 'prefix', lock['prefix'])
+    monkeypatch.setattr(auth.sys, 'base_prefix', lock['prefix'])
+    monkeypatch.setattr(auth.sys, 'executable', lock['python'])
+    monkeypatch.setattr(auth.importlib.util, 'find_spec', lambda name: type('Spec', (), {'origin': str(Path(lock['library_root']) / 'curobo/__init__.py')})())
+    monkeypatch.setattr(auth, '_distributions', lambda: {})
+    monkeypatch.setattr(auth, 'verify_files', lambda lock: None)
+    chain['host'].write_text('changed')
+    with pytest.raises(auth.IdentityError, match='Native host dependency changed'):
+        auth.verify_runtime(lock)
+
+
+def test_formal_config_rejects_local_tag(chain):
+    from openarm365_dev_v2.formal_config import reject_dev_local
+    lock, _ = accepted(chain)
+    with pytest.raises(ValueError, match='local dev registry'):
+        reject_dev_local({'trust_source': lock['trust_source']})
+
+
+def test_formal_runner_rejects_local_tag(chain):
+    from benchmarks.attention_harness.formal_runner_boundary import FormalRunRequest, run_with_formal_boundary
+    policy = chain['tmp'] / 'policy.py'; policy.write_text('pass\n')
+    request = FormalRunRequest(suite='robosuite', task_id='task', seed=1,
+        policy_code_path=policy, policy_sha256=auth.digest(policy), config_sha256='a'*64,
+        artifact_root=chain['tmp'], overall_deadline_seconds=1)
+    runner = type('Runner', (), {'suite': 'robosuite', 'execute': lambda self, request: {'trust_source': 'local-dev-registry'}})()
+    with pytest.raises(RuntimeError, match='local dev registry'):
+        run_with_formal_boundary(request, runner=runner)
+    config = chain['tmp'] / 'config.json'; write(config, {'trust_source': 'local-dev-registry'})
+    from dataclasses import replace
+    tagged_request = replace(request, config_path=config, config_sha256=auth.digest(config))
+    with pytest.raises(ValueError, match='local dev registry'):
+        run_with_formal_boundary(tagged_request, runner=runner)
+
+
+def test_real_author_locks_keep_paths_and_digests():
+    from curobo_v2.execution_settings import D05_SHA, D06_LOCK
+    from curobo_v2.dev_local import DEV_LOCAL_ROOT
+    from openarm365_dev.config import LOCK, LOCK_SHA
+    if not LOCK.is_file() or not Path(D06_LOCK).is_file():
+        pytest.skip('Author d05/d06 locks are absent on this machine')
+    five, five_sha = auth.load_lock(LOCK, tier='dev', boundary='dev_loop')
+    six, six_sha = auth.load_lock(D06_LOCK, tier='dev', boundary='dev_loop')
+    assert five_sha == LOCK_SHA == D05_SHA and six_sha == auth.digest(Path(D06_LOCK))
+    assert 'trust_source' not in five and 'trust_source' not in six
+    if not DEV_LOCAL_ROOT.is_dir():
+        pytest.skip('Author dev-local snapshot root is absent on this machine')
+    snapshots = list(DEV_LOCAL_ROOT.glob('*/runtime-lock.json'))
+    if not snapshots:
+        pytest.skip('Author dev-local lock is absent on this machine')
+    for path in snapshots:
+        lock, sha = auth.load_lock(path, tier='dev', boundary='dev_loop')
+        assert sha == auth.digest(path) and 'trust_source' not in lock

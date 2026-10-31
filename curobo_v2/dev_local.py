@@ -17,6 +17,25 @@ MUTABLE = {'project_root','service_root','assets_root','files','robot_configs','
 sha = identity.digest
 
 
+def _snapshot_root():
+    """Keep the author's registered snapshot path; use local root for local d06."""
+    from .local_dev_trust import dev06_pin
+    from .execution_settings import D06_LOCK
+    try:
+        pin = dev06_pin()
+    except ValueError as exc:
+        raise ValueError('Base must be a registered deployment') from exc
+    if pin['lock_path'] == D06_LOCK:
+        return DEV_LOCAL_ROOT
+    registry = identity._local_registry()
+    if registry is None:
+        raise ValueError('Local snapshot root unavailable')
+    root = Path(registry['dev_local_root'])
+    if not root.is_absolute() or not _unlinked(root):
+        raise ValueError('Unsafe local snapshot root')
+    return root
+
+
 def source_names(repo):
     """Tracked project files plus new runtime Python and focused regression files.
 
@@ -83,7 +102,8 @@ def verify_snapshot(lock_path, lock, lock_sha):
         p = lock['provenance']
         key = _key(p['base_deployment_lock_sha256'], p['source_manifest'])
         path = Path(lock_path)
-        out = DEV_LOCAL_ROOT / key
+        root = _snapshot_root()
+        out = root / key
         if (not is_dev_local(lock) or p['formal_eligible'] is not False
                 or p['snapshot_key'] != key or not _unlinked(path)
                 or path.resolve() != (out / 'runtime-lock.json').resolve()
@@ -95,8 +115,8 @@ def verify_snapshot(lock_path, lock, lock_sha):
         base_sha = hashlib.sha256(raw).hexdigest()
         if (base_sha != p['base_deployment_lock_sha256'] or is_dev_local(base)
                 or base_sha in identity.TRUSTED_LOCKS
-                or base_sha not in json.loads(identity.DEPLOYMENT_REGISTRY.read_bytes())
-                or not identity._registered_deployment(base, base_sha, base_path, tier='dev', boundary='dev_loop')):
+                or not (identity._registered_deployment(base, base_sha, base_path, tier='dev', boundary='dev_loop')
+                        or identity._locally_trusted_dev(base, base_sha, base_path, 'dev', 'dev_loop'))):
             return False
         if set(lock) != set(base) or any(lock[k] != base[k] for k in base.keys()-MUTABLE):
             return False
@@ -133,10 +153,17 @@ def materialize(source_root):
     if not repo.is_absolute() or not repo.is_dir() or not _unlinked(repo):
         raise ValueError('source_root must be an absolute unlinked directory')
     repo = repo.resolve()
-    base_path = Path(D06_LOCK)
+    from .local_dev_trust import dev06_pin
+    try:
+        pin = dev06_pin()
+    except ValueError as exc:
+        raise ValueError('Base must be a registered deployment') from exc
+    base_path = Path(pin['lock_path'])
     base, base_sha = identity.load_lock(base_path, tier='dev', boundary='dev_loop')
+    base = {k: v for k, v in base.items() if k != 'trust_source'}
     if (is_dev_local(base) or base_sha in identity.TRUSTED_LOCKS
-            or base_sha not in json.loads(identity.DEPLOYMENT_REGISTRY.read_bytes())):
+            or not (identity._registered_deployment(base, base_sha, base_path, tier='dev', boundary='dev_loop')
+                    or identity._locally_trusted_dev(json.loads(base_path.read_bytes()), base_sha, base_path, 'dev', 'dev_loop'))):
         raise ValueError('Base must be a registered deployment')
     parent, old_project = base_path.parent, Path(base['project_root'])
     if old_project != parent / 'runtime/project':
@@ -149,11 +176,12 @@ def materialize(source_root):
         if not _unlinked(repo / name):
             raise ValueError('Unsafe source manifest path: ' + name)
     key = _key(base_sha, manifest)
-    out = DEV_LOCAL_ROOT / key
-    DEV_LOCAL_ROOT.mkdir(parents=True, exist_ok=True)
-    if not _unlinked(DEV_LOCAL_ROOT):
+    root = _snapshot_root()
+    out = root / key
+    root.mkdir(parents=True, exist_ok=True)
+    if not _unlinked(root):
         raise ValueError('Symlinks prohibited in snapshot root')
-    guard_path = DEV_LOCAL_ROOT / ('.lock-' + key)
+    guard_path = root / ('.lock-' + key)
     if guard_path.is_symlink():raise ValueError('Linked snapshot guard')
     with guard_path.open('a') as guard:
         fcntl.flock(guard, fcntl.LOCK_EX)
@@ -166,7 +194,7 @@ def materialize(source_root):
             if receipt != lock['provenance']:
                 raise ValueError('Snapshot receipt changed')
         else:
-            temp = DEV_LOCAL_ROOT / ('.tmp-' + key + '-' + str(os.getpid()))
+            temp = root / ('.tmp-' + key + '-' + str(os.getpid()))
             temp.mkdir()
             try:
                 project = temp / 'runtime/project'

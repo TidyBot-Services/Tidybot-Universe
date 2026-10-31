@@ -10,6 +10,8 @@ LOCK_SHA='0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0'
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 def make_config():
+    from curobo_v2.local_dev_trust import dev05_pin
+    pin = dev05_pin()
     from openarm365.config import make_config as base
     from .environment import initial_joints
     c=copy.deepcopy(base('pick_place_counter_to_sink'))
@@ -19,13 +21,17 @@ def make_config():
         execution_controller_input='absolute',reset_controller_input='delta',global_random_seed=101,
         gripper_command_endpoints_m=[.001,.043],formal_eligible=False,contact_exempt_objects='none',
         held_reference_mode='fixed',
-        planner_lock={'path':str(LOCK),'sha256':LOCK_SHA})
+        planner_lock={'path':pin['lock_path'],'sha256':pin['sha256']})
+    if pin != {'lock_path': str(LOCK), 'sha256': LOCK_SHA}:
+        c['trust_source'] = 'local-dev-registry'
     c['dev_adapter_sources']={str(p.resolve()):sha(p) for p in sorted(Path(__file__).parent.glob('*.py'))}
     return c
 
 def validate_config(c):
     if not isinstance(c,dict) or c!=make_config():raise ValueError('OpenArm365 dual dev frozen configuration mismatch')
-    if sha(LOCK)!=LOCK_SHA:raise ValueError('OpenArm365 authenticated planner lock drift')
+    from curobo_v2.local_dev_trust import dev05_pin
+    pin = dev05_pin()
+    if sha(pin['lock_path'])!=pin['sha256']:raise ValueError('OpenArm365 authenticated planner lock drift')
     from openarm365.config import make_config as base,validate_config as validate_base
     validate_base(base('pick_place_counter_to_sink'))
     return c

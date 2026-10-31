@@ -20,6 +20,7 @@ D05_SHA = '0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0'
 
 def _deployment_pin():
     from . import identity
+    from .local_dev_trust import dev06_pin, dev05_pin
     if identity._service_context is not None:
         lock, _ = identity.require_service_context()
         path = Path(lock['project_root']).parent.parent / 'runtime-lock.json'
@@ -28,30 +29,23 @@ def _deployment_pin():
             actual, lock_sha = identity.load_lock(path, tier='dev', boundary='dev_loop')
             if actual != lock:raise ValueError('planner_deployment: service lock changed')
             return dict(lock_path=str(path), sha256=lock_sha)
-        if (str(path) != D06_LOCK or lock.get('provenance', {}).get('adapter_revision') != 'deployment-06'
-                or lock['provenance'].get('parent_adapter_lock_sha256') != D05_SHA):
+        if str(path) == D06_LOCK:
+            expected_sha = D05_SHA
+        else:
+            pin = dev06_pin()
+            expected_sha = dev05_pin()['sha256']
+            if str(path) != pin['lock_path']:
+                raise ValueError('planner_deployment: service is not deployment-06')
+        if (lock.get('provenance', {}).get('adapter_revision') != 'deployment-06'
+                or lock['provenance'].get('parent_adapter_lock_sha256') != expected_sha):
             raise ValueError('planner_deployment: service is not deployment-06')
         raw = path.read_bytes()
-        if json.loads(raw) != lock:
+        if json.loads(raw) != {k: v for k, v in lock.items() if k != 'trust_source'}:
             raise ValueError('planner_deployment: service lock changed')
         return dict(lock_path=str(path), sha256=hashlib.sha256(raw).hexdigest())
     try:
-        raw = identity.DEPLOYMENT_REGISTRY.read_bytes()
-        digest = hashlib.sha256(raw).hexdigest()
-        if identity._registry_digest is not None and digest != identity._registry_digest:
-            raise identity.IdentityError('Deployment trust policy changed during this process')
-        matches = [(sha, entry) for sha, entry in json.loads(raw).items()
-                   if entry.get('profile') == PROFILE and entry.get('allowed_tiers') == ['dev']]
-        if len(matches) != 1:
-            raise ValueError('planner_deployment: exactly one registered deployment-06 required')
-        sha, entry = matches[0]
-        if entry.get('lock_path') != D06_LOCK or entry.get('derived_from_sha256') != D05_SHA:
-            raise ValueError('planner_deployment: only deployment-06 derived from deployment-05 is accepted')
-        _, actual = identity.load_lock(D06_LOCK, tier='dev', boundary='dev_loop')
-        if actual != sha:
-            raise ValueError('planner_deployment.sha256: registered lock mismatch')
-        return dict(lock_path=D06_LOCK, sha256=sha)
-    except (OSError, KeyError, TypeError) as exc:
+        return dev06_pin()
+    except (OSError, KeyError, TypeError, ValueError) as exc:
         raise ValueError('planner_deployment: build and register deployment-06 first') from exc
 
 
@@ -264,4 +258,11 @@ def receipt_fields(settings=LEGACY, *, include_legacy=False):
             lock, actual = load_lock(path, tier='dev', boundary='dev_loop')
             if actual != settings.planner_deployment['sha256']:raise ValueError('planner_deployment.sha256: mismatch')
             value.update(deployment_kind='dev-local', formal_eligible=False)
+    from .identity import load_lock
+    path = settings.planner_deployment['lock_path']
+    lock, _ = load_lock(path, tier='dev', boundary='dev_loop')
+    if lock.get('trust_source') == 'local-dev-registry':
+        value.update(trust_source='local-dev-registry', formal_eligible=False)
+        if lock.get('provenance', {}).get('deployment_kind') == 'dev-local':
+            value['deployment_kind'] = 'dev-local'
     return value

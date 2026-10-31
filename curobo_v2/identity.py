@@ -25,6 +25,178 @@ TRUSTED_LOCKS = {'207d7e82a716cd8dd71a1f6ba56fe3843edf365a913065ab937a2423812839
 DEPLOYMENT_REGISTRY = Path(__file__).resolve().with_name('trusted_deployments.json')
 OFFICIAL_PARENT_LOCK = Path('/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/revisions/r12/runtime-lock.json')
 _registry_digest = None
+_local_registry_digest = None
+OFFICIAL_MANIFESTS = Path(__file__).resolve().with_name('official')
+
+
+def _local_registry_path():
+    try:
+        from benchmarks.attention_harness.workspace_paths import get
+        return get('planner.local_dev_trust')
+    except (OSError, ValueError, RuntimeError, KeyError):
+        return None
+
+
+def _local_registry():
+    """Read a protected local policy; absence is not an approval."""
+    global _local_registry_digest
+    path = _local_registry_path()
+    if path is None or not path.is_absolute():
+        return None
+    try:
+        if (any(part.is_symlink() for part in (path, *path.parents))
+                or not path.is_file()):
+            return None
+        stat = path.stat()
+        raw = path.read_bytes()
+        current = hashlib.sha256(raw).hexdigest()
+        if _local_registry_digest is not None and current != _local_registry_digest:
+            raise IdentityError('Local dev trust policy changed during this process')
+        if stat.st_uid != os.getuid() or stat.st_mode & 0o022:
+            return None
+        value = json.loads(raw)
+        if (not isinstance(value, dict)
+                or value.get('schema') != 'attentionbench.curobo-v2.local-dev-trust.v1'
+                or value.get('official_commit') != OFFICIAL_COMMIT):
+            return None
+        _local_registry_digest = current
+        return value
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _local_entry(registry, *keys):
+    value = registry
+    for key in keys:
+        value = value[key]
+    path = Path(value['lock_path'])
+    if (not path.is_absolute() or any(p.is_symlink() for p in (path, *path.parents))
+            or len(value['sha256']) != 64 or any(c not in '0123456789abcdef' for c in value['sha256'])):
+        raise ValueError('Invalid local lock entry')
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != value['sha256']:
+        raise ValueError('Local lock digest mismatch')
+    return json.loads(raw), value['sha256'], path
+
+
+def _portable_files(lock, root):
+    root = Path(root)
+    if not root.is_absolute() or not isinstance(lock['files'], dict):
+        raise ValueError('Invalid portable file root')
+    result = {}
+    for name, sha in lock['files'].items():
+        path = Path(name)
+        if path.is_relative_to(root):
+            relative = path.relative_to(root)
+            if (not relative.parts or '..' in relative.parts or not isinstance(sha, str)):
+                raise ValueError('Invalid portable file entry')
+            result[str(relative)] = sha
+    return result
+
+
+def _official_content(parent):
+    if (parent.get('official_only') is not True
+            or parent.get('library_revision') != OFFICIAL_COMMIT
+            or parent.get('library_base') != OFFICIAL_COMMIT):
+        return False
+    def manifest(name):
+        return json.loads((OFFICIAL_MANIFESTS / name).read_bytes())
+    source = _portable_files(parent, parent['library_root'])
+    if source != manifest('curobo-78fd485-source.json'):
+        return False
+    if any(digest(Path(parent['library_root']) / name) != expected for name, expected in source.items()):
+        return False
+    if parent['distributions'] != manifest('r12-distributions.json'):
+        return False
+    prefix = Path(parent['prefix'])
+    dependencies = {name: {'path': str(Path(item['path']).relative_to(prefix)),
+                           'sha256': item['sha256']}
+                    for name, item in parent['dependencies'].items()}
+    allowed = manifest('allowed-path-files.json')
+    if not isinstance(allowed, list) or any(not isinstance(p, str) for p in allowed):
+        return False
+    expected_deps = manifest('r12-dependencies.json')
+    if (set(dependencies) != set(expected_deps)
+            or any(actual['path'] != expected_deps[name]['path']
+                   or actual['sha256'] != expected_deps[name]['sha256']
+                   and actual['path'] not in allowed for name, actual in dependencies.items())):
+        return False
+    actual_prefix = _portable_files(parent, prefix)
+    expected_prefix = manifest('r12-prefix-files.json')
+    if (set(actual_prefix) != set(expected_prefix)
+            or any(actual_prefix[name] != expected_prefix[name] and name not in allowed
+                   for name in actual_prefix)):
+        return False
+    native = parent['native_assets']
+    path = Path(native['manifest'])
+    if (not path.is_absolute() or digest(path) != native['manifest_sha256']):
+        return False
+    entries = json.loads(path.read_bytes())['files']
+    assets = {item['relative']: item['sha256'] for item in entries}
+    expected = manifest('r12-native-assets.json')
+    if expected.get('format') == 'canonical-relative-path-sha256-v1':
+        encoded = json.dumps(assets, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
+        if len(assets) != expected['count'] or hashlib.sha256(encoded).hexdigest() != expected['sha256']:
+            return False
+    elif assets != expected:
+        return False
+    host = parent['native_host_dependencies']
+    if (not isinstance(host, dict) or not host
+            or not any('libcuda' in name for name in host)
+            or not any('libc.so.6' in name for name in host)):
+        return False
+    return True
+
+
+def _derived_from_parent(lock, parent):
+    mutable = {'project_root','service_root','assets_root','files','robot_configs','task_sources','provenance'}
+    if set(lock) != set(parent) or any(lock[k] != parent[k] for k in parent.keys()-mutable):
+        return False
+    outside = {k:v for k,v in parent['files'].items() if not Path(k).is_relative_to(parent['project_root'])}
+    actual = {k:v for k,v in lock['files'].items() if not Path(k).is_relative_to(lock['project_root'])}
+    return actual == outside
+
+
+def _locally_trusted_dev(lock, lock_sha, path, tier, boundary):
+    if tier != 'dev' or boundary != 'dev_loop':
+        return False
+    registry = _local_registry()
+    if registry is None:
+        return False
+    return _validate_local_chain(registry, lock, lock_sha, path)
+
+
+def _validate_local_chain(registry, lock, lock_sha, path):
+    """Shared fail-closed verification for the reader and registry builder."""
+    try:
+        proof = registry['build_proof']
+        if (proof['passed'] is not True or any(not isinstance(proof[k], str) or len(proof[k]) != 64
+                or any(c not in '0123456789abcdef' for c in proof[k])
+                for k in ('request_set_sha256', 'result_sha256'))):
+            return False
+        parent, parent_sha, parent_path = _local_entry(registry, 'official_parent')
+        if not _official_content(parent):
+            return False
+        d05, d05_sha, d05_path = _local_entry(registry, 'chain', 'd05')
+        d06, d06_sha, d06_path = _local_entry(registry, 'chain', 'd06')
+        if (registry['chain']['d06']['derived_from_sha256'] != d05_sha
+                or registry['chain']['d06']['profile'] != 'r3-20261025'
+                or not _derived_from_parent(d05, parent)
+                or not _derived_from_parent(d06, parent)
+                or d05.get('provenance', {}).get('adapter_revision') != 'deployment-05'
+                or d06.get('provenance', {}).get('adapter_revision') != 'deployment-06'
+                or d05.get('provenance', {}).get('parent_lock_path') != str(parent_path)
+                or d06.get('provenance', {}).get('parent_lock_path') != str(parent_path)
+                or d05.get('provenance', {}).get('parent_lock_sha256') != parent_sha
+                or d06.get('provenance', {}).get('parent_lock_sha256') != parent_sha
+                or d06.get('provenance', {}).get('parent_adapter_lock_path') != str(d05_path)
+                or d06.get('provenance', {}).get('parent_adapter_lock_sha256') != d05_sha):
+            return False
+        candidate = (d05, d05_sha, d05_path) if lock_sha == d05_sha else (d06, d06_sha, d06_path)
+        return (lock_sha == candidate[1] and str(path) == str(candidate[2])
+                and lock == candidate[0])
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return False
 
 
 def _registered_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
@@ -71,13 +243,23 @@ def _registered_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
 
 
 def approved_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
+    return _approval_source(lock, lock_sha, path, tier=tier, boundary=boundary) is not None
+
+
+def _approval_source(lock, lock_sha, path, *, tier=None, boundary=None):
     if _registered_deployment(lock, lock_sha, path, tier=tier, boundary=boundary):
-        return True
+        return 'repository'
     if tier == 'dev' and boundary == 'dev_loop':
         from .dev_local import is_dev_local, verify_snapshot
         if is_dev_local(lock):
-            return verify_snapshot(path, lock, lock_sha)
-    return False
+            if verify_snapshot(path, lock, lock_sha):
+                base_sha = lock['provenance']['base_deployment_lock_sha256']
+                return ('repository' if base_sha in json.loads(DEPLOYMENT_REGISTRY.read_bytes())
+                        else 'local-dev-registry')
+            return None
+        if _locally_trusted_dev(lock, lock_sha, path, tier, boundary):
+            return 'local-dev-registry'
+    return None
 
 
 def authorize_service_import(lock: dict, robot_config: str) -> None:
@@ -124,10 +306,13 @@ def load_lock(path: str | Path | None = None, *, tier=None, boundary=None) -> tu
         if not Path(lock[key]).is_absolute():
             raise IdentityError("Lock paths must be absolute: " + key)
     lock_sha = hashlib.sha256(raw).hexdigest()
-    if (not approved_deployment(lock, lock_sha, configured, tier=tier, boundary=boundary)
+    source = _approval_source(lock, lock_sha, configured, tier=tier, boundary=boundary)
+    if (source is None
             or lock.get('official_only') is not True
             or lock['library_revision'] != OFFICIAL_COMMIT or lock['library_base'] != OFFICIAL_COMMIT):
         raise IdentityError('Unapproved V2 manifest; a version string or regenerated local hash cannot establish official identity')
+    if source == 'local-dev-registry':
+        lock = dict(lock, trust_source=source)
     return lock, lock_sha
 
 

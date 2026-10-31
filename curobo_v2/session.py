@@ -31,7 +31,8 @@ class V2Service:
         self.lock, self.lock_sha = load_lock(self.lock_path, **({} if tier is None and boundary is None else dict(tier=tier,boundary=boundary)))
         from .dev_local import is_dev_local, verify_snapshot
         if is_dev_local(self.lock):
-            if not verify_snapshot(lock_path,self.lock,self.lock_sha):raise IdentityError('Invalid dev-local lock path')
+            raw_lock = {k: v for k, v in self.lock.items() if k != 'trust_source'}
+            if not verify_snapshot(lock_path,raw_lock,self.lock_sha):raise IdentityError('Invalid dev-local lock path')
             if execution_settings is None:
                 from dataclasses import replace
                 from .execution_settings import R3_20261025

@@ -30,6 +30,7 @@
     "deployments.dev06_root": "deployments/dev06",
     "deployments.dev05_lock": "deployments/dev05/runtime-lock.json",
     "deployments.dev06_lock": "deployments/dev06/runtime-lock.json",
+    "planner.local_dev_trust": "deployments/local-dev-trust.json",
     "deployments.main_native_stop": "data/main-fixed-task-01/owned/native_stop.json",
     "scene.contract": "data/scene-contracts/scene-contract-r3-104-107-114.json",
     "test.real_eval": "data/test-evidence/d4/real-eval",
