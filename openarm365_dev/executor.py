@@ -21,7 +21,9 @@ from curobo_v2 import fixture_telemetry
 def refresh_execution_receipt(executor):
     try:
         executor._execution_receipt = receipt_fields(getattr(executor, "execution_settings", None))
-        if getattr(executor,'held_reference_per_motion',False):
+        if getattr(executor,'held_contact_only',False):
+            executor._execution_receipt['held_reference']='contact_only'
+        elif getattr(executor,'held_reference_per_motion',False):
             executor._execution_receipt['held_reference']='per_motion'
     except BaseException:
         executor.failed = True
@@ -204,10 +206,11 @@ def tracking_error_event(request_id,settle_steps,bound,names,target,current,qvel
         qvel=None if qvel is None else np.asarray(qvel).tolist())
 
 class NativeExecutor:
-    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,execution_settings=None,bimanual_collaboration='none'):
+    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,held_contact_only=False,execution_settings=None,bimanual_collaboration='none'):
         if bimanual_collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
         self.bimanual_collaboration=bimanual_collaboration
-        self.held_reference_per_motion=held_reference_per_motion
+        self.held_reference_per_motion=held_reference_per_motion or held_contact_only
+        self.held_contact_only=held_contact_only  # test fixture only: in-hand slip is logged, only contact loss is fatal
         self.execution_settings=execution_settings
         self.env,self.planner=env,planner;self.evidence=Path(evidence)
         self.deadline,self.cancel_check=deadline,cancel_check;self.frame_callback=frame_callback
@@ -441,8 +444,15 @@ class NativeExecutor:
             from scipy.spatial.transform import Rotation
             reference=self.held_transform[side] if getattr(self,'bimanual_collaboration','none') in ('c1','handoff') else self.held_transform
             translation,rotation=effective_held_envelope(getattr(self, "execution_settings", None))
-            if (np.linalg.norm(relative[:3,3]-reference[:3,3])>translation or
-                    Rotation.from_matrix(relative[:3,:3]@reference[:3,:3].T).magnitude()>rotation):
+            slip_m=float(np.linalg.norm(relative[:3,3]-reference[:3,3]))
+            slip_rad=float(Rotation.from_matrix(relative[:3,:3]@reference[:3,:3].T).magnitude())
+            if getattr(self,'held_contact_only',False):
+                if (slip_m>translation or slip_rad>rotation) and getattr(self,'_slip_logged',None)!=(self.active_request,side):
+                    self._slip_logged=(self.active_request,side)
+                    self.log(self.journal,dict(event='held_slip_beyond_envelope',request_id=self.active_request,side=side,
+                        slip_mm=slip_m*1000,slip_deg=math.degrees(slip_rad),envelope_mm=translation*1000,envelope_rad=rotation))
+                continue
+            if (slip_m>translation or slip_rad>rotation):
                 held_error=('Measured object/hand transform exceeds '
                             f'configured {translation*1000:g}mm/{rotation:g}rad bound'
                             if held_envelope_receipt(getattr(self, "execution_settings", None)) else
@@ -840,8 +850,9 @@ class NativeExecutor:
             translation,rotation=effective_held_envelope(settings)
             if (self.moving or self.gripping or self.held_transform[other] is None or
                     self.held[other]['target_id'] not in bilateral_contacts(self.env)[other] or
+                    (not getattr(self,'held_contact_only',False) and (
                     np.linalg.norm(current[:3,3]-reference[:3,3])>translation or
-                    Rotation.from_matrix(current[:3,:3]@reference[:3,:3].T).magnitude()>rotation):
+                    Rotation.from_matrix(current[:3,:3]@reference[:3,:3].T).magnitude()>rotation))):
                 raise PlanningRejected('Handoff donor is not stably holding the object')
         if getattr(self,'bimanual_collaboration','none')=='c1' and command>0:
             if NativeExecutor.touching_other_held(self,side):

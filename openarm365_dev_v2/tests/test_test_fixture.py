@@ -74,11 +74,12 @@ def test_invalid_spec(change):
     with pytest.raises((ValueError, TypeError), match='test_fixture'):cfg.validate_test_fixture(spec)
 
 
-@pytest.mark.parametrize('value', [None, 'fixed', 'settled', 'PER_MOTION', True, 1, {}])
+@pytest.mark.parametrize('value', [None, 'fixed', 'settled', 'PER_MOTION', 'contact', True, 1, {}])
 def test_held_reference_accepts_only_per_motion(value):
     with pytest.raises(ValueError, match='test_fixture held_reference'):
         cfg.validate_test_fixture(dict(SPEC, held_reference=value))
     assert cfg.validate_test_fixture(dict(SPEC, held_reference='per_motion'))['held_reference']=='per_motion'
+    assert cfg.validate_test_fixture(dict(SPEC, held_reference='contact_only'))['held_reference']=='contact_only'
 
 
 def test_held_reference_cannot_escape_fixture(monkeypatch, tmp_path):

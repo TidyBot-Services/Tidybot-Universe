@@ -11,14 +11,16 @@ from openarm365_dev_v2.tests.test_contact_exemption import contact_executor
 from openarm365_dev_v2.tests.test_handoff_collaboration import handoff_executor
 
 
-def transport(monkeypatch, *, per_motion, collaboration='c1'):
+def transport(monkeypatch, *, per_motion, collaboration='c1', contact_only=False):
     obj, rows = contact_executor(monkeypatch, 0, 2, 'movable_objects')
     obj.execution_settings = R3_20261025  # unchanged 10 mm / 0.1 rad envelope
     obj.bimanual_collaboration = collaboration
     obj.held = ({'left':{'holder':'left','target_id':4},'right':None}
                 if collaboration == 'c1' else {'holder':'left','target_id':4})
     obj.held_transform = ({'left':np.eye(4),'right':None} if collaboration == 'c1' else np.eye(4))
-    obj.held_reference_per_motion = per_motion
+    obj.held_reference_per_motion = per_motion or contact_only
+    obj.held_contact_only = contact_only
+    obj.active_request = None
     obj.held_trace_enabled = False
     obj.failed = False
     obj.epoch = 'fake'
@@ -122,3 +124,22 @@ def test_handoff_begin_uses_rebased_donor_reference(monkeypatch):
     assert obj.held_transform['left'][0,3]==pytest.approx(.012)
     receipt=ex.NativeExecutor.gripper(obj,'right',1.,request_id='handoff')
     assert receipt['handoff']['phase']=='shared'
+
+
+def test_contact_only_logs_slip_and_only_contact_loss_is_fatal(monkeypatch):
+    obj,rows,pose=transport(monkeypatch,per_motion=False,contact_only=True)
+    ex.NativeExecutor.move_joints(obj,np.zeros(1),side='left',request_id='m0')
+    obj.active_request='m0'
+    pose[0][0,3]=.05  # 50 mm slip inside one motion: logged once, not fatal
+    obj.monitor();obj.monitor()
+    slips=[row for path,row in rows if path=='journal' and row['event']=='held_slip_beyond_envelope']
+    assert len(slips)==1 and slips[0]['slip_mm']==pytest.approx(50) and slips[0]['side']=='left'
+    monkeypatch.setattr(attachment,'bilateral_contacts',lambda env:{'left':set(),'right':set()})
+    with pytest.raises(RuntimeError,match='Measured bilateral grasp contact lost during transport'):
+        obj.monitor()
+
+
+def test_contact_only_receipt_label(monkeypatch):
+    obj,_,_=transport(monkeypatch,per_motion=False,contact_only=True)
+    ex.refresh_execution_receipt(obj)
+    assert obj._execution_receipt['held_reference']=='contact_only'
