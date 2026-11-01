@@ -219,6 +219,12 @@ def holder_object_contact(env,side,bid):
 
 DROP_DISPLACEMENT_M=.05
 JOINT_HOLD_TOLERANCE_RAD=1e-4  # receiver_fingers: an arm whose full-vector target is within this of its measured joints is not moving
+# The open command stops 1mm inside the gripper limit, so a released gripper rests at
+# limit-1mm; confirm the release 0.5mm short of that commanded endpoint, never at it.
+GRIPPER_COMMAND_SCALE=1-2*.001/.044
+GRIPPER_RELEASE_MARGIN_M=.0005
+def gripper_open_confirmed(q,limits):
+    return bool(np.all(np.asarray(q,float)>=np.asarray(limits,float)[:,1]-.001-GRIPPER_RELEASE_MARGIN_M))
 
 
 class NativeExecutor:
@@ -375,7 +381,7 @@ class NativeExecutor:
         v=np.array([sim.data.qvel[sim.model.get_joint_qvel_addr(name)] for name in r.gripper[native].joints])
         forces,_=finger_object_contact_measurements(self.env,side,bid)
         return (bid not in bilateral_contacts(self.env)[side] and not any(forces.values()) and
-            np.all(q>=self.gripper_limits[side][:,1]-.001) and np.max(abs(v))<=.005)
+            gripper_open_confirmed(q,self.gripper_limits[side]) and np.max(abs(v))<=.005)
 
     def touching_other_held(self,side):
         other='right' if side=='left' else 'left';held=self.held[other]
@@ -996,7 +1002,7 @@ class NativeExecutor:
                 self.held_trace_references={key:value for key,value in self.held_trace_references.items() if key[0]!=side}
             # Native position actuators have soft limits; keep commanded endpoints
             # 1mm inside the original [0,.044] range. Never clamp measured state.
-            self.grips[side]=command*(1-2*.001/.044)
+            self.grips[side]=command*GRIPPER_COMMAND_SCALE
             for _ in range(20):self.control_step()
             if donor_release:
                 for _ in range(120):

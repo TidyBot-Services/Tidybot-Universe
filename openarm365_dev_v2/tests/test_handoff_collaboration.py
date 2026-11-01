@@ -237,3 +237,42 @@ def test_handoff_agent_run_config_creation(monkeypatch):
     with pytest.raises(ValueError,match='bimanual_collaboration'):
         dev_config._make_dev_config('pick_place_counter_to_sink',102,{'path':'fixture'},
             bimanual_collaboration='invalid')
+
+
+def test_donor_release_confirms_at_the_commanded_open_endpoint():
+    from openarm365_dev.executor import GRIPPER_COMMAND_SCALE,gripper_open_confirmed
+    limits=np.array([[0.,.044,1.],[0.,.044,1.]])
+    endpoint=.044*(1+GRIPPER_COMMAND_SCALE)/2  # command in [-1,1] maps to q in [0,.044]: limit-1mm
+    assert gripper_open_confirmed([endpoint,endpoint],limits)
+    assert gripper_open_confirmed([.0429993,.0429993],limits)  # pilot_a110r 11-01: rested 0.7um short of the endpoint
+    assert gripper_open_confirmed([.0425,.0425],limits)
+    assert not gripper_open_confirmed([.0424,.044],limits)
+    assert not gripper_open_confirmed([.02,.02],limits)
+
+
+def release_executor(monkeypatch,q,qvel=0.,contacts=frozenset(),force=0.):
+    from openarm365_dev import attachment
+    native=ex.PHYSICAL_TO_NATIVE['left']
+    sim=NS(data=NS(qpos=np.asarray(q,float),qvel=np.full(2,qvel)),
+           model=NS(get_joint_qvel_addr=lambda name:{'g0':0,'g1':1}[name]))
+    robot=NS(_ref_gripper_joint_pos_indexes={native:[0,1]},gripper={native:NS(joints=['g0','g1'])})
+    obj=NS(env=NS(sim=sim,robots=[robot]),
+           gripper_limits={'left':np.array([[0.,.044,1.],[0.,.044,1.]])})
+    monkeypatch.setattr(attachment,'bilateral_contacts',lambda env:{'left':set(contacts),'right':{4}})
+    monkeypatch.setattr(ex,'finger_object_contact_measurements',lambda env,side,bid:({'g0':force,'g1':0.},{}))
+    return obj
+
+
+@pytest.mark.parametrize('q',[.043,.0429993,.0425])
+def test_donor_release_confirms_a_resting_open_gripper(monkeypatch,q):
+    # The open command stops at limit-1mm (.043); the old bound q>=limit-1mm sat exactly on that endpoint, so a gripper
+    # resting a few micrometres short (pilot_a110r 11-01: .0429993) never confirmed. The bound is now endpoint-0.5mm.
+    old=bool(np.all(np.array([q,q])>=.044-.001))
+    assert old is (q>=.043)
+    assert ex.NativeExecutor.handoff_donor_released(release_executor(monkeypatch,[q,q]),'left',4)
+
+
+@pytest.mark.parametrize('kwargs',[dict(contacts={4}),dict(force=.1),dict(qvel=.006),dict(q=[.0424,.043])])
+def test_donor_release_still_requires_every_other_condition(monkeypatch,kwargs):
+    q=kwargs.pop('q',[.0429993,.0429993])
+    assert not ex.NativeExecutor.handoff_donor_released(release_executor(monkeypatch,q,**kwargs),'left',4)
