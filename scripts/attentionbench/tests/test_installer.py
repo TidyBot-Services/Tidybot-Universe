@@ -161,6 +161,28 @@ def test_keys_created_private_and_not_printed(tmp_path, monkeypatch, capsys):
     assert len(values) == len(set(values)) == 3
     output = capsys.readouterr().out
     assert not any(value in output for value in values)
+    roots = json.loads((ws / 'repos/memory-m3/registration-roots.json').read_text())
+    assert roots['executor'] == [str((ws / 'data/daily-experiments').resolve())]
+    assert roots['validator'] == [str((ws / 'data/memory-validator').resolve())]
+    assert str((ws / 'repos/attentionbench').resolve()) in roots['source']
+    # The Memory service refuses roots of different roles that contain one another.
+    flat = [(role, Path(p)) for role, entries in roots.items() for p in entries]
+    assert not any(a.is_relative_to(b) for ra, a in flat for rb, b in flat if ra != rb)
+
+
+def test_registration_roots_replace_old_empty_default(tmp_path):
+    memory = tmp_path / 'repos/memory-m3'
+    memory.mkdir(parents=True)
+    (tmp_path / 'data/daily-experiments').mkdir(parents=True)
+    (tmp_path / 'data/memory-validator').mkdir()
+    (memory / 'registration-roots.json').write_text('{}\n')
+    installer.write_registration_roots(tmp_path)
+    roots = json.loads((memory / 'registration-roots.json').read_text())
+    assert set(roots) == {'executor', 'validator', 'contract', 'source'} and roots['executor']
+    custom = {'executor': ['/x'], 'validator': ['/y']}
+    (memory / 'registration-roots.json').write_text(json.dumps(custom))
+    installer.write_registration_roots(tmp_path)
+    assert json.loads((memory / 'registration-roots.json').read_text()) == custom
 
 
 def test_bootstrap_invokes_planner_chain(tmp_path, monkeypatch):

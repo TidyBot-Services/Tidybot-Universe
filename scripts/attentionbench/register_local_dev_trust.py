@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -20,12 +21,27 @@ def entry(path):
     return {'lock_path': str(path), 'sha256': hashlib.sha256(raw).hexdigest()}
 
 
+def detect_gpu():
+    """First GPU name and driver from nvidia-smi; informational, never part of a trust decision."""
+    try:
+        out = subprocess.run(['nvidia-smi', '--query-gpu=name,driver_version', '--format=csv,noheader'],
+                             capture_output=True, text=True, timeout=30, check=True).stdout
+        name, driver = (part.strip() for part in out.splitlines()[0].split(',', 1))
+        return name, driver
+    except (OSError, subprocess.SubprocessError, IndexError, ValueError) as exc:
+        reason = 'unavailable: ' + type(exc).__name__
+        return reason, reason
+
+
 def register(official_parent, d05, d06, dev_local_root, build_proof, *, gpu='', driver=''):
     path = identity._local_registry_path()
     if path is None or not path.is_absolute() or any(p.is_symlink() for p in (path, *path.parents)):
         raise ValueError('planner.local_dev_trust path key is required')
     if path.exists() or path.is_symlink():
         raise ValueError('Local registry already exists')
+    if not gpu or not driver:
+        found = detect_gpu()
+        gpu, driver = gpu or found[0], driver or found[1]
     proof = json.loads(Path(build_proof).read_bytes())
     parent, five, six = entry(official_parent), entry(d05), entry(d06)
     root = Path(dev_local_root)

@@ -94,6 +94,24 @@ def test_registry_is_readonly_and_loadable(chain):
     assert identity.load_lock(chain['d06'][0], tier='dev', boundary='dev_loop')[0]['trust_source'] == 'local-dev-registry'
 
 
+def test_registry_records_gpu_and_driver(chain, monkeypatch):
+    import scripts.attentionbench.register_local_dev_trust as trust
+    chain['registry'].unlink()
+    proof = chain['tmp'] / 'proof.json'
+    write(proof, {'passed': True, 'request_set_sha256': 'a' * 64, 'result_sha256': 'b' * 64})
+    monkeypatch.setattr(trust, 'detect_gpu', lambda: ('NVIDIA Test GPU', '580.178.04'))
+    trust.register(chain['parent'], chain['d05'][0], chain['d06'][0], chain['data']['dev_local_root'], proof)
+    machine = json.loads(chain['registry'].read_bytes())['machine']
+    assert (machine['gpu'], machine['driver']) == ('NVIDIA Test GPU', '580.178.04')
+
+
+def test_detect_gpu_names_missing_tool(monkeypatch):
+    import scripts.attentionbench.register_local_dev_trust as trust
+    def missing(*a, **k): raise FileNotFoundError('nvidia-smi')
+    monkeypatch.setattr(trust.subprocess, 'run', missing)
+    assert trust.detect_gpu() == ('unavailable: FileNotFoundError',) * 2
+
+
 def test_tampered_official_source_names_file(chain):
     parent = json.loads(chain['parent'].read_text())
     chain['source'].write_text('tampered')
