@@ -23,8 +23,10 @@ from benchmarks.attention_harness.dev_v2_loop import checked, immutable
 from benchmarks.attention_harness.memory_agent_validation import (
     Delivery, seal_controller, seal_worker_arms, verify_runner_envelope)
 
-RUNS=Path('/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments')
-WORKER=Path('/home/truares/桌面/AttentionBench-Workspace/development/memory-m3/validation-state')
+from benchmarks.attention_harness import legacy_paths, workspace_paths
+RUNS=legacy_paths.CODEX/'2026-10-14'/'goal-attentionbench-robocasa365-dev-v2-home'/'outputs'/'daily-experiments'
+try:WORKER=workspace_paths.get('memory.m3_root')/'validation-state'
+except workspace_paths.WorkspacePathError:WORKER=Path('missing-workspace')/'validation-state'
 INCIDENT='devexp-9dd83103ff1eacc15906bcb2'
 OPERATION='1704b59f7d55f6ec67458360'
 
