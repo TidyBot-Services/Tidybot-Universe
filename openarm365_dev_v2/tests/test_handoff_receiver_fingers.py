@@ -177,3 +177,25 @@ def test_full_vector_move_of_only_the_receiver_arm_is_receiver_approach(monkeypa
     assert ex.NativeExecutor.move_joints(obj,donor_only,side='both',request_id='d')=={'holder':'left','target_id':4}
     assert [row['request_id'] for row in obj.events if row.get('event')=='handoff_receiver_finger_exemption']==['b']
     assert obj._receiver_exemption is None
+
+
+def test_after_the_release_only_the_donor_retreat_is_exempt(monkeypatch):
+    # pilot_a110r 23:04: the released donor's open fingers sat in the receiver-held object's proxy. User 11-01 (in person):
+    # exempt what the handoff needs. Only the former donor's fingers, only vs that object; the receiver's lift stays holder-only.
+    obj=handoff_executor(monkeypatch)
+    obj.handoff_receiver_fingers=True
+    obj.held['left']=None;obj.held['right']={'holder':'right','target_id':4}
+    obj.held_transform['right']=np.eye(4)
+    obj.env.obj_body_id={}
+    obj.planner.plan_pose=lambda *args,side,**kw:(setattr(obj.planner,'_attachment_side',side) or
+        ex.NativeExecutor.planner_attachment(obj))
+    obj.apply=lambda response,request_id:response
+    obj.handoff=dict(id='x',phase='completed',donor='left',receiver='right',target_id=4,begin_request_id='b')
+    assert ex.NativeExecutor.move_delta(obj,'left',.05,0,.05,request_id='retreat')==dict(
+        holder='right',target_id=4,handoff_receiver_fingers=FINGERS[:2])
+    assert [row['phase'] for row in obj.events if row.get('event')=='handoff_receiver_finger_exemption']==['donor_retreat']
+    assert ex.NativeExecutor.move_delta(obj,'right',0,0,.03,request_id='lift')=={'holder':'right','target_id':4}
+    obj.handoff=dict(obj.handoff,donor='right',receiver='left')  # a completed handoff in the other direction exempts nothing here
+    assert ex.NativeExecutor.receiver_phase(obj,'left') is None
+    obj.handoff=dict(obj.handoff,donor='left',receiver='right');obj.handoff_receiver_fingers=False
+    assert ex.NativeExecutor.move_delta(obj,'left',.05,0,.05,request_id='flag-off') is None

@@ -410,6 +410,9 @@ class NativeExecutor:
             return None
         donor='right' if side=='left' else 'left'
         if self.held[side] is not None or self.held[donor] is None:return None
+        handoff=getattr(self,'handoff',None) or {}
+        if handoff.get('phase')=='releasing':return None
+        if handoff.get('phase')=='completed' and handoff.get('donor')!=side:return None  # after the release: the donor's retreat only
         held=self.held[donor]
         if held.get('holder')!=donor:return None
         return dict(receiver=side,donor=donor,target_id=held['target_id'],
@@ -425,6 +428,9 @@ class NativeExecutor:
     def begin_receiver_exemption(self,side,request_id,phase):
         exemption=NativeExecutor.receiver_phase(self,side)
         self._receiver_exemption=exemption
+        handoff=getattr(self,'handoff',None) or {}
+        if exemption and handoff.get('phase')=='completed':
+            phase='donor_retreat'  # user 11-01: the released donor backs its open fingers out of the receiver-held object's proxy
         if exemption:
             self.log(self.journal,dict(event='handoff_receiver_finger_exemption',request_id=request_id,
                 receiver=side,finger_names=exemption['fingers'],target_id=exemption['target_id'],phase=phase))
