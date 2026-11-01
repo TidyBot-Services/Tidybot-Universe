@@ -110,6 +110,8 @@ def main() -> int:
                            '--store', str(ws / 'data/ui/attention.sqlite3'),
                            '--artifact-root', str(ws / 'data/ui/artifacts'),
                            '--dev-v2-root', str(ws / 'data/daily-experiments'),
+                           # Same as the author's 8769: each run declares its own budget in its request.
+                           '--dev-v2-per-run-budget',
                            '--memory-service-url', f'http://127.0.0.1:{mp}',
                            '--dev-v2-memory-store-id', (memory / 'store_id.txt').read_text().strip(),
                            '--dev-v2-memory-namespace', (memory / 'namespace.txt').read_text().strip(),
