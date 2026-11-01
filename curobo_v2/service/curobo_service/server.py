@@ -51,6 +51,7 @@ class SingleAttachmentRequest(StrictRequest):
     shape_names: list[str] = Field(min_length=1)
     support_names: list[str]
     tool_frame: Literal['openarm_left_hand_tcp','openarm_right_hand_tcp']
+    handoff_receiver_fingers: Optional[list[str]] = None
     support_retention: Optional[SupportRetention] = None
     recomputed_support_names: Optional[list[str]] = None
 
@@ -67,6 +68,8 @@ class SingleAttachmentRequest(StrictRequest):
         if self.support_retention is None:
             result.pop('support_retention',None)
             result.pop('recomputed_support_names',None)
+        if self.handoff_receiver_fingers is None:
+            result.pop('handoff_receiver_fingers',None)
         return result
 
     @field_validator('object_pose','tcp_object_transform')

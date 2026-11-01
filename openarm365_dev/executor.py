@@ -25,6 +25,8 @@ def refresh_execution_receipt(executor):
             executor._execution_receipt['held_reference']='contact_only'
         elif getattr(executor,'held_reference_per_motion',False):
             executor._execution_receipt['held_reference']='per_motion'
+        if getattr(executor,'handoff_receiver_fingers',False):
+            executor._execution_receipt['handoff_receiver_fingers']=True
     except BaseException:
         executor.failed = True
         raise
@@ -216,12 +218,14 @@ def holder_object_contact(env,side,bid):
 
 
 DROP_DISPLACEMENT_M=.05
+JOINT_HOLD_TOLERANCE_RAD=1e-4  # receiver_fingers: an arm whose full-vector target is within this of its measured joints is not moving
 
 
 class NativeExecutor:
-    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,held_contact_only=False,execution_settings=None,bimanual_collaboration='none'):
+    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,held_contact_only=False,execution_settings=None,bimanual_collaboration='none',handoff_receiver_fingers=False):
         if bimanual_collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
         self.bimanual_collaboration=bimanual_collaboration
+        self.handoff_receiver_fingers=handoff_receiver_fingers
         self.held_reference_per_motion=held_reference_per_motion or held_contact_only
         self.held_contact_only=held_contact_only  # test fixture only: in-hand slip is logged, only contact loss is fatal
         self.execution_settings=execution_settings
@@ -334,6 +338,7 @@ class NativeExecutor:
         from copy import deepcopy
         result=dict(bimanual_collaboration=self.bimanual_collaboration,held_by_arm=deepcopy(self.held))
         if self.bimanual_collaboration=='handoff':result['handoff']=deepcopy(self.handoff)
+        if getattr(self,'handoff_receiver_fingers',False):result['handoff_receiver_fingers']=True
         return result
 
     def handoff_shared(self,*,fatal=False):
@@ -388,12 +393,48 @@ class NativeExecutor:
         NativeExecutor.handoff_motion_gate(self)
         if getattr(self,'bimanual_collaboration','none') not in ('c1','handoff'):return self.held.copy() if self.held else None
         side=getattr(self.planner,'_attachment_side',None)
-        if side=='both':
+        exemption=getattr(self,'_receiver_exemption',None)
+        if side=='both' and not exemption:
             held=[value for value in self.held.values() if value]
             if len(held)>1:raise PlanningRejected('Simultaneous motion of two held objects is not supported')
             return held[0].copy() if held else None
+        if exemption and side in (exemption['receiver'],'both'):
+            value=self.held[exemption['donor']]
+            return dict(value,handoff_receiver_fingers=exemption['fingers'])
         value=self.held.get(side)
         return value.copy() if value else None
+
+    def receiver_phase(self,side):
+        if (not getattr(self,'handoff_receiver_fingers',False) or
+                getattr(self,'bimanual_collaboration','none')!='handoff' or side not in ('left','right')):
+            return None
+        donor='right' if side=='left' else 'left'
+        if self.held[side] is not None or self.held[donor] is None:return None
+        held=self.held[donor]
+        if held.get('holder')!=donor:return None
+        return dict(receiver=side,donor=donor,target_id=held['target_id'],
+                    fingers=[f'openarm_{side}_{finger}_finger' for finger in ('left','right')])
+
+    def joint_motion_side(self,target,side):
+        # A full 14-joint request in which one arm's target equals its measured joints moves only the other arm.
+        if side!='both' or not getattr(self,'handoff_receiver_fingers',False):return side
+        delta=np.abs(np.asarray(target,float)-self.planner.state()[:14])
+        moving=[arm for arm,part in (('left',delta[:7]),('right',delta[7:])) if np.any(part>JOINT_HOLD_TOLERANCE_RAD)]
+        return moving[0] if len(moving)==1 else side
+
+    def begin_receiver_exemption(self,side,request_id,phase):
+        exemption=NativeExecutor.receiver_phase(self,side)
+        self._receiver_exemption=exemption
+        if exemption:
+            self.log(self.journal,dict(event='handoff_receiver_finger_exemption',request_id=request_id,
+                receiver=side,finger_names=exemption['fingers'],target_id=exemption['target_id'],phase=phase))
+        return exemption
+
+    def receiver_finger_contact(self,robot_name,other_body):
+        exemption=getattr(self,'_receiver_exemption',None)
+        if (not exemption or NativeExecutor.receiver_phase(self,exemption['receiver']) is None or
+                not is_descendant(self.env.sim.model,other_body,exemption['target_id'])):return False
+        return any(finger in robot_name for finger in exemption['fingers'])
 
     def unheld_object_contact(self,side):
         sim=self.env.sim;objects=set(getattr(self.env,'obj_body_id',{}).values())
@@ -405,7 +446,10 @@ class NativeExecutor:
                 body=int(sim.model.geom_bodyid[int(object_geom)])
                 if any(is_descendant(sim.model,body,obj) for obj in objects):
                     held=NativeExecutor.held_for(self,side)
-                    if not held or not is_descendant(sim.model,body,held['target_id']):return True
+                    receiver=NativeExecutor.receiver_phase(self,side)
+                    receiver_contact=(receiver and is_descendant(sim.model,body,receiver['target_id'])
+                        and any(finger in name for finger in receiver['fingers']))
+                    if (not held or not is_descendant(sim.model,body,held['target_id'])) and not receiver_contact:return True
         return False
 
     def check_live(self):
@@ -522,6 +566,30 @@ class NativeExecutor:
                 if opposing_fingers:continue
                 contacts.append([n1,n2,float(con.dist)]);continue
             if (g1,g2,contact_index) in fixture_pairs or (g2,g1,contact_index) in fixture_pairs:continue
+            exemption=getattr(self,'_receiver_exemption',None)
+            if exemption and NativeExecutor.receiver_phase(self,exemption['receiver']):
+                receiver_body_contact=False
+                for robot_geom,other_body in ((g1,b2),(g2,b1)):
+                    robot_name=sim.model.geom_id2name(robot_geom) or ''
+                    if (f'openarm_{exemption["receiver"]}_' in robot_name and
+                            is_descendant(sim.model,other_body,exemption['target_id']) and
+                            not any(finger in robot_name for finger in exemption['fingers'])):
+                        contacts.append([sim.model.geom_id2name(g1),sim.model.geom_id2name(g2),float(con.dist)])
+                        receiver_body_contact=True
+                        break
+                if receiver_body_contact:continue
+            receiver_contact=False
+            for robot_geom,other_body in ((g1,b2),(g2,b1)):
+                robot_name=sim.model.geom_id2name(robot_geom) or ''
+                if NativeExecutor.receiver_finger_contact(self,robot_name,other_body):
+                    receiver_contact=True
+                    key=(self.active_request,self._receiver_exemption['target_id'])
+                    if getattr(self,'_receiver_contact_logged',None)!=key:
+                        self._receiver_contact_logged=key
+                        self.log(self.journal,dict(event='handoff_receiver_finger_contact',request_id=self.active_request,
+                            receiver=self._receiver_exemption['receiver'],target_id=self._receiver_exemption['target_id']))
+                    break
+            if receiver_contact:continue
             if exemption_enabled:
                 expected=False
                 for robot_geom,other_geom,robot_body,other_body in ((g1,g2,b1,b2),(g2,g1,b2,b1)):
@@ -712,8 +780,11 @@ class NativeExecutor:
                 raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
         elif self.any_object_contact() and not self.held:raise PlanningRejected('Measured object contact requires a confirmed bilateral grasp before arm motion')
         NativeExecutor.rebase_held_references(self,request_id)
-        response=self.planner.plan_joints(target,side=side,epoch=self.epoch)
-        return self.apply(response,request_id=request_id)
+        NativeExecutor.begin_receiver_exemption(self,NativeExecutor.joint_motion_side(self,target,side),request_id,'receiver_approach')
+        try:
+            response=self.planner.plan_joints(target,side=side,epoch=self.epoch)
+            return self.apply(response,request_id=request_id)
+        finally:self._receiver_exemption=None
 
     @record_base_drift
     def base_move(self,dx,dy,dyaw,*,request_id):
@@ -849,6 +920,12 @@ class NativeExecutor:
             from curobo_v2.grasp_heading import check_sdk_request
             check_sdk_request(grasp_search, getattr(self.env, 'obj_body_id', {}))
         NativeExecutor.rebase_held_references(self,request_id)
+        NativeExecutor.begin_receiver_exemption(self,side,request_id,'receiver_approach')
+        try:return NativeExecutor._move_delta_planned(self,side,delta,rotation,request_id,grasp_search)
+        finally:self._receiver_exemption=None
+
+    def _move_delta_planned(self,side,delta,rotation,request_id,grasp_search):
+        from scipy.spatial.transform import Rotation
         current=tcp_pose(self.env,side)
         before=self.planner.state().copy() if fixture_enabled(getattr(self,'execution_settings',None)) else None
         response=self.planner.plan_pose(current[:3,3]+delta,Rotation.from_rotvec(rotation).as_matrix()@current[:3,:3],side=side,epoch=self.epoch,**({} if grasp_search is None else dict(grasp_search=grasp_search)))
@@ -896,7 +973,9 @@ class NativeExecutor:
         if getattr(self,'bimanual_collaboration','none')=='c1' and command>0:
             if NativeExecutor.touching_other_held(self,side):
                 raise PlanningRejected('Handoff is not enabled in this profile')
+        receiver_close=NativeExecutor.receiver_phase(self,side) if command>0 else None
         self.active_request=request_id;self.gripping=True;self.gripping_side=side;self.moving=True;start=self.sequence
+        if receiver_close:NativeExecutor.begin_receiver_exemption(self,side,request_id,'receiver_close')
         self.contact_event_count=0;self.contact_event_overflow=0
         fixture_telemetry.begin(self)
         self.log(self.journal,dict(event='gripper_intent',request_id=request_id,side=side,command=command,sequence=start))
@@ -1023,6 +1102,7 @@ class NativeExecutor:
             if self.contact_event_overflow:self.log(self.journal,dict(event='movable_contact_overflow',
                 request_id=request_id,physical_step=self.physics_steps,dropped=self.contact_event_overflow,limit=CONTACT_EVENT_LIMIT))
             self.active_request=None;self.gripping=False;self.gripping_side=None;self.moving=False
+            if receiver_close:self._receiver_exemption=None
 
     @record_base_drift
     def gripper_move_to(self,side,width_m,*,request_id):

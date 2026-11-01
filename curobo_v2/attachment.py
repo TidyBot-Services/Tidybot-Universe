@@ -60,13 +60,20 @@ class SingleArmAttachment:
     def __init__(self,context,world,tool_frames,*,execution_settings=None):
         fields={'holder','target_id','object_pose','tcp_object_transform','shape_names','support_names','tool_frame'}
         retained_fields={'support_retention','recomputed_support_names'}
+        receiver_field={'handoff_receiver_fingers'} if isinstance(context,dict) and 'handoff_receiver_fingers' in context else set()
         has_retention=isinstance(context,dict) and bool(retained_fields & context.keys())
         if has_retention and getattr(execution_settings,'carried_proxy_support_departure',None)=='monotone':
             fields=fields|retained_fields
+        fields=fields|receiver_field
         if (not isinstance(context,dict)or set(context)!=fields or not isinstance(context['holder'],str)
                 or context['holder']not in {'left','right'} or type(context['target_id'])is not int):
             raise ValueError('Complete explicit measured attachment context required')
         self.holder=context['holder'];self.target_id=context['target_id'];self.tool=context['tool_frame']
+        receiver='right' if self.holder=='left' else 'left'
+        extra=context.get('handoff_receiver_fingers')
+        expected=[f'openarm_{receiver}_{finger}_finger' for finger in ('left','right')]
+        if receiver_field and (not isinstance(extra,list) or extra!=expected):
+            raise ValueError('Handoff receiver fingers must be exactly the opposite arm finger links')
         if self.tool!=f'openarm_{self.holder}_hand_tcp' or self.tool not in tool_frames:raise ValueError('Attachment TCP is not the declared holder')
         self.initial_pose=rigid_pose(context['object_pose']);self.transform=rigid_pose(context['tcp_object_transform'])
         for key in ('shape_names','support_names'):
@@ -101,6 +108,7 @@ class SingleArmAttachment:
         self.cuboids=[deepcopy(c)for c in world if c['name']in self.names]
         self.local_shapes={c['name']:np.linalg.inv(self.initial_pose)@cuboid_pose(c)for c in self.cuboids}
         self.allowed_fingers={f'openarm_{self.holder}_{s}_finger'for s in ['left','right']}
+        if extra is not None:self.allowed_fingers.update(extra)
         self.link=f'curobo_attached_{self.holder}'
         link_from_planner=self.transform@np.linalg.inv(self.initial_pose)
         spheres=np.concatenate([cover_cuboid(c,link_from_planner)for c in self.cuboids])

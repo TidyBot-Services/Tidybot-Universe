@@ -127,7 +127,8 @@ class MujocoV2Planner:
             attachment=self.attachment_provider()
             retention=(attachment.get('support_retention') if attachment is not None
                        and getattr(settings, 'carried_proxy_support_departure', None)=='monotone' else None)
-            signature=({k:attachment[k] for k in ('holder','target_id')} if retention is not None else attachment)
+            signature=({k:attachment[k] for k in ('holder','target_id','handoff_receiver_fingers') if k in attachment}
+                       if retention is not None else attachment)
             body['attachment']=planner_context(self.env,signature,world,self.tools,self.evidence)
             if retention is not None:
                 from .attachment import retain_declared_supports
@@ -146,6 +147,11 @@ class MujocoV2Planner:
             # Legacy calls retain their exact path and evidence behavior.
             response=(self.client.call(path,body) if settings is None else
                 call_with_rejection_facts(self.client,path,body,settings))
+            if attachment is not None and 'handoff_receiver_fingers' in attachment:
+                response['handoff_receiver_finger_exemption']=dict(
+                    allowed_fingers=sorted([f'openarm_{attachment["holder"]}_{finger}_finger' for finger in ('left','right')]
+                        +attachment['handoff_receiver_fingers']),
+                    target_id=attachment['target_id'])
             if settings is not None:
                 response['goal_margin']=self.check_goal_margin(response['trajectory'][-1],active)
                 response.update(receipt_fields(settings))

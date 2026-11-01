@@ -137,8 +137,10 @@ def new_execution_settings(*,budget_tier='dev',budget_boundary='dev_loop',planne
 
 
 def validate_test_fixture(spec):
-    if not isinstance(spec,dict) or spec.get('test_fixture') is not True or set(spec)-{'test_fixture','label','base_delta','base_qpos','object_poses','held_reference'}:
+    if not isinstance(spec,dict) or spec.get('test_fixture') is not True or set(spec)-{'test_fixture','label','base_delta','base_qpos','object_poses','held_reference','handoff_receiver_fingers'}:
         raise ValueError('test_fixture requires true and only fixture initial-state fields')
+    if 'handoff_receiver_fingers' in spec and spec['handoff_receiver_fingers'] is not True:
+        raise ValueError('test_fixture handoff_receiver_fingers must be true')
     if 'held_reference' in spec and spec['held_reference'] not in ('per_motion','contact_only'):
         raise ValueError('test_fixture held_reference must be per_motion or contact_only')
     if 'label' in spec and (not isinstance(spec['label'],str) or not spec['label'].strip()):raise ValueError('test_fixture label must be nonempty text')

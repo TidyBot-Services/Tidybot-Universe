@@ -74,6 +74,7 @@ class OpenArm365DevRunnerV2:
             from .fixture_sdk import build_sdk as sdk_builder
         execution_labels=receipt_fields(from_config(c.get('execution_settings')))
         if 'test_fixture' in c:execution_labels['test_fixture']=True
+        if c.get('test_fixture',{}).get('handoff_receiver_fingers') is True:execution_labels['handoff_receiver_fingers']=True
         if c.get('test_fixture',{}).get('held_reference') in ('per_motion','contact_only'):execution_labels['held_reference']=c['test_fixture']['held_reference']
         if c.get('bimanual_collaboration') in ('c1','handoff'):execution_labels['bimanual_collaboration']=c['bimanual_collaboration']
         if c.get('budget_tier','legacy')!='dev':tier=None
