@@ -19,6 +19,20 @@ from . import identity
 from .evidence import preserve_runtime
 
 
+def _service_environment(evidence, token, nonce):
+    environment = {k: v for k, v in os.environ.items()
+                   if not k.startswith(("PYTHON", "CUROBO_"))
+                   and k not in {"LD_PRELOAD", "LD_LIBRARY_PATH", "ATTENTIONBENCH_WORKSPACE"}
+                   and not any(x in k.upper() for x in ("TOKEN", "SECRET", "KEY", "PASSWORD"))}
+    if 'ATTENTIONBENCH_WORKSPACE' in os.environ:
+        environment['ATTENTIONBENCH_WORKSPACE'] = os.environ['ATTENTIONBENCH_WORKSPACE']
+    environment.update(CUROBO_V2_INSTANCE_TOKEN=token, CUROBO_V2_INSTANCE_NONCE=nonce)
+    environment['CUROBO_V2_OWNER_PID'] = str(os.getpid())
+    environment.update(XDG_CACHE_HOME=str(evidence/'cache'), MPLCONFIGDIR=str(evidence/'mpl-cache'),
+                       CUDA_CACHE_PATH=str(evidence/'cuda-cache'))
+    return environment
+
+
 class V2Service:
     def __init__(self, *, lock_path, robot_config, evidence, deadline, cancel_check=None,
                  test_response_fault='none',test_gpu_activity=False,tier=None,boundary=None,execution_settings=None):
@@ -75,14 +89,7 @@ class V2Service:
             (self.evidence/'planner_deployment.json').write_text(json.dumps(receipt,indent=2)+'\n')
         self.log = (self.evidence / "service.log").open("wb")
         nonce, token = secrets.token_hex(16), secrets.token_hex(32)
-        environment = {k: v for k, v in os.environ.items()
-                       if not k.startswith(("PYTHON", "CUROBO_"))
-                       and k not in {"LD_PRELOAD","LD_LIBRARY_PATH"}
-                       and not any(x in k.upper() for x in ("TOKEN", "SECRET", "KEY", "PASSWORD"))}
-        environment.update(CUROBO_V2_INSTANCE_TOKEN=token, CUROBO_V2_INSTANCE_NONCE=nonce)
-        environment["CUROBO_V2_OWNER_PID"] = str(os.getpid())
-        environment.update(XDG_CACHE_HOME=str(self.evidence/'cache'),MPLCONFIGDIR=str(self.evidence/'mpl-cache'),
-                           CUDA_CACHE_PATH=str(self.evidence/'cuda-cache'))
+        environment = _service_environment(self.evidence, token, nonce)
         trust_fields = {} if self.tier is None else {
             'trust_registry': str(identity.DEPLOYMENT_REGISTRY),
             'trust_registry_sha256': identity.digest(identity.DEPLOYMENT_REGISTRY)}

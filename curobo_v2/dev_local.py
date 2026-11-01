@@ -14,6 +14,12 @@ DEV_LOCAL_ROOT = Path('/home/truares/Documents/Codex/2026-10-11/new-chat-2/outpu
 RELOCATED_YAMLS = ('config/openarm_fixed.yml', 'curobo_v2/service/curobo_service/assets/franka_tidyverse.yml')
 CONTROL = 'curobo_v2/trusted_deployments.json'
 MUTABLE = {'project_root','service_root','assets_root','files','robot_configs','task_sources','provenance'}
+LOCAL_PATH_FILES = ('benchmarks/attention_harness/workspace_paths.py',
+                    'benchmarks/attention_harness/legacy_paths.py')
+LOCAL_PACKAGE_FILES = {
+    'benchmarks/__init__.py': b'"""Benchmark package for the local planner snapshot."""\n',
+    'benchmarks/attention_harness/__init__.py': b'"""Workspace path resolver for the local planner snapshot."""\n',
+}
 sha = identity.digest
 
 
@@ -38,6 +44,21 @@ def _snapshot_root():
     if not root.is_absolute() or not _unlinked(root):
         raise ValueError('Unsafe local snapshot root')
     return root
+
+
+def require_local_workspace(lock):
+    """Give local snapshots an actionable error before identity's fail-closed check."""
+    if not is_dev_local(lock):
+        return
+    base_sha = lock['provenance']['base_deployment_lock_sha256']
+    if base_sha in json.loads(identity.DEPLOYMENT_REGISTRY.read_bytes()):
+        return
+    from benchmarks.attention_harness.workspace_paths import get, WorkspacePathError
+    try:
+        get('planner.local_dev_trust')
+    except WorkspacePathError as exc:
+        raise ValueError('Local planner snapshot requires ATTENTIONBENCH_WORKSPACE and paths.json: '
+                         + str(exc)) from exc
 
 
 def source_names(repo):
@@ -78,6 +99,15 @@ def source_manifest(repo, old_project):
         if not parent.exists() or sha(source) != sha(parent):
             selected.append(name)
     return {name: sha(checked_source(repo, name)) for name in selected}
+
+
+def snapshot_manifest(repo, old_project, registered_base):
+    manifest = source_manifest(repo, old_project)
+    if not registered_base:
+        manifest.update({name: sha(checked_source(repo, name)) for name in LOCAL_PATH_FILES})
+        manifest.update({name: hashlib.sha256(raw).hexdigest()
+                         for name, raw in LOCAL_PACKAGE_FILES.items()})
+    return manifest
 
 
 def is_dev_local(lock):
@@ -165,9 +195,10 @@ def materialize(source_root):
     base_path = Path(pin['lock_path'])
     base, base_sha = identity.load_lock(base_path, tier='dev', boundary='dev_loop')
     base = {k: v for k, v in base.items() if k != 'trust_source'}
+    registered_base = identity._registered_deployment(base, base_sha, base_path, tier='dev', boundary='dev_loop')
     if (is_dev_local(base) or base_sha in identity.TRUSTED_LOCKS
-            or not (identity._registered_deployment(base, base_sha, base_path, tier='dev', boundary='dev_loop')
-                    or identity._locally_trusted_dev(json.loads(base_path.read_bytes()), base_sha, base_path, 'dev', 'dev_loop'))):
+            or not (registered_base or identity._locally_trusted_dev(
+                json.loads(base_path.read_bytes()), base_sha, base_path, 'dev', 'dev_loop'))):
         raise ValueError('Base must be a registered deployment')
     parent, old_project = base_path.parent, Path(base['project_root'])
     if old_project != parent / 'runtime/project':
@@ -175,9 +206,9 @@ def materialize(source_root):
     inventory = {str(p):sha(p) for p in _files(old_project)}
     if inventory != {p:h for p,h in base['files'].items() if Path(p).is_relative_to(old_project)}:
         raise ValueError('Base project inventory or digest differs from lock')
-    manifest = source_manifest(repo, old_project)
+    manifest = snapshot_manifest(repo, old_project, registered_base)
     for name in manifest:
-        if not _unlinked(repo / name):
+        if name not in LOCAL_PACKAGE_FILES and not _unlinked(repo / name):
             raise ValueError('Unsafe source manifest path: ' + name)
     key = _key(base_sha, manifest)
     root = _snapshot_root()
@@ -208,7 +239,8 @@ def materialize(source_root):
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     _link(src, dest)
                 for name, expected in manifest.items():
-                    raw = checked_source(repo, name).read_bytes()
+                    raw = (LOCAL_PACKAGE_FILES[name] if name in LOCAL_PACKAGE_FILES
+                           else checked_source(repo, name).read_bytes())
                     if hashlib.sha256(raw).hexdigest() != expected:
                         raise ValueError('Source changed during build: ' + name)
                     dest = project / name
@@ -222,7 +254,7 @@ def materialize(source_root):
                     dest = project / name
                     dest.unlink()
                     dest.write_bytes(raw.replace(str(parent).encode(), str(out).encode()))
-                if source_manifest(repo, old_project) != manifest:
+                if snapshot_manifest(repo, old_project, registered_base) != manifest:
                     raise ValueError('Source changed during build')
                 if {str(p):sha(p) for p in _files(old_project)} != inventory:
                     raise ValueError('Base changed during build')

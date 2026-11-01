@@ -5,6 +5,7 @@ from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from types import ModuleType, SimpleNamespace as NS
@@ -96,6 +97,27 @@ def test_determinism_isolation_and_hardlinks(base):
     other=dl.materialize(base.repo)
     assert other['snapshot_key']!=result['snapshot_key'] and other['sha256']!=sha
     assert str(path.parent) in (project/dl.RELOCATED_YAMLS[0]).read_text()
+
+
+def test_repository_registered_snapshot_bytes_match_main_4046623(base):
+    old = ModuleType('curobo_v2.dev_local_main_p4e')
+    old.__package__ = 'curobo_v2'
+    old.__file__ = str(Path('curobo_v2/dev_local.py').resolve())
+    source = subprocess.check_output(['git', 'show', '4046623:curobo_v2/dev_local.py'])
+    exec(compile(source, old.__file__, 'exec'), old.__dict__)
+    old.DEV_LOCAL_ROOT = dl.DEV_LOCAL_ROOT
+    prior = old.materialize(base.repo)
+    out = Path(prior['lock_path']).parent
+    prior_bytes = {str(p.relative_to(out)): p.read_bytes() for p in out.rglob('*') if p.is_file()}
+    for p in [out, *out.rglob('*')]:
+        if p.is_dir():
+            p.chmod(0o755)
+    shutil.rmtree(out)
+    current = dl.materialize(base.repo)
+    current_bytes = {str(p.relative_to(out)): p.read_bytes() for p in out.rglob('*') if p.is_file()}
+    assert current['snapshot_key'] == prior['snapshot_key']
+    assert current_bytes == prior_bytes
+    assert not any(name in current_bytes for name in dl.LOCAL_PATH_FILES)
 
 
 def test_copy_fallback(base,monkeypatch):

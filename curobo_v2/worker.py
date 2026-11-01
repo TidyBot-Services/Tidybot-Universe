@@ -47,6 +47,8 @@ def main() -> None:
             raise IdentityError('Owner deployment registry digest mismatch')
         trust.DEPLOYMENT_REGISTRY = registry
         trust._registry_digest = args.trust_registry_sha256
+    from curobo_v2.dev_local import require_local_workspace
+    require_local_workspace(json.loads(Path(args.lock).read_bytes()))
     lock, lock_sha = load_lock(args.lock, tier=args.tier, boundary=args.boundary)
     runtime = verify_runtime(lock)
     import curobo._src.runtime as gpu_runtime
