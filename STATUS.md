@@ -1,3 +1,28 @@
+<!-- collab-repro-20261101 -->
+## 11-01：协作者可复现，L2 达成（干净 GPU 容器里装环境并完成一次真实 agent 运行；工程验收，非正式实验）
+
+**口径**：L2 是过程检查，不是方案的完成标准（完成标准是 L3：一位协作者在自己的机器和 GPU 上重复 L2）。所有结果都是开发档（`formal_eligible=false`）。协作者机器的规划器只走本机 dev 档信任，正式档仍只认仓库里的 `trusted_deployments.json`。
+
+- **已合入的阶段**：
+  - P2 路径可配置：`paths.json` + `workspace_paths`，加机器路径守卫测试（`7be8e2a`）。
+  - P3 缺失文件入库：OpenArm 网格、相对模型路径、seed/launch 配置、`init_store`（`329af16`）。
+  - P4 安装器：`attentionbench.lock.json`，以及 bootstrap/doctor/start/stop（`228c7d5`）。
+  - P5 本机 dev 档规划器信任（`406739a`）。
+  - 规划器链构建器（`382481e`、`1dfe304`）。
+  - L2 中发现问题的修复（`39d750b`…`615edc9`）。
+- **L2 过程中又补的三处**：
+  - W6：Memory 注册根、契约根移出仓库、`--dev-v2-per-run-budget`，文档要求登录后先做一次 Codex 调用，否则额度读不到。
+  - P4d（`4046623`）：可移植链补上作者 d02–d04 适配层（底盘碰撞体与 `native_chassis`、`ik_native_limits.yml`、GPU 活动探针；探针在本机编译）。
+  - P4e/P4f（`9670474`、`38e359a`、`3dec516`）：本机登记的 dev-local 快照带上路径解析模块和 10 个官方清单。服务子进程因此能找到本机登记；缺 `ATTENTIONBENCH_WORKSPACE` 时明确报错，不再静默退回作者路径。
+  - 以上都没有改 `identity.py` 和 `trusted_deployments.json`。作者 98 份 dev-local 锁用新旧代码加载，结果逐条一致。
+- **L2 证据**：
+  - 干净镜像 bootstrap、doctor 39 项通过、服务启动、seed 101 场景指纹与登记一致。
+  - 真实 agent 运行 `devexp-7e6b133d1bb0e7b784f47a29`（OpenArm365，`pick_place_counter_to_sink` seed 101，Dev/Eval/Advisor 都是 `gpt-6.1-sol`）：探针正常，3 次移动执行，产出 v1。Eval 判失败：第二次下探在确认双指夹持前碰到杯子，被规则拒绝（`PlanningRejected`）。到时外部取消。
+  - 报告在作者工作区 `diagnostics/collab-repro/l2/REPORT-L2.md`。
+- **后续问题**：`stop.sh` 不停已脱离的 Dev v2 worker；`control.py` 没有测试。
+- **未做**：L3（协作者在自己机器上重复）；P6 状态快照（B 档，要用户选带哪些运行）；L2 测试目录清理（等用户确认）。
+<!-- /collab-repro-20261101 -->
+
 <!-- summary-20261022-31 -->
 ## 10-22 至 10-31 汇总：agent 模式、Memory M-6～M-11、dev-local 规划器（工程通过，非正式验收）
 
@@ -9,7 +34,7 @@
 - **其他运行能力**：从任一 attempt 继续/fork（`11866b7`）；统一外壳与状态词汇（`d29647f`、`a3e1791`）。
 - **agent 模式（10-28～10-31）**：Dev agent 在 bwrap 沙箱中工作（`b0b3b4e`、`31fd2a5`、`bfd1e3c`、`bc523bb`）；Codex CLI 固定 0.165.0、Dev/Eval 默认 `gpt-6.1-sol`（`83c0d85`）；帧去重与低磁盘暂停（`dc11d35`、`6b5f4cb`）；agent-policy v2 与 agent Memory 阶段 1–4（`89d9875`、`0cd33a4`、`09300cf`、`e1bf9fd`）；周额度读数修正（`7cac54b`）。10-30 一次真实 agent 运行原生成功（0 次求助）。10-31 阶段 5 端到端运行 `devexp-dc15f5ae…` 被操作者取消。
 - **未做**：七方法比较、held-out、正式实验；agent 模式下"强制求助"只有离线证明；在作者以外的机器上运行（见下条）。
-- **协作者可复现（10-31 开始）**：分支已推到 GitHub；方案 `PLAN-collaborator-reproducible-20261031` 与验收包 `ACCEPT-collaborator-reproducible-20261031`（作者工作区 `docs/`）。P1：修 README/项目指南死链（指向已删分支 `feature/attention-native-robosuite`）并更新内容。
+- **协作者可复现（10-31 开始，11-01 进展见上一段）**：分支已推到 GitHub；方案 `PLAN-collaborator-reproducible-20261031` 与验收包 `ACCEPT-collaborator-reproducible-20261031`（作者工作区 `docs/`）。P1：修 README/项目指南死链（指向已删分支 `feature/attention-native-robosuite`）并更新内容。
 <!-- /summary-20261022-31 -->
 
 <!-- memory-monitor-20261021 -->
