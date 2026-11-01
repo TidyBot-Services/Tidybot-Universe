@@ -7,10 +7,11 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from unittest import mock
 
 import pytest
 
-from curobo_v2 import dev_local, identity
+from curobo_v2 import dev_local, identity, session
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -173,8 +174,10 @@ print(json.dumps(dict(chain=chain, snapshot=snapshot, dev=dev, formal=formal)))
 
 def _probe(fixture):
     registry, d06_path, _, lock_path, _, project, workspace, _ = fixture
-    env = os.environ.copy()
-    env['ATTENTIONBENCH_WORKSPACE'] = str(workspace)
+    # The environment the owning session really gives its planner service.
+    with mock.patch.dict(os.environ, {'ATTENTIONBENCH_WORKSPACE': str(workspace)}):
+        env = session._service_environment(project.parent / 'evidence', 'x' * 64, 'y' * 32)
+    assert env['ATTENTIONBENCH_WORKSPACE'] == str(workspace)
     proc = subprocess.run([sys.executable, '-B', '-I', '-c', PROBE, str(project),
                            str(d06_path), str(lock_path)], cwd=project, env=env,
                           text=True, capture_output=True)
@@ -192,6 +195,18 @@ def test_snapshot_real_official_chain_and_tampering(real_local_snapshot):
         str(p.relative_to(base_project)) for p in base_project.rglob('*') if p.is_file()}
     assert gained == (set(dev_local.LOCAL_PATH_FILES) | set(dev_local.LOCAL_PACKAGE_FILES)
                       | set(dev_local.LOCAL_OFFICIAL_FILES))
+    workspace = fixture[6]
+    for name in gained:
+        assert lock['files'][str(project / name)] == identity.digest(project / name)
+        assert str(workspace).encode() not in (project / name).read_bytes()
+    identity.verify_files(lock)
+    # The owner (checkout code) records where the snapshot's trust came from.
+    from curobo_v2.evidence import preserve_runtime
+    with mock.patch.dict(os.environ, {'ATTENTIONBENCH_WORKSPACE': str(workspace)}):
+        accepted, _ = identity.load_lock(lock_path, tier='dev', boundary='dev_loop')
+    evidence = lock_path.parent.parent / 'owner-evidence'; evidence.mkdir()
+    preserve_runtime(lock_path, accepted, evidence)
+    assert json.loads((evidence / 'runtime-evidence.json').read_bytes())['trust_source'] == 'local-dev-registry'
     manifest = lock['provenance']['source_manifest']
     assert {name for name in manifest if name.startswith('curobo_v2/official/')} == set(dev_local.LOCAL_OFFICIAL_FILES)
     assert {name for name in manifest if name.startswith('curobo_v2/official/')} == {
