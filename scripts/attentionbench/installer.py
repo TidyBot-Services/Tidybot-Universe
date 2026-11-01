@@ -138,6 +138,26 @@ def write_paths(ws: Path) -> None:
     (ws / 'paths.json').write_text(json.dumps({'schema': 'attentionbench.paths.v1', 'paths': paths}, indent=2) + '\n')
 
 
+REGISTRATION_ROOTS = {
+    'executor': ['data/daily-experiments'],
+    'validator': ['data/memory-validator'],
+    'contract': ['repos/attentionbench/openarm365_dev_v2/scene_contracts'],
+    'source': ['repos/attentionbench', 'sim/runtime/venv/bin', 'sim/runtime/robocasa/robocasa',
+               'sim/runtime/robosuite/robosuite', 'data/robocasa365', 'deployments/dev06',
+               'deployments/openarm-dev-integration/dev-local'],
+}
+
+
+def write_registration_roots(ws: Path) -> None:
+    """Memory registration roots for this workspace; the service requires executor and validator lists."""
+    file = ws / 'repos/memory-m3/registration-roots.json'
+    if file.exists() and json.loads(file.read_text() or '{}'):
+        return
+    roots = {role: [str((ws / rel).resolve()) for rel in rels if (ws / rel).is_dir()]
+             for role, rels in REGISTRATION_ROOTS.items()}
+    file.write_text(json.dumps(roots, indent=1) + '\n')
+
+
 def bootstrap(args) -> int:
     ws = Path(args.workspace).expanduser().resolve()
     lock = data()
@@ -219,11 +239,11 @@ def bootstrap(args) -> int:
         store_id = row[0] if row else str(uuid.uuid4())
         if row is None:
             connection.execute('INSERT INTO memory_service_identity(singleton, value) VALUES (1, ?)', (store_id,))
-    (memory / 'registration-roots.json').write_text('{}\n') if not (memory / 'registration-roots.json').exists() else None
     (memory / 'store_id.txt').write_text(store_id + '\n')
     (memory / 'namespace.txt').write_text('attentionbench-' + secrets.token_hex(8) + '\n') if not (memory / 'namespace.txt').exists() else None
-    for rel in ('data/daily-experiments', 'data/robocasa365', 'deployments/openarm-dev-integration/dev-local'):
+    for rel in ('data/daily-experiments', 'data/memory-validator', 'data/robocasa365', 'deployments/openarm-dev-integration/dev-local'):
         (ws / rel).mkdir(parents=True, exist_ok=True)
+    write_registration_roots(ws)
     if not args.skip_planner:
         # The chain imports the Harness (numpy, robosuite adapter), so it runs in the UI venv,
         # not in the bare system Python that starts bootstrap.
