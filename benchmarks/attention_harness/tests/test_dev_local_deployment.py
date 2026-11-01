@@ -99,11 +99,11 @@ def test_determinism_isolation_and_hardlinks(base):
     assert str(path.parent) in (project/dl.RELOCATED_YAMLS[0]).read_text()
 
 
-def test_repository_registered_snapshot_bytes_match_main_4046623(base):
+def test_repository_registered_snapshot_bytes_match_main_9670474(base):
     old = ModuleType('curobo_v2.dev_local_main_p4e')
     old.__package__ = 'curobo_v2'
     old.__file__ = str(Path('curobo_v2/dev_local.py').resolve())
-    source = subprocess.check_output(['git', 'show', '4046623:curobo_v2/dev_local.py'])
+    source = subprocess.check_output(['git', 'show', '9670474:curobo_v2/dev_local.py'])
     exec(compile(source, old.__file__, 'exec'), old.__dict__)
     old.DEV_LOCAL_ROOT = dl.DEV_LOCAL_ROOT
     prior = old.materialize(base.repo)

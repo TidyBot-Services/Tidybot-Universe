@@ -20,6 +20,20 @@ LOCAL_PACKAGE_FILES = {
     'benchmarks/__init__.py': b'"""Benchmark package for the local planner snapshot."""\n',
     'benchmarks/attention_harness/__init__.py': b'"""Workspace path resolver for the local planner snapshot."""\n',
 }
+# Every tracked JSON manifest read by identity._official_content for a local
+# development chain. Keep this explicit so the snapshot inventory is closed.
+LOCAL_OFFICIAL_FILES = (
+    'curobo_v2/official/allowed-path-files.json',
+    'curobo_v2/official/author-paths.json',
+    'curobo_v2/official/curobo-78fd485-source.json',
+    'curobo_v2/official/r12-bin-shebangs.json',
+    'curobo_v2/official/r12-dependencies.json',
+    'curobo_v2/official/r12-distributions.json',
+    'curobo_v2/official/r12-native-assets.json',
+    'curobo_v2/official/r12-prefix-files.json',
+    'curobo_v2/official/r12-record-normalized.json',
+    'curobo_v2/official/r12-wheel-normalized.json',
+)
 sha = identity.digest
 
 
@@ -107,6 +121,7 @@ def snapshot_manifest(repo, old_project, registered_base):
         manifest.update({name: sha(checked_source(repo, name)) for name in LOCAL_PATH_FILES})
         manifest.update({name: hashlib.sha256(raw).hexdigest()
                          for name, raw in LOCAL_PACKAGE_FILES.items()})
+        manifest.update({name: sha(checked_source(repo, name)) for name in LOCAL_OFFICIAL_FILES})
     return manifest
 
 
@@ -147,10 +162,12 @@ def verify_snapshot(lock_path, lock, lock_sha):
         raw = base_path.read_bytes()
         base = json.loads(raw)
         base_sha = hashlib.sha256(raw).hexdigest()
+        registered_base = identity._registered_deployment(
+            base, base_sha, base_path, tier='dev', boundary='dev_loop')
         if (base_sha != p['base_deployment_lock_sha256'] or is_dev_local(base)
                 or base_sha in identity.TRUSTED_LOCKS
-                or not (identity._registered_deployment(base, base_sha, base_path, tier='dev', boundary='dev_loop')
-                        or identity._locally_trusted_dev(base, base_sha, base_path, 'dev', 'dev_loop'))):
+                or not (registered_base or identity._locally_trusted_dev(
+                    base, base_sha, base_path, 'dev', 'dev_loop'))):
             return False
         if set(lock) != set(base) or any(lock[k] != base[k] for k in base.keys()-MUTABLE):
             return False
@@ -161,7 +178,18 @@ def verify_snapshot(lock_path, lock, lock_sha):
                 or lock['library_revision'] != identity.OFFICIAL_COMMIT
                 or lock['library_base'] != identity.OFFICIAL_COMMIT):
             return False
-        _files(out)
+        frozen = _files(out)
+        if not registered_base:
+            official = out / 'runtime/project/curobo_v2/official'
+            present = {str(file.relative_to(out / 'runtime/project'))
+                       for file in frozen if file.is_relative_to(official)}
+            if (present != set(LOCAL_OFFICIAL_FILES)
+                    or {name for name in p['source_manifest']
+                        if name.startswith('curobo_v2/official/')} != set(LOCAL_OFFICIAL_FILES)
+                    or any(sha(out / 'runtime/project' / name) != p['source_manifest'][name]
+                           or lock['files'].get(str(out / 'runtime/project' / name)) != p['source_manifest'][name]
+                           for name in LOCAL_OFFICIAL_FILES)):
+                return False
         return True
     except (OSError, ValueError, KeyError, TypeError):
         return False

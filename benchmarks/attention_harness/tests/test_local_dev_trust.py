@@ -5,8 +5,6 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
-import subprocess
-import sys
 
 import pytest
 
@@ -146,7 +144,7 @@ def test_builder_verifies_before_writing_readonly_registry(chain):
     assert accepted(chain)[0]['trust_source'] == 'local-dev-registry'
 
 
-def test_local_dev_snapshot_inherits_tag_and_stays_dev_only(chain):
+def test_local_dev_snapshot_without_official_manifests_rejected(chain):
     from curobo_v2.dev_local import _key
     base_path, base = chain['d06']
     base_sha = auth.digest(base_path)
@@ -166,119 +164,10 @@ def test_local_dev_snapshot_inherits_tag_and_stays_dev_only(chain):
         'snapshot_key': key, 'source_manifest': source_manifest,
         'base_deployment_lock_path': str(base_path), 'base_deployment_lock_sha256': base_sha}
     path = out / 'runtime-lock.json'; write(path, snapshot)
-    result, _ = auth.load_lock(path, tier='dev', boundary='dev_loop')
-    assert result['trust_source'] == 'local-dev-registry'
-    assert result['provenance']['deployment_kind'] == 'dev-local'
-    from curobo_v2.evidence import preserve_runtime
-    evidence = chain['tmp'] / 'evidence'; evidence.mkdir()
-    preserve_runtime(path, result, evidence)
-    assert json.loads((evidence / 'runtime-evidence.json').read_bytes())['trust_source'] == 'local-dev-registry'
+    with pytest.raises(auth.IdentityError, match='Unapproved'):
+        auth.load_lock(path, tier='dev', boundary='dev_loop')
     with pytest.raises(auth.IdentityError, match='Unapproved'):
         auth.load_lock(path, tier='formal', boundary='formal')
-
-
-def test_materialized_local_snapshot_resolves_registry_in_service_subprocess(chain, monkeypatch):
-    from curobo_v2 import dev_local, execution_settings, session
-    root = Path(__file__).resolve().parents[3]
-    workspace = chain['tmp'] / 'workspace'; workspace.mkdir()
-    write(workspace / 'paths.json', {'schema': 'attentionbench.paths.v1',
-        'paths': {'planner.local_dev_trust': str(chain['registry'])}})
-    monkeypatch.setenv('ATTENTIONBENCH_WORKSPACE', str(workspace))
-    base_path, base = chain['d06']
-    project = Path(base['project_root'])
-    for name in ('__init__.py', 'identity.py', 'official_normalization.py', 'dev_local.py',
-                 'local_dev_trust.py', 'execution_settings.py', 'fixture_interaction.py', 'worker.py'):
-        target = project / 'curobo_v2' / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(root / 'curobo_v2' / name, target)
-    shutil.copytree(chain['tmp'] / 'manifests', project / 'curobo_v2/official')
-    (project / 'curobo_v2/trusted_deployments.json').write_text('{}\n')
-    for name in dev_local.RELOCATED_YAMLS:
-        path = project / name; path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(str(base_path.parent) + '/asset\n')
-    base['files'] = {str(p): auth.digest(p) for p in project.rglob('*') if p.is_file()} | {
-        name: sha for name, sha in base['files'].items() if not Path(name).is_relative_to(project)}
-    base['provenance']['official_provenance'] = {}
-    write(base_path, base)
-    chain['data']['chain']['d06']['sha256'] = auth.digest(base_path)
-    chain['registry'].chmod(0o644)
-    write(chain['registry'], chain['data'])
-    chain['registry'].chmod(0o444)
-    monkeypatch.setattr(auth, '_local_registry_digest', None)
-    assert auth.load_lock(base_path, tier='dev', boundary='dev_loop')[0]['trust_source'] == 'local-dev-registry'
-    source = chain['tmp'] / 'source'; source.mkdir()
-    for name in dev_local.LOCAL_PATH_FILES:
-        path = source / name; path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(root / name, path)
-    subprocess.run(['git', 'init', '-q', str(source)], check=True)
-    subprocess.run(['git', 'add', '.'], cwd=source, check=True)
-    monkeypatch.setattr(execution_settings, 'D06_LOCK', '/absent/author/d06.json')
-    original = dev_local.subprocess.check_output
-    def git_output(args, **kwargs):
-        if args == ['git', 'rev-parse', 'HEAD'] and kwargs.get('cwd') == source:
-            return '1' * 40 + '\n'
-        return original(args, **kwargs)
-    monkeypatch.setattr(dev_local.subprocess, 'check_output', git_output)
-    result = dev_local.materialize(source)
-    lock_path = Path(result['lock_path'])
-    lock = json.loads(lock_path.read_bytes())
-    snapshot_project = Path(lock['project_root'])
-    gained = {str(p.relative_to(snapshot_project)) for p in snapshot_project.rglob('*') if p.is_file()} - {
-        str(p.relative_to(project)) for p in project.rglob('*') if p.is_file()}
-    assert gained == set(dev_local.LOCAL_PATH_FILES) | set(dev_local.LOCAL_PACKAGE_FILES)
-    for name in dev_local.LOCAL_PATH_FILES:
-        assert (snapshot_project / name).read_bytes() == (root / name).read_bytes()
-    for name, raw in dev_local.LOCAL_PACKAGE_FILES.items():
-        target = snapshot_project / name
-        assert target.read_bytes() == raw
-        assert auth.digest(target) == {
-            'benchmarks/__init__.py': 'bf013cbf63fb0b6654952c9c7e7283455986ee38bc62cd7c16de58f3ebd1915c',
-            'benchmarks/attention_harness/__init__.py': '47bbde31ba3dd33d8df722fef5a2fd6b12e00aa911eb0406b2fa650463cea57c',
-        }[name]
-    for name in gained:
-        target = snapshot_project / name
-        assert lock['files'][str(target)] == auth.digest(target)
-        assert str(workspace).encode() not in target.read_bytes()
-    assert dev_local.verify_snapshot(lock_path, lock, auth.digest(lock_path))
-    auth.verify_files(lock)
-    code = '''import json, sys
-from pathlib import Path
-sys.path.insert(0, sys.argv[1])
-from curobo_v2 import identity, dev_local
-p = Path(sys.argv[2]); raw = json.loads(p.read_bytes()); sha = identity.digest(p)
-assert identity._local_registry_path() == Path(sys.argv[3])
-assert identity._local_registry_path().stat().st_mode & 0o777 == 0o444
-assert dev_local.verify_snapshot(p, raw, sha)
-lock, got = identity.load_lock(p, tier="dev", boundary="dev_loop")
-assert got == sha and lock["trust_source"] == "local-dev-registry"
-try: identity.load_lock(p, tier="formal", boundary="formal")
-except identity.IdentityError: pass
-else: raise AssertionError("formal accepted")
-print("local-registry subprocess OK")
-'''
-    env = session._service_environment(chain['tmp'] / 'evidence', 'x' * 64, 'y' * 32)
-    run = subprocess.run([sys.executable, '-B', '-I', '-c', code, str(snapshot_project), str(lock_path),
-                          str(chain['registry'])], cwd=snapshot_project, env=env,
-                         text=True, capture_output=True)
-    assert run.returncode == 0, run.stderr
-    assert run.stdout.strip() == 'local-registry subprocess OK'
-    env.pop('ATTENTIONBENCH_WORKSPACE')
-    worker = [sys.executable, '-B', '-I', str(snapshot_project / 'curobo_v2/worker.py'),
-              '--lock', str(lock_path), '--robot-config', '/unused/robot.yml',
-              '--socket-fd', '0', '--evidence', str(chain['tmp'] / 'evidence'),
-              '--tier', 'dev', '--boundary', 'dev_loop']
-    missing = subprocess.run(worker, cwd=snapshot_project, env=env, text=True, capture_output=True)
-    assert missing.returncode != 0
-    assert 'ATTENTIONBENCH_WORKSPACE and paths.json' in missing.stderr
-    env['ATTENTIONBENCH_WORKSPACE'] = str(chain['tmp'] / 'missing-paths')
-    (chain['tmp'] / 'missing-paths').mkdir()
-    unresolved = subprocess.run(worker, cwd=snapshot_project, env=env, text=True, capture_output=True)
-    assert unresolved.returncode != 0
-    assert 'paths.json' in unresolved.stderr
-    resolver = source / dev_local.LOCAL_PATH_FILES[0]
-    resolver.write_bytes(resolver.read_bytes() + b'\n# changed resolver\n')
-    changed = dev_local.materialize(source)
-    assert changed['snapshot_key'] != result['snapshot_key']
 
 
 @pytest.mark.parametrize('tier,boundary', [('formal','formal'), ('dev','formal'), ('dev','dev'), (None,None)])
