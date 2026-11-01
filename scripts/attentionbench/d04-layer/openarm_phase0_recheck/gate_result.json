@@ -1,0 +1,170 @@
+{
+  "passed": true,
+  "phase0_gate": "passed",
+  "checks": [
+    {
+      "check": "validator freeze",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "unchanged original frozen acceptance",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "model freeze",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "source XML locked",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "source finger mesh exactly matches official URDF mesh",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "openarm_left_left_finger identical local geometry frame and mirrored scale",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "openarm_left_right_finger identical local geometry frame and mirrored scale",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "openarm_right_left_finger identical local geometry frame and mirrored scale",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "openarm_right_right_finger identical local geometry frame and mirrored scale",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a all four full categories passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a 3 resets x 4080 physical steps",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a 1024 collision samples",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a 3 camera frames / 15 known points",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a model_audit every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a control every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a collision every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_a camera every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b all four full categories passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b 3 resets x 4080 physical steps",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b 1024 collision samples",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b 3 camera frames / 15 known points",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b model_audit every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b control every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b collision every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "v6_b camera every assertion passed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent reproduction trajectory_0 raw arrays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent reproduction camera_0 raw arrays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent reproduction trajectory_1 raw arrays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent reproduction camera_1 raw arrays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent reproduction trajectory_2 raw arrays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent reproduction camera_2 raw arrays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "original Phase 0 all bytes preserved",
+      "passed": true,
+      "details": null
+    }
+  ],
+  "model": "compat_v6",
+  "original_acceptance_sha256": "b229ee08e2fd46959447101ca7aec618f5e9bcc4ddf249b52ec95c38d8918cbb",
+  "finished_utc": "2026-10-08T15:27:28.831895+00:00",
+  "scope": "Phase 0 standalone physics foundation; permits Phase 1 development only; no AttentionBench dual-arm integration claim"
+}

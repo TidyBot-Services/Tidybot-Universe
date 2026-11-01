@@ -182,7 +182,8 @@ def build(args):
         for step in ('env: exact Conda/Pip pins and editable official cuRobo',
                      'assets: native digest and local project snapshot',
                      'official: r12 schema and official-content checks',
-                     'd05: pinned adapter sources', 'd06: current checkout adapter differences',
+                     'd05: pinned adapter sources and carried d02-d04 layer',
+                     'd06: current checkout adapter differences',
                      'proof: two isolated local adapter plans', 'registry: local 0444 trust',
                      'snapshot: dev-local materialization'):
             print(step)
@@ -260,8 +261,10 @@ def build(args):
     parent_data = json.loads(parent_lock.read_bytes())
     check_parent(parent_data)
     parent_sha = digest(parent_lock)
-    from scripts.attentionbench.build_d05 import build as build_d05
-    stamp(ws, 'd05', {'parent': parent_sha, 'source_commit': lock['planner_author_provenance']['d05_source_commit']},
+    from scripts.attentionbench.build_d05 import build as build_d05, LAYER, LAYER_FILES, SOURCE_LIST, AUTHOR_PROJECT_FILES
+    stamp(ws, 'd05', {'parent': parent_sha, 'source_commit': lock['planner_author_provenance']['d05_source_commit'],
+          'source_list': digest(SOURCE_LIST), 'author_project_files': digest(AUTHOR_PROJECT_FILES),
+          'd04_layer': {name: digest(LAYER / name) for name in LAYER_FILES}},
           [d05 / 'runtime-lock.json'], lambda: build_d05(d05, parent=parent, expected_parent_sha=parent_sha))
     from scripts.build_d06 import build as build_d06
     d05_sha = digest(d05 / 'runtime-lock.json')

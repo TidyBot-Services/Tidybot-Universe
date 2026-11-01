@@ -1,0 +1,360 @@
+{
+  "frozen_at_utc": "2026-10-08T05:21:42.333002+00:00",
+  "started_at_utc": "2026-10-08T05:19:34+00:00",
+  "hard_deadline_utc": "2026-10-08T06:19:34+00:00",
+  "repository": {
+    "path": "/home/truares/\u684c\u9762/Tidybot-Universe-attention-native",
+    "branch": "feature/attention-native-robosuite",
+    "head": "17197616809ce59f24f5028569e4ce06d9b565b3",
+    "preexisting_changes": "evidence/preflight/git-status.txt"
+  },
+  "model": {
+    "source": "https://github.com/enactic/openarm_description",
+    "commit": "c10304158f917579491b02682e02f903b948d74d",
+    "source_clean": true,
+    "arm_type": "v10",
+    "bimanual": true,
+    "gripper": "parallel_link",
+    "xacro": "2.1.1",
+    "official_sha256": "d429a2382a1070b9d3e725ab868dba052cad58e57c20c999f30defa5f539af1a",
+    "portable_sha256": "9bb8877a9e1b44d0214665e0f5a91eb388edfd3d33e49ced4763f8125bf4d978",
+    "mesh_files": {
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/body/visual/body_link0.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/body/visual/body_link0.dae",
+        "sha256": "a05f59379dcf694e5ff336b1ee3a47ea504a2425a2fa774af1b14e096d9a239a",
+        "bytes": 10783948
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/body/collision/body_link0_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/body/collision/body_link0_symp.stl",
+        "sha256": "6c18bbf7e86b03e3faf802e61e8eb438b38dcbcf146d97cffe6e808c65e9a72a",
+        "bytes": 293284
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link0.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link0.dae",
+        "sha256": "29037f2e51d6b34dbbdbd1eecb557abd900aa1897be4d4a30a7114e649f987b9",
+        "bytes": 5356744
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link0_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link0_symp.stl",
+        "sha256": "baf52578e1d9e6225f3818cae82b6074a0b948d3cef8e9a3e6dfafca78507590",
+        "bytes": 40284
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link1.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link1.dae",
+        "sha256": "c25937f901a4c15730927e08bf5fd26a072e801c529f0bd9678ba9758330647d",
+        "bytes": 7655919
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link1_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link1_symp.stl",
+        "sha256": "066113d13d5cc85098609003bc7ebb73c570015350877f5ed7162ef1b6601852",
+        "bytes": 17784
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link2.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link2.dae",
+        "sha256": "5d2a1ec857a22eaa180034e2dcd989c54611abab6ce6659eb4999570c34cc124",
+        "bytes": 6288652
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link2_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link2_symp.stl",
+        "sha256": "382ab32e4ae0880e8a1512e7a6ca6ce1f478a6c125db4efa977429ffb1d6b02a",
+        "bytes": 13384
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link3.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link3.dae",
+        "sha256": "97d73c4bae3f3f7570bf3e28306da719aa99a6bec662060c9e358e5625b11cce",
+        "bytes": 6846210
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link3_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link3_symp.stl",
+        "sha256": "00c908cefab152c00416a570a48bf9aafed1549085f19ff2d882dc3f355d9f59",
+        "bytes": 156984
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link4.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link4.dae",
+        "sha256": "59eb1cbf44b1250ad9533176b30084179f9164fcb998ee2623d89b48968ec426",
+        "bytes": 6644484
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link4_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link4_symp.stl",
+        "sha256": "b54883b8c7c96268a68a5879f95998a53ad0b0c4fe74325fad63a6caef669c73",
+        "bytes": 1139984
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link5.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link5.dae",
+        "sha256": "96fd3516df16a772a84c268529e5b53b05e6df07da6ccfe850bc091eba947156",
+        "bytes": 9034473
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link5_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link5_symp.stl",
+        "sha256": "678a2802906eff7b45a836d2f34a2d8e51def50b6599376968f888e05c72739e",
+        "bytes": 751484
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link6.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link6.dae",
+        "sha256": "adcd37741f4e223bd6fe9925625e84191b525c9d27f151f9178b23989de05459",
+        "bytes": 6133097
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link6_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link6_symp.stl",
+        "sha256": "95529bec23733476dfdbbb266c7db0d25a473a568de73c8337a82440fe4a9ac3",
+        "bytes": 30084
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link7.dae": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/visual/link7.dae",
+        "sha256": "e0e1d59b1e09c5a73198cdf175dbb94844073ec067d4b491dcab8a9e1a7faade",
+        "bytes": 6288812
+      },
+      "package://openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link7_symp.stl": {
+        "relative_path": "model/openarm_description/assets/robot/openarm_v1.0/mesh/arm/collision/link7_symp.stl",
+        "sha256": "434f207f21f75f5f0bd604e390b8e5bc7b62b619265222846770e06b3f9b5cfb",
+        "bytes": 23884
+      },
+      "package://openarm_description/assets/end_effector/parallel_link/meshes/visual/hand.dae": {
+        "relative_path": "model/openarm_description/assets/end_effector/parallel_link/meshes/visual/hand.dae",
+        "sha256": "a7a1ff18be1b603544f36645b50e9842ee1ea94d1ba8cbccdeded50946f4bce7",
+        "bytes": 1549205
+      },
+      "package://openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl": {
+        "relative_path": "model/openarm_description/assets/end_effector/parallel_link/meshes/collision/hand.stl",
+        "sha256": "8e5d373ebbd3fd001b506058644062ad71a68f1ced5ca5d5ed0f6de20137956b",
+        "bytes": 18284
+      },
+      "package://openarm_description/assets/end_effector/parallel_link/meshes/visual/finger.dae": {
+        "relative_path": "model/openarm_description/assets/end_effector/parallel_link/meshes/visual/finger.dae",
+        "sha256": "64492f6a80a551a7a53e3f769facc42ee4a9bce1634ff63300a9d7f5b3628cb0",
+        "bytes": 6021838
+      },
+      "package://openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl": {
+        "relative_path": "model/openarm_description/assets/end_effector/parallel_link/meshes/collision/finger.stl",
+        "sha256": "8e96e1314618cf434908f70df78f68dd2b049c03538964e8d41fc99abe41564d",
+        "bytes": 13284
+      }
+    },
+    "adaptation": "mesh URI paths only; all official meshes unchanged; further geometry repairs must have separate versions/diffs and full retest"
+  },
+  "dependencies": {
+    "sapien": "3.0.3",
+    "mani_skill": "3.0.0b22",
+    "numpy": "1.26.4",
+    "torch": "2.10.0",
+    "trimesh": "4.11.3",
+    "Pillow": "12.1.1"
+  },
+  "python": "3.11.15 (main, Mar 11 2026, 17:20:07) [GCC 14.3.0]",
+  "engine": "SAPIEN 3 PhysX CPU, the ManiSkill physics engine; standalone validation, no ManiSkill task/Service integration claim",
+  "physics": {
+    "dt": 0.004166666666666667,
+    "gravity": [
+      0,
+      0,
+      -9.81
+    ],
+    "solver_position_iterations": 32,
+    "solver_velocity_iterations": 8,
+    "root_fixed": true,
+    "gravity_compensation": true,
+    "self_collision": true,
+    "extra_disabled_pairs": [],
+    "automatic_exception": "PhysX immediate parent-child articulation links; list every pair in model_audit.json"
+  },
+  "controller": {
+    "arm_stiffness": 300,
+    "arm_damping": 30,
+    "finger_stiffness": 2000,
+    "finger_damping": 50,
+    "mode": "force",
+    "effort_limit": "official URDF limits",
+    "target_slew_arm_rad_s": 0.5,
+    "target_slew_finger_m_s": 0.02,
+    "mimic": "native SAPIEN loader fixed tendon; follower has zero drive stiffness, validate actual relation"
+  },
+  "initial": {
+    "left": [
+      -0.4,
+      -0.8,
+      0,
+      0.8,
+      0,
+      0,
+      0
+    ],
+    "right": [
+      0.4,
+      0.8,
+      0,
+      0.8,
+      0,
+      0,
+      0
+    ],
+    "left_gripper": 0.02,
+    "right_gripper": 0.02,
+    "root_pose": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  "actions": [
+    {
+      "name": "settle",
+      "steps": 480
+    },
+    {
+      "name": "left_only",
+      "steps": 720,
+      "left": [
+        -0.65,
+        -1.0,
+        0.2,
+        1.05,
+        0.15,
+        0.1,
+        -0.15
+      ]
+    },
+    {
+      "name": "right_only",
+      "steps": 720,
+      "right": [
+        0.65,
+        1.0,
+        -0.2,
+        1.05,
+        -0.15,
+        -0.1,
+        0.15
+      ]
+    },
+    {
+      "name": "left_gripper",
+      "steps": 720,
+      "left_gripper": 0.005
+    },
+    {
+      "name": "right_gripper",
+      "steps": 720,
+      "right_gripper": 0.04
+    },
+    {
+      "name": "joint_target",
+      "steps": 720,
+      "left": [
+        -0.3,
+        -0.65,
+        -0.15,
+        0.7,
+        -0.1,
+        -0.1,
+        0.1
+      ],
+      "right": [
+        0.3,
+        0.65,
+        0.15,
+        0.7,
+        0.1,
+        0.1,
+        -0.1
+      ],
+      "left_gripper": 0.035,
+      "right_gripper": 0.01
+    }
+  ],
+  "test_counts": {
+    "independent_scene_resets": 3,
+    "steps_per_reset": 4080,
+    "fresh_process_full_reproductions": 1,
+    "collision_scene_samples": 1024,
+    "seed": 20261008,
+    "camera_frames": 3
+  },
+  "tolerances": {
+    "arm_position_rad": 0.03,
+    "finger_position_m": 0.001,
+    "arm_final_velocity_rad_s": 0.05,
+    "finger_final_velocity_m_s": 0.005,
+    "held_arm_position_rad": 0.01,
+    "held_finger_position_m": 0.0005,
+    "mimic_error_m": 0.001,
+    "arm_limit_slack_rad": 0.001,
+    "finger_limit_slack_m": 0.0001,
+    "repeat_arm_position_rad": 0.002,
+    "repeat_finger_position_m": 0.0002,
+    "root_pose_abs": 1e-06,
+    "fk_position_m": 1e-05,
+    "fk_rotation_matrix_abs": 1e-05,
+    "axis_norm_abs": 1e-06,
+    "camera_depth_m": 0.01,
+    "camera_world_point_m": 0.015,
+    "camera_pixel_reprojection_px": 1.5,
+    "mesh_bbox_abs_m": 1e-05,
+    "mass_relative": 1e-05,
+    "inertia_relative": 0.0001
+  },
+  "collision_checks": {
+    "negative_control": "independent scene: separated boxes must give 0 contacts; known 0.02m overlapping boxes must give contacts, separation<0 and nonzero impulse; robot left/right probe-box interpenetrations must be detected with nonzero impulse",
+    "cross_arm": "independent scene fixed seeded 1024 bounded joint configurations (first initial and zero); discover at least one left-right contact of official collision shapes with nonzero impulse; configurations/contact points retained",
+    "no_global_self_collision_filter": true
+  },
+  "camera": {
+    "width": 640,
+    "height": 480,
+    "fovy_rad": 1.0471975511965976,
+    "near_m": 0.05,
+    "far_m": 5.0,
+    "position": [
+      2.0,
+      0.0,
+      1.0
+    ],
+    "look_at": [
+      0,
+      0,
+      0.7
+    ],
+    "calibration_box_center": [
+      0.4,
+      0,
+      1.0
+    ],
+    "calibration_box_half_size": [
+      0.05,
+      0.15,
+      0.15
+    ],
+    "known_points": "front face grid, at least 5 points",
+    "min_foreground_fraction": 0.01,
+    "rgb_range": [
+      0,
+      1
+    ],
+    "depth": "-Position.z in OpenGL camera, meters; background masked by Position.w<1; optical frame x right,y down,z forward; SAPIEN x forward,y left,z up",
+    "fallback": "same SAPIEN renderer through Mesa Vulkan software permitted; changing engine or robot structure requires report first"
+  },
+  "criteria_policy": "No threshold, action, count, or camera test relaxed after first simulation. Repairs allowed only as separate version with complete same-standard rerun. Any required check not executed is not passed.",
+  "evidence_root": "evidence/",
+  "scope_excludes": [
+    "Panda",
+    "SDK",
+    "formal Runner",
+    "frozen benchmark packages",
+    "HTTP service",
+    "Advisor/Memory",
+    "collaborative task",
+    "mobile base",
+    "real hardware",
+    "Phase 1"
+  ],
+  "required_checks": [
+    "model",
+    "control",
+    "collision",
+    "camera",
+    "reproduction"
+  ]
+}

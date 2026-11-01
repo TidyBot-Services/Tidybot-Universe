@@ -72,7 +72,8 @@ def test_d05_d06_derive_from_fake_parent(tmp_path, monkeypatch):
     repo = tmp_path / 'repo'; repo.mkdir()
     (repo / 'adapter.py').write_text('six')
     d05 = tmp_path / 'd05'
-    build_d05.build(d05, parent=parent, repo=repo, source_commit='fake', expected_parent_sha=parent_sha)
+    build_d05.build(d05, parent=parent, repo=repo, source_commit='fake', expected_parent_sha=parent_sha,
+                    layer=None)
     d05_lock = json.loads((d05 / 'runtime-lock.json').read_text())
     assert identity._derived_from_parent(d05_lock, parent_lock)
     monkeypatch.setattr(build_d06, 'source_manifest', lambda repo, old: {'adapter.py': identity.digest(repo / 'adapter.py')})
