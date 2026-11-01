@@ -112,6 +112,13 @@ class SweepValidator:
             else:
                 self.tools=dict(attachment['tool_frames']);self.transforms={s:np.asarray(t,float)for s,t in attachment['tcp_object_transforms'].items()};carried_names={attachment['object_name']}
             self.primary=next(iter(self.tools));self.supports=set(attachment['support_names']);self.allowed={f'openarm_{s}_{finger}_finger'for s in self.tools for finger in ['left','right']}
+            if attachment.get('handoff_receiver_fingers') is not None:
+                # Test-fixture handoff (user-approved): the receiver's two fingers may touch the donor-held object,
+                # exactly as the holder's do. Same declaration the planner attachment validates.
+                receiver='right' if attachment.get('holder')=='left' else 'left'
+                if 'holder' not in attachment or attachment['handoff_receiver_fingers']!=[f'openarm_{receiver}_{finger}_finger' for finger in ('left','right')]:
+                    raise PlanningRejected('Continuous gate: handoff receiver fingers must be exactly the opposite arm finger links')
+                self.allowed|=set(attachment['handoff_receiver_fingers'])
             all_names={c['name']for c in world}
             if not carried_names or not carried_names<=all_names or not self.supports<=all_names-carried_names:raise PlanningRejected('Continuous gate attachment geometry accounting mismatch')
             b=self.scene.create_actor_builder();outer=0.

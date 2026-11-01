@@ -66,3 +66,46 @@ def test_carried_palm_overlap_remains_a_violation(tmp_path):
                == {'openarm_left_palm', gate.carried_name}
                and any(point.separation < 0 for point in contact.points)
                for contact in gate.scene.get_contacts())
+
+
+def _receiver_scene(tmp_path, *, declare):
+    pytest.importorskip('sapien', reason='requires the official SAPIEN environment')
+    urdf = tmp_path / 'receiver.urdf'
+    urdf.write_text('''<robot name="receiver">
+      <link name="base"/>
+      <link name="openarm_left_palm">
+        <collision><origin xyz="0.3 0 0"/><geometry><box size="0.04 0.04 0.04"/></geometry></collision>
+      </link>
+      <link name="openarm_left_hand_tcp"/>
+      <link name="openarm_right_left_finger">
+        <collision><geometry><box size="0.04 0.04 0.04"/></geometry></collision>
+      </link>
+      <joint name="palm_fixed" type="fixed"><parent link="base"/><child link="openarm_left_palm"/></joint>
+      <joint name="tcp_fixed" type="fixed"><parent link="openarm_left_palm"/><child link="openarm_left_hand_tcp"/></joint>
+      <joint name="receiver_slide" type="prismatic">
+        <parent link="base"/><child link="openarm_right_left_finger"/><axis xyz="1 0 0"/>
+        <limit lower="-0.5" upper="0.5" effort="10" velocity="1"/>
+      </joint>
+    </robot>''')
+    pose = np.eye(4).tolist()
+    world = [dict(name='held', center=[0., 0., 0.], half_size=[.03, .03, .03], quat_wxyz=[1., 0., 0., 0.])]
+    attachment = dict(holder='left', tool_frame='openarm_left_hand_tcp', object_pose=pose,
+                      tcp_object_transform=pose, shape_names=['held'], support_names=[])
+    if declare:
+        attachment['handoff_receiver_fingers'] = ['openarm_right_left_finger', 'openarm_right_right_finger']
+    response = dict(status='success', joint_names=['receiver_slide'], trajectory=[[0.], [0.]],
+                    time_from_start_seconds=[0., 1.],
+                    trajectory_derivatives=dict(velocity=[[0.], [0.]], acceleration=[[0.], [0.]]))
+    return SweepValidator(urdf, response['joint_names'], world, {}, attachment), response
+
+
+def test_declared_handoff_receiver_finger_may_touch_the_carried_object(tmp_path):
+    gate, response = _receiver_scene(tmp_path, declare=True)
+    assert 'openarm_right_left_finger' in gate.allowed
+    assert gate.certify(response)['result'] == 'PASS'
+
+
+def test_undeclared_receiver_finger_contact_is_uncertified(tmp_path):
+    gate, response = _receiver_scene(tmp_path, declare=False)
+    assert 'openarm_right_left_finger' not in gate.allowed
+    assert gate.certify(response)['result'] != 'PASS'
