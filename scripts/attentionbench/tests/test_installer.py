@@ -165,6 +165,9 @@ def test_keys_created_private_and_not_printed(tmp_path, monkeypatch, capsys):
     assert roots['executor'] == [str((ws / 'data/daily-experiments').resolve())]
     assert roots['validator'] == [str((ws / 'data/memory-validator').resolve())]
     assert str((ws / 'repos/attentionbench').resolve()) in roots['source']
+    # The Memory service refuses roots of different roles that contain one another.
+    flat = [(role, Path(p)) for role, entries in roots.items() for p in entries]
+    assert not any(a.is_relative_to(b) for ra, a in flat for rb, b in flat if ra != rb)
 
 
 def test_registration_roots_replace_old_empty_default(tmp_path):

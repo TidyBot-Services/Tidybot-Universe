@@ -141,7 +141,8 @@ def write_paths(ws: Path) -> None:
 REGISTRATION_ROOTS = {
     'executor': ['data/daily-experiments'],
     'validator': ['data/memory-validator'],
-    'contract': ['repos/attentionbench/openarm365_dev_v2/scene_contracts'],
+    # Must not overlap the source roots (the repository); seed 101 uses the contract registered in the repo.
+    'contract': ['data/scene-contracts'],
     'source': ['repos/attentionbench', 'sim/runtime/venv/bin', 'sim/runtime/robocasa/robocasa',
                'sim/runtime/robosuite/robosuite', 'data/robocasa365', 'deployments/dev06',
                'deployments/openarm-dev-integration/dev-local'],
@@ -241,7 +242,7 @@ def bootstrap(args) -> int:
             connection.execute('INSERT INTO memory_service_identity(singleton, value) VALUES (1, ?)', (store_id,))
     (memory / 'store_id.txt').write_text(store_id + '\n')
     (memory / 'namespace.txt').write_text('attentionbench-' + secrets.token_hex(8) + '\n') if not (memory / 'namespace.txt').exists() else None
-    for rel in ('data/daily-experiments', 'data/memory-validator', 'data/robocasa365', 'deployments/openarm-dev-integration/dev-local'):
+    for rel in ('data/daily-experiments', 'data/memory-validator', 'data/scene-contracts', 'data/robocasa365', 'deployments/openarm-dev-integration/dev-local'):
         (ws / rel).mkdir(parents=True, exist_ok=True)
     write_registration_roots(ws)
     if not args.skip_planner:
