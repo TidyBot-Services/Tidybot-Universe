@@ -244,3 +244,13 @@ def test_interval_filters_and_equal_clock_ticks(rig):
     raw = freeze_help(f.ws, f.ledger.jobs(),2)
     path = f.ws.canonical/'executions/e000001/help.json'; path.unlink()
     assert freeze_help(f.ws, f.ledger.jobs(),2) == raw
+
+
+def test_formal_export_keeps_memory_delivery_error(rig):
+    f=rig()
+    failure=dict(version=1,phase='start',error='ConnectionError: svc listing failed')
+    f.store.update_cell('cell',memory_errors=[failure])
+    f.call('submit')
+    record=json.loads((f.root/'v1/version.json').read_bytes())
+    assert record['agent']['memory_errors']==[failure]
+    assert f.store.cell('cell')['versions'][0]['agent']['memory_errors']==[failure]

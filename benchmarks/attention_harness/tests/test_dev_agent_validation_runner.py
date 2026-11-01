@@ -114,6 +114,9 @@ def test_real_config_and_phase3_delivery_without_registry_stubs(tmp_path,monkeyp
         authorize_dev_v2_validation=authorize)
     memory=SimpleNamespace(key=key,store=store,config=config,workspace=ws)
     delivery=Delivery(memory,dict(memory_id=note.memory_id,plan={},origin=source,arm='treatment',context={}),client,arm_record=arms[key])
+    from benchmarks.attention_harness.memory_agent_validation import seal_controller
+    memory.validation=delivery
+    seal_controller(memory,None,SimpleNamespace(helper=None))
     memory.packet,_=delivery.load(1,code,ws.private/'memory/v1')
     from benchmarks.attention_harness.dev_agent_eval import feedback
     from benchmarks.attention_harness.dev_v2_loop import prompt_memory_view

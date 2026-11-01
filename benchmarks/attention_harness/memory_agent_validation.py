@@ -74,6 +74,25 @@ def verify_runner_envelope(envelope,request,config):
         raise DevConflict('agent validation envelope mismatch: schema') from exc
 
 
+def seal_controller(memory,helper,broker,*,advisor_client_constructed=False):
+    """Trusted loop proof of the assistance objects actually bound to this arm."""
+    value=dict(schema_version='attentionbench.agent-validation-controller.v1',
+        cell=memory.key,worker_arm=memory.validation.arm_record,
+        helper_constructed=helper is not None,broker_helper_constructed=broker.helper is not None,
+        advisor_client_constructed=advisor_client_constructed)
+    for field in ('helper_constructed','broker_helper_constructed','advisor_client_constructed'):
+        require_match(value[field] is False,field)
+    ref=immutable(memory.workspace.private/'validation/controller.json',value)
+    with memory.store.tx() as db:
+        cell=memory.store.get(db,'cells',memory.key)
+        old=cell.get('agent_validation_controller')
+        require_match(old is None or old==ref,'controller_seal')
+        if old is None:
+            cell['agent_validation_controller']=ref
+            memory.store.put(db,'cells',memory.key,cell)
+            memory.store.event(db,'agent_validation_controller',dict(cell=memory.key,record=ref))
+
+
 def _verify_runner_envelope(envelope,request,config):
     import sqlite3
     from .dev_memory_validation import policy_input
@@ -116,6 +135,7 @@ def _verify_runner_envelope(envelope,request,config):
     require_match(manifest.get('schedule')==[dict(cell=c['key'],through_version=1) for c in manifest['cells']],'schedule')
     require_match(manifest.get('agent_validation')==manifest['validation_origin'],'validation_origin')
     require_match(type(manifest['selection'].get('help_budget')) is int and manifest['selection']['help_budget']==0,'help_budget')
+    require_match(not manifest['selection'].get('advisor_proxy',{}).get('enabled'),'advisor_proxy')
     try:validate_manifest(manifest)
     except (ValueError,KeyError,TypeError) as exc:
         item='memory_visibility' if 'visibility' in str(exc) else 'selection'
@@ -142,8 +162,10 @@ def _verify_runner_envelope(envelope,request,config):
     require_match(all(c.get('dev_mode','agent')=='agent' and all(c[f]==cell[f] for f in ('task_id','seed','policy_id')) for c in manifest['cells']),'cells')
     for field in ('run_notes','memory_family','memory_authority','planner_features','human_proxy','positive_control','fork'):
         require_match(not any(row.get(field) for row in rows),field)
-    for field in ('advisor_proxy','eval_agent'):
-        require_match(not any(row.get(field,{}).get('enabled') for row in (*rows,config)),field)
+    # Advisor is a controller choice. Native config retains the origin bytes,
+    # including its Advisor setting; the arm's actual objects are sealed below.
+    require_match(not any(row.get('advisor_proxy',{}).get('enabled') for row in rows),'advisor_proxy')
+    require_match(not any(row.get('eval_agent',{}).get('enabled') for row in (*rows,config)),'eval_agent')
     require_match(grant.get('schema_version')=='attentionbench.dev-v2-validation-grant.v1','grant.schema_version')
     require_match(binding.get('origin_source_sha256')==manifest['validation_origin']['source']['sha256'],'origin_source_sha256')
     require_match(binding.get('dev_model')==dict(provider='codex',model=manifest['dev_model']),'dev_model')
@@ -172,9 +194,17 @@ def _verify_runner_envelope(envelope,request,config):
         dispatches=[(at,json.loads(p)) for at,p in db.execute("SELECT at,payload FROM v2_events WHERE kind='memory_validation_dispatch'")]
         envelopes=[(at,json.loads(p)) for at,p in db.execute("SELECT at,payload FROM v2_events WHERE kind='agent_validation_runner_dispatch'")]
         deliveries=[json.loads(p) for p, in db.execute("SELECT payload FROM v2_events WHERE kind='agent_validation_memory'")]
+        controllers=[json.loads(p) for p, in db.execute("SELECT payload FROM v2_events WHERE kind='agent_validation_controller'")]
     runtime_cell=json.loads(cell_row[0]) if cell_row else {}
     require_match(row is not None and json.loads(row[0]).get('manifest')==arm['experiment'],'experiment')
     require_match(runtime_cell.get('agent_validation_arm')==arm_ref,'worker_arm')
+    controller_ref=runtime_cell.get('agent_validation_controller')
+    controller=evidence(controller_ref,'controller_seal')
+    require_match(controller.get('schema_version')=='attentionbench.agent-validation-controller.v1','controller_seal')
+    require_match(controller.get('cell')==arm['arm_id'] and controller.get('worker_arm')==arm_ref,'controller_seal')
+    for field in ('helper_constructed','broker_helper_constructed','advisor_client_constructed'):
+        require_match(controller.get(field) is False,field)
+    require_match([p for p in controllers if p.get('cell')==arm['arm_id']]==[dict(cell=arm['arm_id'],record=controller_ref)],'controller_seal')
     for field,expected in (('experiment_id',manifest['experiment_id']),('dev_mode','agent'),('validation_experiment',True),('excluded_from_results',True)):
         require_match(type(runtime_cell.get(field)) is type(expected) and runtime_cell[field]==expected,field)
     verify_delivered_packet(deliveries,runtime_cell,arm,binding,envelope['guidance'])

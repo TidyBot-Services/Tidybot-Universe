@@ -138,7 +138,7 @@ def error_groups(errors, timeline):
         eid = execution(source)
         item = dict(entry, execution_id=eid, version_id=request.get('version_id'))
         rejected = isinstance(value, dict) and (value.get('status') == 'rejected' or value.get('rejected') is True)
-        fatal = not rejected and (source == 'controller' or 'controller-error.json' in source
+        fatal = not rejected and (source in ('controller','Memory') or source.startswith('errors/memory-') or 'controller-error.json' in source
             or 'fatal_' in text or 'execution_failed' in text
             or (eid in fatal_executions and source.endswith(' action')))
         identity = (source, text)

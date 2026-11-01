@@ -62,8 +62,11 @@ class Memory:
         if versions:
             from .dev_v2_loop import checked
             last = max(versions, key=lambda row: row['version'])
-            return self.open(last['version'] + 1, checked(last['source']).read_text())
-        return self.open(1, self.initial_source)
+            self.number, self.previous = last['version'] + 1, checked(last['source']).read_text()
+        else:
+            self.number, self.previous = 1, self.initial_source
+        # Retain the requested generation even when the service query raises.
+        return self.open(self.number, self.previous)
 
     def _binding(self):
         digest = hashlib.sha256(self.previous.encode()).hexdigest()

@@ -120,6 +120,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     error('controller',cell.get('error'))
     error('controller result',(cell.get('result') or {}).get('error'))
     error('Memory staging',cell.get('agent_memory_staging_failure'))
+    for failure in cell.get('memory_errors',[]):error('Memory',failure)
     if quota.get('error'):error('quota',quota['error'])
     base=f'{api}/experiments/{cell["experiment_id"]}/cells/{key}/agent/files/'
     def soft(root,name,default=None):

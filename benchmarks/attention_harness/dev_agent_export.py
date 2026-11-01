@@ -76,6 +76,8 @@ class Exporter:
             valid=row.get('valid') is True, config_sha256=self.config_ref['sha256'], manifest=experiment['manifest'],
             reason=row.get('reason', response.get('result', {}).get('outcome', {}).get('status', '')), formal_eligible=False,
             agent={k: v for k, v in row.items() if k not in ('version', 'formal_eligible', 'reason')})
+        failures=[e for e in self.store.cell(self.key).get('memory_errors',[]) if e['version']==number]
+        if failures:record['agent']['memory_errors']=failures
         result, episode = pending['result'], pending['episode']
         if result and episode:
             episode = Path(episode).resolve()
