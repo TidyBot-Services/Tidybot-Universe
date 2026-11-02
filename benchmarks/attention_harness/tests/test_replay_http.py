@@ -91,7 +91,7 @@ def test_replay_page_has_no_control_token_and_the_normal_page_still_does(served)
     root = lambda html: re.search(r'<div id="attentionbench-clear"[^>]*>', html)[0]
     assert status == 200 and 'data-replay="1"' in root(page) and 'data-control-token' not in page
     normal = get(base, '/ui/')[1]
-    assert 'data-control-token' in root(normal) and 'data-replay' not in root(normal)
+    assert 'data-control-token' in root(normal) and 'data-replay="1"' not in root(normal) and 'data-replay-tab="1"' in root(normal)
     assert json.loads(get(base, '/api/replay/config')[1]) == {'mode': 'replay', 'runs': {RUN: 'run-a'}, 'dataset_version': 'ds-1', 'requires_code': True}
     assert 'ReplayMode' in get(base, '/ui/replay_mode.js')[1]
 

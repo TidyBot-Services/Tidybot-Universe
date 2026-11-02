@@ -533,11 +533,14 @@ def create_server(
     dev_v2_per_run_budget: bool = False, dev_v2_memory: dict | None = None,
     memory_view: MemoryView | None = None,
     vault=None, allow_custom: bool | None = None, allow_private_hosts: tuple = (), replay: dict | None = None,
+    public: bool = False,
 ) -> ThreadingHTTPServer:
     # These adapters own different ledgers. Never silently replace an explicitly
     # injected shared-goal bridge with an independent daily experiment budget.
     if dev_v2_bridge is not None and dev_v2_root is not None:
         raise ValueError('choose an existing goal bridge or --dev-v2-root')
+    if public and (replay is None or dev_v2_authorization is not None or dev_v2_per_run_budget or dev_v2_memory is not None):
+        raise ValueError('the public profile needs a replay configuration and no run authorization, budget or Memory')
     if dev_v2_root is None and (dev_v2_authorization is not None or dev_v2_per_run_budget or dev_v2_memory is not None):
         raise ValueError('Dev v2 authorization/budget options require --dev-v2-root')
     if store is not None:
@@ -778,21 +781,45 @@ def create_server(
             except (ValueError,KeyError,TypeError,DevConflict) as error:self._json({'error':str(error)},409)
             return True
 
+        def _not_found(self) -> None:
+            self._send(replay_http.NOT_FOUND, 'text/plain; charset=utf-8', HTTPStatus.NOT_FOUND)
+        def _public_gate(self) -> bool:
+            # Public profile: one allowlist for every method; a refused request looks exactly like an unknown path.
+            if public and not replay_http.public_allows(self.command, urlsplit(self.path).path, replay):
+                self._not_found()
+                return True
+            return False
         def reply(self, value: Any, status: int = 200) -> None:
             self._json(value, HTTPStatus(status))
         def _provider(self) -> None:
             provider_http.handle(self, vault=vault, token=control_token, allow_custom=allow_custom, allow_private_hosts=allow_private_hosts)
+        def _other_method(self) -> None:
+            # Methods this server does not implement: a visitor gets the same 404, the author the usual 501.
+            if public:
+                self._not_found()
+            else:
+                self.send_error(HTTPStatus.NOT_IMPLEMENTED, f"Unsupported method ({self.command!r})")
+        do_HEAD = do_OPTIONS = do_PATCH = _other_method
         def do_PUT(self) -> None:
+            if self._public_gate():
+                return
             self._provider()
         def do_DELETE(self) -> None:
+            if self._public_gate():
+                return
             self._provider()
         def do_GET(self) -> None:
+            if self._public_gate():
+                return
             if provider_http.is_provider_path(urlsplit(self.path).path):
                 self._provider()
                 return
             if replay is not None:
                 if urlsplit(self.path).path == replay_http.PAGE:
-                    self._send(replay_http.page((UI_DIR / 'index.html').read_text(encoding='utf-8')).encode('utf-8'), 'text/html; charset=utf-8')
+                    html = replay_http.page((UI_DIR / 'index.html').read_text(encoding='utf-8'))
+                    if not public:  # the author keeps all four tabs on this page too
+                        html = html.replace('data-replay="1"', 'data-replay="1" data-replay-tab="1"', 1)
+                    self._send(html.encode('utf-8'), 'text/html; charset=utf-8')
                     return
                 if replay_http.handle(self, replay):
                     return
@@ -825,7 +852,7 @@ def create_server(
                 if store is not None:
                     page = page.replace('data-mode="demo"', 'data-mode="live"', 1)
                     page = page.replace('data-mode="live"',
-                                        f'data-mode="live" data-control-token="{control_token}"', 1)
+                                        f'data-mode="live" data-control-token="{control_token}"' + (' data-replay-tab="1"' if replay is not None else ''), 1)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
             elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js", "/ui/human_reply.js", "/ui/replay_mode.js"}:
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
@@ -838,6 +865,8 @@ def create_server(
                 body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()
                 if path.endswith('.html'):
                     body = body.replace(b'__CONTROL_TOKEN__', control_token.encode())
+                    if replay is not None:
+                        body = body.replace(b'<body', b'<body data-replay-tab="1"', 1)
                 self._send(body, kind)
             elif path == "/api/home/status":
                 if not hasattr(dev_v2_bridge, 'root'):
@@ -860,6 +889,8 @@ def create_server(
                 body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()
                 if path.endswith('.html'):
                     body = body.replace(b'__CONTROL_TOKEN__', control_token.encode())
+                    if replay is not None:
+                        body = body.replace(b'<body', b'<body data-replay-tab="1"', 1)
                 self._send(body, kind)
             elif path == "/api/orchestrator/snapshot":
                 if orchestrator_url is None:
@@ -886,7 +917,8 @@ def create_server(
                     self._json({"error": f"Orchestrator unavailable: {error}"}, HTTPStatus.BAD_GATEWAY)
             elif path == "/api/runs" and store is not None:
                 dev_loop.recover_sessions(store)
-                self._json({"runs": history.project_many('run',list_runs(store)), "launches": store.list_launches(), "dev_sessions": history.project_many('dev',store.list_dev_sessions()) + (dev_v2_bridge.list() if dev_v2_bridge else [])})
+                listing = {"runs": history.project_many('run',list_runs(store)), "launches": store.list_launches(), "dev_sessions": history.project_many('dev',store.list_dev_sessions()) + (dev_v2_bridge.list() if dev_v2_bridge else [])}
+                self._json(replay_http.public_runs(listing, replay) if public else listing)
             elif path == "/api/run-options" and store is not None:
                 options=public_options(profiles)
                 options['dev_loop']=dev_loop.dev_options(profiles)
@@ -1078,6 +1110,8 @@ def create_server(
                 self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:
+            if self._public_gate():
+                return
             if provider_http.is_provider_path(urlsplit(self.path).path):
                 self._provider()
                 return
@@ -1437,6 +1471,8 @@ def main() -> None:
     parser.add_argument("--artifact-root", type=Path, help="parent of episode artifact directories")
     parser.add_argument("--replay-config", type=Path,
                         help="JSON for replay mode (/ui/replay): recorded runs and the loopback reply collector")
+    parser.add_argument("--public-profile", action="store_true",
+                        help="serve only the replay page, the recorded runs and /api/replay/*; every other path is a plain 404")
     parser.add_argument("--run-catalog", type=Path,
                         help="operator-approved formal simulator profiles for UI launch")
     parser.add_argument("--dev-v2-root", type=Path,
@@ -1473,6 +1509,8 @@ def main() -> None:
         parser.error(f"artifact root does not exist: {args.artifact_root}")
     if args.run_catalog is not None and (args.store is None or args.artifact_root is None):
         parser.error("--run-catalog requires --store and --artifact-root")
+    if args.public_profile and not args.replay_config:
+        parser.error("--public-profile requires --replay-config")
     store = AttentionStore(args.store) if args.store is not None else None
     if store is not None:
         recover_lost_runs(store)
@@ -1522,7 +1560,8 @@ def main() -> None:
                            run_catalog=args.run_catalog, dev_v2_root=args.dev_v2_root,
                            dev_v2_authorization=args.dev_v2_authorization,
                            dev_v2_per_run_budget=args.dev_v2_per_run_budget,dev_v2_memory=daily_memory,
-                           replay=replay_http.load_config(json.loads(args.replay_config.read_text())) if args.replay_config else None)
+                           replay=replay_http.load_config(json.loads(args.replay_config.read_text())) if args.replay_config else None,
+                           public=args.public_profile)
     print(f"AttentionBench UI: http://{args.host}:{server.server_port}/ui/", flush=True)
     try:
         server.serve_forever()

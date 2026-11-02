@@ -67,7 +67,14 @@
 
   function pageSwitcher(page, nav) {
     if (!nav) nav = doc.createElement('nav');
-    if (!nav.querySelector('a[data-page]')) nav.innerHTML = PAGES.map(([id, label, href]) => `<a href="${href}" data-page="${id}">${label}${id === 'memory' ? '<b class="ab-badge" hidden></b>' : ''}</a>`).join('');
+    // Replay: a visitor sees only the Replay tab; the author sees Replay next to Home, Run and Memory.
+    const flags = (doc.getElementById('attentionbench-clear') || doc.body || {}).dataset || {}, bodyFlags = (doc.body || {}).dataset || {};
+    const replay = flags.replay === '1';
+    const author = flags.replayTab === '1' || bodyFlags.replayTab === '1';
+    const pages = author ? [...PAGES, ['replay', 'Replay', '/ui/replay']] : replay ? [['replay', 'Replay', '/ui/replay']] : PAGES;
+    if (replay) page = 'replay';
+    if (!nav.querySelector('a[data-page]')) nav.innerHTML = pages.map(([id, label, href]) => `<a href="${href}" data-page="${id}">${label}${id === 'memory' ? '<b class="ab-badge" hidden></b>' : ''}</a>`).join('');
+    if (author && !nav.querySelector('a[data-page="replay"]')) nav.insertAdjacentHTML('beforeend', '<a href="/ui/replay" data-page="replay">Replay</a>');  // pages with a fixed tab list
     if (!nav.querySelector('.ind')) nav.insertAdjacentHTML('afterbegin', '<span class="ind" aria-hidden="true"></span>');
     nav.classList.add('ab-pages');
     nav.setAttribute('aria-label', 'Pages');

@@ -31,6 +31,7 @@
   const memoryLink=pages.querySelector('a[data-page="memory"]');
   const memoryCounts=new Map();let memoryPulseTimer=null;
   function updateMemoryLink(snapshot){
+    if(!memoryLink)return;  // the replay tab set has no Memory tab
     const id=snapshot?.dev_v2?.experiment_id||null;
     memoryLink.href=id?'/ui/memory.html#exp='+encodeURIComponent(id):'/ui/memory.html';
     const ids=new Set((snapshot?.memory?.dev_v2?.retrievals||[]).flatMap(r=>(r.entries||[]).map(e=>e.memory_id)).filter(Boolean));
@@ -52,7 +53,7 @@
   let selectedRequest = null;
   let lastRendered = '';
   let orchestrator = null;
-  let orchestratorExpectedUnavailable = false;
+  let orchestratorExpectedUnavailable = !!window.ReplayMode?.enabled;  // replay has no orchestrator
   let orchestratorError = 'Orchestrator not connected';
   let sessionHistory = [];
   let sessions = [];

@@ -89,3 +89,46 @@ def handle(handler, config):
     except ValueError:
         handler.reply(dict(error='collector_unavailable'), 502)
     return True
+
+
+# ---- public profile: the only paths a visitor can reach; everything else is the same plain 404 ----
+STATIC = {PAGE, '/ui/live.js', '/ui/shell.js', '/ui/shell.css', '/ui/notices.js', '/ui/human_reply.js', '/ui/replay_mode.js'}
+READS = {'/api/replay/config', '/api/replay/count', '/api/runs'}
+WRITES = {'/api/replay/reply', '/api/replay/delete', '/api/replay/viewed'}
+CELL = re.compile(r'/cells/[a-f0-9]{64}/(view|agent/files/[A-Za-z0-9_./-]+|files/[A-Za-z0-9_.-]+)')
+EXPERIMENT = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})(/.*)?')
+NOT_FOUND = b'Not found\n'
+
+
+def public_allows(method, path, config):
+    """True when a visitor may make this request. Anything not listed here, on any method, gets the plain 404."""
+    if '..' in path or '//' in path:
+        return False
+    if method == 'GET':
+        if path in STATIC or path in READS:
+            return True
+        match = EXPERIMENT.fullmatch(path)
+        if match and match[1] in config['runs']:
+            return not match[2] or bool(CELL.fullmatch(match[2]))
+        return False
+    return method == 'POST' and path in WRITES
+
+
+# Fields of a recorded session the page never needs; paths and other machine details are removed everywhere.
+DROP = {'artifact_dir', 'owner', 'request_key'}
+PATH = re.compile(r'/(?:home|Users|root|tmp|mnt|media)/[^\s"\'<>)]*')
+
+
+def scrub(value):
+    if isinstance(value, dict):
+        return {k: scrub(v) for k, v in value.items() if k not in DROP}
+    if isinstance(value, list):
+        return [scrub(v) for v in value]
+    if isinstance(value, str):
+        return PATH.sub('[path]', value)
+    return value
+
+
+def public_runs(listing, config):
+    """/api/runs for a visitor: no fixed runs, no launches, only the recorded sessions, with machine details removed."""
+    return dict(runs=[], launches=[], dev_sessions=[scrub(s) for s in listing.get('dev_sessions', []) if s.get('experiment_id') in config['runs']])
