@@ -3,14 +3,29 @@
 from __future__ import annotations
 
 import argparse
+import html
+import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
+
+
+def process_identity(pid: int) -> dict | None:
+    """Same record as benchmarks.attention_harness.dev_loop.process_identity, kept here so
+    stop runs under bare system Python without importing the harness."""
+    try:
+        stat = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+        if stat[0] == 'Z':
+            return None
+        return dict(pid=pid, start_ticks=stat[19], boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip())
+    except (OSError, IndexError):
+        return None
 
 
 def alive(pid: int) -> bool:
@@ -27,6 +42,80 @@ def health(url: str) -> bool:
             return response.status == 200
     except (OSError, urllib.error.URLError):
         return False
+
+
+def live_workers(ws: Path) -> list[tuple[str, int, dict, Path]]:
+    workers = []
+    for receipt in (ws / 'data/daily-experiments').glob('*/scheduler-process-*.json'):
+        try:
+            identity = json.loads(receipt.read_text())
+            pid = identity['pid']
+            if isinstance(pid, int) and pid > 0 and process_identity(pid) == identity:
+                workers.append((receipt.parent.name, pid, identity, receipt.parent / 'scheduler.log'))
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return workers
+
+
+def control_token(ui_url: str) -> str:
+    with urllib.request.urlopen(ui_url, timeout=3) as response:
+        page = response.read().decode('utf-8')
+    match = re.search(r'data-control-token="([^"]+)"', page)
+    if not match:
+        raise RuntimeError('UI control token missing from /ui/')
+    return html.unescape(match.group(1))
+
+
+def cancel_worker(ui_url: str, token: str, experiment: str) -> str:
+    url = ui_url.rstrip('/') + f'/api/dev-v2/experiments/{experiment}/cancel'
+    request = urllib.request.Request(url, data=b'{}', method='POST', headers={
+        'X-Attention-Token': token, 'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return response.read().decode('utf-8', errors='replace')
+    except urllib.error.HTTPError as exc:
+        return exc.read().decode('utf-8', errors='replace')
+
+
+def wait_workers(workers: list[tuple[str, int, dict, Path]], seconds: float) -> list[tuple[str, int, dict, Path]]:
+    end = time.monotonic() + seconds
+    remaining = [worker for worker in workers if process_identity(worker[1]) == worker[2]]
+    while remaining and time.monotonic() < end:
+        time.sleep(min(.1, max(0, end - time.monotonic())))
+        remaining = [worker for worker in remaining if process_identity(worker[1]) == worker[2]]
+    return remaining
+
+
+def stop_workers(ws: Path, ui_port: int, timeout: float) -> int:
+    workers = live_workers(ws)
+    if not workers:
+        return 0
+    ui_url = f'http://127.0.0.1:{ui_port}'
+    if health(ui_url + '/ui/'):
+        try:
+            token = control_token(ui_url + '/ui/')
+            for experiment in sorted({worker[0] for worker in workers}):
+                try:
+                    print(f'{experiment} cancel: {cancel_worker(ui_url, token, experiment)}', flush=True)
+                except Exception as exc:
+                    print(f'{experiment} cancel: {exc}', flush=True)
+        except Exception as exc:
+            print(f'worker cancellation failed: {exc}', flush=True)
+    remaining = wait_workers(workers, timeout)
+    for experiment, pid, identity, log in remaining:
+        if process_identity(pid) == identity:
+            try:
+                if os.getpgid(pid) == pid:
+                    os.killpg(pid, signal.SIGTERM)
+                else:
+                    print(f'{experiment} pid {pid}: not a process group leader; inspect {log}', flush=True)
+            except ProcessLookupError:
+                pass
+    remaining = wait_workers(remaining, 10)
+    if remaining:
+        details = '; '.join(f'{experiment} pid {pid} log {log}' for experiment, pid, _, log in remaining)
+        raise RuntimeError(f'workers still live: {details}')
+    return len(workers)
 
 
 def stop_one(run: Path, name: str) -> None:
@@ -77,12 +166,16 @@ def main() -> int:
     p.add_argument('--workspace', default=os.environ.get('ATTENTIONBENCH_WORKSPACE', str(Path.cwd())))
     p.add_argument('--ui-port', type=int, default=8769)
     p.add_argument('--memory-port', type=int, default=8878)
+    p.add_argument('--worker-timeout', type=float, default=60)
     a = p.parse_args()
     ws = Path(a.workspace).expanduser().resolve()
     run = ws / 'data/run'
     if a.action == 'stop':
+        if a.worker_timeout < 0:
+            raise ValueError('--worker-timeout must be non-negative')
+        stopped = stop_workers(ws, a.ui_port, a.worker_timeout)
         stop_one(run, 'ui'); stop_one(run, 'memory')
-        print('Stopped workspace processes')
+        print(f'Stopped workspace processes; {stopped} workers stopped')
         return 0
     run.mkdir(parents=True, exist_ok=True)
     keys = ws / 'repos/memory-m3/keys.env'
