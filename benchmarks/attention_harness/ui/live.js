@@ -2484,7 +2484,7 @@
       }));
       form.run_type.addEventListener('change',syncRunTypeButtons);
       form.addEventListener('ab-keys-change',updateSummary);
-      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Dev mode|Models & keys|Automatic reviewer|Limits/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});}
+      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Help and attention|Models & keys|Automatic reviewer|Limits|Advanced/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});launchDialog.querySelectorAll('[data-launch-source],[data-launch-preview]').forEach(note=>note.classList.add('ab-lobby-hide'));form.querySelectorAll('.ab-launch-section .ab-launch-field').forEach(field=>{if(/^(Run type|Benchmark|Scene seed|Session type|Robot|Name suffix)/i.test(field.textContent.trim()))field.classList.add('ab-lobby-hide');});}
       let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
@@ -2774,7 +2774,7 @@
           if(selection.dev_mode==='agent'){const provider=keys.selection();if(provider)selection.agent_provider=provider;}
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           if(window.Lobby.enabled&&profile.channel==='dev_v2'){
-            const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:form.v2_policy.value,dev_source:Lobby.devSource(keys.selection(),form.model_source.value),share_replies:Boolean(form.lb_share?.checked)});
+            const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(keys.selection(),form.model_source.value),share_replies:Boolean(form.lb_share?.checked)});
             if(!made.ok)throw new Error(Lobby.errorText(made.value));
             keys.clearSecrets();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;
           }
