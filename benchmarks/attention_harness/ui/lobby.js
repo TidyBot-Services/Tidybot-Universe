@@ -81,11 +81,13 @@
 
   // ---- sidebar block: whose runs, grouping, and the one robot with its queue ----
   const seg = (attr, items, current) => `<div class="lb-seg" role="group">${items.map(([key, name]) => `<button type="button" ${attr}="${key}" aria-pressed="${current === key}">${name}</button>`).join('')}</div>`;
-  const row = (c, extra = '') => `<button type="button" class="lb-line${c.mine ? ' me' : ''}" data-lb-open="${esc(c.experiment_id)}"><span class="lb-n">${c.state === 'queued' ? c.queue_position : '●'}</span><b>${esc(c.nickname)}${c.mine ? ' (you)' : ''}</b><span class="lb-sub">${extra}</span></button>`;
+  // Rows are plain elements (not buttons): the page's own button styling would box and shade every line.
+  const open = c => `role="button" tabindex="0" data-lb-open="${esc(c.experiment_id)}"`;
+  const row = (c, extra = '') => `<div class="lb-line${c.mine ? ' me' : ''}" ${open(c)}><span class="lb-n">${c.state === 'queued' ? c.queue_position : c.state === 'finished' ? (c.result === 'solved' ? '✓' : '✕') : '●'}</span><b>${c.mine ? 'You' : esc(c.nickname)}</b><span class="lb-sub">${extra}</span></div>`;
 
   function pinned() {
     const snap = state.snap, running = snap.robot?.running, queue = snap.queue || [];
-    const head = running ? `<button type="button" class="lb-line lb-run${running.mine ? ' me' : ''}" data-lb-open="${esc(running.experiment_id)}"><span class="lb-pill${running.state === 'waiting_human' ? ' wait' : ''}">${running.state === 'waiting_human' ? (running.mine ? 'Needs you' : 'Needs a person') : 'Running'}</span><b>${esc(running.nickname)}${running.mine ? ' (you)' : ''}</b><span class="lb-sub">${running.attempt.current} / ${running.attempt.limit}</span></button>` : '<p class="lb-idle">The robot is free.</p>';
+    const head = running ? `<div class="lb-line lb-run${running.mine ? ' me' : ''}" ${open(running)}><span class="lb-pill${running.state === 'waiting_human' ? ' wait' : ''}">${running.state === 'waiting_human' ? (running.mine ? 'Needs you' : 'Needs a person') : 'Running'}</span><b>${running.mine ? 'You' : esc(running.nickname)}</b><span class="lb-sub">${running.attempt.current} / ${running.attempt.limit}</span></div>` : '<p class="lb-idle">The robot is free.</p>';
     return `<section class="lb-pin" data-lobby-pin aria-label="The robot and the queue"><h3>One robot · now &amp; next</h3>${head}${queue.slice(0, 4).map(c => row(c, minutes(c.eta_start_seconds))).join('')}${queue.length > 4 ? `<p class="lb-more">+ ${queue.length - 4} more waiting</p>` : ''}${clockHtml()}</section>`;
   }
   // Demo only: how fast the simulated robot works compared with the clock on the wall.
@@ -112,7 +114,7 @@
     sidebar.querySelectorAll('[data-lb-mode]').forEach(b => b.addEventListener('click', () => { state.mode = b.dataset.lbMode; write('attention.lobby.mode', state.mode); rerender(); }));
     sidebar.querySelectorAll('[data-lb-group]').forEach(b => b.addEventListener('click', () => { state.group = b.dataset.lbGroup; write('attention.lobby.group', state.group); rerender(); }));
     sidebar.querySelectorAll('[data-lb-speed]').forEach(b => b.addEventListener('click', async () => { await send('/api/lobby/clock', {speed: Number(b.dataset.lbSpeed)}); state.hooks.changed?.(false, true); }));
-    sidebar.querySelectorAll('[data-lb-open]').forEach(b => { b.addEventListener('pointerdown', e => e.preventDefault()); b.addEventListener('click', () => state.hooks.open?.(b.dataset.lbOpen)); });
+    sidebar.querySelectorAll('[data-lb-open]').forEach(b => { b.addEventListener('pointerdown', e => e.preventDefault()); const go = () => state.hooks.open?.(b.dataset.lbOpen); b.addEventListener('click', go); b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); });
   }
   // Group key and title for the sidebar's list when it is not grouped by task.
   function groupOf(record) {
