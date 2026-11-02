@@ -109,3 +109,142 @@ test('shared phase 2 explanation follows the real feature flag', () => {
   assert.match(api.keysSectionHtml(), /data-keys-phase2 >Eval and Advisor use the lab's models until phase 2/);
   assert.match(load(true).keysSectionHtml(), /data-keys-phase2 hidden>/);
 });
+
+// Minimal event/element doubles execute bindKeys itself without network or DOM dependencies.
+// Browser layout still requires the separate Chromium suite.
+function keyFixture() {
+  const nodes=new Map(), events=[], requests=[], handlers=new Map();
+  let timer, failSave=false;
+  let creds=[];
+  const presets=['deepseek','openai','parcc','openai-compatible'].map(id=>({id,label:id,needs_key:true,suggested_models:['deepseek-chat']}));
+  function node(selector) {
+    if(nodes.has(selector))return nodes.get(selector);
+    const element={value:'',textContent:'',innerHTML:'',hidden:false,disabled:false,dataset:{},
+      classList:{toggle(){}},querySelector:node,
+      querySelectorAll:query=>query==='[data-keys-mode]'?modes:[],
+      appendChild(child){child.parentElement=this;},
+      closest(query){return query===selector?this:null;},
+      addEventListener(type,callback){handlers.set(selector+':'+type,callback);},
+      dispatchEvent(event){events.push(event.type);handlers.get(selector+':'+event.type)?.(event);return true;}};
+    nodes.set(selector,element);return element;
+  }
+  const modes=['lab','all','different'].map(value=>Object.assign(node('mode-'+value),{value,closest:q=>q==='[data-keys-mode]'?modes.find(m=>m.value===value):null}));
+  const form=node('form'),box=node('[data-keys]'),dialog=node('dialog');
+  node('[data-tokens-unlimited]').textContent='Not limited · free models';
+  node('[data-key-provider]').value='deepseek';
+  const context=vm.createContext({esc:String,launchDialog:dialog,
+    setInterval:fn=>{timer=fn;return 1;},clearInterval(){},
+    CustomEvent:class {constructor(type){this.type=type;}},
+    controlFetch:async (url,options)=>{
+      const body=options.body?JSON.parse(options.body):null;
+      requests.push({url,method:options.method,body});
+      let value;
+      if(url==='/api/provider/presets')value=presets;
+      else if(options.method==='GET')value=creds;
+      else if(options.method==='PUT'){
+        if(failSave)throw new Error('Save failed');
+        value={credential_id:url.split('/').pop(),provider:body.provider,expires_at:Date.now()/1000+86400};
+        creds=creds.filter(c=>c.credential_id!==value.credential_id).concat(value);
+      }else if(options.method==='DELETE'){creds=creds.filter(c=>c.credential_id!==url.split('/').pop());value={ok:true};}
+      else value={checks:{auth:'ok',chat:'ok'}};
+      return {ok:true,json:async()=>value};
+    }});
+  vm.runInContext(section+'\nthis.bind=bindKeys;',context);
+  const binding=context.bind(form);
+  const emit=async(type,target)=>handlers.get('[data-keys]:'+type)({target,key:''});
+  const flush=()=>new Promise(resolve=>setImmediate(resolve));
+  return {binding,form,node,events,requests,context,flush,
+    mode:async value=>emit('change',modes.find(m=>m.value===value)),
+    save:()=>emit('click',node('[data-key-save]')),
+    input:async(selector,value)=>{const n=node(selector);n.value=value;await emit('input',n);},
+    pick:async(role,value)=>{const n=node(`[data-role-choice="${role}"]`);n.dataset.roleChoice=role;n.value=value;n.closest=q=>q==='[data-role-choice]'?n:null;await emit('change',n);},
+    expire(){creds.forEach(c=>c.expires_at=0);dialog.open=true;timer();},
+    failSave(){failSave=true;},
+    remove:name=>{const n=node('[data-key-remove]');n.dataset.keyRemove=name;return emit('click',n);},
+  };
+}
+async function saveKey(f,provider='deepseek',name='') {
+  f.node('[data-key-provider]').value=provider;
+  f.node('[data-key-name]').value=name;
+  f.node('[data-key-model]').value='deepseek-chat';
+  f.node('[data-key-value]').value='test-only-secret';
+  await f.save();
+}
+
+test('bindKeys auto-names each provider, avoids collisions and respects explicit names',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');
+  for(const [provider,prefix] of [['deepseek','deepseek'],['openai','openai'],['parcc','parcc'],['openai-compatible','custom']]){
+    await saveKey(f,provider);
+    assert.equal(f.binding.summary().dev.keyName,`${prefix}-1`);
+    await saveKey(f,provider);
+    assert.equal(f.binding.summary().dev.keyName,`${prefix}-2`);
+    assert.equal(f.node('[data-key-value]').value,'');
+  }
+  await f.mode('different');await saveKey(f,'deepseek','  my-ds  ');
+  assert.equal(f.requests.filter(r=>r.method==='PUT').at(-1).url,'/api/provider/credentials/my-ds');
+  await saveKey(f);
+  assert.equal(f.requests.filter(r=>r.method==='PUT').at(-1).url,'/api/provider/credentials/deepseek-3');
+});
+
+test('summary uses only public metadata and refreshes across save, model edits and modes',async()=>{
+  const f=keyFixture();await f.flush();
+  assert.deepEqual(plain(f.binding.summary()),{dev:null,eval:null,advisor:null});
+  await f.mode('all');let count=f.events.length;await saveKey(f,'deepseek','my-ds');
+  assert.ok(f.events.length>count);
+  assert.deepEqual(plain(f.binding.summary()),{dev:{model:'deepseek-chat',keyName:'my-ds'},eval:null,advisor:null});
+  assert.deepEqual(plain(f.binding.selection()),{roles:{dev:{credential:'my-ds',provider:'deepseek',model:'deepseek-chat'}}});
+  assert.ok(!JSON.stringify(f.binding.summary()).includes('test-only-secret'));
+  f.node('[data-key-value]').value='another-unsaved-secret';
+  assert.ok(!JSON.stringify(f.binding.summary()).includes('another-unsaved-secret'));
+  count=f.events.length;await f.input('[data-key-model]',' changed-model ');
+  assert.equal(f.binding.summary().dev.model,'changed-model');assert.ok(f.events.length>count);
+  await f.mode('lab');assert.equal(f.binding.summary().dev,null);assert.equal(f.binding.selection(),null);
+  await f.mode('all');assert.equal(f.binding.summary().dev.model,'changed-model');
+  f.binding.clearSecrets();assert.equal(f.node('[data-key-value]').value,'');
+});
+
+test('different-agent selection, deletion and expiry refresh the summary without stale keys',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('different');await saveKey(f,'deepseek','my-ds');
+  assert.equal(f.binding.summary().dev.keyName,'my-ds');
+  let count=f.events.length;await f.pick('dev','codex');assert.equal(f.binding.summary().dev,null);assert.ok(f.events.length>count);
+  await f.pick('dev','key:my-ds');assert.equal(f.binding.summary().dev.keyName,'my-ds');
+  count=f.events.length;await f.remove('my-ds');assert.equal(f.binding.summary().dev,null);assert.ok(f.events.length>count);
+  await saveKey(f,'deepseek','my-ds');count=f.events.length;f.expire();
+  assert.equal(f.binding.summary().dev,null);assert.ok(f.events.length>count);
+  assert.throws(()=>f.binding.selection(),/missing or has expired/);
+});
+
+test('failed saves clear the password and do not publish a key in the summary',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');f.failSave();
+  const count=f.events.length;await saveKey(f);
+  assert.equal(f.node('[data-key-value]').value,'');assert.equal(f.binding.summary().dev,null);
+  assert.ok(f.events.length>count);assert.match(f.node('[data-keys-note]').textContent,/Save failed/);
+});
+
+test('the real footer writer shows the BYOK Dev model/name, lab fallback and two summary lines',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');await saveKey(f,'deepseek','my-ds');
+  Object.assign(f.form,{seed:{value:'102'},dev_model:{value:'gpt-6.1-sol'},eval_model:{value:'gpt-6-astra'},
+    dev_mode:{value:'agent'},max_attempts:{value:'10'},help_count:{value:'5'},eval_agent_enabled:{checked:true},model_source:{value:'codex'}});
+  Object.assign(f.context,{form:f.form,keys:f.binding,armNames:{both:'Both arms'},selectedProfile:()=>({channel:'dev_v2',enabled:true,robot:'OpenArm365',execution_arm:'both',layout_id:11,style_id:34})});
+  const writer=source.slice(source.indexOf('      function updateSummary()'),source.indexOf('      function syncProfile(resetWall)'));
+  const baseWriter=source.slice(source.indexOf('  function runConfigSummary('),source.indexOf('  function launchSourceProfile('));
+  vm.runInContext(baseWriter+writer+'\nthis.refreshSummary=updateSummary;',f.context);
+  const read=()=>{f.context.refreshSummary();return f.node('[data-launch-preview]').textContent;};
+  assert.match(read(),/Dev deepseek-chat \(your key my-ds\)/);assert.equal(read().split('\n').length,2);
+  assert.ok(!read().includes('test-only-secret'));
+  await f.mode('lab');assert.match(read(),/Dev gpt-6\.1-sol/);assert.ok(!read().includes('your key'));
+  await f.mode('all');f.form.dev_mode.value='one_call';assert.ok(!read().includes('your key')); // Only Agent submissions carry BYOK routing.
+});
+
+test('run type buttons dispatch the original bubbling change and follow programmatic changes',()=>{
+  const listeners={},buttons=['dev','fixed'].map(runType=>({dataset:{runType},attrs:{},
+    setAttribute(name,value){this.attrs[name]=value;},addEventListener(type,fn){this[type]=fn;}}));
+  const select={value:'dev',disabled:false,addEventListener(type,fn){listeners[type]=fn;},dispatchEvent(event){assert.equal(event.bubbles,true);listeners[event.type]();}};
+  const form={run_type:select,querySelectorAll:()=>buttons};
+  const code=source.slice(source.indexOf('      function syncRunTypeButtons()'),source.indexOf("      form.addEventListener('ab-keys-change'"));
+  const context=vm.createContext({form,Event});vm.runInContext(code+'\nsyncRunTypeButtons();',context);
+  assert.equal(buttons[0].attrs['aria-pressed'],'true');buttons[1].click();
+  assert.equal(select.value,'fixed');assert.equal(buttons[1].attrs['aria-pressed'],'true');
+  select.value='dev';select.dispatchEvent(new Event('change',{bubbles:true}));
+  assert.equal(buttons[0].attrs['aria-pressed'],'true');assert.equal(buttons[1].attrs['aria-pressed'],'false');
+});
