@@ -1,0 +1,24 @@
+{
+  "selection": {
+    "dev_mode": "agent",
+    "mode": "experiment",
+    "budget_tier": "dev",
+    "tasks": ["pick_place_counter_to_sink"],
+    "seeds": [101],
+    "policies": ["full_trace_aware_attention_planner"],
+    "dev_model": "gpt-6.1-sol",
+    "eval_model": "gpt-6.1-sol",
+    "advisor_model": "gpt-6.1-sol",
+    "advisor_proxy": {"enabled": true},
+    "help_budget": 1,
+    "max_versions": 2,
+    "memory_family": true,
+    "run_notes": true,
+    "quota_stop_percent": 80,
+    "wall_limit": 2400,
+    "goal_key": "l2-acceptance-seed101-20261101-e",
+    "request_key": "l2-acceptance-seed101-20261101-e",
+    "name_suffix": "collaborator run.sh"
+  },
+  "start": true
+}
