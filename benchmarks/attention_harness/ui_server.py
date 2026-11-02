@@ -46,6 +46,7 @@ from .fixed_ui import FixedUI
 from .memory_view import ACTIONS as MEMORY_ACTIONS, MemoryView
 from .gpu_meter import COVERAGE as GPU_COVERAGE
 from .run_recovery import recover_lost_runs
+from . import replay_http
 from .request_lifecycle import request_timeline
 from .codex_quota import read_quota
 from .notices import NoticeReader
@@ -531,7 +532,7 @@ def create_server(
     dev_v2_root: Path | None = None, dev_v2_authorization: Path | None = None,
     dev_v2_per_run_budget: bool = False, dev_v2_memory: dict | None = None,
     memory_view: MemoryView | None = None,
-    vault=None, allow_custom: bool | None = None, allow_private_hosts: tuple = (),
+    vault=None, allow_custom: bool | None = None, allow_private_hosts: tuple = (), replay: dict | None = None,
 ) -> ThreadingHTTPServer:
     # These adapters own different ledgers. Never silently replace an explicitly
     # injected shared-goal bridge with an independent daily experiment budget.
@@ -789,6 +790,12 @@ def create_server(
             if provider_http.is_provider_path(urlsplit(self.path).path):
                 self._provider()
                 return
+            if replay is not None:
+                if urlsplit(self.path).path == replay_http.PAGE:
+                    self._send(replay_http.page((UI_DIR / 'index.html').read_text(encoding='utf-8')).encode('utf-8'), 'text/html; charset=utf-8')
+                    return
+                if replay_http.handle(self, replay):
+                    return
             if urlsplit(self.path).path == '/api/dev-v2/automatic-checks':
                 from .memory_monitor import automatic_checks
                 self._json(automatic_checks(gateway=memory_view.gateway if memory_view is not None else None))
@@ -820,7 +827,7 @@ def create_server(
                     page = page.replace('data-mode="live"',
                                         f'data-mode="live" data-control-token="{control_token}"', 1)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
-            elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js"}:
+            elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js", "/ui/human_reply.js", "/ui/replay_mode.js"}:
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
             elif path == "/ui/shell.css":
                 self._send((UI_DIR / "shell.css").read_bytes(), "text/css; charset=utf-8")
@@ -1073,6 +1080,8 @@ def create_server(
         def do_POST(self) -> None:
             if provider_http.is_provider_path(urlsplit(self.path).path):
                 self._provider()
+                return
+            if replay is not None and replay_http.handle(self, replay):
                 return
             # Includes run-note-off: the same token and bounded JSON as run/cancel/switch/pause.
             if urlsplit(self.path).path.startswith('/api/dev-v2/'):
@@ -1426,6 +1435,8 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8769)
     parser.add_argument("--orchestrator-url", help="read-only Orchestrator HTTP API, e.g. http://127.0.0.1:8766")
     parser.add_argument("--artifact-root", type=Path, help="parent of episode artifact directories")
+    parser.add_argument("--replay-config", type=Path,
+                        help="JSON for replay mode (/ui/replay): recorded runs and the loopback reply collector")
     parser.add_argument("--run-catalog", type=Path,
                         help="operator-approved formal simulator profiles for UI launch")
     parser.add_argument("--dev-v2-root", type=Path,
@@ -1510,7 +1521,8 @@ def main() -> None:
                            robocasa_camera_device=args.robocasa_camera_device,
                            run_catalog=args.run_catalog, dev_v2_root=args.dev_v2_root,
                            dev_v2_authorization=args.dev_v2_authorization,
-                           dev_v2_per_run_budget=args.dev_v2_per_run_budget,dev_v2_memory=daily_memory)
+                           dev_v2_per_run_budget=args.dev_v2_per_run_budget,dev_v2_memory=daily_memory,
+                           replay=replay_http.load_config(json.loads(args.replay_config.read_text())) if args.replay_config else None)
     print(f"AttentionBench UI: http://{args.host}:{server.server_port}/ui/", flush=True)
     try:
         server.serve_forever()

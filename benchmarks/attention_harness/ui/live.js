@@ -3915,7 +3915,25 @@
   function devHelpResponder(provider) {
     return provider==='advisor' || provider==='human_proxy' ? 'advisor_proxy' : provider||'unknown';
   }
+  // The help moments of a recorded run, in the shape ReplayMode (ui/replay_mode.js) draws and records answers for.
+  function replayContext(snapshot) {
+    const seen=new Set();
+    // Only moments where help was delivered take part: those are the ones with something to compare an answer with.
+    const rows=snapshot.requests.filter(r=>{if(seen.has(r.request_id)||!snapshot.responses?.[r.response_id])return false;seen.add(r.request_id);return true;}).sort((a,b)=>(a.created_at||0)-(b.created_at||0));
+    const attempts=[...snapshot.attempts].sort((a,b)=>a.index-b.index);
+    const solved=a=>{const n=snapshot.eval?.native_outcomes?.[a.attempt_id];return n?.evaluated===true?n.native_success===true:a.status==='succeeded';};
+    const moments=rows.map(request=>{
+      const attempt=snapshot.attempts.find(a=>a.attempt_id===request.attempt_id),k=attempt?attempt.index+1:null,response=snapshot.responses?.[request.response_id];
+      const version=snapshot.dev_session?.versions?.find(v=>v.version===k),later=attempts.find(a=>a.index===(attempt?attempt.index+1:-1));
+      return {k:k??0,attemptId:attempt?.attempt_id||'',failure:agentStoryReason(version,'The attempt did not succeed.')||'The attempt did not succeed.',
+        question:'What should the robot do differently on its next attempt?',
+        adviceHtml:response?readableReply(response):'',next:later?`Attempt ${k+1} then ${solved(later)?'solved the task':'did not solve it'}.`:'That was the last attempt.'};
+    });
+    return {experimentId:snapshot.dev_v2?.experiment_id,moments,heading:operatorHeading('04','HELP &amp; REPLIES',''),
+      watch(attemptId){selectAgentAttempt(snapshot,attemptId);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});}};
+  }
   function operatorHelp(snapshot,chosen) {
+    if(window.ReplayMode?.enabled&&snapshot.dev_v2)return ReplayMode.panel(replayContext(snapshot));
     if(snapshot.agent?.agent_policy_version==='agent-policy-v2')return agentPolicyHelp(snapshot);
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session);
     const modelReview=modelCallReview(snapshot);
@@ -3932,7 +3950,11 @@
     const prompt=`Attempt ${k} failed: ${failure}. What should it do differently?`;
     const key=dev && hint?`${s.session_id}:${hint.request_id}`:'';
     const actions=dev?`<form data-dev-guidance data-request-id="${esc(hint?.request_id)}">${operatorQuickReplies()}<label class="op-guidance-label">Your reply<textarea name="content" maxlength="2000" required placeholder="${esc(placeholder)}">${esc(stored('attention.dev-guidance:'+key)||'')}</textarea></label><div class="op-controls"><button class="ab-button-primary" type="submit" value="answer" ${devGuidancePending.has(key)?'disabled':''}>Send reply</button><small>Watch the replay in 03 before replying</small></div><p role="status" data-dev-guidance-message></p></form>`:chosen?.request_type==='hint'?`<div class="ab-response-form">${operatorQuickReplies()}<label for="ab-hint-content">Your reply</label><textarea id="ab-hint-content" maxlength="4000" placeholder="${esc(placeholder)}"></textarea>${snapshot.run.robot?.execution_arm==='both'?'<div data-hint-scope><label>Target hand<select data-hint-arm aria-label="Hint target hand"><option value="left">Left hand</option><option value="right">Right hand</option><option value="both">Both hands</option></select></label><label>Task phase<select data-hint-phase aria-label="Hint task phase"><option value="pickup">Pickup</option><option value="handoff">Handoff</option><option value="placement">Placement</option></select></label></div>':''}<div class="op-controls"><button class="ab-button-primary" type="button" data-respond="hint">Send reply</button><small>Watch the replay in 03 before replying</small></div></div>`:chosen?.request_type==='approval'?'<div class="op-controls"><button type="button" data-respond="approve">Approve</button><button type="button" data-respond="deny">Deny</button></div>':'<button type="button" data-respond="interrupt">Confirm interrupt request</button>';
-    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${waiting?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div class="op-action ${waiting?'need':'none'}"><h4>${waiting?'The robot needs your help':'✓ Nothing to do'}</h4>${waiting?`<p>${esc(prompt)}</p>${!dev&&chosen?.deadline_at!=null?`<p class="ab-countdown" data-reply-countdown data-deadline="${chosen.deadline_at}">${esc(countdown(chosen))}</p>`:''}${actions}`:`<p>${operatorLifecycleCopy(snapshot)?.text || (isTerminal(snapshot)?'This run has ended. The help the robot received is listed below.':"The robot is working on its own. You'll be asked here if it needs help.")}</p>`}</div>${operatorHelpHistory(snapshot)}</section>`;
+    const history=operatorHelpHistory(snapshot);
+    const asked=`<p>${esc(prompt)}</p>${!dev&&chosen?.deadline_at!=null?`<p class="ab-countdown" data-reply-countdown data-deadline="${chosen.deadline_at}">${esc(countdown(chosen))}</p>`:''}`;
+    const where=`<p>The failed attempt is in 03 · Replay &amp; attempts. Watch it before you reply.</p>${chosen?selectedMomentDetails(snapshot,chosen):''}`;
+    const next=dev?'Your reply is given to the Dev agent for its next version.':'Your reply goes to the robot before its next attempt. If the time runs out, the AI advisor answers instead and the record says so.';
+    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${waiting?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div class="op-action ${waiting?'need':'none'}"><h4>${waiting?'The robot needs your help':'✓ Nothing to do'}</h4>${waiting?HumanReply.blocks({a:where,b:asked,c:actions,d:`<p>${next}</p>`}):`<p>${operatorLifecycleCopy(snapshot)?.text || (isTerminal(snapshot)?'This run has ended. The help the robot received is listed below.':"The robot is working on its own. You'll be asked here if it needs help.")}</p>`}</div>${history?HumanReply.block('E','History',history,' data-hr-history'):''}</section>`;
   }
 
   function operatorBudgetCard(name,value,seconds=false,ended=false,showZero=false,recorded=false,plain=false) {
@@ -4458,6 +4480,7 @@
     });
 
     bindHistorySelection(snapshot);
+    if(window.ReplayMode?.enabled&&snapshot.dev_v2)ReplayMode.bind(view,replayContext(snapshot),()=>{const y=window.scrollY;render(currentSnapshot);window.scrollTo(0,y);});
     view.querySelectorAll('video[data-starting-video]').forEach(video => {
       const holdFirstFrame = () => { video.pause(); video.currentTime = 0; };
       video.addEventListener('loadedmetadata', holdFirstFrame, {once:true});
@@ -5251,6 +5274,8 @@
       const listed = await listResponse.json();
       runs = listed.runs;
       devSessions = listed.dev_sessions || [];
+      // Replay: only the recorded runs are listed; fixed runs and launches stay out of the page.
+      if (window.ReplayMode?.enabled) { await ReplayMode.config; runs = []; devSessions = devSessions.filter(d => ReplayMode.allows(d.experiment_id)); }
       if(!experimentRestored){
         experimentRestored=true;
         if(initialExperiment){
@@ -5270,7 +5295,7 @@
         if(response.ok){const session=await response.json();if(!session.history_deleted_at){await updateDevSnapshot(session);connectionState(true);return;}}
         selectedDev=null;
       }
-      launches = listed.launches || [];
+      launches = window.ReplayMode?.enabled ? [] : listed.launches || [];
       if (pendingLaunch) {
         const launch = launches.find(item => item.launch_id === pendingLaunch);
         if (launch?.run_id && runs.some(item => item.run_id === launch.run_id)) {

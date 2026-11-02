@@ -2474,6 +2474,33 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .ab-keys-actions{margin-top:10px}
 #attentionbench-clear .ab-keys-note{margin-top:10px;min-height:1.5em}
 @media(max-width:760px){#attentionbench-clear .ab-keys-role,#attentionbench-clear .ab-keys-row{grid-template-columns:1fr}}
+/* Panel 04: the shared A-E structure */
+#attentionbench-clear .hr-blocks{display:grid;gap:12px;margin-top:12px;text-align:left}
+#attentionbench-clear .hr-block{padding:10px 0 2px;border-top:1px solid #d3d4c6}
+#attentionbench-clear .hr-block>h5{display:flex;align-items:center;gap:9px;margin:0 0 6px;font:600 12px var(--body,inherit);letter-spacing:.06em;text-transform:uppercase;color:#686e64}
+#attentionbench-clear .hr-block>h5 span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:4px;background:#242822;color:#fff;font:600 11px ui-monospace,monospace;letter-spacing:0}
+#attentionbench-clear .hr-body>p{margin:0 0 6px;color:#242822;font-size:13px;line-height:1.5}
+#attentionbench-clear .hr-body .op-thread{margin-top:0}
+#attentionbench-clear .hr-category{margin:0 0 10px;padding:0;border:0;display:flex;flex-wrap:wrap;gap:6px 8px}
+#attentionbench-clear .hr-category legend{padding:0;margin-bottom:6px;font-size:12px;color:#686e64}
+#attentionbench-clear .hr-category label{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid #d3d4c6;border-radius:999px;font-size:12px;cursor:pointer}
+#attentionbench-clear .hr-category input{margin:0;accent-color:#d94d27}
+#attentionbench-clear .hr-category label:has(input:checked){border-color:#d94d27;color:#a23f32}
+/* Replay mode: no run controls; the page only shows recorded runs */
+#attentionbench-clear[data-replay="1"] :is([data-open-launch],[data-open-run-again],[data-open-fork],[data-stop-dev],[data-dev-pause],[data-dev-resume],#ab-emergency-interrupt,.op-new-run){display:none!important}
+#attentionbench-clear .hr-moment{margin-top:18px}
+#attentionbench-clear .hr-moment>h4{margin:0 0 4px;font-size:14px;color:#242822}
+#attentionbench-clear .hr-bad{color:#a23f32}
+#attentionbench-clear .hr-reveal{padding:10px 12px;border:1px solid #d3d4c6;border-radius:6px;background:#ffffff40}
+dialog.ab-replay-consent{max-width:min(520px,92vw);border:1px solid #d3d4c6;border-radius:10px;padding:20px 22px;background:#f8f6f0;color:#242822}
+dialog.ab-replay-consent::backdrop{background:#0008}
+dialog.ab-replay-consent h3{margin:0 0 10px}
+dialog.ab-replay-consent .op-controls{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+#attentionbench-clear .hr-moment .op-guidance-label{display:block;margin:0 0 12px;font:600 12px var(--body,inherit);letter-spacing:.08em;text-transform:uppercase;color:#686e64}
+#attentionbench-clear .hr-moment textarea,#attentionbench-clear .hr-moment input[data-rp-code]{display:block;box-sizing:border-box;width:100%;margin:8px 0 0;padding:12px 14px;border:1px solid #c5c8b8;border-radius:10px;background:#fff;color:#242822;font:400 14.5px/1.5 var(--body,inherit);letter-spacing:0;text-transform:none}
+#attentionbench-clear .hr-moment textarea{min-height:96px;resize:vertical}
+#attentionbench-clear .hr-moment input[data-rp-code]{max-width:340px;font-family:ui-monospace,monospace}
+#attentionbench-clear .hr-moment .op-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 </style>
 <style>
 #attentionbench-clear [data-agent-run] .ab-status-head {display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;}
@@ -3309,11 +3336,27 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .ab-keys-row{border:1px solid var(--line);color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] .ab-keys-row b{color:var(--text)}
 #attentionbench-clear[data-theme="dark"] .ab-keys-left em{color:var(--text)}
+#attentionbench-clear[data-theme="dark"] .hr-block{border-top:1px solid #33383d}
+#attentionbench-clear[data-theme="dark"] .hr-block>h5{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .hr-block>h5 span{background:#ecebe6;color:#15171a}
+#attentionbench-clear[data-theme="dark"] .hr-body>p{color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .hr-category{border:0}
+#attentionbench-clear[data-theme="dark"] .hr-category legend{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .hr-category label{border:1px solid #33383d}
+#attentionbench-clear[data-theme="dark"] .hr-category input{accent-color:#ec6a43}
+#attentionbench-clear[data-theme="dark"] .hr-category label:has(input:checked){border-color:#ec6a43;color:#e08670}
+#attentionbench-clear[data-theme="dark"] .hr-moment>h4{color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .hr-bad{color:#e08670}
+#attentionbench-clear[data-theme="dark"] .hr-reveal{border:1px solid #33383d;background:#23272c40}
+html[data-theme="dark"] dialog.ab-replay-consent{border:1px solid #33383d;background:#1d2024;color:#ecebe6}
+html[data-theme="dark"] dialog.ab-replay-consent::backdrop{background:#f2f2f288}
+#attentionbench-clear[data-theme="dark"] .hr-moment .op-guidance-label{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .hr-moment textarea,#attentionbench-clear[data-theme="dark"] .hr-moment input[data-rp-code]{border:1px solid #3a3f45;background:#23272c;color:#ecebe6}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>
 <section class="view" aria-label="AttentionBench operations workspace"><div class="op-skeleton" aria-hidden="true"><i></i><i></i><i></i></div><p class="op-sr-only" style="position:absolute;left:-9999px">Reading run status…</p></section>
 <footer class="op-keys" aria-label="Keyboard shortcuts"><span><kbd>←</kbd><kbd>→</kbd> switch attempt</span><span><kbd>Space</kbd> play / pause</span><span><kbd>T</kbd> show / hide tasks</span></footer>
 </div>
-<link rel="stylesheet" href="./shell.css"><script src="./shell.js" defer></script><script src="./notices.js" defer></script><script src="./live.js" defer></script>
+<link rel="stylesheet" href="./shell.css"><script src="./shell.js" defer></script><script src="./notices.js" defer></script><script src="./human_reply.js" defer></script><script src="./replay_mode.js" defer></script><script src="./live.js" defer></script>
 </body></html>
