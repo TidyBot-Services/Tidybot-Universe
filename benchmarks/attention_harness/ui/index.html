@@ -3420,10 +3420,13 @@ html[data-theme="dark"] dialog.ab-replay-consent::backdrop{background:#f2f2f288}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode:has(:checked){background:var(--panel);box-shadow:inset 0 -2px 0 var(--orange)}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode b{color:var(--text);font-size:12px}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode small{font-size:10px}
-#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) auto;border-color:var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role{grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr);border-color:var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role>:is([data-role-test],.ab-keys-test){grid-column:1/-1;justify-self:start;order:2}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-model-source-field] select{text-overflow:ellipsis}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-models[hidden]{display:none}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-agent-reason]{margin:0 0 12px;color:var(--muted)}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell :is([data-agent-reason],.ab-keys-note):empty{display:none}
-#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=reviewer]{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:0 20px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=reviewer]{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0 20px}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=reviewer]>.ab-run-section-head{grid-column:1/-1}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-model-source-field]{grid-column:auto}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-reviewer-toggle strong{font-size:13px;color:var(--text)}

@@ -2123,7 +2123,7 @@
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="all" data-keys-mode disabled><span><b>My key for all agents</b><small>One provider, model and key</small></span></label>
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="different" data-keys-mode disabled><span><b>Different per agent</b><small>Choose each role separately</small></span></label>
       </fieldset>
-      <div class="ab-launch-grid ab-keys-models">${KEY_ROLES.map(([role,title])=>`<div class="ab-keys-role-model">
+      <div class="ab-launch-grid ab-keys-models" data-keys-models>${KEY_ROLES.map(([role,title])=>`<div class="ab-keys-role-model" data-role-model-wrap="${role}">
         <label class="ab-launch-field" data-key-lab-model="${role}">${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<select name="${role}_model" aria-label="${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option>${role==='advisor'?'':'<option>gpt-6-sol</option>'}</select></label>
         <label class="ab-launch-field" data-key-own-model="${role}" hidden>${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<input data-role-model="${role}" aria-label="${title} key model" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"></label>
       </div>`).join('')}</div>
@@ -2222,6 +2222,15 @@
     function drawMode() {
       const shared=state.mode==='all',different=state.mode==='different';
       sharedBox.hidden=!shared;customBox.hidden=!different;details.hidden=!different;
+      // In per-agent mode each role's model field sits in that role's row instead of the shared row above.
+      const modelsGrid=box.querySelector('[data-keys-models]');
+      KEY_ROLES.forEach(([role])=>{
+        const wrap=box.querySelector(`[data-role-model-wrap="${role}"]`),row=box.querySelector(`[data-key-role="${role}"]`);
+        if(!wrap||!row)return;
+        if(different){if(wrap.parentElement!==row)row.appendChild(wrap);}
+        else if(wrap.parentElement!==modelsGrid)modelsGrid.appendChild(wrap);
+      });
+      modelsGrid.hidden=different;
       const host=shared?box.querySelector('[data-keys-shared-form]'):customBox;
       if(addBox.parentElement!==host)host.appendChild(addBox);
       addBox.hidden=!state.available||state.mode==='lab';
@@ -2431,7 +2440,7 @@
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
             <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="30" value="21600" required><span>seconds</span></span></label>
-            <label class="ab-launch-field">AI thinking per task<span class="ab-launch-unit" ${[240,360].includes(options?.dev_v2?.model_reserve_seconds)?`title="Five Dev versions, five reviews and five hints can reserve ${options.dev_v2.model_reserve_seconds===360?50:40} minutes."`:''}><input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required><span>minutes</span></span></label>
+            <label class="ab-launch-field">AI thinking per task<small data-model-minutes-note hidden> · set by Agent mode</small><span class="ab-launch-unit" ${[240,360].includes(options?.dev_v2?.model_reserve_seconds)?`title="Five Dev versions, five reviews and five hints can reserve ${options.dev_v2.model_reserve_seconds===360?50:40} minutes."`:''}><input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required><span>minutes</span></span></label>
             <label class="ab-launch-field">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field" data-v2-tokens>AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
@@ -2553,7 +2562,7 @@
         form.model_source.disabled=agent||profile?.channel!=='dev_v2';
         form.eval_agent_enabled.disabled=agent||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
         if(profile?.channel==='dev_v2'){form.max_attempts.readOnly=agent;form.wall_seconds.readOnly=agent;}
-        form.model_seconds_minutes.disabled=agent;
+        form.model_seconds_minutes.disabled=agent;form.querySelector('[data-model-minutes-note]').hidden=!agent;
         form.querySelector('[data-v2-config]').hidden=agent||profile?.channel!=='dev_v2';
         showQuota();
         form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention.';
