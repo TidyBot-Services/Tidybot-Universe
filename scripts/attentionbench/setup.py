@@ -22,6 +22,9 @@ sys.path.insert(0, str(ROOT))
 from scripts.attentionbench import installer
 
 
+INSTALL_FREE_GB = 70
+
+
 def workspace_path(raw: str) -> Path:
     path = Path(raw)
     if not path.is_absolute() or path != path.resolve(strict=False):
@@ -114,8 +117,13 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int) ->
         parent = parent.parent
     stat = os.statvfs(parent)
     free_gb = stat.f_bavail * stat.f_frsize / 1024**3
-    check('disk', free_gb >= 60, f'{free_gb:.1f} GB free at {parent}',
-          f'Free at least 60 GB on the filesystem containing {parent}.')
+    # A fresh install peaked at 65 GB (V2, 2026-11-02): ~51 GB workspace plus ~15 GB uv/pip/conda
+    # download caches. A workspace that is already set up only needs room for runs.
+    need = 10 if (ws / 'paths.json').is_file() else INSTALL_FREE_GB
+    check('disk', free_gb >= need, f'{free_gb:.1f} GB free at {parent}; setup needs {need} GB',
+          f'Free at least {need} GB on the filesystem containing {parent}. A first install uses about '
+          f'51 GB in the workspace plus about 15 GB of download caches; after setup you can reclaim the caches '
+          f'with: uv cache clean; pip cache purge; conda clean -a')
     for name, port in (('UI port', ui_port), ('Memory port', memory_port)):
         free = _free_port(port)
         check(name, free, f'127.0.0.1:{port} {"free" if free else "busy"}',

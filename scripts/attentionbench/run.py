@@ -98,10 +98,10 @@ def summary(ws: Path, eid: str, key: str, snapshot: dict) -> dict:
     result = {
         'experiment_id': eid, 'request_key': key, 'final_state': snapshot.get('state'),
         'version_count': len(versions), 'eval_verdict': verdicts[-1] if verdicts else None,
-        'l3_files': ['bootstrap log (capture setup output)', 'doctor log (capture setup output)',
-                     'fingerprint output', str(experiment_file)],
     }
-    (run_dir / f'{eid}-summary.json').write_text(json.dumps(result, indent=2) + '\n')
+    summary_file = run_dir / f'{eid}-summary.json'
+    result['l3_files'] = [str(summary_file), str(experiment_file)]
+    summary_file.write_text(json.dumps(result, indent=2) + '\n')
     return result
 
 
@@ -155,7 +155,8 @@ def execute(args: argparse.Namespace) -> int:
                 interrupted = True
                 print('Interrupted; cancelling.', flush=True)
             if latest.get('state') not in TERMINAL:
-                print('cancel: ' + json.dumps(post_json(resource + '/cancel', token, {})), flush=True)
+                reply = post_json(resource + '/cancel', token, {})
+                print(f"cancel: state={reply.get('state')} cancelled={reply.get('cancelled')}", flush=True)
                 cancel_deadline = time.monotonic() + 120
                 while time.monotonic() < cancel_deadline:
                     latest = get_json(resource)
@@ -175,18 +176,23 @@ def execute(args: argparse.Namespace) -> int:
             lock_handle.close()
 
 
-def main(argv: list[str] | None = None) -> int:
+def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--workspace', required=True)
     p.add_argument('--task', default='pick_place_counter_to_sink')
     p.add_argument('--seed', type=int, default=101)
-    p.add_argument('--minutes', type=float, default=30)
+    # V2 (2026-11-02): no version within 30 minutes; L2 needed 37. 45 leaves room for one.
+    p.add_argument('--minutes', type=float, default=45)
     p.add_argument('--lock')
     p.add_argument('--no-stop', action='store_true')
     p.add_argument('--ui-port', type=int, default=8769)
     p.add_argument('--memory-port', type=int, default=8878)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
     try:
-        return execute(p.parse_args(argv))
+        return execute(parser().parse_args(argv))
     except installer.StepError as exc:
         print(str(exc), file=sys.stderr)
     except Exception as exc:

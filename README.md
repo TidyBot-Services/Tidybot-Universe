@@ -36,6 +36,7 @@ mkdir -p /absolute/WS/repos && git clone -b attentionbench/baseline-20261015 htt
 /absolute/WS/repos/attentionbench/scripts/attentionbench/run.sh --workspace /absolute/WS
 ```
 
+`run.sh` runs one agent attempt for up to 45 minutes (`--minutes N` to change), then cancels it and stops everything.
 Use `scripts/attentionbench/stop.sh --workspace /absolute/WS` to cancel running agent
 workers and stop the UI and Memory services.
 
@@ -50,7 +51,7 @@ workers and stop the UI and Memory services.
 | Conda | Miniconda, with locked cuRobo environment | You; setup builds environment | About 15 GB for cuRobo; tens of minutes |
 | bwrap and user namespaces | `bubblewrap`; working user, PID and network namespace probe | You | Small; minutes |
 | Codex CLI and account | `codex-cli 0.165.0`; access to `gpt-6.1-sol`. setup.sh and run.sh make one short Codex call when no recent quota reading exists (uses your quota). | You | Small; login and warm-up minutes |
-| Disk | At least 60 GB free | You | Asset transfer, hashing and installation can take tens of minutes or longer |
+| Disk | About 70 GB free for the first install (about 51 GB workspace plus about 15 GB of uv/pip/conda download caches; reclaim the caches afterwards with `uv cache clean; pip cache purge; conda clean -a`). `setup.sh` checks this first. | You | Asset transfer, hashing and installation took 15 minutes in a clean GPU container with local asset copies |
 | Official RoboCasa assets and simulator | Asset lists pinned by SHA256 in `attentionbench.lock.json` (`assets.*`) | setup | About 25 GB with the simulator environment; transfer and hashing can take tens of minutes or longer |
 | cuRobo native assets | 70,254 files checked against the planner lock | setup | About 8.2 GB |
 | Official cuRobo source | Commit `78fd485fa82d9b9a063fb4985e371814587e666a` | setup | Checkout and build time vary |

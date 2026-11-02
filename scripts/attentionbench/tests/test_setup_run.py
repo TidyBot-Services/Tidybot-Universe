@@ -95,6 +95,24 @@ def test_prerequisites_disk_and_port_and_dry_warning(fake_prereqs, monkeypatch, 
     output = capsys.readouterr().out
     assert 'FAIL disk:' in output and 'FAIL UI port:' in output
     assert all('; install:' in line for line in output.splitlines() if line.startswith('FAIL'))
+    assert 'setup needs 70 GB' in output and 'uv cache clean' in output
+
+
+def test_disk_need_is_lower_for_an_installed_workspace(fake_prereqs, monkeypatch, capsys):
+    _, ws = fake_prereqs
+    monkeypatch.setattr(setup.os, 'statvfs', lambda path: SimpleNamespace(f_bavail=40, f_frsize=1024**3))
+    assert not setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'FAIL disk:' in capsys.readouterr().out
+    ws.mkdir()
+    (ws / 'paths.json').write_text('{}')
+    assert setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'PASS disk:' in capsys.readouterr().out
+
+
+def test_defaults_and_summary_paths(tmp_path):
+    assert run.parser().parse_args(['--workspace', str(tmp_path)]).minutes == 45
+    result = run.summary(tmp_path, 'devexp-' + 'a' * 24, 'k', {'state': 'cancelled', 'cells': []})
+    assert all(Path(p).is_file() for p in result['l3_files'])
 
 
 def test_prerequisites_platform_and_python(fake_prereqs, monkeypatch, capsys):
