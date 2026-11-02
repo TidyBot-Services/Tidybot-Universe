@@ -9,7 +9,10 @@ from pathlib import Path
 
 import pytest
 
+from scripts.attentionbench import export_evidence_bundle as bundle
 from scripts.attentionbench.export_evidence_bundle import BANNER, export, translate
+
+HOME = bundle.AUTHOR_PREFIX.decode()
 
 
 def write(path, value):
@@ -21,7 +24,7 @@ def fixture(tmp_path):
     run = tmp_path / "devexp-abcdef1234"
     cid = "cell1"
     base = run / "artifacts" / run.name / "cells" / cid
-    write(run / "selection.json", {"budget_tier": "dev", "uri": "/home/truares/demo"})
+    write(run / "selection.json", {"budget_tier": "dev", "uri": HOME + "demo"})
     write(run / "created.json", {"experiment_id": run.name})
     ledger = sqlite3.connect(run / "ledger.sqlite3")
     ledger.executescript("CREATE TABLE v2_experiments(id TEXT,payload TEXT); CREATE TABLE v2_cells(id TEXT,payload TEXT); CREATE TABLE v2_versions(cell TEXT,version INT,payload TEXT);")
@@ -95,10 +98,10 @@ def test_planted_credential_blocks_asset(tmp_path):
 
 
 def test_path_translation_reversible():
-    original = b"first /home/truares/a\nsecond /home/truares/b\n"
+    original = b"first " + bundle.AUTHOR_PREFIX + b"a\nsecond " + bundle.AUTHOR_PREFIX + b"b\n"
     translated, changed = translate(original)
     assert changed
-    assert translated.replace(b"@AUTHOR_WS@/", b"/home/truares/") == original
+    assert translated.replace(b"@AUTHOR_WS@/", bundle.AUTHOR_PREFIX) == original
 
 
 def test_reviewed_false_positive_is_bound_to_bytes_and_offset(tmp_path):
@@ -123,3 +126,13 @@ def test_reviewed_false_positive_is_bound_to_bytes_and_offset(tmp_path):
     write(waiver, [dict(row, pattern="local#0")])
     with pytest.raises(ValueError, match="generic pattern"):
         export(run, store, tmp_path / "out-local", load_local_secrets=False, reviewed_false_positives=waiver)
+
+
+def test_identity_patterns_come_from_local_config(tmp_path):
+    config = tmp_path / "export-identity.json"
+    assert bundle.local_identity_patterns(config) == []
+    config.write_text(json.dumps({"domain": r"example\\.edu"}))
+    assert bundle.local_identity_patterns(config) == [("domain", r"example\\.edu")]
+    config.write_text(json.dumps({"domain": ""}))
+    with pytest.raises(ValueError):
+        bundle.local_identity_patterns(config)

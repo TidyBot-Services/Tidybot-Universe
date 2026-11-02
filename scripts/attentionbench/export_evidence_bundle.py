@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import getpass
 import gzip
 import hashlib
 import html
@@ -28,7 +29,9 @@ except ImportError:  # Direct script execution.
     from secret_scan import extract, source_paths
 
 VERSION = "1.0.0"
-AUTHOR_PREFIX = b"/home/truares/"
+AUTHOR_PREFIX = (str(Path.home()).rstrip("/") + "/").encode()
+# Extra identity patterns (e-mail domain, tailnet prefix, ...) stay on the author's machine.
+IDENTITY_CONFIG = Path.home() / ".config/attentionbench/export-identity.json"
 PLACEHOLDER = b"@AUTHOR_WS@/"
 BANNER = ("Exported snapshot of the author's run devexp-02cdcb7a… and Memory notes. "
           "Not trusted records. Cannot be imported into the Memory service or the UI. "
@@ -95,16 +98,28 @@ def scan_credentials(data: bytes, patterns: list[tuple[bytes, str]]) -> list[dic
     return hits
 
 
+def local_identity_patterns(path: Path | None = None) -> list[tuple[str, str]]:
+    """{"domain": "<regex>", "tailnet": "<regex>", ...} from a file outside the repository."""
+    path = path or IDENTITY_CONFIG
+    if not path.is_file():
+        print(f"note: {path} not found; identity scan covers user name and host name only", file=sys.stderr)
+        return []
+    rows = json.loads(path.read_text())
+    if not isinstance(rows, dict) or not all(isinstance(k, str) and isinstance(v, str) and v for k, v in rows.items()):
+        raise ValueError(f"{path} must map kind names to non-empty regular expressions")
+    return sorted(rows.items())
+
+
 def identity_hits(name: str, data: bytes, hostname: str) -> list[dict]:
     text = data.decode("utf-8", errors="replace")
-    kinds = [("username", r"truares"), ("hostname", re.escape(hostname)),
-             ("domain", r"engineering\.upenn\.edu"), ("tailnet", r"100\.68\.")]
+    kinds = [("username", re.escape(getpass.getuser())), ("hostname", re.escape(hostname)),
+             *local_identity_patterns()]
     hits = []
     for kind, pattern in kinds:
         if not pattern:
             continue
         for match in re.finditer(pattern, text, re.I):
-            if kind == "username" and text[max(0, match.start()-6):match.start()] == "/home/":
+            if kind == "username" and text[max(0, match.start()-6):match.start()] == "/home/":  # translated home prefix
                 continue
             start = max(0, match.start()-40)
             end = min(len(text), match.end()+40)
