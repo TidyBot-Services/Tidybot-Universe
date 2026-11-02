@@ -53,7 +53,7 @@
   let selectedRequest = null;
   let lastRendered = '';
   let orchestrator = null;
-  let orchestratorExpectedUnavailable = !!window.ReplayMode?.enabled;  // replay has no orchestrator
+  let orchestratorExpectedUnavailable = !!window.ReplayMode?.enabled || root.dataset.remote === '1';  // replay has no orchestrator
   let orchestratorError = 'Orchestrator not connected';
   let sessionHistory = [];
   let sessions = [];
@@ -5307,6 +5307,9 @@
       const listed = await listResponse.json();
       runs = listed.runs;
       devSessions = listed.dev_sessions || [];
+      // The Remote page lists only the shared lobby's runs; the Run page lists only this machine's own.
+      if (root.dataset.remote === '1') { runs = []; devSessions = devSessions.filter(d => d.lobby); }
+      else devSessions = devSessions.filter(d => !d.lobby);
       // Replay: only the recorded runs are listed; fixed runs and launches stay out of the page.
       if (window.ReplayMode?.enabled) { await ReplayMode.config; runs = []; devSessions = devSessions.filter(d => ReplayMode.allows(d.experiment_id)); }
       if(!experimentRestored){

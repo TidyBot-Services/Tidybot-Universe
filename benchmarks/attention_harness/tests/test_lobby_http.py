@@ -162,3 +162,23 @@ def test_cli_rejects_public_lobby_before_loading_paths(monkeypatch,capsys):
     monkeypatch.setattr('sys.argv',['ui_server','--demo','--lobby-config','missing.json','--public-profile'])
     with pytest.raises(SystemExit) as error:main()
     assert error.value.code == 2 and '--lobby-config cannot be used with --public-profile' in capsys.readouterr().err
+
+
+def test_remote_tab_and_page_exist_only_with_a_lobby(served, tmp_path):
+    base, token, demo, clock = served
+    run_page = call(base, '/ui/')[1].decode()
+    remote_page = call(base, '/ui/remote')
+    root = lambda html: re.search(r'<div id="attentionbench-clear"[^>]*>', html)[0]
+    assert 'data-remote-tab="1"' in root(run_page) and 'data-remote="1"' not in root(run_page)
+    assert remote_page[0] == 200
+    remote = remote_page[1].decode()
+    assert 'data-remote="1"' in root(remote) and 'data-control-token' in root(remote)
+    assert b'data-remote-tab="1"' in call(base, '/ui/home.html')[1] and b'data-remote-tab="1"' in call(base, '/ui/memory.html')[1]
+    plain = create_server(store=AttentionStore(tmp_path / 'plain.sqlite3'), port=0)
+    thread = threading.Thread(target=plain.serve_forever, daemon=True); thread.start()
+    try:
+        plain_base = f'http://127.0.0.1:{plain.server_port}'
+        assert call(plain_base, '/ui/remote')[0] == 404
+        assert 'data-remote-tab' not in call(plain_base, '/ui/')[1].decode()
+    finally:
+        plain.shutdown(); plain.server_close(); thread.join(2)

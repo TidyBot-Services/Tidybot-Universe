@@ -29,8 +29,8 @@
     state.snap?.me, state.snap?.clock?.speed, state.snap?.events?.[0]?.id]);
 
   async function poll() {
-    // The replay page lists recorded runs only; the shared lobby does not belong there.
-    if (rootEl.dataset.replay === '1') return stop();
+    // The lobby lives on the Remote page only; the Run and Replay pages keep their own runs.
+    if (rootEl.dataset.remote !== '1') return stop();
     try {
       const response = await fetch('/api/lobby', {cache: 'no-store', credentials: 'same-origin'});
       if (!response.ok) { if (!state.enabled) return stop(); throw new Error(`lobby ${response.status}`); }

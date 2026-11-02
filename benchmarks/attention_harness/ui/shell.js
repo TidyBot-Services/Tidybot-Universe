@@ -67,14 +67,17 @@
 
   function pageSwitcher(page, nav) {
     if (!nav) nav = doc.createElement('nav');
-    // Replay: a visitor sees only the Replay tab; the author sees Replay next to Home, Run and Memory.
+    // Replay: a visitor sees only the Replay tab; the author sees Replay and Remote next to Home, Run and Memory.
     const flags = (doc.getElementById('attentionbench-clear') || doc.body || {}).dataset || {}, bodyFlags = (doc.body || {}).dataset || {};
-    const replay = flags.replay === '1';
-    const author = flags.replayTab === '1' || bodyFlags.replayTab === '1';
-    const pages = author ? [...PAGES, ['replay', 'Replay', '/ui/replay']] : replay ? [['replay', 'Replay', '/ui/replay']] : PAGES;
+    const replay = flags.replay === '1', remote = flags.remote === '1';
+    const author = false;  // the author's tabs are Home, Run, Memory and Remote; Replay is reached by address only
+    const remoteTab = flags.remoteTab === '1' || bodyFlags.remoteTab === '1';
+    const extras = [...(remoteTab ? [['remote', 'Remote', '/ui/remote']] : []), ...(author ? [['replay', 'Replay', '/ui/replay']] : [])];
+    const pages = replay && !author && !remoteTab ? [['replay', 'Replay', '/ui/replay']] : [...PAGES, ...extras];
     if (replay) page = 'replay';
+    if (remote) page = 'remote';
     if (!nav.querySelector('a[data-page]')) nav.innerHTML = pages.map(([id, label, href]) => `<a href="${href}" data-page="${id}">${label}${id === 'memory' ? '<b class="ab-badge" hidden></b>' : ''}</a>`).join('');
-    if (author && !nav.querySelector('a[data-page="replay"]')) nav.insertAdjacentHTML('beforeend', '<a href="/ui/replay" data-page="replay">Replay</a>');  // pages with a fixed tab list
+    for (const [id, label, href] of extras) if (!nav.querySelector(`a[data-page="${id}"]`)) nav.insertAdjacentHTML('beforeend', `<a href="${href}" data-page="${id}">${label}</a>`);  // pages with a fixed tab list
     if (!nav.querySelector('.ind')) nav.insertAdjacentHTML('afterbegin', '<span class="ind" aria-hidden="true"></span>');
     nav.classList.add('ab-pages');
     nav.setAttribute('aria-label', 'Pages');

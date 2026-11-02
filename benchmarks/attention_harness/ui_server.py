@@ -829,8 +829,8 @@ def create_server(
             if replay is not None:
                 if urlsplit(self.path).path == replay_http.PAGE:
                     html = replay_http.page((UI_DIR / 'index.html').read_text(encoding='utf-8'))
-                    if not public:  # the author keeps all four tabs on this page too
-                        html = html.replace('data-replay="1"', 'data-replay="1" data-replay-tab="1"', 1)
+                    if not public and lobby is not None:  # the author's tabs: Home, Run, Memory, Remote
+                        html = html.replace('data-replay="1"', 'data-replay="1" data-remote-tab="1"', 1)
                     self._send(html.encode('utf-8'), 'text/html; charset=utf-8')
                     return
                 if replay_http.handle(self, replay):
@@ -859,12 +859,17 @@ def create_server(
                 self.send_header("Location", "/ui/")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
+            elif path == "/ui/remote" and lobby is not None and store is not None:
+                page = (UI_DIR / "index.html").read_text(encoding="utf-8").replace('data-mode="demo"', 'data-mode="live"', 1)
+                page = page.replace('data-mode="live"', f'data-mode="live" data-control-token="{control_token}" data-remote="1" data-remote-tab="1"'
+                                    , 1)
+                self._send(page.encode("utf-8"), "text/html; charset=utf-8")
             elif path == "/ui/":
                 page = (UI_DIR / "index.html").read_text(encoding="utf-8")
                 if store is not None:
                     page = page.replace('data-mode="demo"', 'data-mode="live"', 1)
                     page = page.replace('data-mode="live"',
-                                        f'data-mode="live" data-control-token="{control_token}"' + (' data-replay-tab="1"' if replay is not None else ''), 1)
+                                        f'data-mode="live" data-control-token="{control_token}"' + (' data-remote-tab="1"' if lobby is not None else ''), 1)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
             elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js", "/ui/human_reply.js", "/ui/replay_mode.js", "/ui/lobby.js"}:
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
@@ -877,8 +882,8 @@ def create_server(
                 body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()
                 if path.endswith('.html'):
                     body = body.replace(b'__CONTROL_TOKEN__', control_token.encode())
-                    if replay is not None:
-                        body = body.replace(b'<body', b'<body data-replay-tab="1"', 1)
+                    if lobby is not None:
+                        body = body.replace(b'<body', b'<body data-remote-tab="1"', 1)
                 self._send(body, kind)
             elif path == "/api/home/status":
                 if not hasattr(dev_v2_bridge, 'root'):
@@ -901,8 +906,8 @@ def create_server(
                 body = (UI_DIR / path.rsplit('/', 1)[-1]).read_bytes()
                 if path.endswith('.html'):
                     body = body.replace(b'__CONTROL_TOKEN__', control_token.encode())
-                    if replay is not None:
-                        body = body.replace(b'<body', b'<body data-replay-tab="1"', 1)
+                    if lobby is not None:
+                        body = body.replace(b'<body', b'<body data-remote-tab="1"', 1)
                 self._send(body, kind)
             elif path == "/api/orchestrator/snapshot":
                 if orchestrator_url is None:
