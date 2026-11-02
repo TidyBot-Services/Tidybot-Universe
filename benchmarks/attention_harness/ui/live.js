@@ -53,7 +53,7 @@
   let selectedRequest = null;
   let lastRendered = '';
   let orchestrator = null;
-  let orchestratorExpectedUnavailable = !!window.ReplayMode?.enabled || root.dataset.remote === '1';  // replay has no orchestrator
+  let orchestratorExpectedUnavailable = root.dataset.remote === '1';  // the shared lobby has no orchestrator
   let orchestratorError = 'Orchestrator not connected';
   let sessionHistory = [];
   let sessions = [];
@@ -4086,25 +4086,7 @@
   function devHelpResponder(provider) {
     return provider==='advisor' || provider==='human_proxy' ? 'advisor_proxy' : provider||'unknown';
   }
-  // The help moments of a recorded run, in the shape ReplayMode (ui/replay_mode.js) draws and records answers for.
-  function replayContext(snapshot) {
-    const seen=new Set();
-    // Only moments where help was delivered take part: those are the ones with something to compare an answer with.
-    const rows=snapshot.requests.filter(r=>{if(seen.has(r.request_id)||!snapshot.responses?.[r.response_id])return false;seen.add(r.request_id);return true;}).sort((a,b)=>(a.created_at||0)-(b.created_at||0));
-    const attempts=[...snapshot.attempts].sort((a,b)=>a.index-b.index);
-    const solved=a=>{const n=snapshot.eval?.native_outcomes?.[a.attempt_id];return n?.evaluated===true?n.native_success===true:a.status==='succeeded';};
-    const moments=rows.map(request=>{
-      const attempt=snapshot.attempts.find(a=>a.attempt_id===request.attempt_id),k=attempt?attempt.index+1:null,response=snapshot.responses?.[request.response_id];
-      const version=snapshot.dev_session?.versions?.find(v=>v.version===k),later=attempts.find(a=>a.index===(attempt?attempt.index+1:-1));
-      return {k:k??0,attemptId:attempt?.attempt_id||'',failure:agentStoryReason(version,'The attempt did not succeed.')||'The attempt did not succeed.',
-        question:'What should the robot do differently on its next attempt?',
-        adviceHtml:response?readableReply(response):'',next:later?`Attempt ${k+1} then ${solved(later)?'solved the task':'did not solve it'}.`:'That was the last attempt.'};
-    });
-    return {experimentId:snapshot.dev_v2?.experiment_id,moments,heading:operatorHeading('04','HELP &amp; REPLIES',''),
-      watch(attemptId){selectAgentAttempt(snapshot,attemptId);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});}};
-  }
   function operatorHelp(snapshot,chosen) {
-    if(window.ReplayMode?.enabled&&snapshot.dev_v2)return ReplayMode.panel(replayContext(snapshot));
     if(snapshot.lobby){const shared=Lobby.helpHtml(snapshot,operatorHeading('04','HELP &amp; REPLIES',''),HumanReply);if(shared)return shared;const own=operatorHelpInner(snapshot,chosen);return Lobby.sharingHtml(snapshot)?own.replace(/<\/section>\s*$/,Lobby.sharingHtml(snapshot)+'</section>'):own;}
     return operatorHelpInner(snapshot,chosen);
   }
@@ -4662,7 +4644,6 @@
 
     bindHistorySelection(snapshot);
     Lobby.bindHelp(view,snapshot);Lobby.bindBanner(view);
-    if(window.ReplayMode?.enabled&&snapshot.dev_v2)ReplayMode.bind(view,replayContext(snapshot),()=>{const y=window.scrollY;render(currentSnapshot);window.scrollTo(0,y);});
     view.querySelectorAll('video[data-starting-video]').forEach(video => {
       const holdFirstFrame = () => { video.pause(); video.currentTime = 0; };
       video.addEventListener('loadedmetadata', holdFirstFrame, {once:true});
@@ -5460,7 +5441,6 @@
       if (root.dataset.remote === '1') { runs = []; devSessions = devSessions.filter(d => d.lobby); }
       else devSessions = devSessions.filter(d => !d.lobby);
       // Replay: only the recorded runs are listed; fixed runs and launches stay out of the page.
-      if (window.ReplayMode?.enabled) { await ReplayMode.config; runs = []; devSessions = devSessions.filter(d => ReplayMode.allows(d.experiment_id)); }
       if(!experimentRestored){
         experimentRestored=true;
         if(initialExperiment){
@@ -5480,7 +5460,7 @@
         if(response.ok){const session=await response.json();if(!session.history_deleted_at){await updateDevSnapshot(session);connectionState(true);return;}}
         selectedDev=null;
       }
-      launches = window.ReplayMode?.enabled ? [] : listed.launches || [];
+      launches = listed.launches || [];
       if (pendingLaunch) {
         const launch = launches.find(item => item.launch_id === pendingLaunch);
         if (launch?.run_id && runs.some(item => item.run_id === launch.run_id)) {

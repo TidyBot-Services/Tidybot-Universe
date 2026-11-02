@@ -2511,21 +2511,7 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .hr-category label{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid #d3d4c6;border-radius:999px;font-size:12px;cursor:pointer}
 #attentionbench-clear .hr-category input{margin:0;accent-color:#d94d27}
 #attentionbench-clear .hr-category label:has(input:checked){border-color:#d94d27;color:#a23f32}
-/* Replay mode: no run controls; the page only shows recorded runs */
-#attentionbench-clear[data-replay="1"] :is(.ab-notices-host,[data-open-launch],[data-open-run-again],[data-open-fork],[data-stop-dev],[data-dev-pause],[data-dev-resume],#ab-emergency-interrupt,.op-new-run){display:none!important}
-#attentionbench-clear .hr-moment{margin-top:18px}
-#attentionbench-clear .hr-moment>h4{margin:0 0 4px;font-size:14px;color:#242822}
 #attentionbench-clear .hr-bad{color:#a23f32}
-#attentionbench-clear .hr-reveal{padding:10px 12px;border:1px solid #d3d4c6;border-radius:6px;background:#ffffff40}
-dialog.ab-replay-consent{max-width:min(520px,92vw);border:1px solid #d3d4c6;border-radius:10px;padding:20px 22px;background:#f8f6f0;color:#242822}
-dialog.ab-replay-consent::backdrop{background:#0008}
-dialog.ab-replay-consent h3{margin:0 0 10px}
-dialog.ab-replay-consent .op-controls{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
-#attentionbench-clear .hr-moment .op-guidance-label{display:block;margin:0 0 12px;font:600 12px var(--body,inherit);letter-spacing:.08em;text-transform:uppercase;color:#686e64}
-#attentionbench-clear .hr-moment textarea,#attentionbench-clear .hr-moment input[data-rp-code]{display:block;box-sizing:border-box;width:100%;margin:8px 0 0;padding:12px 14px;border:1px solid #c5c8b8;border-radius:10px;background:#fff;color:#242822;font:400 14.5px/1.5 var(--body,inherit);letter-spacing:0;text-transform:none}
-#attentionbench-clear .hr-moment textarea{min-height:96px;resize:vertical}
-#attentionbench-clear .hr-moment input[data-rp-code]{max-width:340px;font-family:ui-monospace,monospace}
-#attentionbench-clear .hr-moment .op-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 /* Shared lobby: whose runs, the one robot and its queue, the queue and read-only variants of 02/04/05 */
 #attentionbench-clear .lb-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
 #attentionbench-clear .lb-seg{display:inline-flex;padding:2px;border:1px solid #d3d4c6;border-radius:999px;background:#fff}
@@ -3439,13 +3425,7 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .hr-category label{border:1px solid #33383d}
 #attentionbench-clear[data-theme="dark"] .hr-category input{accent-color:#ec6a43}
 #attentionbench-clear[data-theme="dark"] .hr-category label:has(input:checked){border-color:#ec6a43;color:#e08670}
-#attentionbench-clear[data-theme="dark"] .hr-moment>h4{color:#ecebe6}
 #attentionbench-clear[data-theme="dark"] .hr-bad{color:#e08670}
-#attentionbench-clear[data-theme="dark"] .hr-reveal{border:1px solid #33383d;background:#23272c40}
-html[data-theme="dark"] dialog.ab-replay-consent{border:1px solid #33383d;background:#1d2024;color:#ecebe6}
-html[data-theme="dark"] dialog.ab-replay-consent::backdrop{background:#f2f2f288}
-#attentionbench-clear[data-theme="dark"] .hr-moment .op-guidance-label{color:#a3a199}
-#attentionbench-clear[data-theme="dark"] .hr-moment textarea,#attentionbench-clear[data-theme="dark"] .hr-moment input[data-rp-code]{border:1px solid #3a3f45;background:#23272c;color:#ecebe6}
 #attentionbench-clear[data-theme="dark"] .lb-seg{border:1px solid #33383d;background:#23272c}
 #attentionbench-clear[data-theme="dark"] .lb-seg button{border:0;background:none;color:#a3a199}
 #attentionbench-clear[data-theme="dark"] .lb-seg button[aria-pressed="true"]{background:#ecebe6;color:#15171a}
@@ -3481,5 +3461,5 @@ html[data-theme="dark"] dialog.ab-replay-consent::backdrop{background:#f2f2f288}
 <section class="view" aria-label="AttentionBench operations workspace"><div class="op-skeleton" aria-hidden="true"><i></i><i></i><i></i></div><p class="op-sr-only" style="position:absolute;left:-9999px">Reading run status…</p></section>
 <footer class="op-keys" aria-label="Keyboard shortcuts"><span><kbd>←</kbd><kbd>→</kbd> switch attempt</span><span><kbd>Space</kbd> play / pause</span><span><kbd>T</kbd> show / hide tasks</span></footer>
 </div>
-<link rel="stylesheet" href="./shell.css"><script src="./shell.js" defer></script><script src="./notices.js" defer></script><script src="./human_reply.js" defer></script><script src="./replay_mode.js" defer></script><script src="./lobby.js" defer></script><script src="./live.js" defer></script>
+<link rel="stylesheet" href="./shell.css"><script src="./shell.js" defer></script><script src="./notices.js" defer></script><script src="./human_reply.js" defer></script><script src="./lobby.js" defer></script><script src="./live.js" defer></script>
 </body></html>

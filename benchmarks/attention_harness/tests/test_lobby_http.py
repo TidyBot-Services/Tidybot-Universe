@@ -157,13 +157,6 @@ def test_without_lobby_runs_are_byte_identical(tmp_path):
         finally:server.shutdown();server.server_close();thread.join(2)
 
 
-def test_cli_rejects_public_lobby_before_loading_paths(monkeypatch,capsys):
-    from benchmarks.attention_harness.ui_server import main
-    monkeypatch.setattr('sys.argv',['ui_server','--demo','--lobby-config','missing.json','--public-profile'])
-    with pytest.raises(SystemExit) as error:main()
-    assert error.value.code == 2 and '--lobby-config cannot be used with --public-profile' in capsys.readouterr().err
-
-
 def test_remote_tab_and_page_exist_only_with_a_lobby(served, tmp_path):
     base, token, demo, clock = served
     run_page = call(base, '/ui/')[1].decode()

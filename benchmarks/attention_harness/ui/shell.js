@@ -67,14 +67,12 @@
 
   function pageSwitcher(page, nav) {
     if (!nav) nav = doc.createElement('nav');
-    // Replay: a visitor sees only the Replay tab; the author sees Replay and Remote next to Home, Run and Memory.
+    // Home, Run and Memory; Remote joins them when the server has a lobby.
     const flags = (doc.getElementById('attentionbench-clear') || doc.body || {}).dataset || {}, bodyFlags = (doc.body || {}).dataset || {};
-    const replay = flags.replay === '1', remote = flags.remote === '1';
-    const author = false;  // the author's tabs are Home, Run, Memory and Remote; Replay is reached by address only
+    const remote = flags.remote === '1';
     const remoteTab = flags.remoteTab === '1' || bodyFlags.remoteTab === '1';
-    const extras = [...(remoteTab ? [['remote', 'Remote', '/ui/remote']] : []), ...(author ? [['replay', 'Replay', '/ui/replay']] : [])];
-    const pages = replay && !author && !remoteTab ? [['replay', 'Replay', '/ui/replay']] : [...PAGES, ...extras];
-    if (replay) page = 'replay';
+    const extras = remoteTab ? [['remote', 'Remote', '/ui/remote']] : [];
+    const pages = [...PAGES, ...extras];
     if (remote) page = 'remote';
     if (!nav.querySelector('a[data-page]')) nav.innerHTML = pages.map(([id, label, href]) => `<a href="${href}" data-page="${id}">${label}${id === 'memory' ? '<b class="ab-badge" hidden></b>' : ''}</a>`).join('');
     for (const [id, label, href] of extras) if (!nav.querySelector(`a[data-page="${id}"]`)) nav.insertAdjacentHTML('beforeend', `<a href="${href}" data-page="${id}">${label}</a>`);  // pages with a fixed tab list
