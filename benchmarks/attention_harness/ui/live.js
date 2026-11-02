@@ -4506,7 +4506,7 @@
     });
 
     bindHistorySelection(snapshot);
-    Lobby.bindHelp(view,snapshot);Lobby.bindBanner(view);
+    Lobby.bindHelp(view,snapshot);Lobby.bindBanner(view);bindPlaybackSpeed();
     if(window.ReplayMode?.enabled&&snapshot.dev_v2)ReplayMode.bind(view,replayContext(snapshot),()=>{const y=window.scrollY;render(currentSnapshot);window.scrollTo(0,y);});
     view.querySelectorAll('video[data-starting-video]').forEach(video => {
       const holdFirstFrame = () => { video.pause(); video.currentTime = 0; };
@@ -4923,6 +4923,20 @@
     const index=devSessions.findIndex(s=>s.session_id===snapshot.dev_session.session_id);
     if(index>=0)devSessions[index]={...devSessions[index],...snapshot.dev_session};
     if(currentSnapshot?.run?.run_id!==snapshot.run.run_id&&!matchMedia('(max-width:900px)').matches){sidebarOpen=true;sidebarLayout();}
+  }
+  // Replay videos can be watched faster: 1x to 16x (the browser's reliable limit), remembered across attempts and runs.
+  function bindPlaybackSpeed() {
+    const rates=[1,2,4,8,16],saved=Number(preference('attention.playback-rate'));
+    const rate=rates.includes(saved)?saved:1;
+    view.querySelectorAll('video[data-history-replay],video[data-starting-video]').forEach(video=>{
+      const figure=video.closest('figure');
+      if(!figure||figure.querySelector('.op-speed'))return;
+      const apply=value=>{video.defaultPlaybackRate=value;video.playbackRate=value;figure.querySelectorAll('.op-speed button').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.speed)===value)));};
+      figure.insertAdjacentHTML('beforeend',`<div class="op-speed" role="group" aria-label="Playback speed"><span>Speed</span>${rates.map(r=>`<button type="button" data-speed="${r}" aria-pressed="${r===rate}">${r}×</button>`).join('')}</div>`);
+      figure.querySelectorAll('.op-speed button').forEach(b=>b.addEventListener('click',()=>{const value=Number(b.dataset.speed);preference('attention.playback-rate',String(value));apply(value);}));
+      ['loadedmetadata','loadeddata','play'].forEach(name=>video.addEventListener(name,()=>{if(video.playbackRate!==Number(preference('attention.playback-rate')||1))apply(rates.includes(Number(preference('attention.playback-rate')))?Number(preference('attention.playback-rate')):1);}));
+      apply(rate);
+    });
   }
   function bindHistorySelection(snapshot) {
     view.querySelectorAll('[data-history-select]:not(.op-attn-watch)').forEach(button => button.addEventListener('click', () => {
