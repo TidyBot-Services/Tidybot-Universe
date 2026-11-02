@@ -112,7 +112,7 @@ def test_end_to_end_loopback_canary(tmp_path,monkeypatch,loopback,offline_dev_id
     key=Secret('sk-'+secrets.token_urlsafe(32));responses=[];processes=[]
     def launch(argv,keys,**kwargs):
         script=Path(__file__).parent/'fakes/byok_run.py'
-        process=launch_run_with_keys([sys.executable,'-B',str(script),'--output',str(tmp_path/'run-output')],keys,**kwargs)
+        process=launch_run_with_keys([sys.executable,'-B',str(script),'--output',str(tmp_path/'run-output'),'--allow-private-provider-hosts',argv[argv.index('--allow-private-provider-hosts')+1]],keys,**kwargs)
         processes.append(process);return process
     monkeypatch.setattr(vault_module,'launch_run_with_keys',launch)
     with FakeProvider(key.reveal()) as fake:
@@ -151,7 +151,7 @@ def test_two_owner_concurrent_runs(loopback,tmp_path):
             owner=str(i);vault.put(owner,'mine','openai-compatible',keys[i],base_url=fake.base_url)
             bundle=vault.take_for_run(owner,{'dev':dict(credential='mine',provider='openai-compatible',model='fake-model')})
             script=Path(__file__).parent/'fakes/byok_run.py'
-            process=launch_run_with_keys([sys.executable,'-B',str(script),'--output',str(tmp_path/owner)],bundle,
+            process=launch_run_with_keys([sys.executable,'-B',str(script),'--output',str(tmp_path/owner),'--allow-private-provider-hosts','127.0.0.1'],bundle,
                                          env=vault_module.keyless_env(__import__('os').environ),stdout=__import__('subprocess').PIPE,stderr=__import__('subprocess').PIPE)
             processes.append(process)
         try:

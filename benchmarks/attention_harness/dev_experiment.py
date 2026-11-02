@@ -757,11 +757,12 @@ def acquire(store,exp_id,owner):
         e['recovered_human_waits']=recovery  # Run-local handoff; no new allocation.
         return e
 
-def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=None,max_slots=None,outer_deadline_epoch=None,min_start_wall_seconds=None):
+def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=None,max_slots=None,outer_deadline_epoch=None,min_start_wall_seconds=None,allow_private_hosts=(),public_gateway_mode=False):
     if snapshot(store,exp_id)['selection'].get('dev_mode')=='agent':
         from .dev_agent_loop import run_agent_experiment
         return run_agent_experiment(store,exp_id,max_cells=max_cells,client=client,runner_factory=runner_factory,
-            outer_deadline_epoch=outer_deadline_epoch,max_slots=max_slots)
+            outer_deadline_epoch=outer_deadline_epoch,max_slots=max_slots,
+            allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
     from .dev_disk import require_start,experiment_root
     require_start(experiment_root(snapshot(store,exp_id)))
     from .dev_wait_recovery import reconcile_waits
@@ -865,6 +866,7 @@ def options():
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('command',choices=['create','plan','run','status','cancel','report','export','probe']);p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--selection');p.add_argument('--experiment');p.add_argument('--max-cells',type=int);p.add_argument('--budget-file');p.add_argument('--dry-run',action='store_true');p.add_argument('--output');p.add_argument('--max-slots',type=int);p.add_argument('--outer-deadline-epoch',type=float);p.add_argument('--min-start-wall-seconds',type=float)
     keys=p.add_mutually_exclusive_group();keys.add_argument('--key-fd',type=int);keys.add_argument('--key-stdin',action='store_true')
+    p.add_argument('--allow-private-provider-hosts',default='');p.add_argument('--public-gateway-mode',action='store_true')
     a=p.parse_args()
     if a.command=='run':
         from .dev_agent_key_vault import harden_process,install_run_keys_from_fd,install_run_keys_from_stdin
@@ -884,7 +886,7 @@ def main():
             s=DevV2Store(a.store,configuration=dict(goal_id=configuration['goal_id'],
                 limits=configuration['experiment_budget'],wall_seconds=configuration['wall_seconds']))
         value=create(s,a.artifacts,selection)
-    elif a.command=='run':value=snapshot(s,a.experiment) if a.dry_run else run(s,a.experiment,max_cells=a.max_cells,budget_file=a.budget_file,max_slots=a.max_slots,outer_deadline_epoch=a.outer_deadline_epoch,min_start_wall_seconds=a.min_start_wall_seconds)
+    elif a.command=='run':value=snapshot(s,a.experiment) if a.dry_run else run(s,a.experiment,max_cells=a.max_cells,budget_file=a.budget_file,max_slots=a.max_slots,outer_deadline_epoch=a.outer_deadline_epoch,min_start_wall_seconds=a.min_start_wall_seconds,allow_private_hosts=tuple(h.strip() for h in a.allow_private_provider_hosts.split(',') if h.strip()),public_gateway_mode=a.public_gateway_mode)
     elif a.command=='probe':
         from .dev_probe import run_probe
         e=snapshot(s,a.experiment);m=verify_manifest(e);validate_budget_file(a.budget_file,m,s,e['manifest']);value=run_probe(s,a.experiment)

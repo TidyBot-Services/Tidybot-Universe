@@ -278,3 +278,5 @@ Dashboard at :8070/local/  ──► shows dev's reasoning + tool calls live
 - [`CLAUDE.md`](CLAUDE.md) — Skill planner runtime instructions (what the agent reads when invoked)
 - [`../openclaw/README.md`](../openclaw/README.md) — Standalone OpenClaw chat setup (different mode!)
 - [`docs/harness-layer-technical-spec.md`](docs/harness-layer-technical-spec.md) — Why harness layer exists, design tradeoffs
+
+harness 内的 PARCC 地址以 provider 预设 `parcc` 为准。

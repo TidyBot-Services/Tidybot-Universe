@@ -1,5 +1,5 @@
 """Isolated Dev v2 operator UI/API; never restarts/deploys the daily UI."""
-import argparse,json,secrets,re,subprocess,sys,threading,time
+import argparse,hashlib,hmac,json,os,secrets,re,subprocess,sys,threading,time
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit,unquote
@@ -9,6 +9,9 @@ from .core.dev_store import DevConflict
 from . import dev_experiment as experiments
 from .dev_configuration import normalize_configuration,derive_cell_budget,configured_budget
 from openarm365_dev_v2.dev_config import ROOT
+from .dev_agent_key_vault import harden_process
+from .dev_agent_provider import ProviderError
+from .dev_agent_secret import Secret
 UI=Path(__file__).with_name('dev_ui')
 
 def agent_display(value):
@@ -56,18 +59,75 @@ def live(store,exp_id,key):
     if sha(frame)!=row['sha256']:raise ValueError('frame digest mismatch')
     return c,row,frame
 
-def owner_of(request): return 'local'
+class OwnerError(ProviderError):
+    def __init__(self,code,message,status):
+        super().__init__(code,message);self.status=status
 
 
-def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_private_hosts=(),vault=None):
+def owner_of(request):
+    if hasattr(request,'_request_owner'):return request._request_owner
+    owner=request.headers.get('X-Attention-Owner','')
+    auth=request.headers.get('X-Attention-Gateway-Auth','')
+    if not request.server.public_gateway_mode:
+        if 'X-Attention-Owner' in request.headers or 'X-Attention-Gateway-Auth' in request.headers:
+            raise OwnerError('owner_header_not_accepted','Owner headers are not accepted',400)
+        return 'local'
+    if request.client_address[0] not in ('127.0.0.1','::1'):
+        raise OwnerError('gateway_peer_not_loopback','Gateway peer must be loopback',403)
+    invalid=OwnerError('gateway_auth_invalid','Invalid gateway authentication',401)
+    if len(request.headers.get_all('X-Attention-Owner',[]))!=1 or len(request.headers.get_all('X-Attention-Gateway-Auth',[]))!=1:raise invalid
+    match=re.fullmatch(r'v1\.([0-9]{1,12})\.([a-f0-9]{64})',auth)
+    if not re.fullmatch(r'[a-z0-9_-]{1,64}',owner) or not match:raise invalid
+    ts,digest=match.groups()
+    if abs(request.server.gateway_clock()-int(ts))>30:
+        raise OwnerError('gateway_auth_expired','Gateway authentication expired',401)
+    body=request.read_body(8192 if urlsplit(request.path).path.startswith('/api/provider/') else 32768)
+    message='\n'.join((owner,ts,request.command,request.path,hashlib.sha256(body).hexdigest()))
+    expected=hmac.new(request.server.gateway_secret.reveal().encode(),message.encode(),hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected,digest):raise invalid
+    return owner
+
+
+def read_gateway_secret(fd):
+    try:
+        with os.fdopen(fd,'rb') as stream:raw=stream.read(65537)
+        if not raw or len(raw)>65536:raise ValueError()
+        return Secret(raw.decode())
+    except Exception:raise ValueError('Invalid gateway secret fd') from None
+
+
+def read_swaps():return Path('/proc/swaps').read_text()
+
+
+def provider_defaults(*,public_gateway_mode=False,home=None,getenv=None):
+    home=Path.home() if home is None else Path(home)
+    getenv=os.getenv if getenv is None else getenv
+    path=home/'.litellm-key'
+    lab=bool(getenv('PARCC_API_KEY') or getenv('LITELLM_KEY')) or (path.is_file() and path.stat().st_size>0)
+    codex=(home/'.codex/auth.json').is_file()
+    sol=dict(provider='sol',model='gpt-6.1-sol',source='codex',available=codex,
+             reason='' if codex else 'no Codex login on this machine; add your own key')
+    parcc=dict(provider='parcc',model='parcc/GLM',source='lab-file',available=lab,
+               reason='' if lab else 'no PARCC key on this machine; add your own key')
+    return dict(mode='public-gateway' if public_gateway_mode else 'local',
+                roles=dict(dev=parcc if public_gateway_mode else dict(sol),eval=dict(sol),advisor=dict(sol)),
+                providers=dict(parcc=parcc))
+
+
+def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_private_hosts=(),vault=None,
+          require_no_swap=False,swaps_reader=read_swaps,public_gateway_mode=False,gateway_secret=None,
+          gateway_clock=time.time,defaults_home=None,defaults_getenv=None):
+    harden_process()
+    if public_gateway_mode and (not isinstance(gateway_secret,Secret) or not gateway_secret):
+        raise ValueError('Public gateway mode requires a gateway secret fd')
     if budget_file:experiments.validate_budget_file(budget_file)
     from .dev_agent_provider import ProviderError,presets,resolve_provider,probe
-    from .dev_agent_secret import Secret,scrub
+    from .dev_agent_secret import scrub
     from .dev_agent_key_vault import ProviderKeyVault,launch_run_with_keys,keyless_env
     if allow_custom is None:allow_custom=__import__('os').getenv('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL','').lower() in ('1','true','yes')
     vault=vault if vault is not None else ProviderKeyVault()
     def provider_spec(provider,base=None):
-        return resolve_provider(provider,base,allow_custom=allow_custom,allow_private_hosts=allow_private_hosts)
+        return resolve_provider(provider,base,allow_custom=allow_custom,allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
     token=secrets.token_urlsafe(32);workers={};worker_lock=threading.Lock()
     from .dev_planner import PlannerControl
     def planner():
@@ -79,6 +139,20 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
     if human_token and (len(human_token)<24 or human_token==token):raise ValueError('independent human capability must have at least 24 characters')
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
+        def read_body(self,limit):
+            try:size=int(self.headers.get('Content-Length',0))
+            except ValueError:raise ProviderError('provider_body_invalid','Bounded JSON body required') from None
+            if not 0<=size<=limit:raise ProviderError('provider_body_invalid','Bounded JSON body required')
+            if not hasattr(self,'_body'):self._body=self.rfile.read(size)
+            return self._body
+        def parse_request(self):
+            for attr in ('_body','_request_owner'):
+                if hasattr(self,attr):delattr(self,attr)
+            if not super().parse_request():return False
+            try:self._request_owner=owner_of(self)
+            except ProviderError as exc:
+                self.close_connection=True;self.provider_error(exc,getattr(exc,'status',400));return False
+            return True
         def send(self,data,content='application/json',status=200):
             raw=data.encode() if isinstance(data,str) else data
             self.send_response(status);self.send_header('Content-Type',content);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw)
@@ -100,11 +174,13 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                 if self.command in ('PUT','POST'):
                     if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not size:
                         raise ProviderError('provider_body_invalid','Bounded JSON body required')
-                    try:body=json.loads(self.rfile.read(size))
+                    try:body=json.loads(self.read_body(8192))
                     except (ValueError,UnicodeError):raise ProviderError('provider_body_invalid','Invalid JSON body') from None
                     if not isinstance(body,dict):raise ProviderError('provider_body_invalid','JSON object required')
                     if isinstance(body.get('key'),str):values.append(Secret(body['key']))
                 owner=owner_of(self)
+                if path=='/api/provider/defaults' and self.command=='GET':
+                    self.obj(provider_defaults(public_gateway_mode=public_gateway_mode,home=defaults_home,getenv=defaults_getenv));return
                 if path=='/api/provider/presets' and self.command=='GET':
                     self.obj([dict(id=p.id,label=p.label,needs_key=p.key_source=='user',base_url=p.chat_url.rsplit('/chat/completions',1)[0],
                                    suggested_models=p.suggested_models,capabilities=p.capabilities) for p in presets().values()]);return
@@ -116,6 +192,8 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                     if not isinstance(body.get('provider'),str) or not isinstance(body.get('key'),str):
                         raise ProviderError('provider_body_invalid','Provider and key strings required')
                     name=name or body['provider'];spec=provider_spec(body['provider'],body.get('base_url'))
+                    if require_no_swap and any(line.strip() for line in swaps_reader().splitlines()[1:]):
+                        raise ProviderError('swap_enabled_key_refused','host swap is enabled; key refused')
                     vault.put(owner,name,spec.id,values[0],base_url=body.get('base_url'))
                     row=next(r for r in vault.list(owner) if r['credential_id']==name)
                     self.obj(dict(ok=True,credential_id=name,provider=spec.id,key_set=True,expires_at=row['expires_at']));return
@@ -224,7 +302,7 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
             try:
                 size=int(self.headers.get('Content-Length',0))
                 if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not 0<size<=32768:raise ValueError('bounded JSON body required')
-                body=json.loads(self.rfile.read(size));path=urlsplit(self.path).path
+                body=json.loads(self.read_body(32768));path=urlsplit(self.path).path
                 if not isinstance(body,dict):raise ValueError('JSON object required')
                 if path=='/api/dev/preview':self.obj(budget_preview(body));return
                 if path=='/api/dev/experiments':
@@ -257,7 +335,8 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                     if c['experiment_id']!=eid:raise ValueError('cell outside experiment')
                     self.obj(experiments.switch(store,body['cell'],body['policy']));return
                 e=experiments.snapshot(store,eid)
-                if set(body)!={'max_cells'} or type(body['max_cells']) is not int or not 1<=body['max_cells']<=len(e['cells']):raise ValueError('explicit max_cells within manifest denominator required')
+                if set(body)-{'max_cells','remove_credentials_after_launch'} or type(body.get('max_cells')) is not int or not 1<=body['max_cells']<=len(e['cells']):raise ValueError('explicit max_cells within manifest denominator required')
+                if type(body.get('remove_credentials_after_launch',False)) is not bool:raise ValueError('remove_credentials_after_launch must be boolean')
                 e=experiments.snapshot(store,eid)
                 if e['cancelled']:raise DevConflict('experiment cancelled')
                 from .dev_disk import require_start
@@ -280,13 +359,19 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                     if e['owner'] and experiments.owner_alive(e['owner']):raise DevConflict('experiment owner already active')
                     directory=Path(e['artifact_dir']);log=(directory/'scheduler.log').open('ab')
                     env=__import__('benchmarks.attention_harness.dev_capabilities',fromlist=['execution_environment']).execution_environment(ROOT,{'ATTENTION_PLANNER_UI_URL':f'http://127.0.0.1:{port}/ui/'})
+                    if public_gateway_mode:env.pop('PARCC_URL',None)
                     try:
                         if run_keys is not None:
-                            process=launch_run_with_keys([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run','--store',str(store.path),'--artifacts',str(artifact_root),'--experiment',eid,'--max-cells',str(body['max_cells']),*(['--budget-file',str(budget_file)] if 'goal_id' not in e else [])],run_keys,cwd=ROOT,env=keyless_env(env),stdout=log,stderr=log,start_new_session=True)
+                            process=launch_run_with_keys([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run','--store',str(store.path),'--artifacts',str(artifact_root),'--experiment',eid,'--max-cells',str(body['max_cells']),*(['--budget-file',str(budget_file)] if 'goal_id' not in e else []),*(['--allow-private-provider-hosts',','.join(allow_private_hosts)] if allow_private_hosts else []),*(['--public-gateway-mode'] if public_gateway_mode else [])],run_keys,cwd=ROOT,env=keyless_env(env),stdout=log,stderr=log,start_new_session=True)
                         else:
                             process=subprocess.Popen([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run','--store',str(store.path),'--artifacts',str(artifact_root),'--experiment',eid,'--max-cells',str(body['max_cells']),*(['--budget-file',str(budget_file)] if 'goal_id' not in e else [])],cwd=ROOT,env=env,stdout=log,stderr=log,start_new_session=True)
+                    except OSError:
+                        if run_keys is not None:raise ProviderError('provider_launch_failed','Run launch failed') from None
+                        raise
                     finally:log.close()
                     workers[eid]=process;immutable(directory/f'scheduler-process-{process.pid}.json',process_identity(process.pid))
+                if run_keys is not None and body.get('remove_credentials_after_launch',False):
+                    for name in run_keys._keys:vault.clear(owner_of(self),name)
                 self.obj({'experiment_id':eid,'worker_started':True},202)
             except ProviderError as exc:self.provider_error(exc,409)
             except DevConflict as exc:self.obj({'error':str(exc)},409)
@@ -294,11 +379,19 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
             except (ValueError,KeyError,TypeError) as exc:
                 if str(exc)=='role_not_supported_yet':self.provider_error(ProviderError('role_not_supported_yet',str(exc)),409)
                 else:self.obj({'error':str(exc)},400)
-    return ThreadingHTTPServer(('127.0.0.1',port),Handler)
+    server=ThreadingHTTPServer(('127.0.0.1',port),Handler)
+    server.public_gateway_mode=public_gateway_mode;server.gateway_secret=gateway_secret;server.gateway_clock=gateway_clock
+    return server
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--port',type=int,required=True);p.add_argument('--budget-file');p.add_argument('--allow-custom-provider-url',action='store_true',default=None);a=p.parse_args()
-    server=serve(DevV2Store(a.store),Path(a.artifacts),a.port,Path(a.budget_file) if a.budget_file else None,allow_custom=a.allow_custom_provider_url)
+    harden_process()
+    p=argparse.ArgumentParser();p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--port',type=int,required=True);p.add_argument('--budget-file');p.add_argument('--allow-custom-provider-url',action='store_true',default=None)
+    p.add_argument('--require-no-swap',action='store_true');p.add_argument('--public-gateway-mode',action='store_true');p.add_argument('--gateway-secret-fd',type=int)
+    a=p.parse_args()
+    gateway_secret=read_gateway_secret(a.gateway_secret_fd) if a.gateway_secret_fd is not None else None
+    if a.public_gateway_mode != (gateway_secret is not None):p.error('--public-gateway-mode requires --gateway-secret-fd and vice versa')
+    server=serve(DevV2Store(a.store),Path(a.artifacts),a.port,Path(a.budget_file) if a.budget_file else None,allow_custom=a.allow_custom_provider_url,require_no_swap=a.require_no_swap,
+                 public_gateway_mode=a.public_gateway_mode,gateway_secret=gateway_secret)
     import benchmarks,openarm365_dev_v2
     receipt={'process':process_identity(),'port':a.port,'cwd':str(ROOT),'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'argv':sys.argv}
     artifact=Path(a.artifacts);artifact.mkdir(parents=True,exist_ok=True);immutable(artifact/f'ui-instance-{__import__("os").getpid()}.json',receipt)

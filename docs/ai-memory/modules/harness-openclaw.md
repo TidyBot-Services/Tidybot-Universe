@@ -142,3 +142,5 @@ cd ~/文档/Tidybot-Universe/skill-agent-setup/claude-code
 - `~/.claude/projects/.../memory/reference_openclaw_setup.md`
 - `~/.claude/projects/.../memory/project_dashboard_session_id_fix.md`
 - `~/.claude/projects/.../memory/project_harness_migration.md`
+
+harness 内的 PARCC 地址以 provider 预设 `parcc` 为准。
