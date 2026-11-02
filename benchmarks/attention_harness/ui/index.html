@@ -2452,6 +2452,28 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 .op-attn-help.op-agent-refused path{stroke-dasharray:4 3}
 .op-attn-help.op-agent-refused .op-attn-help-label{stroke:#8a2c1f}
 /* Models & keys (launch dialog) */
+#attentionbench-clear .ab-keys{background:var(--panel);color:var(--text)}
+#attentionbench-clear .ab-keys [hidden]{display:none!important}
+#attentionbench-clear .ab-keys-agent-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+#attentionbench-clear .ab-keys-agent-grid>.wide{grid-column:1/-1;margin:0}
+#attentionbench-clear .ab-keys-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px;padding:0;border:0;min-width:0}
+#attentionbench-clear .ab-keys-mode{display:flex;align-items:flex-start;gap:9px;padding:12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--panel);min-width:0}
+#attentionbench-clear .ab-keys-mode:has(:checked){border-color:var(--orange);box-shadow:inset 0 0 0 1px var(--orange)}
+#attentionbench-clear .ab-keys-mode:has(:disabled){color:var(--muted);cursor:default}
+#attentionbench-clear .ab-keys-mode:focus-within{outline:2px solid var(--orange);outline-offset:2px}
+#attentionbench-clear .ab-keys-mode input{width:16px;height:16px;min-height:0;flex:0 0 16px;margin:2px 0 0;accent-color:var(--orange)}
+#attentionbench-clear .ab-keys-mode span{display:grid;gap:4px;min-width:0}
+#attentionbench-clear .ab-keys-mode b{font-size:13px;line-height:1.4}
+#attentionbench-clear .ab-keys-mode small{font-size:11px;line-height:1.5;color:var(--muted)}
+#attentionbench-clear .ab-keys-details{border-top:1px solid var(--line);padding-top:12px}
+#attentionbench-clear .ab-keys-details>summary{cursor:pointer;font-size:13px;color:var(--text)}
+#attentionbench-clear .ab-keys-details>summary small{margin-left:8px;color:var(--muted);font-weight:400}
+#attentionbench-clear .ab-keys-details[open]>summary{margin-bottom:12px}
+#attentionbench-clear .ab-keys-shared{padding:2px 0 14px}
+#attentionbench-clear .ab-keys-shared .ab-run-hint{overflow-wrap:anywhere}
+#attentionbench-clear .ab-keys-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#attentionbench-clear .ab-keys h5{font-size:13px;color:var(--text);margin:14px 0 10px}
+#attentionbench-clear .ab-keys :is(input,select){background:var(--panel);color:var(--text);border-color:var(--line)}
 #attentionbench-clear .ab-keys .op-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #attentionbench-clear .ab-keys-roles{display:grid;gap:10px;margin-bottom:14px}
 #attentionbench-clear .ab-keys-role{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,1.6fr) minmax(0,1.2fr) auto;gap:8px 12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
@@ -2459,21 +2481,24 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .ab-keys-role-name b{font-size:13px;color:var(--text)}
 #attentionbench-clear .ab-keys-role-name small{font-size:11px;color:var(--muted);line-height:1.4}
 #attentionbench-clear .ab-keys-role :is(select,input){width:100%;min-width:0;min-height:36px;padding:7px 10px;font-size:13px}
+#attentionbench-clear .ab-keys-role label{display:grid;gap:4px;min-width:0;font-size:11px;color:var(--muted)}
+#attentionbench-clear .ab-keys-role-model{min-width:0}
 #attentionbench-clear .ab-keys-role-model input{font-family:ui-monospace,monospace}
 #attentionbench-clear .ab-keys-role-model[hidden]{display:none}
 #attentionbench-clear .ab-keys-test{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12px;color:var(--muted)}
 #attentionbench-clear .ab-keys-chip{padding:2px 9px;border:1px solid var(--line);border-radius:999px;font-size:11px;color:var(--muted)}
-#attentionbench-clear .ab-keys-chip.ok{border-color:var(--op-ok,#58b583);color:var(--op-ok,#58b583)}
-#attentionbench-clear .ab-keys-chip.fail{border-color:#ff8495;color:#ff8495}
-#attentionbench-clear .ab-keys-bad{color:#ff8495}
+#attentionbench-clear .ab-keys-chip.ok{border-color:var(--green);color:var(--green)}
+#attentionbench-clear .ab-keys-chip.fail{border-color:var(--orange);color:var(--text)}
+#attentionbench-clear .ab-keys-bad{color:var(--text);text-decoration:underline;text-decoration-color:var(--orange);text-underline-offset:3px}
 #attentionbench-clear .ab-keys-list{display:grid;gap:6px;margin-bottom:14px}
 #attentionbench-clear .ab-keys-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto auto;gap:4px 14px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted)}
 #attentionbench-clear .ab-keys-row b{font-size:13px;color:var(--text);overflow-wrap:anywhere}
+#attentionbench-clear .ab-keys-row>span{min-width:0;overflow-wrap:anywhere}
 #attentionbench-clear .ab-keys-left em{font-style:normal;font-family:ui-monospace,monospace;color:var(--text)}
 #attentionbench-clear .ab-keys-add[hidden],#attentionbench-clear .ab-keys-list[hidden]{display:none}
 #attentionbench-clear .ab-keys-actions{margin-top:10px}
 #attentionbench-clear .ab-keys-note{margin-top:10px;min-height:1.5em}
-@media(max-width:760px){#attentionbench-clear .ab-keys-role,#attentionbench-clear .ab-keys-row{grid-template-columns:1fr}}
+@media(max-width:760px){#attentionbench-clear :is(.ab-keys-role,.ab-keys-row,.ab-keys-modes,.ab-keys-form-grid,.ab-keys-agent-grid){grid-template-columns:1fr}}
 /* Panel 04: the shared A-E structure */
 #attentionbench-clear .hr-blocks{display:grid;gap:12px;margin-top:12px;text-align:left}
 #attentionbench-clear .hr-block{padding:10px 0 2px;border-top:1px solid #d3d4c6}
@@ -3330,9 +3355,9 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .ab-keys-role-name small{color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] .ab-keys-test{color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] .ab-keys-chip{border:1px solid var(--line);color:var(--muted)}
-#attentionbench-clear[data-theme="dark"] .ab-keys-chip.ok{border-color:var(--op-ok,#58b583);color:var(--op-ok,#8ecdab)}
-#attentionbench-clear[data-theme="dark"] .ab-keys-chip.fail{border-color:#ff8495;color:#ff8495}
-#attentionbench-clear[data-theme="dark"] .ab-keys-bad{color:#ff8495}
+#attentionbench-clear[data-theme="dark"] .ab-keys-chip.ok{border-color:var(--green);color:var(--green)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-chip.fail{border-color:var(--orange);color:var(--text)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-bad{color:var(--text)}
 #attentionbench-clear[data-theme="dark"] .ab-keys-row{border:1px solid var(--line);color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] .ab-keys-row b{color:var(--text)}
 #attentionbench-clear[data-theme="dark"] .ab-keys-left em{color:var(--text)}
