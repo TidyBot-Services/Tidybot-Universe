@@ -2543,6 +2543,17 @@ dialog.ab-replay-consent .op-controls{display:flex;gap:10px;justify-content:flex
 #attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]{display:flex!important}
 #attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]>*{display:none!important}
 #attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]::after{content:"Pause, stop and resume are for the owner only";font-size:13px;color:#686e64}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-page-title{flex-wrap:nowrap;align-items:flex-end;gap:16px}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-page-title>div:first-child{flex:1 1 auto;min-width:0}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-page-title h1{font-size:clamp(36px,3.6vw,52px)}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-title-actions{flex:none;flex-wrap:nowrap}
+html[data-lobby="1"] .ab-shell-top{gap:10px}
+html[data-lobby="1"] .ab-shell-top .ab-shell-flag{font-size:11.5px;padding:0 9px}
+html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!important}
+#attentionbench-clear[data-lobby-state="queued"] [data-agent-story-open]{opacity:.4;pointer-events:none}
+#attentionbench-clear .ab-lobby-hide{display:none!important}
+#attentionbench-clear .ab-lobby-newrun .ab-launch-field input[type="checkbox"]{display:inline-block;width:18px;height:18px;min-height:0;margin:0 8px 0 0;padding:0;vertical-align:-3px}
+#attentionbench-clear .ab-lobby-newrun .ab-check>span{display:block;font-weight:600}
 #attentionbench-clear[data-lobby="1"] [data-start-no]{display:none!important}
 #attentionbench-clear[data-lobby-view="other"] :is([data-open-run-again],[data-open-fork],[data-stop-dev],[data-dev-pause],[data-dev-resume],#ab-emergency-interrupt,#ab-cancel-run,[data-continue-attempt]){display:none!important}
 #attentionbench-clear[data-lobby-view="mine"] :is([data-open-run-again],[data-open-fork],[data-dev-pause],[data-dev-resume],[data-continue-attempt]){display:none!important}

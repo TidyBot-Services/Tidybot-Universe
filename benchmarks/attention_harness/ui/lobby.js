@@ -38,8 +38,8 @@
       ingest(await response.json());
       const first = !state.enabled;
       state.enabled = true;
-      rootEl.dataset.lobby = '1';
-      if (snapshot_demo() && !doc.querySelector('[data-lobby-demo]')) rootEl.insertAdjacentHTML('afterbegin', `<div class="lb-demo" data-lobby-demo><i></i>DEMO ENGINE · simulated robot, no GPU, no real provider · speed ×<span data-lb-speed-now>${esc(state.snap.clock?.speed)}</span></div>`);
+      rootEl.dataset.lobby = '1'; doc.documentElement.dataset.lobby = '1';
+      if (snapshot_demo() && !doc.querySelector('[data-lobby-demo]')) rootEl.insertAdjacentHTML('afterbegin', `<div class="lb-demo" data-lobby-demo><i></i>DEMO ENGINE · simulated time ×<span data-lb-speed-now>${esc(state.snap.clock?.speed)}</span> · no GPU, no real provider</div>`);
       doc.querySelectorAll('[data-lb-speed-now]').forEach(n => { n.textContent = String(state.snap.clock?.speed); });
       const next = fingerprint();
       for (const [id, card] of state.cards) notify(before.get(id), card);
@@ -50,7 +50,7 @@
     state.timer = global.setTimeout(poll, doc.hidden ? 5000 : 1500);
   }
   const snapshot_demo = () => !!state.snap?.demo;
-  function stop() { state.enabled = false; delete rootEl.dataset.lobby; }
+  function stop() { state.enabled = false; delete rootEl.dataset.lobby; delete doc.documentElement.dataset.lobby; }
 
   function notify(before, card) {
     if (!card.mine || !before || before.state === card.state) return;
@@ -135,7 +135,11 @@
       const ahead = (state.snap.queue || []).filter(q => q.queue_position < c.queue_position).length + (state.snap.robot?.running ? 1 : 0);
       return `<div class="op-outcome queued" data-operator-outcome="queued" role="status"><strong>▣ QUEUED</strong><div><p>${owner} #${c.queue_position} in line · ${minutes(c.eta_start_seconds)} (estimate).</p><p>The robot runs one task at a time.${c.mine ? ' Your place is saved; you can close this page.' : ''}</p></div></div>${tiles([[`#${c.queue_position}`, 'Place in line'], [minutes(c.eta_start_seconds) || '—', 'Estimated start'], [state.snap.robot?.running?.nickname || '—', 'Running now'], [String(ahead), 'Ahead (running + waiting)']])}`;
     }
-    if (c.state === 'waiting_human') return `<div class="op-outcome waiting" data-operator-outcome="waiting" role="status"><strong>● ${c.mine ? 'WAITING FOR YOU' : 'WAITING FOR A PERSON'}</strong><div><p>${c.mine ? `Attempt ${k} failed. The robot is paused and asking for help, so please reply in section 04.` : `Attempt ${k} failed. The robot is asking ${esc(c.nickname)} for help.`}</p><p>${c.mine ? `If you do not answer, the robot moves on at ${clock(state.snap.limits.help_wait_seconds)}.` : 'The answer is private to its owner.'}</p></div></div>`;
+    if (c.state === 'waiting_human' && c.mine) return `<div class="op-outcome waiting" data-operator-outcome="waiting" role="status"><strong>● NEEDS YOU</strong><div><p>Attempt ${k} of ${n} failed. The robot is asking for help.</p><p>Answer in 04 · auto-skip at ${clock(state.snap.limits.help_wait_seconds)}</p></div></div>`;
+    if (c.state === 'waiting_human') {
+      const ago = c.started_at && c.started_at > 1e9 ? Date.now() / 1000 - c.started_at : -1;
+      return `<div class="op-outcome running" data-operator-outcome="running" role="status"><strong>● RUNNING</strong><div><p>Attempt ${k} of ${n} failed. Waiting for a person to answer.</p>${ago >= 0 && ago < 86400 ? `<p>Started ${clock(ago)} ago</p>` : ''}</div></div>`;
+    }
     return `<div class="op-outcome running" data-operator-outcome="running" role="status"><strong>● RUNNING</strong><div><p>Attempt ${Math.min(k + 1, n)} of ${n} is running.</p></div></div>`;
   }
   const privateBlock = (title, text) => `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" data-lobby-private aria-label="Help and replies"><div class="op-action none"><h4>🔒 ${esc(title)}</h4><p>${esc(text)}</p></div></section>`;
@@ -214,7 +218,7 @@
   // The marker for CSS: which kind of run is on screen decides which write controls the page shows.
   function markView(snapshot) {
     const c = snapshot?.lobby;
-    if (c) rootEl.dataset.lobbyView = c.mine ? 'mine' : 'other'; else delete rootEl.dataset.lobbyView;
+    if (c) { rootEl.dataset.lobbyView = c.mine ? 'mine' : 'other'; rootEl.dataset.lobbyState = c.state; } else { delete rootEl.dataset.lobbyView; delete rootEl.dataset.lobbyState; }
   }
   function banner(snapshot) {
     const c = snapshot?.lobby;
@@ -243,9 +247,12 @@
   // The 01 cards of someone else's run name the source only, never the model or a key.
   function setupForOthers(snapshot, html) {
     const c = snapshot.lobby;
-    if (!c || c.mine) return html;
-    return html.replace(/(<span>Dev agent<\/span><b>)[^<]*(<\/b><small>)[^<]*(<\/small>)/, `$1${esc(SOURCE[c.dev_source] || 'Lab')}$2Source only — model and key are not shown$3`)
-      .replace(/(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/, '$1Lab$2').replace(/(an automatic advisor answers) · [A-Za-z0-9.\-/]+/, '$1');
+    if (!c) return html;
+    const label = esc(SOURCE[c.dev_source] || 'Lab');
+    const dev = /(<span>Dev agent<\/span><b>)[^<]*(<\/b><small>)([^<]*)(<\/small>)/;
+    const eval_ = /(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/;
+    if (c.mine) return html.replace(dev, `$1${label}$2$3$4`).replace(eval_, `$1${label}$2`);
+    return html.replace(dev, `$1${label}$2Source only — model and key are not shown$4`).replace(eval_, '$1Lab$2').replace(/(an automatic advisor answers) · [A-Za-z0-9.\-/]+/, '$1');
   }
 
   global.Lobby = {
