@@ -72,6 +72,7 @@
   const runViewState=new Map(), replayPlayback=new Map(), switchRequests=new Map();
   let historyNotice=null;
   let sidebarQuery='',sidebarMessage='',linkedSource=null,linkedRelation='policy_change',linkedConfiguration=null;
+  window.Lobby=window.Lobby||new Proxy({enabled:false,isMine:()=>true,isActive:()=>false,visible:()=>true,groupOf:()=>null,tone:()=>null,statusWord:()=>null,card:()=>null},{get:(t,k)=>k in t?t[k]:()=>''});
   let sidebarFilter='all';
   const preference=(key,value)=>{try {if(value===undefined)return localStorage.getItem(key);localStorage.setItem(key,value);}catch(_){}};
   let sidebarOpen=preference('attention.sidebar-open')===null?!matchMedia('(max-width:900px)').matches:preference('attention.sidebar-open')!=='false';
@@ -79,7 +80,7 @@
   const expandedHistory=new Set();
   const taskGroupChoices=new Map();
   const pins=new Set(JSON.parse(preference('attention.pinned-runs')||'[]'));
-  sidebarFilter=['all','running','needs','failed','succeeded'].includes(preference('attention.sidebar-filter'))?preference('attention.sidebar-filter'):'all';
+  sidebarFilter=['all','running','queued','needs','failed','succeeded'].includes(preference('attention.sidebar-filter'))?preference('attention.sidebar-filter'):'all';
   function sidebarLayout(){sidebar.hidden=!sidebarOpen;workspace.dataset.sidebarOpen=String(sidebarOpen);sidebarToggle.setAttribute('aria-expanded',String(sidebarOpen));}
   sidebarToggle.addEventListener('pointerdown',event=>event.preventDefault());
   sidebarToggle.addEventListener('click',()=>{sidebarOpen=!sidebarOpen;preference('attention.sidebar-open',String(sidebarOpen));sidebarLayout();});
@@ -379,7 +380,7 @@
     const counts=session.agent?.counts||session.agent_resources?.used;
     return {agent,run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
       dev_sdk_description:cfg.dev_sdk_description||'base stationary',dev_sdk_sha256:cfg.dev_sdk_sha256,
-      created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
+      created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,lobby:session.lobby,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
       status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
       attempts_used:agent?(counts?.formal_versions??versions.length):session.used?.executions,attempts_limit:agent?(session.agent?.limits?.formal_versions??10):session.budget?.executions,
@@ -393,8 +394,9 @@
   }
   function navigationRecords(){return allNavigationRecords().filter(r=>!r.history_deleted_at||recordIsActive(r));}
   function deletedNavigationRecords(){return allNavigationRecords().filter(r=>r.history_deleted_at&&!recordIsActive(r));}
-  function recordIsActive(item){if(['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','timed_out','not_started'].includes(item.status))return false;if(item.lifecycle)return ['model','advisor','approval','sdk','preparing'].includes(item.lifecycle.phase);return item.development?['ready','running','stopping'].includes(item.status):item.status==='running';}
+  function recordIsActive(item){if(item.lobby)return window.Lobby.isActive(item);if(['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','timed_out','not_started'].includes(item.status))return false;if(item.lifecycle)return ['model','advisor','approval','sdk','preparing'].includes(item.lifecycle.phase);return item.development?['ready','running','stopping'].includes(item.status):item.status==='running';}
   function recordStatus(item){
+    if(item.lobby)return window.Lobby.statusWord(item);
     if(item.agent&&!recordIsActive(item))return item.agent_solved?'Solved':'Not solved';
     if(!DEBUG_VIEW&&item.all_attempts_failed)return 'Failed';
     if(!DEBUG_VIEW&&item.development&&/infrastructure|dispatch unknown|outcome_unknown/i.test(String(item.reason||'')))return 'System problem';
@@ -514,7 +516,7 @@
     return `<details data-run-path="${esc(item.run_id)}"><summary>${esc(path.length>2?`${path[0]} → ${path.at(-1)} · ${path.length-1} switches`:path.join(' → '))}</summary><ol>${segments.map(s=>`<li>${esc(policyTitle(s.policy_id))}<small>${s.effective_at?esc(dateTime(s.effective_at)):'Start time not recorded'}</small></li>`).join('')}</ol></details>`;
   }
   function renderRunningStatus(){
-    const executing=navigationRecords().filter(r=>recordIsActive(r)&&r.run_id!==(selectedDev||selectedRun));
+    const executing=navigationRecords().filter(r=>recordIsActive(r)&&r.run_id!==(selectedDev||selectedRun)&&window.Lobby.isMine(r));
     runningStatus.hidden=!executing.length;
     runningStatus.innerHTML=executing.map(r=>`<div><strong>${r.lifecycle?esc(recordStatus(r)):'Executing'} · ${esc(displayRun(r))}</strong><span>${esc(r.robot?.model||'')} · ${Number(r.pending_hints||0)} pending Hints · ${esc(r.interrupt?.state?label(r.interrupt.state):r.lifecycle?recordStatus(r):'Running')}</span><button type="button" ${r.development?'data-view-dev-running':'data-view-running'}="${esc(r.run_id)}">View executing run</button><button type="button" class="danger" ${r.development?'data-stop-dev':'data-stop-executing'}="${esc(r.run_id)}" ${r.interrupt?'disabled':''} title="Stop target: ${esc(displayRun(r))} (${esc(r.run_id)})">■ Stop</button></div>`).join('');
     runningStatus.querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',e=>e.preventDefault()));
@@ -525,7 +527,7 @@
   }
   function sidebarTaskSummary(rows,run){
     const executing=rows.filter(recordIsActive).length;
-    const suite={robocasa365:'RoboCasa365',robocasa:'RoboCasa',robosuite:'Robosuite'}[rows[0].suite]||rows[0].suite;
+    const suite=rows.groupTitle?'':({robocasa365:'RoboCasa365',robocasa:'RoboCasa',robosuite:'Robosuite'}[rows[0].suite]||rows[0].suite);
     const recent=rows.slice(0,10).reverse(),count=`${rows.length} ${DEBUG_VIEW?(rows.length===1?'record':'records'):(rows.length===1?'run':'runs')}`;
     if(!DEBUG_VIEW){
       // Task card header (10-30): title and run count, an outcome bar over all runs, then the suite.
@@ -533,9 +535,9 @@
       const tally=Object.fromEntries(tones.map(([tone])=>[tone,rows.filter(r=>recordTone(r)===tone).length]));
       const parts=tones.filter(([tone])=>tally[tone]).map(([tone,word])=>`${tally[tone]} ${word}`).join(' · ');
       const bar=tones.filter(([tone])=>tally[tone]).map(([tone])=>`<i class="${tone}" style="width:${(100*tally[tone]/rows.length).toFixed(1)}%"></i>`).join('');
-      return `<summary class="ab-task-summary" data-outcome-summary><strong class="ab-task-title" title="${esc(resolvedTask(rows[0]))}">${esc(resolvedTask(rows[0]))}</strong><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span><span class="ab-task-outcome" title="${esc(parts)}"><span class="ab-outcome-bar">${bar}</span><span class="ab-outcome-text"><b>${tally.success}</b> / ${rows.length} solved</span></span><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></summary>`;
+      return `<summary class="ab-task-summary" data-outcome-summary><strong class="ab-task-title" title="${esc(rows.groupTitle||resolvedTask(rows[0]))}">${esc(rows.groupTitle||resolvedTask(rows[0]))}</strong><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span><span class="ab-task-outcome" title="${esc(parts)}"><span class="ab-outcome-bar">${bar}</span><span class="ab-outcome-text"><b>${tally.success}</b> / ${rows.length} solved</span></span><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></summary>`;
     }
-    return `<summary class="ab-task-summary"><span class="ab-task-copy"><strong title="${esc(resolvedTask(rows[0]))}">${esc(resolvedTask(rows[0]))}</strong><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${DEBUG_VIEW?'':`<span class="op-dots" title="Latest ${recent.length} runs, newest on the right">${recent.map(r=>`<i class="op-dot ${recordTone(r)}" title="${esc(recordStatus(r))}"></i>`).join('')}</span>`}${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></span><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span></summary>`;
+    return `<summary class="ab-task-summary"><span class="ab-task-copy"><strong title="${esc(rows.groupTitle||resolvedTask(rows[0]))}">${esc(rows.groupTitle||resolvedTask(rows[0]))}</strong><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${DEBUG_VIEW?'':`<span class="op-dots" title="Latest ${recent.length} runs, newest on the right">${recent.map(r=>`<i class="op-dot ${recordTone(r)}" title="${esc(recordStatus(r))}"></i>`).join('')}</span>`}${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></span><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span></summary>`;
   }
   // Read-only strategy and attempt badges; formal runs carry no attempt count in /api/runs yet.
   function policyShort(id,inPath){return inPath&&id==='autonomous'?'Auto':({autonomous:'Autonomous',reactive_help:'Reactive',trace_aware_hint_only:'Hints',agent_initiated_help:'Self-ask',full_trace_aware_attention_planner:'Planner',retry_k_then_ask:'Retry-K',demo_first:'Demo first',budget_matched_random_escalation:'Random'})[id]||policyTitle(id);}
@@ -573,7 +575,7 @@
     // Inside a task group the group header already names the task. Those cards use the outcome rail (10-30):
     // robot and compact time on top; version bar, strategy and status below; the rail colour is the outcome.
     const lead=grouped&&!DEBUG_VIEW&&Boolean(meta),ownName=lead?runOwnName(r):'';
-    const title=lead?meta:customRunName(r)||(DEBUG_VIEW?recordTime(r):relativeTime(r.created_at??r.started_at,recordTime(r)));
+    const title=lead?(r.lobby?`${r.lobby.nickname}${r.lobby.mine?' (you)':''} · ${meta}`:meta):customRunName(r)||(DEBUG_VIEW?recordTime(r):relativeTime(r.created_at??r.started_at,recordTime(r)));
     const status=`<span class="ab-run-status" data-active="${recordIsActive(r)}" data-outcome="${outcomeKind(recordStatus(r))}" data-status="${esc(r.all_attempts_failed?'failed':r.status||'unknown')}"${r.all_attempts_failed?` title="${esc(`Ran all ${r.attempts_limit??''} attempts; none succeeded`.replace('  ',' '))}"`:''}>${esc(recordStatus(r))}</span>`;
     return `<article data-run-entry="${esc(r.run_id)}" data-viewing="${viewing}" data-development="${Boolean(r.development)}" data-tone="${recordTone(r)}"${lead?' data-card="rail"':''}><div class="ab-sidebar-run-head"><button type="button" ${target} aria-current="${viewing?'page':'false'}" title="${esc(displayRun(r))}"${lead?` aria-label="${esc(`${meta} · ${recordStatus(r)} · ${recordTime(r)}`)}"`:''}><strong data-run-name title="${esc(recordTime(r))}">${pins.has(r.run_id)?'★ ':''}${esc(title)}</strong>${lead?`<small class="ab-record-time">${esc(shortRecordTime(r))}</small>`:status}</button>${r.session_id?.startsWith('v2-')?`${DEBUG_VIEW ? '<span title="Immutable experiment evidence">Retained</span>' : ''}`:r.history_deleted_at?`<button type="button" class="ab-record-restore" data-restore-record="${esc(r.run_id)}" data-record-kind="${kind}">Restore</button>`:`<button type="button" class="ab-record-delete" data-delete-record="${esc(r.run_id)}" data-record-kind="${kind}" aria-label="Delete ${esc(displayRun(r))}" title="${recordIsActive(r)?'Stop this record before deleting it':'Delete record · recoverable'}" ${recordIsActive(r)?'disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>`}<details class="ab-record-more" data-record-more="${esc(r.run_id)}"><summary aria-label="More options for ${esc(displayRun(r))}">⋯</summary><div class="ab-record-menu"><button type="button" data-pin-run="${esc(r.run_id)}" aria-pressed="${pins.has(r.run_id)}">${pins.has(r.run_id)?'Unpin record':'Pin record'}</button>${!r.development?`<div class="ab-run-actions"><button type="button" data-copy-run="${esc(r.run_id)}">Copy configuration</button><button type="button" data-retry-run="${esc(r.run_id)}">Retry run</button></div><details data-run-name-editor="${esc(r.run_id)}"><summary>Edit name</summary><form data-run-rename="${esc(r.run_id)}"><input name="display_name" aria-label="Run display name" value="${esc(customRunName(r)||'')}" placeholder="Give this execution a name" maxlength="160" required><button>Save name</button></form></details>${policyPath(r)}`:`<small>${r.versions.length} policy versions · ${r.jobs.filter(j=>j.kind==='execute').length} executions</small>`}<small>Started ${esc(dateTime(r.created_at??r.started_at))} · Seed ${esc(r.seed??'Not recorded')}</small>${DEBUG_VIEW ? `<code>${esc(r.run_id)}</code><button type="button" data-copy-record-id="${esc(r.run_id)}">Copy full ID</button>` : ''}</div></details></div>${ownName?`<small class="ab-run-label" title="${esc(ownName)}">${esc(ownName)}</small>`:''}${lead?sidebarRunBadges(r,status,true):sidebarRunBadges(r)}${!lead&&meta?`<small class="ab-run-metadata">${esc(meta)}</small>`:''}${r.development?'<span class="ab-development-tag">Development</span>':''}${!lead&&customRunName(r)?`<small class="ab-record-time">${esc(recordTime(r))}</small>`:''}</article>`;
   }
@@ -608,8 +610,8 @@
     const linked=records.filter(r=>resolvedTask(r));
     const archived=records.filter(r=>!resolvedTask(r));
     const deleted=deletedNavigationRecords();
-    const candidates=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches).sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0)||a.run_id.localeCompare(b.run_id));
-    const groups=new Map();for(const r of candidates){const k=`${r.suite}:${r.task_id}`;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
+    const candidates=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches).filter(r=>Lobby.visible(r)).sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0)||a.run_id.localeCompare(b.run_id));
+    const groups=new Map();for(const r of candidates){const custom=Lobby.groupOf(r),k=custom?`lobby:${custom[1]}`:`${r.suite}:${r.task_id}`;if(!groups.has(k))groups.set(k,[]);if(custom)groups.get(k).groupTitle=custom[0];groups.get(k).push(r);}
     const request=c?.request;
     if(request&&['Pending','Active','Cancelled','Rejected'].includes(sidebarMessage))sidebarMessage=request.state;
     if(request&&run&&switchRequests.get(run.run_id)?.request_id===request.request_id)switchRequests.delete(run.run_id);
@@ -617,12 +619,12 @@
     if(pendingV2?.v2&&(c?.active_policy===pendingV2.policy_id||Date.now()-pendingV2.at>20*60*1000||readOnly))switchRequests.delete(run.run_id);
     const local=run&&switchRequests.get(run.run_id);
     const pending=request?.state==='Pending'||local?.state==='Requested';
-    const executing=navigationRecords().filter(recordIsActive);
+    const executing=navigationRecords().filter(r=>recordIsActive(r)&&window.Lobby.isMine(r));
     sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>Tasks</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, name or robot"></span></label>
-      ${DEBUG_VIEW?'':sidebarFilters(linked)}</div>
+      ${DEBUG_VIEW?'':sidebarFilters(linked)}</div>${DEBUG_VIEW?'':Lobby.sidebarHtml()}
       ${historyNotice?`<p class="ab-history-notice" data-history-notice role="status">${esc(historyNotice.message)}${historyNotice.kind?` <button type="button" data-history-undo>Undo</button>`:''}</p>`:''}
       ${DEBUG_VIEW ? `<details class="ab-record-jump"><summary>Jump to a record</summary><label class="live-run-picker">Viewing record<select id="ab-live-run" aria-label="Viewing record">${linked.map(r=>`<option value="${esc(r.run_id)}" ${r.run_id===(selectedDev||selectedRun)?'selected':''}>${esc(displayRun(r))}</option>`).join('')}</select></label></details>` : ''}
-      ${DEBUG_VIEW||sidebarQuery?`<div class="ab-task-library-label"><span>Task history</span><span>${sidebarQuery?`${candidates.length} matching records`:'Most recent first'}</span></div>`:''}<nav aria-label="Tasks">${[...groups].map(([group,rows])=>`<details data-task-group="${esc(group)}" data-viewing="${rows.some(r=>r.run_id===(selectedDev||selectedRun))}" ${(sidebarQuery||(taskGroupChoices.get(`${selectedDev||selectedRun}:${group}`)??rows.some(r=>r.run_id===(selectedDev||selectedRun))))?'open':''}>${sidebarTaskSummary(rows,run)}<div class="ab-task-runs">${compactHistory(group,rows)}</div></details>`).join('')||'<p class="ab-sidebar-empty">No matching records.<small>Try another task, name or robot.</small></p>'}</nav>
+      ${DEBUG_VIEW||sidebarQuery?`<div class="ab-task-library-label"><span>Task history</span><span>${sidebarQuery?`${candidates.length} matching records`:'Most recent first'}</span></div>`:''}<nav aria-label="Tasks">${[...groups].sort((a,b)=>Lobby.grouped?String(a[0]).localeCompare(String(b[0])):0).map(([group,rows])=>`<details data-task-group="${esc(group)}" data-viewing="${rows.some(r=>r.run_id===(selectedDev||selectedRun))}" ${(sidebarQuery||(taskGroupChoices.get(`${selectedDev||selectedRun}:${group}`)??rows.some(r=>r.run_id===(selectedDev||selectedRun))))?'open':''}>${sidebarTaskSummary(rows,run)}<div class="ab-task-runs">${compactHistory(group,rows)}</div></details>`).join('')||'<p class="ab-sidebar-empty">No matching records.<small>Try another task, name or robot.</small></p>'}</nav>
       ${archived.length?`<details class="ab-unlinked-archive" data-unlinked-archive><summary>Archived · ${archived.length} unlinked records</summary><small>Task identity is unavailable. Original records are preserved.</small>${archived.map(r=>sidebarRunCard(r)).join('')}</details>`:''}
       ${deleted.length?`<details class="ab-deleted-history" data-deleted-history><summary>Deleted records · ${deleted.length}</summary><small>Restore a record to return it to task history.</small>${deleted.map(r=>sidebarRunCard(r)).join('')}</details>`:''}
       ${DEBUG_VIEW ? `<section class="ab-policy-controller" data-policy-controller aria-label="Policy controller"><header class="ab-control-header"><span class="ab-control-icon">${sidebarControlIcon('controller')}</span><div><h2>Policy controller</h2><h3>Choose how this run requests help</h3></div><span class="ab-control-mode" data-read-only="${Boolean(readOnly)}">${readOnly?sidebarControlIcon('lock'):''}${readOnly?'Read-only':'Live'}</span></header><div class="ab-policy-context" title="${esc(run?displayRun(run):'No run selected')}"><span class="ab-context-label">${selectedDev?(readOnly?'Viewing Dev history':'Controlling Dev session'):'Viewing run'}</span><div><strong>${esc(run?taskDisplayName(run):'No run selected')}</strong>${run?`<span>${esc(recordTime(run))}</span>`:''}</div></div>${DEBUG_VIEW ? `<small class="ab-policy-note">${esc(selectedDev?(c?.binding?c.reason||'':''):readOnly?'Read-only history or frozen binding.':'Changes apply after executor confirmation at a safe action boundary.')}</small>` : ''}
@@ -633,6 +635,7 @@
       ${readOnly&&run&&!selectedDev?`<button type="button" class="ab-linked-policy-run" data-linked-policy-run>${sidebarControlIcon('link')}<span>Create associated engineering run</span><span aria-hidden="true">↗</span></button>`:''}<p class="minor ab-policy-footnote">${selectedDev?(c?.binding?'Policy selection controls when this run requests help.':'This historical policy cannot be changed.'):'The model, action policy and DAG keep their own bindings.'}</p><p role="status" data-sidebar-message>${esc(sidebarMessage)}</p></section>` : operatorPolicyPanel({c,run,readOnly,pending,request,local,selectedDev})}
       <section class="ab-executing-runs" aria-label="Executing runs"><header class="ab-control-header"><span class="ab-control-icon">${sidebarControlIcon('activity')}</span><h3>Executing runs</h3><span class="ab-executing-count" data-active="${executing.length>0}">${executing.length}</span></header>${executing.map(r=>`<div class="ab-executing-card"><div class="ab-executing-identity"><span class="ab-executing-dot" aria-hidden="true"></span><strong title="${esc(displayRun(r))}">${esc(displayRun(r))}</strong></div><button type="button" class="danger" ${r.development?'data-stop-dev':'data-stop-executing'}="${esc(r.run_id)}" title="Stop target: ${esc(displayRun(r))} (${esc(r.run_id)})">${r.development?'Stop development':'Emergency stop'}</button></div>`).join('')||`<div class="ab-executing-empty">${sidebarControlIcon('idle')}<div><strong>No active runs</strong><small>No run is executing.</small></div></div>`}</section>`;
     sidebar.querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',e=>{if(document.activeElement?.id==='ab-hint-content')e.preventDefault();}));
+    Lobby.bindSidebar(sidebar,renderSidebar);
     sidebar.querySelectorAll('[data-run-path],[data-run-name-editor],[data-record-more],[data-unlinked-archive],[data-deleted-history],.ab-record-jump').forEach(d=>{d.open=opened.includes(d.dataset.runPath||d.dataset.runNameEditor||d.dataset.recordMore||(d.hasAttribute('data-deleted-history')?'trash':d.hasAttribute('data-deleted-history')?'trash':d.hasAttribute('data-unlinked-archive')?'archive':'jump'));});
     sidebar.querySelector('nav').scrollTop=navScroll;
     for(const [id,draft] of renameDrafts){const input=[...sidebar.querySelectorAll('[data-run-rename]')].find(f=>f.dataset.runRename===id)?.querySelector('input');if(input){input.value=draft.value;input.setSelectionRange(...draft.range);if(draft.focused)input.focus({preventScroll:true});}}
@@ -2306,7 +2309,7 @@
             <label class="ab-launch-field">Quota stop %<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %"></label>
             <p class="ab-run-hint wide" data-agent-reason role="status"></p>
           </div></section>
-          ${keysSectionHtml()}
+          ${window.Lobby.newRunHtml()}${keysSectionHtml()}
           <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
             <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small data-codex-quota hidden role="status"></small><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
@@ -2336,6 +2339,7 @@
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
       const keys = bindKeys(form);
+      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';}
       let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
@@ -2613,6 +2617,11 @@
           selection=agentLaunchSelection(selection,{devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
           if(selection.dev_mode==='agent'){const provider=keys.selection();if(provider)selection.agent_provider=provider;}
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
+          if(window.Lobby.enabled&&profile.channel==='dev_v2'){
+            const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:form.v2_policy.value,dev_source:Lobby.devSource(keys.selection(),form.model_source.value),share_replies:Boolean(form.lb_share?.checked)});
+            if(!made.ok)throw new Error(Lobby.errorText(made.value));
+            keys.clearSecrets();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;
+          }
           const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
           const result = await response.json();
           if (!response.ok) throw new Error(providerErrorText(result)||`HTTP ${response.status}`);
@@ -3362,6 +3371,7 @@
     return fallback||new Date(at*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'});
   }
   function recordTone(r) {
+    if(r.lobby)return window.Lobby.tone(r);
     const status=String(r.status||'');
     if(recordIsActive(r))return Number(r.pending_hints||0)>0?'waiting':'running';
     if(status==='needs_review')return /infrastructure|dispatch unknown|outcome_unknown/i.test(String(r.reason||''))?'failed':'waiting';
@@ -3372,11 +3382,11 @@
   }
   function sidebarMatches(r) {
     const tone=recordTone(r);
-    return sidebarFilter==='all'||(sidebarFilter==='running'&&tone==='running')||(sidebarFilter==='needs'&&tone==='waiting')||(sidebarFilter==='failed'&&tone==='failed')||(sidebarFilter==='succeeded'&&tone==='success');
+    return sidebarFilter==='all'||(sidebarFilter==='queued'&&tone==='queued')||(sidebarFilter==='running'&&tone==='running')||(sidebarFilter==='needs'&&tone==='waiting')||(sidebarFilter==='failed'&&tone==='failed')||(sidebarFilter==='succeeded'&&tone==='success');
   }
   function sidebarFilters(records) {
-    const count=key=>key==='all'?records.length:records.filter(r=>({running:'running',needs:'waiting',failed:'failed',succeeded:'success'})[key]===recordTone(r)).length;
-    const items=[['all','All'],['running','Running'],['needs','Needs you'],['failed','Failed'],['succeeded','Succeeded']];
+    const count=key=>key==='all'?records.length:records.filter(r=>({running:'running',queued:'queued',needs:'waiting',failed:'failed',succeeded:'success'})[key]===recordTone(r)).length;
+    const items=[['all','All'],['running','Running'],['needs','Needs you'],...(window.Lobby?.enabled?[['queued','Queued']]:[]),['failed','Failed'],['succeeded','Succeeded']];
     return `<div class="op-filter" role="group" aria-label="Filter runs">${items.map(([key,name])=>`<button type="button" data-op-filter="${key}" aria-pressed="${sidebarFilter===key}">${name}<i>${count(key)}</i></button>`).join('')}</div>`;
   }
   // The backend could not dispatch/finish the execution: not something the robot did wrong.
@@ -3503,6 +3513,8 @@
       sdk:['● SDK RUNNING','SDK running','A claimed SDK execution has a live owner.'],
       terminal:['○ ENDED','Ended','This run has ended. Recorded work and replies remain available.']
     };
+    // A shared run that has just started has no recorded work yet: say so plainly instead of the 'prepared' wording.
+    if(snapshot.lobby&&['queued','running','waiting_human'].includes(snapshot.lobby.state)&&l.phase==='prepared')return {title:'● RUNNING',short:snapshot.lobby.state==='queued'?'Waiting in line':'Starting the first attempt',text:snapshot.lobby.state==='queued'?'The robot has not started this run yet. It runs one task at a time.':'The robot is getting ready for the first attempt. The scene appears here once it starts.'};
     const row=rows[l.phase];return row?{title:row[0],short:row[1],text:row[2]}:null;
   }
   function operatorPageTitle(snapshot,name) {
@@ -3614,6 +3626,7 @@
       reason:model?`${model} ${outcome}`:`Model call ${outcome}`};
   }
   function operatorOutcome(snapshot) {
+    {const shared=Lobby.outcomeHtml(snapshot);if(shared)return shared;}
     const rc=snapshot.dev_v2?.run_controls;
     if(rc?.state==='paused')return `<div class="op-outcome waiting" data-operator-outcome="paused" role="status"><strong>⏸ PAUSED</strong><div><p>${esc(rc.pause_detail || `Paused${rc.paused_since==null?'':` since ${dateTime(rc.paused_since)}`}. Nothing is running and the run's time budget is not counting.`)}</p><p>${esc(rc.can_resume?'Press Resume to continue with the next step.':rc.resume_blocked_reason||'')}</p></div></div>`;
     if(rc?.state==='pausing')return `<div class="op-outcome waiting" data-operator-outcome="pausing" role="status"><strong>● PAUSING</strong><div><p>${esc(`The current step${rc.current_step?` (${rc.current_step})`:''} will finish normally, then the run pauses before the next step.`)}</p><p>Press Keep running to cancel the pause.</p></div></div>`;
@@ -3935,6 +3948,10 @@
   }
   function operatorHelp(snapshot,chosen) {
     if(window.ReplayMode?.enabled&&snapshot.dev_v2)return ReplayMode.panel(replayContext(snapshot));
+    if(snapshot.lobby){const shared=Lobby.helpHtml(snapshot,operatorHeading('04','HELP &amp; REPLIES',''),HumanReply);if(shared)return shared;const own=operatorHelpInner(snapshot,chosen);return Lobby.sharingHtml(snapshot)?own.replace(/<\/section>\s*$/,Lobby.sharingHtml(snapshot)+'</section>'):own;}
+    return operatorHelpInner(snapshot,chosen);
+  }
+  function operatorHelpInner(snapshot,chosen) {
     if(snapshot.agent?.agent_policy_version==='agent-policy-v2')return agentPolicyHelp(snapshot);
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session);
     const modelReview=modelCallReview(snapshot);
@@ -3978,6 +3995,7 @@
     return `Codex quota used by this run: ${points<1?'less than 1 point':`about +${Math.round(points)} points`}`;
   }
   function operatorResources(snapshot) {
+    {const shared=Lobby.resourcesHtml(snapshot);if(shared)return shared;}
     const resources=snapshot.resources,s=snapshot.dev_session;
     const endedKey=s?devEndSummary(s).key:snapshot.eval?.stopped_reason;
     const fields=resourceRows(snapshot);
@@ -4318,6 +4336,9 @@
   }
   function render(snapshot) {
     stopGuidancePreview(); activeGuidancePreview = null;
+    Lobby.beforeRender(view);
+    if(snapshot.dev_v2)snapshot.lobby=Lobby.card(snapshot.dev_v2.experiment_id)||undefined;
+    Lobby.markView(snapshot);
     const devDraft=view.querySelector('[data-dev-guidance] textarea');
     const devDraftFocus=devDraft&&document.activeElement===devDraft?[devDraft.selectionStart,devDraft.selectionEnd,devDraft.selectionDirection]:null;
     const previousRun = currentSnapshot?.run?.run_id;
@@ -4363,6 +4384,7 @@
     const active = actionableRequests(snapshot);
     const chosen = active.find(item => item.request_id === selectedRequest) || active[0];
     view.innerHTML = workspaceHTML(snapshot,chosen);
+    {const banner=Lobby.banner(snapshot);if(banner)view.insertAdjacentHTML('afterbegin',banner);}
     bindAttentionEfficiency(snapshot);
     if(snapshot.agent)bindAgentStory(snapshot);
     const requestRegion=view.querySelector('[data-core-region="request"]');
@@ -4481,6 +4503,7 @@
     });
 
     bindHistorySelection(snapshot);
+    Lobby.bindHelp(view,snapshot);Lobby.bindBanner(view);
     if(window.ReplayMode?.enabled&&snapshot.dev_v2)ReplayMode.bind(view,replayContext(snapshot),()=>{const y=window.scrollY;render(currentSnapshot);window.scrollTo(0,y);});
     view.querySelectorAll('video[data-starting-video]').forEach(video => {
       const holdFirstFrame = () => { video.pause(); video.currentTime = 0; };
@@ -5180,7 +5203,7 @@
   async function updateV2Snapshot(s) {
     const cellBase=`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}/cells/${encodeURIComponent(s.key)}`;
     const ended=agentTerminalFetch.get(s.key);
-    if(ended && Date.now()-ended<30000 && currentSnapshot?.agent && currentSnapshot?.dev_v2?.key===s.key)return;
+    if(ended && !s.lobby && Date.now()-ended<30000 && currentSnapshot?.agent && currentSnapshot?.dev_v2?.key===s.key)return;
     const response=await fetch(`${cellBase}/view`,{cache:'no-store'});
     if(!response.ok)throw new Error(`Dev v2 HTTP ${response.status}`);
     const cell=await response.json();if(selectedDev!==s.session_id)return;
@@ -5190,7 +5213,7 @@
     if(!experimentResponse.ok)throw new Error(`Dev v2 experiment HTTP ${experimentResponse.status}`);
     const experiment=await experimentResponse.json();if(selectedDev!==s.session_id)return;
     if(cell.dev_mode==='agent'){
-      const fingerprint=JSON.stringify([experiment.state,experiment.reason,{...cell.agent,wall_seconds:0},cell.dev_v2_compat.versions,cell.dev_v2_compat.jobs]);
+      const fingerprint=JSON.stringify([experiment.state,experiment.reason,{...cell.agent,wall_seconds:0},cell.dev_v2_compat.versions,cell.dev_v2_compat.jobs,Lobby.fingerprintOf(s.experiment_id)]);
       if(lastRendered===fingerprint && currentSnapshot?.agent){
         currentSnapshot.agent=cell.agent;
         return;
@@ -5360,6 +5383,7 @@
 
   view.innerHTML = '<section class="panel"><h2>Reading AttentionStore…</h2></section>';
   root.classList.add('ready');
+  Lobby.start({changed:()=>{lastRendered='';renderSidebar();refresh();},open:experimentId=>{const go=n=>{const d=devSessions.find(x=>x.experiment_id===experimentId);if(d)navigateRecord(d.session_id);else if(n<10)setTimeout(()=>go(n+1),700);};go(0);},toast:(message,tone)=>toast(message,tone)});
   refresh();
   setInterval(refresh, 3000);
   setInterval(refreshPreview, 1000);
