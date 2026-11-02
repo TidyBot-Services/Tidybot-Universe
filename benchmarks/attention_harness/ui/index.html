@@ -2526,6 +2526,61 @@ dialog.ab-replay-consent .op-controls{display:flex;gap:10px;justify-content:flex
 #attentionbench-clear .hr-moment textarea{min-height:96px;resize:vertical}
 #attentionbench-clear .hr-moment input[data-rp-code]{max-width:340px;font-family:ui-monospace,monospace}
 #attentionbench-clear .hr-moment .op-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+/* Shared lobby: whose runs, the one robot and its queue, the queue and read-only variants of 02/04/05 */
+#attentionbench-clear .lb-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+#attentionbench-clear .lb-seg{display:inline-flex;padding:2px;border:1px solid #d3d4c6;border-radius:999px;background:#fff}
+#attentionbench-clear .lb-seg button{border:0;background:none;padding:4px 11px;border-radius:999px;font:600 12px var(--body,inherit);color:#686e64;cursor:pointer}
+#attentionbench-clear .lb-seg button[aria-pressed="true"]{background:#242822;color:#fff}
+#attentionbench-clear .lb-label{font-size:12px;color:#686e64}
+#attentionbench-clear .lb-pin,#attentionbench-clear .lb-queue{margin:0 0 12px;padding:10px 12px 8px;border:1px solid #d94d27;border-radius:12px;background:#fdf0ea}
+#attentionbench-clear .lb-queue{border-color:#d3d4c6;background:#fff}
+#attentionbench-clear .lb-pin h3,#attentionbench-clear .lb-queue h3{margin:10px 0 4px;font:500 11px ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:#8f5c10}
+#attentionbench-clear .lb-pin h3:first-child,#attentionbench-clear .lb-queue h3:first-child{margin-top:0}
+#attentionbench-clear .lb-line{display:flex;align-items:center;gap:8px;padding:4px 2px;border-radius:8px;font:500 13px var(--body,inherit);color:#242822;cursor:pointer}
+#attentionbench-clear .lb-line:hover{background:#d94d2712}
+#attentionbench-clear .lb-line:focus-visible{outline:2px solid #d94d27;outline-offset:1px}
+#attentionbench-clear .lb-line b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 15px var(--heading,var(--body,inherit));letter-spacing:.05em;text-transform:uppercase}
+#attentionbench-clear .lb-line.me b,#attentionbench-clear .lb-line.me .lb-sub{color:#c44420}
+#attentionbench-clear .lb-n{display:inline-grid;place-items:center;flex:none;width:22px;height:22px;border-radius:6px;background:#242822;color:#ece9e2;font:700 12px var(--body,inherit)}
+#attentionbench-clear .lb-line.me .lb-n{background:#c44420;color:#fff}
+#attentionbench-clear .lb-sub{flex:none;margin-left:auto;color:#686e64;font-size:12px;white-space:nowrap;text-align:right}
+#attentionbench-clear .lb-idle,#attentionbench-clear .lb-more{margin:2px 0;font-size:12.5px;color:#686e64}
+#attentionbench-clear .lb-pill{flex:none;padding:2px 9px;border-radius:999px;background:#dfe9f6;color:#24507e;font:600 11px var(--body,inherit)}
+#attentionbench-clear .lb-pill.wait{background:#f5e6cf;color:#7d5210}
+#attentionbench-clear .op-outcome.queued{background:#ebe8df;border-color:#c9c6ba}
+#attentionbench-clear .lb-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:-4px 0 16px}
+#attentionbench-clear .lb-tiles div{padding:10px 14px;border:1px solid #e3dfd3;border-radius:10px;background:#f8f6f0;font-size:12.5px;color:#686e64}
+#attentionbench-clear .lb-tiles b{display:block;font:700 22px var(--body,inherit);color:#242822}
+#attentionbench-clear .lb-readonly{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:10px 16px;border:1px solid #24507e;border-radius:12px;background:#dfe9f6;color:#24507e;font-size:14px}
+#attentionbench-clear .lb-readonly .ab-button-quiet{margin-left:auto}
+#attentionbench-clear .lb-share{display:grid;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid #e3dfd3}
+#attentionbench-clear .lb-share small{color:#686e64}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar-controls .op-filter:has(button:nth-child(6)){grid-template-columns:repeat(6,minmax(0,1fr))}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar-controls .op-filter:has(button:nth-child(6)) button{font-size:10px;padding:9px 0 7px}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar-controls .op-filter [data-op-filter="queued"]{--tone:#4d7fb5}
+#attentionbench-clear .ab-lobby-newrun .ab-check{display:grid;gap:4px}
+#attentionbench-clear .ab-lobby-newrun .ab-check input{margin-right:8px;accent-color:#d94d27}
+#attentionbench-clear .lb-clock{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed #d3d4c6}
+#attentionbench-clear .lb-demo{display:flex;align-items:center;gap:10px;height:32px;margin:-22px -24px 14px;padding:0 24px;background:#242822;color:#f3f1ea;font:500 12px ui-monospace,monospace;letter-spacing:.04em}
+#attentionbench-clear .lb-demo i{width:8px;height:8px;border-radius:50%;background:#ec6a43}
+#attentionbench-clear .ab-sidebar-controls .lb-controls{margin:10px 0}
+#attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]{display:flex!important}
+#attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]>*{display:none!important}
+#attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]::after{content:"Pause, stop and resume are for the owner only";font-size:13px;color:#686e64}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-page-title{flex-wrap:nowrap;align-items:flex-end;gap:16px}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-page-title>div:first-child{flex:1 1 auto;min-width:0}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-page-title h1{font-size:clamp(36px,3.6vw,52px)}
+html #attentionbench-clear[data-operator-view="true"][data-lobby="1"] .op-title-actions{flex:none;flex-wrap:nowrap}
+html[data-lobby="1"] .ab-shell-top{gap:10px}
+html[data-lobby="1"] .ab-shell-top .ab-shell-flag{font-size:11.5px;padding:0 9px}
+html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!important}
+#attentionbench-clear[data-lobby-state="queued"] [data-agent-story-open]{opacity:.4;pointer-events:none}
+#attentionbench-clear .ab-lobby-hide{display:none!important}
+#attentionbench-clear .ab-lobby-newrun .ab-launch-field input[type="checkbox"]{display:inline-block;width:18px;height:18px;min-height:0;margin:0 8px 0 0;padding:0;vertical-align:-3px}
+#attentionbench-clear .ab-lobby-newrun .ab-check>span{display:block;font-weight:600}
+#attentionbench-clear[data-lobby="1"] [data-start-no]{display:none!important}
+#attentionbench-clear[data-lobby-view="other"] :is([data-open-run-again],[data-open-fork],[data-stop-dev],[data-dev-pause],[data-dev-resume],#ab-emergency-interrupt,#ab-cancel-run,[data-continue-attempt]){display:none!important}
+#attentionbench-clear[data-lobby-view="mine"] :is([data-open-run-again],[data-open-fork],[data-dev-pause],[data-dev-resume],[data-continue-attempt]){display:none!important}
 </style>
 <style>
 #attentionbench-clear [data-agent-run] .ab-status-head {display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;}
@@ -3465,11 +3520,40 @@ html[data-theme="dark"] dialog.ab-replay-consent::backdrop{background:#f2f2f288}
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary{flex-wrap:wrap}
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary small{order:3;width:100%}
 }
+#attentionbench-clear[data-theme="dark"] .lb-seg{border:1px solid #33383d;background:#23272c}
+#attentionbench-clear[data-theme="dark"] .lb-seg button{border:0;background:none;color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-seg button[aria-pressed="true"]{background:#ecebe6;color:#15171a}
+#attentionbench-clear[data-theme="dark"] .lb-label{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-pin,#attentionbench-clear[data-theme="dark"] .lb-queue{border:1px solid #ec6a43;background:#1d1f22}
+#attentionbench-clear[data-theme="dark"] .lb-queue{border-color:#33383d;background:#23272c}
+#attentionbench-clear[data-theme="dark"] .lb-pin h3,#attentionbench-clear[data-theme="dark"] .lb-queue h3{color:#efba6c}
+#attentionbench-clear[data-theme="dark"] .lb-line{color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .lb-line:hover{background:#ec6a4322}
+#attentionbench-clear[data-theme="dark"] .lb-line:focus-visible{outline:2px solid #ec6a43}
+#attentionbench-clear[data-theme="dark"] .lb-line.me b,#attentionbench-clear[data-theme="dark"] .lb-line.me .lb-sub{color:#e88c73}
+#attentionbench-clear[data-theme="dark"] .lb-n{background:#ecebe6;color:#15171a}
+#attentionbench-clear[data-theme="dark"] .lb-line.me .lb-n{background:#eb9b84;color:#ffffff}
+#attentionbench-clear[data-theme="dark"] .lb-sub{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-idle,#attentionbench-clear[data-theme="dark"] .lb-more{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-pill{background:#212427;color:#80acdb}
+#attentionbench-clear[data-theme="dark"] .lb-pill.wait{background:#443722;color:#ecbb6e}
+#attentionbench-clear[data-theme="dark"] .op-outcome.queued{background:#262a2f;border-color:#34383d}
+#attentionbench-clear[data-theme="dark"] .lb-tiles div{border:1px solid #282b2f;background:#1d2024;color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-tiles b{color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .lb-readonly{border:1px solid #5f97d1;background:#212427;color:#80acdb}
+#attentionbench-clear[data-theme="dark"] .lb-share{border-top:1px solid #282b2f}
+#attentionbench-clear[data-theme="dark"] .lb-share small{color:#a3a199}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar-controls .op-filter [data-op-filter="queued"]{--tone:#4d7fb5}
+#attentionbench-clear[data-theme="dark"] .ab-lobby-newrun .ab-check input{accent-color:#ec6a43}
+#attentionbench-clear[data-theme="dark"] .lb-clock{border-top:1px dashed #33383d}
+#attentionbench-clear[data-theme="dark"] .lb-demo{background:#ecebe6;color:#545b63}
+#attentionbench-clear[data-theme="dark"] .lb-demo i{background:#ec6a43}
+#attentionbench-clear[data-theme="dark"][data-lobby-view="other"] .op-controls[data-ended]::after{color:#a3a199}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>
 <section class="view" aria-label="AttentionBench operations workspace"><div class="op-skeleton" aria-hidden="true"><i></i><i></i><i></i></div><p class="op-sr-only" style="position:absolute;left:-9999px">Reading run status…</p></section>
 <footer class="op-keys" aria-label="Keyboard shortcuts"><span><kbd>←</kbd><kbd>→</kbd> switch attempt</span><span><kbd>Space</kbd> play / pause</span><span><kbd>T</kbd> show / hide tasks</span></footer>
 </div>
-<link rel="stylesheet" href="./shell.css"><script src="./shell.js" defer></script><script src="./notices.js" defer></script><script src="./human_reply.js" defer></script><script src="./replay_mode.js" defer></script><script src="./live.js" defer></script>
+<link rel="stylesheet" href="./shell.css"><script src="./shell.js" defer></script><script src="./notices.js" defer></script><script src="./human_reply.js" defer></script><script src="./replay_mode.js" defer></script><script src="./lobby.js" defer></script><script src="./live.js" defer></script>
 </body></html>

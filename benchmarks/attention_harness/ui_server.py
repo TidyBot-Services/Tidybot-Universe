@@ -533,7 +533,7 @@ def create_server(
     dev_v2_per_run_budget: bool = False, dev_v2_memory: dict | None = None,
     memory_view: MemoryView | None = None,
     vault=None, allow_custom: bool | None = None, allow_private_hosts: tuple = (), replay: dict | None = None,
-    public: bool = False,
+    public: bool = False, lobby=None,
 ) -> ThreadingHTTPServer:
     # These adapters own different ledgers. Never silently replace an explicitly
     # injected shared-goal bridge with an independent daily experiment budget.
@@ -598,6 +598,10 @@ def create_server(
         authorization = json.loads(dev_v2_authorization.read_bytes()) if dev_v2_authorization else None
         dev_v2_bridge = DailyDevV2(dev_v2_root, profiles, authorization,
                                   per_run_budget=dev_v2_per_run_budget,memory=dev_v2_memory)
+    if lobby is not None:
+        from . import lobby_http
+        if public:raise ValueError('lobby is unavailable in the public profile')
+        lobby = lobby_http.prepare(lobby, dev_v2_bridge)
     notices = NoticeReader(dev_v2_bridge, memory_view, public_codex_quota, store=store)
     from . import home_status
     home_probe = home_status.ProviderProbe()  # Idle home page readiness; cached background checks.
@@ -793,7 +797,12 @@ def create_server(
             self._json(value, HTTPStatus(status))
         def _provider(self) -> None:
             provider_http.handle(self, vault=vault, token=control_token, allow_custom=allow_custom, allow_private_hosts=allow_private_hosts)
+        def _lobby(self) -> bool:
+            return lobby is not None and lobby_http.handle(self, lobby,
+                authorized=secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token),
+                viewer=lobby_http.viewer_of(self,lobby))
         def _other_method(self) -> None:
+            if self._lobby():return
             # Methods this server does not implement: a visitor gets the same 404, the author the usual 501.
             if public:
                 self._not_found()
@@ -803,14 +812,17 @@ def create_server(
         def do_PUT(self) -> None:
             if self._public_gate():
                 return
+            if self._lobby():return
             self._provider()
         def do_DELETE(self) -> None:
             if self._public_gate():
                 return
+            if self._lobby():return
             self._provider()
         def do_GET(self) -> None:
             if self._public_gate():
                 return
+            if self._lobby():return
             if provider_http.is_provider_path(urlsplit(self.path).path):
                 self._provider()
                 return
@@ -854,7 +866,7 @@ def create_server(
                     page = page.replace('data-mode="live"',
                                         f'data-mode="live" data-control-token="{control_token}"' + (' data-replay-tab="1"' if replay is not None else ''), 1)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
-            elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js", "/ui/human_reply.js", "/ui/replay_mode.js"}:
+            elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js", "/ui/human_reply.js", "/ui/replay_mode.js", "/ui/lobby.js"}:
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
             elif path == "/ui/shell.css":
                 self._send((UI_DIR / "shell.css").read_bytes(), "text/css; charset=utf-8")
@@ -915,9 +927,12 @@ def create_server(
                                HTTPStatus.NOT_FOUND if error.code == 404 else HTTPStatus.BAD_GATEWAY)
                 except (URLError, TimeoutError, ValueError) as error:
                     self._json({"error": f"Orchestrator unavailable: {error}"}, HTTPStatus.BAD_GATEWAY)
+            elif path == "/api/runs" and store is None and lobby is not None:
+                self._json(dict(runs=[], launches=[], dev_sessions=lobby.sessions(lobby_http.viewer_of(self,lobby))))
             elif path == "/api/runs" and store is not None:
                 dev_loop.recover_sessions(store)
                 listing = {"runs": history.project_many('run',list_runs(store)), "launches": store.list_launches(), "dev_sessions": history.project_many('dev',store.list_dev_sessions()) + (dev_v2_bridge.list() if dev_v2_bridge else [])}
+                if lobby is not None:listing['dev_sessions'] += lobby.sessions(lobby_http.viewer_of(self,lobby))
                 self._json(replay_http.public_runs(listing, replay) if public else listing)
             elif path == "/api/run-options" and store is not None:
                 options=public_options(profiles)
@@ -1112,6 +1127,7 @@ def create_server(
         def do_POST(self) -> None:
             if self._public_gate():
                 return
+            if self._lobby():return
             if provider_http.is_provider_path(urlsplit(self.path).path):
                 self._provider()
                 return
@@ -1473,6 +1489,7 @@ def main() -> None:
                         help="JSON for replay mode (/ui/replay): recorded runs and the loopback reply collector")
     parser.add_argument("--public-profile", action="store_true",
                         help="serve only the replay page, the recorded runs and /api/replay/*; every other path is a plain 404")
+    parser.add_argument("--lobby-config", type=Path, help="local demo lobby JSON with an explicit state_dir")
     parser.add_argument("--run-catalog", type=Path,
                         help="operator-approved formal simulator profiles for UI launch")
     parser.add_argument("--dev-v2-root", type=Path,
@@ -1499,6 +1516,8 @@ def main() -> None:
     parser.add_argument("--memory-local-operator", action="store_true",
                         help="allow disable/enable/rollback/expiry on the local Memory (development)")
     args = parser.parse_args()
+    if args.lobby_config and args.public_profile:
+        parser.error("--lobby-config cannot be used with --public-profile")
     if args.dev_v2_root is None and (args.dev_v2_authorization is not None or args.dev_v2_per_run_budget):
         parser.error("Dev v2 authorization/budget options require --dev-v2-root")
     if args.host not in {"127.0.0.1", "localhost", "::1"}:
@@ -1561,7 +1580,8 @@ def main() -> None:
                            dev_v2_authorization=args.dev_v2_authorization,
                            dev_v2_per_run_budget=args.dev_v2_per_run_budget,dev_v2_memory=daily_memory,
                            replay=replay_http.load_config(json.loads(args.replay_config.read_text())) if args.replay_config else None,
-                           public=args.public_profile)
+                           public=args.public_profile,
+                           lobby=json.loads(args.lobby_config.read_text()) if args.lobby_config else None)
     print(f"AttentionBench UI: http://{args.host}:{server.server_port}/ui/", flush=True)
     try:
         server.serve_forever()
