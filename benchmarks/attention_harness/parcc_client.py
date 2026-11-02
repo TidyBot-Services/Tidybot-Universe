@@ -12,9 +12,10 @@ from typing import Any, Callable, ContextManager, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from .free_models import FREE_MODELS
+from .dev_agent_provider import presets, resolve_provider
 
 
-DEFAULT_PARCC_URL = "https://litellm.parcc.upenn.edu/v1/chat/completions"
+DEFAULT_PARCC_URL = presets()['parcc'].chat_url
 RETRYABLE_STATUS = {429, 502, 503, 504}
 
 
@@ -73,8 +74,9 @@ class ParccClient:
         stream: bool = False,
         stream_transport: StreamTransport | None = None,
         retry_observer: Callable[[dict[str, Any]], None] | None = None,
+        public_gateway_mode: bool = False,
     ) -> None:
-        self.endpoint = endpoint or os.environ.get("PARCC_URL", DEFAULT_PARCC_URL)
+        self.endpoint = endpoint or resolve_provider('parcc',public_gateway_mode=public_gateway_mode).chat_url
         self._api_key = api_key or os.environ.get("PARCC_API_KEY") or os.environ.get("LITELLM_KEY")
         self.timeout_seconds = timeout_seconds
         self.max_attempts = max_attempts

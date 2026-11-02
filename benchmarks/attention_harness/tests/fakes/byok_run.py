@@ -14,12 +14,13 @@ from benchmarks.attention_harness.dev_agent_session import CodexAgentSession
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',required=True);parser.add_argument('--key-fd',type=int,required=True)
+    parser.add_argument('--allow-private-provider-hosts',default='')
     args=parser.parse_args();harden_process();install_run_keys_from_fd(args.key_fd)
     assert not (set(KEY_ENV)&set(os.environ))
     role=run_role('dev')
     root=Path(args.output);root.mkdir(parents=True,exist_ok=True);private=root/'private';private.mkdir()
     (root/'CODEX_HOME').mkdir();(root/'Memory').mkdir()
-    provider=provider_for_run(dict(agent_provider=dict(roles=dict(dev=role))));token=provider.token
+    provider=provider_for_run(dict(agent_provider=dict(roles=dict(dev=role))),allow_private_hosts=tuple(args.allow_private_provider_hosts.split(',')));token=provider.token
     factory=lambda ws,prompt:['codex','exec','-C',str(ws),'--json','-m','old','-c','model_reasoning_effort="low"',prompt]
     session=CodexAgentSession(root,private,model=role['model'],provider=provider,command_factory=factory)
     try:

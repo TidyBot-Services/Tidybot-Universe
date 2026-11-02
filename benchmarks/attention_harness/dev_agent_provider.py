@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field, replace
 import ipaddress
 import json
+import os
 import socket
 import urllib.error
 import urllib.parse
@@ -29,9 +30,9 @@ class ProviderSpec:
 
 
 def presets():
-    from .dev_agent_parcc_bridge import PARCC_CHAT_URL
+    base_url='https://litellm.parcc.upenn.edu/v1'
     return {
-        'parcc': ProviderSpec('parcc', 'PARCC', PARCC_CHAT_URL, PARCC_CHAT_URL.rsplit('/', 2)[0]+'/models',
+        'parcc': ProviderSpec('parcc', 'PARCC', base_url+'/chat/completions', base_url+'/models',
                               'lab-file', reasoning_param='reasoning_effort', suggested_models=('parcc/GLM',)),
         'openai': ProviderSpec('openai', 'OpenAI', 'https://api.openai.com/v1/chat/completions',
                                'https://api.openai.com/v1/models', token_param='max_completion_tokens', reasoning_param='reasoning_effort'),
@@ -41,11 +42,20 @@ def presets():
     }
 
 
-def resolve_provider(provider_id, base_url=None, *, allow_custom, allow_private_hosts=()):
+def resolve_provider(provider_id, base_url=None, *, allow_custom=False, allow_private_hosts=(), public_gateway_mode=False):
     spec = presets().get(provider_id) if isinstance(provider_id,str) else None
     if spec is None: raise ProviderError('provider_unknown', 'Unknown provider')
     if provider_id != 'openai-compatible':
         if base_url is not None: raise ProviderError('base_url_not_allowed', 'Preset URLs cannot be overridden')
+        override=os.getenv('PARCC_URL') if provider_id=='parcc' and not public_gateway_mode else None
+        if override:
+            try:
+                url=urllib.parse.urlsplit(override)
+                port=url.port
+                if not url.hostname or url.username is not None or url.password is not None or any(c.isspace() or ord(c)<32 for c in override) or any(c in override for c in ('?','#','\\')):raise ValueError()
+            except ValueError:raise ProviderError('base_url_invalid','Invalid PARCC URL') from None
+            if url.scheme!='https':raise ProviderError('base_url_not_https','Provider URL must use HTTPS')
+            spec=replace(spec,chat_url=override,models_url=override.rsplit('/',2)[0]+'/models')
         return spec
     if not allow_custom: raise ProviderError('custom_base_url_disabled', 'Custom provider URLs are disabled')
     try:
