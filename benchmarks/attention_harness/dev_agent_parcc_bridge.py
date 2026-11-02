@@ -8,17 +8,19 @@ or environment, and never logs the key or request headers. One row per upstream
 call goes to calls.jsonl with the model PARCC actually reported.
 GLM is text-only: image parts become a text notice (Dev cannot see frames).
 """
+import hmac
 import http.server
 import itertools
 import json
 import os
 from pathlib import Path
-import ssl
 import threading
 import time
 import urllib.error
 import urllib.request
 import uuid
+
+from .dev_agent_secret import Secret, scrub
 
 PARCC_CHAT_URL = 'https://litellm.parcc.upenn.edu/v1/chat/completions'
 PARCC_DEV_MODELS = frozenset({'parcc/GLM'})
@@ -49,7 +51,7 @@ def _text(parts):
     return '\n'.join(out)
 
 
-def to_chat(body):
+def to_chat(body, provider=None):
     """Responses request body -> chat/completions body. Fail closed on unknown items/tools."""
     messages = []
     if body.get('instructions'): messages.append(dict(role='system', content=body['instructions']))
@@ -83,14 +85,18 @@ def to_chat(body):
         chat.update(tools=tools, tool_choice=body.get('tool_choice', 'auto'))
         if 'parallel_tool_calls' in body: chat['parallel_tool_calls'] = body['parallel_tool_calls']
     effort = (body.get('reasoning') or {}).get('effort')
-    if effort: chat['reasoning_effort'] = effort
+    if provider is not None:
+        chat[provider.token_param] = chat.pop('max_tokens')
+    reasoning_param = provider.reasoning_param if provider is not None else 'reasoning_effort'
+    if effort and reasoning_param: chat[reasoning_param] = effort
     return chat
 
 
 def upstream_chunks(chat, key, *, url=PARCC_CHAT_URL, timeout=900):
     request = urllib.request.Request(url, data=json.dumps(chat).encode(), method='POST',
-        headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})
-    response = urllib.request.urlopen(request, timeout=timeout, context=ssl.create_default_context())
+        headers={'Authorization': 'Bearer ' + (key.reveal() if isinstance(key, Secret) else key), 'Content-Type': 'application/json'})
+    from .dev_agent_provider import open_request
+    response = open_request(request, timeout=timeout)
     yield dict(_request_id=response.headers.get('x-litellm-call-id') or response.headers.get('x-request-id'))
     with response:
         for raw in response:
@@ -98,7 +104,10 @@ def upstream_chunks(chat, key, *, url=PARCC_CHAT_URL, timeout=900):
             if not line.startswith('data:'): continue
             data = line[5:].strip()
             if data == '[DONE]': return
-            yield json.loads(data)
+            chunk = json.loads(data)
+            if 'error' in chunk: raise BridgeError(json.dumps(chunk['error']))
+            yield chunk
+    raise BridgeError('incomplete_provider_stream')
 
 
 class _Stream:
@@ -167,17 +176,23 @@ class _Stream:
         return items
 
 
-class ParccBridge:
-    def __init__(self, log_dir, *, key=None, upstream=upstream_chunks):
+class ChatBridge:
+    def __init__(self, log_dir, provider, key: Secret, *, token, upstream=upstream_chunks):
         self.log_dir = Path(log_dir); self.log_dir.mkdir(parents=True, exist_ok=True)
-        self.key = key or parcc_key(); self.upstream = upstream
+        self.key = key if isinstance(key, Secret) else Secret(key); self.upstream = upstream
+        self.provider = provider; self.token = token
+        if provider is not None and not token: raise BridgeError('bridge_token_required')
         self.counter = itertools.count(1); self.lock = threading.Lock()
         bridge = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
             protocol_version = 'HTTP/1.1'
             def log_message(self, *args): pass  # never echo request lines or headers
-            def do_POST(self): bridge.handle(self)
+            def do_POST(self):
+                try: bridge.handle(self)
+                except Exception:
+                    # Never print a chained upstream exception on a disconnected client.
+                    self.close_connection = True
         self.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
         self.server.daemon_threads = True
         self.port = self.server.server_address[1]
@@ -190,7 +205,21 @@ class ParccBridge:
     def close(self):
         self.server.shutdown(); self.server.server_close()
 
+    def clean_row(self, row):
+        redacted = False
+        def clean(value):
+            nonlocal redacted
+            if isinstance(value, str):
+                value, changed = scrub(value, [self.key]); redacted |= changed
+            elif isinstance(value, dict): value = {clean(k):clean(v) for k,v in value.items()}
+            elif isinstance(value, list): value = [clean(v) for v in value]
+            return value
+        row = clean(row)
+        if redacted: row['redacted'] = True
+        return row
+
     def record(self, row):
+        row = self.clean_row(row)
         with self.lock, (self.log_dir / 'calls.jsonl').open('a') as stream:
             stream.write(json.dumps(row, sort_keys=True) + '\n')
 
@@ -199,25 +228,31 @@ class ParccBridge:
         row = dict(call=number, at=started, path=handler.path)
         if handler.path.rstrip('/') != '/v1/responses':
             row.update(status=404); self.record(row)
+            handler.close_connection = True
             handler.send_response(404); handler.send_header('Content-Length', '0'); handler.end_headers(); return
+        if self.token is not None and not hmac.compare_digest(
+                handler.headers.get('Authorization', '').encode(), ('Bearer '+self.token).encode()):
+            return self._error(handler, 401, 'bridge authorization required')
         try:
             body = json.loads(handler.rfile.read(int(handler.headers.get('Content-Length') or 0)))
-            chat = to_chat(body)
+            chat = to_chat(body, self.provider)
             row.update(requested_model=chat['model'], messages=len(chat['messages']), tools=len(chat.get('tools', [])),
                        reasoning_effort=chat.get('reasoning_effort'))
-            if chat['model'] not in PARCC_DEV_MODELS: raise BridgeError('model_not_bridged:' + chat['model'])
-            chunks = self.upstream(chat, self.key)
+            if self.provider is None and chat['model'] not in PARCC_DEV_MODELS: raise BridgeError('model_not_bridged:' + chat['model'])
+            chunks = (self.upstream(chat, self.key, url=self.provider.chat_url) if self.provider is not None
+                      else self.upstream(chat, self.key))
             meta = next(chunks)
         except urllib.error.HTTPError as exc:
-            detail = exc.read()[:2000].decode(errors='replace')
+            detail, redacted = scrub(exc.read(8192).decode(errors='replace'), [self.key])
+            if redacted: row['redacted'] = True
             row.update(status=exc.code, error=detail); self.record(row)
             # 429/5xx stay retryable for Codex; anything else is a hard request error.
             status = exc.code if exc.code == 429 or exc.code >= 500 else 400
-            return self._error(handler, status, detail)
+            return self._error(handler, status, detail, redacted=redacted)
         except Exception as exc:
             row.update(status=502 if not isinstance(exc, BridgeError) else 400, error='%s: %s' % (type(exc).__name__, exc))
-            self.record(row)
-            return self._error(handler, row['status'], row['error'])
+            row = self.clean_row(row); self.record(row)
+            return self._error(handler, row['status'], row['error'], redacted=row.get('redacted', False))
         row['upstream_request_id'] = meta.get('_request_id')
         handler.send_response(200)
         handler.send_header('Content-Type', 'text/event-stream'); handler.send_header('Cache-Control', 'no-cache')
@@ -229,6 +264,8 @@ class ParccBridge:
         try:
             stream.event('response.created', response=dict(id=stream.id, object='response', status='in_progress', output=[]))
             for chunk in chunks:
+                chunk = self.clean_row(chunk)
+                if chunk.get('redacted'): row['redacted'] = True
                 if chunk.get('model'): models.add(chunk['model'])
                 if chunk.get('usage'): usage = chunk['usage']
                 for choice in chunk.get('choices') or []:
@@ -239,24 +276,36 @@ class ParccBridge:
                        output=[i['type'] + (':' + i['name'] if i['type'] == 'function_call' else '') for i in items])
         except Exception as exc:
             row.update(status='stream_failed', error='%s: %s' % (type(exc).__name__, exc))
+            row = self.clean_row(row)
             try: stream.event('response.failed', response=dict(id=stream.id, status='failed',
-                                                               error=dict(code='server_error', message=row['error'])))
+                                                               error=dict(code='server_error', message=row['error'], redacted=row.get('redacted', False))))
             except OSError: pass
         finally:
             row['seconds'] = round(time.time() - started, 3); self.record(row)
             handler.close_connection = True
 
-    @staticmethod
-    def _error(handler, status, message):
-        data = json.dumps(dict(error=dict(message=message, type='parcc_bridge_error', code=str(status)))).encode()
+    def _error(self, handler, status, message, *, redacted=False):
+        message, changed = scrub(message, [self.key])
+        data = json.dumps(dict(error=dict(message=message, type='parcc_bridge_error', code=str(status),
+                                          redacted=redacted or changed))).encode()
+        handler.close_connection = True
         handler.send_response(status); handler.send_header('Content-Type', 'application/json')
         handler.send_header('Content-Length', str(len(data))); handler.end_headers(); handler.wfile.write(data)
 
 
-def provider_args(base_url):
+class ParccBridge(ChatBridge):
+    def __init__(self, log_dir, *, key=None, upstream=upstream_chunks):
+        super().__init__(log_dir, None, key or parcc_key(), token=None, upstream=upstream)
+
+
+def provider_args(base_url, *, token_env=None):
     """Codex -c overrides that route one session to the bridge (no env_key: the bridge holds the key)."""
+    if token_env is not None:
+        import re
+        if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', token_env): raise BridgeError('invalid_token_env')
+    extra = '' if token_env is None else ', env_key="%s"' % token_env
     return ['-c', 'model_providers.parcc={ name="PARCC (bridge)", base_url="%s", wire_api="responses", '
-                  'stream_idle_timeout_ms = 900000, request_max_retries = 4, stream_max_retries = 2 }' % base_url,
+                  'stream_idle_timeout_ms = 900000, request_max_retries = 4, stream_max_retries = 2%s }' % (base_url, extra),
             '-c', 'model_provider="parcc"',
             # Codex has no metadata for parcc/GLM (GLM-5.3); PARCC accepts >400k input, so give it a sol-sized window.
             '-c', 'model_context_window=262144']

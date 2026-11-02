@@ -58,6 +58,9 @@ class Exporter:
     def settle(self, response, memory=None):
         if response['op'] != 'submit' or response['request_id'] not in self.pending:
             return None
+        from .dev_agent_key_vault import assert_run_clean
+        assert_run_clean(roots=(self.workspace.private,self.workspace.canonical),
+                         values=(response,self.pending[response['request_id']]))
         pending = self.pending[response['request_id']]
         row = pending['row']; number = row['version']; directory = self.root / f'v{number}'
         source = reference(self.workspace.private / 'sources' / (response['request_id'] + '.py'))

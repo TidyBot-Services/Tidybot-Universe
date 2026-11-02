@@ -1,7 +1,7 @@
 """Creation-only options for the single-cell native-agent condition."""
 import math
 
-FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version'}
+FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider'}
 MODELS={'gpt-6.1-sol','gpt-6-astra','gpt-6-sol'}
 DEFAULT_MODEL='gpt-6.1-sol'
 # AdvisorProxy on agent runs (10-29). Absent in older selections, which keep the fixed one-call Advisor.
@@ -10,7 +10,43 @@ ADVISOR_MODELS={'gpt-6-astra','gpt-6.1-sol'}
 DEV_MODELS=MODELS|{'parcc/GLM'}
 
 
+def reject_secret_fields(value):
+    if isinstance(value,dict):
+        if any(str(k).lower() in ('key','api_key','secret','token','authorization') for k in value):
+            raise ValueError('agent_provider_secret_field_forbidden')
+        for item in value.values():reject_secret_fields(item)
+    elif isinstance(value,(list,tuple)):
+        for item in value:reject_secret_fields(item)
+
+
+def provider_roles(value):
+    from .dev_agent_key_vault import credential_name
+    from .dev_agent_provider import presets
+    from urllib.parse import urlsplit
+    if not isinstance(value,dict) or set(value)!={'roles'}:raise ValueError('invalid_agent_provider')
+    roles=value['roles'];result={}
+    if not isinstance(roles,dict) or 'dev' not in roles or set(roles)-{'dev','eval','advisor'}:raise ValueError('invalid_agent_provider_roles')
+    for role,desc in roles.items():
+        if not isinstance(desc,dict) or not {'credential','provider','model'}<=set(desc) or set(desc)-{'credential','provider','model','base_url_host','key_source'}:
+            raise ValueError('invalid_agent_provider_role')
+        credential_name(desc['credential'])
+        if role!='dev' and desc['credential']!='lab':raise ValueError('role_not_supported_yet')
+        if not isinstance(desc['provider'],str) or desc['provider'] not in presets():raise ValueError('unsupported_agent_provider')
+        model=desc['model']
+        if not isinstance(model,str) or not model.strip() or len(model)>128:raise ValueError('invalid_agent_provider_model')
+        if role=='dev' and model=='parcc/GLM' and desc['provider']!='parcc':raise ValueError('agent_provider_model_mismatch')
+        if role!='dev' and (desc['provider']!='openai' or model not in (ADVISOR_MODELS if role=='advisor' else MODELS)):
+            raise ValueError('role_not_supported_yet')
+        host=desc.get('base_url_host') if desc['provider']=='openai-compatible' else urlsplit(presets()[desc['provider']].chat_url).hostname
+        if host is not None and (not isinstance(host,str) or not host or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:' for c in host)):
+            raise ValueError('invalid_base_url_host')
+        result[role]=dict(credential=desc['credential'],provider=desc['provider'],model=model,base_url_host=host,
+                          key_source='lab' if desc['credential']=='lab' else 'user')
+    return dict(roles=result)
+
+
 def normalize(selection, *, validation_origin=None):
+    reject_secret_fields(selection)
     if selection.get('dev_mode')!='agent':raise ValueError('agent_mode_required')
     if selection.get('budget_tier','dev')!='dev' or 'configuration' in selection:
         raise ValueError('agent_requires_modern_dev_tier')
@@ -32,7 +68,13 @@ def normalize(selection, *, validation_origin=None):
     version=selection.get('agent_policy_version','agent-policy-v1')
     if version not in ('agent-policy-v1','agent-policy-v2'):raise ValueError('unsupported_agent_policy_version')
     if version=='agent-policy-v2':result['agent_policy_version']=version
-    if result['dev_model'] not in DEV_MODELS or result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
+    if 'agent_provider' in selection:
+        result['agent_provider']=provider_roles(selection['agent_provider'])
+        roles=result['agent_provider']['roles']
+        result['dev_model']=roles['dev']['model']
+        for role in ('eval','advisor'):
+            if role in roles:result[role+'_model']=roles[role]['model']
+    if ('agent_provider' not in selection and result['dev_model'] not in DEV_MODELS) or result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
     if result['dev_reasoning_effort'] not in ('low','medium','high'):raise ValueError('unsupported_agent_effort')
     if 'advisor_model' in selection:
         if selection['advisor_model'] not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')

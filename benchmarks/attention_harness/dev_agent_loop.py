@@ -347,6 +347,21 @@ def continuation():
     return 'Continue from the authoritative history files and work/notes.md. Inspect the latest results and budgets with devtool status.'
 
 
+def provider_for_run(manifest):
+    if 'agent_provider' not in manifest:return None
+    import secrets
+    from types import SimpleNamespace
+    from .dev_agent_key_vault import run_key,run_role
+    from .dev_agent_provider import resolve_provider,ProviderError
+    role=manifest['agent_provider']['roles']['dev'];bound=run_role('dev')
+    if bound and any(bound.get(k)!=role[k] for k in ('credential','provider','model','base_url_host')):
+        raise ProviderError('provider_mismatch','Run provider differs from manifest')
+    spec=resolve_provider(role['provider'],bound.get('base_url'),allow_custom=True,
+                          allow_private_hosts=('127.0.0.1','::1','localhost'))
+    return SimpleNamespace(spec=spec,secret=run_key(role['credential']),
+                           token=secrets.token_urlsafe(32),token_env='ATTENTION_BYOK_BRIDGE_TOKEN')
+
+
 def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, *, client=None, runner_factory=None, outer_deadline_epoch=None, validation=None):
     from .dev_agent_isolation import verify_runtime,codex_identity,IsolationUnavailable
     from .dev_agent_adapters import Executor,Prober
@@ -390,7 +405,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         atomic_write(workspace.private,'codex-identity.json',encode(identity))
         ledger.settle(setup_id,dict(status='prepared'));setup_id=None
         quota=QuotaMonitor(workspace.private,ledger,stop_percent=manifest['quota_stop_percent'])
-        session=CodexAgentSession(workspace.ws,workspace.private,model=manifest['dev_model'],reasoning_effort=manifest['dev_reasoning_effort'])
+        provider_options={'provider':provider_for_run(manifest)} if 'agent_provider' in manifest else {}
+        session=CodexAgentSession(workspace.ws,workspace.private,model=manifest['dev_model'],reasoning_effort=manifest['dev_reasoning_effort'],**provider_options)
         last_disk_check=None
         def control():
             nonlocal last_disk_check

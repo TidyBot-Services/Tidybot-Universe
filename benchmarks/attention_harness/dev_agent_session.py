@@ -10,7 +10,7 @@ import signal
 import subprocess
 import threading
 from .dev_agent_workspace import atomic_write, encode
-from .dev_agent_parcc_bridge import PARCC_DEV_MODELS, ParccBridge, provider_args
+from .dev_agent_parcc_bridge import PARCC_DEV_MODELS, ParccBridge, ChatBridge, provider_args
 
 
 class SessionError(RuntimeError): pass
@@ -29,11 +29,12 @@ class AgentSession(ABC):
 
 class CodexAgentSession(AgentSession):
     def __init__(self, workspace, private, *, model='gpt-6-astra', reasoning_effort='high',
-                 command_factory=None):
+                 command_factory=None, provider=None):
         from .dev_agent_isolation import controller_command
         self.workspace,self.private=Path(workspace),Path(private)
         self.model,self.reasoning_effort=model,reasoning_effort
         self.command_factory=command_factory or controller_command
+        self.provider=provider
         self.process=None;self.thread_id=None;self.turn=0;self.usage='unknown';self.cancelled=None;self.bridge=None
         self.state_path=self.private/'session.json'
         if self.state_path.exists():
@@ -47,7 +48,10 @@ class CodexAgentSession(AgentSession):
         # are accepted by resume itself in 0.155.1. cwd always binds ws.
         command=list(self.command_factory(self.workspace,'-'))
         i=command.index('-m');command[i+1]=self.model
-        if self.model in PARCC_DEV_MODELS:
+        if self.provider is not None:
+            if self.bridge is None:self.bridge=ChatBridge(self.private/'parcc-bridge',self.provider.spec,self.provider.secret,token=self.provider.token)
+            command[i:i]=provider_args(self.bridge.base_url,token_env=self.provider.token_env)
+        elif self.model in PARCC_DEV_MODELS:
             # Same Codex harness; only the provider changes (loopback bridge, key stays in the bridge).
             if self.bridge is None:self.bridge=ParccBridge(self.private/'parcc-bridge')
             command[i:i]=provider_args(self.bridge.base_url)
@@ -79,8 +83,12 @@ class CodexAgentSession(AgentSession):
         completed=False;failure=None;inbox=queue.Queue(); eof=False
         with (directory/'events.jsonl').open('wb') as raw, (directory/'stderr.txt').open('wb') as errors:
             try:
+                options={}
+                if self.provider is not None:
+                    from .dev_agent_key_vault import keyless_env
+                    options['env']=keyless_env({**os.environ,self.provider.token_env:self.provider.token})
                 self.process=subprocess.Popen(command,cwd=self.workspace,stdin=subprocess.PIPE,stdout=subprocess.PIPE,
-                                              stderr=errors,start_new_session=True)
+                                              stderr=errors,start_new_session=True,**options)
                 # Feed finite stdin, then close immediately: never wait for a tty.
                 self.process.stdin.write(prompt.encode()); self.process.stdin.close()
                 def read_lines():
@@ -146,4 +154,8 @@ class CodexAgentSession(AgentSession):
             try:os.killpg(self.process.pid,signal.SIGKILL)
             except ProcessLookupError:pass
             self.process.wait()
+        if self.bridge is not None:
+            self.bridge.close();self.bridge=None
         return dict(reason=reason,terminated=True)
+
+    def close(self): return self.cancel('session_closed')

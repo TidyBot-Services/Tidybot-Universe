@@ -56,8 +56,18 @@ def live(store,exp_id,key):
     if sha(frame)!=row['sha256']:raise ValueError('frame digest mismatch')
     return c,row,frame
 
-def serve(store,artifact_root,port,budget_file=None):
+def owner_of(request): return 'local'
+
+
+def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_private_hosts=(),vault=None):
     if budget_file:experiments.validate_budget_file(budget_file)
+    from .dev_agent_provider import ProviderError,presets,resolve_provider,probe
+    from .dev_agent_secret import Secret,scrub
+    from .dev_agent_key_vault import ProviderKeyVault,launch_run_with_keys,keyless_env
+    if allow_custom is None:allow_custom=__import__('os').getenv('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL','').lower() in ('1','true','yes')
+    vault=vault if vault is not None else ProviderKeyVault()
+    def provider_spec(provider,base=None):
+        return resolve_provider(provider,base,allow_custom=allow_custom,allow_private_hosts=allow_private_hosts)
     token=secrets.token_urlsafe(32);workers={};worker_lock=threading.Lock()
     from .dev_planner import PlannerControl
     def planner():
@@ -74,7 +84,65 @@ def serve(store,artifact_root,port,budget_file=None):
             self.send_response(status);self.send_header('Content-Type',content);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw)
         def obj(self,value,status=200):self.send(encoded(value),'application/json',status)
         def authorized(self):return secrets.compare_digest(self.headers.get('X-Attention-Token',''),token)
+        def provider_error(self,exc,status=400,secret_values=()):
+            message,redacted=scrub(str(exc),secret_values)
+            self.obj(dict(error=dict(code=exc.code if isinstance(exc,ProviderError) else 'provider_request_invalid',
+                                     message=message,redacted=redacted)),status)
+        def provider_route(self):
+            values=[]
+            try:
+                if not self.authorized():raise ProviderError('control_token_required','Control token required')
+                path=urlsplit(self.path).path
+                if urlsplit(self.path).query:raise ProviderError('provider_request_invalid','Query parameters are not accepted')
+                size=int(self.headers.get('Content-Length',0))
+                if not 0<=size<=8192:raise ProviderError('provider_body_invalid','Bounded JSON body required')
+                body={}
+                if self.command in ('PUT','POST'):
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not size:
+                        raise ProviderError('provider_body_invalid','Bounded JSON body required')
+                    try:body=json.loads(self.rfile.read(size))
+                    except (ValueError,UnicodeError):raise ProviderError('provider_body_invalid','Invalid JSON body') from None
+                    if not isinstance(body,dict):raise ProviderError('provider_body_invalid','JSON object required')
+                    if isinstance(body.get('key'),str):values.append(Secret(body['key']))
+                owner=owner_of(self)
+                if path=='/api/provider/presets' and self.command=='GET':
+                    self.obj([dict(id=p.id,label=p.label,needs_key=p.key_source=='user',base_url=p.chat_url.rsplit('/chat/completions',1)[0],
+                                   suggested_models=p.suggested_models,capabilities=p.capabilities) for p in presets().values()]);return
+                match=re.fullmatch(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test)?)?',path)
+                if not match:raise ProviderError('provider_route_unknown','Unknown provider resource')
+                name,test=match.groups()
+                if self.command=='PUT' and not test:
+                    if set(body)-{'provider','key','base_url'}:raise ProviderError('provider_body_invalid','Unexpected credential fields')
+                    if not isinstance(body.get('provider'),str) or not isinstance(body.get('key'),str):
+                        raise ProviderError('provider_body_invalid','Provider and key strings required')
+                    name=name or body['provider'];spec=provider_spec(body['provider'],body.get('base_url'))
+                    vault.put(owner,name,spec.id,values[0],base_url=body.get('base_url'))
+                    row=next(r for r in vault.list(owner) if r['credential_id']==name)
+                    self.obj(dict(ok=True,credential_id=name,provider=spec.id,key_set=True,expires_at=row['expires_at']));return
+                if self.command=='GET' and not test:
+                    rows=vault.list(owner)
+                    if name is not None:rows=[r for r in rows if r['credential_id']==name]
+                    self.obj(rows);return
+                if self.command=='DELETE' and not test:
+                    count=vault.clear(owner,name);self.obj(dict(ok=True,cleared=count));return
+                if self.command=='POST' and test:
+                    if set(body)-{'model','role'}:raise ProviderError('provider_body_invalid','Unexpected test fields')
+                    model=body.get('model');role=body.get('role','dev')
+                    if not isinstance(model,str) or not model.strip() or len(model)>128 or role not in ('dev','eval','advisor'):
+                        raise ProviderError('provider_body_invalid','Valid model and role required')
+                    row=next((r for r in vault.list(owner) if r['credential_id']==name),None)
+                    if row is None:raise ProviderError('provider_key_missing','Missing or expired credential for role '+role)
+                    keys=vault.take_for_run(owner,{'dev':dict(credential=name,provider=row['provider'],model=model)})
+                    desc=keys.roles['dev'];secret=keys._keys[name];values.append(secret)
+                    result=probe(provider_spec(desc['provider'],desc['base_url']),secret,model,role=role)
+                    self.obj(dict(ok=result.ok,checks=result.checks,errors=result.errors));return
+                raise ProviderError('provider_route_unknown','Unknown provider operation')
+            except Exception as exc:
+                self.provider_error(exc,403 if isinstance(exc,ProviderError) and exc.code=='control_token_required' else 400,values)
+        def do_PUT(self):self.provider_route()
+        def do_DELETE(self):self.provider_route()
         def do_GET(self):
+            if urlsplit(self.path).path.startswith('/api/provider/'):return self.provider_route()
             path=unquote(urlsplit(self.path).path)
             try:
                 if path in {'/','/ui/'}:
@@ -151,6 +219,7 @@ def serve(store,artifact_root,port,budget_file=None):
             except (ValueError,KeyError,TypeError) as exc:self.obj({'error':str(exc)},400)
             except (BrokenPipeError,ConnectionResetError):pass
         def do_POST(self):
+            if urlsplit(self.path).path.startswith('/api/provider/'):return self.provider_route()
             if not self.authorized():self.obj({'error':'control token required'},403);return
             try:
                 size=int(self.headers.get('Content-Length',0))
@@ -158,7 +227,15 @@ def serve(store,artifact_root,port,budget_file=None):
                 body=json.loads(self.rfile.read(size));path=urlsplit(self.path).path
                 if not isinstance(body,dict):raise ValueError('JSON object required')
                 if path=='/api/dev/preview':self.obj(budget_preview(body));return
-                if path=='/api/dev/experiments':self.obj(agent_display(experiments.create(store,artifact_root,body)),201);return
+                if path=='/api/dev/experiments':
+                    if 'agent_provider' in body:
+                        from .dev_agent_config import normalize
+                        body={**body,**normalize(body)}
+                        known={r['credential_id']:r for r in vault.list(owner_of(self))}
+                        for desc in body['agent_provider']['roles'].values():
+                            if desc['provider']=='openai-compatible' and desc['credential'] in known:
+                                desc['base_url_host']=known[desc['credential']]['base_url_host']
+                    self.obj(agent_display(experiments.create(store,artifact_root,body)),201);return
                 approval=re.fullmatch(r'/api/dev/experiments/(devexp-[a-f0-9]{24})/approvals/(planner-[a-f0-9]{64})/decision',path)
                 if approval:
                     supplied=self.headers.get('X-Attention-Human-Token','')
@@ -185,25 +262,43 @@ def serve(store,artifact_root,port,budget_file=None):
                 if e['cancelled']:raise DevConflict('experiment cancelled')
                 from .dev_disk import require_start
                 require_start(artifact_root)
-                experiments.verify_manifest(e)
+                manifest=experiments.verify_manifest(e)
+                run_keys=None
+                if 'agent_provider' in manifest:
+                    roles=manifest['agent_provider']['roles']
+                    run_keys=vault.take_for_run(owner_of(self),roles)
+                    desc=run_keys.roles['dev'];secret=run_keys._keys[desc['credential']]
+                    spec=provider_spec(desc['provider'],desc['base_url'])
+                    if roles['dev'].get('base_url_host')!=urlsplit(spec.chat_url).hostname:
+                        raise ProviderError('provider_mismatch','Credential host differs for role dev')
+                    result=probe(spec,secret,desc['model'],role='dev')
+                    if not result.ok:
+                        self.obj(dict(error=dict(code='provider_preflight_failed',message='\n'.join(e['message'] for e in result.errors),
+                            redacted=any(e['redacted'] for e in result.errors),role='dev'),checks=result.checks,errors=result.errors),409);return
                 with worker_lock:
                     if any(p.poll() is None for p in workers.values()):raise DevConflict('serial UI worker already active')
                     if e['owner'] and experiments.owner_alive(e['owner']):raise DevConflict('experiment owner already active')
                     directory=Path(e['artifact_dir']);log=(directory/'scheduler.log').open('ab')
                     env=__import__('benchmarks.attention_harness.dev_capabilities',fromlist=['execution_environment']).execution_environment(ROOT,{'ATTENTION_PLANNER_UI_URL':f'http://127.0.0.1:{port}/ui/'})
                     try:
-                        process=subprocess.Popen([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run','--store',str(store.path),'--artifacts',str(artifact_root),'--experiment',eid,'--max-cells',str(body['max_cells']),*(['--budget-file',str(budget_file)] if 'goal_id' not in e else [])],cwd=ROOT,env=env,stdout=log,stderr=log,start_new_session=True)
+                        if run_keys is not None:
+                            process=launch_run_with_keys([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run','--store',str(store.path),'--artifacts',str(artifact_root),'--experiment',eid,'--max-cells',str(body['max_cells']),*(['--budget-file',str(budget_file)] if 'goal_id' not in e else [])],run_keys,cwd=ROOT,env=keyless_env(env),stdout=log,stderr=log,start_new_session=True)
+                        else:
+                            process=subprocess.Popen([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run','--store',str(store.path),'--artifacts',str(artifact_root),'--experiment',eid,'--max-cells',str(body['max_cells']),*(['--budget-file',str(budget_file)] if 'goal_id' not in e else [])],cwd=ROOT,env=env,stdout=log,stderr=log,start_new_session=True)
                     finally:log.close()
                     workers[eid]=process;immutable(directory/f'scheduler-process-{process.pid}.json',process_identity(process.pid))
                 self.obj({'experiment_id':eid,'worker_started':True},202)
+            except ProviderError as exc:self.provider_error(exc,409)
             except DevConflict as exc:self.obj({'error':str(exc)},409)
             except FileNotFoundError as exc:self.obj({'error':str(exc)},404)
-            except (ValueError,KeyError,TypeError) as exc:self.obj({'error':str(exc)},400)
+            except (ValueError,KeyError,TypeError) as exc:
+                if str(exc)=='role_not_supported_yet':self.provider_error(ProviderError('role_not_supported_yet',str(exc)),409)
+                else:self.obj({'error':str(exc)},400)
     return ThreadingHTTPServer(('127.0.0.1',port),Handler)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--port',type=int,required=True);p.add_argument('--budget-file');a=p.parse_args()
-    server=serve(DevV2Store(a.store),Path(a.artifacts),a.port,Path(a.budget_file) if a.budget_file else None)
+    p=argparse.ArgumentParser();p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--port',type=int,required=True);p.add_argument('--budget-file');p.add_argument('--allow-custom-provider-url',action='store_true',default=None);a=p.parse_args()
+    server=serve(DevV2Store(a.store),Path(a.artifacts),a.port,Path(a.budget_file) if a.budget_file else None,allow_custom=a.allow_custom_provider_url)
     import benchmarks,openarm365_dev_v2
     receipt={'process':process_identity(),'port':a.port,'cwd':str(ROOT),'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'argv':sys.argv}
     artifact=Path(a.artifacts);artifact.mkdir(parents=True,exist_ok=True);immutable(artifact/f'ui-instance-{__import__("os").getpid()}.json',receipt)

@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','bimanual_collaboration','rules_profile'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','bimanual_collaboration','rules_profile'}|FIELDS
 def validate_selection_fields(selection):
     if isinstance(selection,dict) and 'test_fixture' in selection:raise ValueError('product run creation rejects test_fixture')
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
@@ -64,6 +64,8 @@ def slot_wall_seconds(manifest):
 def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_version=None):
     from .dev_disk import require_start
     require_start(artifact_root)
+    from .dev_agent_config import reject_secret_fields
+    reject_secret_fields(selection)
     validate_selection_fields(selection)
     from .dev_fixture_tasks import prepare_selection,PROFILE,task_record,SCENE_VERIFICATION
     selection=prepare_selection(selection)
@@ -93,7 +95,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         selection={**selection,**agent_options,'model_source':'codex'}
     else:
         if agent_policy_version is not None:raise ValueError('agent_options_require_agent_mode')
-        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version')):raise ValueError('agent_options_require_agent_mode')
+        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider')):raise ValueError('agent_options_require_agent_mode')
         if 'dev_mode' in selection:selection={k:v for k,v in selection.items() if k!='dev_mode'}
     if validation_origin is not None and (validation_origin.get('dev_mode')=='agent' or validation_origin.get('config',{}).get('dev_mode')=='agent'):
         if not agent_options:raise ValueError('agent_memory_validation_unsupported')
@@ -861,7 +863,16 @@ def options():
         'source_canary':{'benchmarks':benchmarks.__file__,'openarm365_dev_v2':openarm365_dev_v2.__file__,'source_root':str(ROOT)}}
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('command',choices=['create','plan','run','status','cancel','report','export','probe']);p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--selection');p.add_argument('--experiment');p.add_argument('--max-cells',type=int);p.add_argument('--budget-file');p.add_argument('--dry-run',action='store_true');p.add_argument('--output');p.add_argument('--max-slots',type=int);p.add_argument('--outer-deadline-epoch',type=float);p.add_argument('--min-start-wall-seconds',type=float);a=p.parse_args();s=DevV2Store(a.store)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('command',choices=['create','plan','run','status','cancel','report','export','probe']);p.add_argument('--store',required=True);p.add_argument('--artifacts',required=True);p.add_argument('--selection');p.add_argument('--experiment');p.add_argument('--max-cells',type=int);p.add_argument('--budget-file');p.add_argument('--dry-run',action='store_true');p.add_argument('--output');p.add_argument('--max-slots',type=int);p.add_argument('--outer-deadline-epoch',type=float);p.add_argument('--min-start-wall-seconds',type=float)
+    keys=p.add_mutually_exclusive_group();keys.add_argument('--key-fd',type=int);keys.add_argument('--key-stdin',action='store_true')
+    a=p.parse_args()
+    if a.command=='run':
+        from .dev_agent_key_vault import harden_process,install_run_keys_from_fd,install_run_keys_from_stdin
+        harden_process()
+        if a.key_fd is not None:install_run_keys_from_fd(a.key_fd)
+        elif a.key_stdin:install_run_keys_from_stdin()
+    elif a.key_fd is not None or a.key_stdin:p.error('key input requires run')
+    s=DevV2Store(a.store)
     if a.command in {'create','plan'}:
         selection=json.loads(Path(a.selection).read_bytes())
         configuration=selection.get('configuration')
