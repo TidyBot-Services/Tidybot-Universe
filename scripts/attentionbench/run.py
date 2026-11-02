@@ -110,6 +110,9 @@ def execute(args: argparse.Namespace) -> int:
                                   'Pass the same absolute workspace used by setup.sh.')
     if args.ui_port == args.memory_port:
         raise ValueError('UI and Memory ports must differ')
+    if not (ws / 'paths.json').is_file():
+        raise installer.StepError('workspace', f'{ws} has not been set up (no paths.json)',
+                                  f'Run setup.sh --workspace {ws} first.')
     body = request_body(args.task, args.seed, args.minutes)
     lock_handle = None
     if args.lock:

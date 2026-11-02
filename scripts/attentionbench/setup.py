@@ -95,8 +95,11 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int) ->
             isolated, reason = False, str(exc)
     else:
         isolated, reason = False, 'bwrap missing'
+    in_container = Path('/.dockerenv').exists() or Path('/run/.containerenv').exists()
     check('bwrap user namespaces', isolated, reason,
-          'sudo apt install bubblewrap; enable unprivileged user namespaces (inspect kernel/container policy).')
+          'sudo apt install bubblewrap; enable unprivileged user namespaces (inspect kernel/container policy).'
+          + (' Inside Docker, start the container as in the Docker appendix of'
+             ' docs/attentionbench_collaborator_setup.md.' if in_container else ''))
     codex = shutil.which('codex')
     version = _run([codex, '--version']) if codex else None
     version_text = version.stdout.strip() if version and version.returncode == 0 else 'codex missing'
@@ -146,7 +149,7 @@ def warmup(no_codex_warmup: bool) -> None:
     result = _run(['codex', 'exec', '--skip-git-repo-check', 'Reply with ok.'], timeout=120)
     if result.returncode:
         raise installer.StepError('codex warm-up', (result.stderr or result.stdout).strip(),
-                                  'Run codex login and one short codex exec call, then rerun setup.')
+                                  'Install the Codex CLI, run codex login and one short codex exec call, then rerun this command.')
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -205,6 +205,7 @@ def server():
 
 
 def args(ws, port, **changes):
+    (ws / 'paths.json').write_text('{}')  # a set-up workspace
     values = dict(workspace=str(ws), task='pick_place_counter_to_sink', seed=101,
                   minutes=30, lock=None, no_stop=False, ui_port=port, memory_port=8878)
     values.update(changes)
@@ -267,3 +268,10 @@ def test_run_flow_with_in_memory_http(tmp_path, monkeypatch):
     assert posts[-1][0].endswith('/cancel') and posts[-1][1:] == ('token123', {})
     result = json.loads((tmp_path / 'data/run' / (Handler.eid + '-summary.json')).read_text())
     assert result['final_state'] == 'cancelled' and result['version_count'] == 1
+
+
+def test_run_requires_set_up_workspace(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(run.setup, 'warmup', lambda no_warmup: pytest.fail('must not warm up'))
+    monkeypatch.setattr(run, 'command', lambda *a: pytest.fail('must not start'))
+    assert run.main(['--workspace', str(tmp_path / 'WS')]) == 1
+    assert 'setup.sh --workspace' in capsys.readouterr().err
