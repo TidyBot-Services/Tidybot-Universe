@@ -23,10 +23,48 @@ Current scope (2026-10-31): RoboCasa365 kitchen tasks with the OpenArm365 robot
 and revises the robot policy, a self-evaluator (Eval), a simulated human helper
 (AdvisorProxy), and a Memory service that turns help into validated, reusable notes.
 
-**Reproduction status:** the code is complete on the branch, but running it on another
-machine is not yet possible: the RoboCasa365 simulator package, task configs, OpenArm
-meshes and the cuRobo planner deployment are still being moved out of the author's
-machine (work in progress, see the [collaborator plan](docs/attentionbench_project_guide.md#run-it-yourself)).
+**Reproduction status:** reproduced from this repository in a clean Ubuntu 22.04 GPU
+container on 2026-11-01 (L2). Reproduction on a second machine (L3) is pending.
+All runs so far are development tier, not formal results.
+
+From a machine with the requirements below, choose an absolute `WS` path and run
+these three lines (replace `/absolute/WS` with that path):
+
+```bash
+mkdir -p /absolute/WS/repos && git clone -b attentionbench/baseline-20261015 https://github.com/TidyBot-Services/Tidybot-Universe.git /absolute/WS/repos/attentionbench
+/absolute/WS/repos/attentionbench/scripts/attentionbench/setup.sh --workspace /absolute/WS
+/absolute/WS/repos/attentionbench/scripts/attentionbench/run.sh --workspace /absolute/WS
+```
+
+Use `scripts/attentionbench/stop.sh --workspace /absolute/WS` to cancel running agent
+workers and stop the UI and Memory services.
+
+| Component | Version or source | Installed by | Size and time |
+|---|---|---|---|
+| OS | Ubuntu 22.04, Linux x86_64 | You | Existing host |
+| NVIDIA GPU and driver | 580.x on RTX 5070 Ti verified; other combinations untested | You | Hardware and driver installation vary |
+| Git | Ubuntu 22.04 package | You | Small; minutes |
+| Python with development headers | 3.10+; `python3-dev` | You | Hundreds of MB; minutes |
+| C compiler | `build-essential` | You | Hundreds of MB; minutes |
+| uv | Current compatible installer | You | Small; minutes |
+| Conda | Miniconda, with locked cuRobo environment | You; setup builds environment | About 15 GB for cuRobo; tens of minutes |
+| bwrap and user namespaces | `bubblewrap`; working user, PID and network namespace probe | You | Small; minutes |
+| Codex CLI and account | `codex-cli 0.165.0`; access to `gpt-6.1-sol`. setup.sh and run.sh make one short Codex call when no recent quota reading exists (uses your quota). | You | Small; login and warm-up minutes |
+| Disk | At least 60 GB free | You | Asset transfer, hashing and installation can take tens of minutes or longer |
+| Official RoboCasa assets and simulator | Asset lists pinned by SHA256 in `attentionbench.lock.json` (`assets.*`) | setup | About 25 GB with the simulator environment; transfer and hashing can take tens of minutes or longer |
+| cuRobo native assets | 70,254 files checked against the planner lock | setup | About 8.2 GB |
+| Official cuRobo source | Commit `78fd485fa82d9b9a063fb4985e371814587e666a` | setup | Checkout and build time vary |
+| `robocasa_tasks` source | Commit `b18bbf1585c42e370ae45ababdddad700cc2c71d` | setup | Checkout time varies |
+
+| Machine-specific remnant | Handling |
+|---|---|
+| Author absolute paths | Remain only in frozen evidence, logs, legacy tools and formal-tier pinned planner paths. [Exemptions](config/attentionbench/machine-path-exemptions.json) list reasons; `test_no_machine_paths` guards them. Collaborator runs do not read those paths. |
+| Credentials and addresses | No keys, tailnet addresses or e-mail addresses are tracked (scanned over the branch history). The author lab's LLM proxy host appears in provider code and docs; collaborators use their own Codex account instead. |
+| Ports | UI and Memory bind loopback at 8769 and 8878 by default; `--ui-port` and `--memory-port` change them. |
+| Memory keys | Generated separately for each workspace by setup. |
+
+See the [collaborator setup guide](docs/attentionbench_collaborator_setup.md) for details
+and Docker instructions.
 
 Start with the [project guide](docs/attentionbench_project_guide.md) for the research
 question, system modules, Service repositories and current evidence. See
