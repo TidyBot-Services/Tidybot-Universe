@@ -2451,6 +2451,29 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 .op-agent-story-circle{display:flex;align-items:center;justify-content:center;width:58px;height:58px;border:3px solid currentColor;border-radius:50%;background:#fff;font-size:24px}
 .op-attn-help.op-agent-refused path{stroke-dasharray:4 3}
 .op-attn-help.op-agent-refused .op-attn-help-label{stroke:#8a2c1f}
+/* Models & keys (launch dialog) */
+#attentionbench-clear .ab-keys .op-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#attentionbench-clear .ab-keys-roles{display:grid;gap:10px;margin-bottom:14px}
+#attentionbench-clear .ab-keys-role{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,1.6fr) minmax(0,1.2fr) auto;gap:8px 12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+#attentionbench-clear .ab-keys-role-name{display:grid;gap:2px;min-width:0}
+#attentionbench-clear .ab-keys-role-name b{font-size:13px;color:var(--text)}
+#attentionbench-clear .ab-keys-role-name small{font-size:11px;color:var(--muted);line-height:1.4}
+#attentionbench-clear .ab-keys-role :is(select,input){width:100%;min-width:0;min-height:36px;padding:7px 10px;font-size:13px}
+#attentionbench-clear .ab-keys-role-model input{font-family:ui-monospace,monospace}
+#attentionbench-clear .ab-keys-role-model[hidden]{display:none}
+#attentionbench-clear .ab-keys-test{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12px;color:var(--muted)}
+#attentionbench-clear .ab-keys-chip{padding:2px 9px;border:1px solid var(--line);border-radius:999px;font-size:11px;color:var(--muted)}
+#attentionbench-clear .ab-keys-chip.ok{border-color:var(--op-ok,#58b583);color:var(--op-ok,#58b583)}
+#attentionbench-clear .ab-keys-chip.fail{border-color:#ff8495;color:#ff8495}
+#attentionbench-clear .ab-keys-bad{color:#ff8495}
+#attentionbench-clear .ab-keys-list{display:grid;gap:6px;margin-bottom:14px}
+#attentionbench-clear .ab-keys-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto auto;gap:4px 14px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted)}
+#attentionbench-clear .ab-keys-row b{font-size:13px;color:var(--text);overflow-wrap:anywhere}
+#attentionbench-clear .ab-keys-left em{font-style:normal;font-family:ui-monospace,monospace;color:var(--text)}
+#attentionbench-clear .ab-keys-add[hidden],#attentionbench-clear .ab-keys-list[hidden]{display:none}
+#attentionbench-clear .ab-keys-actions{margin-top:10px}
+#attentionbench-clear .ab-keys-note{margin-top:10px;min-height:1.5em}
+@media(max-width:760px){#attentionbench-clear .ab-keys-role,#attentionbench-clear .ab-keys-row{grid-template-columns:1fr}}
 </style>
 <style>
 #attentionbench-clear [data-agent-run] .ab-status-head {display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;}
@@ -3275,6 +3298,17 @@ html[data-theme="dark"] .op-agent-story-row.solved [data-agent-attempt-card]{bor
 html[data-theme="dark"] .op-agent-story-row.failed .op-agent-story-node,html[data-theme="dark"] .op-agent-story-row.solved .op-agent-story-node{background:none;border:0}
 html[data-theme="dark"] .op-agent-story-circle{border:3px solid currentColor;background:#23272c}
 html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{stroke:#db6c5d}
+#attentionbench-clear[data-theme="dark"] .ab-keys-role{border:1px solid var(--line)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-role-name b{color:var(--text)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-role-name small{color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-test{color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-chip{border:1px solid var(--line);color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-chip.ok{border-color:var(--op-ok,#58b583);color:var(--op-ok,#8ecdab)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-chip.fail{border-color:#ff8495;color:#ff8495}
+#attentionbench-clear[data-theme="dark"] .ab-keys-bad{color:#ff8495}
+#attentionbench-clear[data-theme="dark"] .ab-keys-row{border:1px solid var(--line);color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-row b{color:var(--text)}
+#attentionbench-clear[data-theme="dark"] .ab-keys-left em{color:var(--text)}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>

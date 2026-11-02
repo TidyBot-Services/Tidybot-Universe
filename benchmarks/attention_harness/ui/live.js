@@ -2089,6 +2089,174 @@
     if(!launchRequested||!open||open.disabled)return;
     launchRequested=false;if(location.hash==='#new-run')history.replaceState(null,'',location.pathname+location.search);open.click();
   }
+  // Models & keys (BYOK phase 1). A key is sent once to the server's memory and lives there for its time
+  // limit; this page keeps only names and expiry times, never the key, and writes nothing to browser storage.
+  const KEYS_API='/api/provider/credentials';
+  const KEY_ROLES=[['dev','Dev agent','Writes and revises the robot program'],['eval','Eval agent','Reviews each attempt'],['advisor','Advisor','Answers help requests']];
+  const KEY_CHECKS=[['auth','Key accepted'],['chat','Chat works'],['streaming','Streaming'],['tools','Tool calls'],['vision','Images']];
+  function keysSectionHtml() {
+    return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4>Models &amp; keys</h4><small>Choose which model runs each agent. A key you add stays in this server's memory for 24 hours; it is never written to disk or to this browser.</small></div>
+      <div class="ab-keys-roles" data-keys-roles></div>
+      <div class="ab-keys-list" data-keys-list></div>
+      <div class="ab-keys-add" data-keys-add><div class="ab-launch-grid">
+        <label class="ab-launch-field">Key name<input data-key-name maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. my-deepseek"></label>
+        <label class="ab-launch-field">Provider<select data-key-provider></select></label>
+        <label class="ab-launch-field" data-key-base-field hidden>Base URL<input data-key-base autocomplete="off" spellcheck="false" placeholder="https://…"></label>
+        <label class="ab-launch-field">API key<input data-key-value type="password" autocomplete="off" spellcheck="false"></label>
+      </div><div class="ab-keys-actions"><button type="button" class="ab-button-quiet" data-key-save>Save key</button></div></div>
+      <p class="ab-run-hint ab-keys-note" data-keys-note role="status" aria-live="polite"></p></section>`;
+  }
+  function keyTimeLeft(expiresAt) {
+    const left=Math.max(0,Math.floor(Number(expiresAt)-Date.now()/1000));
+    return `${Math.floor(left/3600)}:${String(Math.floor(left%3600/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`;
+  }
+  function providerErrorText(value) {
+    const error=value?.error;
+    if(!error)return '';
+    if(typeof error==='string')return error;
+    return `${error.message||error.code||'Request failed'}${error.redacted?' (the part that looked like a key is hidden)':''}`;
+  }
+  function bindKeys(form) {
+    const box=form.querySelector('[data-keys]');
+    const rolesBox=box.querySelector('[data-keys-roles]'),listBox=box.querySelector('[data-keys-list]'),note=box.querySelector('[data-keys-note]');
+    const nameInput=box.querySelector('[data-key-name]'),providerSelect=box.querySelector('[data-key-provider]');
+    const baseField=box.querySelector('[data-key-base-field]'),baseInput=box.querySelector('[data-key-base]'),valueInput=box.querySelector('[data-key-value]');
+    const saveButton=box.querySelector('[data-key-save]');
+    const state={presets:[],creds:[],available:true,choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{}};
+    function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
+    async function call(method,path,body) {
+      const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
+      const value=await response.json().catch(()=>null);
+      if(!response.ok)throw new Error(providerErrorText(value)||`HTTP ${response.status}`);
+      return value;
+    }
+    const preset=id => state.presets.find(p=>p.id===id);
+    const cred=id => state.creds.find(c=>c.credential_id===id);
+    function roleOptions(role) {
+      const mine=state.creds.map(c=>{
+        const later=role!=='dev';
+        return `<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)})${later?' · coming in phase 2':''}</option>`;
+      }).join('');
+      return `<option value="codex">Lab default · Codex</option>${role==='dev'?'<option value="lab-parcc">Lab PARCC · GLM</option>':''}${mine}`;
+    }
+    function drawRoles() {
+      rolesBox.innerHTML=KEY_ROLES.map(([role,title,about])=>{
+        const choice=state.choice[role];
+        const own=choice.startsWith('key:');
+        const result=state.test[role];
+        return `<div class="ab-keys-role" data-key-role="${role}"><div class="ab-keys-role-name"><b>${title}</b><small>${about}</small></div>
+          <label class="ab-keys-role-pick"><span class="op-sr-only">${title} runs on</span><select data-role-choice="${role}">${roleOptions(role)}</select></label>
+          <label class="ab-keys-role-model" ${own?'':'hidden'}><span class="op-sr-only">${title} model</span><input data-role-model="${role}" value="${esc(state.model[role])}" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"></label>
+          ${own?`<button type="button" class="ab-button-quiet" data-role-test="${role}">Test</button>`:''}
+          ${result?`<div class="ab-keys-test" data-key-test="${role}">${result.busy?'Testing…':result.text?`<span class="ab-keys-bad">${esc(result.text)}</span>`:KEY_CHECKS.map(([key,name])=>`<span class="ab-keys-chip ${esc(result.checks[key]||'unknown')}">${name}</span>`).join('')+(result.errors||[]).map(e=>`<small class="ab-keys-bad">${esc(e.message||e.code||'')}${e.redacted?' (key fragment hidden)':''}</small>`).join('')}</div>`:''}</div>`;
+      }).join('');
+      KEY_ROLES.forEach(([role])=>{ rolesBox.querySelector(`[data-role-choice="${role}"]`).value=state.choice[role]; });
+      form.dev_model.disabled=state.choice.dev!=='codex';
+      if(state.creds.length)rolesBox.insertAdjacentHTML('beforeend',`<p class="ab-run-hint" data-keys-phase2>Using your own key for Eval and Advisor arrives in phase 2; they run on the lab's Codex for now.</p>`);
+    }
+    function drawList() {
+      listBox.innerHTML=state.creds.length?state.creds.map(c=>`<div class="ab-keys-row" data-key-id="${esc(c.credential_id)}"><b>${esc(c.credential_id)}</b><span>${esc(preset(c.provider)?.label||c.provider)} · ${esc(c.base_url_host||'')}</span><span class="ab-keys-left">expires in <em data-key-left="${esc(c.expires_at)}">${keyTimeLeft(c.expires_at)}</em></span><button type="button" class="ab-button-quiet" data-key-remove="${esc(c.credential_id)}">Remove</button></div>`).join(''):`<p class="ab-run-hint">No keys yet. Without one, runs use the lab's models and nothing is needed here.</p>`;
+    }
+    function drawAll() { drawList(); drawRoles(); }
+    async function load() {
+      try {
+        state.presets=await call('GET','/api/provider/presets');
+      } catch (error) { state.available=false; }
+      if(!state.available){
+        box.querySelector('[data-keys-add]').hidden=true; listBox.hidden=true;
+        say('Using your own provider key is not available on this server. Runs use the lab\'s models.');
+        drawRoles(); return;
+      }
+      providerSelect.innerHTML=state.presets.filter(p=>p.needs_key).map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('');
+      syncProvider();
+      await refreshList();
+    }
+    async function refreshList() {
+      try { state.creds=await call('GET',''); } catch (error) { state.creds=[]; say(error.message,true); }
+      for(const role of Object.keys(state.choice))if(state.choice[role].startsWith('key:')&&!cred(state.choice[role].slice(4)))state.choice[role]='codex';
+      drawAll();
+    }
+    function syncProvider() {
+      const custom=providerSelect.value==='openai-compatible';
+      baseField.hidden=!custom;
+    }
+    async function save() {
+      const name=nameInput.value.trim(),provider=providerSelect.value,key=valueInput.value;
+      if(!/^[a-z0-9-]{1,32}$/.test(name)){say('Key name: 1–32 lowercase letters, digits or dashes.',true);return;}
+      if(!key){say('Paste the API key first.',true);return;}
+      saveButton.disabled=true;
+      try {
+        const value=await call('PUT',`/${encodeURIComponent(name)}`,{provider,key,...(provider==='openai-compatible'&&baseInput.value.trim()?{base_url:baseInput.value.trim()}:{})});
+        valueInput.value='';nameInput.value='';
+        say(`Saved “${value.credential_id}”. It is kept in server memory only and expires in 24 hours.`);
+        await refreshList();
+        if(!state.choice.dev.startsWith('key:')){state.choice.dev=`key:${value.credential_id}`;state.model.dev=state.model.dev||preset(provider)?.suggested_models?.[0]||'';drawRoles();}
+      } catch (error) { say(error.message,true); }
+      finally { valueInput.value=''; saveButton.disabled=false; }
+    }
+    async function test(role) {
+      const id=state.choice[role].slice(4),model=state.model[role].trim();
+      if(!model){state.test[role]={text:'Enter a model name first.'};drawRoles();return;}
+      state.test[role]={busy:true};drawRoles();
+      try {
+        const value=await call('POST',`/${encodeURIComponent(id)}/test`,{model,role});
+        state.test[role]={checks:value.checks||{},errors:value.errors||[]};
+      } catch (error) { state.test[role]={text:error.message}; }
+      drawRoles();
+    }
+    box.addEventListener('change',event=>{
+      const pick=event.target.closest('[data-role-choice]');
+      if(pick){
+        const role=pick.dataset.roleChoice;state.choice[role]=pick.value;state.test[role]=null;
+        if(pick.value.startsWith('key:')&&!state.model[role])state.model[role]=preset(cred(pick.value.slice(4))?.provider)?.suggested_models?.[0]||'';
+        drawRoles();return;
+      }
+      if(event.target===providerSelect)syncProvider();
+    });
+    box.addEventListener('input',event=>{
+      const model=event.target.closest('[data-role-model]');
+      if(model){state.model[model.dataset.roleModel]=model.value;state.test[model.dataset.roleModel]=null;}
+    });
+    box.addEventListener('click',async event=>{
+      if(event.target.closest('[data-key-save]')){await save();return;}
+      const remove=event.target.closest('[data-key-remove]');
+      if(remove){
+        try { await call('DELETE',`/${encodeURIComponent(remove.dataset.keyRemove)}`); say('Key removed from server memory.'); } catch (error) { say(error.message,true); }
+        await refreshList();return;
+      }
+      const run=event.target.closest('[data-role-test]');
+      if(run)await test(run.dataset.roleTest);
+    });
+    // Enter inside the key fields saves the key; it must never submit the run form.
+    box.addEventListener('keydown',event=>{
+      if(event.key==='Enter'&&event.target.closest('[data-keys-add]')){event.preventDefault();save();}
+    });
+    const clock=setInterval(()=>{
+      if(!launchDialog.open){clearInterval(clock);return;}
+      let expired=false;
+      box.querySelectorAll('[data-key-left]').forEach(node=>{
+        const left=Number(node.dataset.keyLeft)-Date.now()/1000;
+        if(left<=0)expired=true;else node.textContent=keyTimeLeft(node.dataset.keyLeft);
+      });
+      if(expired)refreshList();
+    },1000);
+    load();
+    return {
+      // The public part of the choice, or null when everything runs on the lab's defaults.
+      selection() {
+        const choice=state.choice.dev;
+        if(choice==='codex')return null;
+        if(choice==='lab-parcc')return {roles:{dev:{credential:'lab',provider:'parcc',model:'parcc/GLM'}}};
+        const row=cred(choice.slice(4));
+        if(!row)throw new Error('The Dev key is missing or has expired. Add it again.');
+        const model=state.model.dev.trim();
+        if(!model)throw new Error('Enter the Dev model name for your key.');
+        return {roles:{dev:{credential:row.credential_id,provider:row.provider,model}}};
+      },
+      clearSecrets() { valueInput.value=''; },
+    };
+  }
+
   function bindLaunch() {
     view.querySelectorAll('[data-open-launch],[data-open-run-again],[data-open-fork]').forEach(button=>button.addEventListener('click', () => {
       const forkStart=button.hasAttribute('data-open-fork')&&canContinue(currentSnapshot)?{version:Number(button.dataset.forkVersion)||null}:null;
@@ -2137,6 +2305,7 @@
             <label class="ab-launch-field">Quota stop %<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %"></label>
             <p class="ab-run-hint wide" data-agent-reason role="status"></p>
           </div></section>
+          ${keysSectionHtml()}
           <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
             <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small data-codex-quota hidden role="status"></small><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
@@ -2165,6 +2334,7 @@
           <details><summary>Entry support matrix</summary>${(options?.dev_v2?.matrix||[]).map(r=>`<p>${esc(r.robot)} / ${esc(r.arm)} · ${esc(r.task)}: ${r.dev_v2_supported?'Supported':esc(r.reason)}</p>`).join('')}</details></div></details>
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
+      const keys = bindKeys(form);
       let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
@@ -2440,10 +2610,12 @@
           }
           if(profile.rules_profile)selection.rules_profile=profile.rules_profile;
           selection=agentLaunchSelection(selection,{devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
+          if(selection.dev_mode==='agent'){const provider=keys.selection();if(provider)selection.agent_provider=provider;}
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
           const result = await response.json();
-          if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+          if (!response.ok) throw new Error(providerErrorText(result)||`HTTP ${response.status}`);
+          keys.clearSecrets();
           selectedDev = profile.channel==='dev_v2'?'v2-'+result.cells[0].key:isFixed(profile) ? null : result.session_id;
           linkedSource = null;
           linkedConfiguration = null;

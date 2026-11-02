@@ -531,6 +531,7 @@ def create_server(
     dev_v2_root: Path | None = None, dev_v2_authorization: Path | None = None,
     dev_v2_per_run_budget: bool = False, dev_v2_memory: dict | None = None,
     memory_view: MemoryView | None = None,
+    vault=None, allow_custom: bool | None = None, allow_private_hosts: tuple = (),
 ) -> ThreadingHTTPServer:
     # These adapters own different ledgers. Never silently replace an explicitly
     # injected shared-goal bridge with an independent daily experiment budget.
@@ -554,6 +555,12 @@ def create_server(
     history = UIHistory(store) if store is not None else None
     fixed_ui = FixedUI(artifact_root) if artifact_root is not None else None
     control_token = secrets.token_urlsafe(32)
+    # Session provider keys (BYOK): memory only, owner-scoped, served by provider_http.
+    from . import provider_http
+    from .dev_agent_key_vault import ProviderKeyVault
+    vault = vault if vault is not None else ProviderKeyVault()
+    if allow_custom is None:
+        allow_custom = os.environ.get('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL', '').lower() in ('1', 'true', 'yes')
     quota_cache = {'until': 0.0, 'value': {'available': False}}
     quota_lock = threading.Lock()
 
@@ -770,7 +777,18 @@ def create_server(
             except (ValueError,KeyError,TypeError,DevConflict) as error:self._json({'error':str(error)},409)
             return True
 
+        def reply(self, value: Any, status: int = 200) -> None:
+            self._json(value, HTTPStatus(status))
+        def _provider(self) -> None:
+            provider_http.handle(self, vault=vault, token=control_token, allow_custom=allow_custom, allow_private_hosts=allow_private_hosts)
+        def do_PUT(self) -> None:
+            self._provider()
+        def do_DELETE(self) -> None:
+            self._provider()
         def do_GET(self) -> None:
+            if provider_http.is_provider_path(urlsplit(self.path).path):
+                self._provider()
+                return
             if urlsplit(self.path).path == '/api/dev-v2/automatic-checks':
                 from .memory_monitor import automatic_checks
                 self._json(automatic_checks(gateway=memory_view.gateway if memory_view is not None else None))
@@ -1053,6 +1071,9 @@ def create_server(
                 self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:
+            if provider_http.is_provider_path(urlsplit(self.path).path):
+                self._provider()
+                return
             # Includes run-note-off: the same token and bounded JSON as run/cancel/switch/pause.
             if urlsplit(self.path).path.startswith('/api/dev-v2/'):
                 if not secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token):
