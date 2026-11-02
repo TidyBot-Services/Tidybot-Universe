@@ -39,6 +39,8 @@
       const first = !state.enabled;
       state.enabled = true;
       rootEl.dataset.lobby = '1';
+      if (snapshot_demo() && !doc.querySelector('[data-lobby-demo]')) rootEl.insertAdjacentHTML('afterbegin', `<div class="lb-demo" data-lobby-demo><i></i>DEMO ENGINE · simulated robot, no GPU, no real provider · speed ×<span data-lb-speed-now>${esc(state.snap.clock?.speed)}</span></div>`);
+      doc.querySelectorAll('[data-lb-speed-now]').forEach(n => { n.textContent = String(state.snap.clock?.speed); });
       const next = fingerprint();
       for (const [id, card] of state.cards) notify(before.get(id), card);
       doc.querySelectorAll('[data-lb-wait]').forEach(node => { const c = state.cards.get(node.dataset.lbExp); if (c) node.textContent = `Waiting ${clock(c.help_waiting_seconds)} · auto-skip at ${clock(state.snap.limits.help_wait_seconds)}`; });
@@ -47,6 +49,7 @@
     } catch (_) { /* keep the last picture; the next poll tries again */ }
     state.timer = global.setTimeout(poll, doc.hidden ? 5000 : 1500);
   }
+  const snapshot_demo = () => !!state.snap?.demo;
   function stop() { state.enabled = false; delete rootEl.dataset.lobby; }
 
   function notify(before, card) {
@@ -82,7 +85,7 @@
 
   function pinned() {
     const snap = state.snap, running = snap.robot?.running, queue = snap.queue || [];
-    const head = running ? row(running, `${running.state === 'waiting_human' ? (running.mine ? 'needs you' : 'needs a person') : 'running'} · ${running.attempt.current} / ${running.attempt.limit}`) : '<p class="lb-idle">The robot is free.</p>';
+    const head = running ? `<button type="button" class="lb-line lb-run${running.mine ? ' me' : ''}" data-lb-open="${esc(running.experiment_id)}"><span class="lb-pill${running.state === 'waiting_human' ? ' wait' : ''}">${running.state === 'waiting_human' ? (running.mine ? 'Needs you' : 'Needs a person') : 'Running'}</span><b>${esc(running.nickname)}${running.mine ? ' (you)' : ''}</b><span class="lb-sub">${running.attempt.current} / ${running.attempt.limit}</span></button>` : '<p class="lb-idle">The robot is free.</p>';
     return `<section class="lb-pin" data-lobby-pin aria-label="The robot and the queue"><h3>One robot · now &amp; next</h3>${head}${queue.slice(0, 4).map(c => row(c, minutes(c.eta_start_seconds))).join('')}${queue.length > 4 ? `<p class="lb-more">+ ${queue.length - 4} more waiting</p>` : ''}${clockHtml()}</section>`;
   }
   // Demo only: how fast the simulated robot works compared with the clock on the wall.
@@ -92,13 +95,17 @@
   }
   function queueView() {
     const snap = state.snap, running = snap.robot?.running, queue = snap.queue || [], recent = snap.recent || [];
-    return `<section class="lb-queue" data-lobby-queue aria-label="Queue"><h3>Running</h3>${running ? row(running, `${esc(running.task_title)} · ${running.attempt.current} / ${running.attempt.limit}`) : '<p class="lb-idle">Nobody. The robot is free.</p>'}
-      <h3>Waiting · first come, first served</h3>${queue.map(c => row(c, `${esc(c.task_title)} · ${minutes(c.eta_start_seconds)}`)).join('') || '<p class="lb-idle">Nobody is waiting.</p>'}
+    return `<section class="lb-queue" data-lobby-queue aria-label="Queue"><h3>Running</h3>${running ? row(running, `${running.attempt.current} / ${running.attempt.limit}`) : '<p class="lb-idle">Nobody. The robot is free.</p>'}
+      <h3>Waiting · first come, first served</h3>${queue.map(c => row(c, minutes(c.eta_start_seconds))).join('') || '<p class="lb-idle">Nobody is waiting.</p>'}
       <h3>Just finished</h3>${recent.slice(0, 8).map(c => row(c, `${RESULT[c.result] || 'Finished'} · ${c.attempt.current} / ${c.attempt.limit}`)).join('')}${clockHtml()}</section>`;
   }
-  function sidebarHtml() {
+  function controlsHtml() {
     if (!state.enabled) return '';
-    return `<div class="lb-controls" data-lobby-controls>${seg('data-lb-mode', [['mine', 'Mine'], ['all', 'All'], ['queue', 'Queue']], state.mode)}${state.mode === 'queue' ? '' : `<span class="lb-label">Group by</span>${seg('data-lb-group', [['task', 'Task'], ['person', 'Person'], ['status', 'Status']], state.group)}`}</div>${state.mode === 'queue' ? queueView() : pinned()}`;
+    return `<div class="lb-controls" data-lobby-controls>${seg('data-lb-mode', [['mine', 'Mine'], ['all', 'All'], ['queue', 'Queue']], state.mode)}${state.mode === 'queue' ? '' : `<span class="lb-label">Group by</span>${seg('data-lb-group', [['task', 'Task'], ['person', 'Person'], ['status', 'Status']], state.group)}`}</div>`;
+  }
+  function pinnedHtml() {
+    if (!state.enabled) return '';
+    return state.mode === 'queue' ? queueView() : pinned();
   }
   function bindSidebar(sidebar, rerender) {
     sidebar.dataset.lobbyMode = state.enabled ? state.mode : '';
@@ -231,9 +238,17 @@
   }
   const devSource = (provider, modelSource) => provider ? 'own_key' : modelSource === 'codex' ? 'lab_codex' : 'lab_glm';
 
+  // The 01 cards of someone else's run name the source only, never the model or a key.
+  function setupForOthers(snapshot, html) {
+    const c = snapshot.lobby;
+    if (!c || c.mine) return html;
+    return html.replace(/(<span>Dev agent<\/span><b>)[^<]*(<\/b><small>)[^<]*(<\/small>)/, `$1${esc(SOURCE[c.dev_source] || 'Lab')}$2Source only — model and key are not shown$3`)
+      .replace(/(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/, '$1Lab$2').replace(/(an automatic advisor answers) · [A-Za-z0-9.\-/]+/, '$1');
+  }
+
   global.Lobby = {
     get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf,
-    newRunHtml, devSource, open: experimentId => state.hooks.open?.(experimentId), beforeRender, sidebarHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
+    newRunHtml, devSource, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
     fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting] : null),
     start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; poll(); } },
   };

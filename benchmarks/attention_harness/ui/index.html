@@ -2532,8 +2532,19 @@ dialog.ab-replay-consent .op-controls{display:flex;gap:10px;justify-content:flex
 #attentionbench-clear .ab-lobby-newrun .ab-check{display:grid;gap:4px}
 #attentionbench-clear .ab-lobby-newrun .ab-check input{margin-right:8px;accent-color:#d94d27}
 #attentionbench-clear .lb-clock{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed #d3d4c6}
+#attentionbench-clear .lb-demo{display:flex;align-items:center;gap:10px;height:32px;margin:-22px -24px 14px;padding:0 24px;background:#242822;color:#f3f1ea;font:500 12px ui-monospace,monospace;letter-spacing:.04em}
+#attentionbench-clear .lb-demo i{width:8px;height:8px;border-radius:50%;background:#ec6a43}
+#attentionbench-clear .lb-line b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+#attentionbench-clear .lb-line .lb-sub{flex:none;white-space:nowrap}
+#attentionbench-clear .lb-pill{flex:none;padding:2px 9px;border-radius:999px;background:#dfe9f6;color:#24507e;font:600 11px var(--body,inherit)}
+#attentionbench-clear .lb-pill.wait{background:#f5e6cf;color:#7d5210}
+#attentionbench-clear .lb-run.me b{color:#c44420}
+#attentionbench-clear .ab-sidebar-controls .lb-controls{margin:10px 0}
+#attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]{display:flex!important}
+#attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]>*{display:none!important}
+#attentionbench-clear[data-lobby-view="other"] .op-controls[data-ended]::after{content:"Pause, stop and resume are for the owner only";font-size:13px;color:#686e64}
 #attentionbench-clear[data-lobby="1"] [data-start-no]{display:none!important}
-#attentionbench-clear[data-lobby-view="other"] :is(.op-controls[data-ended],[data-open-run-again],[data-open-fork],[data-stop-dev],[data-dev-pause],[data-dev-resume],#ab-emergency-interrupt,#ab-cancel-run,[data-continue-attempt]){display:none!important}
+#attentionbench-clear[data-lobby-view="other"] :is([data-open-run-again],[data-open-fork],[data-stop-dev],[data-dev-pause],[data-dev-resume],#ab-emergency-interrupt,#ab-cancel-run,[data-continue-attempt]){display:none!important}
 #attentionbench-clear[data-lobby-view="mine"] :is([data-open-run-again],[data-open-fork],[data-dev-pause],[data-dev-resume],[data-continue-attempt]){display:none!important}
 </style>
 <style>
@@ -3408,6 +3419,12 @@ html[data-theme="dark"] dialog.ab-replay-consent::backdrop{background:#f2f2f288}
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar-controls .op-filter [data-op-filter="queued"]{--tone:#4d7fb5}
 #attentionbench-clear[data-theme="dark"] .ab-lobby-newrun .ab-check input{accent-color:#ec6a43}
 #attentionbench-clear[data-theme="dark"] .lb-clock{border-top:1px dashed #33383d}
+#attentionbench-clear[data-theme="dark"] .lb-demo{background:#ecebe6;color:#545b63}
+#attentionbench-clear[data-theme="dark"] .lb-demo i{background:#ec6a43}
+#attentionbench-clear[data-theme="dark"] .lb-pill{background:#212427;color:#80acdb}
+#attentionbench-clear[data-theme="dark"] .lb-pill.wait{background:#443722;color:#ecbb6e}
+#attentionbench-clear[data-theme="dark"] .lb-run.me b{color:#e88c73}
+#attentionbench-clear[data-theme="dark"][data-lobby-view="other"] .op-controls[data-ended]::after{color:#a3a199}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>
