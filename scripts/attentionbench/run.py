@@ -23,6 +23,8 @@ from scripts.attentionbench import control, installer, setup
 TEMPLATE = ROOT / 'config/attentionbench/run-request.template.json'
 TERMINAL = {'completed', 'failed', 'cancelled', 'needs_review', 'condition_invalid', 'not_started'}
 EID = re.compile(r'devexp-[a-f0-9]{24}\Z')
+# The UI creates a run in a subprocess it allows 60 s (daily_dev_v2), then starts the worker.
+CREATE_TIMEOUT = 180
 
 
 def request_body(task: str, seed: int, minutes: float, overrides: dict | None = None) -> dict:
@@ -63,11 +65,11 @@ def get_json(url: str) -> dict:
         return json.load(response)
 
 
-def post_json(url: str, token: str, body: dict) -> dict:
+def post_json(url: str, token: str, body: dict, timeout: float = 15) -> dict:
     request = urllib.request.Request(url, data=json.dumps(body).encode(), method='POST', headers={
         'X-Attention-Token': token, 'Content-Type': 'application/json'})
     try:
-        with urllib.request.urlopen(request, timeout=15) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
         raise RuntimeError(exc.read().decode('utf-8', errors='replace')) from exc
@@ -131,7 +133,7 @@ def execute(args: argparse.Namespace) -> int:
         command('start', ws, args.ui_port, args.memory_port)
         try:
             token = control.control_token(base + '/ui/')
-            created = post_json(base + '/api/dev-v2/experiments', token, body)
+            created = post_json(base + '/api/dev-v2/experiments', token, body, timeout=CREATE_TIMEOUT)
             eid = created.get('experiment_id')
             if not isinstance(eid, str) or not EID.fullmatch(eid):
                 raise RuntimeError(f'create response has no valid experiment_id: {created}')

@@ -252,7 +252,7 @@ def test_run_flow_with_in_memory_http(tmp_path, monkeypatch):
     monkeypatch.setattr(run, 'command', lambda action, *a: actions.append(action))
     monkeypatch.setattr(run.setup, 'warmup', lambda no_warmup: actions.append('warmup'))
     monkeypatch.setattr(run.control, 'control_token', lambda url: 'token123')
-    def post(url, token, body):
+    def post(url, token, body, timeout=15):
         posts.append((url, token, body))
         if url.endswith('/cancel'):
             state['value'] = 'cancelled'
@@ -275,3 +275,30 @@ def test_run_requires_set_up_workspace(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(run, 'command', lambda *a: pytest.fail('must not start'))
     assert run.main(['--workspace', str(tmp_path / 'WS')]) == 1
     assert 'setup.sh --workspace' in capsys.readouterr().err
+
+
+def test_create_waits_longer_than_the_ui_create_subprocess(monkeypatch):
+    # V2 (2026-11-02): the UI's create step took longer than 15 s; it allows its subprocess 60 s.
+    seen = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return b'{}'
+
+    def urlopen(request, timeout):
+        seen[request.full_url] = timeout
+        return Response()
+
+    monkeypatch.setattr(run.urllib.request, 'urlopen', urlopen)
+    monkeypatch.setattr(run.json, 'load', lambda response: {})
+    run.post_json('http://x/api/dev-v2/experiments', 't', {}, timeout=run.CREATE_TIMEOUT)
+    run.post_json('http://x/api/dev-v2/experiments/e/cancel', 't', {})
+    assert run.CREATE_TIMEOUT >= 120
+    assert seen == {'http://x/api/dev-v2/experiments': run.CREATE_TIMEOUT,
+                    'http://x/api/dev-v2/experiments/e/cancel': 15}
