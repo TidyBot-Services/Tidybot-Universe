@@ -2090,7 +2090,7 @@
         : !seeded.length?`Scene seed ${source.seed} is unavailable for this task.`:''};
   }
   function launchSourceNotice(source,profile,reason) {
-    return source?`<p class="ab-launch-note" data-launch-source>${profile?'Task, robot and arm copied from the current record.':`The current configuration is unavailable for a new run: ${esc(reason)} Choose a supported configuration below.`} Source: ${esc(displayRun(source))}</p>`:'';
+    return source?`<p class="ab-launch-note ab-launch-source" data-launch-source><span>COPIED FROM</span><strong>${esc(displayRun(source).replace(/\s--\s/g,' · '))}</strong>${profile?'':`<small>The current configuration is unavailable for a new run: ${esc(reason)} Choose a supported configuration below.</small>`}</p>`:'';
   }
 
   // The cover's New run links here with #new-run. Startup may rewrite the address to the newest
@@ -2102,19 +2102,60 @@
   }
   // Models & keys (BYOK phase 1). A key is sent once to the server's memory and lives there for its time
   // limit; this page keeps only names and expiry times, never the key, and writes nothing to browser storage.
+  const BYOK_ALL_ROLES = false; // Phase 2: enable only when the server supports Eval / Advisor BYOK.
   const KEYS_API='/api/provider/credentials';
   const KEY_ROLES=[['dev','Dev agent','Writes and revises the robot program'],['eval','Eval agent','Reviews each attempt'],['advisor','Advisor','Answers help requests']];
   const KEY_CHECKS=[['auth','Key accepted'],['chat','Chat works'],['streaming','Streaming'],['tools','Tool calls'],['vision','Images']];
+  // Public routing only: neither helper accepts or retains an API key.
+  function keyRoleAssignments(state,allRoles=BYOK_ALL_ROLES) {
+    return Object.fromEntries(KEY_ROLES.map(([role])=>[role,
+      state.mode==='lab'||(!allRoles&&role!=='dev')?{choice:'codex',model:''}:
+      state.mode==='all'?{choice:`key:${state.shared.credential}`,model:state.shared.model}:
+      {choice:state.choice[role],model:state.model[role]}]));
+  }
+  function keysSelection(state,allRoles=BYOK_ALL_ROLES,now=Date.now()/1000) {
+    if(state.mode!=='lab'&&state.saving)throw new Error('Wait for the key to finish saving and testing.');
+    const roles={};
+    for(const [role,{choice,model}] of Object.entries(keyRoleAssignments(state,allRoles))) {
+      if(choice==='codex')continue;
+      const row=state.creds.find(c=>`key:${c.credential_id}`===choice);
+      const title=KEY_ROLES.find(([id])=>id===role)[1];
+      if(!row||Number(row.expires_at)<=now)throw new Error(`The ${title} key is missing or has expired. Save a key or choose Lab models.`);
+      if(!model.trim())throw new Error(`Enter the ${title} model name for your key.`);
+      roles[role]={credential:row.credential_id,provider:row.provider,model:model.trim()};
+    }
+    return Object.keys(roles).length?{roles}:null;
+  }
   function keysSectionHtml() {
-    return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4>Models &amp; keys</h4><small>Choose which model runs each agent. A key you add stays in this server's memory for 24 hours; it is never written to disk or to this browser.</small></div>
-      <div class="ab-keys-roles" data-keys-roles></div>
-      <div class="ab-keys-list" data-keys-list></div>
-      <div class="ab-keys-add" data-keys-add><div class="ab-launch-grid">
-        <label class="ab-launch-field">Key name<input data-key-name maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. my-deepseek"></label>
+    return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Models &amp; keys</h4><small>Dev mode: <output data-dev-mode-label>Agent</output> · Quota stop <span data-quota-stop-label>90</span>%<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %" hidden></small></div><div data-agent-controls><p class="ab-run-hint" data-agent-reason role="status"></p></div>
+      <fieldset class="ab-keys-modes"><legend class="op-sr-only">Model setup</legend>
+        <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="lab" data-keys-mode checked><span><b>Lab models</b><small>Ready to run · nothing to fill in</small></span></label>
+        <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="all" data-keys-mode disabled><span><b>My key for all agents</b><small>One provider, model and key</small></span></label>
+        <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="different" data-keys-mode disabled><span><b>Different per agent</b><small>Choose each role separately</small></span></label>
+      </fieldset>
+      <div class="ab-launch-grid ab-keys-models" data-keys-models>${KEY_ROLES.map(([role,title])=>`<div class="ab-keys-role-model" data-role-model-wrap="${role}">
+        <label class="ab-launch-field" data-key-lab-model="${role}">${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<select name="${role}_model" aria-label="${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option>${role==='advisor'?'':'<option>gpt-6-sol</option>'}</select></label>
+        <label class="ab-launch-field" data-key-own-model="${role}" hidden>${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<input data-role-model="${role}" aria-label="${title} key model" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"></label>
+      </div>`).join('')}</div>
+      <div class="ab-keys-shared" data-keys-shared hidden><div data-keys-shared-form></div>
+        <p class="ab-run-hint" data-keys-phase2 ${BYOK_ALL_ROLES?'hidden':''}>Eval and Advisor use the lab's models until phase 2</p>
+        <p class="ab-run-hint" data-keys-shared-saved></p><button type="button" class="ab-button-quiet" data-key-shared-test hidden>Test saved key</button><div class="ab-keys-test" data-keys-shared-test role="status" aria-live="polite"></div>
+      </div>
+      <details class="ab-keys-details" data-keys-details><summary>Agent models <small>Dev / Eval / Advisor</small></summary>
+        <div class="ab-keys-roles" data-keys-roles>${KEY_ROLES.map(([role,title,about])=>`<div class="ab-keys-role" data-key-role="${role}">
+          <div class="ab-keys-role-name"><b>${title}</b><small>${about}</small></div>
+          <label class="ab-launch-field ab-keys-role-pick"><span>Source</span><select data-role-choice="${role}" aria-label="${title} source"><option value="codex">Lab models</option></select></label>
+          <button type="button" class="ab-button-quiet" data-role-test="${role}" hidden>Test</button>
+          <div class="ab-keys-test" data-key-test="${role}" role="status" aria-live="polite" hidden></div>
+        </div>`).join('')}</div>
+        <div data-keys-custom hidden><h5>Saved keys</h5><div class="ab-keys-list" data-keys-list></div>
+          <div class="ab-keys-add" data-keys-add><h5 data-keys-add-title>Add a key</h5><div class="ab-keys-form-grid">
+        <label class="ab-launch-field" data-key-name-field>Key name<input data-key-name maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. my-deepseek"></label>
         <label class="ab-launch-field">Provider<select data-key-provider></select></label>
         <label class="ab-launch-field" data-key-base-field hidden>Base URL<input data-key-base autocomplete="off" spellcheck="false" placeholder="https://…"></label>
-        <label class="ab-launch-field">API key<input data-key-value type="password" autocomplete="off" spellcheck="false"></label>
-      </div><div class="ab-keys-actions"><button type="button" class="ab-button-quiet" data-key-save>Save key</button></div></div>
+        <label class="ab-launch-field">Model<input data-key-model maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"></label>
+        <label class="ab-launch-field">API key <small class="ab-key-retention">· Held in server memory for 24 hours</small><input data-key-value type="password" autocomplete="off" spellcheck="false"></label>
+      </div><div class="ab-keys-actions"><button type="button" class="ab-button-quiet" data-key-save>Save key</button></div></div></div></details>
       <p class="ab-run-hint ab-keys-note" data-keys-note role="status" aria-live="polite"></p></section>`;
   }
   function keyTimeLeft(expiresAt) {
@@ -2132,8 +2173,12 @@
     const rolesBox=box.querySelector('[data-keys-roles]'),listBox=box.querySelector('[data-keys-list]'),note=box.querySelector('[data-keys-note]');
     const nameInput=box.querySelector('[data-key-name]'),providerSelect=box.querySelector('[data-key-provider]');
     const baseField=box.querySelector('[data-key-base-field]'),baseInput=box.querySelector('[data-key-base]'),valueInput=box.querySelector('[data-key-value]');
-    const saveButton=box.querySelector('[data-key-save]');
-    const state={presets:[],creds:[],available:true,choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{}};
+    const saveButton=box.querySelector('[data-key-save]'),modelInput=box.querySelector('[data-key-model]');
+    const addBox=box.querySelector('[data-keys-add]'),details=box.querySelector('[data-keys-details]');
+    const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
+    const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
+    const state={mode:'lab',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
+      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{}};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
       const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
@@ -2143,128 +2188,218 @@
     }
     const preset=id => state.presets.find(p=>p.id===id);
     const cred=id => state.creds.find(c=>c.credential_id===id);
-    function roleOptions(role) {
-      const mine=state.creds.map(c=>{
-        const later=role!=='dev';
-        return `<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)})${later?' · coming in phase 2':''}</option>`;
-      }).join('');
-      return `<option value="codex">Lab default · Codex</option>${role==='dev'?'<option value="lab-parcc">Lab PARCC · GLM</option>':''}${mine}`;
+    const signature=(id,model)=>JSON.stringify([id,model.trim()]);
+    function roleOptions(role,choice) {
+      const later=!BYOK_ALL_ROLES&&role!=='dev';
+      const mine=state.creds.map(c=>`<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)})${later?' · coming in phase 2':''}</option>`).join('');
+      const missing=choice.startsWith('key:')&&!cred(choice.slice(4));
+      return `<option value="codex">Lab models · Codex</option>${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
+    }
+    function checksHtml(result) {
+      return !result?'':result.busy?'Testing…':result.text?`<span class="ab-keys-bad">${esc(result.text)}</span>`:
+        KEY_CHECKS.map(([key,name])=>`<span class="ab-keys-chip ${esc(result.checks[key]||'unknown')}">${name}</span>`).join('')+
+        (result.errors||[]).map(e=>`<small class="ab-keys-bad">${esc(e.message||e.code||'')}${e.redacted?' (key fragment hidden)':''}</small>`).join('');
     }
     function drawRoles() {
-      rolesBox.innerHTML=KEY_ROLES.map(([role,title,about])=>{
-        const choice=state.choice[role];
-        const own=choice.startsWith('key:');
-        const result=state.test[role];
-        return `<div class="ab-keys-role" data-key-role="${role}"><div class="ab-keys-role-name"><b>${title}</b><small>${about}</small></div>
-          <label class="ab-keys-role-pick"><span class="op-sr-only">${title} runs on</span><select data-role-choice="${role}">${roleOptions(role)}</select></label>
-          <label class="ab-keys-role-model" ${own?'':'hidden'}><span class="op-sr-only">${title} model</span><input data-role-model="${role}" value="${esc(state.model[role])}" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"></label>
-          ${own?`<button type="button" class="ab-button-quiet" data-role-test="${role}">Test</button>`:''}
-          ${result?`<div class="ab-keys-test" data-key-test="${role}">${result.busy?'Testing…':result.text?`<span class="ab-keys-bad">${esc(result.text)}</span>`:KEY_CHECKS.map(([key,name])=>`<span class="ab-keys-chip ${esc(result.checks[key]||'unknown')}">${name}</span>`).join('')+(result.errors||[]).map(e=>`<small class="ab-keys-bad">${esc(e.message||e.code||'')}${e.redacted?' (key fragment hidden)':''}</small>`).join('')}</div>`:''}</div>`;
-      }).join('');
-      KEY_ROLES.forEach(([role])=>{ rolesBox.querySelector(`[data-role-choice="${role}"]`).value=state.choice[role]; });
-      form.dev_model.disabled=state.choice.dev!=='codex';
-      if(state.creds.length)rolesBox.insertAdjacentHTML('beforeend',`<p class="ab-run-hint" data-keys-phase2>Using your own key for Eval and Advisor arrives in phase 2; they run on the lab's Codex for now.</p>`);
+      const assignments=keyRoleAssignments(state);
+      KEY_ROLES.forEach(([role])=>{
+        const {choice,model}=assignments[role],own=choice.startsWith('key:');
+        const pick=rolesBox.querySelector(`[data-role-choice="${role}"]`);
+        pick.innerHTML=roleOptions(role,choice);pick.value=choice;pick.disabled=state.mode!=='different';
+        // Keep the original named selects mounted: launch defaults and repeat-run restoration use them.
+        box.querySelector(`[data-key-lab-model="${role}"]`).hidden=own;
+        box.querySelector(`[data-key-own-model="${role}"]`).hidden=!own;
+        const input=box.querySelector(`[data-role-model="${role}"]`);
+        input.value=model;input.readOnly=state.mode==='all';
+        const result=cred(choice.slice(4))&&state.test[role]?.signature===signature(choice.slice(4),model)?state.test[role]:null;
+        const button=rolesBox.querySelector(`[data-role-test="${role}"]`);
+        button.hidden=!own;button.disabled=!!result?.busy||!cred(choice.slice(4));
+        const status=rolesBox.querySelector(`[data-key-test="${role}"]`);
+        status.hidden=!own||!result;status.innerHTML=own?checksHtml(result):'';
+      });
+      const sharedResult=cred(state.shared.credential)&&state.test.dev?.signature===signature(state.shared.credential,state.shared.model)?state.test.dev:null;
+      box.querySelector('[data-keys-shared-test]').innerHTML=checksHtml(sharedResult);
+      const saved=cred(state.shared.credential);
+      box.querySelector('[data-keys-shared-saved]').textContent=saved?`Using ${saved.credential_id} · ${preset(saved.provider)?.label||saved.provider} · ${saved.base_url_host||''}. Manage saved keys in Different per agent.`:'';
+      const sharedTest=box.querySelector('[data-key-shared-test]');
+      sharedTest.hidden=!saved;sharedTest.disabled=!!sharedResult?.busy;
+      tokens.textContent=assignments.dev.choice.startsWith('key:')?'Billed to your own key':labTokens;
+      form.dispatchEvent(new CustomEvent('ab-keys-change'));
     }
     function drawList() {
       listBox.innerHTML=state.creds.length?state.creds.map(c=>`<div class="ab-keys-row" data-key-id="${esc(c.credential_id)}"><b>${esc(c.credential_id)}</b><span>${esc(preset(c.provider)?.label||c.provider)} · ${esc(c.base_url_host||'')}</span><span class="ab-keys-left">expires in <em data-key-left="${esc(c.expires_at)}">${keyTimeLeft(c.expires_at)}</em></span><button type="button" class="ab-button-quiet" data-key-remove="${esc(c.credential_id)}">Remove</button></div>`).join(''):`<p class="ab-run-hint">No keys yet. Without one, runs use the lab's models and nothing is needed here.</p>`;
     }
-    function drawAll() { drawList(); drawRoles(); }
+    function drawMode() {
+      const shared=state.mode==='all',different=state.mode==='different';
+      sharedBox.hidden=!shared;customBox.hidden=!different;details.hidden=!different;
+      // In per-agent mode each role's model field sits in that role's row instead of the shared row above.
+      const modelsGrid=box.querySelector('[data-keys-models]');
+      KEY_ROLES.forEach(([role])=>{
+        const wrap=box.querySelector(`[data-role-model-wrap="${role}"]`),row=box.querySelector(`[data-key-role="${role}"]`);
+        if(!wrap||!row)return;
+        if(different){if(wrap.parentElement!==row)row.appendChild(wrap);}
+        else if(wrap.parentElement!==modelsGrid)modelsGrid.appendChild(wrap);
+      });
+      modelsGrid.hidden=different;
+      const host=shared?box.querySelector('[data-keys-shared-form]'):customBox;
+      if(addBox.parentElement!==host)host.appendChild(addBox);
+      addBox.hidden=!state.available||state.mode==='lab';
+      box.querySelector('[data-key-name-field]').hidden=shared;
+      box.querySelector('[data-keys-add-title]').hidden=shared;
+      saveButton.textContent=shared?'Save and test':'Save key';
+      saveButton.disabled=!state.available||state.saving;
+      addBox.querySelectorAll('input,select').forEach(input=>{input.disabled=state.saving;});
+      box.querySelectorAll('[data-keys-mode]').forEach(input=>{
+        input.checked=input.value===state.mode;input.disabled=state.saving||(input.value!=='lab'&&!state.available);
+      });
+      drawRoles();
+    }
     async function load() {
       try {
         state.presets=await call('GET','/api/provider/presets');
+        state.available=state.presets.some(p=>p.needs_key);
       } catch (error) { state.available=false; }
       if(!state.available){
-        box.querySelector('[data-keys-add]').hidden=true; listBox.hidden=true;
-        say('Using your own provider key is not available on this server. Runs use the lab\'s models.');
-        drawRoles(); return;
+        say("Using your own provider key is not available on this server. Runs use the lab's models.");
+        drawMode();return;
       }
       providerSelect.innerHTML=state.presets.filter(p=>p.needs_key).map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('');
       syncProvider();
-      await refreshList();
+      await refreshList();drawMode();
     }
     async function refreshList() {
-      try { state.creds=await call('GET',''); } catch (error) { state.creds=[]; say(error.message,true); }
-      for(const role of Object.keys(state.choice))if(state.choice[role].startsWith('key:')&&!cred(state.choice[role].slice(4)))state.choice[role]='codex';
-      drawAll();
+      try { state.creds=await call('GET',''); } catch (error) { say(error.message,true); }
+      drawList();drawRoles();
     }
     function syncProvider() {
-      const custom=providerSelect.value==='openai-compatible';
-      baseField.hidden=!custom;
+      baseField.hidden=providerSelect.value!=='openai-compatible';
+      modelInput.value=preset(providerSelect.value)?.suggested_models?.[0]||'';
+    }
+    function nextKeyName(provider,creds,requested='') {
+      if(requested.trim())return requested.trim();
+      const prefix=['deepseek','openai','parcc'].includes(provider)?provider:'custom';
+      const names=new Set(creds.map(c=>c.credential_id));
+      let number=1;
+      while(names.has(`${prefix}-${number}`))number++;
+      return `${prefix}-${number}`;
+    }
+    function summary() {
+      // Display metadata only. Never read the password field or return credential records.
+      const now=Date.now()/1000;
+      return Object.fromEntries(Object.entries(keyRoleAssignments(state)).map(([role,{choice,model}])=>{
+        const row=state.creds.find(c=>`key:${c.credential_id}`===choice&&Number(c.expires_at)>now);
+        return [role,row&&model.trim()?{model:model.trim(),keyName:row.credential_id}:null];
+      }));
     }
     async function save() {
-      const name=nameInput.value.trim(),provider=providerSelect.value,key=valueInput.value;
+      if(state.saving||!state.available||state.mode==='lab')return;
+      const shared=state.mode==='all',provider=providerSelect.value,model=modelInput.value.trim();
+      // The easy path needs no key name and never silently overwrites another saved key.
+      const name=nextKeyName(provider,state.creds,nameInput.value);
       if(!/^[a-z0-9-]{1,32}$/.test(name)){say('Key name: 1–32 lowercase letters, digits or dashes.',true);return;}
-      if(!key){say('Paste the API key first.',true);return;}
-      saveButton.disabled=true;
+      if(!model){say('Enter a model name first.',true);return;}
+      if(!valueInput.value){say('Paste the API key first.',true);return;}
+      state.saving=true;drawMode();
       try {
-        const value=await call('PUT',`/${encodeURIComponent(name)}`,{provider,key,...(provider==='openai-compatible'&&baseInput.value.trim()?{base_url:baseInput.value.trim()}:{})});
+        const value=await call('PUT',`/${encodeURIComponent(name)}`,{provider,key:valueInput.value,...(provider==='openai-compatible'&&baseInput.value.trim()?{base_url:baseInput.value.trim()}:{})});
         valueInput.value='';nameInput.value='';
+        state.creds=state.creds.filter(c=>c.credential_id!==value.credential_id).concat(value);
+        // Replacing a named key invalidates all previous checks for that credential.
+        for(const [role,result] of Object.entries(state.test))if(result?.signature&&JSON.parse(result.signature)[0]===value.credential_id)delete state.test[role];
+        if(shared)state.shared={credential:value.credential_id,model,baseUrl:baseInput.value.trim()};
+        else if(!state.choice.dev.startsWith('key:')){state.choice.dev=`key:${value.credential_id}`;state.model.dev=model;}
         say(`Saved “${value.credential_id}”. It is kept in server memory only and expires in 24 hours.`);
-        await refreshList();
-        if(!state.choice.dev.startsWith('key:')){state.choice.dev=`key:${value.credential_id}`;state.model.dev=state.model.dev||preset(provider)?.suggested_models?.[0]||'';drawRoles();}
+        drawList();drawRoles();
+        await refreshList(); // PUT omits the public host; GET supplies it for the saved-key list.
+        if(shared)await test('dev',value.credential_id,model);
       } catch (error) { say(error.message,true); }
-      finally { valueInput.value=''; saveButton.disabled=false; }
+      finally { valueInput.value='';state.saving=false;drawMode(); }
     }
-    async function test(role) {
-      const id=state.choice[role].slice(4),model=state.model[role].trim();
-      if(!model){state.test[role]={text:'Enter a model name first.'};drawRoles();return;}
-      state.test[role]={busy:true};drawRoles();
+    async function test(role,id=keyRoleAssignments(state)[role].choice.slice(4),model=keyRoleAssignments(state)[role].model.trim()) {
+      const sig=signature(id,model);
+      if(state.test[role]?.busy&&state.test[role].signature===sig)return;
+      if(!model){state.test[role]={signature:sig,text:'Enter a model name first.'};drawRoles();return;}
+      const pending={signature:sig,busy:true};state.test[role]=pending;drawRoles();
+      let result;
       try {
         const value=await call('POST',`/${encodeURIComponent(id)}/test`,{model,role});
-        state.test[role]={checks:value.checks||{},errors:value.errors||[]};
-      } catch (error) { state.test[role]={text:error.message}; }
+        result={signature:sig,checks:value.checks||{},errors:value.errors||[]};
+      } catch (error) { result={signature:sig,text:error.message}; }
+      if(state.test[role]===pending)state.test[role]=result;
       drawRoles();
     }
     box.addEventListener('change',event=>{
+      const mode=event.target.closest('[data-keys-mode]');
+      if(mode){
+        valueInput.value='';state.mode=mode.value;details.open=state.mode==='different';
+        if(state.mode==='all'&&state.shared.credential){
+          const saved=cred(state.shared.credential);
+          if(saved){providerSelect.value=saved.provider;baseField.hidden=saved.provider!=='openai-compatible';baseInput.value=state.shared.baseUrl||'';}
+          modelInput.value=state.shared.model;
+        }
+        say('');drawMode();return;
+      }
       const pick=event.target.closest('[data-role-choice]');
       if(pick){
         const role=pick.dataset.roleChoice;state.choice[role]=pick.value;state.test[role]=null;
-        if(pick.value.startsWith('key:')&&!state.model[role])state.model[role]=preset(cred(pick.value.slice(4))?.provider)?.suggested_models?.[0]||'';
+        if(pick.value.startsWith('key:'))state.model[role]=preset(cred(pick.value.slice(4))?.provider)?.suggested_models?.[0]||state.model[role];
         drawRoles();return;
       }
-      if(event.target===providerSelect)syncProvider();
+      if(event.target===providerSelect){
+        syncProvider();valueInput.value='';baseInput.value='';
+        if(state.mode==='all'){state.shared={credential:'',model:''};drawRoles();}
+      }
     });
     box.addEventListener('input',event=>{
       const model=event.target.closest('[data-role-model]');
-      if(model){state.model[model.dataset.roleModel]=model.value;state.test[model.dataset.roleModel]=null;}
+      if(model){state.model[model.dataset.roleModel]=model.value;state.test[model.dataset.roleModel]=null;drawRoles();}
+      if(event.target===modelInput&&state.mode==='all'&&state.shared.credential){
+        // Editing the model of the saved shared key does not require re-entering its secret.
+        state.shared.model=modelInput.value;drawRoles();
+      }
+      if(event.target===baseInput&&state.mode==='all'){
+        state.shared={credential:'',model:''};drawRoles();
+      }
     });
     box.addEventListener('click',async event=>{
       if(event.target.closest('[data-key-save]')){await save();return;}
+      if(event.target.closest('[data-key-shared-test]')){await test('dev',state.shared.credential,state.shared.model.trim());return;}
       const remove=event.target.closest('[data-key-remove]');
       if(remove){
-        try { await call('DELETE',`/${encodeURIComponent(remove.dataset.keyRemove)}`); say('Key removed from server memory.'); } catch (error) { say(error.message,true); }
+        try {
+          await call('DELETE',`/${encodeURIComponent(remove.dataset.keyRemove)}`);
+          say('Key removed from server memory.');
+          state.creds=state.creds.filter(c=>c.credential_id!==remove.dataset.keyRemove);
+        } catch (error) { say(error.message,true); }
         await refreshList();return;
       }
       const run=event.target.closest('[data-role-test]');
       if(run)await test(run.dataset.roleTest);
     });
-    // Enter inside the key fields saves the key; it must never submit the run form.
+    // Enter anywhere in this block must never implicitly submit the enclosing run form.
     box.addEventListener('keydown',event=>{
-      if(event.key==='Enter'&&event.target.closest('[data-keys-add]')){event.preventDefault();save();}
+      if(event.key==='Enter'){
+        if(event.target.closest('button,summary'))return; // Native controls retain their explicit action.
+        event.preventDefault();
+        if(event.target.closest('[data-keys-add]'))save();
+      }
     });
     const clock=setInterval(()=>{
-      if(!launchDialog.open){clearInterval(clock);return;}
-      let expired=false;
-      box.querySelectorAll('[data-key-left]').forEach(node=>{
-        const left=Number(node.dataset.keyLeft)-Date.now()/1000;
-        if(left<=0)expired=true;else node.textContent=keyTimeLeft(node.dataset.keyLeft);
-      });
-      if(expired)refreshList();
+      if(!launchDialog.open){valueInput.value='';clearInterval(clock);return;}
+      const now=Date.now()/1000;
+      box.querySelectorAll('[data-key-left]').forEach(node=>{node.textContent=keyTimeLeft(node.dataset.keyLeft);});
+      if(state.creds.some(c=>Number(c.expires_at)<=now)){
+        state.creds=state.creds.filter(c=>Number(c.expires_at)>now);
+        drawList();drawRoles();
+      }
     },1000);
-    load();
+    launchDialog.addEventListener('close',()=>{valueInput.value='';clearInterval(clock);},{once:true});
+    drawMode();load();
     return {
       // The public part of the choice, or null when everything runs on the lab's defaults.
-      selection() {
-        const choice=state.choice.dev;
-        if(choice==='codex')return null;
-        if(choice==='lab-parcc')return {roles:{dev:{credential:'lab',provider:'parcc',model:'parcc/GLM'}}};
-        const row=cred(choice.slice(4));
-        if(!row)throw new Error('The Dev key is missing or has expired. Add it again.');
-        const model=state.model.dev.trim();
-        if(!model)throw new Error('Enter the Dev model name for your key.');
-        return {roles:{dev:{credential:row.credential_id,provider:row.provider,model}}};
-      },
+      selection() { return keysSelection(state); },
       clearSecrets() { valueInput.value=''; },
+      summary,
     };
   }
 
@@ -2288,50 +2423,41 @@
       const preferDev=Boolean(currentSnapshot?.dev_session);
       const {profile:sourceProfile,reason:sourceUnavailable}=launchSourceProfile(source,devProfiles,options,preferDev);
       launchDialog.innerHTML = `<div class="ab-launch-shell">
-        <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3><p>Choose a run type, then configure its task and resources.</p></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
+        <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
         <form id="ab-launch-form"><div class="ab-launch-body">
           ${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
           <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene.</small></div><div class="ab-launch-grid">
-            <label class="ab-launch-field ab-launch-type">Run type<select name="run_type" aria-label="Run type">${devProfiles.some(p=>!isFixed(p))?'<option value="dev">Dev automatic iteration</option>':''}${devProfiles.some(isFixed)?'<option value="fixed">Fixed policy execution</option>':''}</select><small data-run-type-description></small></label>
+            <div class="ab-launch-field ab-launch-type"><span>Run type</span><select name="run_type" aria-label="Run type" class="ab-launch-native-type" tabindex="-1">${devProfiles.some(p=>!isFixed(p))?'<option value="dev">Dev automatic iteration</option>':''}${devProfiles.some(isFixed)?'<option value="fixed">Fixed policy execution</option>':''}</select><div class="ab-launch-segments" role="group" aria-label="Run type">${devProfiles.some(p=>!isFixed(p))?'<button type="button" data-run-type="dev" aria-pressed="false">Dev automatic iteration</button>':''}${devProfiles.some(isFixed)?'<button type="button" data-run-type="fixed" aria-pressed="false">Fixed policy execution</button>':''}</div><small data-run-type-description></small></div>
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
             <label class="ab-launch-field">Task<select name="task_id" aria-label="Task" required></select></label>
-            <label class="ab-launch-field" data-v2-mode-field>Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
             <label class="ab-launch-field">Scene seed<select name="seed" aria-label="Scene seed"></select><small data-seed-note role="status"></small></label>
-            <label class="ab-launch-field">Robot<output data-robot-summary>OpenArm365 · both arms</output><select name="robot_model" aria-label="Robot" required></select><select name="execution_arm" aria-label="Execution mode" required></select></label>
+            <label class="ab-launch-field" data-v2-mode-field>Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
+            <label class="ab-launch-field">Robot <small class="ab-field-meta">· Set by task</small><output data-robot-summary>OpenArm365 · both arms</output><select name="robot_model" aria-label="Robot" required></select><select name="execution_arm" aria-label="Execution mode" required></select></label>
             <label class="ab-launch-field">Name suffix (optional)<input name="name_suffix" aria-label="Name suffix" maxlength="80" placeholder="e.g. lower-grasp-v2"><small data-launch-name-preview aria-live="polite"></small></label>
             <input name="execution_target" value="RoboCasa365 simulator" readonly hidden>
             <input name="model" value="${esc(options?.dev_loop?.model || 'Approved execution policy')}" readonly hidden>
           </div></section>
-          <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Set when and how much help the robot may request.</small></div><div class="ab-launch-grid" data-v2-help>
+          <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Each request uses one unit of human attention.</small></div><div class="ab-launch-grid" data-v2-help>
             <label class="ab-launch-field">Attention policy<select name="v2_policy"><option value="all">All seven · frozen comparison</option>${(options?.dev_v2?.policies||[]).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field">Help requests allowed per task<input name="help_count" type="number" min="1" max="10" value="5"></label>
-            <label class="ab-launch-field">Time to wait for a person (seconds)<input name="human_wait_seconds" type="number" min="1" max="600" value="300"></label>
-            <p class="ab-launch-field wide ab-run-hint">Each request uses one unit of human attention.</p>
+            <label class="ab-launch-field">Help requests per task<input name="help_count" type="number" min="1" max="10" value="5"></label>
+            <label class="ab-launch-field">Wait for a person<span class="ab-launch-unit"><input name="human_wait_seconds" type="number" min="1" max="600" value="300"><span>seconds</span></span></label>
           </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
-          <section class="ab-launch-section" data-agent-controls><div class="ab-run-section-head"><h4>Dev mode</h4></div><div class="ab-launch-grid">
-            <label class="ab-launch-field">Dev mode<output data-dev-mode-label>Agent</output><small>More modes are available in Advanced.</small></label>
-            <label class="ab-launch-field">Dev model<select name="dev_model" aria-label="Dev model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
-            <label class="ab-launch-field">Eval model<select name="eval_model" aria-label="Eval model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option><option>gpt-6-sol</option></select></label>
-            <label class="ab-launch-field">Advisor model<select name="advisor_model" aria-label="Advisor model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option></select></label>
-            <label class="ab-launch-field">Quota stop %<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %"></label>
-            <p class="ab-run-hint wide" data-agent-reason role="status"></p>
-          </div></section>
           ${window.Lobby.newRunHtml()}${keysSectionHtml()}
-          <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
+          <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
             <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small data-codex-quota hidden role="status"></small><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
           </section>
-          <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
+          <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
-            <label class="ab-launch-field">Whole run time limit (seconds)<input name="wall_seconds" type="number" min="30" value="21600" required><small data-wall-description>6 hours · stored in seconds</small></label>
-            <label class="ab-launch-field">AI thinking time per task (minutes)<input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required>${options?.dev_v2?.model_reserve_seconds===360?'<small>Five Dev versions, five reviews and five hints can reserve 50 minutes.</small>':options?.dev_v2?.model_reserve_seconds===240?'<small>Five Dev versions, five reviews and five hints can reserve 40 minutes.</small>':''}</label>
-            <label class="ab-launch-field">Robot time per attempt<output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
-            <label class="ab-launch-field">Robot steps (SDK calls)<output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
-            <label class="ab-launch-field" data-v2-tokens>AI tokens<output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
+            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="30" value="21600" required><span>seconds</span></span></label>
+            <label class="ab-launch-field">AI thinking per task<small data-model-minutes-note hidden> · set by Agent mode</small><span class="ab-launch-unit" ${[240,360].includes(options?.dev_v2?.model_reserve_seconds)?`title="Five Dev versions, five reviews and five hints can reserve ${options.dev_v2.model_reserve_seconds===360?50:40} minutes."`:''}><input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required><span>minutes</span></span></label>
+            <label class="ab-launch-field">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
+            <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
+            <label class="ab-launch-field" data-v2-tokens>AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
             <label class="ab-launch-field" data-fixed-tokens hidden>Token budget<input name="token_limit" type="number" min="0" max="100000" value="60000"></label>
           </div></section>
-          <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><span class="op-number">05</span> Advanced <small>Fixed policy settings, goal and resource details.</small></summary><div class="ab-launch-grid">
-            <label class="ab-launch-field">Dev mode<select name="dev_mode" aria-label="Dev mode"><option value="agent">Agent</option><option value="one_call">一次调用</option></select></label>
+          <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>Fixed policy settings, goal and resource details.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
+            <label class="ab-launch-field">Dev mode<select name="dev_mode" aria-label="Dev mode"><option value="agent">Agent</option><option value="one_call">One call</option></select></label>
             <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''}></label>
           </div><div data-fixed-config hidden><h4>Fixed policy settings</h4><div class="ab-launch-grid">
             <label class="ab-launch-field">Execution location<select name="execution_target_choice">${executionLocations.map(target=>`<option value="${esc(target.id)}" ${target.available?'':'disabled'}>${esc(label(target.id))}${target.available?'':` · Unavailable: ${esc(target.reason || 'No runner available')}`}</option>`).join('')}</select></label>
@@ -2346,7 +2472,19 @@
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
       const keys = bindKeys(form);
-      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Dev mode|Automatic reviewer|Limits/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});}
+      function syncRunTypeButtons() {
+        form.querySelectorAll('[data-run-type]').forEach(button=>{
+          button.setAttribute('aria-pressed',String(button.dataset.runType===form.run_type.value));
+          button.disabled=form.run_type.disabled;
+        });
+      }
+      form.querySelectorAll('[data-run-type]').forEach(button=>button.addEventListener('click',()=>{
+        form.run_type.value=button.dataset.runType;
+        form.run_type.dispatchEvent(new Event('change',{bubbles:true}));
+      }));
+      form.run_type.addEventListener('change',syncRunTypeButtons);
+      form.addEventListener('ab-keys-change',updateSummary);
+      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Dev mode|Models & keys|Automatic reviewer|Limits/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});}
       let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
@@ -2423,8 +2561,8 @@
         if(policyChoices.length && [...form.v2_policy.options].map(o=>o.value).join('|')!==policyChoices.join('|'))
           fillOptions(form.v2_policy,policyChoices,p=>p==='all'?'All seven · frozen comparison':policyTitle(p));
         form.dev_model.disabled=!agent;form.eval_model.disabled=!agent;
-        form.querySelector('[data-agent-reason]').textContent=reason||(agent?'10 正式版本 · 40 执行 · 300 只读探查 · 6 小时 · 额度 90% 停止。Eval 独立选模；原生成功结束运行。':'一次调用保留现有设置。切换 Agent 后可独立选择 Dev / Eval 模型。');
-        form.querySelector('[data-dev-mode-label]').textContent=agent?'Agent':'一次调用';
+        form.querySelector('[data-agent-reason]').textContent=reason||(agent?'10 formal versions · 40 executions · 300 read-only probes · 6 hours · stops at 90% quota. Eval picks its own model; native success ends the run.':'One call keeps the current settings. Switch to Agent to choose the Dev and Eval models separately.');
+        form.querySelector('[data-dev-mode-label]').textContent=agent?'Agent':'One call';
         if(agent){
           if(!oneCallFields)oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};
           form.model_source.value='codex';form.eval_agent_enabled.checked=true;form.max_attempts.value='10';form.wall_seconds.value='21600';
@@ -2435,10 +2573,10 @@
         form.model_source.disabled=agent||profile?.channel!=='dev_v2';
         form.eval_agent_enabled.disabled=agent||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
         if(profile?.channel==='dev_v2'){form.max_attempts.readOnly=agent;form.wall_seconds.readOnly=agent;}
-        form.model_seconds_minutes.disabled=agent;
+        form.model_seconds_minutes.disabled=agent;form.querySelector('[data-model-minutes-note]').hidden=!agent;
         form.querySelector('[data-v2-config]').hidden=agent||profile?.channel!=='dev_v2';
         showQuota();
-        form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval 只评正式提交，反馈包含判定、证据和建议；原生成功结束 run。每次 Eval 最多 15 分钟。':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention.';
+        form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention.';
       }
       function updatePreview() {
         fixtureRunMode(selectedProfile(),form.v2_mode,form.v2_policy,!!forkStart);
@@ -2453,16 +2591,27 @@
         form.querySelector('[data-robot-time]').textContent=profile?`${Math.round(Number(profile.attempt_wall_seconds)/60)} min`:'';
         form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
         form.querySelector('[data-wall-description]').textContent=`${Number(form.wall_seconds.value)/3600} hours · stored in seconds`;
-        const description = profile ? `${profile.robot} · ${armNames[profile.execution_arm] || profile.execution_arm} · Seed ${form.seed.value}${profile.layout_id!=null?` · Layout ${profile.layout_id} / Style ${profile.style_id}`:''}. ` : '';
-        const unavailable = profile && !profile.enabled ? profile.unavailable_reason || 'This configuration is unavailable.' : '';
-        form.querySelector('[data-launch-preview]').textContent = unavailable || description + (profile?.channel === 'certified_v2' ? 'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.' : profile?.channel==='formal' ? 'Runs the approved policy with locked execution and assistance conditions.' : `Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`);
+        syncRunTypeButtons();
+        form.querySelector('[data-quota-stop-label]').textContent=form.quota_stop_percent.value;
+        updateSummary();
         form.querySelector('[data-run-type-description]').textContent=isFixed(profile||{})?'Runs an approved policy with fixed resource limits.':'Generates and revises policy code within the selected budgets.';
         for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled;
+        if(profile?.channel==='dev_v2')syncSeedOptions();
+      }
+      function updateSummary() {
+        const profile=selectedProfile();
+        const description=profile?`${profile.robot} · ${armNames[profile.execution_arm]||profile.execution_arm} · Seed ${form.seed.value}${profile.layout_id!=null?` · Layout ${profile.layout_id} / Style ${profile.style_id}`:''}`:'';
+        const unavailable=profile&&!profile.enabled?profile.unavailable_reason||'This configuration is unavailable.':'';
+        const own=form.dev_mode.value==='agent'?keys.summary().dev:null;
+        const dev=own?`Dev ${own.model} (your key ${own.keyName})`:`Dev ${form.dev_model.value}`;
+        let detail=profile?.channel==='certified_v2'?'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.':profile?.channel==='formal'?'Runs the approved policy with locked execution and assistance conditions.':`Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`;
         if(profile?.channel==='dev_v2'){
-          form.querySelector('[data-launch-preview]').textContent=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
-            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.dev_mode.value==='agent'?'parcc':form.model_source.value})+(form.dev_mode.value==='agent'?` · Agent · Dev ${form.dev_model.value} · Eval ${form.eval_model.value}`:'');
-          syncSeedOptions();
-        }
+          const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
+            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.dev_mode.value==='agent'?'parcc':form.model_source.value});
+          form.querySelector('[data-launch-preview]').textContent=base.replace(' · up to ','\nUp to ')+(form.dev_mode.value==='agent'?` · Agent · ${dev} · Eval ${form.eval_model.value}`:'');
+          return;
+        }else if(own)detail+=` · ${dev}`;
+        form.querySelector('[data-launch-preview]').textContent=unavailable||`${description}\n${detail}`;
       }
       function syncProfile(resetWall) {
         if(oneCallFields){form.model_source.value=oneCallFields.modelSource;oneCallFields=null;}
