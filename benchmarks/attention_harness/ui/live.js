@@ -2523,6 +2523,7 @@
       if(!/^[a-z0-9-]{1,32}$/.test(name)){say('Key name: 1–32 lowercase letters, digits or dashes.',true);return;}
       if(!valueInput.value){say('Paste the API key first.',true);return;}
       state.saving=true;drawMode();
+      let saved=null;
       try {
         const value=await call('PUT',`/${encodeURIComponent(name)}`,{provider,key:valueInput.value,...(provider==='openai-compatible'&&baseInput.value.trim()?{base_url:baseInput.value.trim()}:{})});
         valueInput.value='';nameInput.value='';
@@ -2534,10 +2535,14 @@
         else if(!state.choice.dev.startsWith('key:')){state.choice.dev=`key:${value.credential_id}`;state.model.dev=model;}
         say(''); // The saved-key line shows the name and the 24 h expiry.
         drawList();drawRoles();
-        await refreshList(); // PUT omits the public host; GET supplies it for the saved-key list.
-        if(shared&&model)await test('dev',value.credential_id,model);
+        saved=value;
       } catch (error) { say(error.message,true); }
       finally { valueInput.value='';state.saving=false;drawMode(); }
+      // Saving ends with the PUT. The follow-up reads and the key test can take as long as the provider takes (or never
+      // answer); the Model source and the key-mode choice must stay usable meanwhile, and the test shows its own busy state.
+      if(!saved)return;
+      await refreshList(); // PUT omits the public host; GET supplies it for the saved-key list.
+      if(shared&&model)await test('dev',saved.credential_id,model);
     }
     async function test(role,id=keyRoleAssignments(state)[role].choice.slice(4),model=keyRoleAssignments(state)[role].model.trim()) {
       const sig=signature(id,model);
@@ -2650,6 +2655,8 @@
       selection() { return keysSelection(state); },
       clearSecrets() { valueInput.value=''; },
       summary,
+      // Whether the server offers own keys at all (the key-mode radios are also disabled for a moment while a key is being saved).
+      get available() { return state.available; },
     };
   }
 
@@ -2754,8 +2761,7 @@
         const select=form.querySelector('[data-keys-source]');
         if(!select)return;
         const agent=form.dev_mode.value==='agent',mode=keyMode(),parcc=!form.model_source.disabled;
-        const radio=name=>form.querySelector(`[data-keys-mode][value="${name}"]`);
-        for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!agent||!!radio(name)?.disabled;
+        for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!agent||!keys.available;
         select.querySelector('option[value="parcc"]').disabled=!parcc;
         select.querySelector('option[value="parcc"]').textContent=parcc||agent?`Lab models · PARCC (GLM + Qwen)${parcc?'':' · One call only'}`:'Lab models · PARCC (GLM + Qwen)';
         select.value=mode==='lab'?(form.model_source.value==='parcc'&&parcc?'parcc':'codex'):mode;

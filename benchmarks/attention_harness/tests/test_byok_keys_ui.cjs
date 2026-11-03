@@ -114,7 +114,7 @@ test('the shared-key explanation follows the feature flag', () => {
 // Browser layout still requires the separate Chromium suite.
 function keyFixture() {
   const nodes=new Map(), events=[], requests=[], handlers=new Map();
-  let timer, failSave=false, failModels=null;
+  let timer, failSave=false, failModels=null, hangModels=false;
   let creds=[];
   const offered=['deepseek-chat','deepseek-reasoner','deepseek-v4'];
   const presets=['deepseek','openai','parcc','openai-compatible'].map(id=>({id,label:id,needs_key:true,suggested_models:['deepseek-chat'],thinking:id==='deepseek'?'off':null}));
@@ -142,6 +142,7 @@ function keyFixture() {
       let value;
       if(url==='/api/provider/presets')value=presets;
       else if(options.method==='GET'&&url.endsWith('/models')){
+        if(hangModels)return new Promise(()=>{});
         if(failModels)throw new Error(failModels);
         value={models:offered};
       }else if(options.method==='GET')value=creds;
@@ -166,6 +167,7 @@ function keyFixture() {
     expire(){creds.forEach(c=>c.expires_at=0);dialog.open=true;timer();},
     failSave(){failSave=true;},
     failModels(message='models failed'){failModels=message;},
+    hangModels(){hangModels=true;},
     menu:async id=>{const n=node(`[data-model-menu="${id}"]`);n.dataset.modelMenu=id;n.closest=q=>q==='[data-model-menu]'?n:null;await emit('click',n);},
     option:async value=>{const n=node('option-'+value);n.dataset.modelOption=value;n.closest=q=>q==='[data-model-option]'?n:null;await emit('click',n);},
     choose:async(id,value)=>{await api2.menu(id);await api2.option(value);},
@@ -419,4 +421,42 @@ test('a provider that switches thinking off says so in the saved-key line, the r
   // A provider without the switch stays unlabelled.
   const g=keyFixture();await g.flush();await g.mode('all');await saveKey(g,'openai','mine');await g.flush();
   assert.ok(!g.node('[data-keys-shared-saved]').innerHTML.includes('thinking'));assert.ok(!('thinking' in g.binding.summary().dev));
+});
+
+test('once the keys have loaded, All and Different can be chosen; a provider that never answers does not take them away again',async()=>{
+  const f=keyFixture();
+  // Before load() has answered the radios are disabled (the HTML says so); after it they are selectable.
+  assert.equal(f.node('mode-all').disabled,true);assert.equal(f.node('mode-different').disabled,true);
+  assert.equal(f.binding.available,false);
+  await f.flush();await f.flush();
+  assert.equal(f.binding.available,true);
+  for(const name of ['all','different'])assert.equal(f.node('mode-'+name).disabled,false,name);
+  assert.ok(f.events.filter(type=>type==='ab-keys-change').length>=1,'the dialog is told, so the Model source row repaints');
+  // Save a key for all agents while the provider's model list never comes back.
+  f.hangModels();await f.mode('all');
+  f.node('[data-key-provider]').value='deepseek';f.node('[data-key-value]').value='test-only-secret';
+  const pending=f.save();await f.flush();await f.flush();
+  assert.ok(f.requests.some(r=>r.method==='PUT'),'the key was saved');
+  assert.ok(f.requests.some(r=>r.method==='GET'&&r.url.endsWith('/models')),'the listing is still waiting');
+  for(const name of ['lab','all','different'])assert.equal(f.node('mode-'+name).disabled,false,'while the listing hangs: '+name);
+  assert.equal(f.node('[data-key-save]').disabled,false);
+  await f.mode('lab');assert.equal(f.node('mode-all').disabled,false);
+  await f.mode('all');assert.equal(f.node('mode-lab').disabled,false);
+  void pending;
+});
+test('a failed Save also frees the radios, and no follow-up reads run for a key that was not saved',async()=>{
+  const f=keyFixture();await f.flush();await f.flush();await f.mode('all');
+  f.failSave();f.node('[data-key-value]').value='test-only-secret';
+  await f.save();await f.flush();
+  for(const name of ['lab','all','different'])assert.equal(f.node('mode-'+name).disabled,false,name);
+  assert.ok(!f.requests.some(r=>r.method==='GET'&&r.url.endsWith('/models')));
+});
+test('the Model source row follows whether keys are available, not the radios\' passing disabled state',()=>{
+  assert.match(source,/option\[value="\$\{name\}"\]`\)\.disabled=!agent\|\|!keys\.available;/);
+  assert.doesNotMatch(source,/radio\(name\)\?\.disabled/);
+  assert.match(source,/get available\(\) \{ return state\.available; \}/);
+  // Saving ends with the PUT; the model listing and the key test run after it.
+  const save=source.slice(source.indexOf('    async function save() {'),source.indexOf('    async function test('));
+  assert.ok(save.indexOf('state.saving=false')<save.indexOf('await refreshList()'));
+  assert.ok(save.indexOf('state.saving=false')<save.indexOf("await test('dev'"));
 });
