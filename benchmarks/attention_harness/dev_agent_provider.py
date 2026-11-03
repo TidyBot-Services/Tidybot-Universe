@@ -129,8 +129,8 @@ def probe(spec, secret, model, *, role, transport=None):
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII='))]
     body = dict(model=model, messages=[dict(role='user',content=content)], stream=True,
                 tools=[dict(type='function',function=dict(name='ping',parameters=dict(type='object',properties={})))],
-                tool_choice=dict(type='function',function=dict(name='ping')))
-    body[spec.token_param] = 8
+                tool_choice='auto')  # Forcing a named tool is rejected by thinking models; runs use auto too.
+    body[spec.token_param] = 512  # Room for a thinking model to reason before it calls the tool.
     try:
         done = False; tool = False; chunks = 0; total = 0
         with request(spec.chat_url, body) as response:

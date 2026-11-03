@@ -49,7 +49,8 @@ def test_probe_transport_and_role_image(role):
         assert req.get_header('Authorization')=='Bearer '+key.reveal()
         body=json.loads(req.data) if req.data else None;seen.append(body)
         if body is None:return io.BytesIO(b'{"data":[]}')
-        assert body['max_completion_tokens']==8
+        assert body['max_completion_tokens']==512
+        assert body['tool_choice']=='auto'  # thinking models reject a forced named tool
         chunk=dict(choices=[dict(delta=dict(tool_calls=[dict(function=dict(name='ping',arguments='{}'))]))])
         return io.BytesIO(b'data: '+json.dumps(chunk).encode()+b'\n\ndata: [DONE]\n\n')
     result=probe(presets()['openai'],key,'m',role=role,transport=transport)
