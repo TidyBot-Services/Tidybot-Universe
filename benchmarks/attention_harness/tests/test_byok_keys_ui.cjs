@@ -6,9 +6,9 @@ const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../ui/live.js'), 'utf8');
 const section = source.slice(source.indexOf('  const BYOK_ALL_ROLES'), source.indexOf('  function bindLaunch()'));
-function load(allRoles = false) {
+function load(allRoles = true) {
   const context = vm.createContext({});
-  vm.runInContext(section.replace('BYOK_ALL_ROLES = false', `BYOK_ALL_ROLES = ${allRoles}`) +
+  vm.runInContext(section.replace(/BYOK_ALL_ROLES = (true|false)/, `BYOK_ALL_ROLES = ${allRoles}`) +
     '\nthis.api={keysSelection,keyRoleAssignments,keysSectionHtml,BYOK_ALL_ROLES};', context);
   return context.api;
 }
@@ -21,11 +21,11 @@ function state(mode = 'lab') {
       {credential_id:'second', provider:'openai-compatible', expires_at:1000}]};
 }
 const route = (credential, provider, model) => ({credential, provider, model});
-const select = (value, allRoles = false) => plain(load(allRoles).keysSelection(value, undefined, 100));
+const select = (value, allRoles = true) => plain(load(allRoles).keysSelection(value, undefined, 100));
 
-test('phase 1 is the production default', () => {
-  assert.match(section, /const BYOK_ALL_ROLES = false;/);
-  assert.equal(api.BYOK_ALL_ROLES, false);
+test('every role can use a saved key in production', () => {
+  assert.match(section, /const BYOK_ALL_ROLES = true;/);
+  assert.equal(api.BYOK_ALL_ROLES, true);
 });
 for (const allRoles of [false, true]) {
   test(`Lab mode ignores saved and per-role keys (phase 2: ${allRoles})`, () => {
@@ -49,14 +49,14 @@ for (const allRoles of [false, true]) {
     assert.deepEqual(select(s, allRoles), {roles});
   });
 }
-test('phase 1 ignores unsupported role choices even if stale state contains them', () => {
+test('with the flag off, stale Eval / Advisor choices are ignored', () => {
   const s = state('different');s.choice.eval = 'key:missing';s.choice.advisor = 'key:mine';
-  assert.equal(select(s), null);
+  assert.equal(select(s, false), null);
 });
-test('phase 2 supports Eval-only and Advisor-only overrides with Dev on lab', () => {
+test('Eval-only and Advisor-only overrides with Dev on lab', () => {
   for (const role of ['eval', 'advisor']) {
     const s = state('different');s.choice[role] = 'key:second';
-    assert.deepEqual(select(s, true), {roles:{[role]:route('second', 'openai-compatible', `${role}-model`)}});
+    assert.deepEqual(select(s), {roles:{[role]:route('second', 'openai-compatible', `${role}-model`)}});
   }
 });
 test('mode switches restore independent custom choices without mutating state', () => {
@@ -105,9 +105,9 @@ test('template defaults to Lab and collapsed roles, retaining named lab models a
   assert.match(html, /data-key-value type="password" autocomplete="off"/);
   assert.equal((html.match(/data-key-value/g) || []).length, 1);
 });
-test('shared phase 2 explanation follows the real feature flag', () => {
-  assert.match(api.keysSectionHtml(), /data-keys-phase2 >Eval and Advisor use the lab's models until phase 2/);
-  assert.match(load(true).keysSectionHtml(), /data-keys-phase2 hidden>/);
+test('the shared-key explanation follows the feature flag', () => {
+  assert.match(load(false).keysSectionHtml(), /data-keys-phase2 >Eval and Advisor use the lab's models until phase 2/);
+  assert.match(api.keysSectionHtml(), /data-keys-phase2 hidden>/);
 });
 
 // Minimal event/element doubles execute bindKeys itself without network or DOM dependencies.
@@ -191,8 +191,9 @@ test('summary uses only public metadata and refreshes across save, model edits a
   assert.deepEqual(plain(f.binding.summary()),{dev:null,eval:null,advisor:null});
   await f.mode('all');let count=f.events.length;await saveKey(f,'deepseek','my-ds');
   assert.ok(f.events.length>count);
-  assert.deepEqual(plain(f.binding.summary()),{dev:{model:'deepseek-chat',keyName:'my-ds'},eval:null,advisor:null});
-  assert.deepEqual(plain(f.binding.selection()),{roles:{dev:{credential:'my-ds',provider:'deepseek',model:'deepseek-chat'}}});
+  const mine={model:'deepseek-chat',keyName:'my-ds'},route={credential:'my-ds',provider:'deepseek',model:'deepseek-chat'};
+  assert.deepEqual(plain(f.binding.summary()),{dev:mine,eval:mine,advisor:mine}); // One shared key reaches all three roles.
+  assert.deepEqual(plain(f.binding.selection()),{roles:{dev:route,eval:route,advisor:route}});
   assert.ok(!JSON.stringify(f.binding.summary()).includes('test-only-secret'));
   f.node('[data-key-value]').value='another-unsaved-secret';
   assert.ok(!JSON.stringify(f.binding.summary()).includes('another-unsaved-secret'));
@@ -232,7 +233,8 @@ test('the real footer writer shows the BYOK Dev model/name, lab fallback and two
   const read=()=>{f.context.refreshSummary();return f.node('[data-launch-preview]').textContent;};
   assert.match(read(),/Dev deepseek-chat \(your key my-ds\)/);assert.equal(read().split('\n').length,2);
   assert.ok(!read().includes('test-only-secret'));
-  await f.mode('lab');assert.match(read(),/Dev gpt-6\.1-sol/);assert.ok(!read().includes('your key'));
+  assert.match(read(),/Eval deepseek-chat \(your key my-ds\) · Advisor deepseek-chat \(your key my-ds\)/);
+  await f.mode('lab');assert.match(read(),/Dev gpt-6\.1-sol/);assert.match(read(),/Eval gpt-6-astra/);assert.ok(!read().includes('your key')&&!read().includes('Advisor'));
   await f.mode('all');f.form.dev_mode.value='one_call';assert.ok(!read().includes('your key')); // Only Agent submissions carry BYOK routing.
 });
 

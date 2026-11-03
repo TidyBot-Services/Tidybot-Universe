@@ -39,6 +39,8 @@ class FakeProvider:
             message=('Incorrect API key provided: '+expected if self.mode=='echo_key_401' else
                      'Incorrect API key provided: sk-xxxx****abcd' if self.mode=='mask_key_401' else 'Unauthorized')
             send(401,dict(error=dict(message=message)));return
+        if self.mode in ('echo_key_429','echo_key_500'):
+            send(int(self.mode[-3:]),dict(error=dict(message=expected)));return
         if self.mode=='http_500':send(500,dict(error=dict(message='provider unavailable')));return
         if self.mode=='bad_json':send(200,b'{invalid');return
         if handler.path=='/v1/models':send(200,dict(data=[dict(id='fake-model')]));return
@@ -46,6 +48,8 @@ class FakeProvider:
         function=(body.get('tools') or [dict(function=dict(name='ping'))])[0]['function']['name']
         call=dict(index=0,id='call_test',type='function',function=dict(name=function,arguments='{}'))
         delta=dict(tool_calls=[call]) if self.tools and body.get('tools') else dict(content='ok')
+        if body.get('response_format'):
+            delta=dict(content=json.dumps(dict(passed=False,reason='Frame inspected.',evidence=[dict(claim='Frame inspected',source='frames/overview-000000-sim-0.000000s.png')],advice='Try again.')))
         usage=dict(prompt_tokens=3,completion_tokens=2,total_tokens=5)
         if not body.get('stream'):
             send(200,dict(model=body['model'],choices=[dict(message=dict(role='assistant',**delta),finish_reason='stop')],usage=usage));return

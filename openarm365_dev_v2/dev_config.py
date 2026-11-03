@@ -313,16 +313,22 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         else:validate(ref,c['task_id'],contract['tasks'][c['task_id']]['state'])
         if 'scene_reset_seed' not in c:raise ValueError('scene contract requires reproducible reset')
         expected['scene_contract']=ref
+    provider_roles={}
+    if 'agent_provider' in c:
+        if c.get('dev_mode')!='agent':raise ValueError('agent_options_require_agent_mode')
+        from benchmarks.attention_harness.dev_agent_config import provider_roles as normalize_roles
+        expected['agent_provider']=normalize_roles(c['agent_provider'])
+        provider_roles=expected['agent_provider']['roles']
     if 'eval_agent' in c:
         review=c['eval_agent']
         from benchmarks.attention_harness.eval_agent import normalize as normalize_eval
-        expected['eval_agent']=dict(review) if source=='parcc' and isinstance(review,dict) and set(review)=={'enabled','model'} and type(review['enabled']) is bool and review['model']=='parcc/Qwen' else normalize_eval(review,source,agent=c.get('dev_mode')=='agent')
+        expected['eval_agent']=dict(review) if source=='parcc' and isinstance(review,dict) and set(review)=={'enabled','model'} and type(review['enabled']) is bool and review['model']=='parcc/Qwen' else normalize_eval(review,source,agent=c.get('dev_mode')=='agent',provider_role=provider_roles.get('eval'))
     if 'human_proxy' in c:
         from benchmarks.attention_harness.human_proxy import normalize
         expected['human_proxy']=normalize(c['human_proxy'])
     if 'advisor_proxy' in c:
         from benchmarks.attention_harness.dev_advisor_proxy import normalize
-        expected['advisor_proxy']=normalize(c['advisor_proxy'],source,agent=c.get('dev_mode')=='agent')
+        expected['advisor_proxy']=normalize(c['advisor_proxy'],source,agent=c.get('dev_mode')=='agent',provider_role=provider_roles.get('advisor'))
     if 'eval_agent' in expected and 'advisor_proxy' in expected:
         from benchmarks.attention_harness.dev_configuration import independent_eval_advisor
         independent_eval_advisor(expected['eval_agent'],expected['advisor_proxy'])

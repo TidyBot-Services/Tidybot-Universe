@@ -27,6 +27,7 @@ class ProviderSpec:
     reasoning_param: str | None = None
     capabilities: dict = field(default_factory=lambda: dict.fromkeys(('tools','streaming','vision','json_schema'), 'unknown'))
     suggested_models: tuple = ()
+    response_format: str = 'json_schema'
 
 
 def presets():
@@ -37,7 +38,7 @@ def presets():
         'openai': ProviderSpec('openai', 'OpenAI', 'https://api.openai.com/v1/chat/completions',
                                'https://api.openai.com/v1/models', token_param='max_completion_tokens', reasoning_param='reasoning_effort'),
         'deepseek': ProviderSpec('deepseek', 'DeepSeek', 'https://api.deepseek.com/v1/chat/completions',
-                                 'https://api.deepseek.com/v1/models'),
+                                 'https://api.deepseek.com/v1/models', response_format='json_object'),
         'openai-compatible': ProviderSpec('openai-compatible', 'OpenAI compatible', '', None),
     }
 

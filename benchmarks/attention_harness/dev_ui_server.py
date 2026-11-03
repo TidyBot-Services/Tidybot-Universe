@@ -31,14 +31,16 @@ def budget_preview(selection):
     from .free_models import eval_is_unmetered,is_unmetered_model
     from .dev_experiment import MODEL
     source=config.get('model_source','parcc')
-    dev_model='gpt-6-astra' if source=='codex' else MODEL['model']
+    dev_model=config.get('dev_model','gpt-6-astra' if source=='codex' else MODEL['model'])
+    roles=config.get('agent_provider',{}).get('roles',{})
+    def user_role(role):return roles.get(role,{}).get('credential','lab')!='lab'
     required=derive_cell_budget(config)
     per_cell=configured_budget(config)
     cells=len(tasks)*len(seeds)*len(policies)
     wait_wall=config['max_versions']*config.get('planner_features',{}).get('human_wait_seconds',0)
     return dict(per_cell=per_cell,required_per_cell=required,cells=cells,
-                eval_accounting='Recorded; no token cap' if source=='codex' else ('不计限额，仅记录' if config['eval_agent']['enabled'] and eval_is_unmetered(config['eval_agent']) else '计入限额'),
-                model_token_accounting={role:('Recorded; no token cap' if source=='codex' else ('不计限额，仅记录' if is_unmetered_model(model) else '计入限额')) for role,model in {'dev':dev_model,'advisor':config['advisor_proxy']['model'],'eval':config['eval_agent']['model']}.items()},
+                eval_accounting='User provider; usage recorded' if user_role('eval') else 'Recorded; no token cap' if source=='codex' else ('不计限额，仅记录' if config['eval_agent']['enabled'] and eval_is_unmetered(config['eval_agent']) else '计入限额'),
+                model_token_accounting={role:('User provider; usage recorded' if user_role(role) else 'Recorded; no token cap' if source=='codex' else ('不计限额，仅记录' if is_unmetered_model(model) else '计入限额')) for role,model in {'dev':dev_model,'advisor':config['advisor_proxy']['model'],'eval':config['eval_agent']['model']}.items()},
                 eval_safety_call_cap=max(2*config['max_versions'],10),
                 total={key:value*cells for key,value in per_cell.items()},
                 wall_seconds=config.get('wall_limit',cells*(per_cell['model_seconds']+per_cell['execution_seconds']+wait_wall)+3600),
@@ -346,14 +348,16 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                 if 'agent_provider' in manifest:
                     roles=manifest['agent_provider']['roles']
                     run_keys=vault.take_for_run(owner_of(self),roles)
-                    desc=run_keys.roles['dev'];secret=run_keys._keys[desc['credential']]
-                    spec=provider_spec(desc['provider'],desc['base_url'])
-                    if roles['dev'].get('base_url_host')!=urlsplit(spec.chat_url).hostname:
-                        raise ProviderError('provider_mismatch','Credential host differs for role dev')
-                    result=probe(spec,secret,desc['model'],role='dev')
-                    if not result.ok:
-                        self.obj(dict(error=dict(code='provider_preflight_failed',message='\n'.join(e['message'] for e in result.errors),
-                            redacted=any(e['redacted'] for e in result.errors),role='dev'),checks=result.checks,errors=result.errors),409);return
+                    for role,desc in run_keys.roles.items():
+                        secret=run_keys._keys[desc['credential']]
+                        spec=provider_spec(desc['provider'],desc['base_url'])
+                        if roles[role].get('base_url_host')!=urlsplit(spec.chat_url).hostname:
+                            self.obj(dict(error=dict(code='provider_mismatch',message='Credential host differs for role '+role,
+                                redacted=False,role=role)),409);return
+                        result=probe(spec,secret,desc['model'],role=role)
+                        if not result.ok:
+                            self.obj(dict(error=dict(code='provider_preflight_failed',message='\n'.join(e['message'] for e in result.errors),
+                                redacted=any(e['redacted'] for e in result.errors),role=role),checks=result.checks,errors=result.errors),409);return
                 with worker_lock:
                     if any(p.poll() is None for p in workers.values()):raise DevConflict('serial UI worker already active')
                     if e['owner'] and experiments.owner_alive(e['owner']):raise DevConflict('experiment owner already active')

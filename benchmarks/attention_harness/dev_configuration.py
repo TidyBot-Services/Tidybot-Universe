@@ -124,7 +124,7 @@ def configured_budget(p):
  if set(b)!=set(RESOURCES):raise ValueError('complete cell budget required')
  from .free_models import limited_resources
  from .dev_experiment import MODEL
- limited=limited_resources(eval_config=p['eval_agent'],model_names=(('gpt-6-astra' if p.get('model_source')=='codex' else MODEL['model']),p['advisor_proxy']['model']),model_source=p.get('model_source','parcc'))
+ limited=limited_resources(eval_config=p['eval_agent'],model_names=(('gpt-6-astra' if p.get('model_source')=='codex' else MODEL['model']),p['advisor_proxy']['model']),model_source=p.get('model_source','parcc'),provider_roles=p.get('agent_provider',{}).get('roles'))
  if p['coverage']=='strict_full_depth' and any(b[k]<required[k] for k in limited):raise ValueError('strict cell budget below worst-case requirement')
  minimum=derive_cell_budget({**p,'max_versions':1,'target_valid_executions':1,'help_budget':0})
  if any(b[k]<minimum[k] for k in limited):raise ValueError('zero capacity budget refused')
