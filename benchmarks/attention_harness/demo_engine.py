@@ -246,7 +246,6 @@ class DemoEngine:
             self.cache[eid] = dict(experiment=experiment, view=view, key=key)
             sources[eid] = dict(source_id=eid, **entry, **source_timing(view, experiment))
             if not sources[eid]['attempt_done_at']:raise ValueError('demo source needs recorded attempts')
-        if len({s['task_key'] for s in sources.values()}) != len(sources):raise ValueError('duplicate demo task')
         invitees = config.get('invitees', [])
         if (not isinstance(invitees,list) or any(not isinstance(r,dict) or set(r)!={'count'}
                 or type(r['count']) is not int or not 0<=r['count']<=20 for r in invitees)):

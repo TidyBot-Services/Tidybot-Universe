@@ -135,7 +135,7 @@ def test_scripted_invitees_loop_and_recover_without_duplication(tmp_path):
     clock = Clock()
     lobby = Lobby(tmp_path,sources(),clock=clock,speed=20,invitees=4,seed=7)
     snap = lobby.snapshot(None)
-    assert snap['robot']['running'] and len(snap['queue']) == 3 and len(snap['recent']) == 4
+    assert snap['robot']['running'] and len(snap['queue']) == 3 and len(snap['recent']) == 6
     clock.step(3);snap = lobby.snapshot(None)
     assert snap['robot']['running']['state'] == 'waiting_human'
     clock.step(2);snap = lobby.snapshot(None)
@@ -192,3 +192,49 @@ def test_running_catchup_on_restart_and_late_enqueue(tmp_path):
     assert snap['recent'][0]['run_id'] == first['run_id']
     assert snap['robot']['running']['run_id'] == second['run_id']
     assert snap['robot']['running']['started_at'] == 10056
+
+
+def mixed_sources():
+    def one(eid, result, attempts):
+        return dict(source_id=eid, task_key='lift', title='Lift cup', duration=40*attempts,
+            attempt_done_at=[40*(i+1) for i in range(attempts)], limit=5, result=result, helps={})
+    return {name:one(name,result,attempts) for name,result,attempts in
+            (('rec-a','solved',2),('rec-b','failed',3),('rec-c','limit',5),('rec-d','solved',1))}
+
+
+def test_recordings_rotate_in_configured_order_and_show_their_origin(tmp_path):
+    clock = Clock()
+    lobby = Lobby(tmp_path,mixed_sources(),clock=clock,speed=60,invitees=3,seed=0)
+    first = [r['source_id'] for r in lobby.records()]
+    assert first[:4] == ['rec-a','rec-b','rec-c','rec-d']
+    snap = lobby.snapshot(None)
+    cards = snap['recent'] + snap['queue'] + ([snap['robot']['running']] if snap['robot']['running'] else [])
+    assert {c['recording']['id'] for c in cards} <= set(mixed_sources())
+    assert all(c['recording']['attempts'] >= 1 for c in cards)
+    assert snap['demo_info'] == dict(recordings=4, history_limit=8)
+    assert {c['result'] for c in snap['recent']} >= {'solved', 'failed', 'limit'}
+
+
+def test_history_stays_bounded_however_long_the_demo_runs(tmp_path):
+    clock = Clock()
+    lobby = Lobby(tmp_path,mixed_sources(),clock=clock,speed=60,invitees=3,seed=1)
+    viewer = join(lobby)
+    for _ in range(400):
+        clock.step(30);lobby.tick()
+    snap = lobby.snapshot(viewer)
+    finished = [r for r in lobby.records() if r['state'] in ('finished','failed','cancelled')]
+    assert len(finished) <= 8 and snap['counts']['all'] <= 8 + 4
+    with lobby.tx() as db:
+        assert db.execute('SELECT count(*) FROM events').fetchone()[0] < 80
+        assert db.execute('SELECT count(*) FROM replies').fetchone()[0] <= 8
+
+
+def test_a_persons_latest_finished_run_is_not_pruned(tmp_path):
+    clock = Clock()
+    lobby = Lobby(tmp_path,mixed_sources(),clock=clock,speed=60,invitees=3,seed=1)
+    me = join(lobby)
+    card = lobby.enqueue(me,task_key='lift')
+    for _ in range(600):
+        clock.step(20);lobby.tick()
+    mine = [r for r in lobby.records() if r['owner'] == me['id']]
+    assert mine and mine[0]['state'] == 'finished' and mine[0]['run_id'] == card['run_id']
