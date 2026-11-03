@@ -62,7 +62,8 @@ def test_d05_d06_derive_from_fake_parent(tmp_path, monkeypatch):
               {str(outside): identity.digest(outside)},
         robot_configs={str(project / name): identity.digest(project / name) for name in build_d05.YAMLS},
         task_sources={str(native.parent.parent): identity.digest(native)},
-        provenance='official', official_only=True)
+        provenance='official', official_only=True,
+        host_fingerprint={'driver': '580.126.09', 'glibc': 'glibc 2.39'})
     parent_sha = write(parent / 'runtime-lock.json', parent_lock)
     declared = tmp_path / 'sources.json'
     write(declared, {'SOURCE_FILES': ['adapter.py'], 'NEW_FILES': []})
@@ -76,12 +77,14 @@ def test_d05_d06_derive_from_fake_parent(tmp_path, monkeypatch):
                     layer=None)
     d05_lock = json.loads((d05 / 'runtime-lock.json').read_text())
     assert identity._derived_from_parent(d05_lock, parent_lock)
+    assert d05_lock['host_fingerprint'] == parent_lock['host_fingerprint']
     monkeypatch.setattr(build_d06, 'source_manifest', lambda repo, old: {'adapter.py': identity.digest(repo / 'adapter.py')})
     d06 = tmp_path / 'd06'
     build_d06.build(d06, parent=d05, repo=repo, expected_parent_sha=identity.digest(d05 / 'runtime-lock.json'),
                     expected_official_sha=parent_sha)
     d06_lock = json.loads((d06 / 'runtime-lock.json').read_text())
     assert identity._derived_from_parent(d06_lock, parent_lock)
+    assert d06_lock['host_fingerprint'] == parent_lock['host_fingerprint']
     assert d06_lock['provenance']['parent_adapter_lock_sha256'] == identity.digest(d05 / 'runtime-lock.json')
 
 

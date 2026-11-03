@@ -74,6 +74,8 @@ def fake_prereqs(tmp_path, monkeypatch):
     monkeypatch.setattr(setup, '_run', lambda argv, timeout=10: SimpleNamespace(
         returncode=0, stdout='580.95\n' if Path(argv[0]).name == 'nvidia-smi' else
         'codex-cli 0.165.0\n' if '--version' in argv else '', stderr=''))
+    monkeypatch.setattr(setup.installer, 'host_fingerprint', lambda: {
+        'driver': '580.95', 'glibc': 'glibc 2.39', 'os': {'VERSION_ID': '24.04'}})
     monkeypatch.setattr(setup.os, 'statvfs', lambda path: SimpleNamespace(f_bavail=100, f_frsize=1024**3))
     return bindir, tmp_path / 'workspace'
 

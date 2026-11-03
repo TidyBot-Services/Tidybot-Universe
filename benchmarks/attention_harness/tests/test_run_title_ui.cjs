@@ -14,6 +14,7 @@ function title(ended) {
     navigationRecords: () => [record], taskTitle: () => 'Pick Place: Counter → Sink', taskDisplayName: () => 'Pick Place: Counter → Sink', policyTitle: () => 'Autonomous',
     relativeTime: () => '23 h ago', recordStatus: () => 'Needs review', outcomeKind: () => '', isTerminal: s => s.ended,
     launchButton: (s, hero) => `<button class="ab-button-primary${hero ? ' op-new-run' : ''}" type="button" data-open-launch>New run</button>`,
+    fixtureSceneNotice: () => '',
   });
 }
 
@@ -33,7 +34,19 @@ test('r3 execution label is shown beside the run title', () => {
     esc,snapshot:{run:{seed:102},dev_session:{locked:{config:{execution_settings:{profile:'r3-20261025'}}}}},
     selectedDev:null,selectedRun:null,navigationRecords:()=>[],taskTitle:()=>'Task',taskDisplayName:()=>'Task',policyTitle:()=>'',
     relativeTime:()=>'',recordStatus:()=>'',outcomeKind:()=>'',isTerminal:()=>false,
+    fixtureSceneNotice:()=>'',
   });
   assert.match(html,/Execution settings r3 · not comparable with earlier runs/);
   assert.doesNotMatch(title(false),/Execution settings r3/);
+});
+
+test('host drift and differing hosts are visible on the run page', () => {
+  const html=vm.runInNewContext(block+'\noperatorTitle(snapshot)',{
+    esc,snapshot:{run:{run_id:'run-1'},dev_v2:{jobs:[{receipt:{host_drift:[{path:'/lib/libc.so.6',expected:'old',actual:'new'}],host_fingerprint_sha256:'a'}},{receipt:{host_fingerprint_sha256:'b'}}]}},
+    selectedDev:null,selectedRun:null,navigationRecords:()=>[],taskTitle:()=>'Task',policyTitle:()=>'',
+    relativeTime:()=>'',recordStatus:()=>'',outcomeKind:()=>'',isTerminal:()=>false,
+    fixtureSceneNotice:()=>'',
+  });
+  assert.match(html,/host libs changed since lock built: \/lib\/libc.so.6: old -> new/);
+  assert.match(html,/host differs/);
 });

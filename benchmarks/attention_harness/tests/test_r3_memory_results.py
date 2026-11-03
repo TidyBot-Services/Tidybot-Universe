@@ -42,6 +42,18 @@ def row(key,success,profile):
         request_units=0,logical_human_seconds=0,timeouts=0,fallbacks=0,eval_compute={},read_errors=[])
 
 
+def test_summary_marks_distinct_hosts_but_ignores_legacy():
+    cells=[dict(row('a',True,'legacy'),host_fingerprint_sha256='a'*64),
+           dict(row('b',False,'legacy'),host_fingerprint_sha256='b'*64),
+           row('c',True,'legacy')]
+    value=summarize(dict(experiment_id='hosts',manifest={},cells=cells))
+    assert value['host_differs'] is True
+    assert value['host_fingerprint_sha256'] == ['a'*64, 'b'*64]
+    assert 'host differs' in markdown(value)
+    legacy=summarize(dict(experiment_id='legacy',manifest={},cells=[cells[0], cells[2]]))
+    assert 'host_differs' not in legacy
+
+
 def test_summary_separates_all_rates_and_tables():
     value=summarize(dict(experiment_id='mixed',manifest={},cells=[row('a',False,'legacy'),row('b',True,'r3-20261025')]))
     assert 'by_policy' not in value and 'eval_quality' not in value

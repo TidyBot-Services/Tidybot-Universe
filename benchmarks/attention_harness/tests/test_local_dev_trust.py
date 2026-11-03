@@ -224,7 +224,7 @@ def test_derived_outside_change_and_unregistered_path(chain):
         auth.load_lock(moved, tier='dev', boundary='dev_loop')
 
 
-def test_host_dependency_drift_keeps_runtime_error(chain, monkeypatch):
+def test_host_dependency_drift_is_recorded_only_for_dev_loop(chain, monkeypatch):
     lock, _ = accepted(chain)
     monkeypatch.setattr(auth.sys, 'prefix', lock['prefix'])
     monkeypatch.setattr(auth.sys, 'base_prefix', lock['prefix'])
@@ -232,9 +232,43 @@ def test_host_dependency_drift_keeps_runtime_error(chain, monkeypatch):
     monkeypatch.setattr(auth.importlib.util, 'find_spec', lambda name: type('Spec', (), {'origin': str(Path(lock['library_root']) / 'curobo/__init__.py')})())
     monkeypatch.setattr(auth, '_distributions', lambda: {})
     monkeypatch.setattr(auth, 'verify_files', lambda lock: None)
+    monkeypatch.setattr('curobo_v2.host_fingerprint.gate', lambda value: ([], []))
+    monkeypatch.setattr('curobo_v2.host_fingerprint.host_fingerprint', lambda: {})
+    monkeypatch.setattr(auth.subprocess, 'check_output', lambda *a, **k: ' M source.py\n')
     chain['host'].write_text('changed')
     with pytest.raises(auth.IdentityError, match='Native host dependency changed'):
+        auth.verify_runtime(dict(lock))
+    with pytest.raises(auth.IdentityError, match='Official solver checkout has local changes'):
         auth.verify_runtime(lock)
+    assert auth.last_host_drift == [{'path': str(chain['host']), 'expected': chain['d06'][1]['native_host_dependencies'][str(chain['host'])], 'actual': auth.digest(chain['host'])}]
+    chain['host'].unlink()
+    with pytest.raises(auth.IdentityError, match='Native host dependency changed'):
+        auth.verify_runtime(dict(lock))
+    with pytest.raises(auth.IdentityError, match='Official solver checkout has local changes'):
+        auth.verify_runtime(lock)
+    assert auth.last_host_drift[0]['actual'] == 'missing'
+
+
+def test_manifest_host_policy_never_grants_record_mode(chain, monkeypatch):
+    path, value = chain['d06']
+    value = dict(value, host_policy='record')
+    raw_sha = write(path, value)
+    monkeypatch.setattr(auth, '_approval_source', lambda *a, **k: 'author-registry')
+    for tier, boundary, expected in ((None, None, False), ('formal', 'formal', False),
+                                     ('dev', 'dev_loop', True), ('dev', 'other', False)):
+        loaded, sha = auth.load_lock(path, tier=tier, boundary=boundary)
+        assert sha == raw_sha
+        assert isinstance(loaded, auth._RecordHostLock) is expected
+
+
+def test_dev_lock_still_equals_the_file(chain, monkeypatch):
+    # evidence.preserve_runtime, execution_settings and session compare the lock to its JSON.
+    path, value = chain['d06']
+    write(path, value)
+    monkeypatch.setattr(auth, '_approval_source', lambda *a, **k: 'author-registry')
+    loaded, _ = auth.load_lock(path, tier='dev', boundary='dev_loop')
+    assert json.loads(Path(path).read_bytes()) == {k: v for k, v in loaded.items() if k != 'trust_source'}
+    assert isinstance(loaded, dict) and json.loads(json.dumps(loaded)) == loaded
 
 
 def test_formal_config_rejects_local_tag(chain):

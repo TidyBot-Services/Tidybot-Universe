@@ -19,6 +19,7 @@ import zipfile
 REPO = Path(__file__).resolve().parents[2]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
+from curobo_v2.host_fingerprint import host_fingerprint, host_libraries, gate
 LOCK = REPO / 'attentionbench.lock.json'
 TEMPLATE = REPO / 'config/attentionbench/paths.template.json'
 DOCTOR_PATHS = REPO / 'config/attentionbench/doctor-paths.json'
@@ -73,43 +74,6 @@ def namespace_status() -> tuple[bool, str, str]:
     return False, reason, 'Install bubblewrap and enable unprivileged user namespaces; inspect kernel/container policy.'
 
 
-def host_libraries() -> dict:
-    try:
-        output = subprocess.run(['ldconfig', '-p'], capture_output=True, text=True, check=False).stdout
-    except OSError:
-        output = ''
-    found = {}
-    for token in ('libcuda.so.1', 'libc.so.6'):
-        candidates = [line.rsplit('=>', 1)[1].strip() for line in output.splitlines()
-                      if line.strip().startswith(token + ' ') and '=>' in line]
-        paths = [Path(path).resolve() for path in candidates if Path(path).is_file()]
-        found[token] = {'path': str(paths[0]), 'sha256': digest(paths[0])} if paths else None
-    return found
-
-
-def host_fingerprint() -> dict:
-    release = {}
-    try:
-        for line in Path('/etc/os-release').read_text().splitlines():
-            if '=' in line:
-                key, value = line.split('=', 1)
-                release[key] = value.strip('"')
-    except OSError:
-        pass
-    driver = gpu = None
-    if shutil.which('nvidia-smi'):
-        try:
-            result = subprocess.run(['nvidia-smi', '--query-gpu=driver_version,name', '--format=csv,noheader'], capture_output=True, text=True, check=False)
-            if result.returncode == 0 and result.stdout.strip():
-                driver, gpu = (part.strip() for part in result.stdout.splitlines()[0].split(',', 1))
-        except (OSError, ValueError):
-            pass
-    return {'os': {key: release.get(key) for key in ('VERSION_ID', 'PRETTY_NAME')},
-            'kernel': os.uname().release, 'glibc': os.confstr('CS_GNU_LIBC_VERSION'),
-            'driver': driver, 'gpu': gpu, 'libraries': host_libraries(),
-            'created_at': datetime.now(timezone.utc).isoformat()}
-
-
 def _port_free(port: int) -> bool:
     try:
         with socket.socket() as sock:
@@ -144,6 +108,23 @@ def rebuild_planner(ws: Path, args) -> None:
             (target / 'stamps').mkdir(exist_ok=True)
             stamp.rename(target / 'stamps' / stamp.name)
     print(f'Planner deployments moved to {target}. Keep superseded-* while old run manifests matter.')
+
+
+def reprove(ws: Path) -> Path:
+    """Rerun the planner proof on today's host. Writes only a new file under data/run."""
+    d06 = ws / 'deployments/dev06/runtime-lock.json'
+    if not d06.is_file():
+        raise StepError('reprove', 'existing d06 lock missing', 'Build the planner first.')
+    output = ws / 'data/run' / ('host-reproof-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    script = REPO / 'scripts/attentionbench'
+    command('reprove', [str(ws / 'envs/curobo-env/bin/python'), '-B', '-I', str(script / 'planner_proof.py'),
+                        '--library', str(ws / 'repos/curobo'), '--lock', str(d06),
+                        '--requests', str(script / 'planner-proof-requests.json'),
+                        '--output', str(output), '--record-host'])
+    if json.loads(output.read_text()).get('passed') is not True:
+        raise StepError('reprove', 'planner proof did not pass', f'Inspect {output}.')
+    return output
 
 
 def command(step: str, argv: list[str], *, cwd: Path | None = None, env: dict | None = None) -> None:
@@ -379,6 +360,16 @@ def _check(results: list, name: str, ok: bool | None, reason: str, fix: str) -> 
     results.append({'check': name, 'status': 'SKIP' if ok is None else ('PASS' if ok else 'FAIL'), 'reason': reason, 'fix': fix})
 
 
+def check_host_gate(results: list, value=None) -> None:
+    failures, warnings = gate(value if value is not None else host_fingerprint())
+    _check(results, 'host-prerequisites', not failures,
+           '; '.join(failures) if failures else 'driver and glibc meet minimum versions',
+           'Upgrade the NVIDIA driver or Ubuntu release to the required versions.' if failures else '')
+    for warning in warnings:
+        results.append({'check': 'host-os', 'status': 'WARN', 'reason': warning,
+                        'fix': 'Upgrade to Ubuntu 22.04 or 24.04.'})
+
+
 def check_doctor_paths(results: list, ws: Path, paths: dict) -> None:
     template = json.loads(TEMPLATE.read_text())['paths']
     policy = json.loads(DOCTOR_PATHS.read_text())['paths']
@@ -432,15 +423,19 @@ def check_host_libraries(results: list, ws: Path) -> None:
         elif digest(file) != sha:
             bad.append(f'changed {name} (ldconfig now: {current_path})')
     upgrade = _latest_host_upgrade()
-    fix = ('The planner refuses to start until rebuilt; usual cause is unattended-upgrades or a driver/libc6 update. '
+    fix = ('The planner still starts in development tier; results are marked. Formal tier refuses. '
            + (f'Latest apt entry: {upgrade}. ' if upgrade else '')
-           + 'Rebuild with setup.sh --workspace WS --rebuild-planner. Optional prevention: sudo apt-mark hold on the driver packages and libc6.')
-    _check(results, 'host-libraries', not bad, 'native host dependency SHA256 values match' if not bad else '; '.join(bad), fix)
+           + 'setup.sh --workspace WS --reprove reruns the proof; --rebuild-planner makes a fresh lock.')
+    if bad:
+        results.append({'check': 'host-libraries', 'status': 'WARN', 'reason': '; '.join(bad), 'fix': fix})
+    else:
+        _check(results, 'host-libraries', True, 'native host dependency SHA256 values match', '')
 
 
 def doctor(args) -> int:
     lock = data(); ws = Path(args.workspace or os.environ.get('ATTENTIONBENCH_WORKSPACE', Path.cwd())).expanduser().resolve()
     results = []
+    check_host_gate(results)
     py = ws / 'envs/curobo-env/bin/python'
     probe = subprocess.run([str(py), '-c', 'import torch; print(torch.cuda.is_available())'], capture_output=True, text=True) if py.is_file() else None
     gpu_ok = bool(probe and probe.returncode == 0 and probe.stdout.strip() == 'True')

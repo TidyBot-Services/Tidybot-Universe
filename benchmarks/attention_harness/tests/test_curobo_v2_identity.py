@@ -47,6 +47,17 @@ def test_real_v2_08_version_identity_is_accepted(lock):
     assert verify_payload(value, service_identity(value))["runtime"]["generation"] == 2
 
 
+def test_signed_host_metadata_does_not_change_runtime_identity(lock):
+    value, _ = lock
+    current = service_identity(value)
+    current.update(host_fingerprint_sha256='a' * 64,
+                   host_drift=[{'path': '/lib/libcuda.so', 'expected': 'old', 'actual': 'new'}])
+    assert verify_payload(value, current)['host_drift'] == current['host_drift']
+    current['runtime']['generation'] = 1
+    with pytest.raises(auth.IdentityError, match='identity mismatch'):
+        verify_payload(value, current)
+
+
 @pytest.mark.parametrize("field,bad", [("nonce", "old-instance"), ("pid", 999),
     ("lock_sha256", "different"), ("service_root", "/legacy"), ("robot_config", "/other.yml"),
     ("robot_config_sha256", "changed"), ("kernel_backend","auto")])

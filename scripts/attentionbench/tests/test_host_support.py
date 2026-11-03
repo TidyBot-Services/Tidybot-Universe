@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from scripts.attentionbench import installer, setup
+from curobo_v2.host_fingerprint import gate, fingerprint_sha256
 
 
 def probe(code=1, stderr='setting up uid map: Permission denied'):
@@ -87,14 +88,71 @@ def test_uv_python_row(monkeypatch, found, downloads, offline, ok):
 
 
 def test_fingerprint_fields_without_nvidia(tmp_path, monkeypatch):
-    monkeypatch.setattr(installer.shutil, 'which', lambda name: None)
-    monkeypatch.setattr(installer, 'host_libraries', lambda: {'libcuda.so.1': None, 'libc.so.6': {'path': '/lib/libc.so.6', 'sha256': 'a'}})
+    from curobo_v2 import host_fingerprint as host
+    def no_driver(*args, **kwargs):
+        raise OSError('no nvidia-smi')
+    real_read = Path.read_text
+    monkeypatch.setattr(host.subprocess, 'run', no_driver)
+    monkeypatch.setattr(host.Path, 'read_text', lambda self, *a, **k: no_driver() if 'nvidia' in str(self) else real_read(self, *a, **k))
+    monkeypatch.setattr('curobo_v2.host_fingerprint.host_libraries', lambda: {'libcuda.so.1': None, 'libc.so.6': {'path': '/lib/libc.so.6', 'sha256': 'a'}})
     record = installer.host_fingerprint()
     assert set(record) == {'os', 'kernel', 'glibc', 'driver', 'gpu', 'libraries', 'created_at'}
     assert set(record['os']) == {'VERSION_ID', 'PRETTY_NAME'}
     assert record['driver'] is None and record['gpu'] is None
     assert record['libraries']['libcuda.so.1'] is None
     assert record['created_at'].endswith('+00:00')
+
+
+@pytest.mark.parametrize('driver,glibc,fails', [
+    ('570.124.05', '2.35', True), ('570.124.06', '2.35', False),
+    ('580.126.09', '2.39', False), ('580.126.09', '2.34', True),
+    (None, '2.39', True),
+])
+def test_host_gate_version_boundaries(driver, glibc, fails):
+    value = {'driver': driver, 'glibc': 'glibc ' + glibc,
+             'os': {'VERSION_ID': '24.04'}, 'created_at': 'one'}
+    failures, warnings = gate(value)
+    assert bool(failures) is fails and not warnings
+    value['created_at'] = 'two'
+    assert fingerprint_sha256(value) == fingerprint_sha256(dict(value, created_at='one'))
+    value['os']['VERSION_ID'] = '23.10'
+    assert gate(value)[1]
+
+
+def test_optional_nvidia_libraries_are_best_effort(tmp_path, monkeypatch):
+    from curobo_v2 import host_fingerprint as host
+    ml = tmp_path / 'libnvidia-ml.so.1'
+    ml.write_bytes(b'library')
+    output = f'libnvidia-ml.so.1 (libc6,x86-64) => {ml}\n'
+    monkeypatch.setattr(host.subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(stdout=output))
+    libraries = host.host_libraries()
+    assert libraries['libnvidia-ml.so.1']['sha256'] == installer.digest(ml)
+    assert libraries['libnvidia-ptxjitcompiler.so.1'] is None
+
+
+def test_reprove_does_not_change_registry_or_stamps(tmp_path, monkeypatch):
+    ws = tmp_path / 'workspace'
+    lock = ws / 'deployments/dev06/runtime-lock.json'
+    lock.parent.mkdir(parents=True)
+    lock.write_bytes(b'existing lock')
+    registry = ws / 'deployments/local-dev-trust.json'
+    registry.write_bytes(b'existing registry')
+    stamp = ws / 'data/installer/stamps/planner-proof.json'
+    stamp.parent.mkdir(parents=True)
+    stamp.write_bytes(b'existing stamp')
+    before = (lock.read_bytes(), registry.read_bytes(), stamp.read_bytes())
+    def fake_proof(step, argv, **kwargs):
+        assert str(lock) in argv and '--record-host' in argv
+        Path(argv[argv.index('--output') + 1]).write_text('{"passed": true}')
+    monkeypatch.setattr(installer, 'command', fake_proof)
+    assert setup.main(['--workspace', str(ws), '--reprove']) == 0
+    assert (lock.read_bytes(), registry.read_bytes(), stamp.read_bytes()) == before
+    assert list((ws / 'data/run').glob('host-reproof-*.json'))
+    def failed_proof(*args, **kwargs):
+        raise installer.StepError('reprove', 'proof failed', 'Inspect it.')
+    monkeypatch.setattr(installer, 'command', failed_proof)
+    assert setup.main(['--workspace', str(ws), '--reprove']) == 1
+    assert (lock.read_bytes(), registry.read_bytes(), stamp.read_bytes()) == before
 
 
 def test_host_libraries_rows(tmp_path, monkeypatch):
@@ -112,7 +170,7 @@ def test_host_libraries_rows(tmp_path, monkeypatch):
     assert rows[-1]['status'] == 'PASS'
     lib.write_text('new')
     installer.check_host_libraries(rows, tmp_path)
-    assert rows[-1]['status'] == 'FAIL' and 'changed' in rows[-1]['reason'] and '/new/libc.so.6' in rows[-1]['reason']
+    assert rows[-1]['status'] == 'WARN' and 'changed' in rows[-1]['reason'] and '/new/libc.so.6' in rows[-1]['reason']
     assert 'Upgrade: libc6' in rows[-1]['fix'] and '--rebuild-planner' in rows[-1]['fix']
     lib.unlink()
     installer.check_host_libraries(rows, tmp_path)
@@ -185,3 +243,22 @@ def test_2404_docker_profile_only_adds_abi_and_userns():
     base = (docker / 'attentionbench-bwrap.apparmor').read_text().splitlines()[1:]
     variant = (docker / 'attentionbench-bwrap-2404.apparmor').read_text().splitlines()[1:]
     assert [line for line in variant if line not in ('abi <abi/4.0>,', '  userns,')] == base
+
+
+def test_fingerprint_without_path_still_reads_the_driver(monkeypatch):
+    from curobo_v2 import host_fingerprint as host
+    monkeypatch.delenv('PATH', raising=False)
+    value = host.host_fingerprint()
+    assert host.gate(value)[0] == [] or value['driver'] is None
+    assert value['libraries']['libc.so.6']
+
+
+def test_driver_falls_back_to_the_kernel_module(monkeypatch):
+    from curobo_v2 import host_fingerprint as host
+    def no_smi(*args, **kwargs):
+        raise OSError('no nvidia-smi')
+    real_read = Path.read_text
+    line = 'NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  580.126.09  Release Build\n'
+    monkeypatch.setattr(host.subprocess, 'run', no_smi)
+    monkeypatch.setattr(host.Path, 'read_text', lambda self, *a, **k: line if 'nvidia' in str(self) else real_read(self, *a, **k))
+    assert host.host_fingerprint()['driver'] == '580.126.09'

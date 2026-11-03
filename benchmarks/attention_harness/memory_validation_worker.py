@@ -512,6 +512,10 @@ def tick(state,deps):
     return _tick(state,deps)
 
 
+def host_pair_needs_review(control, treatment):
+    return control.get('host_fingerprint_sha256') != treatment.get('host_fingerprint_sha256')
+
+
 def _tick(state,deps):
     """One durable transition. deps includes quota snapshots and refresh_quota.
 
@@ -546,6 +550,8 @@ def _tick(state,deps):
         state['status']=text;save();return state
     current=state.get('current')
     try:
+        if current and current.get('state') == 'needs_review':
+            return status(current.get('review_reason') or 'Validation needs review')
         if any(e.get('status')=='retrying' for e in state.get('origin_registration_retries',[])):
             return status('Origin registration retry is incomplete; rerun --retry-origin-registration with --reason to finish recovery.')
         if not getattr(deps,'begin_cycle',None):
@@ -643,6 +649,11 @@ def _tick(state,deps):
                 current['active']=False;current['pause_requested']=False
                 if current['arm']=='treatment':
                     pair=current['plan']['pairs'][current['pair_index']]
+                    if host_pair_needs_review(current['trials'][pair['control_cell']], result):
+                        current.update(state='needs_review', review_reason='Host fingerprint differs between control and treatment; validation needs review.',
+                                       active=False, pause_requested=False, dispatch_pending=False)
+                        save()
+                        return status(current['review_reason'])
                     deps.client.record_dev_v2_pair(memory_id=current['memory_id'],control_import_id=current['trials'][pair['control_cell']]['trial_import_id'],treatment_import_id=result['trial_import_id'])
                     current['pair_index']+=1;current['arm']='control';current['pair_version']=1;current.pop('replacement_notice',None)
                 else:current['arm']='treatment'

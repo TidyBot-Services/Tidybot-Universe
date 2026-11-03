@@ -51,6 +51,10 @@ def main() -> None:
     require_local_workspace(json.loads(Path(args.lock).read_bytes()))
     lock, lock_sha = load_lock(args.lock, tier=args.tier, boundary=args.boundary)
     runtime = verify_runtime(lock)
+    from curobo_v2 import identity as identity_module
+    from curobo_v2.host_fingerprint import fingerprint_sha256, host_fingerprint
+    host_drift = list(identity_module.last_host_drift)
+    current_host_sha = fingerprint_sha256(host_fingerprint())
     import curobo._src.runtime as gpu_runtime
     gpu_runtime.kernel_backend = "cuda_core"
     gpu_runtime.cuda_core_backend = True
@@ -86,6 +90,8 @@ def main() -> None:
                 "pid": os.getpid(), "service_root": lock["service_root"],
                 "robot_config": robot_config, "robot_config_sha256": digest(Path(robot_config)),
                 "kernel_backend": "cuda_core",'test_response_fault':args.test_response_fault}
+    identity['host_drift'] = host_drift
+    identity['host_fingerprint_sha256'] = current_host_sha
     directory = Path(args.evidence)
     directory.mkdir(parents=True, exist_ok=True)
     identity['test_gpu_activity']=args.test_gpu_activity=='enabled'

@@ -26,13 +26,26 @@ Ubuntu 23.10 and later set `kernel.apparmor_restrict_unprivileged_userns=1`, so 
 
 ### System updates and the planner
 
-`setup.sh` builds a planner lock on your machine that records the SHA256 of your `libcuda` and `libc.so.6`, and writes the host details to `data/run/host-fingerprint.json`. If a driver or `libc6` update changes those files, often through `unattended-upgrades`, the planner refuses to start. `doctor` reports this as `host-libraries` and names the changed files. Stop the services, then rebuild:
+`setup.sh` builds a planner lock on your machine. It records the SHA256 of your `libcuda` and `libc.so.6`, plus a host fingerprint (OS, kernel, glibc, driver, GPU, libraries) that is also written to `data/run/host-fingerprint.json`.
+
+The requirements are NVIDIA driver 570.124.06 or newer and glibc 2.35 or newer; `setup.sh`, `doctor` and the planner all refuse below that. Drivers 580.126 and 580.178 are the only ones tested. Other Ubuntu releases give a warning.
+
+If a driver or `libc6` update changes those files later, often through `unattended-upgrades`, development runs keep working:
+
+- `doctor` shows a `host-libraries` warning that names the changed files.
+- The Run page shows `host libs changed since lock built`, and each run's receipt records the host fingerprint and the change.
+- Summaries mark runs from different hosts as `host differs`. A Memory A/B validation whose two arms ran on different hosts stops at `needs_review`.
+
+Two optional commands follow a change. Stop the services first for the second one.
 
 ```bash
+/absolute/WS/repos/attentionbench/scripts/attentionbench/setup.sh --workspace /absolute/WS --reprove
 /absolute/WS/repos/attentionbench/scripts/attentionbench/setup.sh --workspace /absolute/WS --rebuild-planner
 ```
 
-The rebuild runs the same checks as a first install. The old `deployments/` directory is renamed to `deployments.superseded-<UTC>` and is not deleted; keep it while you still need runs that used it. To avoid rebuilds you can hold those packages with `sudo apt-mark hold`, which also holds back their security updates.
+`--reprove` reruns the planner proof on the current host and writes `data/run/host-reproof-<UTC>.json`; it changes nothing else. `--rebuild-planner` makes a fresh lock with the same checks as a first install. The old `deployments/` directory is renamed to `deployments.superseded-<UTC>` and is not deleted; keep it while you still need runs that used it.
+
+The lock no longer guarantees that two development runs used the same driver or glibc, so planner output can differ between them. Compare the host fingerprints before drawing conclusions. The formal tier still refuses any host library change.
 
 ### Results from different machines
 

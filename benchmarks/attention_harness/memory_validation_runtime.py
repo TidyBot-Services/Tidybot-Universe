@@ -358,7 +358,9 @@ class LedgerRunner:
             trial=json.loads((Path(result['catalog']['root'])/'trial.json').read_bytes())
             return dict(status='failed',descriptor=result['descriptor'],checks=result['checks'],failed_check=dict(memory_id=current['memory_id'],validation_grant_id=trial['validation_grant_id'],execution_import_id=identity,catalog_id='validator-'+identity,descriptor=str(Path(result['descriptor']['uri']).relative_to(result['catalog']['root']))))
         self.client.import_dev_v2_trial(import_id='trial-'+identity,catalog_id='validator-'+identity,descriptor='trial.json')
-        return dict(trial_import_id='trial-'+identity,status=result['status'],descriptor=result['descriptor'])
+        host_sha = (job_for(c,version,'execute').get('receipt') or {}).get('host_fingerprint_sha256')
+        return dict(trial_import_id='trial-'+identity,status=result['status'],descriptor=result['descriptor'],
+                    **({'host_fingerprint_sha256': host_sha} if host_sha else {}))
 
 
 def from_config(root,*,quota_probe_command=None):

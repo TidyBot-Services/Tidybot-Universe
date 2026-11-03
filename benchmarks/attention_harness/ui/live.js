@@ -4500,6 +4500,11 @@
   // Page title, the same pattern as the Memory monitor's: amber eyebrow, condensed headline, the run's status on the right.
   function operatorTitle(snapshot) {
     const run = snapshot.run, name = taskTitle(run), cut = name.indexOf(':');
+    const receipts = (snapshot.dev_v2?.jobs || []).map(job=>job.receipt || {}).filter(Boolean);
+    const drift = snapshot.host_drift || snapshot.dev_v2?.host_drift || run.host_drift || receipts.find(row=>row.host_drift?.length)?.host_drift || [];
+    const hostNotice = drift.length ? `<br><span data-host-drift>host libs changed since lock built: ${drift.map(row=>`${esc(row.path)}: ${esc(String(row.expected).slice(0,8))} -> ${esc(String(row.actual).slice(0,8))}`).join('; ')}</span>` : '';
+    const hosts = new Set(receipts.map(row=>row.host_fingerprint_sha256).filter(Boolean));
+    const hostSummary = snapshot.host_differs || snapshot.dev_v2?.host_differs || hosts.size > 1 ? '<span data-host-differs> · host differs</span>' : '';
     const record = navigationRecords().find(r => r.development ? r.session_id === selectedDev : !selectedDev && r.run_id === selectedRun);
     const policy = snapshot.attention_control?.active_policy || run.policy_id;
     const eyebrow = ['Run', relativeTime(record?.created_at ?? run.created_at), policy ? policyTitle(policy) : '', run.seed == null ? '' : `Scene seed ${run.seed}`].filter(Boolean).join(' · ');
@@ -4512,7 +4517,7 @@
     const scene = fixtureSceneNotice(snapshot.dev_session?.locked?.config);
     const fork = snapshot.dev_v2_selection?.fork;
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}${sdk}${scene}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}${sdk}${scene}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {

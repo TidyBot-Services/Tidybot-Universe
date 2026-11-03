@@ -124,6 +124,12 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int, re
 
     check('Linux x86_64', platform.system() == 'Linux' and platform.machine() == 'x86_64',
           f'{platform.system()} {platform.machine()}', 'Install Ubuntu 22.04 x86_64.')
+    host_failures, host_warnings = installer.gate(installer.host_fingerprint())
+    check('host versions', not host_failures,
+          '; '.join(host_failures) if host_failures else 'driver and glibc meet minimum versions',
+          'Upgrade the NVIDIA driver or Ubuntu release to the required versions.')
+    for warning in host_warnings:
+        check('host OS', False, warning, 'Upgrade to Ubuntu 22.04 or 24.04.', warning=True)
     nvidia = shutil.which('nvidia-smi')
     driver = _run([nvidia, '--query-gpu=driver_version', '--format=csv,noheader']) if nvidia else None
     check('NVIDIA driver', bool(driver and driver.returncode == 0 and driver.stdout.strip()),
@@ -229,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--skip-planner', action='store_true')
     p.add_argument('--fix-userns', action='store_true')
     p.add_argument('--rebuild-planner', action='store_true')
+    p.add_argument('--reprove', action='store_true')
     p.add_argument('--planner-project-from')
     p.add_argument('--planner-native-assets-from')
     p.add_argument('--ui-port', type=int, default=8769)
@@ -236,6 +243,11 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     try:
         ws = workspace_path(args.workspace)
+        if args.reprove:
+            if args.rebuild_planner or args.skip_planner or args.dry_run:
+                raise installer.StepError('reprove', '--reprove must run alone', 'Use --reprove with an existing planner workspace.')
+            print(f'Host reproof: {installer.reprove(ws)}')
+            return 0
         if args.rebuild_planner:
             installer.validate_rebuild(ws, args)
         if args.fix_userns and not args.dry_run:
