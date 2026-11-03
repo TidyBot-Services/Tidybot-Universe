@@ -2248,11 +2248,12 @@
         </div>`).join('')}</div>
         <div data-keys-custom hidden><h5>Saved keys</h5><div class="ab-keys-list" data-keys-list></div>
           <div class="ab-keys-add" data-keys-add><h5 data-keys-add-title>Add a key</h5><div class="ab-keys-formrow">
+        <label class="ab-launch-field" data-shared-key-field hidden>Key<select data-shared-key aria-label="Saved key for all agents"></select></label>
         <label class="ab-launch-field" data-key-name-field>Key name<input data-key-name maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. my-deepseek"></label>
-        <label class="ab-launch-field">Provider<select data-key-provider></select></label>
+        <label class="ab-launch-field" data-key-provider-field>Provider<select data-key-provider></select></label>
         <label class="ab-launch-field" data-key-base-field hidden>Base URL<input data-key-base autocomplete="off" spellcheck="false" placeholder="https://…"></label>
-        <label class="ab-launch-field" data-key-model-field>Model · all agents<span class="ab-keys-combo"><input data-key-model maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name">${modelComboHtml('add')}</span></label>
-        <label class="ab-launch-field">API key<input data-key-value type="password" autocomplete="off" spellcheck="false" placeholder="Paste key · kept 24 h" title="The key is held in server memory for 24 hours and never written to disk"></label>
+        <label class="ab-launch-field" data-key-model-field>Model<span class="ab-keys-combo"><input data-key-model maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name">${modelComboHtml('add')}</span></label>
+        <label class="ab-launch-field" data-key-secret-field>API key<input data-key-value type="password" autocomplete="off" spellcheck="false" placeholder="Paste key" title="Held in server memory for 24 hours and never written to disk"></label>
         <button type="button" class="ab-button-quiet ab-keys-save" data-key-save>Save key</button>
       </div></div></div></details>
       <p class="ab-run-hint ab-keys-note" data-keys-note role="status" aria-live="polite"></p></section>`;
@@ -2277,7 +2278,7 @@
     const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
     const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
     const state={mode:'lab',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
-      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},menu:''};
+      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},keyModel:{},sharedNew:false,menu:''};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
       const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
@@ -2319,13 +2320,13 @@
       const saved=state.mode==='all'?cred(state.shared.credential):null;
       const ready=!!saved&&modelReady(saved.credential_id);
       modelInput.disabled=state.mode==='all'&&!ready;
-      modelInput.placeholder=ready?'Model name':!saved?'Save the key first':state.models[saved.credential_id]===null?'Checking key…':'Key rejected';
+      modelInput.placeholder=ready?'Model name':!saved?'Save key first':state.models[saved.credential_id]===null?'Checking key…':'Key rejected';
       drawCombo('add',ready?modelChoices(saved.credential_id,saved.provider):[],modelInput.value.trim());
     }
     async function chooseModel(id,value) {
       state.menu='';
       const sharedKey=id==='add'&&state.mode==='all'&&state.shared.credential;
-      if(id==='add'){modelInput.value=value;if(sharedKey)state.shared.model=value;}
+      if(id==='add'){modelInput.value=value;if(sharedKey){state.shared.model=value;state.keyModel[state.shared.credential]=value;}}
       else{state.model[id]=value;state.test[id]=null;}
       drawRoles();
       if(sharedKey)await test('dev',state.shared.credential,value); // Picking the model completes "Save and test".
@@ -2391,6 +2392,7 @@
       listBox.innerHTML=state.creds.length?state.creds.map(c=>`<div class="ab-keys-row" data-key-id="${esc(c.credential_id)}"><b>${esc(c.credential_id)}</b><span>${esc(preset(c.provider)?.label||c.provider)} · ${esc(c.base_url_host||'')}</span><span class="ab-keys-left">expires in <em data-key-left="${esc(c.expires_at)}">${keyTimeLeft(c.expires_at)}</em></span><button type="button" class="ab-button-quiet" data-key-remove="${esc(c.credential_id)}">Remove</button></div>`).join(''):`<p class="ab-run-hint">No keys yet. Without one, runs use the lab's models and nothing is needed here.</p>`;
     }
     function drawMode() {
+      ensureShared();
       const shared=state.mode==='all',different=state.mode==='different';
       sharedBox.hidden=!shared;customBox.hidden=!different;details.hidden=!different;
       // In per-agent mode each role's model field sits in that role's row instead of the shared row above.
@@ -2414,6 +2416,7 @@
       box.querySelectorAll('[data-keys-mode]').forEach(input=>{
         input.checked=input.value===state.mode;input.disabled=state.saving||(input.value!=='lab'&&!state.available);
       });
+      drawAddFields();
       drawRoles();
     }
     async function load() {
@@ -2431,13 +2434,34 @@
     }
     async function refreshList() {
       try { state.creds=await call('GET',''); } catch (error) { say(error.message,true); }
-      drawList();drawRoles();
+      drawList();drawMode();
       state.creds.forEach(c=>loadModels(c.credential_id));
     }
+    // "My key for all agents" picks among the saved keys (the same ones "Different per agent" uses);
+    // the provider / API key fields only appear while a new key is being added.
+    function ensureShared() {
+      if(state.shared.credential&&!cred(state.shared.credential))state.shared={credential:'',model:''};
+      if(state.mode==='all'&&!state.shared.credential&&!state.sharedNew&&state.creds.length){
+        const row=state.creds.find(c=>`key:${c.credential_id}`===state.choice.dev)||state.creds.at(-1);
+        const usedForDev=`key:${row.credential_id}`===state.choice.dev;
+        state.shared={credential:row.credential_id,model:state.keyModel[row.credential_id]||(usedForDev?state.model.dev:'')};
+        modelInput.value=state.shared.model;
+      }
+    }
+    function drawAddFields() {
+      const shared=state.mode==='all',saved=shared&&!!cred(state.shared.credential),creating=!saved;
+      box.querySelector('[data-shared-key-field]').hidden=!(shared&&state.creds.length);
+      box.querySelector('[data-key-provider-field]').hidden=!creating;
+      box.querySelector('[data-key-secret-field]').hidden=!creating;
+      baseField.hidden=!(creating&&providerSelect.value==='openai-compatible');
+      saveButton.hidden=!creating;
+      const pick=box.querySelector('[data-shared-key]');
+      pick.innerHTML=state.creds.map(c=>`<option value="${esc(c.credential_id)}">${esc(c.credential_id)} · ${esc(preset(c.provider)?.label||c.provider)}</option>`).join('')+'<option value="">+ New key…</option>';
+      pick.value=saved?state.shared.credential:'';
+    }
     function syncProvider() {
-      baseField.hidden=providerSelect.value!=='openai-compatible';
       modelInput.value=preset(providerSelect.value)?.suggested_models?.[0]||'';
-      drawAddCombo();
+      drawAddFields();drawAddCombo();
     }
     function nextKeyName(provider,creds,requested='') {
       if(requested.trim())return requested.trim();
@@ -2472,7 +2496,7 @@
         delete state.models[value.credential_id];
         // Replacing a named key invalidates all previous checks for that credential.
         for(const [role,result] of Object.entries(state.test))if(result?.signature&&JSON.parse(result.signature)[0]===value.credential_id)delete state.test[role];
-        if(shared)state.shared={credential:value.credential_id,model,baseUrl:baseInput.value.trim()};
+        if(shared){state.shared={credential:value.credential_id,model,baseUrl:baseInput.value.trim()};state.sharedNew=false;state.keyModel[value.credential_id]=model;}
         else if(!state.choice.dev.startsWith('key:')){state.choice.dev=`key:${value.credential_id}`;state.model.dev=model;}
         say(''); // The saved-key line shows the name and the 24 h expiry.
         drawList();drawRoles();
@@ -2499,12 +2523,18 @@
       drawRoles();
     }
     box.addEventListener('change',event=>{
+      const sharedPick=event.target.closest('[data-shared-key]');
+      if(sharedPick){
+        state.sharedNew=!sharedPick.value;
+        state.shared=sharedPick.value?{credential:sharedPick.value,model:state.keyModel[sharedPick.value]||''}:{credential:'',model:''};
+        modelInput.value=state.shared.model;state.menu='';drawMode();return;
+      }
       const mode=event.target.closest('[data-keys-mode]');
       if(mode){
         valueInput.value='';state.mode=mode.value;details.open=state.mode==='different';
         if(state.mode==='all'&&state.shared.credential){
           const saved=cred(state.shared.credential);
-          if(saved){providerSelect.value=saved.provider;baseField.hidden=saved.provider!=='openai-compatible';baseInput.value=state.shared.baseUrl||'';}
+          if(saved){providerSelect.value=saved.provider;baseInput.value=state.shared.baseUrl||'';}
           modelInput.value=state.shared.model;
         }
         say('');drawMode();return;
@@ -2517,7 +2547,7 @@
       }
       if(event.target===providerSelect){
         syncProvider();valueInput.value='';baseInput.value='';
-        if(state.mode==='all'){state.shared={credential:'',model:''};drawRoles();}
+        if(state.mode==='all'){state.shared={credential:'',model:''};drawMode();}
       }
     });
     box.addEventListener('input',event=>{
@@ -2526,7 +2556,7 @@
       if(event.target===modelInput)drawAddCombo();
       if(event.target===modelInput&&state.mode==='all'&&state.shared.credential){
         // Editing the model of the saved shared key does not require re-entering its secret.
-        state.shared.model=modelInput.value;drawRoles();
+        state.shared.model=modelInput.value;state.keyModel[state.shared.credential]=modelInput.value;drawRoles();
       }
       if(event.target===baseInput&&state.mode==='all'){
         state.shared={credential:'',model:''};drawRoles();
@@ -2576,7 +2606,7 @@
       box.querySelectorAll('[data-key-left]').forEach(node=>{node.textContent=keyTimeLeft(node.dataset.keyLeft);});
       if(state.creds.some(c=>Number(c.expires_at)<=now)){
         state.creds=state.creds.filter(c=>Number(c.expires_at)>now);
-        drawList();drawRoles();
+        drawList();drawMode();
       }
     },1000);
     launchDialog.addEventListener('close',()=>{valueInput.value='';clearInterval(clock);},{once:true});

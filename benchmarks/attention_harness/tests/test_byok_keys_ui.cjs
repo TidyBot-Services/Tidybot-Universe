@@ -170,6 +170,7 @@ function keyFixture() {
     option:async value=>{const n=node('option-'+value);n.dataset.modelOption=value;n.closest=q=>q==='[data-model-option]'?n:null;await emit('click',n);},
     choose:async(id,value)=>{await api2.menu(id);await api2.option(value);},
     emitClick:n=>emit('click',n),
+    sharedKey:async value=>{const n=node('[data-shared-key]');n.value=value;n.closest=q=>q==='[data-shared-key]'?n:null;await emit('change',n);},
     roleModel:async(role,value)=>{const n=node(`[data-role-model="${role}"]`);n.dataset.roleModel=role;n.value=value;n.closest=q=>q==='[data-role-model]'?n:null;await emit('input',n);},
     key:async key=>handlers.get('[data-keys]:keydown')({target:node('[data-keys]'),key}),
     removeShared:async()=>{const n=node('[data-keys-shared-remove]');n.closest=q=>q==='[data-key-remove]'?n:null;await emit('click',n);},
@@ -275,7 +276,7 @@ async function saveKeyOnly(f,provider='deepseek',name='') {
 test('the model field is grey until the key is accepted; then it lists the provider\'s models and picking one tests it',async()=>{
   const f=keyFixture();await f.flush();await f.mode('all');
   const input=f.node('[data-key-model]');
-  assert.equal(input.disabled,true);assert.equal(input.placeholder,'Save the key first');assert.equal(f.node('[data-model-menu="add"]').hidden,true);
+  assert.equal(input.disabled,true);assert.equal(input.placeholder,'Save key first');assert.equal(f.node('[data-model-menu="add"]').hidden,true);
   await saveKeyOnly(f,'deepseek','my-ds');
   assert.ok(f.requests.some(r=>r.method==='GET'&&r.url==='/api/provider/credentials/my-ds/models'));
   assert.equal(input.disabled,false);assert.equal(input.placeholder,'Model name');
@@ -379,4 +380,33 @@ test('a rejected key says so in the role row and Test re-checks it instead of as
   assert.equal(listings(),before+1);assert.equal(input.disabled,false);
   assert.ok(!f.requests.some(r=>r.url.endsWith('/test')),'no model yet, so nothing is probed');
   assert.match(status.innerHTML,/Pick a model first\./);assert.equal(button.textContent,'Test'); // A clear instruction, not a failure or a dead end.
+});
+
+test('saved keys are shared between "My key for all agents" and "Different per agent"',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('different');
+  await saveKey(f,'deepseek','from-different');await f.flush();
+  await f.mode('all'); // A key added per agent is offered here, selected, without typing it again.
+  const pick=f.node('[data-shared-key]');
+  assert.equal(f.node('[data-shared-key-field]').hidden,false);assert.equal(pick.value,'from-different');
+  assert.match(pick.innerHTML,/value="from-different">from-different · deepseek<\/option>.*<option value="">\+ New key…/);
+  assert.equal(f.binding.summary().dev.keyName,'from-different');
+  for(const field of ['[data-key-provider-field]','[data-key-secret-field]','[data-key-save]'])assert.equal(f.node(field).hidden,true,field);
+  assert.equal(f.node('[data-key-model-field]').hidden,false);
+  // Choose "+ New key…": the add fields come back and nothing is selected until the key is saved.
+  await f.sharedKey('');
+  for(const field of ['[data-key-provider-field]','[data-key-secret-field]','[data-key-save]'])assert.equal(f.node(field).hidden,false,field);
+  assert.equal(f.binding.summary().dev,null);assert.equal(f.node('[data-key-model]').disabled,true);
+  await saveKey(f,'deepseek','from-all');await f.flush();
+  assert.equal(f.binding.summary().dev.keyName,'from-all');assert.equal(f.node('[data-shared-key]').value,'from-all');
+  assert.equal(f.node('[data-key-save]').hidden,true); // Saved: back to choosing among keys.
+  // Both keys are available per agent too.
+  await f.mode('different');
+  const options=f.node('[data-role-choice="eval"]').innerHTML;
+  assert.ok(options.includes('value="key:from-different"')&&options.includes('value="key:from-all"'));
+  // Switching keys in "all" remembers each key's model; removing the selected key falls back to another.
+  await f.mode('all');await f.sharedKey('from-different');await f.input('[data-key-model]','model-a');
+  await f.sharedKey('from-all');assert.equal(f.node('[data-key-model]').value,'deepseek-chat');
+  await f.sharedKey('from-different');assert.equal(f.node('[data-key-model]').value,'model-a');
+  await f.mode('different');await f.remove('from-different');await f.mode('all');
+  assert.equal(f.node('[data-shared-key]').value,'from-all');
 });
