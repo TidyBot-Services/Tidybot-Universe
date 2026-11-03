@@ -1398,7 +1398,7 @@ html,body{background:#ece9e2;color-scheme:light;}
 #attentionbench-clear.ab-industrial .ab-replay-scrubber input::-moz-range-track{height:4px;background:#c8ccbb;}
 #attentionbench-clear.ab-industrial .ab-replay-scrubber input::-moz-range-progress{height:4px;background:var(--orange);}
 #attentionbench-clear.ab-industrial .ab-replay-scrubber input::-moz-range-thumb{width:10px;height:17px;border:0;border-radius:0;background:var(--orange);}
-#attentionbench-clear.ab-industrial .ab-replay-bubble{position:absolute;bottom:34px;left:clamp(26px,var(--seek),calc(100% - 26px));transform:translate(-50%,4px);padding:4px 6px;border:1px solid var(--text);background:var(--text);color:var(--panel);font:11px/1.4 var(--mono);opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .15s,transform .15s;z-index:2;}
+#attentionbench-clear.ab-industrial .ab-replay-bubble{position:absolute;bottom:34px;white-space:nowrap;left:clamp(26px,var(--seek),calc(100% - 26px));transform:translate(-50%,4px);padding:4px 6px;border:1px solid var(--text);background:var(--text);color:var(--panel);font:11px/1.4 var(--mono);opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .15s,transform .15s;z-index:2;}
 #attentionbench-clear.ab-industrial .ab-replay-scrubber:is(:hover,:focus-within) .ab-replay-bubble{opacity:1;transform:translate(-50%,0);}
 #attentionbench-clear.ab-industrial .ab-viewer-trace{contain:none;min-height:0;max-height:none;padding:12px;border:1px solid var(--line);background:#eae9dc;color:var(--text);box-shadow:inset 0 1px 3px #2428220b;font-size:11px;}
 #attentionbench-clear.ab-industrial .ab-timeline-head{flex-wrap:wrap;gap:6px;}
@@ -1940,6 +1940,21 @@ html:has(#attentionbench-clear[data-operator-view="true"]),body:has(#attentionbe
 #attentionbench-clear[data-operator-view="true"] .ab-camera-views button{border:0;border-radius:7px;padding:5px 12px;background:transparent;color:var(--op-muted);font:600 12.5px var(--body);cursor:pointer;box-shadow:none}
 #attentionbench-clear[data-operator-view="true"] .ab-camera-views button:hover{color:var(--op-ink);background:#ffffff80}
 #attentionbench-clear[data-operator-view="true"] .ab-camera-views button[aria-pressed="true"]{background:#fff;color:var(--op-ink);box-shadow:0 1px 5px -2px #242822aa,0 -2px 0 var(--op-orange) inset}
+#attentionbench-clear[data-operator-view="true"] .op-trim-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0 0 10px}
+#attentionbench-clear[data-operator-view="true"] .op-trim-toggle{display:flex;gap:4px;padding:3px;background:var(--op-sunk);border-radius:10px}
+#attentionbench-clear[data-operator-view="true"] .op-trim-toggle button{border:0;border-radius:7px;padding:4px 11px;background:transparent;color:var(--op-muted);font:600 12.5px var(--body);cursor:pointer;box-shadow:none}
+#attentionbench-clear[data-operator-view="true"] .op-trim-toggle button:hover{color:var(--op-ink);background:#ffffff80}
+#attentionbench-clear[data-operator-view="true"] .op-trim-toggle button[aria-pressed="true"]{background:#fff;color:var(--op-ink);box-shadow:0 1px 5px -2px #242822aa,0 -2px 0 var(--op-orange) inset}
+#attentionbench-clear[data-operator-view="true"] .op-trim-note{font-size:12.5px;color:var(--op-muted)}
+#attentionbench-clear[data-operator-view="true"] .op-skip{display:grid;grid-template-columns:46px 18px minmax(0,1fr);gap:8px;align-items:start;margin:4px 0;padding:8px;border:1px dashed #24282233;border-radius:8px;background:var(--op-sunk);color:var(--op-muted);cursor:pointer}
+#attentionbench-clear[data-operator-view="true"] .op-skip:hover{background:#ffffff80}
+#attentionbench-clear[data-operator-view="true"] .op-skip time{font:500 12px var(--mono,monospace);font-variant-numeric:tabular-nums;padding-top:2px}
+#attentionbench-clear[data-operator-view="true"] .op-skip>span{text-align:center;color:var(--op-orange);font-weight:700}
+#attentionbench-clear[data-operator-view="true"] .op-skip b{font:600 13px/1.35 var(--body);color:var(--op-ink)}
+#attentionbench-clear[data-operator-view="true"] .op-skip small{display:block;font-size:12px}
+#attentionbench-clear[data-operator-view="true"] .op-skip-tick{position:absolute;top:50%;left:0;z-index:2;width:2px;height:12px;transform:translate(-50%,-50%);background:#242822;opacity:.6;pointer-events:none}
+#attentionbench-clear[data-operator-view="true"] .op-skip-flash{position:absolute;right:12px;top:12px;z-index:5;padding:5px 11px;border-radius:7px;background:#0b0d0bcc;color:#fff;font:600 12.5px var(--body);opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s;pointer-events:none}
+#attentionbench-clear[data-operator-view="true"] .op-skip-flash[data-show="true"]{opacity:1;transform:none}
 #attentionbench-clear[data-operator-view="true"] .op-live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#aeb2a2;flex:none}
 #attentionbench-clear[data-operator-view="true"] .op-live-dot.on{background:#e5392b;box-shadow:0 0 0 0 #e5392b88;animation:op-live 1.4s infinite}
 #attentionbench-clear[data-operator-view="true"] .ab-viewer-layout{gap:18px;align-items:start}
@@ -2539,6 +2554,11 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .lb-tiles b{display:block;font:700 22px var(--body,inherit);color:#242822}
 #attentionbench-clear .lb-readonly{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:10px 16px;border:1px solid #24507e;border-radius:12px;background:#dfe9f6;color:#24507e;font-size:14px}
 #attentionbench-clear .lb-readonly .ab-button-quiet{margin-left:auto}
+#attentionbench-clear .lb-demo-note{margin:0 0 8px;padding:6px 10px;border:1px dashed #c9c6ba;border-radius:8px;background:#f8f6f0;color:#686e64;font-size:11.5px;line-height:1.35}
+#attentionbench-clear .lb-demo-note b{color:#c44420;letter-spacing:.08em}
+#attentionbench-clear .lb-prov{margin:0 0 12px;padding:6px 12px;border-left:3px solid #c9c6ba;background:#f8f6f0;color:#686e64;font-size:12.5px}
+#attentionbench-clear .lb-prov b{color:#c44420;letter-spacing:.06em;text-transform:uppercase;font-size:11.5px}
+#attentionbench-clear .lb-prov code{font:500 12px var(--mono,ui-monospace,monospace);color:#242822}
 #attentionbench-clear .lb-share{display:grid;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid #e3dfd3}
 #attentionbench-clear .lb-share small{color:#686e64}
 #attentionbench-clear[data-operator-view="true"] .ab-sidebar-controls .op-filter:has(button:nth-child(6)){grid-template-columns:repeat(6,minmax(0,1fr))}
@@ -3109,6 +3129,17 @@ html[data-theme="dark"]:has(#attentionbench-clear[data-operator-view="true"]),ht
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-camera-views button{border:0;background:transparent;color:var(--op-muted);box-shadow:none}
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-camera-views button:hover{color:var(--op-ink);background:#23272c80}
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-camera-views button[aria-pressed="true"]{background:#23272c;color:var(--op-ink);box-shadow:0 1px 5px -2px #000000ff,0 -2px 0 var(--op-orange) inset}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-trim-toggle{background:var(--op-sunk)}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-trim-toggle button{border:0;background:transparent;color:var(--op-muted);box-shadow:none}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-trim-toggle button:hover{color:var(--op-ink);background:#23272c80}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-trim-toggle button[aria-pressed="true"]{background:#23272c;color:var(--op-ink);box-shadow:0 1px 5px -2px #000000ff,0 -2px 0 var(--op-orange) inset}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-trim-note{color:var(--op-muted)}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-skip{border:1px dashed #ecebe633;background:var(--op-sunk);color:var(--op-muted)}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-skip:hover{background:#23272c80}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-skip>span{color:var(--op-orange)}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-skip b{color:var(--op-ink)}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-skip-tick{background:#ecebe6}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-skip-flash{background:#000000cc;color:#ffffff}
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-live-dot{background:#4b5056}
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-live-dot.on{background:#e5392b;box-shadow:0 0 0 0 #000000fe}
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .op-live-strip{background:var(--op-ink);color:#545b63}
@@ -3447,6 +3478,11 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .lb-tiles div{border:1px solid #282b2f;background:#1d2024;color:#a3a199}
 #attentionbench-clear[data-theme="dark"] .lb-tiles b{color:#ecebe6}
 #attentionbench-clear[data-theme="dark"] .lb-readonly{border:1px solid #5f97d1;background:#212427;color:#80acdb}
+#attentionbench-clear[data-theme="dark"] .lb-demo-note{border:1px dashed #34383d;background:#1d2024;color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-demo-note b{color:#e88c73}
+#attentionbench-clear[data-theme="dark"] .lb-prov{border-left:3px solid #34383d;background:#1d2024;color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-prov b{color:#e88c73}
+#attentionbench-clear[data-theme="dark"] .lb-prov code{color:#ecebe6}
 #attentionbench-clear[data-theme="dark"] .lb-share{border-top:1px solid #282b2f}
 #attentionbench-clear[data-theme="dark"] .lb-share small{color:#a3a199}
 #attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar-controls .op-filter [data-op-filter="queued"]{--tone:#4d7fb5}
@@ -3455,6 +3491,115 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .lb-demo{background:#ecebe6;color:#545b63}
 #attentionbench-clear[data-theme="dark"] .lb-demo i{background:#ec6a43}
 #attentionbench-clear[data-theme="dark"][data-lobby-view="other"] .op-controls[data-ended]::after{color:#a3a199}
+</style>
+<style id="ab-run-dialog">
+/* New run dialog (Run configuration / OptX). Not regenerated by gen_dark_theme.py: it sits after the generated dark block and only uses theme tokens. */
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog,#attentionbench-clear.ab-industrial .ab-launch-dialog.ab-session-dialog{width:min(860px,calc(100vw - 40px));padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:none;color-scheme:inherit}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-header{padding:22px 26px;background:var(--panel);border-color:var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-header::before,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-header::after{display:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-header .kicker{color:var(--muted);font:500 10px/1.5 var(--mono,monospace);letter-spacing:.1em}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-header h3{margin:0;color:var(--text);font:600 34px/1.15 var(--heading);text-shadow:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-body{padding:0 26px 20px;background:var(--panel);scrollbar-color:var(--line) var(--panel)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-section{margin:0;padding:20px 0;border:0;border-radius:0;background:var(--panel);box-shadow:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-section+.ab-launch-section{margin:0;padding-top:20px;border-top:1px solid var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-section-head{justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:6px 16px;margin:0 0 15px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-section h4{display:flex;align-items:center;gap:10px;margin:0;color:var(--text);font:600 21px/1.2 var(--heading);text-transform:uppercase;letter-spacing:.03em}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-section .op-number{display:inline;min-width:0;min-height:0;width:auto;height:auto;padding:0;border:0;border-radius:0;background:none;color:var(--muted);box-shadow:none;font:500 11px/1.5 var(--mono,monospace)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-section-head>small{max-width:none;text-align:left;color:var(--muted);font:400 11px/1.5 var(--body)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-grid,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field{display:block;position:relative;min-width:0;color:var(--muted);font:500 10px/1.5 var(--mono,monospace);letter-spacing:.1em;text-transform:uppercase}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field :is(input,select),#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced :is(input,select){display:block;width:100%;min-width:0;height:36px;min-height:36px;margin-top:6px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);box-shadow:none;color-scheme:inherit;font:400 12px/1.4 var(--body);letter-spacing:normal;text-transform:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field select,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced select{appearance:none;padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 14px) 15px,calc(100% - 10px) 15px;background-size:4px 4px;background-repeat:no-repeat}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field :is(input,select):focus-visible,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell button:focus-visible,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell summary:focus-visible{outline:2px solid var(--orange);outline-offset:2px;box-shadow:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field :is(input,select):disabled{color:var(--muted);background-color:var(--panel2);opacity:1;cursor:not-allowed}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field>small{display:block;margin-top:4px;font:400 10px/1.5 var(--body);letter-spacing:normal;text-transform:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field>small:empty{display:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field>small.ab-field-meta{display:inline;margin:0;font:400 8px/1.5 var(--mono,monospace);letter-spacing:0;text-transform:uppercase}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field>small.ab-key-retention{display:inline;margin:0;font:400 8px/1.5 var(--mono,monospace);letter-spacing:0;text-transform:uppercase}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field output{display:flex;align-items:center;min-height:36px;margin-top:6px;padding:8px 10px;border:0;border-radius:6px;background:var(--panel2);color:var(--text);font:400 12px/1.4 var(--body);letter-spacing:normal;text-transform:none;overflow-wrap:anywhere}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-dev-mode-label]{display:inline-block;padding:2px 6px;border:0;border-radius:4px;background:var(--panel2);color:var(--text)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-unit{display:block;margin-top:6px;border:0;border-radius:6px;background:var(--panel);color:var(--muted)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-unit input{margin-top:0;padding-right:67px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-unit>span{right:10px;border:0;background:none;color:var(--muted);font:400 10px var(--body);letter-spacing:normal;text-transform:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-source{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;margin:18px 0 0;padding:10px 12px;border:0;border-radius:6px;background:var(--panel2);color:var(--text);overflow-wrap:anywhere}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-source>span{color:var(--muted);font:500 9px var(--mono,monospace);letter-spacing:.1em}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-source>strong{font:500 12px/1.5 var(--body)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-source>small{flex-basis:100%;font:400 11px/1.5 var(--body);color:var(--muted)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-field .ab-launch-native-type{position:absolute;width:1px;height:1px;min-height:0;margin:0;padding:0;border:0;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-segments{display:flex;gap:3px;margin-top:6px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-segments button{flex:1;min-width:0;min-height:36px;padding:6px 12px;border:1px solid transparent;border-radius:5px;background:none;color:var(--muted);box-shadow:none;font:500 12px/1.4 var(--body);text-transform:none;letter-spacing:normal}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-segments button[aria-pressed=true]{border-color:var(--line);background:var(--panel);color:var(--text)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-models{margin:14px 0}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-modes{gap:0;margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode{align-items:center;padding:10px;border:0;border-right:1px solid var(--line);border-radius:0;background:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode:last-child{border-right:0}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode:has(:checked){background:var(--panel);box-shadow:inset 0 -2px 0 var(--orange)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode b{color:var(--text);font-size:12px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode small{font-size:10px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role{grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr);border-color:var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role>:is([data-role-test],.ab-keys-test){grid-column:1/-1;justify-self:start;order:2}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-model-source-field] select{text-overflow:ellipsis}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-models[hidden]{display:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-agent-reason]{margin:0 0 12px;color:var(--muted)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell :is([data-agent-reason],.ab-keys-note):empty{display:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=reviewer]{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0 20px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=reviewer]>.ab-run-section-head{grid-column:1/-1}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-model-source-field]{grid-column:auto}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-reviewer-toggle strong{font-size:13px;color:var(--text)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-reviewer-toggle small{font-size:11px;color:var(--muted)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-reviewer-toggle .ab-switch{background:var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-reviewer-toggle .ab-switch:after{background:var(--panel)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-reviewer-toggle input:checked+.ab-switch{background:var(--orange)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell :is([data-reviewer-required],[data-codex-quota].ab-codex-quota-low){color:var(--orange)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary{display:flex;gap:12px;align-items:center;list-style:none;color:var(--text)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary::-webkit-details-marker{display:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary small{margin-left:0;color:var(--muted);font:400 11px/1.5 var(--body)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-advanced-state{margin-left:auto;flex-shrink:0;font:500 11px var(--body);color:var(--muted)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-advanced-state::after{content:'▸ Show'}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced[open] .ab-advanced-state::after{content:'▾ Hide'}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced table{width:100%;table-layout:fixed}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced td{overflow-wrap:anywhere}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-footer{padding:16px 26px;background:var(--panel2);border-color:var(--line);gap:10px 16px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell #run-config-summary{margin:0;color:var(--muted);font:400 10px/1.6 var(--body);white-space:pre-line;overflow-wrap:anywhere}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell #run-config-summary::first-line{color:var(--text);font-weight:500}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell button.ab-button-quiet,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell button.ab-button-primary{min-height:36px;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--text);box-shadow:none;font:500 12px/1.4 var(--body);transform:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-actions [data-start-no]{border-color:var(--orange);color:var(--orange)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-actions [data-start-yes]{border-color:var(--text);background:var(--text);color:var(--panel)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell button:hover{filter:brightness(.96)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell #ab-launch-message{margin:0;grid-column:1/-1;color:var(--red);font:400 12px/1.5 var(--body)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [hidden]{display:none!important}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form.ab-v2-profile :is(select[name=robot_model],select[name=execution_arm]),#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form:not(.ab-v2-profile) [data-robot-summary]{display:none}
+@media(max-width:760px){
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-grid,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-form-grid,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-modes,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=reviewer]{grid-template-columns:1fr}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-header,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-footer{padding:16px}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-body{padding:0 16px 16px}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-footer{grid-template-columns:1fr}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-actions{justify-content:flex-end;flex-wrap:wrap}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode{border-right:0;border-bottom:1px solid var(--line)}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode:last-child{border-bottom:0}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-model-source-field]{margin-top:14px}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary{flex-wrap:wrap}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary small{order:3;width:100%}
+}
+</style>
+<style id="op-replay-transport">
+/* Run page replay controls: one dark rounded player bar in both themes (not regenerated by gen_dark_theme.py). */
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video{border:0;box-shadow:none}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport{gap:8px;padding:10px 12px;border-top:0;background:#0b0d0b;color:#f4f1e8}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport button{min-width:34px;min-height:32px;padding:0 9px;border:0;border-radius:8px;background:#ffffff1c;color:#f4f1e8;box-shadow:none;font:600 12px var(--body);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport button:hover{background:#ffffff33}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport [data-replay-play]{width:36px;height:36px;min-width:36px;min-height:36px;padding:0;border-radius:50%;background:var(--op-orange);color:#fff;box-shadow:none}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport [data-replay-play]:hover{background:var(--op-orange);filter:brightness(1.1)}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport time{color:#d9d6cb;font:500 12px var(--mono,monospace);font-variant-numeric:tabular-nums}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-scrubber input::-webkit-slider-runnable-track{height:4px;border-radius:999px;background:linear-gradient(to right,var(--op-orange) var(--seek),#ffffff30 var(--seek))}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-scrubber input::-webkit-slider-thumb{width:14px;height:14px;margin-top:-5px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px var(--op-orange),0 2px 4px #0006}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-scrubber input::-moz-range-track{height:4px;border-radius:999px;background:#ffffff30}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-scrubber input::-moz-range-progress{height:4px;border-radius:999px;background:var(--op-orange)}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-scrubber input::-moz-range-thumb{width:12px;height:12px;border:2px solid var(--op-orange);border-radius:50%;background:#fff}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-bubble{border:0;border-radius:6px;background:#fff;color:#242822;padding:4px 8px;font:600 11.5px/1.4 var(--mono,monospace);box-shadow:0 2px 8px #0005}
+#attentionbench-clear[id][data-operator-view="true"] figure.op-video .op-skip-tick{width:2px;height:10px;border:0;border-radius:1px;background:#fff;opacity:.6}
+@media (max-width:640px){#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport button{min-width:40px;min-height:40px}#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport [data-replay-play]{width:40px;height:40px;min-width:40px;min-height:40px}}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>

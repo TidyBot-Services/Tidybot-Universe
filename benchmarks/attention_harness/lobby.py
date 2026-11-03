@@ -17,6 +17,9 @@ from .core.policies import POLICY_IDS
 ACTIVE = ('running', 'waiting_human')
 TERMINAL = ('finished', 'failed', 'cancelled')
 SPEEDS = (1, 5, 20, 60)
+# The demo keeps a short rolling history instead of growing for ever.
+HISTORY_LIMIT = 8
+SEED_HISTORY = 6
 ANIMALS = ('Otter', 'Panda', 'Fox', 'Owl', 'Badger', 'Lynx', 'Robin', 'Heron')
 SENSITIVE = re.compile(r'(?i)\b(?:bearer\s+\S+|(?:api[_-]?key|access[_-]?code|(?:control[_-]?)?token|password|secret)\s*[=:]\s*\S+|sk-[A-Za-z0-9_-]+)|(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])|(?<![\w:])(?:[a-f0-9]{0,4}:){2,}[a-f0-9:]*(?![\w:])')
 
@@ -125,8 +128,9 @@ class Lobby:
             return dict(id=owner, nickname=nickname), cookie
 
     def _new(self, db, owner, task_key, strategy, dev_source, share, now):
-        source = next((s for s in self.sources.values() if s['task_key'] == task_key), None)
-        if source is None:raise LobbyError('no_demo_source')
+        matches = [s for s in self.sources.values() if s['task_key'] == task_key]
+        if not matches:raise LobbyError('no_demo_source')
+        source = matches[self._turn(db) % len(matches)]
         viewer = db.execute('SELECT nickname,scripted FROM viewers WHERE id=?', (owner,)).fetchone()
         if viewer is None:raise LobbyError('not_owner', 403)
         rows = [r for r in self._rows(db) if r['owner'] == owner]
@@ -148,22 +152,45 @@ class Lobby:
         self._event(db, 'joined', run, now)
         return run
 
+    def _turn(self, db):
+        """Recordings are handed out in the configured order, so wins and failures alternate."""
+        row = db.execute("SELECT payload FROM meta WHERE id='turn'").fetchone()
+        number = json.loads(row[0]) if row else self.seed
+        db.execute("INSERT OR REPLACE INTO meta VALUES('turn',?)", (json.dumps(number+1),))
+        return number
+
+    def _prune(self, db):
+        """Drop the oldest finished runs beyond the window; each person's latest run stays."""
+        done = sorted((r for r in self._rows(db) if r['state'] in TERMINAL), key=lambda r:(r['ended_at'] or 0, r['run_id']))
+        extra = len(done) - HISTORY_LIMIT
+        if extra <= 0:return
+        keep = {}
+        for run in done:
+            if not run['scripted']:keep[run['owner']] = run['run_id']
+        for run in [r for r in done if r['run_id'] not in keep.values()][:extra]:
+            for table, column in (('runs','id'),('replies','run_id'),('events','run_id')):
+                db.execute(f'DELETE FROM {table} WHERE {column}=?', (run['run_id'],))
+
     def _populate(self, db, now, *, history=False):
         if not self.sources:return
-        tasks = sorted(s['task_key'] for s in self.sources.values())
-        for index, (owner,) in enumerate(db.execute('SELECT id FROM viewers WHERE scripted=1 ORDER BY id').fetchall()):
+        tasks = sorted({s['task_key'] for s in self.sources.values()})
+        viewers = [r[0] for r in db.execute('SELECT id FROM viewers WHERE scripted=1 ORDER BY id').fetchall()]
+        for turn in range(SEED_HISTORY if history and viewers else 0):
+            index = turn % len(viewers)
+            owner = viewers[index]
+            task = tasks[(self.seed + index + turn) % len(tasks)]
+            run = self._new(db, owner, task, 'autonomous', 'lab_codex', False, now)
+            source = self.sources[run['source_id']]
+            duration = source['duration'] / self._meta(db)['speed']
+            ended = now - 60 - turn * 420
+            run.update(state='finished', result=source['result'], current=len(source['attempt_done_at']),
+                       started_at=ended - duration, ended_at=ended, created_at=ended - duration)
+            self._save(db, run)
+            self._event(db, 'finished', run, ended)
+        for index, owner in enumerate(viewers):
             rows = [r for r in self._rows(db) if r['owner'] == owner]
             if any(r['state'] in (*ACTIVE, 'queued') for r in rows):continue
             task = tasks[(self.seed + index + len(rows)) % len(tasks)]
-            if history:
-                run = self._new(db, owner, task, 'autonomous', 'lab_codex', False, now-3600-index*300)
-                source = self.sources[run['source_id']]
-                duration = source['duration'] / self._meta(db)['speed']
-                run.update(state='finished', result=source['result'], current=len(source['attempt_done_at']),
-                           started_at=now-60-index*300-duration, ended_at=now-60-index*300)
-                run['created_at'] = run['started_at']
-                self._save(db, run)
-                self._event(db, 'finished', run, run['ended_at'])
             self._new(db, owner, task, 'autonomous', 'lab_codex', False, now)
 
     def _reply(self, db, run, outcome, category, content, now):
@@ -224,6 +251,7 @@ class Lobby:
                                  asked_at=cursor, sim_at=self._sim(meta, cursor), delay=help_row['delay']))
                 self._event(db, 'help_asked', run, cursor)
             self._save(db, run)
+        self._prune(db)
         meta['last_real'] = now
         self._save_meta(db, meta)
 
@@ -257,6 +285,7 @@ class Lobby:
                 run.update(state='cancelled', ended_at=now, waiting=None)
                 self._save(db, run)
                 self._event(db, 'cancelled', run, now)
+                self._prune(db)
             return self._card(db, run, viewer, now)
 
     def reply(self, run_id, viewer, *, outcome, category=None, content=''):
@@ -328,6 +357,7 @@ class Lobby:
         return {**{k:run[k] for k in ('run_id', 'experiment_id', 'nickname', 'task_key', 'task_title', 'state', 'result',
                     'started_at', 'ended_at', 'help_requests', 'strategy', 'dev_source', 'share_replies')},
                 'mine':mine, 'attempt':dict(current=run['current'], limit=run['limit']),
+                'recording':dict(id=run['source_id'], attempts=len(self.sources[run['source_id']]['attempt_done_at'])),
                 'queue_position':position, 'eta_start_seconds':int(math.floor((remaining+(position-1)*median)/30+0.5)*30) if position else None,
                 'help_waiting_seconds':max(0, now-waiting['asked_at']) if waiting else None,
                 'waiting':{k:waiting[k] for k in ('attempt','question','failure','asked_at')} if mine and waiting else None}
@@ -348,7 +378,7 @@ class Lobby:
             meta = self._meta(db)
             events = [dict(zip(('id','type','nickname','task_title','at'), r)) for r in db.execute(
                 'SELECT id,type,nickname,task_title,at FROM events ORDER BY at DESC,id DESC LIMIT 30')]
-            return dict(demo=True, clock=dict(speed=meta['speed'], sim_now=self._sim(meta, max(now,meta['last_real']))),
+            return dict(demo=True, demo_info=dict(recordings=len(self.sources), history_limit=HISTORY_LIMIT), clock=dict(speed=meta['speed'], sim_now=self._sim(meta, max(now,meta['last_real']))),
                 me=dict(nickname=viewer['nickname']) if viewer else None,
                 robot=dict(state='busy' if active else 'idle', running=active),
                 queue=[c for c in cards if c['state']=='queued'],

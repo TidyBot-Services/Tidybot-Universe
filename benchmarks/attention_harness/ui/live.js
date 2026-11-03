@@ -528,14 +528,14 @@
   function sidebarTaskSummary(rows,run){
     const executing=rows.filter(recordIsActive).length;
     const suite=rows.groupTitle?'':({robocasa365:'RoboCasa365',robocasa:'RoboCasa',robosuite:'Robosuite'}[rows[0].suite]||rows[0].suite);
-    const recent=rows.slice(0,10).reverse(),count=`${rows.length} ${DEBUG_VIEW?(rows.length===1?'record':'records'):(rows.length===1?'run':'runs')}`;
+    const demo=rows.some(r=>r.lobby),recent=rows.slice(0,10).reverse(),count=`${rows.length} ${DEBUG_VIEW?(rows.length===1?'record':'records'):(rows.length===1?'run':'runs')}`;
     if(!DEBUG_VIEW){
       // Task card header (10-30): title and run count, an outcome bar over all runs, then the suite.
       const tones=[['success','solved'],['failed','failed'],['waiting','need you'],['running','running'],['idle','other']];
       const tally=Object.fromEntries(tones.map(([tone])=>[tone,rows.filter(r=>recordTone(r)===tone).length]));
       const parts=tones.filter(([tone])=>tally[tone]).map(([tone,word])=>`${tally[tone]} ${word}`).join(' · ');
       const bar=tones.filter(([tone])=>tally[tone]).map(([tone])=>`<i class="${tone}" style="width:${(100*tally[tone]/rows.length).toFixed(1)}%"></i>`).join('');
-      return `<summary class="ab-task-summary" data-outcome-summary><strong class="ab-task-title" title="${esc(rows.groupTitle||resolvedTask(rows[0]))}">${esc(rows.groupTitle||resolvedTask(rows[0]))}</strong><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span><span class="ab-task-outcome" title="${esc(parts)}"><span class="ab-outcome-bar">${bar}</span><span class="ab-outcome-text"><b>${tally.success}</b> / ${rows.length} solved</span></span><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></summary>`;
+      return `<summary class="ab-task-summary" data-outcome-summary><strong class="ab-task-title" title="${esc(rows.groupTitle||resolvedTask(rows[0]))}">${esc(rows.groupTitle||resolvedTask(rows[0]))}</strong><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span><span class="ab-task-outcome" title="${esc(demo?'Simulated demo runs: no success rate':parts)}">${demo?'':`<span class="ab-outcome-bar">${bar}</span>`}<span class="ab-outcome-text">${demo?`<b>DEMO</b> · ${rows.length} simulated`:`<b>${tally.success}</b> / ${rows.length} solved`}</span></span><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></summary>`;
     }
     return `<summary class="ab-task-summary"><span class="ab-task-copy"><strong title="${esc(rows.groupTitle||resolvedTask(rows[0]))}">${esc(rows.groupTitle||resolvedTask(rows[0]))}</strong><span class="ab-task-meta"><span class="ab-task-suite">${esc(suite)}</span>${DEBUG_VIEW?'':`<span class="op-dots" title="Latest ${recent.length} runs, newest on the right">${recent.map(r=>`<i class="op-dot ${recordTone(r)}" title="${esc(recordStatus(r))}"></i>`).join('')}</span>`}${executing?`<span class="ab-task-executing">${executing} active</span>`:''}</span></span><span class="ab-task-count" title="${esc(count)}" aria-label="${esc(count)}">${rows.length}</span><span class="ab-task-chevron" aria-hidden="true">›</span></summary>`;
   }
@@ -578,7 +578,7 @@
     const lobbyTitle=r.lobby?`${r.lobby.nickname}${r.lobby.mine?' (you)':''}`:'';
     const title=lobbyTitle||(lead?meta:customRunName(r)||(DEBUG_VIEW?recordTime(r):relativeTime(r.created_at??r.started_at,recordTime(r))));
     const status=`<span class="ab-run-status" data-active="${recordIsActive(r)}" data-outcome="${outcomeKind(recordStatus(r))}" data-status="${esc(r.all_attempts_failed?'failed':r.status||'unknown')}"${r.all_attempts_failed?` title="${esc(`Ran all ${r.attempts_limit??''} attempts; none succeeded`.replace('  ',' '))}"`:''}>${esc(recordStatus(r))}</span>`;
-    return `<article data-run-entry="${esc(r.run_id)}" data-viewing="${viewing}" data-development="${Boolean(r.development)}" data-tone="${recordTone(r)}"${lead?' data-card="rail"':''}><div class="ab-sidebar-run-head"><button type="button" ${target} aria-current="${viewing?'page':'false'}" title="${esc(displayRun(r))}"${lead?` aria-label="${esc(`${meta} · ${recordStatus(r)} · ${recordTime(r)}`)}"`:''}><strong data-run-name title="${esc(recordTime(r))}">${pins.has(r.run_id)?'★ ':''}${esc(title)}</strong>${lead?`<small class="ab-record-time">${esc(r.lobby?relativeTime(r.created_at??r.started_at,shortRecordTime(r)):shortRecordTime(r))}</small>`:status}</button>${r.session_id?.startsWith('v2-')?`${DEBUG_VIEW ? '<span title="Immutable experiment evidence">Retained</span>' : ''}`:r.history_deleted_at?`<button type="button" class="ab-record-restore" data-restore-record="${esc(r.run_id)}" data-record-kind="${kind}">Restore</button>`:`<button type="button" class="ab-record-delete" data-delete-record="${esc(r.run_id)}" data-record-kind="${kind}" aria-label="Delete ${esc(displayRun(r))}" title="${recordIsActive(r)?'Stop this record before deleting it':'Delete record · recoverable'}" ${recordIsActive(r)?'disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>`}<details class="ab-record-more" data-record-more="${esc(r.run_id)}"><summary aria-label="More options for ${esc(displayRun(r))}">⋯</summary><div class="ab-record-menu"><button type="button" data-pin-run="${esc(r.run_id)}" aria-pressed="${pins.has(r.run_id)}">${pins.has(r.run_id)?'Unpin record':'Pin record'}</button>${!r.development?`<div class="ab-run-actions"><button type="button" data-copy-run="${esc(r.run_id)}">Copy configuration</button><button type="button" data-retry-run="${esc(r.run_id)}">Retry run</button></div><details data-run-name-editor="${esc(r.run_id)}"><summary>Edit name</summary><form data-run-rename="${esc(r.run_id)}"><input name="display_name" aria-label="Run display name" value="${esc(customRunName(r)||'')}" placeholder="Give this execution a name" maxlength="160" required><button>Save name</button></form></details>${policyPath(r)}`:`<small>${r.versions.length} policy versions · ${r.jobs.filter(j=>j.kind==='execute').length} executions</small>`}<small>Started ${esc(dateTime(r.created_at??r.started_at))} · Seed ${esc(r.seed??'Not recorded')}</small>${DEBUG_VIEW ? `<code>${esc(r.run_id)}</code><button type="button" data-copy-record-id="${esc(r.run_id)}">Copy full ID</button>` : ''}</div></details></div>${ownName?`<small class="ab-run-label" title="${esc(ownName)}">${esc(ownName)}</small>`:''}${lead?sidebarRunBadges(r,status,true):sidebarRunBadges(r)}${!lead&&meta?`<small class="ab-run-metadata">${esc(meta)}</small>`:''}${r.development?'<span class="ab-development-tag">Development</span>':''}${!lead&&customRunName(r)?`<small class="ab-record-time">${esc(recordTime(r))}</small>`:''}</article>`;
+    return `<article data-run-entry="${esc(r.run_id)}" data-viewing="${viewing}" data-development="${Boolean(r.development)}" data-tone="${recordTone(r)}"${lead?' data-card="rail"':''}><div class="ab-sidebar-run-head"><button type="button" ${target} aria-current="${viewing?'page':'false'}" title="${esc(displayRun(r))}"${lead?` aria-label="${esc(`${meta} · ${recordStatus(r)} · ${recordTime(r)}`)}"`:''}><strong data-run-name title="${esc(recordTime(r))}">${pins.has(r.run_id)?'★ ':''}${esc(title)}</strong>${lead?`<small class="ab-record-time">${esc(r.lobby?Lobby.simAgo(relativeTime(r.created_at??r.started_at,shortRecordTime(r))):shortRecordTime(r))}</small>`:status}</button>${r.session_id?.startsWith('v2-')?`${DEBUG_VIEW ? '<span title="Immutable experiment evidence">Retained</span>' : ''}`:r.history_deleted_at?`<button type="button" class="ab-record-restore" data-restore-record="${esc(r.run_id)}" data-record-kind="${kind}">Restore</button>`:`<button type="button" class="ab-record-delete" data-delete-record="${esc(r.run_id)}" data-record-kind="${kind}" aria-label="Delete ${esc(displayRun(r))}" title="${recordIsActive(r)?'Stop this record before deleting it':'Delete record · recoverable'}" ${recordIsActive(r)?'disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>`}<details class="ab-record-more" data-record-more="${esc(r.run_id)}"><summary aria-label="More options for ${esc(displayRun(r))}">⋯</summary><div class="ab-record-menu"><button type="button" data-pin-run="${esc(r.run_id)}" aria-pressed="${pins.has(r.run_id)}">${pins.has(r.run_id)?'Unpin record':'Pin record'}</button>${!r.development?`<div class="ab-run-actions"><button type="button" data-copy-run="${esc(r.run_id)}">Copy configuration</button><button type="button" data-retry-run="${esc(r.run_id)}">Retry run</button></div><details data-run-name-editor="${esc(r.run_id)}"><summary>Edit name</summary><form data-run-rename="${esc(r.run_id)}"><input name="display_name" aria-label="Run display name" value="${esc(customRunName(r)||'')}" placeholder="Give this execution a name" maxlength="160" required><button>Save name</button></form></details>${policyPath(r)}`:`<small>${r.versions.length} policy versions · ${r.jobs.filter(j=>j.kind==='execute').length} executions</small>`}<small>Started ${esc(dateTime(r.created_at??r.started_at))} · Seed ${esc(r.seed??'Not recorded')}</small>${DEBUG_VIEW ? `<code>${esc(r.run_id)}</code><button type="button" data-copy-record-id="${esc(r.run_id)}">Copy full ID</button>` : ''}</div></details></div>${ownName?`<small class="ab-run-label" title="${esc(ownName)}">${esc(ownName)}</small>`:''}${lead?sidebarRunBadges(r,status,true):sidebarRunBadges(r)}${!lead&&meta?`<small class="ab-run-metadata">${esc(meta)}</small>`:''}${r.development?'<span class="ab-development-tag">Development</span>':''}${!lead&&customRunName(r)?`<small class="ab-record-time">${esc(recordTime(r))}</small>`:''}</article>`;
   }
   function sidebarControlIcon(name){
     const paths={
@@ -809,6 +809,43 @@
       return {seconds:null, reason:'This event is outside the recorded sample range'};
     const index = traces.findLastIndex(t => t <= event.timestamp);
     return {seconds:videos[index], mode:'sample'};
+  }
+  // Trimmed replay. A verified sidecar (bundle.recording.trim) holds shorter videos with their own frame times;
+  // the trace's recording/evidence follow the Trimmed|Original choice, so every seek, marker and policy lookup
+  // below keeps using the one replay_timing it is given. The original files are never replaced.
+  const trimMode=()=>preference('attention.replay-trim')==='original'?'original':'trimmed';
+  const trimView=key=>key==='external'?'overview':key;
+  function trimUsable(trim,viewRows) {
+    const timing=trim?.replay_timing,traces=timing?.frame_trace_seconds,videos=timing?.frame_video_seconds,origs=timing?.frame_orig_video_seconds;
+    return trim?.schema==='attentionbench.replay-trim.v1' && Array.isArray(traces) && traces.length>0 && traces.length===videos?.length
+      && traces.length===origs?.length && Array.isArray(trim.breaks) && Number.isFinite(trim.trimmed_duration_seconds)
+      && traces.every((t,i)=>Number.isFinite(t) && Number.isFinite(videos[i]) && videos[i]>=0 && (!i || t>traces[i-1] && videos[i]>videos[i-1]))
+      && Object.keys(viewRows||{external:1}).every(key=>trim.videos?.[trimView(key)]?.uri);
+  }
+  function attachTrim(trace,trim,session) {
+    const original=trace.recording;
+    const timing={basis:'relative',event_clock:'sdk_completion',frame_trace_seconds:trim.replay_timing.frame_trace_seconds,frame_video_seconds:trim.replay_timing.frame_video_seconds};
+    const trimmed={...original,replay_timing:timing,duration_seconds:trim.trimmed_duration_seconds};
+    let shown=original;
+    Object.defineProperty(trace,'recording',{enumerable:true,configurable:true,get:()=>trimMode()==='trimmed'?trimmed:shown,set:value=>{shown=value;}});
+    trace.trim=trim;
+    for(const media of trace.evidence) {
+      const view=media.kind==='advisor_replay'?'overview':media.kind?.startsWith('advisor_replay_')?media.kind.slice('advisor_replay_'.length):null;
+      const url=view&&trim.videos[view]?devFile(session,trim.videos[view].uri):null;
+      if(!url)continue;
+      let source=media.media_url,id=media.evidence_id;
+      Object.defineProperties(media,{
+        media_url:{enumerable:true,configurable:true,get:()=>trimMode()==='trimmed'?url:source,set:value=>{source=value;}},
+        evidence_id:{enumerable:true,configurable:true,get:()=>trimMode()==='trimmed'?`${id}:trim`:id,set:value=>{id=value;}}});
+    }
+  }
+  const skipText=seconds=>seconds<120?`${Math.round(seconds)} s`:`${Math.floor(seconds/60)} min ${String(Math.round(seconds%60)).padStart(2,'0')} s`;
+  function operatorSkipRow(b) {
+    return `<div class="op-skip" role="button" tabindex="0" data-trim-break data-trim-at="${b.trim_at}" title="Jump to the skipped moment"><time>${operatorTime(b.trim_at)}</time><span aria-hidden="true">⏭</span><div><b>Skipped ${skipText(b.skipped_seconds)} of ${b.kind==='still'?'no change':'waiting'}</b><small>real time ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)}</small></div></div>`;
+  }
+  function operatorTrimBar(trim) {
+    const mode=trimMode();
+    return `<div class="op-trim-bar" data-trim-bar><div class="op-trim-toggle" role="group" aria-label="Replay length"><button type="button" data-trim-mode="trimmed" aria-pressed="${mode==='trimmed'}">Trimmed</button><button type="button" data-trim-mode="original" aria-pressed="${mode==='original'}">Original</button></div><span class="op-trim-note">${mode==='trimmed'?`Skipped ${skipText(trim.skipped_seconds)} of waiting · ${operatorTime(trim.trimmed_duration_seconds)} of ${operatorTime(trim.original_duration_seconds)}`:`Full recording · ${operatorTime(trim.original_duration_seconds)}`}</span></div>`;
   }
   function operatorReplayTarget(events, index, recording, hasVideo) {
     const exact=replayTarget(events[index],recording,hasVideo);
@@ -1081,6 +1118,61 @@
     });
   }
 
+  // Trimmed replay: scrubber ticks for skipped spans, a brief flash when playback crosses one, real time in the bubble.
+  function bindTrim(snapshot) {
+    view.querySelectorAll('[data-trim-mode]').forEach(button=>button.addEventListener('click',()=>{
+      if(trimMode()===button.dataset.trimMode)return;
+      preference('attention.replay-trim',button.dataset.trimMode);render(snapshot);
+    }));
+    const panel=view.querySelector('[data-execution-viewer]');
+    const video=panel?.querySelector('video[data-history-replay]');
+    if(!video)return;
+    const trim=Object.values(snapshot.traces).find(t=>t.attempt_id===panel.dataset.replayAttempt)?.trim;
+    const active=Boolean(trim&&video.hasAttribute('data-trim-active'));
+    video.trimInfo=active?trim:null;
+    panel.querySelectorAll('[data-trim-break]').forEach(row=>{
+      const go=()=>video.requestReplaySeek?.(Number(row.dataset.trimAt),'moment');
+      row.addEventListener('click',go);
+      row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();go();}});
+    });
+    video.removeEventListener('timeupdate',video.trimTick);
+    video.trimTick=null;
+    const scrubber=video.nextElementSibling?.querySelector('.ab-replay-scrubber');
+    scrubber?.querySelectorAll('.op-skip-tick').forEach(tick=>tick.remove());
+    if(active) {
+      const timing=trim.replay_timing;
+      video.trimReal=position=>{
+        const i=timing.frame_video_seconds.findLastIndex(t=>t<=position+1e-6);
+        return i<0?0:Math.min(timing.frame_orig_video_seconds[i+1]??Infinity,timing.frame_orig_video_seconds[i]+position-timing.frame_video_seconds[i]);
+      };
+      const ticks=()=>{
+        if(!scrubber||!(video.duration>0))return;
+        scrubber.querySelectorAll('.op-skip-tick').forEach(tick=>tick.remove());
+        for(const b of trim.breaks) {
+          const tick=document.createElement('span');
+          tick.className='op-skip-tick';tick.style.left=`${pct(b.trim_at,video.duration)}%`;
+          tick.title=`Skipped ${skipText(b.skipped_seconds)} (real ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)})`;
+          scrubber.append(tick);
+        }
+      };
+      video.addEventListener('loadedmetadata',ticks,{once:true});ticks();
+      const figure=video.closest('figure');
+      let flash=figure?.querySelector('.op-skip-flash'),hide=0,last=video.currentTime;
+      if(figure&&!flash){flash=document.createElement('span');flash.className='op-skip-flash';flash.setAttribute('role','status');figure.append(flash);}
+      video.trimTick=()=>{
+        const now=video.currentTime;
+        if(flash&&!video.paused&&!video.seeking&&now>last&&now-last<1.5*video.playbackRate)
+          for(const b of trim.breaks)if(last<b.trim_at&&now>=b.trim_at){
+            flash.textContent=`⏭ Skipped ${skipText(b.skipped_seconds)}`;flash.dataset.show='true';
+            clearTimeout(hide);hide=setTimeout(()=>{flash.dataset.show='false';},1400);
+          }
+        last=now;
+      };
+      video.addEventListener('timeupdate',video.trimTick);
+    }
+    video.dispatchEvent(new Event('ratechange'));
+  }
+
   function bindIndustrialReplayControls() {
     if (!root.classList.contains('ab-industrial')) return;
     const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${{
@@ -1124,8 +1216,9 @@
         range.setAttribute('aria-valuetext', `${clock(position)} of ${clock(duration)}`);
         scrubber.style.setProperty('--seek', `${duration ? position / duration * 100 : 0}%`);
         bar.querySelector('[data-replay-clock]').textContent = clock(position);
-        bar.querySelector('[data-replay-duration]').textContent = clock(duration);
-        bar.querySelector('.ab-replay-bubble').textContent = clock(position);
+        const trimmed = video.trimInfo;
+        bar.querySelector('[data-replay-duration]').textContent = clock(duration) + (trimmed ? ` (real ${clock(trimmed.original_duration_seconds)})` : '');
+        bar.querySelector('.ab-replay-bubble').textContent = clock(position) + (trimmed ? ` · real ${clock(video.trimReal(position))}` : '');
         const playing = !video.paused;
         if (play.dataset.playing !== String(playing)) {
           play.dataset.playing = String(playing);
@@ -3873,13 +3966,20 @@
       if (previous && previous.text === text && previous.event.status === event.status) previous.count++;
       else groups.push({operation,event,index,count:1,text});
     });
-    return groups.map(({operation,event,index,count,text})=>{
+    // A trimmed replay lists each skipped span where it happened; events inside the wait stay above the marker.
+    const trimmedView=Boolean(hasVideo&&trace?.trim&&trimMode()==='trimmed'),breaks=trimmedView?[...trace.trim.breaks]:[];
+    const pending=event=>{
+      const rows=[];
+      while(breaks.length&&(event==null||event.timestamp_basis==='relative'&&event.timestamp>=breaks[0].trace_end))rows.push(operatorSkipRow(breaks.shift()));
+      return rows.join('');
+    };
+    return groups.map(({operation,event,index,count,text})=>pending(event)+(()=>{
       const target=operatorReplayTarget(events,index,trace?.recording,hasVideo);
       const seconds=hasVideo ? target.seconds : (event.timestamp_basis==='relative' && Number.isFinite(event.timestamp) ? event.timestamp : null);
       const failed=event.status==='failed'||event.status==='blocked';
       const approximate=target.mode==='end'?'Near recording end':target.mode==='nearest'?'Near recorded step':'';
-      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`} title="${esc(approximate||'Seek to recorded time')}"><time>${seconds==null?'':`${approximate?'~':''}${operatorTime(seconds)}`}</time><span>${failed?'✕':event.status==='running'?'●':'✓'}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${approximate?`<small>${approximate} · approximate seek</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
-    }).join('');
+      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`} title="${esc(approximate||`Seek to recorded time${trimmedView&&event.timestamp_basis==='relative'?` · real ${operatorTime(event.timestamp)}`:''}`)}"><time>${seconds==null?'':`${approximate?'~':''}${operatorTime(seconds)}`}</time><span>${failed?'✕':event.status==='running'?'●':'✓'}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${approximate?`<small>${approximate} · approximate seek</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
+    })()).join('')+pending(null);
   }
   function loadingOverlay(kind) {
     return `<div class="op-loading" data-op-loading role="status" aria-live="polite"><div class="op-loading-word" aria-hidden="true">LOADING</div><div class="op-loading-text" data-op-loading-text>${kind==='replay'?'Loading replay…':'Starting simulator…'}</div><i class="op-loading-bar" aria-hidden="true"></i></div>`;
@@ -3891,10 +3991,12 @@
     const liveTrace=Object.values(snapshot.traces || {}).find(t=>t.attempt_id===last?.attempt_id);
     const shownTrace=attempt?trace:liveTrace;
     const failureTime=operatorFailureTime(trace,videos.length>0);
+    const trimmedShown=Boolean(attempt&&!currentReplay&&videos.length&&trace?.trim&&trimMode()==='trimmed');
+    const trimBar=attempt&&!currentReplay&&videos.length&&trace?.trim?operatorTrimBar(trace.trim):'';
     const failed=attempt && !neverStarted(snapshot) && snapshot.eval?.native_outcomes?.[attempt.attempt_id]?.native_success !== true && ['failed','timed_out'].includes(attempt.status);
     const version=snapshot.dev_session?.versions.find(v=>v.version === ((attempt||last)?.dev_version ?? ((attempt||last)?.index+1)));
     const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}</div>`:'';
-    const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">Attempt ${attempt.index+1} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url])]))}" controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="Attempt ${attempt.index+1} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
+    const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">Attempt ${attempt.index+1} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="Attempt ${attempt.index+1} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
     const stills=images.filter(e=>!['camera_initial','initial_observation','camera_final','final_observation'].includes(e.kind)).map(e=>`<figure><img data-history-image loading="lazy" ${flipStaticRows?'style="transform:scaleY(-1)"':''} src="${esc(e.media_url)}" alt="Saved attempt frame"><figcaption>Saved static frame · not a video</figcaption></figure>`).join('');
     const station=cameraStation(snapshot);
     const devJobs=(!isTerminal(snapshot) && snapshot.dev_session?.jobs) || [];
@@ -3915,7 +4017,7 @@
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${(run.status==='running'||Lobby.isActive({lobby:snapshot.lobby})) ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch Attempt ${attempt.index+1}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4><p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div>${snapshot.dev_session && !neverStarted(snapshot)?revision:''}</aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div>${snapshot.dev_session && !neverStarted(snapshot)?revision:''}</aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
   }
 
   function operatorPlanRow(version,agent=false) {
@@ -4613,6 +4715,7 @@
     bindReplayTimeline(snapshot);
     bindIndustrialReplayControls();
     bindOperatorPresentation();
+    bindTrim(snapshot);
     bindSelectedMomentControls(snapshot);
     bindOperatorEnhancements(snapshot,previousRun!==run.run_id);
     const replayForPolicy=view.querySelector('video[data-history-replay]');if(replayForPolicy)updateReplayPolicy(snapshot,replayForPolicy);
@@ -5010,6 +5113,7 @@
         traces[traceId] = {trace_id:traceId,execution_id:bundle.artifact_dir?.split('/').at(-1),attempt_id:attemptId,events,recording:viewRows?{...recording,views:viewRows}:recording,
           failure:error?{stage:'execution',error_type:typeof error === 'object'?error.type||'ExecutionError':'ExecutionError',message:typeof error === 'string'?error:error.message||JSON.stringify(error)}:null,
           evidence:videoUrl&&recording?.video_saved?[{kind:'advisor_replay',mime_type:'video/mp4',media_url:videoUrl,evidence_id:recording.frame_manifest_sha256},...extraVideos]:[]};
+        if(recording?.video_saved && trimUsable(recording.trim,viewRows))attachTrim(traces[traceId],recording.trim,s);
         const native = bundle.native_evaluator;
         if (native?.run_id === nativeRun && native.attempt_id === attemptId && native.evaluated === true && typeof bundle.native_success === 'boolean') outcomes[attemptId] = {evaluated:true,native_success:bundle.native_success};
         // "completed" only means the program ran to its end; the simulator's own check decides success.
