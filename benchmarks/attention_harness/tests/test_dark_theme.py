@@ -60,3 +60,30 @@ def test_generator_maps_palette():
     assert g.map_value('color', '#fff') == '#ffffff'
     assert g.map_value('background', '#fff') == '#23272c'
     assert g.split_sels('#a :is(.b,.c), .d') == ['#a :is(.b,.c)', ' .d']
+
+
+def _run_dialog_css(html):
+    block = re.search(r'<style id="ab-run-dialog">\n(.*?)</style>', html, re.S)
+    assert block, 'index.html has no <style id="ab-run-dialog"> block'
+    return block.group(1)
+
+
+def test_run_dialog_css_lives_outside_the_generated_dark_block():
+    # The New run dialog styles were once appended inside ab-dark-theme and deleted by the next regeneration.
+    html = (UI / 'index.html').read_text(encoding='utf-8')
+    css = _run_dialog_css(html)
+    assert html.index('<style id="ab-run-dialog">') > html.index('<style id="ab-dark-theme">')
+    assert '.ab-launch-native-type{position:absolute' in css  # hides the native run_type select behind the segmented control
+    assert '.ab-launch-segments' in css and '.ab-launch-source' in css and '#run-config-summary' in css
+    assert '@media(max-width:760px)' in css
+    dark = re.search(r'<style id="ab-dark-theme">\n(.*?)</style>', html, re.S).group(1)
+    assert 'ab-launch-native-type' not in dark
+
+
+def test_regenerating_the_dark_theme_keeps_the_run_dialog_css(tmp_path):
+    html = (UI / 'index.html').read_text(encoding='utf-8')
+    page = tmp_path / 'index.html'
+    # force a regeneration from scratch: empty the dark block, then rebuild it
+    page.write_text(re.sub(r'(<style id="ab-dark-theme">).*?(</style>)', r'\1\n\2', html, flags=re.S), encoding='utf-8')
+    _generator().main(str(page))
+    assert page.read_text(encoding='utf-8') == html
