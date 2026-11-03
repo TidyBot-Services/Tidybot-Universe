@@ -48,7 +48,11 @@ test('R5 forces interactive and one policy through profile changes and repeat',(
   assert.match(source,/fixtureRunMode\(selectedProfile\(\),form.v2_mode,form.v2_policy,!!forkStart\)/);
 });
 test('R5 interactive exclusion label and exact backend refusal are visible',()=>{
-  assert.match(fixtureTaskOptions([profile]),/fixture rules \(R5\) · interactive · not compared \(scene positions not verified\)/);
+  // Options stay short; the group label names the rules and the full limitation is shown once under Scene seed.
+  const html=fixtureTaskOptions([profile]);
+  assert.match(html,/<optgroup label="A · Open and close fixtures · fixture rules \(R5\)"><option value="[^"]+">[^<·]*<\/option><\/optgroup>/);
+  assert.doesNotMatch(html,/not compared|scene positions/);
+  assert.match(source,/\[data-seed-note\]'\)\.textContent='fixture rules \(R5\) · interactive · not compared \(scene positions not verified\)/);
   const reason='R5 fixture runs are interactive only until a measured fixture scene contract exists (scene positions are not verified)';
   assert.equal(launchCreationError(new Error(reason)),'Could not create run: '+reason);
   assert.match(source,/if \(!response.ok\) throw new Error\(result.error/);

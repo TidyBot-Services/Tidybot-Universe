@@ -170,6 +170,7 @@ function keyFixture() {
     option:async value=>{const n=node('option-'+value);n.dataset.modelOption=value;n.closest=q=>q==='[data-model-option]'?n:null;await emit('click',n);},
     choose:async(id,value)=>{await api2.menu(id);await api2.option(value);},
     emitClick:n=>emit('click',n),
+    roleModel:async(role,value)=>{const n=node(`[data-role-model="${role}"]`);n.dataset.roleModel=role;n.value=value;n.closest=q=>q==='[data-role-model]'?n:null;await emit('input',n);},
     key:async key=>handlers.get('[data-keys]:keydown')({target:node('[data-keys]'),key}),
     removeShared:async()=>{const n=node('[data-keys-shared-remove]');n.closest=q=>q==='[data-key-remove]'?n:null;await emit('click',n);},
     remove:name=>{const n=node('[data-key-remove]');n.dataset.keyRemove=name;return emit('click',n);},
@@ -362,3 +363,20 @@ async function emitTest(f){
   const n=f.node('[data-role-test="dev"]');n.dataset.roleTest='dev';n.closest=q=>q==='[data-role-test]'?n:null;
   await f.emitClick(n);await f.flush();
 }
+
+test('a rejected key says so in the role row and Test re-checks it instead of asking for a model',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('different');
+  f.failModels('HTTP 401: {"error":{"message":"Authentication Fails, Your api key: ****1226 is invalid"}}');
+  await saveKey(f,'deepseek','my-ds');await f.flush();
+  await f.roleModel('dev',''); // The preset's suggestion is gone for real providers like DeepSeek.
+  const input=f.node('[data-role-model="dev"]'),status=f.node('[data-key-test="dev"]'),button=f.node('[data-role-test="dev"]');
+  assert.equal(input.disabled,true);assert.equal(input.placeholder,'Key rejected'); // Not "Checking key…" forever.
+  assert.equal(status.hidden,false);assert.match(status.innerHTML,/The provider rejected this key · HTTP 401/);
+  assert.equal(button.textContent,'Retry');
+  f.failModels(null); // The user pasted a good key / the provider recovered.
+  const listings=()=>f.requests.filter(r=>r.url.endsWith('/models')).length,before=listings();
+  await emitTest(f);
+  assert.equal(listings(),before+1);assert.equal(input.disabled,false);
+  assert.ok(!f.requests.some(r=>r.url.endsWith('/test')),'no model yet, so nothing is probed');
+  assert.match(status.innerHTML,/Pick a model first\./);assert.equal(button.textContent,'Test'); // A clear instruction, not a failure or a dead end.
+});

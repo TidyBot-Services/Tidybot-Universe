@@ -2145,7 +2145,7 @@
     if(fixture&&policy.value==='all')policy.value=[...policy.options].find(o=>o.value!=='all'&&!o.disabled)?.value||'autonomous';
   }
   function fixtureTaskOptions(profiles) {
-    const option=p=>`<option value="${esc(fixtureTaskKey(p))}">${esc(taskName(p.task_id))}${p.rules_profile?' · fixture rules (R5) · interactive · not compared (scene positions not verified)'+(p.held_out?' · held-out':''):''}</option>`;
+    const option=p=>`<option value="${esc(fixtureTaskKey(p))}">${esc(taskName(p.task_id))}${p.rules_profile&&p.held_out?' · held-out':''}</option>`;
     const unique=[...new Map(profiles.map(p=>[fixtureTaskKey(p),p])).values()];
     return unique.filter(p=>!p.rules_profile).map(option).join('')+['A','B','C','D'].map(family=>{
       const rows=unique.filter(p=>p.family===family);
@@ -2297,6 +2297,7 @@
     function checksHtml(result) {
       if(!result)return '';
       if(result.busy)return 'Testing…';
+      if(result.hint)return esc(result.hint); // An instruction, not a failure.
       if(result.text)return `<span class="ab-keys-bad">${esc(result.text)}</span>`;
       // Checks the provider could not answer ("unknown", e.g. Images for Dev) are left out rather than shown grey.
       const shown=KEY_CHECKS.filter(([key])=>(result.checks[key]||'unknown')!=='unknown');
@@ -2318,7 +2319,7 @@
       const saved=state.mode==='all'?cred(state.shared.credential):null;
       const ready=!!saved&&modelReady(saved.credential_id);
       modelInput.disabled=state.mode==='all'&&!ready;
-      modelInput.placeholder=ready?'Model name':saved?'Checking key…':'Save the key first';
+      modelInput.placeholder=ready?'Model name':!saved?'Save the key first':state.models[saved.credential_id]===null?'Checking key…':'Key rejected';
       drawCombo('add',ready?modelChoices(saved.credential_id,saved.provider):[],modelInput.value.trim());
     }
     async function chooseModel(id,value) {
@@ -2330,16 +2331,21 @@
       if(sharedKey)await test('dev',state.shared.credential,value); // Picking the model completes "Save and test".
     }
     // Listing the models is also the first check of a saved key: null while it runs, an array once it is done.
-    async function loadModels(id) {
-      if(id in state.models)return;
+    const loading={};
+    function loadModels(id) {
+      if(id in state.models)return loading[id]; // The running listing, or undefined once it is done.
       state.models[id]=null;delete state.keyError[id];
-      try { state.models[id]=(await call('GET',`/${encodeURIComponent(id)}/models`)).models||[]; }
-      catch (error) { state.models[id]=[];state.keyError[id]=error.message; }
-      drawRoles();
+      return loading[id]=(async()=>{
+        try { state.models[id]=(await call('GET',`/${encodeURIComponent(id)}/models`)).models||[]; }
+        catch (error) { state.models[id]=[];state.keyError[id]=error.message; }
+        delete loading[id];drawRoles();
+      })();
     }
     // The model field stays grey until the key has been checked. A provider that cannot list models still
     // allows typing a name, but a rejected key (401/403) does not.
-    const modelReady=id=>Array.isArray(state.models[id])&&!/\bHTTP 40[13]\b/.test(state.keyError[id]||'');
+    const keyRejected=id=>/\bHTTP 40[13]\b/.test(state.keyError[id]||'');
+    const modelReady=id=>Array.isArray(state.models[id])&&!keyRejected(id);
+    const keyNote=id=>state.models[id]===null?'Checking key…':state.keyError[id]?`<span class="ab-keys-bad">${keyRejected(id)?'The provider rejected this key':'Could not list models'} · ${esc(state.keyError[id].slice(0,200))}</span>`:'';
     function drawRoles() {
       const assignments=keyRoleAssignments(state);
       KEY_ROLES.forEach(([role])=>{
@@ -2352,18 +2358,21 @@
         const input=box.querySelector(`[data-role-model="${role}"]`);
         input.value=model;input.readOnly=state.mode==='all';
         const ready=own&&modelReady(choice.slice(4));
-        input.disabled=own&&state.mode!=='all'&&!ready;input.placeholder=ready||!own?'Model name':'Checking key…';
+        input.disabled=own&&state.mode!=='all'&&!ready;input.placeholder=ready||!own?'Model name':keyRejected(choice.slice(4))?'Key rejected':'Checking key…';
         drawCombo(role,ready&&state.mode!=='all'?modelChoices(choice.slice(4),cred(choice.slice(4))?.provider):[],model);
         const result=cred(choice.slice(4))&&state.test[role]?.signature===signature(choice.slice(4),model)?state.test[role]:null;
         const button=rolesBox.querySelector(`[data-role-test="${role}"]`);
         box.querySelector(`[data-role-act="${role}"]`).hidden=!own;
         button.hidden=!own;button.disabled=!!result?.busy||!cred(choice.slice(4));
         // One compact control: Test → Testing… → ✓ Passed (click to retest); only a failure opens a detail line.
-        const failed=!!result&&!result.busy&&!!(result.text||Object.values(result.checks||{}).includes('fail'));
-        button.textContent=!result?'Test':result.busy?'Testing…':failed?'Retry':'✓ Passed';
-        button.dataset.result=!result||result.busy?'':failed?'fail':'ok';
+        const idle=!result||!!result.hint;
+        const failed=!idle&&!result.busy&&!!(result.text||Object.values(result.checks||{}).includes('fail'));
+        const note=own&&!failed?(result?.hint?esc(result.hint):keyNote(choice.slice(4))):'';
+        const keyBad=note.includes('ab-keys-bad');
+        button.textContent=idle?(keyBad?'Retry':'Test'):result.busy?'Testing…':failed?'Retry':'✓ Passed';
+        button.dataset.result=idle?(keyBad?'fail':''):result.busy?'':failed?'fail':'ok';
         const status=rolesBox.querySelector(`[data-key-test="${role}"]`);
-        status.hidden=!own||!failed;status.innerHTML=own&&failed?checksHtml(result):'';
+        status.hidden=!own||(!failed&&!note);status.innerHTML=own?(failed?checksHtml(result):note):'';
       });
       const sharedResult=cred(state.shared.credential)&&state.test.dev?.signature===signature(state.shared.credential,state.shared.model)?state.test.dev:null;
       const saved=cred(state.shared.credential);
@@ -2475,7 +2484,11 @@
     async function test(role,id=keyRoleAssignments(state)[role].choice.slice(4),model=keyRoleAssignments(state)[role].model.trim()) {
       const sig=signature(id,model);
       if(state.test[role]?.busy&&state.test[role].signature===sig)return;
-      if(!model){state.test[role]={signature:sig,text:'Enter a model name first.'};drawRoles();return;}
+      // A key whose listing failed (or never ran) is checked again first: that is what Test means before a model exists.
+      if(state.keyError[id]||state.models[id]===undefined)delete state.models[id];
+      await loadModels(id); // Starts a listing, joins a running one, or returns at once when it is done.
+      if(!modelReady(id)){state.test[role]=null;drawRoles();return;}
+      if(!model){state.test[role]={signature:sig,hint:modelChoices(id,cred(id)?.provider).length?'Pick a model first.':'Enter a model name first.'};drawRoles();return;}
       const pending={signature:sig,busy:true};state.test[role]=pending;drawRoles();
       let result;
       try {
