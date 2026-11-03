@@ -39,8 +39,7 @@ def presets():
         'openai': ProviderSpec('openai', 'OpenAI', 'https://api.openai.com/v1/chat/completions',
                                'https://api.openai.com/v1/models', token_param='max_completion_tokens', reasoning_param='reasoning_effort'),
         'deepseek': ProviderSpec('deepseek', 'DeepSeek', 'https://api.deepseek.com/v1/chat/completions',
-                                 'https://api.deepseek.com/v1/models', response_format='json_object',
-                                 suggested_models=('deepseek-chat','deepseek-reasoner')),
+                                 'https://api.deepseek.com/v1/models', response_format='json_object'),
         'openai-compatible': ProviderSpec('openai-compatible', 'OpenAI compatible', '', None),
     }
 

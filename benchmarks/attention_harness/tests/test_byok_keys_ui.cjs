@@ -114,7 +114,7 @@ test('the shared-key explanation follows the feature flag', () => {
 // Browser layout still requires the separate Chromium suite.
 function keyFixture() {
   const nodes=new Map(), events=[], requests=[], handlers=new Map();
-  let timer, failSave=false, failModels=false;
+  let timer, failSave=false, failModels=null;
   let creds=[];
   const offered=['deepseek-chat','deepseek-reasoner','deepseek-v4'];
   const presets=['deepseek','openai','parcc','openai-compatible'].map(id=>({id,label:id,needs_key:true,suggested_models:['deepseek-chat']}));
@@ -142,7 +142,7 @@ function keyFixture() {
       let value;
       if(url==='/api/provider/presets')value=presets;
       else if(options.method==='GET'&&url.endsWith('/models')){
-        if(failModels)throw new Error('models failed');
+        if(failModels)throw new Error(failModels);
         value={models:offered};
       }else if(options.method==='GET')value=creds;
       else if(options.method==='PUT'){
@@ -165,7 +165,7 @@ function keyFixture() {
     pick:async(role,value)=>{const n=node(`[data-role-choice="${role}"]`);n.dataset.roleChoice=role;n.value=value;n.closest=q=>q==='[data-role-choice]'?n:null;await emit('change',n);},
     expire(){creds.forEach(c=>c.expires_at=0);dialog.open=true;timer();},
     failSave(){failSave=true;},
-    failModels(){failModels=true;},
+    failModels(message='models failed'){failModels=message;},
     menu:async id=>{const n=node(`[data-model-menu="${id}"]`);n.dataset.modelMenu=id;n.closest=q=>q==='[data-model-menu]'?n:null;await emit('click',n);},
     option:async value=>{const n=node('option-'+value);n.dataset.modelOption=value;n.closest=q=>q==='[data-model-option]'?n:null;await emit('click',n);},
     choose:async(id,value)=>{await api2.menu(id);await api2.option(value);},
@@ -265,28 +265,48 @@ test('run type buttons dispatch the original bubbling change and follow programm
 
 const optionsOf=list=>[...list.innerHTML.matchAll(/data-model-option="([^"]+)"/g)].map(m=>m[1]);
 
-test('a saved key fills the model menu from the provider and picking a model selects it',async()=>{
+async function saveKeyOnly(f,provider='deepseek',name='') {
+  f.node('[data-key-provider]').value=provider;f.node('[data-key-name]').value=name;
+  f.node('[data-key-model]').value='';f.node('[data-key-value]').value='test-only-secret';
+  await f.save();await f.flush();
+}
+
+test('the model field is grey until the key is accepted; then it lists the provider\'s models and picking one tests it',async()=>{
   const f=keyFixture();await f.flush();await f.mode('all');
-  // Before any key exists the menu only offers the preset's suggestion.
-  await f.menu('add');assert.deepEqual(optionsOf(f.node('[data-model-list="add"]')),['deepseek-chat']);
-  await f.menu('add'); // Toggled closed again.
-  assert.equal(f.node('[data-model-list="add"]').hidden,true);
-  await saveKey(f,'deepseek','my-ds');await f.flush();
+  const input=f.node('[data-key-model]');
+  assert.equal(input.disabled,true);assert.equal(input.placeholder,'Save the key first');assert.equal(f.node('[data-model-menu="add"]').hidden,true);
+  await saveKeyOnly(f,'deepseek','my-ds');
   assert.ok(f.requests.some(r=>r.method==='GET'&&r.url==='/api/provider/credentials/my-ds/models'));
-  assert.equal(f.node('[data-model-menu="add"]').hidden,false);
+  assert.equal(input.disabled,false);assert.equal(input.placeholder,'Model name');
+  assert.match(f.node('[data-keys-shared-test]').innerHTML,/✓ Key accepted · 3 models/);
+  assert.ok(!f.requests.some(r=>r.url.endsWith('/test')),'no model was chosen yet, so nothing is probed');
   await f.menu('add');
   const list=f.node('[data-model-list="add"]');
   assert.equal(list.hidden,false);assert.deepEqual(optionsOf(list),['deepseek-chat','deepseek-reasoner','deepseek-v4']);
   await f.option('deepseek-reasoner');
-  assert.equal(f.node('[data-key-model]').value,'deepseek-reasoner');assert.equal(list.hidden,true);
+  assert.equal(input.value,'deepseek-reasoner');assert.equal(list.hidden,true);
+  assert.equal(f.requests.filter(r=>r.url.endsWith('/test')).at(-1).body.model,'deepseek-reasoner'); // Picking completes Save and test.
+  assert.match(f.node('[data-keys-shared-test]').innerHTML,/✓ All checks passed/);
   assert.equal(f.binding.summary().dev.model,'deepseek-reasoner');assert.equal(f.binding.selection().roles.eval.model,'deepseek-reasoner');
   assert.equal(f.node('[data-keys-models]').hidden,true); // The three read-only copies of one shared model are gone.
 });
 
+test('a rejected key keeps the model field grey; a provider that cannot list models still allows typing',async()=>{
+  let f=keyFixture();await f.flush();await f.mode('all');f.failModels('HTTP 401: invalid key');
+  await saveKeyOnly(f,'deepseek','my-ds');
+  assert.equal(f.node('[data-key-model]').disabled,true);assert.match(f.node('[data-keys-shared-test]').innerHTML,/HTTP 401/);
+  f=keyFixture();await f.flush();await f.mode('all');f.failModels('This provider does not list models');
+  await saveKeyOnly(f,'openai-compatible','mine');
+  assert.equal(f.node('[data-key-model]').disabled,false);
+  await f.input('[data-key-model]','anything-i-type');
+  assert.equal(f.binding.summary().dev.model,'anything-i-type');
+});
+
 test('per-agent model menus list the chosen key\'s models and write only that role',async()=>{
   const f=keyFixture();await f.flush();await f.mode('different');await saveKey(f,'deepseek','my-ds');await f.flush();
+  assert.equal(f.node('[data-role-model="eval"]').disabled,false);
   await f.pick('eval','key:my-ds');
-  assert.equal(f.node('[data-model-menu="eval"]').hidden,false);
+  assert.equal(f.node('[data-model-menu="eval"]').hidden,false);assert.equal(f.node('[data-role-model="eval"]').disabled,false);
   assert.equal(f.node('[data-model-menu="advisor"]').hidden,true); // Advisor still uses the lab.
   await f.menu('eval');assert.deepEqual(optionsOf(f.node('[data-model-list="eval"]')),['deepseek-chat','deepseek-reasoner','deepseek-v4']);
   await f.option('deepseek-v4');
@@ -295,18 +315,10 @@ test('per-agent model menus list the chosen key\'s models and write only that ro
   assert.equal(f.node('[data-role-act="eval"]').hidden,false);assert.equal(f.node('[data-role-act="advisor"]').hidden,true);
 });
 
-test('Escape closes an open model menu and a second menu replaces the first',async()=>{
-  const f=keyFixture();await f.flush();await f.mode('all');
+test('Escape closes an open model menu',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');await saveKeyOnly(f,'deepseek','my-ds');
   await f.menu('add');assert.equal(f.node('[data-model-list="add"]').hidden,false);
   await f.key('Escape');assert.equal(f.node('[data-model-list="add"]').hidden,true);
-});
-
-test('a failed model listing falls back to suggestions and keeps free typing',async()=>{
-  const f=keyFixture();await f.flush();await f.mode('all');f.failModels();
-  await saveKey(f,'deepseek','my-ds');await f.flush();
-  await f.menu('add');assert.deepEqual(optionsOf(f.node('[data-model-list="add"]')),['deepseek-chat']);
-  await f.input('[data-key-model]','anything-i-type');
-  assert.equal(f.binding.summary().dev.model,'anything-i-type');
 });
 
 test('the saved-key line shows name and expiry; Remove deletes only that key and never the whole collection',async()=>{

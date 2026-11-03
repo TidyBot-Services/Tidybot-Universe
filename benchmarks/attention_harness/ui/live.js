@@ -2277,7 +2277,7 @@
     const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
     const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
     const state={mode:'lab',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
-      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{},menu:''};
+      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},menu:''};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
       const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
@@ -2316,20 +2316,30 @@
     }
     function drawAddCombo() {
       const saved=state.mode==='all'?cred(state.shared.credential):null;
-      drawCombo('add',state.mode!=='all'?[]:saved?modelChoices(saved.credential_id,saved.provider):modelChoices('',providerSelect.value),modelInput.value.trim());
+      const ready=!!saved&&modelReady(saved.credential_id);
+      modelInput.disabled=state.mode==='all'&&!ready;
+      modelInput.placeholder=ready?'Model name':saved?'Checking key…':'Save the key first';
+      drawCombo('add',ready?modelChoices(saved.credential_id,saved.provider):[],modelInput.value.trim());
     }
-    function chooseModel(id,value) {
+    async function chooseModel(id,value) {
       state.menu='';
-      if(id==='add'){modelInput.value=value;if(state.mode==='all'&&state.shared.credential)state.shared.model=value;}
+      const sharedKey=id==='add'&&state.mode==='all'&&state.shared.credential;
+      if(id==='add'){modelInput.value=value;if(sharedKey)state.shared.model=value;}
       else{state.model[id]=value;state.test[id]=null;}
       drawRoles();
+      if(sharedKey)await test('dev',state.shared.credential,value); // Picking the model completes "Save and test".
     }
+    // Listing the models is also the first check of a saved key: null while it runs, an array once it is done.
     async function loadModels(id) {
       if(id in state.models)return;
-      state.models[id]=[]; // A failed or empty listing keeps the preset's suggestions; typing a name always works.
-      try { state.models[id]=(await call('GET',`/${encodeURIComponent(id)}/models`)).models||[]; } catch (error) { return; }
+      state.models[id]=null;delete state.keyError[id];
+      try { state.models[id]=(await call('GET',`/${encodeURIComponent(id)}/models`)).models||[]; }
+      catch (error) { state.models[id]=[];state.keyError[id]=error.message; }
       drawRoles();
     }
+    // The model field stays grey until the key has been checked. A provider that cannot list models still
+    // allows typing a name, but a rejected key (401/403) does not.
+    const modelReady=id=>Array.isArray(state.models[id])&&!/\bHTTP 40[13]\b/.test(state.keyError[id]||'');
     function drawRoles() {
       const assignments=keyRoleAssignments(state);
       KEY_ROLES.forEach(([role])=>{
@@ -2341,7 +2351,9 @@
         box.querySelector(`[data-key-own-model="${role}"]`).hidden=!own;
         const input=box.querySelector(`[data-role-model="${role}"]`);
         input.value=model;input.readOnly=state.mode==='all';
-        drawCombo(role,own&&state.mode!=='all'?modelChoices(choice.slice(4),cred(choice.slice(4))?.provider):[],model);
+        const ready=own&&modelReady(choice.slice(4));
+        input.disabled=own&&state.mode!=='all'&&!ready;input.placeholder=ready||!own?'Model name':'Checking key…';
+        drawCombo(role,ready&&state.mode!=='all'?modelChoices(choice.slice(4),cred(choice.slice(4))?.provider):[],model);
         const result=cred(choice.slice(4))&&state.test[role]?.signature===signature(choice.slice(4),model)?state.test[role]:null;
         const button=rolesBox.querySelector(`[data-role-test="${role}"]`);
         box.querySelector(`[data-role-act="${role}"]`).hidden=!own;
@@ -2354,9 +2366,11 @@
         status.hidden=!own||!failed;status.innerHTML=own&&failed?checksHtml(result):'';
       });
       const sharedResult=cred(state.shared.credential)&&state.test.dev?.signature===signature(state.shared.credential,state.shared.model)?state.test.dev:null;
-      box.querySelector('[data-keys-shared-test]').innerHTML=checksHtml(sharedResult);
       const saved=cred(state.shared.credential);
       box.querySelector('[data-keys-shared-saved]').innerHTML=saved?`<b>${esc(saved.credential_id)}</b> · ${esc(preset(saved.provider)?.label||saved.provider)}${saved.base_url_host?` · ${esc(saved.base_url_host)}`:''} · <span class="ab-keys-left">expires in <em data-key-left="${esc(saved.expires_at)}">${keyTimeLeft(saved.expires_at)}</em></span>`:'';
+      const listed=saved&&state.models[saved.credential_id],keyError=saved&&state.keyError[saved.credential_id];
+      box.querySelector('[data-keys-shared-test]').innerHTML=sharedResult?checksHtml(sharedResult):!saved||listed===undefined?'':listed===null?'Checking key…':
+        keyError?`<span class="ab-keys-bad">${esc(keyError.slice(0,160))}</span>`:`<span class="ab-keys-chip ok">✓ Key accepted · ${listed.length} model${listed.length===1?'':'s'}</span>`;
       box.querySelector('[data-keys-status]').hidden=!saved;
       box.querySelector('[data-keys-shared-remove]').dataset.keyRemove=saved?saved.credential_id:'';
       box.querySelector('[data-key-shared-test]').disabled=!!sharedResult?.busy;
@@ -2440,7 +2454,6 @@
       // The easy path needs no key name and never silently overwrites another saved key.
       const name=nextKeyName(provider,state.creds,nameInput.value);
       if(!/^[a-z0-9-]{1,32}$/.test(name)){say('Key name: 1–32 lowercase letters, digits or dashes.',true);return;}
-      if(shared&&!model){say('Enter a model name first.',true);return;}
       if(!valueInput.value){say('Paste the API key first.',true);return;}
       state.saving=true;drawMode();
       try {
@@ -2455,7 +2468,7 @@
         say(''); // The saved-key line shows the name and the 24 h expiry.
         drawList();drawRoles();
         await refreshList(); // PUT omits the public host; GET supplies it for the saved-key list.
-        if(shared)await test('dev',value.credential_id,model);
+        if(shared&&model)await test('dev',value.credential_id,model);
       } catch (error) { say(error.message,true); }
       finally { valueInput.value='';state.saving=false;drawMode(); }
     }
@@ -2510,9 +2523,14 @@
       const menu=event.target.closest('[data-model-menu]');
       if(menu){const id=menu.dataset.modelMenu;state.menu=state.menu===id?'':id;drawRoles();return;}
       const option=event.target.closest('[data-model-option]');
-      if(option){chooseModel(state.menu,option.dataset.modelOption);return;}
+      if(option){await chooseModel(state.menu,option.dataset.modelOption);return;}
       if(event.target.closest('[data-key-save]')){await save();return;}
-      if(event.target.closest('[data-key-shared-test]')){await test('dev',state.shared.credential,state.shared.model.trim());return;}
+      if(event.target.closest('[data-key-shared-test]')){
+        const id=state.shared.credential;
+        if(state.keyError[id]){delete state.models[id];await loadModels(id);} // Re-check a key whose listing failed.
+        if(state.shared.model.trim())await test('dev',id,state.shared.model.trim());
+        return;
+      }
       const remove=event.target.closest('[data-key-remove]');
       if(remove){
         if(!remove.dataset.keyRemove)return; // An empty id would address the whole collection.
