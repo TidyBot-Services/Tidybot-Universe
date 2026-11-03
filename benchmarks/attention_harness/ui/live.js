@@ -721,7 +721,10 @@
     let response = await send();
     // Only a definite authentication rejection permits retry. Never retry an
     // ambiguous network failure or a business error (which may have committed).
-    if (response.status !== 403 || (await response.clone().json()).error !== 'control token required') return response;
+    // Most routes answer {error:'control token required'}; /api/provider/* answers {error:{code:'control_token_required'}}.
+    if (response.status !== 403) return response;
+    const rejected = (await response.clone().json().catch(() => null))?.error;
+    if (rejected !== 'control token required' && rejected?.code !== 'control_token_required') return response;
     const page = await fetch('/ui/', {cache: 'no-store', credentials: 'same-origin'});
     if (!page.ok || new URL(page.url).origin !== location.origin) return response;
     const token = new DOMParser().parseFromString(await page.text(), 'text/html')
