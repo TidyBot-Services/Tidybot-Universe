@@ -39,7 +39,7 @@
       const first = !state.enabled;
       state.enabled = true;
       rootEl.dataset.lobby = '1'; doc.documentElement.dataset.lobby = '1';
-      if (snapshot_demo() && !doc.querySelector('[data-lobby-demo]')) rootEl.insertAdjacentHTML('afterbegin', `<div class="lb-demo" data-lobby-demo><i></i>DEMO ENGINE · simulated time ×<span data-lb-speed-now>${esc(state.snap.clock?.speed)}</span> · no GPU, no real provider</div>`);
+      if (snapshot_demo() && !doc.querySelector('[data-lobby-demo]')) rootEl.insertAdjacentHTML('afterbegin', `<div class="lb-demo" data-lobby-demo><i></i>DEMO · replays ${esc(state.snap.demo_info?.recordings ?? '')} real recordings · simulated time ×<span data-lb-speed-now>${esc(state.snap.clock?.speed)}</span> · no GPU, no real provider</div>`);
       doc.querySelectorAll('[data-lb-speed-now]').forEach(n => { n.textContent = String(state.snap.clock?.speed); });
       const next = fingerprint();
       for (const [id, card] of state.cards) notify(before.get(id), card);
@@ -103,7 +103,7 @@
   }
   function controlsHtml() {
     if (!state.enabled) return '';
-    return `<div class="lb-controls" data-lobby-controls>${seg('data-lb-mode', [['mine', 'Mine'], ['all', 'All'], ['queue', 'Queue']], state.mode)}${state.mode === 'queue' ? '' : `<span class="lb-label">Group by</span>${seg('data-lb-group', [['task', 'Task'], ['person', 'Person'], ['status', 'Status']], state.group)}`}</div>`;
+    return `${snapshot_demo() ? '<p class="lb-demo-note" data-lobby-demo-note><b>DEMO DATA</b> · simulated runs and times, not real results</p>' : ''}<div class="lb-controls" data-lobby-controls>${seg('data-lb-mode', [['mine', 'Mine'], ['all', 'All'], ['queue', 'Queue']], state.mode)}${state.mode === 'queue' ? '' : `<span class="lb-label">Group by</span>${seg('data-lb-group', [['task', 'Task'], ['person', 'Person'], ['status', 'Status']], state.group)}`}</div>`;
   }
   function pinnedHtml() {
     if (!state.enabled) return '';
@@ -220,11 +220,16 @@
     const c = snapshot?.lobby;
     if (c) { rootEl.dataset.lobbyView = c.mine ? 'mine' : 'other'; rootEl.dataset.lobbyState = c.state; } else { delete rootEl.dataset.lobbyView; delete rootEl.dataset.lobbyState; }
   }
+  // Which real recording a simulated run replays (shown in the run's detail, never in the sidebar list).
+  const provenance = c => c.recording ? `<p class="lb-prov" data-lobby-prov><b>Simulated</b> · replays the recording of <code>${esc(String(c.recording.id).slice(0, 16))}…</code> (${esc(c.recording.attempts)} recorded attempts)${c.mine ? '. Your answers do not change what happens next.' : '.'}</p>` : '';
   function banner(snapshot) {
     const c = snapshot?.lobby;
-    if (!c || c.mine) return '';
-    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch everything, but not answer, pause or stop it.</span><button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button></div>`;
+    if (!c) return '';
+    if (c.mine) return provenance(c);
+    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch everything, but not answer, pause or stop it.</span><button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button></div>${provenance(c)}`;
   }
+  // The sidebar's times are on the demo's own clock, not the wall clock.
+  const simAgo = text => `sim · ${text}`;
   function bindBanner(view) {
     view.querySelector('[data-lb-back]')?.addEventListener('click', () => {
       const mine = [state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
@@ -257,7 +262,7 @@
 
   global.Lobby = {
     get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf,
-    newRunHtml, devSource, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
+    newRunHtml, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
     fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting] : null),
     start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; poll(); } },
   };

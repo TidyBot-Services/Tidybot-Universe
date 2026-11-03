@@ -52,16 +52,67 @@ def _text(parts):
     return '\n'.join(out)
 
 
-def to_chat(body, provider=None):
+def _content(parts, vision):
+    if not vision or isinstance(parts, str) or parts is None:return _text(parts)
+    result=[]
+    for part in parts:
+        kind=part.get('type')
+        if kind in ('input_text','output_text','text','summary_text'):
+            result.append(dict(type='text',text=part.get('text','')))
+        elif kind in ('input_image','image_url'):
+            import base64
+            url=part.get('image_url')
+            if isinstance(url,dict):url=url.get('url')
+            try:
+                header,data=url.split(',',1)
+                if header not in ('data:image/png;base64','data:image/jpeg;base64') or not data:raise ValueError()
+                base64.b64decode(data,validate=True)
+            except (AttributeError,TypeError,ValueError):raise BridgeError('unsupported_image_source') from None
+            result.append(dict(type='image_url',image_url=dict(url=url)))
+        else:raise BridgeError('unsupported_content_part:'+str(kind))
+    if not any(p['type']=='image_url' for p in result):return '\n'.join(p['text'] for p in result)
+    return result
+
+
+def _response_format(body, chat, provider):
+    text=body.get('text')
+    if not isinstance(text,dict) or 'format' not in text:return
+    fmt=text['format']
+    if (not isinstance(fmt,dict) or fmt.get('type')!='json_schema'
+            or set(fmt)-{'type','name','schema','strict'} or not isinstance(fmt.get('name'),str)
+            or not fmt['name'] or not isinstance(fmt.get('schema'),dict)):
+        raise BridgeError('unsupported_text_format')
+    mode=provider.response_format if provider is not None else 'json_schema'
+    if mode=='json_schema':
+        chat['response_format']=dict(type='json_schema',json_schema=dict(
+            name=fmt['name'],schema=fmt['schema'],strict=bool(fmt.get('strict',False))))
+    elif mode=='json_object':
+        chat['response_format']=dict(type='json_object')
+        instruction='Return JSON matching this schema: '+json.dumps(fmt['schema'],separators=(',',':'))
+        system=next((m for m in chat['messages'] if m['role']=='system'),None)
+        if system is None:chat['messages'].insert(0,dict(role='system',content=instruction))
+        elif isinstance(system['content'],str):system['content']+='\n'+instruction
+        else:system['content'].append(dict(type='text',text=instruction))
+    else:raise BridgeError('unsupported_text_format')
+
+
+def to_chat(body, provider=None, *, vision=False):
     """Responses request body -> chat/completions body. Fail closed on unknown items/tools."""
     messages = []
     if body.get('instructions'): messages.append(dict(role='system', content=body['instructions']))
+    pending=[];call_order=[]
+    def flush_images():
+        if pending:
+            ordered=sorted(pending,key=lambda pair:call_order.index(pair[0]) if pair[0] in call_order else len(call_order))
+            messages.append(dict(role='user',content=[part for _,parts in ordered for part in parts]))
+            pending.clear()
     for item in body.get('input', []):
         kind = item.get('type', 'message')
+        if kind not in ('function_call_output','reasoning'):flush_images()
         if kind == 'message':
             role = item.get('role')
             if role not in ('system', 'developer', 'user', 'assistant'): raise BridgeError('unsupported_role:' + str(role))
-            messages.append(dict(role='system' if role == 'developer' else role, content=_text(item.get('content'))))
+            messages.append(dict(role='system' if role == 'developer' else role, content=_content(item.get('content'),vision)))
         elif kind == 'function_call':
             call = dict(id=item['call_id'], type='function', function=dict(name=item['name'], arguments=item.get('arguments') or '{}'))
             last = messages[-1] if messages else None
@@ -69,12 +120,18 @@ def to_chat(body, provider=None):
                 last.setdefault('tool_calls', []).append(call)
             else:
                 messages.append(dict(role='assistant', content=None, tool_calls=[call]))
+            call_order=[c['id'] for c in messages[-1]['tool_calls']]
         elif kind == 'function_call_output':
-            messages.append(dict(role='tool', tool_call_id=item['call_id'], content=_text(item.get('output'))))
+            content=_content(item.get('output'),vision)
+            if isinstance(content,list):
+                pending.append((item['call_id'],[p for p in content if p['type']=='image_url']))
+                content='\n'.join(p['text'] for p in content if p['type']=='text') or '[image attached in the next message]'
+            messages.append(dict(role='tool', tool_call_id=item['call_id'], content=content))
         elif kind == 'reasoning':
             continue  # GLM's template drops earlier reasoning; nothing encrypted to replay.
         else:
             raise BridgeError('unsupported_input_item:' + str(kind))
+    flush_images()
     tools = []
     for tool in body.get('tools', []):
         if tool.get('type') != 'function': raise BridgeError('unsupported_tool:' + str(tool.get('type')))
@@ -90,6 +147,7 @@ def to_chat(body, provider=None):
         chat[provider.token_param] = chat.pop('max_tokens')
     reasoning_param = provider.reasoning_param if provider is not None else 'reasoning_effort'
     if effort and reasoning_param: chat[reasoning_param] = effort
+    _response_format(body,chat,provider)
     return chat
 
 
@@ -178,10 +236,11 @@ class _Stream:
 
 
 class ChatBridge:
-    def __init__(self, log_dir, provider, key: Secret, *, token, upstream=upstream_chunks):
+    def __init__(self, log_dir, provider, key: Secret, *, token, upstream=upstream_chunks, vision=False, role='dev'):
         self.log_dir = Path(log_dir); self.log_dir.mkdir(parents=True, exist_ok=True)
         self.key = key if isinstance(key, Secret) else Secret(key); self.upstream = upstream
         self.provider = provider; self.token = token
+        self.vision=vision;self.role=role
         if provider is not None and not token: raise BridgeError('bridge_token_required')
         self.counter = itertools.count(1); self.lock = threading.Lock()
         bridge = self
@@ -195,6 +254,8 @@ class ChatBridge:
                     # Never print a chained upstream exception on a disconnected client.
                     self.close_connection = True
         self.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        # Handlers stay daemons: close() must return promptly even if the upstream stalls,
+        # otherwise a cancelled Eval would wait out the upstream read timeout.
         self.server.daemon_threads = True
         self.port = self.server.server_address[1]
         self.thread = threading.Thread(target=self.server.serve_forever, name='parcc-bridge', daemon=True)
@@ -204,7 +265,7 @@ class ChatBridge:
     def base_url(self): return 'http://127.0.0.1:%d/v1' % self.port
 
     def close(self):
-        self.server.shutdown(); self.server.server_close()
+        self.server.shutdown(); self.server.server_close(); self.thread.join()
 
     def clean_row(self, row):
         redacted = False
@@ -220,7 +281,7 @@ class ChatBridge:
         return row
 
     def record(self, row):
-        row = self.clean_row(row)
+        row = self.clean_row(dict(row,role=self.role))
         with self.lock, (self.log_dir / 'calls.jsonl').open('a') as stream:
             stream.write(json.dumps(row, sort_keys=True) + '\n')
 
@@ -236,7 +297,7 @@ class ChatBridge:
             return self._error(handler, 401, 'bridge authorization required')
         try:
             body = json.loads(handler.rfile.read(int(handler.headers.get('Content-Length') or 0)))
-            chat = to_chat(body, self.provider)
+            chat = to_chat(body, self.provider, vision=self.vision)
             row.update(requested_model=chat['model'], messages=len(chat['messages']), tools=len(chat.get('tools', [])),
                        reasoning_effort=chat.get('reasoning_effort'))
             if self.provider is None and chat['model'] not in PARCC_DEV_MODELS: raise BridgeError('model_not_bridged:' + chat['model'])
@@ -296,7 +357,7 @@ class ChatBridge:
 
 class ParccBridge(ChatBridge):
     def __init__(self, log_dir, *, key=None, upstream=upstream_chunks):
-        super().__init__(log_dir, None, key or parcc_key(), token=None, upstream=upstream)
+        super().__init__(log_dir, None, key or parcc_key(), token=None, upstream=upstream, role='parcc-lab')
 
 
 def provider_args(base_url, *, token_env=None):

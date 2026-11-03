@@ -64,11 +64,11 @@ def test_bad_role(change):
 
 
 @pytest.mark.parametrize('shared',[False,True])
-def test_three_role_p1_matrix(shared):
+def test_three_role_matrix(shared):
     value=roles(credential='x')
     for role,name in (('eval','y'),('advisor','z')):
         value['roles'][role]=dict(credential='x' if shared else name,provider='openai',model='gpt-6.1-sol')
-    with pytest.raises(ValueError,match='role_not_supported_yet'):config.normalize(dict(BASE,agent_provider=value))
+    assert config.normalize(dict(BASE,agent_provider=value))['agent_provider']['roles']['eval']['key_source']=='user'
     for role in ('eval','advisor'):value['roles'][role]['credential']='lab'
     result=config.normalize(dict(BASE,agent_provider=value))
     assert result['agent_provider']['roles']['dev']['credential']=='x'
