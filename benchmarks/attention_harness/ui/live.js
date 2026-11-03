@@ -2222,6 +2222,8 @@
     }
     return Object.keys(roles).length?{roles}:null;
   }
+  // A text input with a menu of the provider's models; typing a name always works.
+  const modelComboHtml=id=>`<button type="button" class="ab-keys-combo-btn" data-model-menu="${id}" aria-label="Show models offered by the provider" aria-haspopup="listbox" aria-expanded="false" hidden></button><ul class="ab-keys-combo-list" role="listbox" data-model-list="${id}" hidden></ul>`;
   function keysSectionHtml() {
     return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Models &amp; keys</h4><small>Dev mode: <output data-dev-mode-label>Agent</output> · Quota stop <span data-quota-stop-label>90</span>%<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %" hidden></small></div><div data-agent-controls><p class="ab-run-hint" data-agent-reason role="status"></p></div>
       <fieldset class="ab-keys-modes"><legend class="op-sr-only">Model setup</legend>
@@ -2231,27 +2233,28 @@
       </fieldset>
       <div class="ab-launch-grid ab-keys-models" data-keys-models>${KEY_ROLES.map(([role,title])=>`<div class="ab-keys-role-model" data-role-model-wrap="${role}">
         <label class="ab-launch-field" data-key-lab-model="${role}">${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<select name="${role}_model" aria-label="${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option>${role==='advisor'?'':'<option>gpt-6-sol</option>'}</select></label>
-        <label class="ab-launch-field" data-key-own-model="${role}" hidden>${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<input data-role-model="${role}" aria-label="${title} key model" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"><select class="ab-keys-model-pick" data-model-pick="${role}" aria-label="${title} models offered by the provider" hidden></select></label>
+        <label class="ab-launch-field" data-key-own-model="${role}" hidden>${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<span class="ab-keys-combo"><input data-role-model="${role}" aria-label="${title} key model" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name">${modelComboHtml(role)}</span></label>
       </div>`).join('')}</div>
       <div class="ab-keys-shared" data-keys-shared hidden><div data-keys-shared-form></div>
         <p class="ab-run-hint" data-keys-phase2 ${BYOK_ALL_ROLES?'hidden':''}>Eval and Advisor use the lab's models until phase 2</p>
-        <p class="ab-run-hint" data-keys-shared-saved></p><button type="button" class="ab-button-quiet" data-key-shared-test hidden>Test saved key</button><div class="ab-keys-test" data-keys-shared-test role="status" aria-live="polite"></div>
+        <div class="ab-keys-status" data-keys-status hidden><span class="ab-keys-saved" data-keys-shared-saved></span><span class="ab-keys-test" data-keys-shared-test role="status" aria-live="polite"></span><span class="ab-keys-status-actions"><button type="button" class="ab-button-quiet" data-key-shared-test>Test again</button><button type="button" class="ab-button-quiet" data-keys-shared-remove data-key-remove="">Remove</button></span></div>
       </div>
       <details class="ab-keys-details" data-keys-details><summary>Agent models <small>Dev / Eval / Advisor</small></summary>
         <div class="ab-keys-roles" data-keys-roles>${KEY_ROLES.map(([role,title,about])=>`<div class="ab-keys-role" data-key-role="${role}">
           <div class="ab-keys-role-name"><b>${title}</b><small>${about}</small></div>
           <label class="ab-launch-field ab-keys-role-pick"><span>Source</span><select data-role-choice="${role}" aria-label="${title} source"><option value="codex">Lab models</option></select></label>
-          <button type="button" class="ab-button-quiet" data-role-test="${role}" hidden>Test</button>
+          <div class="ab-keys-role-act" data-role-act="${role}" hidden><button type="button" class="ab-button-quiet" data-role-test="${role}" title="Check this key and model" hidden>Test</button></div>
           <div class="ab-keys-test" data-key-test="${role}" role="status" aria-live="polite" hidden></div>
         </div>`).join('')}</div>
         <div data-keys-custom hidden><h5>Saved keys</h5><div class="ab-keys-list" data-keys-list></div>
-          <div class="ab-keys-add" data-keys-add><h5 data-keys-add-title>Add a key</h5><div class="ab-keys-form-grid">
+          <div class="ab-keys-add" data-keys-add><h5 data-keys-add-title>Add a key</h5><div class="ab-keys-formrow">
         <label class="ab-launch-field" data-key-name-field>Key name<input data-key-name maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. my-deepseek"></label>
         <label class="ab-launch-field">Provider<select data-key-provider></select></label>
         <label class="ab-launch-field" data-key-base-field hidden>Base URL<input data-key-base autocomplete="off" spellcheck="false" placeholder="https://…"></label>
-        <label class="ab-launch-field">Model<input data-key-model maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"><select class="ab-keys-model-pick" data-model-pick="add" aria-label="Models offered by the provider" hidden></select></label>
-        <label class="ab-launch-field">API key <small class="ab-key-retention">· Held in server memory for 24 hours</small><input data-key-value type="password" autocomplete="off" spellcheck="false"></label>
-      </div><div class="ab-keys-actions"><button type="button" class="ab-button-quiet" data-key-save>Save key</button></div></div></div></details>
+        <label class="ab-launch-field" data-key-model-field>Model · all agents<span class="ab-keys-combo"><input data-key-model maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name">${modelComboHtml('add')}</span></label>
+        <label class="ab-launch-field">API key<input data-key-value type="password" autocomplete="off" spellcheck="false" placeholder="Paste key · kept 24 h" title="The key is held in server memory for 24 hours and never written to disk"></label>
+        <button type="button" class="ab-button-quiet ab-keys-save" data-key-save>Save key</button>
+      </div></div></div></details>
       <p class="ab-run-hint ab-keys-note" data-keys-note role="status" aria-live="polite"></p></section>`;
   }
   function keyTimeLeft(expiresAt) {
@@ -2274,7 +2277,7 @@
     const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
     const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
     const state={mode:'lab',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
-      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{}};
+      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{},menu:''};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
       const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
@@ -2292,20 +2295,34 @@
       return `<option value="codex">Lab models · Codex</option>${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
     }
     function checksHtml(result) {
-      return !result?'':result.busy?'Testing…':result.text?`<span class="ab-keys-bad">${esc(result.text)}</span>`:
-        KEY_CHECKS.map(([key,name])=>`<span class="ab-keys-chip ${esc(result.checks[key]||'unknown')}">${name}</span>`).join('')+
+      if(!result)return '';
+      if(result.busy)return 'Testing…';
+      if(result.text)return `<span class="ab-keys-bad">${esc(result.text)}</span>`;
+      // Checks the provider could not answer ("unknown", e.g. Images for Dev) are left out rather than shown grey.
+      const shown=KEY_CHECKS.filter(([key])=>(result.checks[key]||'unknown')!=='unknown');
+      const bad=shown.filter(([key])=>result.checks[key]==='fail');
+      return (bad.length?bad.map(([,name])=>`<span class="ab-keys-chip fail">${name} failed</span>`).join('')
+        :`<span class="ab-keys-chip ok" title="${esc(shown.map(([,name])=>name).join(' · '))}">✓ All checks passed</span>`)+
         (result.errors||[]).map(e=>`<small class="ab-keys-bad">${esc(e.message||e.code||'')}${e.redacted?' (key fragment hidden)':''}</small>`).join('');
     }
     // What the model picker offers: the provider's own list for a saved key, else the preset's suggestions.
     const modelChoices=(id,provider)=>(state.models[id]?.length?state.models[id]:preset(provider)?.suggested_models)||[];
-    function drawPick(pick,choices,current,hidden=false) {
-      pick.hidden=hidden||!choices.length;
-      pick.innerHTML=`<option value="">Pick from ${choices.length} model${choices.length===1?'':'s'}…</option>`+choices.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
-      pick.value=choices.includes(current)?current:'';
+    function drawCombo(id,choices,current) {
+      const button=box.querySelector(`[data-model-menu="${id}"]`),list=box.querySelector(`[data-model-list="${id}"]`);
+      const open=state.menu===id&&choices.length>0;
+      button.hidden=!choices.length;button.setAttribute?.('aria-expanded',String(open));
+      list.hidden=!open;
+      list.innerHTML=open?choices.map(m=>`<li role="option" data-model-option="${esc(m)}" aria-selected="${m===current}">${esc(m)}</li>`).join(''):'';
     }
-    function drawAddPick() {
+    function drawAddCombo() {
       const saved=state.mode==='all'?cred(state.shared.credential):null;
-      drawPick(box.querySelector('[data-model-pick="add"]'),saved?modelChoices(saved.credential_id,saved.provider):modelChoices('',providerSelect.value),modelInput.value.trim());
+      drawCombo('add',state.mode!=='all'?[]:saved?modelChoices(saved.credential_id,saved.provider):modelChoices('',providerSelect.value),modelInput.value.trim());
+    }
+    function chooseModel(id,value) {
+      state.menu='';
+      if(id==='add'){modelInput.value=value;if(state.mode==='all'&&state.shared.credential)state.shared.model=value;}
+      else{state.model[id]=value;state.test[id]=null;}
+      drawRoles();
     }
     async function loadModels(id) {
       if(id in state.models)return;
@@ -2324,21 +2341,27 @@
         box.querySelector(`[data-key-own-model="${role}"]`).hidden=!own;
         const input=box.querySelector(`[data-role-model="${role}"]`);
         input.value=model;input.readOnly=state.mode==='all';
-        drawPick(box.querySelector(`[data-model-pick="${role}"]`),own?modelChoices(choice.slice(4),cred(choice.slice(4))?.provider):[],model,state.mode==='all');
+        drawCombo(role,own&&state.mode!=='all'?modelChoices(choice.slice(4),cred(choice.slice(4))?.provider):[],model);
         const result=cred(choice.slice(4))&&state.test[role]?.signature===signature(choice.slice(4),model)?state.test[role]:null;
         const button=rolesBox.querySelector(`[data-role-test="${role}"]`);
+        box.querySelector(`[data-role-act="${role}"]`).hidden=!own;
         button.hidden=!own;button.disabled=!!result?.busy||!cred(choice.slice(4));
+        // One compact control: Test → Testing… → ✓ Passed (click to retest); only a failure opens a detail line.
+        const failed=!!result&&!result.busy&&!!(result.text||Object.values(result.checks||{}).includes('fail'));
+        button.textContent=!result?'Test':result.busy?'Testing…':failed?'Retry':'✓ Passed';
+        button.dataset.result=!result||result.busy?'':failed?'fail':'ok';
         const status=rolesBox.querySelector(`[data-key-test="${role}"]`);
-        status.hidden=!own||!result;status.innerHTML=own?checksHtml(result):'';
+        status.hidden=!own||!failed;status.innerHTML=own&&failed?checksHtml(result):'';
       });
       const sharedResult=cred(state.shared.credential)&&state.test.dev?.signature===signature(state.shared.credential,state.shared.model)?state.test.dev:null;
       box.querySelector('[data-keys-shared-test]').innerHTML=checksHtml(sharedResult);
       const saved=cred(state.shared.credential);
-      box.querySelector('[data-keys-shared-saved]').textContent=saved?`Using ${saved.credential_id} · ${preset(saved.provider)?.label||saved.provider} · ${saved.base_url_host||''}. Manage saved keys in Different per agent.`:'';
-      const sharedTest=box.querySelector('[data-key-shared-test]');
-      sharedTest.hidden=!saved;sharedTest.disabled=!!sharedResult?.busy;
+      box.querySelector('[data-keys-shared-saved]').innerHTML=saved?`<b>${esc(saved.credential_id)}</b> · ${esc(preset(saved.provider)?.label||saved.provider)}${saved.base_url_host?` · ${esc(saved.base_url_host)}`:''} · <span class="ab-keys-left">expires in <em data-key-left="${esc(saved.expires_at)}">${keyTimeLeft(saved.expires_at)}</em></span>`:'';
+      box.querySelector('[data-keys-status]').hidden=!saved;
+      box.querySelector('[data-keys-shared-remove]').dataset.keyRemove=saved?saved.credential_id:'';
+      box.querySelector('[data-key-shared-test]').disabled=!!sharedResult?.busy;
       tokens.textContent=assignments.dev.choice.startsWith('key:')?'Billed to your own key':labTokens;
-      drawAddPick();
+      drawAddCombo();
       form.dispatchEvent(new CustomEvent('ab-keys-change'));
     }
     function drawList() {
@@ -2355,11 +2378,12 @@
         if(different){if(wrap.parentElement!==row)row.appendChild(wrap);}
         else if(wrap.parentElement!==modelsGrid)modelsGrid.appendChild(wrap);
       });
-      modelsGrid.hidden=different;
+      modelsGrid.hidden=state.mode!=='lab';
       const host=shared?box.querySelector('[data-keys-shared-form]'):customBox;
       if(addBox.parentElement!==host)host.appendChild(addBox);
       addBox.hidden=!state.available||state.mode==='lab';
       box.querySelector('[data-key-name-field]').hidden=shared;
+      box.querySelector('[data-key-model-field]').hidden=!shared;
       box.querySelector('[data-keys-add-title]').hidden=shared;
       saveButton.textContent=shared?'Save and test':'Save key';
       saveButton.disabled=!state.available||state.saving;
@@ -2390,7 +2414,7 @@
     function syncProvider() {
       baseField.hidden=providerSelect.value!=='openai-compatible';
       modelInput.value=preset(providerSelect.value)?.suggested_models?.[0]||'';
-      drawAddPick();
+      drawAddCombo();
     }
     function nextKeyName(provider,creds,requested='') {
       if(requested.trim())return requested.trim();
@@ -2410,11 +2434,13 @@
     }
     async function save() {
       if(state.saving||!state.available||state.mode==='lab')return;
-      const shared=state.mode==='all',provider=providerSelect.value,model=modelInput.value.trim();
+      const shared=state.mode==='all',provider=providerSelect.value;
+      // A per-agent key has no model of its own: each role row takes one from the provider's list.
+      const model=shared?modelInput.value.trim():(preset(provider)?.suggested_models?.[0]||'');
       // The easy path needs no key name and never silently overwrites another saved key.
       const name=nextKeyName(provider,state.creds,nameInput.value);
       if(!/^[a-z0-9-]{1,32}$/.test(name)){say('Key name: 1–32 lowercase letters, digits or dashes.',true);return;}
-      if(!model){say('Enter a model name first.',true);return;}
+      if(shared&&!model){say('Enter a model name first.',true);return;}
       if(!valueInput.value){say('Paste the API key first.',true);return;}
       state.saving=true;drawMode();
       try {
@@ -2426,7 +2452,7 @@
         for(const [role,result] of Object.entries(state.test))if(result?.signature&&JSON.parse(result.signature)[0]===value.credential_id)delete state.test[role];
         if(shared)state.shared={credential:value.credential_id,model,baseUrl:baseInput.value.trim()};
         else if(!state.choice.dev.startsWith('key:')){state.choice.dev=`key:${value.credential_id}`;state.model.dev=model;}
-        say(`Saved “${value.credential_id}”. It is kept in server memory only and expires in 24 hours.`);
+        say(''); // The saved-key line shows the name and the 24 h expiry.
         drawList();drawRoles();
         await refreshList(); // PUT omits the public host; GET supplies it for the saved-key list.
         if(shared)await test('dev',value.credential_id,model);
@@ -2447,14 +2473,6 @@
       drawRoles();
     }
     box.addEventListener('change',event=>{
-      const modelPick=event.target.closest('[data-model-pick]');
-      if(modelPick){
-        if(!modelPick.value)return;
-        const role=modelPick.dataset.modelPick;
-        if(role==='add'){modelInput.value=modelPick.value;if(state.mode==='all'&&state.shared.credential)state.shared.model=modelPick.value;}
-        else{state.model[role]=modelPick.value;state.test[role]=null;}
-        drawRoles();return;
-      }
       const mode=event.target.closest('[data-keys-mode]');
       if(mode){
         valueInput.value='';state.mode=mode.value;details.open=state.mode==='different';
@@ -2479,7 +2497,7 @@
     box.addEventListener('input',event=>{
       const model=event.target.closest('[data-role-model]');
       if(model){state.model[model.dataset.roleModel]=model.value;state.test[model.dataset.roleModel]=null;drawRoles();}
-      if(event.target===modelInput)drawAddPick();
+      if(event.target===modelInput)drawAddCombo();
       if(event.target===modelInput&&state.mode==='all'&&state.shared.credential){
         // Editing the model of the saved shared key does not require re-entering its secret.
         state.shared.model=modelInput.value;drawRoles();
@@ -2489,10 +2507,15 @@
       }
     });
     box.addEventListener('click',async event=>{
+      const menu=event.target.closest('[data-model-menu]');
+      if(menu){const id=menu.dataset.modelMenu;state.menu=state.menu===id?'':id;drawRoles();return;}
+      const option=event.target.closest('[data-model-option]');
+      if(option){chooseModel(state.menu,option.dataset.modelOption);return;}
       if(event.target.closest('[data-key-save]')){await save();return;}
       if(event.target.closest('[data-key-shared-test]')){await test('dev',state.shared.credential,state.shared.model.trim());return;}
       const remove=event.target.closest('[data-key-remove]');
       if(remove){
+        if(!remove.dataset.keyRemove)return; // An empty id would address the whole collection.
         try {
           await call('DELETE',`/${encodeURIComponent(remove.dataset.keyRemove)}`);
           say('Key removed from server memory.');
@@ -2504,8 +2527,12 @@
       const run=event.target.closest('[data-role-test]');
       if(run)await test(run.dataset.roleTest);
     });
+    const closeMenus=event=>{if(state.menu&&!event.target.closest('.ab-keys-combo')){state.menu='';drawRoles();}};
+    form.addEventListener('click',closeMenus);
+    launchDialog.addEventListener('close',()=>form.removeEventListener?.('click',closeMenus),{once:true});
     // Enter anywhere in this block must never implicitly submit the enclosing run form.
     box.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&state.menu){event.preventDefault?.();state.menu='';drawRoles();return;}
       if(event.key==='Enter'){
         if(event.target.closest('button,summary'))return; // Native controls retain their explicit action.
         event.preventDefault();

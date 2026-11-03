@@ -2500,7 +2500,6 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .ab-keys-role-model{min-width:0}
 #attentionbench-clear .ab-keys-role-model input{font-family:ui-monospace,monospace}
 #attentionbench-clear .ab-keys-role-model[hidden]{display:none}
-#attentionbench-clear .ab-keys-model-pick[hidden]{display:none}
 #attentionbench-clear .ab-keys-test{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12px;color:var(--muted)}
 #attentionbench-clear .ab-keys-chip{padding:2px 9px;border:1px solid var(--line);border-radius:999px;font-size:11px;color:var(--muted)}
 #attentionbench-clear .ab-keys-chip.ok{border-color:var(--green);color:var(--green)}
@@ -3537,8 +3536,35 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode:has(:checked){background:var(--panel);box-shadow:inset 0 -2px 0 var(--orange)}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode b{color:var(--text);font-size:12px}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode small{font-size:10px}
-#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role{grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr);border-color:var(--line)}
-#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role>:is([data-role-test],.ab-keys-test){grid-column:1/-1;justify-self:start;order:2}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role{grid-template-columns:minmax(120px,.8fr) minmax(0,1.2fr) minmax(0,1.3fr) 96px;align-items:end;border-color:var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role-name{align-self:center}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role>[data-role-model-wrap]{order:3}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role>.ab-keys-role-act{order:4;display:flex}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role-act button{width:100%;min-height:36px;padding:0 8px;white-space:nowrap}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role-act button[data-result=ok]{border-color:var(--green);color:var(--green)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role-act button[data-result=fail]{border-color:var(--orange);color:var(--text)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role>.ab-keys-test{grid-column:1/-1;order:5}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-test{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-test small{flex-basis:100%;overflow-wrap:anywhere}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo{position:relative;display:block}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo input{padding-right:34px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-btn{position:absolute;right:1px;bottom:1px;width:32px;height:34px;padding:0;border:0;border-radius:0 5px 5px 0;background:none;color:var(--muted);cursor:pointer;box-shadow:none;min-height:0}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-btn::before{content:"";position:absolute;left:11px;top:15px;border:5px solid transparent;border-top-color:currentColor;border-bottom:0}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-btn:hover,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-btn[aria-expanded=true]{color:var(--text);background:var(--panel2)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-list{position:absolute;z-index:6;left:0;right:0;top:100%;margin:2px 0 0;padding:4px;max-height:232px;overflow:auto;list-style:none;border:1px solid var(--line);border-radius:6px;background:var(--panel);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-list li{padding:7px 10px;border-radius:4px;color:var(--text);font:400 12px/1.4 ui-monospace,monospace;letter-spacing:normal;text-transform:none;cursor:pointer;overflow-wrap:anywhere}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-list li:hover{background:var(--panel2)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-combo-list li[aria-selected=true]{font-weight:700;box-shadow:inset 2px 0 var(--orange)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-status{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:12px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;font:400 12px/1.5 var(--body);color:var(--muted)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-saved b,#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-saved em{color:var(--text)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-saved em{font-style:normal;font-family:ui-monospace,monospace}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-status-actions{margin-left:auto;display:flex;gap:6px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-status-actions button{min-height:28px;padding:3px 12px;font-size:12px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-keys-shared-form]{margin-top:14px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-formrow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-formrow>.ab-launch-field{flex:1 1 120px;min-width:0}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-formrow>.ab-keys-save{flex:0 0 auto;min-height:36px}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-saved{min-width:0;overflow-wrap:anywhere}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-model-source-field] select{text-overflow:ellipsis}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-models[hidden]{display:none}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-agent-reason]{margin:0 0 12px;color:var(--muted)}
@@ -3579,6 +3605,7 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode{border-right:0;border-bottom:1px solid var(--line)}
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-mode:last-child{border-bottom:0}
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-model-source-field]{margin-top:14px}
+ #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-role>.ab-keys-role-act{max-width:none}
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary{flex-wrap:wrap}
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-advanced>summary small{order:3;width:100%}
 }

@@ -150,7 +150,7 @@ def probe(spec, secret, model, *, role, transport=None):
         if not done or not chunks: raise ValueError('incomplete_provider_stream')
         checks.update(auth='ok',chat='ok',streaming='ok',tools='ok' if tool else 'fail')
         if role in ('eval','advisor'): checks['vision'] = 'ok'
-        if not tool: errors.append(dict(code='provider_tools_failed',message='Dev requires tool calls',upstream_status=None,redacted=False))
+        if not tool: errors.append(dict(code='provider_tools_failed',message='This model must support tool calls',upstream_status=None,redacted=False))
     except Exception as exc:
         failed(exc, 'chat'); checks['streaming'] = 'fail'
         if role in ('eval','advisor'): checks['vision'] = 'fail'

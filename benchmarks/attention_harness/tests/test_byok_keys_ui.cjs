@@ -157,7 +157,8 @@ function keyFixture() {
   const binding=context.bind(form);
   const emit=async(type,target)=>handlers.get('[data-keys]:'+type)({target,key:''});
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
-  return {binding,form,node,events,requests,context,flush,
+  const api2={};
+  return Object.assign(api2,{binding,form,node,events,requests,context,flush,
     mode:async value=>emit('change',modes.find(m=>m.value===value)),
     save:()=>emit('click',node('[data-key-save]')),
     input:async(selector,value)=>{const n=node(selector);n.value=value;await emit('input',n);},
@@ -165,9 +166,14 @@ function keyFixture() {
     expire(){creds.forEach(c=>c.expires_at=0);dialog.open=true;timer();},
     failSave(){failSave=true;},
     failModels(){failModels=true;},
-    choose:async(role,value)=>{const n=node(`[data-model-pick="${role}"]`);n.dataset.modelPick=role;n.value=value;n.closest=q=>q==='[data-model-pick]'?n:null;await emit('change',n);},
+    menu:async id=>{const n=node(`[data-model-menu="${id}"]`);n.dataset.modelMenu=id;n.closest=q=>q==='[data-model-menu]'?n:null;await emit('click',n);},
+    option:async value=>{const n=node('option-'+value);n.dataset.modelOption=value;n.closest=q=>q==='[data-model-option]'?n:null;await emit('click',n);},
+    choose:async(id,value)=>{await api2.menu(id);await api2.option(value);},
+    emitClick:n=>emit('click',n),
+    key:async key=>handlers.get('[data-keys]:keydown')({target:node('[data-keys]'),key}),
+    removeShared:async()=>{const n=node('[data-keys-shared-remove]');n.closest=q=>q==='[data-key-remove]'?n:null;await emit('click',n);},
     remove:name=>{const n=node('[data-key-remove]');n.dataset.keyRemove=name;return emit('click',n);},
-  };
+  });
 }
 async function saveKey(f,provider='deepseek',name='') {
   f.node('[data-key-provider]').value=provider;
@@ -257,36 +263,90 @@ test('run type buttons dispatch the original bubbling change and follow programm
   assert.equal(buttons[0].attrs['aria-pressed'],'true');assert.equal(buttons[1].attrs['aria-pressed'],'false');
 });
 
-test('a saved key fills the model picker from the provider and picking a model selects it',async()=>{
+const optionsOf=list=>[...list.innerHTML.matchAll(/data-model-option="([^"]+)"/g)].map(m=>m[1]);
+
+test('a saved key fills the model menu from the provider and picking a model selects it',async()=>{
   const f=keyFixture();await f.flush();await f.mode('all');
-  // Before any key exists the picker only offers the preset's suggestion.
-  assert.match(f.node('[data-model-pick="add"]').innerHTML,/Pick from 1 model…/);
+  // Before any key exists the menu only offers the preset's suggestion.
+  await f.menu('add');assert.deepEqual(optionsOf(f.node('[data-model-list="add"]')),['deepseek-chat']);
+  await f.menu('add'); // Toggled closed again.
+  assert.equal(f.node('[data-model-list="add"]').hidden,true);
   await saveKey(f,'deepseek','my-ds');await f.flush();
   assert.ok(f.requests.some(r=>r.method==='GET'&&r.url==='/api/provider/credentials/my-ds/models'));
-  const add=f.node('[data-model-pick="add"]');
-  assert.equal(add.hidden,false);assert.match(add.innerHTML,/Pick from 3 models…/);
-  for(const m of ['deepseek-chat','deepseek-reasoner','deepseek-v4'])assert.ok(add.innerHTML.includes(`<option value="${m}">`));
-  await f.choose('add','deepseek-reasoner');
-  assert.equal(f.node('[data-key-model]').value,'deepseek-reasoner');
+  assert.equal(f.node('[data-model-menu="add"]').hidden,false);
+  await f.menu('add');
+  const list=f.node('[data-model-list="add"]');
+  assert.equal(list.hidden,false);assert.deepEqual(optionsOf(list),['deepseek-chat','deepseek-reasoner','deepseek-v4']);
+  await f.option('deepseek-reasoner');
+  assert.equal(f.node('[data-key-model]').value,'deepseek-reasoner');assert.equal(list.hidden,true);
   assert.equal(f.binding.summary().dev.model,'deepseek-reasoner');assert.equal(f.binding.selection().roles.eval.model,'deepseek-reasoner');
-  assert.equal(f.node('[data-model-pick="dev"]').hidden,true); // Per-role pickers stay out of the way in shared mode.
+  assert.equal(f.node('[data-keys-models]').hidden,true); // The three read-only copies of one shared model are gone.
 });
 
-test('per-agent model pickers list the chosen key\'s models and write only that role',async()=>{
+test('per-agent model menus list the chosen key\'s models and write only that role',async()=>{
   const f=keyFixture();await f.flush();await f.mode('different');await saveKey(f,'deepseek','my-ds');await f.flush();
   await f.pick('eval','key:my-ds');
-  const pick=f.node('[data-model-pick="eval"]');
-  assert.equal(pick.hidden,false);assert.match(pick.innerHTML,/Pick from 3 models…/);
-  assert.equal(f.node('[data-model-pick="advisor"]').hidden,true); // Advisor still uses the lab.
-  await f.choose('eval','deepseek-v4');
+  assert.equal(f.node('[data-model-menu="eval"]').hidden,false);
+  assert.equal(f.node('[data-model-menu="advisor"]').hidden,true); // Advisor still uses the lab.
+  await f.menu('eval');assert.deepEqual(optionsOf(f.node('[data-model-list="eval"]')),['deepseek-chat','deepseek-reasoner','deepseek-v4']);
+  await f.option('deepseek-v4');
   assert.equal(f.binding.selection().roles.eval.model,'deepseek-v4');
   assert.notEqual(f.binding.selection().roles.dev.model,'deepseek-v4');
+  assert.equal(f.node('[data-role-act="eval"]').hidden,false);assert.equal(f.node('[data-role-act="advisor"]').hidden,true);
+});
+
+test('Escape closes an open model menu and a second menu replaces the first',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');
+  await f.menu('add');assert.equal(f.node('[data-model-list="add"]').hidden,false);
+  await f.key('Escape');assert.equal(f.node('[data-model-list="add"]').hidden,true);
 });
 
 test('a failed model listing falls back to suggestions and keeps free typing',async()=>{
   const f=keyFixture();await f.flush();await f.mode('all');f.failModels();
   await saveKey(f,'deepseek','my-ds');await f.flush();
-  assert.match(f.node('[data-model-pick="add"]').innerHTML,/Pick from 1 model…/);
+  await f.menu('add');assert.deepEqual(optionsOf(f.node('[data-model-list="add"]')),['deepseek-chat']);
   await f.input('[data-key-model]','anything-i-type');
   assert.equal(f.binding.summary().dev.model,'anything-i-type');
 });
+
+test('the saved-key line shows name and expiry; Remove deletes only that key and never the whole collection',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');
+  assert.equal(f.node('[data-keys-status]').hidden,true);
+  await saveKey(f,'deepseek','my-ds');await f.flush();
+  assert.equal(f.node('[data-keys-status]').hidden,false);
+  assert.match(f.node('[data-keys-shared-saved]').innerHTML,/<b>my-ds<\/b> · deepseek · .*expires in <em data-key-left=/);
+  assert.equal(f.node('[data-keys-shared-remove]').dataset.keyRemove,'my-ds');
+  await f.removeShared();
+  assert.deepEqual(f.requests.filter(r=>r.method==='DELETE').map(r=>r.url),['/api/provider/credentials/my-ds']);
+  assert.equal(f.node('[data-keys-status]').hidden,true);
+  f.node('[data-keys-shared-remove]').dataset.keyRemove='';
+  await f.removeShared();
+  assert.equal(f.requests.filter(r=>r.method==='DELETE').length,1); // An empty id is ignored, not sent as DELETE on the collection.
+});
+
+test('a per-agent key needs no model of its own; the roles take theirs from the provider',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('different');
+  f.node('[data-key-provider]').value='deepseek';f.node('[data-key-value]').value='test-only-secret';f.node('[data-key-model]').value='';
+  await f.save();
+  assert.ok(f.requests.some(r=>r.method==='PUT'));assert.equal(f.binding.summary().dev.model,'deepseek-chat');
+  assert.equal(f.node('[data-key-model-field]').hidden,true);
+});
+
+test('test results are compact: unknown checks are left out, failures are named',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');await saveKey(f,'deepseek','my-ds');await f.flush();
+  const html=f.node('[data-keys-shared-test]').innerHTML;
+  assert.match(html,/✓ All checks passed/);assert.ok(!html.includes('Images')&&!html.includes('fail'));
+});
+
+test('a role\'s Test control reports Passed in place and only a failure opens a detail line',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('different');await saveKey(f,'deepseek','my-ds');await f.flush();
+  await f.pick('dev','key:my-ds');await f.input('[data-role-model="dev"]','deepseek-chat');
+  const button=f.node('[data-role-test="dev"]'),status=f.node('[data-key-test="dev"]');
+  assert.equal(button.textContent,'Test');assert.equal(status.hidden,true);
+  await emitTest(f);
+  assert.equal(button.textContent,'✓ Passed');assert.equal(button.dataset.result,'ok');assert.equal(status.hidden,true);
+});
+async function emitTest(f){
+  const n=f.node('[data-role-test="dev"]');n.dataset.roleTest='dev';n.closest=q=>q==='[data-role-test]'?n:null;
+  await f.emitClick(n);await f.flush();
+}
