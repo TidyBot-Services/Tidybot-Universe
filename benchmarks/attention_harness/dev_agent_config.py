@@ -1,7 +1,11 @@
 """Creation-only options for the single-cell native-agent condition."""
 import math
 
-FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider'}
+FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits'}
+# The Agent envelope. A run may lower versions and run time (cheaper tests); it can never raise them.
+DEFAULT_VERSIONS=10
+DEFAULT_WALL_SECONDS=21600
+MIN_WALL_SECONDS=3600
 MODELS={'gpt-6.1-sol','gpt-6-astra','gpt-6-sol'}
 DEFAULT_MODEL='gpt-6.1-sol'
 # AdvisorProxy on agent runs (10-29). Absent in older selections, which keep the fixed one-call Advisor.
@@ -47,6 +51,17 @@ def provider_roles(value):
     return dict(roles=result)
 
 
+def agent_limits(value):
+    """Validated reduced budget, or None when the request equals the official budget (nothing to freeze)."""
+    if not isinstance(value,dict) or set(value)!={'versions','wall_seconds'}:raise ValueError('invalid_agent_limits')
+    versions,wall=value['versions'],value['wall_seconds']
+    if type(versions) is not int or type(wall) is not int:raise ValueError('invalid_agent_limits')
+    if versions>DEFAULT_VERSIONS or wall>DEFAULT_WALL_SECONDS:raise ValueError('agent_limits_exceed_envelope')
+    if versions<1 or wall<MIN_WALL_SECONDS:raise ValueError('agent_limits_below_minimum')
+    if (versions,wall)==(DEFAULT_VERSIONS,DEFAULT_WALL_SECONDS):return None
+    return dict(versions=versions,wall_seconds=wall)
+
+
 def normalize(selection, *, validation_origin=None):
     reject_secret_fields(selection)
     if selection.get('dev_mode')!='agent':raise ValueError('agent_mode_required')
@@ -85,6 +100,10 @@ def normalize(selection, *, validation_origin=None):
         if roles.get('advisor',{}).get('credential','lab')=='lab' and model not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
         result['advisor_model']=model
     if origin is not None:result['agent_validation']=origin
+    if 'agent_limits' in selection:
+        if origin is not None:raise ValueError('agent_limits_not_supported_for_validation')
+        limits=agent_limits(selection['agent_limits'])
+        if limits:result['agent_limits']=limits
     quota=result['quota_stop_percent']
     if type(quota) not in (int,float) or not math.isfinite(quota) or not 0<quota<=100:raise ValueError('invalid_quota_stop_percent')
     return result

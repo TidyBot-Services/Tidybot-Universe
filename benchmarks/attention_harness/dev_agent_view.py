@@ -112,9 +112,10 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     held={k:sum(j['resources'].get(k,0) for j in jobs if j['state']=='reserved') for k in limits}
     stopped=cell.get('state') not in ('running','planned') or (cell.get('state')=='planned' and bool(cell.get('reason')) and cell.get('reason')!='operator_paused')
     end=run.get('paused_at') or (max((j.get('settled_at',0) for j in jobs),default=0) if stopped else now)
-    wall=max(0,min(21600,21600-(run['deadline']-(end or now)) if run.get('deadline') else 0))
+    wall_limit=run.get('wall_seconds',21600)  # 21600 unless the run froze a reduced budget
+    wall=max(0,min(wall_limit,wall_limit-(run['deadline']-(end or now)) if run.get('deadline') else 0))
     if stopped and cell.get('agent_resources',{}).get('wall_remaining') is not None:
-        wall=max(0,min(21600,21600-cell['agent_resources']['wall_remaining']))
+        wall=max(0,min(wall_limit,wall_limit-cell['agent_resources']['wall_remaining']))
     def error(source,value):
         if value not in (None,False,'',{},[]):errors.append(dict(source=source,error=clean(value)))
     error('controller',cell.get('error'))
@@ -224,11 +225,13 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     result=clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','error','task_id','seed','policy_id','mode','budget','used','versions','jobs')})
     result.update(dev_mode='agent',versions=clean(versions),jobs=[],agent=dict(
         phase=phase,reason=clean(cell.get('reason')),fatal_cause=clean(cell.get('fatal_cause')),errors=errors,counts=used,held=held,limits=limits,
-        remaining={k:limits[k]-used[k]-held[k] for k in limits},wall_seconds=wall,wall_limit=21600,
+        remaining={k:limits[k]-used[k]-held[k] for k in limits},wall_seconds=wall,wall_limit=wall_limit,
         quota=clean(quota),dev_model=selection.get('dev_model','gpt-6-astra'),eval_model=selection.get('eval_model','gpt-6-astra'),
         advisor_model=advisor_model,
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
         history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
+    if selection.get('agent_limits'):
+        result['agent']['reduced_budget']=dict(selection['agent_limits'],default_versions=10,default_wall_seconds=21600)
     if selection.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2':
         attention=soft(private,'attention.json',{}) or {}
         result['agent'].update(agent_policy_version='agent-policy-v2',

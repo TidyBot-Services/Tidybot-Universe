@@ -47,6 +47,11 @@ def bootstrap(workspace, ledger, policy):
     prompt=DEV_PROMPT
     if 'trial_runs' in ledger.limits:
         prompt=prompt.replace('10 formal versions, 40 moving executions, 300 read-only probes','1 formal version, 4 no-eval trial runs, 60 read-only probes').replace('21600 active wall seconds','1920 active wall seconds')
+    elif (ledger.limits['formal_versions'],ledger.wall_seconds)!=(10,21600):
+        # Reduced budget: the hashed prompt is untouched, only the numbers shown to Dev change at run time.
+        was=('10 formal versions, 40 moving executions, 300 read-only probes','21600 active wall seconds')
+        if any(text not in prompt for text in was):raise ValueError('prompt_budget_text_missing')
+        prompt=prompt.replace(was[0],f"{ledger.limits['formal_versions']} formal versions, 40 moving executions, 300 read-only probes").replace(was[1],f'{ledger.wall_seconds} active wall seconds')
     return prompt+'\nHelp policy: '+policy+'. See docs/tools.md for its exact availability.\nBudgets: '+json.dumps(ledger.limits,sort_keys=True)
 
 
@@ -399,7 +404,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             from .dev_agent_policy_freeze import validate
             validate(manifest)
             if cell.get('agent_policy_version')!='agent-policy-v2':raise ValueError('agent_policy_cell_version_mismatch')
-        ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'],validation=validation is not None)
+        ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'],validation=validation is not None,budget=manifest.get('agent_limits'))
         ledger.resume()
         import uuid
         setup_id='setup:'+uuid.uuid4().hex
@@ -410,7 +415,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         dev_condition=condition if manifest.get('success_condition_dev_visible') else None
         if not (workspace.canonical/'task.json').exists():
             workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),
-                dict(config,agent_policy_id=cell['policy_id']) if config.get('agent_policy_version')=='agent-policy-v2' else config,success_condition=dev_condition)
+                dict(config,agent_policy_id=cell['policy_id']) if config.get('agent_policy_version')=='agent-policy-v2' else config,success_condition=dev_condition,
+                budget=manifest.get('agent_limits'))
             atomic_write(workspace.ws,'work/main.py',manifest['initial_sources'][cell['task_id']]['source'].encode())
         if validation:
             from .memory_agent_validation import seed

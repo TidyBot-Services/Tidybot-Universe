@@ -220,7 +220,7 @@ class Workspace:
                 share(self.canonical, name, self.ws); continue
             self._restore(self.ws, name, read_beneath(self.canonical, name, max(SOURCE_LIMIT, (self.canonical / name).stat().st_size)))
 
-    def prepare(self, task, config, success_condition=None):
+    def prepare(self, task, config, success_condition=None, budget=None):
         from curobo_v2.fixture_interaction import config_enabled
         if config_enabled(config):self.fixture_config=config
         from .dev_tasks import dev_sdk, dev_sdk_prompt
@@ -257,9 +257,15 @@ class Workspace:
         self.publish('docs/sdk.json', dev_sdk(config))
         self.publish('docs/safety.json', dict(translation_coordinate_m=.05, rotation_rad=.5,
             joint_margin_rad=.02, base_clearance_m=.010, sdk_calls=320, control_steps=9600,
-            execution_seconds=1920, versions=10, executions=40, probes=300, wall_seconds=21600))
+            execution_seconds=1920, versions=budget['versions'] if budget else 10, executions=40, probes=300,
+            wall_seconds=budget['wall_seconds'] if budget else 21600))
         self.publish('docs/devtool.py', Path(__file__).with_name('dev_agent_tools.py').read_bytes())
         tools = TOOLS_V2 if config.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2' else TOOLS
+        if budget:
+            # Runtime wording only: the frozen TOOLS text (and its hashes) stay as they are.
+            was='Limits: 10 formal versions, 40 executions, 300 probes, 6 hours total wall time;'
+            if was not in tools:raise ValueError('tools_budget_text_missing')
+            tools=tools.replace(was,f"Limits: {budget['versions']} formal versions, 40 executions, 300 probes, {budget['wall_seconds']} seconds total wall time;")
         if config.get('agent_policy_version')=='agent-policy-v2' and config.get('agent_policy_id')=='trace_aware_hint_only':
             tools=tools.replace('Memory notes in memory/vN.json are advice, not authority. Each note is bound to\nthe version it was issued for; read the current version\'s notes before moving.\n', 'This hint_only run has no Memory input or public Memory files.\n')
         if config_enabled(config):tools+='\nfind_fixtures: {}. Reset-scene task fixture states and interaction parts in WORLD coordinates; no physics steps.\n'

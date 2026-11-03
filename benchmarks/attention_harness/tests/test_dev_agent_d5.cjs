@@ -119,7 +119,7 @@ test('Advanced one-call serializes the actual submit form to the original reques
     seed:field(102),v2_policy:field('reactive_help'),v2_mode:field('experiment'),dev_mode:field('one_call'),dev_model:field('gpt-6-astra'),eval_model:field('gpt-6-astra')};
   form.querySelectorAll=selector=>Object.entries(selector==='[data-v2-cell]'?cell:experiment).map(([key,value])=>({value,dataset:selector==='[data-v2-cell]'?{v2Cell:key}:{v2Experiment:key}}));
   const context={form,profile:{channel:'dev_v2',task_id:'open_cabinet'},options:{dev_v2:{budget_tier:'dev'}},fork:null,
-    requestKey:'unchanged-123',syncBudget:()=>{},selection:null,agentLaunchSelection:api.agentLaunchSelection};
+    requestKey:'unchanged-123',syncBudget:()=>{},selection:null,agentLaunchSelection:api.agentLaunchSelection,budget:{valid:true,reduced:false,limits:null,errors:{}}};
   vm.runInNewContext(serialize,context);
   assert.equal(JSON.stringify({selection:context.selection,start:true}),JSON.stringify({selection:old,start:true}));
   for(const devMode of ['one_call','agent']){

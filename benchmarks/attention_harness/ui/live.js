@@ -2099,6 +2099,17 @@
   function devPolicyChoices(options,mode) {
     return mode==='agent'?(options?.agent_policies?.policies||[]).map(p=>p.policy_id):[ 'all',...(options?.policies||[])];
   }
+  // The Agent envelope: versions 1-10 and 1-6 hours. A run may lower both; the server refuses anything larger.
+  const AGENT_DEFAULT_VERSIONS=10,AGENT_DEFAULT_WALL=21600,AGENT_MIN_WALL=3600;
+  function agentBudgetCheck(versions,wallSeconds) {
+    const v=Number(versions),w=Number(wallSeconds),errors={};
+    if(!Number.isInteger(v)||v<1)errors.versions='Enter 1 to 10 versions.';
+    else if(v>AGENT_DEFAULT_VERSIONS)errors.versions='Largest allowed: 10 versions. A bigger budget needs separate approval.';
+    if(!Number.isInteger(w)||w<AGENT_MIN_WALL)errors.wall='Shortest allowed: 1 hour (3600 seconds).';
+    else if(w>AGENT_DEFAULT_WALL)errors.wall='Longest allowed: 6 hours (21600 seconds). A longer run needs separate approval.';
+    const valid=!Object.keys(errors).length,reduced=valid&&(v<AGENT_DEFAULT_VERSIONS||w<AGENT_DEFAULT_WALL);
+    return {errors,valid,reduced,limits:reduced?{versions:v,wall_seconds:w}:null};
+  }
   function agentLaunchSelection(selection,values={}) {
     if(!values.devMode||values.devMode==='one_call')return selection;
     if(values.devMode!=='agent')throw new Error('Unknown Dev mode');
@@ -2107,7 +2118,7 @@
     const {configuration,human_wait_seconds,eval_agent,...rest}=selection;
     return {...rest,dev_mode:'agent',model_source:'codex',budget_tier:'dev',
       dev_model:values.devModel||'gpt-6.1-sol',eval_model:values.evalModel||'gpt-6.1-sol',advisor_model:values.advisorModel||'gpt-6.1-sol',quota_stop_percent:90,
-      goal_key:configuration?.goal_id||selection.goal_key,wall_limit:21600};
+      goal_key:configuration?.goal_id||selection.goal_key,wall_limit:21600,...(values.limits?{agent_limits:values.limits}:{})};
   }
   function runConfigDefaultModelMinutes(options) {
     return Math.ceil(Number(options?.default_cell_budget?.model_seconds ?? 1800)/60);
@@ -2117,6 +2128,7 @@
     return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:selection?.policies?.length?'all':null,
       devMode:selection?.dev_mode==='agent'?'agent':'one_call',
       ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model,advisorModel:selection.advisor_model||selection.advisor_proxy?.model||'gpt-6-astra'}:{}),
+      ...(selection?.agent_limits?{agentLimits:selection.agent_limits}:{}),
       mode:selection?.mode,modelSource:selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
       help:selection?.help_budget,waitSeconds:selection?.human_wait_seconds??selection?.planner_features?.human_wait_seconds,
       wallSeconds:config.wall_seconds??selection?.wall_limit,modelMinutes:cell.model_seconds==null?null:Math.ceil(cell.model_seconds/60),
@@ -2223,8 +2235,13 @@
     return Object.keys(roles).length?{roles}:null;
   }
   function keysSectionHtml() {
-    return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Models &amp; keys</h4><small>Dev mode: <output data-dev-mode-label>Agent</output> · Quota stop <span data-quota-stop-label>90</span>%<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %" hidden></small></div><div data-agent-controls><p class="ab-run-hint" data-agent-reason role="status"></p></div>
-      <fieldset class="ab-keys-modes"><legend class="op-sr-only">Model setup</legend>
+    return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Models &amp; keys</h4><small>Dev mode: <output data-dev-mode-label>Agent</output><input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %" hidden></small></div><div data-agent-controls><p class="ab-run-hint" data-agent-reason role="status"></p></div>
+      <div class="ab-source-row" data-model-source-field>
+        <label class="ab-launch-field ab-model-source">Model source<select data-keys-source aria-label="Model source and billing"><option value="codex">Lab models · Codex subscription</option><option value="parcc">Lab models · PARCC (GLM + Qwen)</option><option value="all">My key for all agents</option><option value="different">Different per agent</option></select><small data-source-help></small></label>
+        <div class="ab-bill" data-bill role="status"><span class="ab-bill-k">Billed to</span><strong data-bill-name></strong><div class="ab-meter" data-bill-meter hidden aria-hidden="true"><i></i><b></b></div><small data-codex-quota hidden role="status"></small><small data-bill-note></small></div>
+      </div>
+      <select name="model_source" aria-label="Model source" hidden tabindex="-1"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select>
+      <fieldset class="ab-keys-modes" hidden><legend class="op-sr-only">Model setup</legend>
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="lab" data-keys-mode checked><span><b>Lab models</b><small>Ready to run · nothing to fill in</small></span></label>
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="all" data-keys-mode disabled><span><b>My key for all agents</b><small>One provider, model and key</small></span></label>
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="different" data-keys-mode disabled><span><b>Different per agent</b><small>Choose each role separately</small></span></label>
@@ -2573,17 +2590,17 @@
           ${window.Lobby.newRunHtml()}${keysSectionHtml()}
           <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
-            <label class="ab-launch-field wide" data-model-source-field>Model source<select name="model_source" aria-label="Model source"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select><small data-codex-quota hidden role="status"></small><small>Codex results are not comparable with PARCC results and use the Codex subscription quota.</small></label>
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
-            <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><input name="max_attempts" type="number" min="1" max="10" value="5" required></label>
-            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="30" value="21600" required><span>seconds</span></span></label>
+            <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range hidden>1–10 · Agent default 10</small><input name="max_attempts" type="number" min="1" max="10" value="5" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
+            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range hidden>1–6 hours · Agent default 6</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="30" value="21600" required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
             <label class="ab-launch-field">AI thinking per task<small data-model-minutes-note hidden> · set by Agent mode</small><span class="ab-launch-unit" ${[240,360].includes(options?.dev_v2?.model_reserve_seconds)?`title="Five Dev versions, five reviews and five hints can reserve ${options.dev_v2.model_reserve_seconds===360?50:40} minutes."`:''}><input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required><span>minutes</span></span></label>
             <label class="ab-launch-field">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field" data-v2-tokens>AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
             <label class="ab-launch-field" data-fixed-tokens hidden>Token budget<input name="token_limit" type="number" min="0" max="100000" value="60000"></label>
-          </div></section>
+          </div><p class="ab-run-hint" data-official-budget hidden>Official Agent budget: 10 versions · 6 hours. Lower either one to test cheaply; the run is then marked as a reduced budget.</p>
+          <p class="ab-reduced" data-reduced-note hidden><b>Reduced budget</b> · <span data-reduced-text></span> Results cannot be compared directly with the official 10-version results; the summary, the run header and exports say so. Limits can be lowered, not raised.</p></section>
           <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>Fixed policy settings, goal and resource details.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
             <label class="ab-launch-field">Dev mode<select name="dev_mode" aria-label="Dev mode"><option value="agent">Agent</option><option value="one_call">One call</option></select></label>
             <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''}></label>
@@ -2616,12 +2633,48 @@
       let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
+      // 03's Model source is a view over two existing controls: the hidden model_source select (PARCC / Codex) and the
+      // hidden key-mode radios that bindKeys owns. Choosing here sets them; their own events paint this row back.
+      const keyMode=()=>form.dev_mode.value==='agent'?form.querySelector('[data-keys-mode]:checked')?.value||'lab':'lab';
       function showQuota() {
-        quotaLine.hidden=form.model_source.value!=='codex'||(form.model_source.disabled&&form.dev_mode.value!=='agent');
-        if(quotaLine.hidden)return;
-        const message=codexQuotaText(dialogQuota);
-        quotaLine.textContent=message.text;
-        quotaLine.classList.toggle('ab-codex-quota-low',message.low);
+        quotaLine.hidden=form.model_source.value!=='codex'||(form.model_source.disabled&&form.dev_mode.value!=='agent')||keyMode()!=='lab';
+        if(!quotaLine.hidden){
+          const message=codexQuotaText(dialogQuota);
+          quotaLine.textContent=message.text;
+          quotaLine.classList.toggle('ab-codex-quota-low',message.low);
+        }
+        drawSource();
+      }
+      function drawSource() {
+        const select=form.querySelector('[data-keys-source]');
+        if(!select)return;
+        const agent=form.dev_mode.value==='agent',mode=keyMode(),parcc=!form.model_source.disabled;
+        const radio=name=>form.querySelector(`[data-keys-mode][value="${name}"]`);
+        for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!agent||!!radio(name)?.disabled;
+        select.querySelector('option[value="parcc"]').disabled=!parcc;
+        select.querySelector('option[value="parcc"]').textContent=parcc||agent?`Lab models · PARCC (GLM + Qwen)${parcc?'':' · One call only'}`:'Lab models · PARCC (GLM + Qwen)';
+        select.value=mode==='lab'?(form.model_source.value==='parcc'&&parcc?'parcc':'codex'):mode;
+        const mine=agent?keys.summary():{},stop=Number(form.quota_stop_percent.value)||90;
+        const name=form.querySelector('[data-bill-name]'),note=form.querySelector('[data-bill-note]'),help=form.querySelector('[data-source-help]');
+        const meter=form.querySelector('[data-bill-meter]'),used=dialogQuota?.used_percent;
+        const usable=typeof used==='number'&&Number.isFinite(used)&&used>=0&&used<=100;
+        meter.hidden=!(select.value==='codex'&&usable);
+        if(!meter.hidden){meter.querySelector('i').style.width=`${used}%`;meter.querySelector('b').style.left=`${stop}%`;}
+        if(select.value==='codex'){
+          help.textContent='Codex results are not comparable with PARCC results and use the Codex subscription quota.';
+          name.textContent='Codex subscription';note.innerHTML=`The run stops at <span data-quota-stop-label>${stop}</span>% of the quota.`;
+        }else if(select.value==='parcc'){
+          help.textContent='Free lab models. Results are not comparable with Codex results.';
+          name.textContent='PARCC (free)';note.textContent='No quota. Usage is still recorded.';
+        }else if(select.value==='all'){
+          help.textContent='One provider, model and key for Dev, Eval and Advisor.';
+          const key=mine.dev?.keyName;
+          name.textContent=key?`Your key · ${key}`:'Your key';note.textContent=key?'Billed to your own key. The lab quota does not apply.':'Save a key below, or choose Lab models.';
+        }else{
+          help.textContent='Choose each agent\'s source in Agent models below.';
+          name.textContent='Set per agent';
+          note.textContent=['dev','eval','advisor'].map(role=>`${role[0].toUpperCase()+role.slice(1)}: ${mine[role]?`your key ${mine[role].keyName}`:'lab'}`).join(' · ');
+        }
       }
       fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
         dialogQuota=value;
@@ -2689,22 +2742,28 @@
         if(policyChoices.length && [...form.v2_policy.options].map(o=>o.value).join('|')!==policyChoices.join('|'))
           fillOptions(form.v2_policy,policyChoices,p=>p==='all'?'All seven · frozen comparison':policyTitle(p));
         form.dev_model.disabled=!agent;form.eval_model.disabled=!agent;
-        form.querySelector('[data-agent-reason]').textContent=reason||(agent?'10 formal versions · 40 executions · 300 read-only probes · 6 hours · stops at 90% quota. Eval picks its own model; native success ends the run.':'One call keeps the current settings. Switch to Agent to choose the Dev and Eval models separately.');
         form.querySelector('[data-dev-mode-label]').textContent=agent?'Agent':'One call';
         if(agent){
-          if(!oneCallFields)oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};
-          form.model_source.value='codex';form.eval_agent_enabled.checked=true;form.max_attempts.value='10';form.wall_seconds.value='21600';
+          // Entering Agent mode starts from the official budget; later edits (a lowered budget) are the user's and stay.
+          if(!oneCallFields){oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};form.max_attempts.value='10';form.wall_seconds.value='21600';}
+          form.model_source.value='codex';form.eval_agent_enabled.checked=true;
         }else if(oneCallFields){
           form.model_source.value=oneCallFields.modelSource;form.eval_agent_enabled.checked=oneCallFields.reviewer;
           form.max_attempts.value=oneCallFields.versions;form.wall_seconds.value=oneCallFields.wall;oneCallFields=null;
         }
         form.model_source.disabled=agent||profile?.channel!=='dev_v2';
         form.eval_agent_enabled.disabled=agent||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
-        if(profile?.channel==='dev_v2'){form.max_attempts.readOnly=agent;form.wall_seconds.readOnly=agent;}
+        if(profile?.channel==='dev_v2'){
+          // Agent: both are editable but only downwards from the official budget (10 versions, 6 hours; at least 1 hour).
+          form.max_attempts.readOnly=false;form.wall_seconds.readOnly=false;
+          form.max_attempts.min='1';form.max_attempts.max='10';
+          form.wall_seconds.min=agent?'3600':'30';form.wall_seconds.max=agent?'21600':'86400';
+        }
         form.model_seconds_minutes.disabled=agent;form.querySelector('[data-model-minutes-note]').hidden=!agent;
         form.querySelector('[data-v2-config]').hidden=agent||profile?.channel!=='dev_v2';
+        form.querySelector('[data-agent-reason]').textContent=reason||(agent?`${Math.min(10,Math.max(1,Number(form.max_attempts.value)||10))} formal versions · 40 executions · 300 read-only probes · ${Math.min(21600,Math.max(3600,Number(form.wall_seconds.value)||21600))/3600} hours · stops at ${Number(form.quota_stop_percent?.value)||90}% quota. Eval picks its own model; native success ends the run.`:'One call keeps the current settings. Switch to Agent to choose the Dev and Eval models separately.');
         showQuota();
-        form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention.';
+        form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes. It uses the Eval model chosen in 03.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention. Its model follows the Model source in 03.';
       }
       function updatePreview() {
         fixtureRunMode(selectedProfile(),form.v2_mode,form.v2_policy,!!forkStart);
@@ -2714,17 +2773,36 @@
         form.querySelector('[data-launch-name-preview]').textContent = `${taskName(selectedProfile()?.task_id||form.task_id.value)}${form.name_suffix.value.trim()?` -- ${form.name_suffix.value.trim()}`:''}`;
         const iterations = Number(form.max_attempts.value);
         syncBudget();
+        drawBudget();
         form.sdk_calls.value=profile?Number(profile.sdk_call_limit||0)*iterations:0;
         form.querySelector('[data-readonly-sdk-calls]').textContent=form.sdk_calls.value;
         form.querySelector('[data-robot-time]').textContent=profile?`${Math.round(Number(profile.attempt_wall_seconds)/60)} min`:'';
         form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
         form.querySelector('[data-wall-description]').textContent=`${Number(form.wall_seconds.value)/3600} hours · stored in seconds`;
         syncRunTypeButtons();
-        form.querySelector('[data-quota-stop-label]').textContent=form.quota_stop_percent.value;
+        const stopLabel=form.querySelector('[data-quota-stop-label]');
+        if(stopLabel)stopLabel.textContent=form.quota_stop_percent.value;
         updateSummary();
         form.querySelector('[data-run-type-description]').textContent=isFixed(profile||{})?'Runs an approved policy with fixed resource limits.':'Generates and revises policy code within the selected budgets.';
-        for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled;
+        for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled||!budget.valid;
         if(profile?.channel==='dev_v2')syncSeedOptions();
+      }
+      // 05 in Agent mode: lowered limits get a Reduced budget mark; anything above the envelope is blocked here and by the server.
+      let budget=agentBudgetCheck(10,21600);
+      function drawBudget() {
+        const agent=form.dev_mode.value==='agent'&&selectedProfile()?.channel==='dev_v2';
+        budget=agent?agentBudgetCheck(form.max_attempts.value,form.wall_seconds.value):agentBudgetCheck(10,21600);
+        form.querySelectorAll('[data-agent-range]').forEach(node=>{node.hidden=!agent;});
+        const versions=Number(form.max_attempts.value),wall=Number(form.wall_seconds.value);
+        form.querySelector('[data-reduced-chip="versions"]').hidden=!(budget.reduced&&versions<AGENT_DEFAULT_VERSIONS);
+        form.querySelector('[data-reduced-chip="wall"]').hidden=!(budget.reduced&&wall<AGENT_DEFAULT_WALL);
+        form.querySelectorAll('[data-limit-error]').forEach(node=>{
+          const text=agent?budget.errors[node.dataset.limitError]||'':'';
+          node.textContent=text;node.hidden=!text;node.closest('label').classList.toggle('ab-limit-bad',!!text);
+        });
+        form.querySelector('[data-reduced-note]').hidden=!budget.reduced;
+        if(budget.reduced)form.querySelector('[data-reduced-text]').textContent=`${versions} of 10 versions · ${wall/3600} of 6 hours.`;
+        form.querySelector('[data-official-budget]').hidden=!(agent&&budget.valid&&!budget.reduced);
       }
       function updateSummary() {
         const profile=selectedProfile();
@@ -2738,7 +2816,7 @@
         if(profile?.channel==='dev_v2'){
           const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
             style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.dev_mode.value==='agent'?'parcc':form.model_source.value});
-          form.querySelector('[data-launch-preview]').textContent=base.replace(' · up to ','\nUp to ')+(form.dev_mode.value==='agent'?` · Agent · ${dev} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}`:'');
+          form.querySelector('[data-launch-preview]').textContent=base.replace(' · up to ','\nUp to ')+(form.dev_mode.value==='agent'?` · Agent · ${dev} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of 10 versions · ${Number(form.wall_seconds.value)/3600} of 6 hours · not directly comparable with the official 10-version results`:''}`:'');
           return;
         }else if(own)detail+=` · ${dev}`;
         form.querySelector('[data-launch-preview]').textContent=unavailable||`${description}\n${detail}`;
@@ -2842,6 +2920,7 @@
         if(repeat.modelSource==='parcc'||repeat.modelSource==='codex'&&!form.model_source.querySelector('option[value="codex"]').disabled)set('model_source',repeat.modelSource);
         set('max_attempts',repeat.versions);set('help_count',repeat.help);set('human_wait_seconds',repeat.waitSeconds);
         set('wall_seconds',repeat.wallSeconds);set('model_seconds_minutes',repeat.modelMinutes);
+        if(repeat.agentLimits&&form.dev_mode.value==='agent'){set('max_attempts',repeat.agentLimits.versions);set('wall_seconds',repeat.agentLimits.wall_seconds);}
         set('goal_id',repeat.goalId);set('name_suffix',repeat.nameSuffix);
         if(repeat.reviewer!=null)form.eval_agent_enabled.checked=repeat.reviewer;
         for(const input of form.querySelectorAll('[data-v2-cell]'))if(repeat.cellBudget?.[input.dataset.v2Cell]!=null)input.value=repeat.cellBudget[input.dataset.v2Cell];
@@ -2863,6 +2942,19 @@
       form.addEventListener('input',budgetInput);
       form.addEventListener('change',budgetInput);
       form.model_source.addEventListener('change',showQuota);
+      form.addEventListener('ab-keys-change',showQuota);
+      form.querySelector('[data-keys-source]').addEventListener('change',event=>{
+        const value=event.target.value,radio=name=>form.querySelector(`[data-keys-mode][value="${name}"]`);
+        if(value==='codex'||value==='parcc'){
+          form.model_source.value=value;form.model_source.dispatchEvent(new Event('change',{bubbles:true}));
+          const lab=radio('lab');
+          if(lab&&!lab.checked){lab.checked=true;lab.dispatchEvent(new Event('change',{bubbles:true}));}
+        }else{
+          const pick=radio(value);
+          if(pick&&!pick.disabled){pick.checked=true;pick.dispatchEvent(new Event('change',{bubbles:true}));}
+        }
+        showQuota();
+      });
       form.v2_mode.addEventListener('change',()=>{
         manualBudget=false;
         const experiment=form.v2_mode.value==='experiment';
@@ -2900,7 +2992,8 @@
             }
           }
           if(profile.rules_profile)selection.rules_profile=profile.rules_profile;
-          selection=agentLaunchSelection(selection,{devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
+          if(form.dev_mode.value==='agent'&&!budget.valid)throw new Error(Object.values(budget.errors)[0]);
+          selection=agentLaunchSelection(selection,{limits:form.dev_mode.value==='agent'?budget.limits:null,devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
           if(selection.dev_mode==='agent'){const provider=keys.selection();if(provider)selection.agent_provider=provider;}
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           if(window.Lobby.enabled&&profile.channel==='dev_v2'){
@@ -3955,7 +4048,9 @@
     const startedAt=snapshot.run.started_at || snapshot.dev_session?.created_at,endedAt=snapshot.run.ended_at || snapshot.dev_session?.ended_at;
     const endReason=operatorEndReason(snapshot,maximum),took=epoch(startedAt)!=null&&epoch(endedAt)!=null?` · took ${humanDuration(epoch(endedAt)-epoch(startedAt))}`:'';
     const sub = system ? `Started ${dateTime(startedAt)} · please tell the research team` : terminal ? `${endReason==='the run ended'?'Ended':`Ended because ${endReason}`}${startedAt==null?'':` · started ${dateTime(startedAt)}`}${took}` : waiting ? `${Math.max(0,maximum-k)} attempt(s) left${pending?.created_at == null ? '' : ` · paused for ${operatorTime(Date.now()/1000-pending.created_at)}`}` : '';
-    return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}</div></div>`;
+    const lowered=snapshot.agent?.reduced_budget;
+    const reducedLine=lowered?`<p class="op-reduced" data-reduced-budget><b>Reduced budget</b> · ${esc(lowered.versions)} of ${esc(lowered.default_versions)} versions · ${esc(lowered.wall_seconds/3600)} of ${esc(lowered.default_wall_seconds/3600)} hours · not directly comparable with the official 10-version results</p>`:'';
+    return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}${reducedLine}</div></div>`;
   }
   function operatorFlow(snapshot) {
     const nodes=[];

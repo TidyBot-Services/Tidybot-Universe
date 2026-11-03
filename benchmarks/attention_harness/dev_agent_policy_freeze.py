@@ -55,7 +55,7 @@ def validate_comparison(manifests):
         raise ValueError('mixed_agent_policy_versions')
     from .dev_ledger import encoded
     fields = ('agent_provider', 'dev_mode', 'model', 'dev_model', 'eval_model', 'advisor_model',
-              'dev_reasoning_effort', 'agent_budget', 'cell_budget', 'target_depth',
+              'dev_reasoning_effort', 'agent_budget', 'agent_limits', 'reduced_budget', 'cell_budget', 'target_depth',
               'max_versions', 'wall_limit', 'budget_tier', 'model_source',
               'scene_contract', 'reproducible_reset', 'agent_policy_sources_sha256',
               'memory_authority', 'run_notes', 'memory_family', 'trace_visible', 'help_pricing')

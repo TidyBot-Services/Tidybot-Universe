@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','bimanual_collaboration','rules_profile'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','bimanual_collaboration','rules_profile'}|FIELDS
 def validate_selection_fields(selection):
     if isinstance(selection,dict) and 'test_fixture' in selection:raise ValueError('product run creation rejects test_fixture')
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
@@ -92,10 +92,11 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
             raise ValueError('conflicting_agent_policy_version')
         agent_options=normalize(dict(selection,agent_policy_version=version),validation_origin=validation_origin)
         if version=='agent-policy-v1':selection={k:v for k,v in selection.items() if k!='agent_policy_version'}
+        if 'agent_limits' not in agent_options:selection={k:v for k,v in selection.items() if k!='agent_limits'}  # the official budget is the absence of the field
         selection={**selection,**agent_options,'model_source':'codex'}
     else:
         if agent_policy_version is not None:raise ValueError('agent_options_require_agent_mode')
-        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider')):raise ValueError('agent_options_require_agent_mode')
+        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits')):raise ValueError('agent_options_require_agent_mode')
         if 'dev_mode' in selection:selection={k:v for k,v in selection.items() if k!='dev_mode'}
     if validation_origin is not None and (validation_origin.get('dev_mode')=='agent' or validation_origin.get('config',{}).get('dev_mode')=='agent'):
         if not agent_options:raise ValueError('agent_memory_validation_unsupported')
@@ -359,10 +360,12 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         if 'agent_provider' in agent_options:
             for config in configs.values():config['agent_provider']=copy.deepcopy(agent_options['agent_provider'])
         manifest.update(agent_options,source_size_limit_bytes=131072,agent_accounting='attentionbench.agent-ledger.v1')
-        manifest['schedule']=([dict(cell=c['key'],through_version=1) for c in cells] if validation_origin is not None else [dict(cell=cells[0]['key'],through_version=10)])
+        reduced=agent_options.get('agent_limits')  # absent = the official 10 versions / 6 hours
+        manifest['schedule']=([dict(cell=c['key'],through_version=1) for c in cells] if validation_origin is not None else [dict(cell=cells[0]['key'],through_version=reduced['versions'] if reduced else 10)])
         manifest['model']=dict(model=agent_options['dev_model'],reasoning_effort=agent_options['dev_reasoning_effort'],provider_retries=0)
-        manifest['agent_budget']=dict(formal_versions=10,moving_executions=40,read_only_probes=300,eval_runs=10,help=help_budget,
-            sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=21600,model_turns=None,tokens=None)
+        manifest['agent_budget']=dict(formal_versions=reduced['versions'] if reduced else 10,moving_executions=40,read_only_probes=300,eval_runs=reduced['versions'] if reduced else 10,help=help_budget,
+            sdk_calls_per_execution=320,control_steps_per_execution=9600,execution_wall_seconds=1920,active_wall_seconds=reduced['wall_seconds'] if reduced else 21600,model_turns=None,tokens=None)
+        if reduced:manifest['reduced_budget']=True
         if validation_origin is not None:
             from .memory_agent_validation import ARM_BUDGET,origin_visibility
             manifest['agent_budget']=dict(ARM_BUDGET)
@@ -460,6 +463,13 @@ def validate_fairness(m):
             validate_manifest(m)
         if any(m.get(k)!=v for k,v in options.items()) or bool(options.get('agent_validation'))!=bool(m.get('validation_experiment')) or (not m.get('validation_experiment') and len(m['cells'])!=1):
             raise ValueError('agent_frozen_options_differ')
+        reduced=m.get('agent_limits')
+        if bool(reduced)!=bool(m.get('reduced_budget')) or ('reduced_budget' in m and m['reduced_budget'] is not True):raise ValueError('agent_reduced_budget_marker_differs')
+        if reduced:
+            budget=m.get('agent_budget',{})
+            if (budget.get('formal_versions'),budget.get('eval_runs'),budget.get('active_wall_seconds'))!=(reduced['versions'],reduced['versions'],reduced['wall_seconds']) or \
+                    [r['through_version'] for r in m.get('schedule',[])]!=[reduced['versions']]:
+                raise ValueError('agent_reduced_budget_differs')
         if any(c.get('dev_mode')!='agent' for c in m['configs'].values()):raise ValueError('agent_config_gate_differs')
         if any(c.get('agent_provider') is not None and c['agent_provider']!=m.get('agent_provider') for c in m['configs'].values()):
             raise ValueError('agent_provider_config_mismatch')

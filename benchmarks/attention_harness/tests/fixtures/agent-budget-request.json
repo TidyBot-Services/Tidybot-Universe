@@ -1,0 +1,30 @@
+{
+ "selection": {
+  "request_key": "9ec9417b-5a87-4403-a4ad-5b18f143479b",
+  "tasks": [
+   "pick_place_counter_to_sink"
+  ],
+  "seeds": [
+   102
+  ],
+  "policies": [
+   "autonomous"
+  ],
+  "mode": "experiment",
+  "help_budget": 5,
+  "model_source": "codex",
+  "budget_tier": "dev",
+  "dev_mode": "agent",
+  "dev_model": "gpt-6.1-sol",
+  "eval_model": "gpt-6.1-sol",
+  "advisor_model": "gpt-6.1-sol",
+  "quota_stop_percent": 90,
+  "goal_key": "daily-v2-1793726944006",
+  "wall_limit": 21600,
+  "agent_limits": {
+   "versions": 2,
+   "wall_seconds": 7200
+  }
+ },
+ "start": false
+}
