@@ -13,17 +13,24 @@ EXECUTION_LIMITS = dict(sdk_calls=320, control_steps=9600, wall_seconds=1920)
 
 
 class AgentLedger:
-    def __init__(self, path, cell, *, help_limit=1, clock=time.time, validation=False):
+    def __init__(self, path, cell, *, help_limit=1, clock=time.time, validation=False, budget=None):
         if type(help_limit) is not int or not 0 <= help_limit <= 10:
             raise ValueError('invalid_help_budget')
         self.path, self.cell, self.clock = Path(path), cell, clock
         self.limits = {**LIMITS, 'help': help_limit}
         wall_seconds=21600
+        if budget is not None:
+            # A frozen, reduced Agent budget (manifest agent_limits). Never above the envelope.
+            from .dev_agent_config import agent_limits
+            if validation or agent_limits(budget) is None:raise ValueError('invalid_agent_limits')
+            self.limits.update(formal_versions=budget['versions'], eval_runs=budget['versions'])
+            wall_seconds=budget['wall_seconds']
         if validation:
             from .memory_agent_validation import ARM_BUDGET
             if help_limit!=0:raise ValueError('agent validation help must be zero')
             self.limits={k:ARM_BUDGET[k] for k in (*LIMITS,'trial_runs')}
             wall_seconds=ARM_BUDGET['active_wall_seconds']
+        self.wall_seconds=wall_seconds
         with self.tx() as db:
             db.execute('CREATE TABLE IF NOT EXISTS v2_agent_runs (cell TEXT PRIMARY KEY, payload TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS v2_agent_jobs (cell TEXT, id TEXT, state TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(cell,id))')
