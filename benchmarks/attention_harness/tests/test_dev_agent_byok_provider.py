@@ -42,21 +42,66 @@ def test_provider_defaults_and_explicit_loopback(monkeypatch):
     assert _NoRedirect().redirect_request(None,None,302,'',{},'https://other.test') is None
 
 
-@pytest.mark.parametrize('role',['dev','eval','advisor'])
-def test_probe_transport_and_role_image(role):
-    key=Secret('sk-'+secrets.token_urlsafe(32));seen=[]
+def vision_transport(key,seen,answer='HELLO 4821',vision_status=200,token_param='max_completion_tokens'):
+    """Memory transport: /models, the streaming tool-call probe, and the non-streaming picture question."""
     def transport(req,**kw):
         assert req.get_header('Authorization')=='Bearer '+key.reveal()
         body=json.loads(req.data) if req.data else None;seen.append(body)
         if body is None:return io.BytesIO(b'{"data":[]}')
-        assert body['max_completion_tokens']==512
+        assert body[token_param]==512
+        if body['stream'] is False:
+            if vision_status!=200:raise urllib.error.HTTPError(req.full_url,vision_status,'bad',{},io.BytesIO(b'image input is not supported'))
+            return io.BytesIO(json.dumps(dict(choices=[dict(message=dict(content=answer))])).encode())
         assert body['tool_choice']=='auto'  # thinking models reject a forced named tool
         chunk=dict(choices=[dict(delta=dict(tool_calls=[dict(function=dict(name='ping',arguments='{}'))]))])
         return io.BytesIO(b'data: '+json.dumps(chunk).encode()+b'\n\ndata: [DONE]\n\n')
-    result=probe(presets()['openai'],key,'m',role=role,transport=transport)
+    return transport
+
+
+@pytest.mark.parametrize('role',['dev','eval','advisor'])
+def test_probe_transport_and_role_image(role):
+    key=Secret('sk-'+secrets.token_urlsafe(32));seen=[]
+    result=probe(presets()['openai'],key,'m',role=role,transport=vision_transport(key,seen))
     assert result.ok and result.checks['vision']==('unknown' if role=='dev' else 'ok')
-    content=seen[1]['messages'][0]['content']
-    assert isinstance(content,str) if role=='dev' else content[1]['image_url']['url'].startswith('data:image/png;base64,')
+    assert isinstance(seen[1]['messages'][0]['content'],str)  # the tool probe carries no image
+    if role=='dev':
+        assert len(seen)==2  # no picture question for a role that never sees images
+    else:
+        content=seen[2]['messages'][0]['content']
+        assert content[1]['image_url']['url'].startswith('data:image/png;base64,') and 'Read the text' in content[0]['text']
+
+
+@pytest.mark.parametrize('role',['eval','advisor'])
+@pytest.mark.parametrize('answer',['A silver car at a petrol pump','','The image is blank'])
+def test_probe_blind_model_fails_vision(role,answer):
+    """A 200 for an image part proves nothing: a model that answers something else did not see the picture."""
+    key=Secret('sk-'+secrets.token_urlsafe(32))
+    result=probe(presets()['openai'],key,'m',role=role,transport=vision_transport(key,[],answer=answer))
+    assert not result.ok and result.checks['vision']=='fail' and result.checks['tools']=='ok'
+    assert result.errors[-1]['code']=='provider_vision_failed' and 'Choose a model that can see images.' in result.errors[-1]['message']
+
+
+def test_probe_blind_deepseek_model_is_told_which_model_sees_images():
+    """Real finding: deepseek-v4-pro ignores images (+5 prompt tokens), only deepseek-flash reads them."""
+    key=Secret('sk-'+secrets.token_urlsafe(32))
+    blind=probe(presets()['deepseek'],key,'deepseek-v4-pro',role='eval',transport=vision_transport(key,[],answer='I cannot read the image',token_param='max_tokens'))
+    assert not blind.ok and 'does not recognise images' in blind.errors[-1]['message'] and 'Use deepseek-flash.' in blind.errors[-1]['message']
+    sees=probe(presets()['deepseek'],key,'deepseek-flash',role='advisor',transport=vision_transport(key,[],token_param='max_tokens'))
+    assert sees.ok and sees.checks['vision']=='ok'
+    assert presets()['deepseek'].vision_model=='deepseek-flash' and presets()['openai'].vision_model is None
+
+
+def test_probe_vision_http_error_fails_and_dev_is_not_blocked():
+    key=Secret('sk-'+secrets.token_urlsafe(32))
+    result=probe(presets()['openai'],key,'m',role='eval',transport=vision_transport(key,[],vision_status=400))
+    assert not result.ok and result.checks['vision']=='fail' and result.errors[-1]['upstream_status']==400
+    assert probe(presets()['openai'],key,'m',role='dev',transport=vision_transport(key,[],answer='x')).ok
+
+
+def test_probe_vision_reading_tolerates_spacing_and_case():
+    from benchmarks.attention_harness.dev_agent_vision_probe import reads_text,text_png
+    assert reads_text('hello 4821.') and reads_text('The text says "HELLO  4821"') and not reads_text('HELLO 4812')
+    png=text_png();assert png[:8]==b'\x89PNG\r\n\x1a\n' and len(png)<20000
 
 
 @pytest.mark.parametrize('mode',['echo','mask','500','bad_json','drop','no_tools','exception','stream_error'])

@@ -8,7 +8,9 @@ import socket
 import urllib.error
 import urllib.parse
 import urllib.request
+import base64
 from .dev_agent_secret import scrub
+from . import dev_agent_vision_probe as vision_probe
 
 
 class ProviderError(ValueError):
@@ -28,6 +30,8 @@ class ProviderSpec:
     reasoning_param: str | None = None
     capabilities: dict = field(default_factory=lambda: dict.fromkeys(('tools','streaming','vision','json_schema'), 'unknown'))
     suggested_models: tuple = ()
+    # The one model the provider documents as reading images; Eval and Advisor must use it where the provider has several.
+    vision_model: str | None = None
     response_format: str = 'json_schema'
     # Fixed request fields every call to this provider carries (bridge, direct client and probe alike).
     extra_body: dict = field(default_factory=dict)
@@ -49,7 +53,9 @@ def presets():
                                  'https://api.deepseek.com/v1/models', response_format='json_object',
                                  # DeepSeek thinks by default and then demands reasoning_content back on every later request
                                  # that carries tools; the bridge cannot supply it, so thinking stays off (disclosed as thinking=off).
-                                 extra_body={'thinking': {'type': 'disabled'}}),
+                                 extra_body={'thinking': {'type': 'disabled'}},
+                                 # Real check (2026-11-04): deepseek-v4-pro accepts an image part and ignores it; only deepseek-flash reads it.
+                                 vision_model='deepseek-flash'),
         'openai-compatible': ProviderSpec('openai-compatible', 'OpenAI compatible', '', None),
     }
 
@@ -108,9 +114,10 @@ def open_request(request, *, timeout=20):
 class ProbeResult:
     checks: dict
     errors: list
+    needs_vision: bool = False
     @property
     def ok(self):
-        required = ('auth','chat','streaming','tools')
+        required = ('auth','chat','streaming','tools') + (('vision',) if self.needs_vision else ())
         return all(self.checks[k]=='ok' for k in required) and self.checks['vision'] != 'fail'
 
 
@@ -133,12 +140,8 @@ def probe(spec, secret, model, *, role, transport=None):
             checks['auth'] = 'ok'
         except Exception as exc:
             failed(exc, 'auth')
-            return ProbeResult(checks, errors)
-    content = 'Call the ping tool.'
-    if role in ('eval','advisor'):
-        content = [dict(type='text', text=content), dict(type='image_url', image_url=dict(url='data:image/png;base64,'
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII='))]
-    body = dict(model=model, messages=[dict(role='user',content=content)], stream=True,
+            return ProbeResult(checks, errors, needs_vision=role in ('eval','advisor'))
+    body = dict(model=model, messages=[dict(role='user',content='Call the ping tool.')], stream=True,
                 tools=[dict(type='function',function=dict(name='ping',parameters=dict(type='object',properties={})))],
                 tool_choice='auto')  # Forcing a named tool is rejected by thinking models; runs use auto too.
     body[spec.token_param] = 512  # Room for a thinking model to reason before it calls the tool.
@@ -159,12 +162,30 @@ def probe(spec, secret, model, *, role, transport=None):
                     tool |= any(c.get('function',{}).get('name')=='ping' for c in choice.get('delta',{}).get('tool_calls',[]))
         if not done or not chunks: raise ValueError('incomplete_provider_stream')
         checks.update(auth='ok',chat='ok',streaming='ok',tools='ok' if tool else 'fail')
-        if role in ('eval','advisor'): checks['vision'] = 'ok'
         if not tool: errors.append(dict(code='provider_tools_failed',message='This model must support tool calls',upstream_status=None,redacted=False))
     except Exception as exc:
         failed(exc, 'chat'); checks['streaming'] = 'fail'
         if role in ('eval','advisor'): checks['vision'] = 'fail'
-    return ProbeResult(checks, errors)
+    if role in ('eval','advisor') and checks['chat'] == 'ok':
+        # A 200 proves nothing: some models accept an image part and silently ignore it. Ask about a picture whose answer we know.
+        picture = 'data:image/png;base64,' + base64.b64encode(vision_probe.text_png()).decode()
+        seen = dict(model=model, stream=False, messages=[dict(role='user', content=[dict(type='text', text=vision_probe.PROMPT),
+                    dict(type='image_url', image_url=dict(url=picture))])])
+        seen[spec.token_param] = 512
+        seen.update(json.loads(json.dumps(spec.extra_body)))
+        try:
+            with request(spec.chat_url, seen) as response: value = json.loads(response.read(65536))
+            answer = ((value.get('choices') or [{}])[0].get('message') or {}).get('content') or ''
+            if vision_probe.reads_text(answer): checks['vision'] = 'ok'
+            else:
+                checks['vision'] = 'fail'
+                advice = ('Use %s.' % spec.vision_model) if spec.vision_model and spec.vision_model != model else 'Choose a model that can see images.'
+                message, redacted = scrub('This model does not recognise images: asked to read a test image that says "HELLO 4821", it answered: %s. '
+                                          'It accepts images without looking at them. %s' % (answer.strip()[:120] or '(nothing)', advice), [secret])
+                errors.append(dict(code='provider_vision_failed', message=message, upstream_status=None, redacted=redacted))
+        except Exception as exc:
+            failed(exc, 'vision')
+    return ProbeResult(checks, errors, needs_vision=role in ('eval','advisor'))
 
 
 _NOT_CHAT = re.compile(r'embed|whisper|tts|dall-e|moderation|transcribe|image|audio|realtime|davinci|babbage', re.I)

@@ -2385,7 +2385,7 @@
         const input=box.querySelector(`[data-role-model="${role}"]`);
         input.value=model;input.readOnly=state.mode==='all';
         const ready=own&&modelReady(choice.slice(4));
-        input.disabled=own&&state.mode!=='all'&&!ready;input.placeholder=ready||!own?'Model name':keyRejected(choice.slice(4))?'Key rejected':'Checking key…';
+        input.disabled=own&&state.mode!=='all'&&!ready;input.placeholder=ready&&role!=='dev'&&preset(cred(choice.slice(4))?.provider)?.vision_model?'Model name · images: '+preset(cred(choice.slice(4)).provider).vision_model:ready||!own?'Model name':keyRejected(choice.slice(4))?'Key rejected':'Checking key…';
         drawCombo(role,ready&&state.mode!=='all'?modelChoices(choice.slice(4),cred(choice.slice(4))?.provider):[],model);
         const result=cred(choice.slice(4))&&state.test[role]?.signature===signature(choice.slice(4),model)?state.test[role]:null;
         const button=rolesBox.querySelector(`[data-role-test="${role}"]`);
