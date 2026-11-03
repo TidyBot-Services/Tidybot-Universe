@@ -49,6 +49,20 @@ def _free_port(port: int) -> bool:
         return False
 
 
+def _our_port(ws: Path, port: int, ui_port: int, memory_port: int) -> bool:
+    name = 'ui' if port == ui_port else 'memory'
+    pidfile = ws / 'data/run' / f'{name}.pid'
+    try:
+        pid = pidfile.read_text().strip()
+        if not pid.isdigit():
+            return False
+        cmdline = (Path('/proc') / pid / 'cmdline').read_bytes().replace(b'\0', b' ').decode(errors='replace')
+    except OSError:
+        return False
+    expected = 'benchmarks.attention_harness.ui_server' if name == 'ui' else 'attention_memory_service'
+    return expected in cmdline and str(ws) in cmdline
+
+
 def _isolation_from_doctor(ws: Path) -> tuple[bool, str]:
     # Doctor owns the namespace probe and its policy. Read only its isolation row.
     parent = ws
@@ -61,7 +75,44 @@ def _isolation_from_doctor(ws: Path) -> tuple[bool, str]:
     return row['status'] == 'PASS', row['reason']
 
 
-def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int) -> bool:
+def uv_python_status(lock: dict) -> tuple[bool, str]:
+    versions = sorted(set(lock['python'].values()))
+    uv = shutil.which('uv')
+    missing = [version for version in versions if not uv or _run([uv, 'python', 'find', version]).returncode]
+    downloads = os.environ.get('UV_PYTHON_DOWNLOADS', '').lower()
+    offline = os.environ.get('UV_OFFLINE', '').lower() not in ('', '0', 'false', 'no', 'off')
+    allowed = downloads not in ('never', 'manual') and not offline
+    return not missing or allowed, ('available or downloads allowed' if not missing or allowed else 'missing ' + ', '.join(missing) + '; downloads disabled')
+
+
+def fix_userns() -> None:
+    isolated, reason, _ = installer.namespace_status()
+    if isolated or reason != installer.USERNS_REASON:
+        print('AppArmor bwrap user namespace restriction not detected; continuing.')
+        return
+    if not sys.stdin.isatty():
+        raise installer.StepError('fix-userns', 'stdin is not a TTY', 'Run setup interactively with --fix-userns.')
+    bwrap = shutil.which('bwrap')
+    if not bwrap or Path(bwrap).resolve() != Path('/usr/bin/bwrap'):
+        raise installer.StepError('fix-userns', f'bwrap resolves to {bwrap}', 'Install /usr/bin/bwrap and rerun setup.')
+    commands = (['sudo', 'install', '-m', '0644', str(installer.USERNS_PROFILE), installer.USERNS_TARGET],
+                ['sudo', 'apparmor_parser', '-r', installer.USERNS_TARGET])
+    print(installer.USERNS_PROFILE.read_text(), end='')
+    for command in commands:
+        print(' '.join(command))
+    if input('Apply? [y/N] ').strip().lower() != 'y':
+        print('No changes made; continuing.')
+        return
+    for command in commands:
+        result = subprocess.run(command, check=False)
+        if result.returncode:
+            raise installer.StepError('fix-userns', f'command exited {result.returncode}: {" ".join(command)}',
+                                      'Inspect AppArmor and rerun setup with --fix-userns.')
+    isolated, reason, _ = installer.namespace_status()
+    print(f'bwrap user namespaces: {"available" if isolated else reason}')
+
+
+def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int, rebuild_planner: bool = False) -> bool:
     lock = installer.data()
     failed = False
 
@@ -88,6 +139,9 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int) ->
           'sudo apt install build-essential')
     check('uv', bool(shutil.which('uv')), 'uv available' if shutil.which('uv') else 'uv missing',
           'Install uv: https://docs.astral.sh/uv/getting-started/installation/')
+    uv_ok, uv_reason = uv_python_status(lock)
+    check('uv Python 3.10/3.11', uv_ok, uv_reason,
+          'Unset UV_PYTHON_DOWNLOADS/UV_OFFLINE or install the locked Python versions with uv python install.')
     check('Conda', bool(shutil.which('conda')), 'conda available' if shutil.which('conda') else 'conda missing',
           'Install Miniconda: https://docs.conda.io/en/latest/miniconda.html')
     bwrap = shutil.which('bwrap')
@@ -100,6 +154,7 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int) ->
         isolated, reason = False, 'bwrap missing'
     in_container = Path('/.dockerenv').exists() or Path('/run/.containerenv').exists()
     check('bwrap user namespaces', isolated, reason,
+          installer.USERNS_FIX if reason == installer.USERNS_REASON else
           'sudo apt install bubblewrap; enable unprivileged user namespaces (inspect kernel/container policy).'
           + (' Inside Docker, start the container as in the Docker appendix of'
              ' docs/attentionbench_collaborator_setup.md.' if in_container else ''))
@@ -120,13 +175,17 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int, memory_port: int) ->
     # A fresh install peaked at 65 GB (V2, 2026-11-02): ~51 GB workspace plus ~15 GB uv/pip/conda
     # download caches. A workspace that is already set up only needs room for runs.
     need = 10 if (ws / 'paths.json').is_file() else INSTALL_FREE_GB
+    if rebuild_planner and (ws / 'deployments').is_dir():
+        deployments_gb = sum(file.stat().st_size for file in (ws / 'deployments').rglob('*') if file.is_file()) / 1024**3
+        need = max(1, deployments_gb)
     check('disk', free_gb >= need, f'{free_gb:.1f} GB free at {parent}; setup needs {need} GB',
           f'Free at least {need} GB on the filesystem containing {parent}. A first install uses about '
           f'51 GB in the workspace plus about 15 GB of download caches; after setup you can reclaim the caches '
           f'with: uv cache clean; pip cache purge; conda clean -a')
     for name, port in (('UI port', ui_port), ('Memory port', memory_port)):
         free = _free_port(port)
-        check(name, free, f'127.0.0.1:{port} {"free" if free else "busy"}',
+        ours = not free and not rebuild_planner and (ws / 'paths.json').is_file() and _our_port(ws, port, ui_port, memory_port)
+        check(name, free or ours, f'127.0.0.1:{port} {"free" if free else "our process" if ours else "busy"}',
               f'Stop the process using port {port} or rerun with --{name.lower().replace(" ", "-")} {port + 1}.')
     return not failed
 
@@ -168,6 +227,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--no-codex-warmup', action='store_true')
     p.add_argument('--update', action='store_true')
     p.add_argument('--skip-planner', action='store_true')
+    p.add_argument('--fix-userns', action='store_true')
+    p.add_argument('--rebuild-planner', action='store_true')
     p.add_argument('--planner-project-from')
     p.add_argument('--planner-native-assets-from')
     p.add_argument('--ui-port', type=int, default=8769)
@@ -175,7 +236,12 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     try:
         ws = workspace_path(args.workspace)
-        if not prerequisites(ws, dry_run=args.dry_run, ui_port=args.ui_port, memory_port=args.memory_port):
+        if args.rebuild_planner:
+            installer.validate_rebuild(ws, args)
+        if args.fix_userns and not args.dry_run:
+            fix_userns()
+        if not prerequisites(ws, dry_run=args.dry_run, ui_port=args.ui_port, memory_port=args.memory_port,
+                             rebuild_planner=args.rebuild_planner):
             raise installer.StepError('prerequisites', 'one or more required checks failed',
                                       'Run the install commands above and rerun setup.')
         if not args.dry_run:

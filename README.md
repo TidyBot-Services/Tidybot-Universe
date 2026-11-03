@@ -42,9 +42,9 @@ workers and stop the UI and Memory services.
 
 | Component | Version or source | Installed by | Size and time |
 |---|---|---|---|
-| OS | Ubuntu 22.04, Linux x86_64 | You | Existing host |
+| OS | Ubuntu 22.04 (verified) or 24.04 (not verified yet; needs a [user namespace fix](docs/attentionbench_collaborator_setup.md#ubuntu-2404-user-namespaces)), Linux x86_64 | You | Existing host |
 | NVIDIA GPU and driver | 580.x on RTX 5070 Ti verified; other combinations untested | You | Hardware and driver installation vary |
-| Git | Ubuntu 22.04 package | You | Small; minutes |
+| Git | Ubuntu package | You | Small; minutes |
 | Python with development headers | 3.10+; `python3-dev` | You | Hundreds of MB; minutes |
 | C compiler | `build-essential` | You | Hundreds of MB; minutes |
 | uv | Current compatible installer | You | Small; minutes |
