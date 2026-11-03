@@ -326,7 +326,10 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             if broker:broker._regenerate_history()
 
 
-def advisor_client(client, config):
+def advisor_client(client, config, provider=None):
+    if provider is not None:
+        from .dev_agent_byok_client import ByokChatClient
+        return ByokChatClient(provider)
     # Agent runs may use any agent Advisor model; the one-call client stays locked.
     if client is None and config.get('model_source')=='codex':
         from .codex_client import CodexClient
@@ -347,19 +350,25 @@ def continuation():
     return 'Continue from the authoritative history files and work/notes.md. Inspect the latest results and budgets with devtool status.'
 
 
-def provider_for_run(manifest, *, allow_private_hosts=(), public_gateway_mode=False):
-    if 'agent_provider' not in manifest:return None
+def provider_for_run(manifest, *, role='dev', allow_private_hosts=(), public_gateway_mode=False):
     import secrets
     from types import SimpleNamespace
     from .dev_agent_key_vault import run_key,run_role
     from .dev_agent_provider import resolve_provider,ProviderError
-    role=manifest['agent_provider']['roles']['dev'];bound=run_role('dev')
-    if bound and any(bound.get(k)!=role[k] for k in ('credential','provider','model','base_url_host')):
-        raise ProviderError('provider_mismatch','Run provider differs from manifest')
-    spec=resolve_provider(role['provider'],bound.get('base_url'),allow_custom=True,
+    desc=manifest.get('agent_provider',{}).get('roles',{}).get(role)
+    bound=run_role(role)
+    if desc is None:return None
+    if bound and any(bound.get(k)!=desc.get(k) for k in ('credential','provider','model','base_url_host')):
+        raise ProviderError('provider_mismatch','Run provider differs from manifest for role '+role)
+    if desc['credential']=='lab' and (role!='dev' or desc['provider']=='openai'):return None
+    spec=resolve_provider(desc['provider'],bound.get('base_url'),allow_custom=True,
                           allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
-    return SimpleNamespace(spec=spec,secret=run_key(role['credential']),
+    return SimpleNamespace(spec=spec,secret=run_key(desc['credential']),model=desc['model'],
                            token=secrets.token_urlsafe(32),token_env='ATTENTION_BYOK_BRIDGE_TOKEN')
+
+
+def providers_for_run(manifest, **options):
+    return {role:provider_for_run(manifest,role=role,**options) for role in ('dev','eval','advisor')}
 
 
 def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, *, client=None, runner_factory=None, outer_deadline_epoch=None, validation=None, allow_private_hosts=(), public_gateway_mode=False):
@@ -405,7 +414,9 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         atomic_write(workspace.private,'codex-identity.json',encode(identity))
         ledger.settle(setup_id,dict(status='prepared'));setup_id=None
         quota=QuotaMonitor(workspace.private,ledger,stop_percent=manifest['quota_stop_percent'])
-        provider_options={'provider':provider_for_run(manifest,allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)} if 'agent_provider' in manifest else {}
+        providers=providers_for_run(manifest,allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
+        if all(providers[r] is not None for r in ('dev','eval','advisor')):quota=None
+        provider_options={'provider':providers['dev']} if 'agent_provider' in manifest else {}
         session=CodexAgentSession(workspace.ws,workspace.private,model=manifest['dev_model'],reasoning_effort=manifest['dev_reasoning_effort'],**provider_options)
         last_disk_check=None
         def control():
@@ -428,12 +439,13 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             default=manifest['memory'],help_pricing=manifest.get('help_pricing'),validation=validation)
         exporter=Exporter(store,key,workspace,config,ledger)
         agent_policy_version=config.get('agent_policy_version','agent-policy-v1')
-        advisor=None if validation else advisor_client(client,config)
+        advisor=None if validation else advisor_client(client,config,**({'provider':providers['advisor']} if providers['advisor'] else {}))
         helper=None if validation else Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
             config=(dict(config,initial_source=manifest['initial_sources'][cell['task_id']]['source'])
                     if agent_policy_version=='agent-policy-v2' else config),
-            client=advisor,demo=manifest['demos'][cell['task_id']],quota=quota,memory=memory,agent_policy_version=agent_policy_version)
-        evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota,success_condition=condition,
+            client=advisor,demo=manifest['demos'][cell['task_id']],quota=quota if providers['advisor'] is None else None,memory=memory,agent_policy_version=agent_policy_version)
+        evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota if providers['eval'] is None else None,success_condition=condition,
+            **({'provider':providers['eval']} if providers['eval'] else {}),
             redact=dev_condition is None,
             prompt=manifest['eval_agent_prompt']+(manifest['eval_success_rule'] if condition else ''))
         execution_options={}
@@ -442,7 +454,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
                 dev_model=session.model,dev_reasoning_effort=session.reasoning_effort,
                 eval_model=evaluator.model,agent_policy_version=agent_policy_version))
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory,**execution_options),
-            prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota,policy=cell['policy_id'],
+            prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota if providers['dev'] is None else None,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
             progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter,before_step=before_step,
             agent_policy_version=agent_policy_version,validation=validation is not None,advisor_client_constructed=advisor is not None)

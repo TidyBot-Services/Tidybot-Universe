@@ -166,8 +166,8 @@ def test_two_owner_concurrent_runs(loopback,tmp_path):
                 if process.poll() is None:process.kill();process.wait()
 
 
-def test_ui_rejects_unsupported_eval_role(tmp_path,monkeypatch):
+def test_ui_rejects_unsupported_lab_eval_role(tmp_path,monkeypatch):
     service=server(tmp_path,monkeypatch);headers={'X-Attention-Token':control(service)}
-    value=selection();value['agent_provider']['roles']['eval']=dict(credential='mine',provider='openai',model='gpt-6.1-sol')
+    value=selection();value['agent_provider']['roles']['eval']=dict(credential='lab',provider='deepseek',model='gpt-6.1-sol')
     status,body,_=exchange(service,'POST','/api/dev/experiments',value,headers)
-    assert status==409 and json.loads(body)['error']['code']=='role_not_supported_yet'
+    assert status==400 and json.loads(body)['error']=='lab_provider_not_supported'

@@ -36,7 +36,7 @@ def default_config(enabled=True, model_source='parcc'):
     return result
 
 
-def normalize(value, model_source='parcc', *, agent=False):
+def normalize(value, model_source='parcc', *, agent=False, provider_role=None):
     if not isinstance(value,dict):raise ValueError('Advisor configuration must be an object')
     old=value.get('prompt_version')==OLD_PROMPT_VERSION
     base=default_config(value.get('enabled',True),model_source)
@@ -44,6 +44,8 @@ def normalize(value, model_source='parcc', *, agent=False):
         # Agent runs choose among the agent Advisor models (10-29); everything else stays fixed.
         from .dev_agent_config import ADVISOR_MODELS
         if value.get('model') in ADVISOR_MODELS:base['model']=value['model']
+    if agent and provider_role and provider_role.get('credential')!='lab':
+        base.update(model=provider_role['model'],model_source='byok')
     if model_source=='codex' and old:raise ValueError('legacy Advisor cannot use Codex')
     if old:
         base.update(model=OLD_MODEL,mode='text_only',prompt_version=OLD_PROMPT_VERSION,prompt_sha256=hashlib.sha256(OLD_SYSTEM.encode()).hexdigest(),cache_version=OLD_CACHE_VERSION,max_selected_frames=4)
@@ -91,7 +93,7 @@ def ask(evidence, config, client, *, cache_dir=None):
         saved=json.loads(path.read_text())
         if saved.get('cache_key')==key:return {**saved,'cache_hit':True,'usage':{},'latency_seconds':0}
     begun=time.monotonic();last='unavailable'
-    for attempt in range(1,config['max_attempts']+1):
+    for attempt in range(1,(1 if config.get('model_source')=='byok' else config['max_attempts'])+1):
         try:
             if not frames:raise ValueError('no_frames')
             content=[{'type':'text','text':vision.encoded({**text,'frame_manifest':[{k:f[k] for k in ('view','sha256','filename')} for f in frames]})}]
@@ -109,6 +111,7 @@ def ask(evidence, config, client, *, cache_dir=None):
                 **human_seconds(evidence,answer),
                 'latency_seconds':time.monotonic()-begun}
             if getattr(response,'failed_attempts',()):record.update(provider_attempts=response.attempts,provider_failed_attempts=list(response.failed_attempts))
+            if config.get('model_source')=='byok':record.update(model_source='byok',model=response.model)
             if config.get('model_source')=='codex':record.update(model_source='codex',quota_before=getattr(client,'quota_before',None),quota_after=getattr(client,'quota_after',None))
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
@@ -127,7 +130,7 @@ def _ask_v2(evidence,config,client,*,cache_dir=None):
         saved=json.loads(path.read_text())
         if saved.get('cache_key')==key:return {**saved,'cache_hit':True,'usage':{},'latency_seconds':0}
     begun=time.monotonic();last='unavailable'
-    for attempt in range(1,config['max_attempts']+1):
+    for attempt in range(1,(1 if config.get('model_source')=='byok' else config['max_attempts'])+1):
         try:
             response=vision._call(client,config['attempt_timeout_seconds'],model=config['model'],messages=[{'role':'system','content':OLD_SYSTEM},{'role':'user','content':vision.encoded(text)}],max_tokens=MAX_TOKENS,temperature=0)
             answer=response.content.strip()[:1500]

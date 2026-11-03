@@ -200,7 +200,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         if complete_resources(goal_limits):goal_limits=fill_optional(goal_limits)
         __import__('benchmarks.attention_harness.dev_ledger',fromlist=['cost']).cost(goal_limits)
         from .free_models import limited_resources
-        limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(('gpt-6-astra' if source=='codex' else MODEL['model']),configuration['advisor_proxy']['model']),model_source=source)
+        limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(('gpt-6-astra' if source=='codex' else MODEL['model']),configuration['advisor_proxy']['model']),model_source=source,provider_roles=configuration.get('agent_provider',{}).get('roles'))
         if set(goal_limits)!=set(RESOURCES) or any(n*budget[k]>goal_limits[k] for k in limited):raise ValueError('goal allocation exceeds limits')
         wait_wall=configuration['max_versions']*configuration.get('planner_features',{}).get('human_wait_seconds',0)
         wall_limit=configuration.get('wall_limit',n*(budget['model_seconds']+budget['execution_seconds']+wait_wall)+3600)
@@ -356,6 +356,8 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     if agent_options:
         from .dev_agent_prompts import manifest_fields
         manifest.update(manifest_fields())
+        if 'agent_provider' in agent_options:
+            for config in configs.values():config['agent_provider']=copy.deepcopy(agent_options['agent_provider'])
         manifest.update(agent_options,source_size_limit_bytes=131072,agent_accounting='attentionbench.agent-ledger.v1')
         manifest['schedule']=([dict(cell=c['key'],through_version=1) for c in cells] if validation_origin is not None else [dict(cell=cells[0]['key'],through_version=10)])
         manifest['model']=dict(model=agent_options['dev_model'],reasoning_effort=agent_options['dev_reasoning_effort'],provider_retries=0)
@@ -403,7 +405,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
                 for cp, in db.execute('SELECT payload FROM v2_cells WHERE exp=?',(ep['experiment_id'],)):
                     for k,v in json.loads(cp)['budget'].items():allocated[k]+=v
             from .free_models import limited_resources
-            limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(('gpt-6-astra' if source=='codex' else MODEL['model']),configuration['advisor_proxy']['model']),model_source=source)
+            limited=limited_resources(eval_config=configuration['eval_agent'],model_names=(('gpt-6-astra' if source=='codex' else MODEL['model']),configuration['advisor_proxy']['model']),model_source=source,provider_roles=configuration.get('agent_provider',{}).get('roles'))
             if any(allocated[k]+len(cells)*budget[k]>goal_limits.get(k,0) for k in limited):raise ValueError('shared goal allocation exceeds limits')
             existing=db.execute('SELECT payload FROM v2_goals WHERE id=?',(goal_id,)).fetchone()
             if existing:
@@ -459,6 +461,8 @@ def validate_fairness(m):
         if any(m.get(k)!=v for k,v in options.items()) or bool(options.get('agent_validation'))!=bool(m.get('validation_experiment')) or (not m.get('validation_experiment') and len(m['cells'])!=1):
             raise ValueError('agent_frozen_options_differ')
         if any(c.get('dev_mode')!='agent' for c in m['configs'].values()):raise ValueError('agent_config_gate_differs')
+        if any(c.get('agent_provider') is not None and c['agent_provider']!=m.get('agent_provider') for c in m['configs'].values()):
+            raise ValueError('agent_provider_config_mismatch')
         from .dev_agent_policy_freeze import validate
         validate(m)
     source=m.get('model_source','parcc')

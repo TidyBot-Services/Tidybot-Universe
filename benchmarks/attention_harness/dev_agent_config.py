@@ -6,7 +6,7 @@ MODELS={'gpt-6.1-sol','gpt-6-astra','gpt-6-sol'}
 DEFAULT_MODEL='gpt-6.1-sol'
 # AdvisorProxy on agent runs (10-29). Absent in older selections, which keep the fixed one-call Advisor.
 ADVISOR_MODELS={'gpt-6-astra','gpt-6.1-sol'}
-# Dev only (10-31, line GL): PARCC GLM through the loopback Responses bridge. Eval/Advisor stay Codex.
+# Lab Dev also supports PARCC GLM through the text-only loopback Responses bridge.
 DEV_MODELS=MODELS|{'parcc/GLM'}
 
 
@@ -30,13 +30,15 @@ def provider_roles(value):
         if not isinstance(desc,dict) or not {'credential','provider','model'}<=set(desc) or set(desc)-{'credential','provider','model','base_url_host','key_source'}:
             raise ValueError('invalid_agent_provider_role')
         credential_name(desc['credential'])
-        if role!='dev' and desc['credential']!='lab':raise ValueError('role_not_supported_yet')
         if not isinstance(desc['provider'],str) or desc['provider'] not in presets():raise ValueError('unsupported_agent_provider')
         model=desc['model']
         if not isinstance(model,str) or not model.strip() or len(model)>128:raise ValueError('invalid_agent_provider_model')
         if role=='dev' and model=='parcc/GLM' and desc['provider']!='parcc':raise ValueError('agent_provider_model_mismatch')
-        if role!='dev' and (desc['provider']!='openai' or model not in (ADVISOR_MODELS if role=='advisor' else MODELS)):
-            raise ValueError('role_not_supported_yet')
+        if desc['credential']=='lab':
+            expected='parcc' if role=='dev' and model=='parcc/GLM' else 'openai'
+            if desc['provider']!=expected:raise ValueError('lab_provider_not_supported')
+            allowed=DEV_MODELS if role=='dev' else ADVISOR_MODELS if role=='advisor' else MODELS
+            if model not in allowed:raise ValueError('unsupported_agent_model')
         host=desc.get('base_url_host') if desc['provider']=='openai-compatible' else urlsplit(presets()[desc['provider']].chat_url).hostname
         if host is not None and (not isinstance(host,str) or not host or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:' for c in host)):
             raise ValueError('invalid_base_url_host')
@@ -74,11 +76,14 @@ def normalize(selection, *, validation_origin=None):
         result['dev_model']=roles['dev']['model']
         for role in ('eval','advisor'):
             if role in roles:result[role+'_model']=roles[role]['model']
-    if ('agent_provider' not in selection and result['dev_model'] not in DEV_MODELS) or result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
+    roles=result.get('agent_provider',{}).get('roles',{})
+    if 'agent_provider' not in selection and result['dev_model'] not in DEV_MODELS:raise ValueError('unsupported_agent_model')
+    if roles.get('eval',{}).get('credential','lab')=='lab' and result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
     if result['dev_reasoning_effort'] not in ('low','medium','high'):raise ValueError('unsupported_agent_effort')
-    if 'advisor_model' in selection:
-        if selection['advisor_model'] not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
-        result['advisor_model']=selection['advisor_model']
+    if 'advisor_model' in selection or 'advisor' in roles:
+        model=roles['advisor']['model'] if 'advisor' in roles else selection['advisor_model']
+        if roles.get('advisor',{}).get('credential','lab')=='lab' and model not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
+        result['advisor_model']=model
     if origin is not None:result['agent_validation']=origin
     quota=result['quota_stop_percent']
     if type(quota) not in (int,float) or not math.isfinite(quota) or not 0<quota<=100:raise ValueError('invalid_quota_stop_percent')
@@ -94,11 +99,22 @@ def configuration(selection):
                  max_versions=1 if options.get('agent_validation') else 10,
                  coverage='budget_limited',attempt_wall_seconds=1920)
     if not options.get('agent_validation'):clean['wall_limit']=21600
+    roles=options.get('agent_provider',{}).get('roles',{})
+    for role,field in (('eval','eval_agent'),('advisor','advisor_proxy')):
+        if roles.get(role,{}).get('credential','lab')!='lab' and field in clean:
+            from .codex_client import MODEL
+            clean[field]=dict(clean[field],model=MODEL,model_source='codex')
     result=dict(normalize_configuration(clean),**options)
     if 'advisor_model' in options:
         result['advisor_proxy']=dict(result['advisor_proxy'],model=options['advisor_model'])
         # Same creation option set: the (disabled) one-call Eval block records the agent Eval model.
         result['eval_agent']=dict(result['eval_agent'],model=options['eval_model'])
+    elif options.get('agent_provider',{}).get('roles',{}).get('eval',{}).get('credential','lab')!='lab':
+        result['eval_agent']=dict(result['eval_agent'],model=options['eval_model'])
+    for role,field in (('eval','eval_agent'),('advisor','advisor_proxy')):
+        if roles.get(role,{}).get('credential','lab')!='lab':
+            result[field]=dict(result[field],model=roles[role]['model'],model_source='byok')
+            if role=='advisor':result[field]['max_attempts']=1  # Transport owns bounded retries.
     return result
 
 

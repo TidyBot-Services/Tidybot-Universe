@@ -2102,7 +2102,7 @@
   }
   // Models & keys (BYOK phase 1). A key is sent once to the server's memory and lives there for its time
   // limit; this page keeps only names and expiry times, never the key, and writes nothing to browser storage.
-  const BYOK_ALL_ROLES = false; // Phase 2: enable only when the server supports Eval / Advisor BYOK.
+  const BYOK_ALL_ROLES = true; // Dev, Eval and Advisor can each use a saved key; the server preflights every role.
   const KEYS_API='/api/provider/credentials';
   const KEY_ROLES=[['dev','Dev agent','Writes and revises the robot program'],['eval','Eval agent','Reviews each attempt'],['advisor','Advisor','Answers help requests']];
   const KEY_CHECKS=[['auth','Key accepted'],['chat','Chat works'],['streaming','Streaming'],['tools','Tool calls'],['vision','Images']];
@@ -2602,13 +2602,15 @@
         const profile=selectedProfile();
         const description=profile?`${profile.robot} · ${armNames[profile.execution_arm]||profile.execution_arm} · Seed ${form.seed.value}${profile.layout_id!=null?` · Layout ${profile.layout_id} / Style ${profile.style_id}`:''}`:'';
         const unavailable=profile&&!profile.enabled?profile.unavailable_reason||'This configuration is unavailable.':'';
-        const own=form.dev_mode.value==='agent'?keys.summary().dev:null;
-        const dev=own?`Dev ${own.model} (your key ${own.keyName})`:`Dev ${form.dev_model.value}`;
+        const mine=form.dev_mode.value==='agent'?keys.summary():{};
+        const own=mine.dev||null;
+        const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName})`:lab;
+        const dev=`Dev ${label('dev',form.dev_model.value)}`;
         let detail=profile?.channel==='certified_v2'?'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.':profile?.channel==='formal'?'Runs the approved policy with locked execution and assistance conditions.':`Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`;
         if(profile?.channel==='dev_v2'){
           const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
             style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.dev_mode.value==='agent'?'parcc':form.model_source.value});
-          form.querySelector('[data-launch-preview]').textContent=base.replace(' · up to ','\nUp to ')+(form.dev_mode.value==='agent'?` · Agent · ${dev} · Eval ${form.eval_model.value}`:'');
+          form.querySelector('[data-launch-preview]').textContent=base.replace(' · up to ','\nUp to ')+(form.dev_mode.value==='agent'?` · Agent · ${dev} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}`:'');
           return;
         }else if(own)detail+=` · ${dev}`;
         form.querySelector('[data-launch-preview]').textContent=unavailable||`${description}\n${detail}`;
