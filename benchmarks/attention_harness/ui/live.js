@@ -334,7 +334,7 @@
     view.querySelectorAll('video[data-history-replay]').forEach(v=>replayPlayback.set(v.dataset.replayKey,{paused:v.paused,rate:v.playbackRate}));
   }
   // Task navigation projection. Keep ledger identities out of visible names.
-  const taskTitles = {cube_lift:'Lift the cube',cube_stack:'Stack the cubes',counter_to_sink:'Move to the sink',counter_to_cab:'Move into the cabinet',pick_place_counter_to_sink:'Pick Place: Counter → Sink',open_cabinet:'Open the cabinet'};
+  const taskTitles = {cube_lift:'Lift the cube',cube_stack:'Stack the cubes',counter_to_sink:'Move to the sink',counter_to_cab:'Move into the cabinet',pick_place_counter_to_sink:'Pick Place: Counter → Sink',pick_place_counter_to_cabinet:'Pick Place: Counter → Cabinet',turn_on_microwave:'Turn on the microwave',open_cabinet:'Open the cabinet'};
   function resolvedTask(item){
     if(!item.task_id || !item.suite || /^(unknown|undefined|null)$/i.test(item.task_id))return null;
     const saved=item.task_name||item.task_display_name;
@@ -2156,9 +2156,16 @@
     for(const option of policy.options)if(option.value==='all')option.disabled=fixture;
     if(fixture&&policy.value==='all')policy.value=[...policy.options].find(o=>o.value!=='all'&&!o.disabled)?.value||'autonomous';
   }
-  // Fixture tasks offered as presets: listed first, scene seed fixed (shown as "Seed N", not chosen).
-  // A preset whose seed is excluded for its task falls back to the normal seed list.
-  const TASK_PRESETS={turn_on_microwave:101,turn_off_stove:101};
+  // New run offers three Dev v2 tasks: Counter → Sink (its own seed list) and two fixture presets whose scene
+  // seed is fixed (shown as "Seed N", not chosen). A preset whose seed is excluded for its task falls back to
+  // the normal seed list. Other tasks stay registered; they just are not offered for a new run.
+  const TASK_PRESETS={turn_on_microwave:101,pick_place_counter_to_cabinet:101};
+  const NEW_RUN_TASKS=['pick_place_counter_to_sink',...Object.keys(TASK_PRESETS)];
+  // A copied run keeps its own task selectable, so an older task still opens without an error.
+  function newRunProfiles(profiles,source=null) {
+    const keep=p=>p.channel!=='dev_v2'||NEW_RUN_TASKS.includes(p.task_id)||(source!==null&&fixtureTaskKey(p)===fixtureTaskKey(source));
+    return profiles.filter(keep);
+  }
   function presetSeed(profile) {
     const seed=profile?.rules_profile&&Object.prototype.hasOwnProperty.call(TASK_PRESETS,profile.task_id)?TASK_PRESETS[profile.task_id]:null;
     return seed!==null&&profile.seed_options?.some(row=>row.seed===seed&&row.enabled)?seed:null;
@@ -2993,7 +3000,7 @@
       }
       function syncBenchmark() {
         const previous=form.task_id.value;
-        form.task_id.innerHTML=fixtureTaskOptions(devProfiles.filter(p=>isFixed(p)===(form.run_type.value==='fixed')&&p.suite===form.benchmark.value));
+        form.task_id.innerHTML=fixtureTaskOptions(newRunProfiles(devProfiles.filter(p=>isFixed(p)===(form.run_type.value==='fixed')&&p.suite===form.benchmark.value),sourceProfile));
         if([...form.task_id.options].some(o=>o.value===previous))form.task_id.value=previous;
         syncTask();
       }

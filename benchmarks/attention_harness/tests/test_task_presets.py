@@ -1,4 +1,4 @@
-"""TurnOnMicrowave / TurnOffStove presets: Agent-mode creation through the real UI server, offline.
+"""TurnOnMicrowave / Counter → Cabinet presets: Agent-mode creation through the real UI server, offline.
 
 A loopback fake provider stands in for the user's key; nothing starts a simulator or a worker.
 """
@@ -22,7 +22,7 @@ from benchmarks.attention_harness.ui_server import create_server
 
 KEY = 'canary-key-0123456789abcdef'
 PROFILE = 'r5-fixture-20261031'
-PRESETS = ('turn_on_microwave', 'turn_off_stove')
+PRESETS = ('turn_on_microwave', 'pick_place_counter_to_cabinet')
 
 
 @pytest.fixture
@@ -93,6 +93,7 @@ def test_agent_mode_creates_preset_task_at_seed_101(served, task):
     # The preset the New run form offers: this task, fixture rules, first seed 101 enabled.
     assert profile['seeds'][0] == 101 and profile['seed'] == 101 and profile['enabled']
     assert [(r['seed'], r['enabled']) for r in profile['seed_options']][0] == (101, True)
+    assert profile['seeds'] == ([101, 102, 107] if task == 'pick_place_counter_to_cabinet' else [101, 102, 103])
     status, raw = call(s, 'POST', '/api/dev-v2/experiments', dict(selection=selection, start=False))
     assert status in (200, 201), raw
     result = json.loads(raw)
@@ -126,3 +127,21 @@ def test_validation_is_unchanged_for_other_fixture_seeds_and_modes(served, task)
     assert status >= 400 and 'seed' in raw and not s.created
     status, raw = call(s, 'POST', '/api/dev-v2/experiments', dict(selection=dict(selection, mode='experiment'), start=False))
     assert status >= 400 and 'interactive only' in raw and not s.created
+
+
+def test_cabinet_pick_place_has_only_the_fixture_profile(served):
+    # Counter → Cabinet is explicit-only in dev_tasks: no legacy Dev v2 profile, just the fixture one the form offers.
+    status, raw = call(served, 'GET', '/api/dev-v2/options')
+    assert status == 200, raw
+    assert [p['id'] for p in json.loads(raw)['profiles'] if p['task_id'] == 'pick_place_counter_to_cabinet'] == ['dev-v2-r5-pick_place_counter_to_cabinet']
+
+
+@pytest.mark.parametrize('seed', (102, 107))
+def test_cabinet_other_registered_seeds_are_still_accepted_by_the_server(served, seed):
+    s = served
+    status, raw = call(s, 'PUT', '/api/provider/credentials/mine', dict(provider='openai-compatible', key=KEY, base_url=s.fake.base_url))
+    assert status == 200, raw
+    _, selection = launch_selection(s, 'pick_place_counter_to_cabinet', seed)
+    status, raw = call(s, 'POST', '/api/dev-v2/experiments', dict(selection=selection, start=False))
+    assert status in (200, 201), raw
+    assert s.created[-1]['seeds'] == [seed]
