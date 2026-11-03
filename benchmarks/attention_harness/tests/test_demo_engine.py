@@ -21,6 +21,16 @@ DEV = 'DEV_TEXT_SENTINEL'
 ANSWER = 'SOURCE_REPLY_SENTINEL'
 
 
+TRIM_VIEWS = ('overview','side','top','left_wrist','right_wrist')
+
+
+def trim_ref(n):
+    return dict(schema='attentionbench.replay-trim.v1',original_duration_seconds=90.,trimmed_duration_seconds=20.,skipped_seconds=70.,params=dict(gap_s=1.,hold_s=1.),
+        replay_timing=dict(frame_trace_seconds=[0.,1.],frame_video_seconds=[0.,1.],frame_orig_video_seconds=[0.,40.]),
+        breaks=[dict(kind='wait',orig_start=1.,orig_end=41.,trace_start=1.,trace_end=41.,skipped_seconds=40.,trim_at=1.)],
+        videos={v:{'uri':f'agent-view/replays/e{n:06d}/'+('d'*64)+f'/trim/{v}.mp4','sha256':'d'*64} for v in TRIM_VIEWS})
+
+
 def recording():
     versions, jobs, intervals, timeline = [],[],[],[]
     for n in range(1,4):
@@ -31,6 +41,7 @@ def recording():
             trace={'uri':f'agent-view/compat/v{n:04d}/trace.json','sha256':'c'*64},
             frames={'uri':f'agent-view/executions/e{n:06d}/frames.json','sha256':'c'*64},
             replays={'advisor_replay.mp4':{'uri':f'agent-view/replays/e{n:06d}/'+('c'*64)+'/advisor_replay.mp4','sha256':'c'*64}},
+            recording={'trim':trim_ref(n)},
             story=dict(short='solved' if n==3 else 'out of reach',sentence=DEV,failure_class='Out of reach'),
             evaluator_review=dict(passed=n==3,reason=DEV,reference_suggestion=ANSWER),
             help_content={'delivered':True,'content':ANSWER},after_help={'content':ANSWER},
@@ -284,3 +295,59 @@ def test_supplied_recording_read_only(eid,tmp_path):
                 assert payload['attempt_id'] == f'attempt:{demo.key(run)}:{job["version"]-1}'
                 assert payload['config_sha256'] == version['config_sha256']
                 assert payload['policy_sha256'] == version['source']['sha256']
+
+
+def test_trimmed_replay_reaches_observers_for_settled_attempts_only(tmp_path):
+    clock = Clock();demo = engine(tmp_path,clock)
+    owner,_ = demo.lobby.identify();other,_ = demo.lobby.identify()
+    card = demo.lobby.enqueue(owner,task_key='lift');demo.tick()
+    clock.step(60);demo.tick()
+    run = demo.lobby.find(card['experiment_id']);key = demo.key(run)
+    base = f'/cells/{key}/agent/files/'
+    for viewer in (owner,other):
+        view = demo.get(run,f'/cells/{key}/view',viewer)[0]
+        trim = view['dev_v2_compat']['versions'][0]['recording']['trim']
+        assert trim['schema'] == 'attentionbench.replay-trim.v1' and len(trim['videos']) == 5
+        assert len(view['dev_v2_compat']['versions']) == 1
+    # Observers: the schema survives redaction, the settled attempt's trim videos are served.
+    for name in TRIM_VIEWS:
+        assert demo.get(run,base+f'replays/e000001/{"d"*64}/trim/{name}.mp4',other)[1] == 'video/mp4'
+    # A later attempt's trim files stay unreachable, for the owner and for observers.
+    for viewer in (owner,other):
+        for name in TRIM_VIEWS:
+            with pytest.raises(LobbyError) as error:demo.get(run,base+f'replays/e000002/{"d"*64}/trim/{name}.mp4',viewer)
+            assert error.value.status in (403,404)
+    # Nothing else is opened up: other file types and paths under trim/, other names, odd digests.
+    for name in (f'replays/e000001/{"d"*64}/trim/overview.png',f'replays/e000001/{"d"*64}/trim/segments.json',f'replays/e000001/{"d"*64}/trim/other.mp4',
+                 f'replays/e000001/{"d"*64}/trim/../trim/overview.mp4',f'replays/e000001/{"d"*63}/trim/overview.mp4',f'replays/e000001/{"d"*64}/trim/overview.mp4.bak',
+                 f'replays/e000001/{"d"*64}/trim/sub/overview.mp4',f'replays/e000001/{"d"*64}/replay_trim/overview.mp4'):
+        with pytest.raises(LobbyError):demo.get(run,base+name,other)
+
+
+def test_redaction_keeps_only_the_trim_schema_name():
+    view = recording();trim = view['dev_v2_compat']['versions'][0]['recording']['trim']
+    assert redact_for_other(view)['dev_v2_compat']['versions'][0]['recording']['trim']['schema'] == 'attentionbench.replay-trim.v1'
+    trim['schema'] = 'attentionbench.replay-trim.v1\nsecret'
+    assert redact_for_other(view)['dev_v2_compat']['versions'][0]['recording']['trim']['schema'] is None
+    view['dev_v2_compat']['versions'][0]['recording']['other'] = dict(schema='DEV_TEXT_SENTINEL')
+    assert DEV not in json.dumps(redact_for_other(view))
+
+
+def test_repository_lobby_config_lists_valid_sources_with_a_microwave_recording():
+    config = json.loads((Path(__file__).parents[1]/'config'/'lobby-config.8769.json').read_text())
+    assert config['mode'] == 'demo' and Path(config['state_dir']).is_absolute()
+    tasks = {entry['task_key'] for entry in config['sources'].values()}
+    assert tasks == {'pick_place_counter_to_sink','turn_on_microwave'}
+    for eid, entry in config['sources'].items():
+        assert re.fullmatch(r'devexp-[a-f0-9]{24}',eid) and set(entry) == {'task_key','title'}
+
+
+def test_redaction_keeps_the_clock_basis_names_that_event_times_depend_on():
+    view = recording();version = view['dev_v2_compat']['versions'][0]
+    version['recording']['trim']['replay_timing'].update(basis='relative',event_clock='sdk_completion')
+    event = dict(operation='open',timestamp=58.2,timestamp_basis='relative',status='completed',result=None,arguments={'args':[],'kwargs':{}})
+    redacted = redact_for_other(dict(view,events=[event,dict(event,timestamp_basis='bad\nvalue'*20)]))
+    timing = redacted['dev_v2_compat']['versions'][0]['recording']['trim']['replay_timing']
+    assert timing['basis'] == 'relative' and timing['event_clock'] == 'sdk_completion'
+    assert redacted['events'][0]['timestamp_basis'] == 'relative' and redacted['events'][0]['timestamp'] == 58.2
+    assert redacted['events'][1]['timestamp_basis'] is None

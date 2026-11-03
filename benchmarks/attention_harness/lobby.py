@@ -378,7 +378,7 @@ class Lobby:
             meta = self._meta(db)
             events = [dict(zip(('id','type','nickname','task_title','at'), r)) for r in db.execute(
                 'SELECT id,type,nickname,task_title,at FROM events ORDER BY at DESC,id DESC LIMIT 30')]
-            return dict(demo=True, demo_info=dict(recordings=len(self.sources), history_limit=HISTORY_LIMIT), clock=dict(speed=meta['speed'], sim_now=self._sim(meta, max(now,meta['last_real']))),
+            return dict(demo=True, demo_info=dict(recordings=len(self.sources), history_limit=HISTORY_LIMIT, tasks=sorted({s['task_key'] for s in self.sources.values()})), clock=dict(speed=meta['speed'], sim_now=self._sim(meta, max(now,meta['last_real']))),
                 me=dict(nickname=viewer['nickname']) if viewer else None,
                 robot=dict(state='busy' if active else 'idle', running=active),
                 queue=[c for c in cards if c['state']=='queued'],
