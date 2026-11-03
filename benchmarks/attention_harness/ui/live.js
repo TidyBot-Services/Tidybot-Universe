@@ -2156,11 +2156,20 @@
     for(const option of policy.options)if(option.value==='all')option.disabled=fixture;
     if(fixture&&policy.value==='all')policy.value=[...policy.options].find(o=>o.value!=='all'&&!o.disabled)?.value||'autonomous';
   }
+  // Fixture tasks offered as presets: listed first, scene seed fixed (shown as "Seed N", not chosen).
+  // A preset whose seed is excluded for its task falls back to the normal seed list.
+  const TASK_PRESETS={turn_on_microwave:101,turn_off_stove:101};
+  function presetSeed(profile) {
+    const seed=profile?.rules_profile&&Object.prototype.hasOwnProperty.call(TASK_PRESETS,profile.task_id)?TASK_PRESETS[profile.task_id]:null;
+    return seed!==null&&profile.seed_options?.some(row=>row.seed===seed&&row.enabled)?seed:null;
+  }
   function fixtureTaskOptions(profiles) {
     const option=p=>`<option value="${esc(fixtureTaskKey(p))}">${esc(taskName(p.task_id))}${p.rules_profile&&p.held_out?' · held-out':''}</option>`;
     const unique=[...new Map(profiles.map(p=>[fixtureTaskKey(p),p])).values()];
-    return unique.filter(p=>!p.rules_profile).map(option).join('')+['A','B','C','D'].map(family=>{
-      const rows=unique.filter(p=>p.family===family);
+    const presets=Object.keys(TASK_PRESETS).map(id=>unique.find(p=>p.task_id===id&&presetSeed(p)!==null)).filter(Boolean);
+    const presetGroup=presets.length?`<optgroup label="Presets · seed ${esc([...new Set(presets.map(presetSeed))].join('/'))} · fixture rules (R5)">${presets.map(option).join('')}</optgroup>`:'';
+    return unique.filter(p=>!p.rules_profile).map(option).join('')+presetGroup+['A','B','C','D'].map(family=>{
+      const rows=unique.filter(p=>p.family===family&&!presets.includes(p));
       return rows.length?`<optgroup label="${esc(family+' · '+rows[0].family_label)} · fixture rules (R5)">${rows.map(option).join('')}</optgroup>`:'';
     }).join('');
   }
@@ -2788,6 +2797,14 @@
       function syncSeedOptions() {
         const profile=selectedProfile(),v2=profile?.channel==='dev_v2';
         const registered=profile?.rules_profile?profile.seeds:options?.dev_v2?.registered_scene_seeds||[];
+        const fixedSeed=presetSeed(profile);
+        form.seed.disabled=fixedSeed!==null;
+        if(fixedSeed!==null){
+          form.seed.innerHTML=`<option value="${fixedSeed}">Seed ${fixedSeed}</option>`;
+          form.seed.value=String(fixedSeed);
+          form.querySelector('[data-seed-note]').textContent='Preset · seed fixed · fixture rules (R5) · interactive · not compared (scene positions not verified)';
+          return;
+        }
         if(profile?.rules_profile){
           const previous=Number(form.seed.value);
           form.seed.innerHTML=fixtureSeedOptions(profile);
