@@ -266,7 +266,9 @@ def projection(store,cell,*,api='/api/dev-v2',now=None):
     dirs=[]
     for top in (root/'ws/versions',root/'ws/executions',root/'private/versions',root/'private/help',root/'private/public'):
         if top.is_dir():dirs+=[(str(d),d.stat().st_mtime_ns) for d in [top,*sorted(p for p in top.rglob('*') if p.is_dir())]]
-    key=(cell['key'],api,stat.st_size,stat.st_mtime_ns,json.dumps(cell,sort_keys=True,default=str),tuple(dirs))
+    # Replay sidecars land in private/executions after settlement (backfill or the completion hook); their commit marker is part of the key.
+    trims=tuple((str(p),p.stat().st_mtime_ns) for p in sorted((root/'private/executions').glob('e*/*/replay_trim/segments.json')))
+    key=(cell['key'],api,stat.st_size,stat.st_mtime_ns,json.dumps(cell,sort_keys=True,default=str),tuple(dirs),trims)
     if key not in _CACHE:
         if len(_CACHE)>16:_CACHE.clear()
         _CACHE[key]=_projection(store,cell,api=api)

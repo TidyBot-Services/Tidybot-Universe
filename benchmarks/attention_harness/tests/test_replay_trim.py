@@ -452,3 +452,18 @@ def test_malformed_marker_shapes_fail_closed(tmp_path):
         path.write_text(json.dumps({**value,key:bad}))
         assert trim.load_verified(root) is None
         assert trim.public_trim(root) is None
+
+
+def test_terminal_projection_cache_sees_a_sidecar_published_later(tmp_path,monkeypatch):
+    """A cached terminal view must refresh once replay_trim/segments.json appears (backfill after the run ended)."""
+    from types import SimpleNamespace
+    from benchmarks.attention_harness import dev_agent_view
+    store=SimpleNamespace(path=tmp_path/'ledger.sqlite3');store.path.write_bytes(b'x')
+    cell={'state':sorted(dev_agent_view.TERMINAL)[0],'key':'k','artifact_dir':str(tmp_path/'cell')}
+    episode=tmp_path/'cell/agent/private/executions/e000001/openarm365-dev-aaaa';episode.mkdir(parents=True)
+    calls=[];monkeypatch.setattr(dev_agent_view,'_projection',lambda *a,**k:calls.append(1) or {'n':len(calls)})
+    dev_agent_view._CACHE.clear()
+    assert dev_agent_view.projection(store,cell)=={'n':1} and dev_agent_view.projection(store,cell)=={'n':1}
+    (episode/'replay_trim').mkdir();(episode/'replay_trim/segments.json').write_text('{}')
+    assert dev_agent_view.projection(store,cell)=={'n':2},'publishing a sidecar must invalidate the cached view'
+    dev_agent_view._CACHE.clear()
