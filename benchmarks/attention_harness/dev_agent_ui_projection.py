@@ -9,6 +9,7 @@ from .dev_agent_workspace import read_beneath
 
 ROOT = 'agent-view'
 VIDEO = r'advisor_replay(?:_(?:side|top|left_wrist|right_wrist))?\.mp4'
+TRIM_VIDEO = r'trim/(?:overview|side|top|left_wrist|right_wrist)\.mp4'
 
 
 def wire(value):
@@ -50,16 +51,36 @@ _DIGESTS = {}
 
 def episode_path(cell, eid, name):
     """Enumerated display media as a verified local Path (range-capable transport)."""
-    if not re.fullmatch(r'e\d+', eid) or not re.fullmatch(VIDEO, name):
+    if not re.fullmatch(r'e\d+', eid) or not re.fullmatch(VIDEO+'|'+TRIM_VIDEO, name):
         raise FileNotFoundError('Not agent recording evidence')
-    root = (Path(cell['artifact_dir'])/'agent/private/executions'/eid).resolve()
+    root = Path(cell['artifact_dir'])/'agent/private/executions'/eid
+    if any(p.is_symlink() for p in (root,*root.parents)):
+        raise FileNotFoundError('Agent recording unavailable')
+    root = root.resolve()
     episodes = [p for p in root.glob('openarm365-dev-*') if p.is_dir() and not p.is_symlink()]
     if len(episodes) != 1:
         raise FileNotFoundError('Agent recording unavailable')
-    path = episodes[0]/name
+    if name.startswith('trim/'):
+        from .replay_trim import load_verified
+        value = load_verified(episodes[0])
+        view = Path(name).stem
+        if value is None or view not in value['videos']:
+            raise FileNotFoundError('Agent trim unavailable')
+        path = episodes[0]/value['videos'][view]['file']
+    else:
+        path = episodes[0]/name
     if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(root):
         raise FileNotFoundError('Agent recording unavailable')
     return path
+
+
+def trim_for(cell, eid):
+    from .replay_trim import public_trim
+    try:
+        path = episode_path(cell, eid, 'advisor_replay.mp4')
+        return public_trim(path.parent)
+    except (OSError,ValueError):
+        return None
 
 
 def file_digest(path):
@@ -487,6 +508,8 @@ def version_evidence(cell, version, *, media=True, instruments=True):
     rec = dict(rec, run_id=identity['run_id'], attempt_id=identity['attempt_id'],
                video_saved='advisor_replay.mp4' in videos,
                video=videos.get('advisor_replay.mp4', {}).get('uri'))
+    trim = trim_for(cell, eid) if media else None
+    if trim is not None:rec['trim'] = trim
     bundle = dict(identity, dev_version=n, formal_eligible=False, artifact_dir=ROOT+'/'+prefix.rstrip('/'),
                   recording=rec, policy_id=cell['policy_id'],
                   artifacts={'trace': ref(prefix+'trace.json', assets['trace.json'])})
@@ -514,10 +537,15 @@ def public_config(cell):
 
 def evidence(cell, name):
     """Resolve only a formal version's virtual files or digest-addressed replay."""
-    match = re.fullmatch(r'replays/(e\d+)/([a-f0-9]{64})/('+VIDEO+r')', name)
+    match = re.fullmatch(r'replays/(e\d+)/([a-f0-9]{64})/('+VIDEO+'|'+TRIM_VIDEO+r')', name)
     if match:
         eid, digest, filename = match.groups()
         path = episode_path(cell, eid, filename)
+        if filename.startswith('trim/'):
+            from .replay_trim import load_verified
+            value = load_verified(path.parent.parent)
+            if value is None or value['videos'][path.stem]['sha256'] != digest:
+                raise FileNotFoundError('Agent trim digest mismatch')
         if file_digest(path) != digest:
             raise FileNotFoundError('Agent recording digest mismatch')
         # A Path lets the server answer Range requests (206) like one-call files/.

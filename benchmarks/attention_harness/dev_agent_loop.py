@@ -171,6 +171,17 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                 memory_error(int(vid[1:])+1,exc,'open')
     def settled(response):
         nonlocal stop
+        # The execution receipt is settled and recording hashes are final here.
+        if response['op'] in ('submit','run') and response.get('execution_id'):
+            episode=getattr(executor,'episode',None)
+            directory=workspace.private/'executions'/response['execution_id']
+            if episode and Path(episode).parent==directory:
+                import logging
+                log=logging.getLogger(__name__).warning
+                try:
+                    from . import replay_trim
+                    replay_trim.build_safe(episode,log)
+                except Exception as exc:log('replay_trim failed: %s',exc)
         if exporter:
             # Export is a per-version step (r6 policy): a failure is recorded on the
             # cell and in the result, never a fatal stop; import simply refuses it.

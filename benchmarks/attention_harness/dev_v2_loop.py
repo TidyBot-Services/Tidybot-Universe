@@ -522,6 +522,12 @@ def execute(store,key,version,record,config,owner,directory,runner_factory,clien
         labels={k:receipt[k] for k in ('execution_profile','execution_settings_source','planner_lock_sha256','deployment_kind') if k in receipt}
         if labels.get('deployment_kind')=='dev-local':labels['formal_eligible']=False
         store.settle(job['job_id'],actual,{**gpu,**labels,**({'diagnostic':True,'diagnostic_budget_override':result['diagnostic_budget_override']} if result.get('diagnostic_budget_override') else {}),**({'dev_tier_budget':result['dev_tier_budget']} if result.get('dev_tier_budget') else {}),'bundle':bundle,'scene_condition':result.get('scene_condition'),'public_feedback':feedback,'trace':result['artifacts']['trace'],'native_result':result['artifacts']['native_result'],'recording':result['recording'],'execution_status':result['status']})
+        import logging
+        log=logging.getLogger(__name__).warning
+        try:
+            from . import replay_trim
+            replay_trim.build_safe(episode_root,log)
+        except Exception as exc:log('replay_trim failed: %s',exc)
         memory_path=directory/'memory-input.json'
         if ((cell.get('planner_features') or layered(cell)) and memory_path.exists()) or cell.get('run_notes') is True:
             from .dev_planner_memory import journal_result
