@@ -148,6 +148,7 @@ def to_chat(body, provider=None, *, vision=False):
     reasoning_param = provider.reasoning_param if provider is not None else 'reasoning_effort'
     if effort and reasoning_param: chat[reasoning_param] = effort
     _response_format(body,chat,provider)
+    if provider is not None:chat.update(json.loads(json.dumps(provider.extra_body)))
     return chat
 
 
@@ -233,6 +234,10 @@ class _Stream:
             usage=dict(input_tokens=prompt, input_tokens_details=dict(cached_tokens=cached), output_tokens=completion,
                        output_tokens_details=dict(reasoning_tokens=reasoning), total_tokens=prompt + completion)))
         return items
+
+
+class _Truncated(Exception):
+    pass
 
 
 class ChatBridge:
@@ -333,9 +338,18 @@ class ChatBridge:
                 for choice in chunk.get('choices') or []:
                     stream.delta(choice.get('delta') or {})
                     finish = choice.get('finish_reason') or finish
+            if finish == 'length' and self.provider is not None:  # lab (PARCC) bridges keep their old behaviour
+                raise _Truncated('The provider stopped at its output token limit (finish_reason=length); the reply was truncated and is not used.')
             items = stream.finish(usage)
             row.update(status=200, upstream_models=sorted(models), finish_reason=finish, usage=usage,
                        output=[i['type'] + (':' + i['name'] if i['type'] == 'function_call' else '') for i in items])
+        except _Truncated as exc:
+            # The provider stopped at its output limit: whatever was streamed is cut off (a half tool call, half JSON).
+            row.update(status='truncated', truncated=True, finish_reason=finish, usage=usage, error=str(exc))
+            row = self.clean_row(row)
+            try: stream.event('response.failed', response=dict(id=stream.id, status='failed',
+                                                               error=dict(code='max_output_tokens', message=row['error'], redacted=row.get('redacted', False))))
+            except OSError: pass
         except Exception as exc:
             row.update(status='stream_failed', error='%s: %s' % (type(exc).__name__, exc))
             row = self.clean_row(row)

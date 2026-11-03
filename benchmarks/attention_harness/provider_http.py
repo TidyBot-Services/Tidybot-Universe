@@ -54,7 +54,7 @@ def handle(handler, *, vault, token, allow_custom=False, allow_private_hosts=(),
         if path == '/api/provider/presets' and handler.command == 'GET':
             handler.reply([dict(id=p.id, label=p.label, needs_key=p.key_source == 'user',
                                 base_url=p.chat_url.rsplit('/chat/completions', 1)[0],
-                                suggested_models=p.suggested_models, capabilities=p.capabilities)
+                                suggested_models=p.suggested_models, capabilities=p.capabilities, thinking=p.thinking)
                            for p in presets().values()])
             return
         match = ROUTE.fullmatch(path)

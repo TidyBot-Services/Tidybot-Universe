@@ -47,6 +47,7 @@ def test_credentials_round_trip_without_echoing_the_key(served):
     status, raw, headers = call(base, token, 'GET', '/api/provider/presets')
     assert status == 200 and {p['id'] for p in json.loads(raw)} >= {'parcc', 'openai', 'deepseek', 'openai-compatible'}
     assert headers['Cache-Control'] == 'no-store'
+    assert {p['id']: p['thinking'] for p in json.loads(raw)} == {'parcc': None, 'openai': None, 'deepseek': 'off', 'openai-compatible': None}
     status, raw, _ = call(base, token, 'PUT', '/api/provider/credentials/mine', {'provider': 'openai-compatible', 'key': KEY, 'base_url': fake.base_url})
     assert status == 200 and json.loads(raw)['key_set'] is True and KEY not in raw
     status, raw, _ = call(base, token, 'GET', '/api/provider/credentials')

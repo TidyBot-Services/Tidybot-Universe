@@ -27,7 +27,7 @@ def provider_roles(value):
     roles=value['roles'];result={}
     if not isinstance(roles,dict) or 'dev' not in roles or set(roles)-{'dev','eval','advisor'}:raise ValueError('invalid_agent_provider_roles')
     for role,desc in roles.items():
-        if not isinstance(desc,dict) or not {'credential','provider','model'}<=set(desc) or set(desc)-{'credential','provider','model','base_url_host','key_source'}:
+        if not isinstance(desc,dict) or not {'credential','provider','model'}<=set(desc) or set(desc)-{'credential','provider','model','base_url_host','key_source','thinking'}:
             raise ValueError('invalid_agent_provider_role')
         credential_name(desc['credential'])
         if not isinstance(desc['provider'],str) or desc['provider'] not in presets():raise ValueError('unsupported_agent_provider')
@@ -44,6 +44,10 @@ def provider_roles(value):
             raise ValueError('invalid_base_url_host')
         result[role]=dict(credential=desc['credential'],provider=desc['provider'],model=model,base_url_host=host,
                           key_source='lab' if desc['credential']=='lab' else 'user')
+        # Disclosed, never silent: a preset that switches the provider's thinking mode off says so in the manifest.
+        thinking=presets()[desc['provider']].thinking
+        if desc.get('thinking',thinking)!=thinking:raise ValueError('invalid_agent_provider_thinking')
+        if thinking:result[role]['thinking']=thinking
     return dict(roles=result)
 
 

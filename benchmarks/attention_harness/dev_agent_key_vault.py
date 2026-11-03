@@ -119,6 +119,7 @@ class ProviderKeyVault:
                 public[role] = dict(credential=name,provider=value['provider'],model=desc['model'],base_url=value['base_url'],
                                     base_url_host=urlsplit(value['base_url'] or presets()[value['provider']].chat_url).hostname,
                                     key_source='lab' if name=='lab' else 'user')
+                if presets()[value['provider']].thinking:public[role]['thinking']=presets()[value['provider']].thinking
         return RunKeys(keys, public)
 
 

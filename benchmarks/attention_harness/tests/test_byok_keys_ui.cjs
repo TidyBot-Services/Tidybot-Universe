@@ -117,7 +117,7 @@ function keyFixture() {
   let timer, failSave=false, failModels=null;
   let creds=[];
   const offered=['deepseek-chat','deepseek-reasoner','deepseek-v4'];
-  const presets=['deepseek','openai','parcc','openai-compatible'].map(id=>({id,label:id,needs_key:true,suggested_models:['deepseek-chat']}));
+  const presets=['deepseek','openai','parcc','openai-compatible'].map(id=>({id,label:id,needs_key:true,suggested_models:['deepseek-chat'],thinking:id==='deepseek'?'off':null}));
   function node(selector) {
     if(nodes.has(selector))return nodes.get(selector);
     const element={value:'',textContent:'',innerHTML:'',hidden:false,disabled:false,dataset:{},
@@ -205,7 +205,7 @@ test('summary uses only public metadata and refreshes across save, model edits a
   assert.deepEqual(plain(f.binding.summary()),{dev:null,eval:null,advisor:null});
   await f.mode('all');let count=f.events.length;await saveKey(f,'deepseek','my-ds');
   assert.ok(f.events.length>count);
-  const mine={model:'deepseek-chat',keyName:'my-ds'},route={credential:'my-ds',provider:'deepseek',model:'deepseek-chat'};
+  const mine={model:'deepseek-chat',keyName:'my-ds',thinking:'off'},route={credential:'my-ds',provider:'deepseek',model:'deepseek-chat'};
   assert.deepEqual(plain(f.binding.summary()),{dev:mine,eval:mine,advisor:mine}); // One shared key reaches all three roles.
   assert.deepEqual(plain(f.binding.selection()),{roles:{dev:route,eval:route,advisor:route}});
   assert.ok(!JSON.stringify(f.binding.summary()).includes('test-only-secret'));
@@ -245,9 +245,9 @@ test('the real footer writer shows the BYOK Dev model/name, lab fallback and two
   const baseWriter=source.slice(source.indexOf('  function runConfigSummary('),source.indexOf('  function launchSourceProfile('));
   vm.runInContext(baseWriter+writer+'\nthis.refreshSummary=updateSummary;',f.context);
   const read=()=>{f.context.refreshSummary();return f.node('[data-launch-preview]').textContent;};
-  assert.match(read(),/Dev deepseek-chat \(your key my-ds\)/);assert.equal(read().split('\n').length,2);
+  assert.match(read(),/Dev deepseek-chat \(your key my-ds · thinking off\)/);assert.equal(read().split('\n').length,2);
   assert.ok(!read().includes('test-only-secret'));
-  assert.match(read(),/Eval deepseek-chat \(your key my-ds\) · Advisor deepseek-chat \(your key my-ds\)/);
+  assert.match(read(),/Eval deepseek-chat \(your key my-ds · thinking off\) · Advisor deepseek-chat \(your key my-ds · thinking off\)/);
   await f.mode('lab');assert.match(read(),/Dev gpt-6\.1-sol/);assert.match(read(),/Eval gpt-6-astra/);assert.ok(!read().includes('your key')&&!read().includes('Advisor'));
   await f.mode('all');f.form.dev_mode.value='one_call';assert.ok(!read().includes('your key')); // Only Agent submissions carry BYOK routing.
 });
@@ -409,4 +409,14 @@ test('saved keys are shared between "My key for all agents" and "Different per a
   await f.sharedKey('from-different');assert.equal(f.node('[data-key-model]').value,'model-a');
   await f.mode('different');await f.remove('from-different');await f.mode('all');
   assert.equal(f.node('[data-shared-key]').value,'from-all');
+});
+
+test('a provider that switches thinking off says so in the saved-key line, the role source and the summary',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');await saveKey(f,'deepseek','my-ds');await f.flush();
+  assert.match(f.node('[data-keys-shared-saved]').innerHTML,/DeepSeek|deepseek[^<]* · thinking off · <span/);
+  await f.mode('different');
+  assert.match(f.node('[data-role-choice="dev"]').innerHTML,/My key · my-ds \(deepseek · thinking off\)/);
+  // A provider without the switch stays unlabelled.
+  const g=keyFixture();await g.flush();await g.mode('all');await saveKey(g,'openai','mine');await g.flush();
+  assert.ok(!g.node('[data-keys-shared-saved]').innerHTML.includes('thinking'));assert.ok(!('thinking' in g.binding.summary().dev));
 });

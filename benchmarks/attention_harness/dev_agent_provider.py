@@ -29,6 +29,13 @@ class ProviderSpec:
     capabilities: dict = field(default_factory=lambda: dict.fromkeys(('tools','streaming','vision','json_schema'), 'unknown'))
     suggested_models: tuple = ()
     response_format: str = 'json_schema'
+    # Fixed request fields every call to this provider carries (bridge, direct client and probe alike).
+    extra_body: dict = field(default_factory=dict)
+
+    @property
+    def thinking(self):
+        """'off' when this preset switches the provider's thinking mode off; shown in the UI and the manifest."""
+        return 'off' if (self.extra_body.get('thinking') or {}).get('type') == 'disabled' else None
 
 
 def presets():
@@ -39,7 +46,10 @@ def presets():
         'openai': ProviderSpec('openai', 'OpenAI', 'https://api.openai.com/v1/chat/completions',
                                'https://api.openai.com/v1/models', token_param='max_completion_tokens', reasoning_param='reasoning_effort'),
         'deepseek': ProviderSpec('deepseek', 'DeepSeek', 'https://api.deepseek.com/v1/chat/completions',
-                                 'https://api.deepseek.com/v1/models', response_format='json_object'),
+                                 'https://api.deepseek.com/v1/models', response_format='json_object',
+                                 # DeepSeek thinks by default and then demands reasoning_content back on every later request
+                                 # that carries tools; the bridge cannot supply it, so thinking stays off (disclosed as thinking=off).
+                                 extra_body={'thinking': {'type': 'disabled'}}),
         'openai-compatible': ProviderSpec('openai-compatible', 'OpenAI compatible', '', None),
     }
 
@@ -132,6 +142,7 @@ def probe(spec, secret, model, *, role, transport=None):
                 tools=[dict(type='function',function=dict(name='ping',parameters=dict(type='object',properties={})))],
                 tool_choice='auto')  # Forcing a named tool is rejected by thinking models; runs use auto too.
     body[spec.token_param] = 512  # Room for a thinking model to reason before it calls the tool.
+    body.update(json.loads(json.dumps(spec.extra_body)))
     try:
         done = False; tool = False; chunks = 0; total = 0
         with request(spec.chat_url, body) as response:

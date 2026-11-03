@@ -185,7 +185,7 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                     self.obj(provider_defaults(public_gateway_mode=public_gateway_mode,home=defaults_home,getenv=defaults_getenv));return
                 if path=='/api/provider/presets' and self.command=='GET':
                     self.obj([dict(id=p.id,label=p.label,needs_key=p.key_source=='user',base_url=p.chat_url.rsplit('/chat/completions',1)[0],
-                                   suggested_models=p.suggested_models,capabilities=p.capabilities) for p in presets().values()]);return
+                                   suggested_models=p.suggested_models,capabilities=p.capabilities,thinking=p.thinking) for p in presets().values()]);return
                 match=re.fullmatch(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test|/models)?)?',path)
                 if not match:raise ProviderError('provider_route_unknown','Unknown provider resource')
                 name,test=match.groups()

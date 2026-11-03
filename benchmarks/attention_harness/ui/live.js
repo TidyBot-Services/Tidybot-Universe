@@ -2291,7 +2291,7 @@
     const signature=(id,model)=>JSON.stringify([id,model.trim()]);
     function roleOptions(role,choice) {
       const later=!BYOK_ALL_ROLES&&role!=='dev';
-      const mine=state.creds.map(c=>`<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)})${later?' · coming in phase 2':''}</option>`).join('');
+      const mine=state.creds.map(c=>`<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)}${preset(c.provider)?.thinking?` · thinking ${esc(preset(c.provider).thinking)}`:''})${later?' · coming in phase 2':''}</option>`).join('');
       const missing=choice.startsWith('key:')&&!cred(choice.slice(4));
       return `<option value="codex">Lab models · Codex</option>${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
     }
@@ -2377,7 +2377,7 @@
       });
       const sharedResult=cred(state.shared.credential)&&state.test.dev?.signature===signature(state.shared.credential,state.shared.model)?state.test.dev:null;
       const saved=cred(state.shared.credential);
-      box.querySelector('[data-keys-shared-saved]').innerHTML=saved?`<b>${esc(saved.credential_id)}</b> · ${esc(preset(saved.provider)?.label||saved.provider)}${saved.base_url_host?` · ${esc(saved.base_url_host)}`:''} · <span class="ab-keys-left">expires in <em data-key-left="${esc(saved.expires_at)}">${keyTimeLeft(saved.expires_at)}</em></span>`:'';
+      box.querySelector('[data-keys-shared-saved]').innerHTML=saved?`<b>${esc(saved.credential_id)}</b> · ${esc(preset(saved.provider)?.label||saved.provider)}${saved.base_url_host?` · ${esc(saved.base_url_host)}`:''}${preset(saved.provider)?.thinking?` · thinking ${esc(preset(saved.provider).thinking)}`:''} · <span class="ab-keys-left">expires in <em data-key-left="${esc(saved.expires_at)}">${keyTimeLeft(saved.expires_at)}</em></span>`:'';
       const listed=saved&&state.models[saved.credential_id],keyError=saved&&state.keyError[saved.credential_id];
       box.querySelector('[data-keys-shared-test]').innerHTML=sharedResult?checksHtml(sharedResult):!saved||listed===undefined?'':listed===null?'Checking key…':
         keyError?`<span class="ab-keys-bad">${esc(keyError.slice(0,160))}</span>`:`<span class="ab-keys-chip ok">✓ Key accepted · ${listed.length} model${listed.length===1?'':'s'}</span>`;
@@ -2476,7 +2476,8 @@
       const now=Date.now()/1000;
       return Object.fromEntries(Object.entries(keyRoleAssignments(state)).map(([role,{choice,model}])=>{
         const row=state.creds.find(c=>`key:${c.credential_id}`===choice&&Number(c.expires_at)>now);
-        return [role,row&&model.trim()?{model:model.trim(),keyName:row.credential_id}:null];
+        const thinking=row&&preset(row.provider)?.thinking; // Shown wherever the choice is summarised: never silent.
+        return [role,row&&model.trim()?{model:model.trim(),keyName:row.credential_id,...(thinking?{thinking}:{})}:null];
       }));
     }
     async function save() {
@@ -2820,7 +2821,7 @@
         const unavailable=profile&&!profile.enabled?profile.unavailable_reason||'This configuration is unavailable.':'';
         const mine=form.dev_mode.value==='agent'?keys.summary():{};
         const own=mine.dev||null;
-        const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName})`:lab;
+        const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName}${mine[role].thinking?` · thinking ${mine[role].thinking}`:''})`:lab;
         const dev=`Dev ${label('dev',form.dev_model.value)}`;
         let detail=profile?.channel==='certified_v2'?'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.':profile?.channel==='formal'?'Runs the approved policy with locked execution and assistance conditions.':`Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`;
         if(profile?.channel==='dev_v2'){
