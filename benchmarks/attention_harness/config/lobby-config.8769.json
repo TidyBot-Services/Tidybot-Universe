@@ -1,0 +1,40 @@
+{
+ "mode": "demo",
+ "speed": 20,
+ "seed": 1,
+ "invitees": [
+  {
+   "count": 3
+  }
+ ],
+ "sources": {
+  "devexp-2656176e6fa79c9bbee569bf": {
+   "task_key": "pick_place_counter_to_sink",
+   "title": "Pick Place: Counter → Sink"
+  },
+  "devexp-dc15f5ae1ddfba76727ce318": {
+   "task_key": "pick_place_counter_to_sink",
+   "title": "Pick Place: Counter → Sink"
+  },
+  "devexp-6f072cb01d5a056c1bf3b384": {
+   "task_key": "pick_place_counter_to_sink",
+   "title": "Pick Place: Counter → Sink"
+  },
+  "devexp-180ed10d6bdd78923dd6c2b4": {
+   "task_key": "pick_place_counter_to_sink",
+   "title": "Pick Place: Counter → Sink"
+  },
+  "devexp-02cdcb7ac401031e8bdc47da": {
+   "task_key": "pick_place_counter_to_sink",
+   "title": "Pick Place: Counter → Sink"
+  },
+  "devexp-259ba58166741ec605e87a39": {
+   "task_key": "pick_place_counter_to_sink",
+   "title": "Pick Place: Counter → Sink"
+  },
+  "devexp-d9d6c17c749d8480a087422e": {
+   "task_key": "turn_on_microwave",
+   "title": "Turn on microwave"
+  }
+ }
+}

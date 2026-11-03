@@ -211,7 +211,8 @@ def test_recordings_rotate_in_configured_order_and_show_their_origin(tmp_path):
     cards = snap['recent'] + snap['queue'] + ([snap['robot']['running']] if snap['robot']['running'] else [])
     assert {c['recording']['id'] for c in cards} <= set(mixed_sources())
     assert all(c['recording']['attempts'] >= 1 for c in cards)
-    assert snap['demo_info'] == dict(recordings=4, history_limit=8)
+    assert snap['demo_info']['recordings'] == 4 and snap['demo_info']['history_limit'] == 8
+    assert snap['demo_info']['tasks'] == sorted({s['task_key'] for s in mixed_sources().values()})
     assert {c['result'] for c in snap['recent']} >= {'solved', 'failed', 'limit'}
 
 

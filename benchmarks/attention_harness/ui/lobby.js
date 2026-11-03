@@ -243,9 +243,38 @@
     const snap = state.snap, waiting = (snap.queue || []).length, running = snap.robot?.running ? 1 : 0;
     const place = waiting + running + 1;
     const mineBusy = [snap.robot?.running, ...(snap.queue || [])].some(c => c?.mine);
-    return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4>Sharing &amp; queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
-      <label class="ab-launch-field ab-check"><span><input type="checkbox" name="lb_share"> Let others see my help requests and replies in the replay</span><small>Off by default. Others always see status, progress and result, never your key.</small></label>
+    return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">02</span>Sharing &amp; queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
+      <label class="ab-reviewer-toggle"><input name="lb_share" type="checkbox"><span class="ab-switch" aria-hidden="true"></span><span><strong>Let others see my help requests and replies in the replay</strong><small>Off by default. Others always see status, progress and result, never your key.</small></span></label>
       <p class="ab-run-hint" data-lobby-queue-note>${running ? '1 running' : 'The robot is free'} · ${waiting} waiting. ${mineBusy ? 'You already have a run in line; finish or cancel it first.' : `Your run would be #${place}; the estimate appears after you join.`} One running and one waiting run per person. ${snap.demo ? 'Demo engine: simulated run, no GPU, no real provider.' : ''}</p></section>`;
+  }
+  // The Task list of the New run dialog in Remote. The three tasks are the same options main offers (same names, groups and
+  // seed rule); only the ones the demo has a recording for can be joined, the rest are greyed out.
+  const DEMO_TASKS = ['pick_place_counter_to_sink', 'turn_on_microwave', 'pick_place_counter_to_cabinet'];
+  const DEMO_SEED = {pick_place_counter_to_sink: 102};
+  const taskOf = option => String(option.value).split('@')[0];
+  function shapeTasks(form) {
+    const select = form?.task_id;
+    if (!state.enabled || !select) return;
+    const recorded = new Set(state.snap?.demo_info?.tasks || []);
+    for (const option of [...select.options]) {
+      if (!DEMO_TASKS.includes(taskOf(option))) { option.remove(); continue; }
+      if (!recorded.has(taskOf(option))) { option.disabled = true; option.textContent += ' · no demo recording yet'; }
+    }
+    for (const group of select.querySelectorAll('optgroup')) if (!group.children.length) group.remove();
+    const settle = () => {
+      const seed = form.seed, fixed = DEMO_SEED[taskOf(select)];
+      // Presets keep main's own locked seed; the one recorded task without a preset gets the same lock.
+      if (seed && !seed.disabled && fixed) {
+        seed.innerHTML = `<option value="${fixed}">Seed ${fixed}</option>`; seed.value = String(fixed); seed.disabled = true;
+        const note = form.querySelector('[data-seed-note]'); if (note) note.textContent = 'Demo recording · seed fixed';
+      }
+    };
+    if (select.selectedOptions[0]?.disabled) {
+      const first = [...select.options].find(option => !option.disabled);
+      if (first) { select.value = first.value; select.dispatchEvent(new Event('change', {bubbles: true})); }
+    }
+    select.addEventListener('change', () => queueMicrotask(settle));
+    settle();
   }
   const devSource = (provider, modelSource) => provider ? 'own_key' : modelSource === 'codex' ? 'lab_codex' : 'lab_glm';
 
@@ -262,7 +291,7 @@
 
   global.Lobby = {
     get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf,
-    newRunHtml, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
+    newRunHtml, shapeTasks, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
     fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting] : null),
     start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; poll(); } },
   };

@@ -2734,7 +2734,7 @@
       }));
       form.run_type.addEventListener('change',syncRunTypeButtons);
       form.addEventListener('ab-keys-change',updateSummary);
-      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Help and attention|Models & keys|Automatic reviewer|Limits|Advanced/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});launchDialog.querySelectorAll('[data-launch-source],[data-launch-preview]').forEach(note=>note.classList.add('ab-lobby-hide'));form.querySelectorAll('.ab-launch-section .ab-launch-field').forEach(field=>{if(/^(Run type|Benchmark|Scene seed|Session type|Robot|Name suffix)/i.test(field.textContent.trim()))field.classList.add('ab-lobby-hide');});}
+      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Help and attention|Models & keys|Automatic reviewer|Limits|Advanced/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});launchDialog.querySelectorAll('[data-launch-source],[data-launch-preview]').forEach(note=>note.classList.add('ab-lobby-hide'));form.querySelectorAll('.ab-launch-section .ab-launch-field').forEach(field=>{if(/^(Run type|Benchmark|Session type|Robot|Name suffix)/i.test(field.textContent.trim()))field.classList.add('ab-lobby-hide');});}
       let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
@@ -2876,7 +2876,7 @@
         form.querySelector('[data-v2-config]').hidden=agent||profile?.channel!=='dev_v2';
         form.querySelector('[data-agent-reason]').textContent=reason||(agent?`${Math.min(10,Math.max(1,Number(form.max_attempts.value)||10))} formal versions · 40 executions · 300 read-only probes · ${Math.min(21600,Math.max(3600,Number(form.wall_seconds.value)||21600))/3600} hours · stops at ${Number(form.quota_stop_percent?.value)||90}% quota. Eval picks its own model; native success ends the run.`:'One call keeps the current settings. Switch to Agent to choose the Dev and Eval models separately.');
         showQuota();
-        form.querySelector('.ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes. It uses the Eval model chosen in 03.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention. Its model follows the Model source in 03.';
+        form.querySelector('[data-run-config-section="reviewer"] .ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes. It uses the Eval model chosen in 03.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention. Its model follows the Model source in 03.';
       }
       function updatePreview() {
         fixtureRunMode(selectedProfile(),form.v2_mode,form.v2_policy,!!forkStart);
@@ -3044,6 +3044,7 @@
       const fork=forkStart&&sourceProfile?.channel==='dev_v2'?forkPanel(form,forkStart):null;
       form.benchmark.addEventListener('change',syncBenchmark);
       form.task_id.addEventListener('change',syncTask);
+      window.Lobby.shapeTasks(form);
       form.robot_model.addEventListener('change',syncArm);
       form.execution_arm.addEventListener('change',() => syncProfile(true));
       function budgetInput(event) {

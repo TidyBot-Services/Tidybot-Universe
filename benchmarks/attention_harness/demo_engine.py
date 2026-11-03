@@ -21,6 +21,7 @@ TEXT_FIELDS = {'source_text', 'diff_text', 'model_input', 'prompt', 'plan', 'rea
 RESOURCE_FIELDS = {'used', 'counts', 'held', 'remaining', 'reserved', 'budget', 'limits', 'resources',
                    'agent_resources', 'quota_usage', 'wall_seconds', 'wall_used', 'wall_remaining',
                    'wall_limit', 'provider_tokens', 'actual', 'reservation', 'size_bytes'}
+TRIM_SCHEMA = 'attentionbench.replay-trim.v1'
 LABELS = {'solved', 'not solved', 'awaiting evaluation', 'out of reach', 'path blocked', 'object slipped',
           'grasp not confirmed', 'Eval did not run', 'Eval passed, task check failed', 'Task incomplete',
           'Out of reach', 'Planner refused', 'Collision risk', 'Grasp lost', 'Eval disagreed'}
@@ -163,8 +164,11 @@ def redact_for_other(view):
                 return value if re.fullmatch(r'[A-Za-z0-9_.:/ -]{1,80}',value) else None
             if parent == 'task_prompt':return value if len(value)<=300 and not re.search(r'[\r\n]',value) else None
             if parent in ('sha256','config_sha256','policy_sha256'):return value if re.fullmatch('[a-f0-9]{64}',value) else None
+            # The replay-trim sidecar's fixed schema name; the front end ignores a sidecar without it.
+            if parent == 'schema':return value if value == TRIM_SCHEMA else None
             if parent in ('state','status','phase','kind','op','policy_id','mode','dev_mode','channel','agent_policy_version',
-                          'execution_state','execution_status','mime_type','source','operation','event_type','view','filename','name','label','uri','url','video','artifact_dir'):
+                          'execution_state','execution_status','mime_type','source','operation','event_type','view','filename','name','label','uri','url','video','artifact_dir',
+                          'basis','timestamp_basis','event_clock'):
                 if parent in ('uri','url','video','artifact_dir'):
                     return value if value.startswith(('/api/dev-v2/experiments/','agent-view/')) and '..' not in value else None
                 if parent == 'filename':return value if re.fullmatch(r'(?:frames/)?[A-Za-z0-9_.-]+',value) else None
@@ -356,7 +360,7 @@ class DemoEngine:
         if name.endswith(('help.json','request-view.json')) and run['state'] not in TERMINAL:
             if not number or int(number[1]) >= run['current']:raise LobbyError('not_found',404)
         mine = bool(viewer and run['owner']==viewer['id'])
-        if not mine and not (re.fullmatch(r'agent/files/(?:compat/v\d+/(?:bundle|trace|frames|camera_views)\.json|replays/e\d+/[a-f0-9]{64}/advisor_replay(?:_[a-z_]+)?\.mp4|executions/e\d+/frames(?:\.json|/[A-Za-z0-9_.-]+\.png))',name)
+        if not mine and not (re.fullmatch(r'agent/files/(?:compat/v\d+/(?:bundle|trace|frames|camera_views)\.json|replays/e\d+/[a-f0-9]{64}/(?:advisor_replay(?:_[a-z_]+)?|trim/(?:overview|side|top|left_wrist|right_wrist))\.mp4|executions/e\d+/frames(?:\.json|/[A-Za-z0-9_.-]+\.png))',name)
                              or re.fullmatch(r'files/[A-Za-z0-9_.-]+\.(?:mp4|png|jpg)',name)):
             raise LobbyError('private_artifact',403)
         # Non-version assets must already have a reference in the current cut.
