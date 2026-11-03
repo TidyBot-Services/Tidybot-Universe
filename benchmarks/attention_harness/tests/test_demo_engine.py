@@ -2,6 +2,7 @@
 import copy
 from contextlib import contextmanager
 import json
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -221,11 +222,13 @@ def test_config_requires_explicit_directory_and_valid_sources(tmp_path):
         with pytest.raises(ValueError):DemoEngine({**config,**patch},Bridge())
 
 
-CAPTURES = Path('/tmp/claude-1000/-home-truares----AttentionBench-Workspace-development/2bdb4965-3ec4-4c5b-85c3-03df413d0b57/scratchpad/runui-data/dev-v2')
+# Optional recorded Dev v2 runs kept outside the repository (one directory per experiment id).
+CAPTURES = Path(os.environ.get('ATTENTIONBENCH_DEMO_CAPTURES', '/nonexistent'))
 
 
 @pytest.mark.parametrize('eid',['devexp-2656176e6fa79c9bbee569bf','devexp-6f072cb01d5a056c1bf3b384'])
 def test_supplied_recording_read_only(eid,tmp_path):
+    if 'ATTENTIONBENCH_DEMO_CAPTURES' not in os.environ:pytest.skip('ATTENTIONBENCH_DEMO_CAPTURES not set')
     path = CAPTURES/eid/'ledger.sqlite3'
     if not path.is_file():pytest.skip('optional supplied capture unavailable')
     from benchmarks.attention_harness.dev_ledger import DevV2Store

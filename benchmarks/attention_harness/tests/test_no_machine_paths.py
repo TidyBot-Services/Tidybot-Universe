@@ -11,7 +11,7 @@ CODE_DIRS = ('benchmarks/', 'curobo_v2/', 'eval/', 'openarm365/',
              'openarm365_dev/', 'openarm365_dev_v2/', 'openarm_bimanual/',
              'openarm_mobile/', 'openarm_robocasa/', 'scripts/', 'skill-agent-setup/')
 SUFFIXES = ('.py', '.sh', '.js', '.html', '.yml', '.yaml', '.toml', '.cfg')
-MARKERS = (b'/home/' + b'truares', b'Documents/' + b'Codex')
+MARKERS = (b'/home/' + b'tru' + b'ares', b'Documents/' + b'Codex', b'-home-' + b'tru' + b'ares', b'claude-' + b'1000/')
 
 
 def test_no_machine_paths():
