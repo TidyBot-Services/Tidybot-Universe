@@ -1,6 +1,5 @@
 {
  "mode": "demo",
- "state_dir": "/home/truares/.local/share/attentionbench-8769/lobby",
  "speed": 20,
  "seed": 1,
  "invitees": [

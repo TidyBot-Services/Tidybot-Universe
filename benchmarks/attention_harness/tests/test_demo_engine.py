@@ -335,7 +335,9 @@ def test_redaction_keeps_only_the_trim_schema_name():
 
 def test_repository_lobby_config_lists_valid_sources_with_a_microwave_recording():
     config = json.loads((Path(__file__).parents[1]/'config'/'lobby-config.8769.json').read_text())
-    assert config['mode'] == 'demo' and Path(config['state_dir']).is_absolute()
+    assert config['mode'] == 'demo'
+    # An example: no machine path. The runtime file adds an absolute state_dir of its own.
+    assert 'state_dir' not in config and '/home/' not in json.dumps(config)
     tasks = {entry['task_key'] for entry in config['sources'].values()}
     assert tasks == {'pick_place_counter_to_sink','turn_on_microwave'}
     for eid, entry in config['sources'].items():
